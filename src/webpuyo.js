@@ -487,7 +487,7 @@
         }
 
         /**
-       * 가상의 인간형 몬스터 단탈리온을 캔버스 도형으로 그린다.
+         * 가상의 인간형 몬스터 단탈리온을 캔버스 도형으로 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표

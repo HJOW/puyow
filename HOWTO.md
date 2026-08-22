@@ -70,18 +70,40 @@ WebPuyo.initialize();
 
 ```js
 class CenterEnemy extends WebPuyo.Enemy {
+    /** 적 이름을 반환한다. */
 	getName() {
 		return '중앙 수집가';
 	}
 
 	/**
-	 * 뿌요 쌍을 중앙 열로 이동시킨다.
+	 * 조작할 차례가 됐을 때 뿌요를 어느 위치에 둘 지 결정한다. (중력이 작용하므로 X좌표만 지정하면 된다.)
 	 * @param {PlayerState} player 자동 조작할 플레이어
 	 * @returns {number} 목표 X 좌표
 	 */
 	chooseTarget(player) {
 		return 2;
 	}
+
+    /**
+     * 조작할 차례가 됐을 때 뿌요를 회전할 지를 결정한다.
+     * @param {PlayerState} player 자동 조작할 플레이어
+     * @returns {number} 목표 회전값 (0: 위, 1: 오른쪽, 2: 아래, 3: 왼쪽)
+     */
+    chooseRotate(player) {
+    	return 0;
+    }
+
+    /**
+     * 이 적의 초상화를 그린다. 적 선택 화면과 게임 중 중앙 영역에서 사용된다.
+     * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+     * @param {number} centerX 캐릭터 중심 X 좌표
+     * @param {number} centerY 캐릭터 중심 Y 좌표
+     * @param {number} scale 기본 크기 대비 배율
+     * @returns {void}
+     */
+    drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+        return super.drawPortrait(drawingContext, centerX, centerY, scale, expression);
+    }
 }
 ```
 
