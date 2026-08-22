@@ -46,6 +46,21 @@ const { Enemy, registerOpponent, initialize } = require('./src/webpuyo.js');
 
 `initialize(target)`의 `target`에는 canvas 요소나 canvas 요소의 `id` 문자열을 전달할 수 있습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 1280x720 canvas를 만들고 게임을 연결합니다. 지정한 요소가 canvas가 아니거나 존재하지 않으면 오류가 발생합니다.
 
+## 종료 및 정리
+
+`WebPuyo.destroy()`는 `initialize()`로 시작한 게임 인스턴스를 종료하고 초기화 전 상태로 되돌립니다. 페이지 전환, 동적 UI 제거, 같은 페이지에서 다른 canvas로 게임을 다시 초기화할 때 호출합니다.
+
+이 메서드는 키보드와 canvas 클릭 이벤트를 해제하고, 예약된 애니메이션 프레임을 취소하며, 등록된 WebMCP 도구도 해제합니다. `initialize()`가 기본 canvas를 찾지 못해 직접 생성한 `webpuyo_canvas`는 DOM에서 제거하지만, 개발자가 HTML에 넣었거나 `initialize(target)`으로 전달한 canvas는 제거하지 않습니다.
+
+`destroy()` 뒤에는 다시 `initialize()`를 호출할 수 있습니다. 아직 초기화되지 않은 상태에서 호출해도 아무 작업 없이 안전하게 끝납니다.
+
+```js
+WebPuyo.initialize('webpuyo_canvas');
+
+// 페이지의 게임 영역을 없애기 전에 실행한다.
+WebPuyo.destroy();
+```
+
 ## 화면 언어 추가
 
 초기화 전에 `WebPuyo.registerLanguage(locale, entries)`로 화면 문구 번역을 추가할 수 있습니다. 브라우저 언어가 `ko` 또는 `ko-KR`이면 한국어 원문을 그대로 사용합니다. 다른 언어는 전체 언어 코드(예: `ja-JP`)를 먼저 찾고, 없으면 기본 언어 코드(예: `ja`), 마지막으로 영어(`en`) 번역표를 사용합니다.

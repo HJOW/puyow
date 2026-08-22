@@ -45,7 +45,11 @@
     let canvas = null;
     let context = null;
     let initialized = false;
+    let createdCanvas = false;
+    let animationFrameId = null;
+    let webMcpAbortController = null;
     let game = null;
+    let recommendedPoint = null;
     let menuScreen = 'title';
     let selectedOpponent = 0;
     let selectedDifficulty = 2;
@@ -1115,6 +1119,8 @@
         player.placedPairCount += 1;
         player.hasPlacedPuyoSinceAllClear = true;
         player.active = null;
+        // AI가 제안한 위치는 이 뿌요 쌍이 고정되는 즉시 더 이상 유효하지 않다.
+        if (game && player === game.players[0]) recommendedPoint = null;
         startGravity(player, 'explode');
     }
 
@@ -1711,6 +1717,22 @@
     }
 
     /**
+     * AI가 추천한 착지 칸을 배경을 가리지 않는 테두리로 표시한다.
+     * @param {PlayerState} player 표시 대상 플레이어
+     * @returns {void}
+     */
+    function drawRecommendedPoint(player) {
+        if (player !== game?.players[0] || !recommendedPoint) return;
+        const { x, y } = recommendedPoint;
+        if (x < 0 || x >= COLUMNS || y < 0 || y >= VISIBLE_ROWS) return;
+        context.save();
+        context.strokeStyle = '#ffd54f';
+        context.lineWidth = 4;
+        context.strokeRect(player.fieldX + x * CELL + 2, FIELD_BOTTOM - (y + 1) * CELL + 2, CELL - 4, CELL - 4);
+        context.restore();
+    }
+
+    /**
      * 한 플레이어의 필드, 예고줄, 낙하와 폭발 효과를 그린다.
      * @param {PlayerState} player 그릴 플레이어
      * @param {PlayerState} opponent 예고 공격량을 제공할 상대
@@ -1751,6 +1773,7 @@
                 drawActiveOutline(cellX, cellY);
             }
         });
+        drawRecommendedPoint(player);
         for (let index = 0; index < COLUMNS; index += 1) {
             context.fillStyle = '#0a1d29'; context.fillRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
             context.strokeStyle = 'rgba(176, 232, 244, 0.25)'; context.strokeRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
@@ -2028,7 +2051,7 @@
             }
         }
         render();
-        requestAnimationFrame(frame);
+        animationFrameId = requestAnimationFrame(frame);
     }
 
     /**
@@ -2150,7 +2173,7 @@
     }
 
     /**
-   * 메뉴의 게임 시작 버튼을 선택하거나 결과 화면에서 메뉴로 돌아간다.
+     * 메뉴의 게임 시작 버튼을 선택하거나 결과 화면에서 메뉴로 돌아간다.
      * @param {MouseEvent} event 캔버스 클릭 이벤트
      * @returns {void}
      */
@@ -2229,6 +2252,184 @@
     }
 
     /**
+     * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
+     * @returns {{screen:'main_menu'|'opponent_select'|'countdown'|'playing'|'paused'|'game_over', playerCanControl:boolean}}
+     */
+    function getNowScreen() {
+        if (!game) return { screen: menuScreen === 'opponent' ? 'opponent_select' : 'main_menu', playerCanControl: false };
+        if (!game.running) return { screen: 'game_over', playerCanControl: false };
+        if (game.countdown > 0) return { screen: 'countdown', playerCanControl: false };
+        if (game.paused) return { screen: 'paused', playerCanControl: false };
+        return { screen: 'playing', playerCanControl: game.players[0].phase === 'control' && game.players[0].active !== null };
+    }
+
+    /**
+     * 한 플레이어의 보드와 대기열을 JSON으로 직렬화 가능한 상태로 만든다.
+     * @param {PlayerState} player 상태를 읽을 플레이어
+     * @param {PlayerState} opponent 상대 플레이어
+     * @returns {{name:string, board:{columns:number, rows:number, visibleRows:number, puyos:{x:number,y:number,color:string}[]}, nextPairs:string[][], warningPuyos:string[], active:{x:number,y:number,rotation:number,colors:string[],cells:{x:number,y:number,color:string}[]}|null}}
+     */
+    function getPlayerGameStatus(player, opponent) {
+        const puyos = [];
+        player.board.forEach((row, y) => row.forEach((color, x) => {
+            if (color) puyos.push({ x, y, color });
+        }));
+        const active = player.active ? {
+            x: player.active.x,
+            y: player.active.y,
+            rotation: player.active.rotation,
+            colors: [...player.active.colors],
+            cells: activeCells(player.active).map(({ x, y, color }) => ({ x, y, color }))
+        } : null;
+        return {
+            name: player.name,
+            board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos },
+            nextPairs: player.nextPairs.map((pair) => [...pair]),
+            warningPuyos: warningUnits(opponent.attack + player.damage),
+            active
+        };
+    }
+
+    /**
+     * 플레이 중인 게임의 AI용 상세 상태를 반환한다.
+     * @returns {object}
+     */
+    function getNowGameStatus() {
+        const screen = getNowScreen();
+        if (screen.screen !== 'playing' && screen.screen !== 'paused') {
+            throw new Error('now_game_status is available only while playing or paused.');
+        }
+        const [player, opponent] = game.players;
+        return {
+            screen: screen.screen,
+            playerCanControl: screen.playerCanControl,
+            player: getPlayerGameStatus(player, opponent),
+            opponent: getPlayerGameStatus(opponent, player),
+            recommendedPoint: recommendedPoint ? { ...recommendedPoint } : null
+        };
+    }
+
+    /**
+     * WebMCP에 노출할 게임 도구를 등록한다. 미지원 브라우저에서는 아무 작업도 하지 않는다.
+     * @returns {void}
+     */
+    function registerWebMcpTools() {
+        if (!document.modelContext || typeof document.modelContext.registerTool !== 'function') return;
+        webMcpAbortController = new AbortController();
+        const emptyInput = { type: 'object', properties: {}, additionalProperties: false };
+        const screenSchema = {
+            type: 'object',
+            properties: {
+                screen: { type: 'string', enum: ['main_menu', 'opponent_select', 'countdown', 'playing', 'paused', 'game_over'] },
+                playerCanControl: { type: 'boolean' }
+            },
+            required: ['screen', 'playerCanControl']
+        };
+        const puyoSchema = {
+            type: 'object', properties: {
+                x: { type: 'integer', description: 'Column from the left.' },
+                y: { type: 'integer', description: 'Row from the bottom.' },
+                color: { type: 'string', enum: [...COLORS, 'garbage'] }
+            }, required: ['x', 'y', 'color']
+        };
+        const activeSchema = {
+            type: ['object', 'null'], properties: {
+                x: { type: 'integer' }, y: { type: 'integer' }, rotation: { type: 'integer', minimum: 0, maximum: 3 },
+                colors: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 2, maxItems: 2 },
+                cells: { type: 'array', items: puyoSchema, minItems: 2, maxItems: 2 }
+            }
+        };
+        const playerSchema = {
+            type: 'object', properties: {
+                name: { type: 'string' },
+                board: { type: 'object', properties: {
+                    columns: { type: 'integer', const: COLUMNS }, rows: { type: 'integer', const: ROWS }, visibleRows: { type: 'integer', const: VISIBLE_ROWS },
+                    puyos: { type: 'array', items: puyoSchema, description: 'All fixed puyos, including hidden rows.' }
+                }, required: ['columns', 'rows', 'visibleRows', 'puyos'] },
+                nextPairs: { type: 'array', items: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 2, maxItems: 2 } },
+                warningPuyos: { type: 'array', items: { type: 'string' } }, active: activeSchema
+            }, required: ['name', 'board', 'nextPairs', 'warningPuyos', 'active']
+        };
+        const statusSchema = {
+            type: 'object',
+            description: 'Both game fields, upcoming pairs, warning puyos, and the currently controlled pair. Board coordinates start at the bottom-left.',
+            properties: {
+                screen: { type: 'string', enum: ['playing', 'paused'] },
+                playerCanControl: { type: 'boolean' }, player: playerSchema, opponent: playerSchema,
+                recommendedPoint: { type: ['object', 'null'], properties: { x: { type: 'integer' }, y: { type: 'integer' } } }
+            },
+            required: ['screen', 'playerCanControl', 'player', 'opponent', 'recommendedPoint']
+        };
+        const tools = [
+            {
+                name: 'manual',
+                description: 'Return English instructions for playing Puyo W and using the other available game tools.',
+                inputSchema: emptyInput,
+                execute: () => 'Puyo W is a falling-pair puzzle battle. During your control turn, use left/right to move, Z/X to rotate, and down to fall faster. Match four or more same-color puyos to clear them and send attacks. Use now_screen to learn which screen is visible, now_game_status only while playing or paused to inspect both boards and active pairs, and point_recommend during a controllable player turn to highlight one recommended board coordinate.'
+            },
+            {
+                name: 'now_screen',
+                description: 'Get the currently visible game screen. The JSON result states whether it is the main menu, opponent selection, countdown, play, pause, or game-over screen, and whether the human player can currently control a pair.',
+                inputSchema: emptyInput,
+                outputSchema: screenSchema,
+                execute: getNowScreen
+            },
+            {
+                name: 'now_game_status',
+                description: 'Get complete JSON game state only while the match is playing or paused: every placed puyo on both boards, upcoming pairs, warning puyos, and both active pairs with coordinates.',
+                inputSchema: emptyInput,
+                outputSchema: statusSchema,
+                execute: getNowGameStatus
+            },
+            {
+                name: 'point_recommend',
+                description: 'While the human player is actively controlling a pair, highlight exactly one recommended board cell at the given integer x and y coordinate. The highlight disappears when that pair locks.',
+                inputSchema: {
+                    type: 'object', properties: {
+                        x: { type: 'integer', minimum: 0, maximum: COLUMNS - 1, description: 'Board column from the left.' },
+                        y: { type: 'integer', minimum: 0, maximum: VISIBLE_ROWS - 1, description: 'Board row from the bottom.' }
+                    }, required: ['x', 'y'], additionalProperties: false
+                },
+                execute: ({ x, y }) => {
+                    const screen = getNowScreen();
+                    if (screen.screen !== 'playing' || !screen.playerCanControl) throw new Error('point_recommend is available only during the player control phase.');
+                    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COLUMNS || y < 0 || y >= VISIBLE_ROWS) throw new RangeError('x and y must identify a visible board cell.');
+                    recommendedPoint = { x, y };
+                }
+            }
+        ];
+        tools.forEach((tool) => {
+            try {
+                Promise.resolve(document.modelContext.registerTool(tool, { signal: webMcpAbortController.signal })).catch((error) => console.error('WebMCP tool registration failed.', error));
+            } catch (error) {
+                console.error('WebMCP tool registration failed.', error);
+            }
+        });
+    }
+
+    /**
+     * 게임 이벤트, 애니메이션, WebMCP 도구를 해제하고 이 인스턴스를 초기화 전 상태로 되돌린다.
+     * @returns {void}
+     */
+    function destroy() {
+        if (!initialized) return;
+        window.removeEventListener('keydown', handleKeydown);
+        window.removeEventListener('keyup', handleKeyup);
+        canvas.removeEventListener('click', handleCanvasClick);
+        if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+        if (webMcpAbortController) webMcpAbortController.abort();
+        if (createdCanvas && canvas.parentNode) canvas.parentNode.removeChild(canvas);
+        canvas = null;
+        context = null;
+        game = null;
+        recommendedPoint = null;
+        createdCanvas = false;
+        animationFrameId = null;
+        webMcpAbortController = null;
+        initialized = false;
+    }
+
+    /**
      * 지정한 캔버스에 게임을 연결하고 메뉴 렌더링을 시작한다.
    * @param {HTMLCanvasElement|string|null} target 캔버스 요소 또는 요소 id. 생략 시 기본 캔버스를 찾거나 만든다.
      * @returns {void}
@@ -2248,6 +2449,7 @@
         // 기본 캔버스가 문서에 없으면 접근 가능한 새 캔버스를 생성한다.
         if (usesDefaultCanvas && !canvas) {
             canvas = document.createElement('canvas');
+            createdCanvas = true;
             canvas.id = 'webpuyo_canvas';
             canvas.width = WIDTH;
             canvas.height = HEIGHT;
@@ -2265,10 +2467,11 @@
         window.addEventListener('keydown', handleKeydown);
         window.addEventListener('keyup', handleKeyup);
         canvas.addEventListener('click', handleCanvasClick);
-        requestAnimationFrame(frame);
+        registerWebMcpTools();
+        animationFrameId = requestAnimationFrame(frame);
     }
 
-    const WebPuyo = { Enemy, registerOpponent, registerLanguage, initialize };
+    const WebPuyo = { Enemy, registerOpponent, registerLanguage, initialize, destroy };
     if (typeof module !== 'undefined' && module.exports) module.exports = WebPuyo;
     if (typeof window !== 'undefined') window.WebPuyo = WebPuyo;
 })();
