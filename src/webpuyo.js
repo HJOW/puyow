@@ -41,6 +41,10 @@
     const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     /** 싹쓸이 성공 시 상대방에게 즉시 보낼 방해뿌요 수다. @type {number} */
     const ALL_CLEAR_DAMAGE = 12;
+    /** 싹쓸이 성공 시 즉시 더할 점수다. @type {number} */
+    const ALL_CLEAR_POINT = 100;
+    /** 싹쓸이 황금빛 필드 효과의 지속 시간(ms)이다. @type {number} */
+    const ALL_CLEAR_EFFECT_DURATION = 1000;
     /** 공통 뿌요 쌍 대기열의 초기 길이다. @type {number} */
     const INITIAL_PAIR_QUEUE_LENGTH = 16;
     /** 브라우저 저장소에 사용할 키다. @type {string} */
@@ -203,7 +207,6 @@
             this.colors = colors;
             this.board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
             this.point = 0;
-            this.addPoint = 0;
             this.attack = 0;
             this.damage = 0;
             this.combo = 0;
@@ -224,6 +227,7 @@
             this.aiFastDown = false;
             this.aiSimulations = [];
             this.hasPlacedPuyoSinceAllClear = false;
+            this.allClearEffectElapsed = 0;
             this.receivesPuyos = true;
             this.allClearEnabled = true;
             this.clearsGarbage = false;
@@ -827,7 +831,7 @@
             });
             player.combo += 1;
             const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
-            player.addPoint += exploding.length * power;
+            player.point += exploding.length * power;
             player.attack += exploding.length * power / 4;
             cancelPendingAttack(player, opponent);
             const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
@@ -838,8 +842,6 @@
             player.phaseTimer = 0;
             return;
         }
-        player.point += player.addPoint;
-        player.addPoint = 0;
         cancelPendingAttack(player, opponent);
         const deliveredAttack = Math.floor(player.attack);
         opponent.damage += deliveredAttack;
@@ -965,6 +967,7 @@
         player.comboPopups = player.comboPopups
             .map((popup) => ({ ...popup, elapsed: popup.elapsed + delta }))
             .filter((popup) => popup.elapsed < 2000);
+        player.allClearEffectElapsed = Math.max(0, player.allClearEffectElapsed - delta);
         // 대기 중인 연습 상대도 예약된 피해가 있으면 방해뿌요 처리는 수행한다.
         if (player.phase === 'idle') {
             if (player.damage > 0) dropGarbage(player);
@@ -1034,6 +1037,8 @@
                 // 뿌요를 놓은 뒤 필드가 비었을 때만 싹쓸이 공격을 보낸다.
                 if (player.allClearEnabled && isAllClear && player.hasPlacedPuyoSinceAllClear) {
                     opponent.damage += ALL_CLEAR_DAMAGE;
+                    player.point += ALL_CLEAR_POINT;
+                    player.allClearEffectElapsed = ALL_CLEAR_EFFECT_DURATION;
                     player.hasPlacedPuyoSinceAllClear = false;
                 }
                 enterControl(player);
@@ -1249,6 +1254,13 @@
         const isDefeated = game.ending?.loser === player;
         theme.drawBezelBackground(context, { x: x - CELL, y: FIELD_TOP - CELL, width: CELL * 8, height: CELL * 14, player });
         theme.drawPlayerBackground(context, { x, y: FIELD_TOP, width: CELL * 6, height: CELL * 12, player });
+        if (player.allClearEffectElapsed > 0) {
+            context.save();
+            context.fillStyle = '#ffd54f';
+            context.globalAlpha = 0.5 * (player.allClearEffectElapsed / ALL_CLEAR_EFFECT_DURATION);
+            context.fillRect(x, FIELD_TOP, CELL * 6, CELL * 12);
+            context.restore();
+        }
         context.strokeStyle = 'rgba(162, 220, 235, 0.14)';
         context.lineWidth = 1;
         for (let index = 0; index <= COLUMNS; index += 1) { context.beginPath(); context.moveTo(x + index * CELL, FIELD_TOP); context.lineTo(x + index * CELL, FIELD_BOTTOM); context.stroke(); }
@@ -1445,7 +1457,7 @@
         if (!simulator) return;
         if (simulator.backup) simulator.player.board = simulator.backup.map((row) => [...row]);
         simulator.player.gravityAnimation = null; simulator.player.effects = null; simulator.player.phase = 'idle';
-        simulator.player.point = 0; simulator.player.addPoint = 0; simulator.player.attack = 0; simulator.player.damage = 0; simulator.player.combo = 0;
+        simulator.player.point = 0; simulator.player.attack = 0; simulator.player.damage = 0; simulator.player.combo = 0;
         simulator.mode = 'draw'; simulator.focusArea = 'palette'; simulator.paletteFocus = 0; simulator.waitTimer = 0;
     }
 
@@ -1462,7 +1474,7 @@
         removed.forEach(({ x, y }) => { player.board[y][x] = null; });
         player.combo += 1;
         const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
-        player.addPoint += exploding.length * power;
+        player.point += exploding.length * power;
         player.attack += exploding.length * power / 4;
         player.effects = { cells: [...removed.values()], elapsed: 0, duration: 420 }; player.phase = 'simulatorEffect';
         return true;
@@ -1475,7 +1487,7 @@
         if (simulator.mode === 'complete') return;
         if (player.phase === 'gravity') {
             if (player.gravityAnimation) { player.gravityAnimation.elapsed += delta; if (player.gravityAnimation.elapsed < player.gravityAnimation.duration) return; player.gravityAnimation = null; }
-            if (!explodeSimulatorPuyos()) { player.point += player.addPoint; player.addPoint = 0; player.combo = 0; simulator.mode = 'complete'; simulator.focusArea = 'complete'; }
+            if (!explodeSimulatorPuyos()) { player.combo = 0; simulator.mode = 'complete'; simulator.focusArea = 'complete'; }
         } else if (player.phase === 'simulatorEffect') {
             player.effects.elapsed += delta;
             if (player.effects.elapsed >= player.effects.duration) { player.effects = null; startGravity(player, 'simulatorExplode'); }
