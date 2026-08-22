@@ -1,0 +1,15 @@
+{
+    "id" : "webpuyo",
+    "name" : "Puyo W",
+    "short_name" : "Puyo W",
+    "start_url" : "webpuyo.html",
+    "display" : "fullscreen",
+    "orientation" : "any",
+    "categories" : [
+        "game"
+    ],
+    "background_color" : "#000000",
+    "theme_color" : "#000000",
+    "icons" : [
+    ]
+}

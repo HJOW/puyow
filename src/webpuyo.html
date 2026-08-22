@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>Web Puyo</title>
+        <link rel="manifest" href="manifest.webmanifest"/>
+        <link rel="stylesheet" href="webpuyo.css"/>
+        <script defer src="webpuyo.js"></script>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const canvas = document.getElementById("webpuyo_canvas");
+                const ctx = canvas.getContext("2d");
+                // Initialize the game here
+                window.WebPuyo.initialize();
+            });
+        </script>
+    </head>
+    <body>
+        <main>
+            <canvas id="webpuyo_canvas" width="1280" height="720" aria-label="Web Puyo puzzle game"></canvas>
+        </main>
+    </body>
+</html>
