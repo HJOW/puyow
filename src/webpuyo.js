@@ -1779,11 +1779,12 @@
         const x = player.fieldX;
         context.save();
         context.globalAlpha = opacity;
-        game.themeController.drawBezelBackground(context, { x: x - CELL, y: FIELD_BOTTOM + distance, width: CELL * 8, height: CELL, player });
         animation.fallingPuyos.forEach((puyo) => {
             const y = FIELD_BOTTOM - (puyo.y + 1) * CELL + distance;
             if (y < HEIGHT) drawPuyo(x + puyo.x * CELL, y, puyo.color);
         });
+        // 무너지는 베젤은 낙하 중인 숨김 영역 방해뿌요보다 앞에 보인다.
+        game.themeController.drawBezelBackground(context, { x: x - CELL, y: FIELD_BOTTOM + distance, width: CELL * 8, height: CELL, player });
         context.restore();
     }
 
@@ -1815,11 +1816,12 @@
         [
             { player: left, x: 482, color: '#ef8aa0' },
             { player: right, x: 650, color: '#6bbce8' }
-        ].forEach(({ player, x, color }) => {
+        ].forEach(({ player, x, color }, playerIndex) => {
             context.fillStyle = '#0b202c'; context.fillRect(x, 120, 148, 150);
             context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, 120, 148, 150);
             context.fillStyle = color; context.font = '13px "Nanum Gothic Coding"'; context.fillText(`${player.name} NEXT`, x + 74, 143);
-            player.nextPairs.forEach((pair, pairIndex) => {
+            const displayedPairs = playerIndex === 1 ? [...player.nextPairs].reverse() : player.nextPairs;
+            displayedPairs.forEach((pair, pairIndex) => {
                 const pairX = x + 21 + pairIndex * 70;
                 drawPuyo(pairX, 163, pair[1], 0.68);
                 drawPuyo(pairX, 208, pair[0], 0.68);
