@@ -83,6 +83,20 @@ WebPuyo.initialize();
 
 새 상대는 `WebPuyo.Enemy`를 상속하는 클래스로 만듭니다. `getName()`은 비어 있지 않은 화면 표시 이름을 반환해야 합니다. 게임 루프는 적이 결정한 목표 회전값으로 뿌요 쌍을 돌린 뒤, 목표 X 좌표까지 이동시킵니다.
 
+`Enemy`의 생성자는 모든 상대에 공통으로 사용할 기본 상태를 설정합니다. `sortPriority`는 `1`, `hidden`과 `notAvail`은 `false`로 시작하며, `attackSimulationTriggerPosition`은 `{ x: 2, y: 8 }`입니다. 이 좌표에 뿌요가 쌓이면 기본 AI가 일반적인 방향 쌓기보다 공격력 시뮬레이션을 우선하도록 만든 기준점입니다. 상대의 전략에 맞춰 생성자에서 이 좌표를 바꿀 수 있습니다.
+
+```js
+class CustomEnemy extends WebPuyo.Enemy {
+	constructor() {
+		super();
+		// 중앙이 이 높이에 도달하면 공격 배치를 찾는다.
+		this.attackSimulationTriggerPosition = { x: 2, y: 7 };
+	}
+}
+```
+
+`prepareTurn(player)`의 기본 구현은 현재 놓을 수 있는 모든 열·회전 조합을 검사해 `player.aiSimulations`를 만듭니다. 각 후보에는 목표 `x`, `rotation`, 실제 착지할 `positions`, 해당 배치의 예상 `attack`이 들어갑니다. 조작 중인 뿌요가 없으면 빈 배열을 저장합니다. 이 목록을 직접 만들거나 재사용하는 AI는 실제로 놓을 수 없는 후보가 포함되지 않는다는 점을 전제로 할 수 있습니다.
+
 ```js
 class CenterEnemy extends WebPuyo.Enemy {
     /** 적 이름을 반환한다. */
