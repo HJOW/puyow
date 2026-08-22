@@ -45,6 +45,10 @@
     const ALL_CLEAR_POINT = 100;
     /** 싹쓸이 황금빛 필드 효과의 지속 시간(ms)이다. @type {number} */
     const ALL_CLEAR_EFFECT_DURATION = 1000;
+    /** 사용자 컨트롤의 기본 자동 낙하 간격(ms)이다. @type {number} */
+    const PLAYER_FALL_INTERVAL = 1040;
+    /** 게임 경과 시간에 따른 사용자 낙하 속도의 최대 배율이다. @type {number} */
+    const MAX_PLAYER_FALL_SPEED_MULTIPLIER = 4;
     /** 공통 뿌요 쌍 대기열의 초기 길이다. @type {number} */
     const INITIAL_PAIR_QUEUE_LENGTH = 16;
     /** 브라우저 저장소에 사용할 키다. @type {string} */
@@ -55,7 +59,7 @@
             '게임 시작': 'Game Start', '연습': 'Practice', '난이도 선택': 'Difficulty', '적 선택': 'Opponent',
             '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
-            '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '%1연쇄': '%1 Chain',
+            '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
             '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked',
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser'
         }
@@ -383,6 +387,7 @@
             winner: null,
             ending: null,
             countdown: 3000,
+            elapsed: 0,
             practice,
             difficulty: selectedDifficulty,
             themeController: controller,
@@ -1009,7 +1014,8 @@
                 }
             }
             const fastDown = player.controller ? player.aiFastDown : isDownKeyPressed;
-            const fallInterval = fastDown ? 55 : player.controller ? 290 : 520;
+            const speedMultiplier = Math.min(MAX_PLAYER_FALL_SPEED_MULTIPLIER, 1 + Math.floor(game.elapsed / 60000) * 0.2);
+            const fallInterval = fastDown ? 55 : player.controller ? 290 : PLAYER_FALL_INTERVAL / speedMultiplier;
             const currentFloor = Math.floor(player.active.y);
             const nextFloor = currentFloor - 1;
             if (nextFloor < 0 || !canPlace(player, { ...player.active, y: nextFloor })) {
@@ -1459,6 +1465,8 @@
         context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = '42px "Black Han Sans"'; context.fillText('Puyo W', WIDTH / 2, 95);
         const enemy = game.players[1];
         if (enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
+        context.fillStyle = '#d8f2f5'; context.font = '18px "Nanum Gothic Coding"';
+        context.fillText(translate('게임 시간 %1초', Math.floor(game.elapsed / 1000)), WIDTH / 2, 145);
         context.fillStyle = '#ef5350'; context.fillRect(515, 165, 250, 64);
         context.fillStyle = '#ffffff'; context.font = '22px "Black Han Sans"'; context.fillText(translate('종료'), WIDTH / 2, 207);
     }
@@ -1746,8 +1754,10 @@
                 game.countdown = Math.max(0, game.countdown - delta);
                 if (!game.countdown) beginGame();
             } else if (game.ending) {
+                game.elapsed += delta;
                 updateDefeatSequence(delta);
             } else {
+                game.elapsed += delta;
                 updatePlayer(game.players[0], game.players[1], delta);
                 updatePlayer(game.players[1], game.players[0], delta);
             }
