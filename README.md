@@ -1,4 +1,4 @@
-# Web Puyo
+# Puyo W
 
 브라우저의 HTML Canvas로 만든 2D 뿌요 대전 퍼즐 게임입니다. 왼쪽은 플레이어가 직접 조작하고, 오른쪽은 CPU가 조작합니다. 이미지와 사운드 에셋 없이 도형과 색상만으로 뿌요, 방해뿌요, 예고뿌요를 표현합니다.
 
@@ -44,4 +44,12 @@ AI 한 차례는 `prepareTurn(player)`, `chooseTarget(player)`, `chooseRotate(pl
 - `webpuyo.html`: 캔버스를 포함한 페이지 구조
 - `webpuyo.css`: 전체 화면 캔버스 레이아웃과 글꼴 스타일
 - `webpuyo.js`: CommonJS/브라우저 라이브러리, 게임 상태, 규칙, 렌더링, 입력, CPU 조작
-- `HOWTO_NEWAI.md`: 새로운 CPU 상대를 추가하는 방법
+- `HOWTO_NEWAI.md`: 새로운 적 컴퓨터를 개발하는 방법에 대한 소개 ([이동](HOWTO_NEWAI.md))
+
+## AI 사용 고지
+
+이 프로젝트는 개발 과정에서 AI 도구를 활용했습니다. 생성되거나 제안된 코드와 문서는 프로젝트 관리자가 검토하고 프로젝트에 맞게 수정했습니다.
+
+## 라이선스
+
+이 프로젝트는 [Apache License 2.0](LICENSE)에 따라 배포됩니다.
