@@ -65,7 +65,9 @@
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
             '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked',
-            '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser'
+            '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
+            'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
+            '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.'
         }
     };
 
@@ -1497,16 +1499,73 @@
 
     /** 시뮬레이터를 빈 그리기 보드와 첫 팔레트 포커스로 연다. @returns {void} */
     function openSimulator() {
-        simulator = { mode: 'draw', player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0 };
+        simulator = { mode: 'draw', player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0, message: null, messageElapsed: 0 };
         menuScreen = 'simulator';
     }
 
     /** 시뮬레이터 팔레트와 버튼 영역을 반환한다. @returns {{kind:string,value:string|null,x:number,y:number,width:number,height:number}[]} */
     function getSimulatorPaletteItems() {
-        const items = [...COLORS, 'garbage'].map((color, index) => ({ kind: 'puyo', value: color, x: 906 + (index % 3) * (CELL + 6), y: 260 + Math.floor(index / 3) * (CELL + 6), width: CELL, height: CELL }));
-        items.push({ kind: 'eraser', value: 'eraser', x: 906, y: 348, width: CELL, height: CELL });
-        items.push({ kind: 'play', value: null, x: 906, y: 408, width: CELL * 3, height: CELL }, { kind: 'exit', value: null, x: 906, y: 454, width: CELL * 3, height: CELL });
+        const items = [...COLORS, 'garbage'].map((color, index) => ({ kind: 'puyo', value: color, x: 906 + (index % 3) * (CELL + 6), y: 184 + Math.floor(index / 3) * (CELL + 6), width: CELL, height: CELL }));
+        items.push({ kind: 'eraser', value: 'eraser', x: 906, y: 272, width: CELL, height: CELL });
+        items.push(
+            { kind: 'play', value: null, x: 906, y: 332, width: CELL * 3, height: CELL },
+            { kind: 'copyJson', value: null, x: 906, y: 378, width: CELL * 3, height: CELL },
+            { kind: 'pasteJson', value: null, x: 906, y: 424, width: CELL * 3, height: CELL },
+            { kind: 'exit', value: null, x: 906, y: 470, width: CELL * 3, height: CELL }
+        );
         return items;
+    }
+
+    /** 현재 시뮬레이터 배치를 클립보드용 JSON 문자열로 만든다. @returns {string} 배치 JSON 문자열 */
+    function serializeSimulatorBoard() {
+        const puyos = [];
+        simulator.player.board.forEach((row, y) => row.forEach((color, x) => {
+            if (color) puyos.push({ x, y, color });
+        }));
+        return JSON.stringify({ puyos });
+    }
+
+    /** 시뮬레이터 화면에 4초 동안 표시할 메시지를 설정한다. @param {string} message 표시할 메시지 @returns {void} */
+    function showSimulatorMessage(message) {
+        simulator.message = message;
+        simulator.messageElapsed = 0;
+    }
+
+    /** 클립보드에 시뮬레이터 배치를 복사한다. @returns {void} */
+    function copySimulatorJson() {
+        const serialized = serializeSimulatorBoard();
+        if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+            console.error('시뮬레이터 배치를 클립보드에 복사할 수 없습니다.');
+            showSimulatorMessage(translate('클립보드 복사 실패'));
+            return;
+        }
+        navigator.clipboard.writeText(serialized).then(() => {
+            showSimulatorMessage(translate('배치가 클립보드에 복사됨'));
+        }).catch((error) => {
+            console.error('시뮬레이터 배치 클립보드 복사에 실패했습니다.', error);
+            showSimulatorMessage(translate('클립보드 복사 실패'));
+        });
+    }
+
+    /** 입력받은 JSON 문자열로 시뮬레이터 배치를 교체한다. @returns {void} */
+    function pasteSimulatorJson() {
+        const serialized = window.prompt(translate('배치 JSON을 입력하세요.'));
+        if (serialized === null || serialized.trim() === '') return;
+        try {
+            const parsed = JSON.parse(serialized);
+            if (!parsed || !Array.isArray(parsed.puyos)) throw new TypeError('puyos 배열이 필요합니다.');
+            const board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+            parsed.puyos.forEach((puyo) => {
+                if (!puyo || !Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= VISIBLE_ROWS || ![...COLORS, 'garbage'].includes(puyo.color)) {
+                    throw new TypeError('유효하지 않은 뿌요 좌표 또는 색상입니다.');
+                }
+                if (board[puyo.y][puyo.x]) throw new TypeError('같은 칸에 뿌요가 중복됩니다.');
+                board[puyo.y][puyo.x] = puyo.color;
+            });
+            simulator.player.board = board;
+        } catch (error) {
+            showSimulatorMessage(translate('JSON 파싱 실패'));
+        }
     }
 
     /** 선택한 항목을 필드 칸에 반영한다. @param {number} x X 좌표 @param {number} y Y 좌표 @returns {void} */
@@ -1522,6 +1581,8 @@
         simulator.paletteFocus = index;
         if (item.kind === 'puyo' || item.kind === 'eraser') { simulator.selected = item.value; simulator.focusArea = 'board'; }
         else if (item.kind === 'play') startSimulatorPlayback();
+        else if (item.kind === 'copyJson') copySimulatorJson();
+        else if (item.kind === 'pasteJson') pasteSimulatorJson();
         else { simulator = null; menuScreen = 'title'; }
     }
 
@@ -1563,7 +1624,12 @@
 
     /** 시뮬레이터 중력·폭발·복원 시간을 갱신한다. @param {number} delta 경과 시간(ms) @returns {void} */
     function updateSimulator(delta) {
-        if (!simulator || simulator.mode === 'draw') return;
+        if (!simulator) return;
+        if (simulator.message) {
+            simulator.messageElapsed += delta;
+            if (simulator.messageElapsed >= 4000) simulator.message = null;
+        }
+        if (simulator.mode === 'draw') return;
         const player = simulator.player;
         if (simulator.mode === 'complete') return;
         if (player.phase === 'gravity') {
@@ -1601,9 +1667,24 @@
             context.strokeStyle = focused ? '#ffd54f' : '#497180'; context.lineWidth = focused ? 4 : 2; context.strokeRect(item.x, item.y, item.width, item.height);
             if (item.kind === 'puyo') drawPuyo(item.x, item.y, item.value);
             else if (item.kind === 'eraser') { context.strokeStyle = '#f4f7f8'; context.lineWidth = 7; context.beginPath(); context.moveTo(item.x + 8, item.y + CELL - 8); context.lineTo(item.x + CELL - 8, item.y + 8); context.stroke(); }
-            else { context.fillStyle = '#fff'; context.font = item.kind === 'play' ? '24px sans-serif' : '17px "Black Han Sans"'; context.fillText(item.kind === 'play' ? '▶' : translate('종료'), item.x + item.width / 2, item.y + 26); }
+            else {
+                const labels = { play: '▶', exit: translate('종료'), copyJson: translate('JSON복사'), pasteJson: translate('JSON넣기') };
+                context.fillStyle = '#fff'; context.font = item.kind === 'play' ? '24px sans-serif' : '15px "Black Han Sans"';
+                context.fillText(labels[item.kind], item.x + item.width / 2, item.y + 26);
+            }
         });
-        if (simulator.mode !== 'draw') { context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(882, 236, 260, 280); }
+        if (simulator.message) {
+            const progress = Math.min(1, simulator.messageElapsed / 4000);
+            context.save();
+            context.globalAlpha = progress < 0.75 ? 1 : (1 - progress) / 0.25;
+            context.fillStyle = '#f7c843'; context.font = '18px "Black Han Sans"';
+            context.fillText(simulator.message, WIDTH / 2, 635);
+            context.restore();
+        }
+        if (simulator.mode !== 'draw') {
+            context.fillStyle = 'rgba(3, 11, 19, 0.62)';
+            context.fillRect(FIELD_RIGHT, FIELD_TOP, CELL * COLUMNS, CELL * VISIBLE_ROWS);
+        }
         if (simulator.mode === 'complete') {
             context.fillStyle = '#4cc9b0'; context.fillRect(600, 145, 150, 58);
             context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(600, 145, 150, 58);
