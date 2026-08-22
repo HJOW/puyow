@@ -28,6 +28,7 @@
     const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     // 싹쓸이 성공 시 상대방에게 즉시 보낼 방해뿌요 갯수
     const ALL_CLEAR_DAMAGE = 12;
+    const STORE_KEY = 'puyow_store';
     // 한국어 원문을 키로 사용하는 화면 문구 번역표. 외부 스크립트는 registerLanguage()로 언어별 항목을 추가할 수 있다.
     const stringTable = {
         en: {
@@ -35,7 +36,7 @@
             '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '%1연쇄': '%1 Chain',
-            '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon'
+            '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked'
         }
     };
 
@@ -53,11 +54,54 @@
     let lastTime = 0;
     let isDownKeyPressed = false;
     let languageCode = 'ko';
+    let store = createInitialStore();
     const DIFFICULTIES = [
         { name: '쉬움', colors: ['green', 'yellow', 'blue'] },
         { name: '보통', colors: ['red', 'green', 'yellow', 'blue'] },
         { name: '어려움', colors: COLORS }
     ];
+
+    /**
+     * 저장 데이터의 기본 구조를 만든다.
+     * @returns {{clearList:string[]}} 초기 저장 데이터
+     */
+    function createInitialStore() {
+        return { clearList: [] };
+    }
+
+    /**
+     * 현재 저장 데이터를 localStorage에 기록한다. 실패해도 게임 흐름은 계속한다.
+     * @returns {void}
+     */
+    function saveStore() {
+        try {
+            window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+        } catch (error) {
+            console.error('Puyo W 저장 데이터 기록에 실패했습니다.', error);
+        }
+    }
+
+    /**
+     * localStorage에서 저장 데이터를 불러오고, 없거나 형식이 잘못되었으면 초기화한다.
+     * @returns {void}
+     */
+    function loadStore() {
+        try {
+            const serialized = window.localStorage.getItem(STORE_KEY);
+            if (!serialized) {
+                store = createInitialStore();
+                return;
+            }
+            const parsed = JSON.parse(serialized);
+            if (!parsed || !Array.isArray(parsed.clearList) || !parsed.clearList.every((name) => typeof name === 'string')) {
+                throw new TypeError('clearList 배열이 필요합니다.');
+            }
+            store = { clearList: [...new Set(parsed.clearList)] };
+        } catch (error) {
+            console.error('Puyo W 저장 데이터 불러오기에 실패했습니다.', error);
+            store = createInitialStore();
+        }
+    }
 
     /**
      * 현재 브라우저 언어에 맞춰 한국어 원문을 번역하고 %1, %2 형식의 인수를 채운다.
@@ -721,12 +765,13 @@
     /**
      * 적 인스턴스의 선택 화면 표시 설정을 등록 항목으로 만든다.
      * @param {()=>Enemy} createController 새 적 인스턴스 생성 함수
-     * @returns {{createController:()=>Enemy, sortPriority:number, hidden:boolean, notAvail:boolean}} 적 등록 항목
+     * @returns {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}} 적 등록 항목
      */
     function createOpponentEntry(createController) {
         const controller = createController();
         return {
             createController,
+            className: controller.constructor.name,
             sortPriority: controller.sortPriority,
             hidden: controller.hidden === true,
             notAvail: controller.notAvail === true
@@ -743,18 +788,30 @@
 
     /**
      * 숨김 처리되지 않아 적 선택 화면에 표시할 적 목록을 반환한다.
-     * @returns {{createController:()=>Enemy, sortPriority:number, hidden:boolean, notAvail:boolean}[]} 표시할 적 목록
+        * @returns {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} 표시할 적 목록
      */
     function getVisibleOpponents() {
         return OPPONENTS.filter((opponent) => !opponent.hidden);
     }
 
     /**
+     * 이전 유효 적을 클리어해 현재 잠금이 해제된 적인지 판별한다.
+     * @param {{className:string, hidden:boolean, notAvail:boolean}} opponent 판별할 적
+     * @returns {boolean} 선택 가능 여부
+     */
+    function isOpponentUnlocked(opponent) {
+        const progressionOpponents = OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail);
+        const index = progressionOpponents.indexOf(opponent);
+        if (index <= 0) return index === 0;
+        return store.clearList.includes(progressionOpponents[index - 1].className);
+    }
+
+    /**
      * 현재 선택할 수 있는 적 목록을 반환한다.
-     * @returns {{createController:()=>Enemy, sortPriority:number, hidden:boolean, notAvail:boolean}[]} 선택할 수 있는 적 목록
+     * @returns {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} 선택할 수 있는 적 목록
      */
     function getSelectableOpponents() {
-        return getVisibleOpponents().filter((opponent) => !opponent.notAvail);
+        return getVisibleOpponents().filter((opponent) => !opponent.notAvail && isOpponentUnlocked(opponent));
     }
 
     /**
@@ -1259,6 +1316,20 @@
     }
 
     /**
+     * 대전에서 이긴 적의 클래스명을 한 번만 저장한다.
+     * @param {PlayerState} winner 승리한 플레이어
+     * @returns {void}
+     */
+    function recordEnemyClear(winner) {
+        if (game.practice || winner !== game.players[0]) return;
+        const enemyClassName = game.players[1].controller.constructor.name;
+        if (!store.clearList.includes(enemyClassName)) {
+            store.clearList.push(enemyClassName);
+            saveStore();
+        }
+    }
+
+    /**
      * 상대가 연쇄 처리 중인 단계인지 판별한다.
      * @param {string} phase 플레이어 진행 단계
      * @returns {boolean} 중력 또는 폭발 연출 중인지 여부
@@ -1281,6 +1352,7 @@
         }
         // 패배 연출과 남은 연쇄 처리가 끝나면 게임을 종료한다.
         if (ending.elapsed > ending.duration && (!ending.waitForOpponentResolution || !isResolutionPhase(ending.winner.phase))) {
+            recordEnemyClear(ending.winner);
             game.running = false;
             game.winner = ending.winner;
             game.ending = null;
@@ -1762,15 +1834,17 @@
             visibleOpponents.forEach((entry, index) => {
                 const cardX = WIDTH / 2 - 80 + (index - selectedVisibleIndex) * 180;
                 const selected = entry === opponent;
-                context.fillStyle = entry.notAvail ? '#3c4650' : selected ? '#563068' : '#0b202c'; context.fillRect(cardX, 475, 160, 62);
-                context.strokeStyle = entry.notAvail ? '#7c8791' : selected ? '#ef8aa0' : '#3b6070'; context.lineWidth = 2; context.strokeRect(cardX, 475, 160, 62);
-                if (entry.notAvail) {
+                const locked = !entry.notAvail && !isOpponentUnlocked(entry);
+                const disabled = entry.notAvail || locked;
+                context.fillStyle = disabled ? '#3c4650' : selected ? '#563068' : '#0b202c'; context.fillRect(cardX, 475, 160, 62);
+                context.strokeStyle = disabled ? '#7c8791' : selected ? '#ef8aa0' : '#3b6070'; context.lineWidth = 2; context.strokeRect(cardX, 475, 160, 62);
+                if (disabled) {
                     context.save();
                     context.globalAlpha = 0.42;
                     entry.createController().drawPortrait(context, cardX + 24, 495, 0.14);
                     context.restore();
                     context.fillStyle = '#c4cbd0'; context.font = '15px "Black Han Sans"'; context.fillText(entry.createController().getName(), cardX + 94, 500);
-                    context.fillStyle = '#f0c674'; context.font = '13px "Black Han Sans"'; context.fillText(translate('추후 출시예정'), cardX + 80, 524);
+                    context.fillStyle = '#f0c674'; context.font = '13px "Black Han Sans"'; context.fillText(translate(entry.notAvail ? '추후 출시예정' : '잠김'), cardX + 80, 524);
                 } else {
                     context.fillStyle = '#f5fbfc'; context.font = '17px "Black Han Sans"'; context.fillText(entry.createController().getName(), cardX + 80, 513);
                 }
@@ -2054,7 +2128,7 @@
             });
             if (cardIndex >= 0) {
                 const clickedOpponent = visibleOpponents[cardIndex];
-                if (!clickedOpponent.notAvail) {
+                if (!clickedOpponent.notAvail && isOpponentUnlocked(clickedOpponent)) {
                     selectedOpponent = OPPONENTS.indexOf(clickedOpponent);
                     opponentMenuFocus = 1;
                 }
@@ -2082,6 +2156,7 @@
         }
         languageCode = navigator.language || navigator.userLanguage || 'ko';
         if (languageCode === 'ko-KR') languageCode = 'ko';
+        loadStore();
         const usesDefaultCanvas = target === null || target === undefined || target === '';
         canvas = usesDefaultCanvas ? document.getElementById('webpuyo_canvas') : typeof target === 'string' ? document.getElementById(target) : target;
         // 기본 캔버스가 문서에 없으면 접근 가능한 새 캔버스를 생성한다.
