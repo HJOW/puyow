@@ -1298,12 +1298,13 @@
             }
         });
         drawRecommendedPoint(player);
+        if (isDefeated) drawDefeatAnimation(player);
+        if (isDefeated) drawFieldBezelForeground(player);
         for (let index = 0; index < COLUMNS; index += 1) {
             context.fillStyle = '#0a1d29'; context.fillRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
             context.strokeStyle = 'rgba(176, 232, 244, 0.25)'; context.strokeRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
         }
         warningUnits(opponent.attack + player.damage).forEach((type, index) => drawWarning(x + index * CELL, FIELD_TOP - CELL, type));
-        if (isDefeated) drawDefeatAnimation(player);
         if (player.effects) {
             const progress = Math.min(1, player.effects.elapsed / player.effects.duration);
             player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress));
@@ -1311,6 +1312,20 @@
         player.comboPopups.forEach((popup) => drawComboPopup(x, popup));
         context.fillStyle = '#e7f8fa'; context.font = '18px "Black Han Sans"'; context.textAlign = 'left';
         context.fillText(player.name, x, 54);
+    }
+
+    /** 패배 연출 중 움직이는 뿌요보다 앞에 고정 베젤을 다시 그린다. @param {PlayerState} player 대상 플레이어 @returns {void} */
+    function drawFieldBezelForeground(player) {
+        const x = player.fieldX;
+        const bezel = { x: x - CELL, y: FIELD_TOP - CELL, width: CELL * 8, height: CELL * 14 };
+        context.save();
+        context.beginPath();
+        context.rect(x - CELL, FIELD_TOP - CELL, CELL * 8, CELL);
+        context.rect(x - CELL, FIELD_TOP, CELL, CELL * VISIBLE_ROWS);
+        context.rect(x + CELL * COLUMNS, FIELD_TOP, CELL, CELL * VISIBLE_ROWS);
+        context.clip();
+        game.themeController.drawBezelBackground(context, bezel);
+        context.restore();
     }
 
     /**
