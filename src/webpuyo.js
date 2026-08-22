@@ -77,7 +77,7 @@
     let game = null;
     /** AI가 강조 표시하도록 지정한 플레이어 필드 좌표다. @type {{x:number, y:number}|null} */
     let recommendedPoint = null;
-    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'title'|'opponent'|'simulator'} */
+    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'title'|'opponent'|'practiceDifficulty'|'simulator'} */
     let menuScreen = 'title';
     /** 시뮬레이터의 편집·재생 상태다. @type {object|null} */
     let simulator = null;
@@ -366,7 +366,7 @@
         if (!practice && !ensureSelectedOpponent()) return;
         const opponent = practice ? { createController: () => new PracticeEnemy() } : OPPONENTS[selectedOpponent];
         const controller = opponent.createController();
-        const colors = practice ? COLORS : DIFFICULTIES[selectedDifficulty].colors;
+        const colors = DIFFICULTIES[selectedDifficulty].colors;
         const practicePlayer = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
         const players = [new PlayerState('PLAYER 1', FIELD_LEFT, null, colors), practicePlayer];
         // 연습전 상대는 공격을 받지 않고 뿌요도 생성하지 않도록 설정한다.
@@ -1399,8 +1399,10 @@
         game.themeController.drawPlayerBackground(context, { x, y: FIELD_TOP, width: CELL * 6, height: CELL * 12, player });
         context.textAlign = 'center';
         context.font = '36px "Black Han Sans"';
-        context.fillStyle = won ? '#f7c843' : '#d8f2f5';
-        context.fillText(translate(won ? '승리' : '패배'), x + CELL * 3, FIELD_TOP + CELL * 6.4);
+        if (!game.practice || !won) {
+            context.fillStyle = won ? '#f7c843' : '#d8f2f5';
+            context.fillText(translate(won ? '승리' : '패배'), x + CELL * 3, FIELD_TOP + CELL * 6.4);
+        }
         context.fillStyle = '#d8f2f5'; context.font = '16px "Nanum Gothic Coding"';
         context.fillText(translate('최종 점수 %1', Math.floor(player.point).toLocaleString()), x + CELL * 3, FIELD_TOP + CELL * 7.15);
         context.fillStyle = '#e7f8fa'; context.font = '18px "Black Han Sans"'; context.textAlign = 'left';
@@ -1618,6 +1620,17 @@
         context.fillStyle = '#24292f'; context.fillRect(32, 642, 170, 46);
         context.strokeStyle = titleMenuFocus === 3 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 3 ? 4 : 2; context.strokeRect(32, 642, 170, 46);
         context.fillStyle = '#ffffff'; context.font = '20px "Nanum Gothic Coding"'; context.fillText(translate('GitHub'), 117, 673);
+        if (menuScreen === 'practiceDifficulty') {
+            context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+            context.fillStyle = '#d8f2f5'; context.font = '30px "Black Han Sans"'; context.fillText(translate('난이도 선택'), WIDTH / 2, 300);
+            DIFFICULTIES.forEach((difficulty, index) => {
+                const x = 465 + index * 120;
+                const selected = index === selectedDifficulty;
+                context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 335, 110, 58);
+                context.strokeStyle = selected ? '#f7c843' : '#3b6070'; context.lineWidth = selected ? 4 : 2; context.strokeRect(x, 335, 110, 58);
+                context.fillStyle = '#f5fbfc'; context.font = '17px "Black Han Sans"'; context.fillText(translate(difficulty.name), x + 55, 371);
+            });
+        }
     }
 
     /**
@@ -1754,6 +1767,13 @@
         }
         // 게임이 없으면 키 입력을 제목 또는 상대 선택 메뉴로 전달한다.
         if (!game) {
+            if (menuScreen === 'practiceDifficulty') {
+                if (key === 'arrowleft' || key === 'arrowup') selectedDifficulty = (selectedDifficulty + DIFFICULTIES.length - 1) % DIFFICULTIES.length;
+                else if (key === 'arrowright' || key === 'arrowdown') selectedDifficulty = (selectedDifficulty + 1) % DIFFICULTIES.length;
+                else if (key === 'enter' || key === ' ') startGame(true);
+                else if (key === 'escape') menuScreen = 'title';
+                return;
+            }
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
                 titleMenuFocus = key === 'arrowleft' || key === 'arrowup'
                     ? (titleMenuFocus + 3) % 4
@@ -1824,7 +1844,10 @@
      */
     function activateTitleMenu() {
         if (titleMenuFocus === 0) openOpponentMenu();
-        else if (titleMenuFocus === 1) startGame(true);
+        else if (titleMenuFocus === 1) {
+            selectedDifficulty = 1;
+            menuScreen = 'practiceDifficulty';
+        }
         else if (titleMenuFocus === 2) openSimulator();
         else {
             const githubWindow = window.open('https://github.com/HJOW/puyow', '_blank');
@@ -1928,6 +1951,14 @@
                 activateTitleMenu();
             }
         } else {
+            if (menuScreen === 'practiceDifficulty') {
+                const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => x >= 465 + index * 120 && x <= 575 + index * 120 && y >= 335 && y <= 393);
+                if (difficultyIndex >= 0) {
+                    selectedDifficulty = difficultyIndex;
+                    startGame(true);
+                }
+                return;
+            }
             const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => x >= 465 + index * 120 && x <= 575 + index * 120 && y >= 170 && y <= 220);
             if (difficultyIndex >= 0) {
                 selectedDifficulty = difficultyIndex;
