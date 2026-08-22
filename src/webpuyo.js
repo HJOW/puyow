@@ -37,6 +37,30 @@
     };
     /** 연쇄 수에 따른 공격 위력 표다. @type {number[]} */
     const COMBO_POWER = [0, 1, 6, 9, 14, 20, 40, 80, 120, 170, 240, 360, 480, 600, 720, 840, 950, 975, 990];
+    /** 화면 제목용 기본 글꼴 이름이다. @type {string} */
+    const TITLE_FONT_NAME = '"Black Han Sans"';
+    /** 버튼용 기본 글꼴 이름이다. @type {string} */
+    const BUTTON_FONT_NAME = '"Noto Sans"';
+    /** 메시지용 기본 글꼴 이름이다. @type {string} */
+    const MESSAGE_FONT_NAME = '"D2Coding"';
+    /** 글꼴 지정 시 기본 글꼴 뒤에 대체 글꼴로 붙일 글꼴 이름 목록이다. 배열 내부와 세 글꼴 이름 모두와 중복되지 않도록 자동으로 걸러진다. @type {string[]} */
+    const FALLBACK_FONTS = ['"Nanum Gothic Coding"', '"Nanum Gothic"', '"Noto Sans SC"', '"Noto Sans JP"', 'monospace'];
+    /**
+     * 기본 글꼴 뒤에 FALLBACK_FONTS를 자기 자신 및 세 기본 글꼴 이름과 겹치지 않게 이어 붙인 글꼴 목록 문자열을 만든다.
+     * @param {string} primaryFontName 최우선으로 사용할 글꼴 이름
+     * @returns {string} 콤마로 구분된 글꼴 목록 문자열
+     */
+    function buildFontStack(primaryFontName) {
+        const reserved = new Set([primaryFontName, TITLE_FONT_NAME, BUTTON_FONT_NAME, MESSAGE_FONT_NAME]);
+        const uniqueFallbacks = [...new Set(FALLBACK_FONTS)].filter((fontName) => !reserved.has(fontName));
+        return [primaryFontName, ...uniqueFallbacks].join(', ');
+    }
+    /** 화면 제목이나 절 제목처럼 강조가 필요한 큰 헤더에 사용할 글꼴 목록이다. @type {string} */
+    const TITLE_FONT = buildFontStack(TITLE_FONT_NAME);
+    /** 버튼, 선택 카드 등 클릭 가능한 항목의 라벨에 사용할 글꼴 목록이다. @type {string} */
+    const BUTTON_FONT = buildFontStack(BUTTON_FONT_NAME);
+    /** 이름표, 점수, 안내 문구 등 일반 메시지 표시에 사용할 글꼴 목록이다. @type {string} */
+    const MESSAGE_FONT = buildFontStack(MESSAGE_FONT_NAME);
     /** 4방향 인접 좌표 계산에 사용할 X, Y 변화량이다. @type {number[][]} */
     const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     /** 싹쓸이 성공 시 상대방에게 즉시 보낼 방해뿌요 수다. @type {number} */
@@ -1259,7 +1283,7 @@
         context.save();
         context.globalAlpha = opacity;
         context.textAlign = 'center';
-        context.font = '24px "Black Han Sans"';
+        context.font = `24px ${MESSAGE_FONT}`;
         context.lineWidth = 5;
         context.strokeStyle = '#172031';
         context.strokeText(translate('%1연쇄', popup.combo), x, y);
@@ -1363,7 +1387,7 @@
             player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress));
         }
         player.comboPopups.forEach((popup) => drawComboPopup(x, popup));
-        context.fillStyle = '#e7f8fa'; context.font = '18px "Black Han Sans"'; context.textAlign = 'left';
+        context.fillStyle = '#e7f8fa'; context.font = `18px ${MESSAGE_FONT}`; context.textAlign = 'left';
         context.fillText(player.name, x, 54);
     }
 
@@ -1426,7 +1450,7 @@
      */
     function drawCenter() {
         game.themeController.drawCenterBackground(context, { x: 450, y: 0, width: 380, height: HEIGHT });
-        context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = '42px "Black Han Sans"'; context.fillText('Puyo W', WIDTH / 2, 95);
+        context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, 95);
         const left = game.players[0]; const right = game.players[1];
         [
             { player: left, x: 482, color: '#ef8aa0' },
@@ -1434,7 +1458,7 @@
         ].forEach(({ player, x, color }, playerIndex) => {
             context.fillStyle = '#0b202c'; context.fillRect(x, 120, 148, 150);
             context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, 120, 148, 150);
-            context.fillStyle = color; context.font = '13px "Nanum Gothic Coding"'; context.fillText(`${player.name} NEXT`, x + 74, 143);
+            context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(`${player.name} NEXT`, x + 74, 143);
             const displayedPairs = playerIndex === 1 ? [...player.nextPairs].reverse() : player.nextPairs;
             displayedPairs.forEach((pair, pairIndex) => {
                 const pairX = x + 21 + pairIndex * 70;
@@ -1451,8 +1475,8 @@
         scores.forEach(({ player, x, color }) => {
             context.fillStyle = '#0b202c'; context.fillRect(x, 492, 146, 92);
             context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, 492, 146, 92);
-            context.fillStyle = color; context.font = '13px "Nanum Gothic Coding"'; context.fillText(player.name, x + 73, 516);
-            context.fillStyle = '#f5fbfc'; context.font = '27px "Nanum Gothic Coding"'; context.fillText(String(Math.floor(player.point)).padStart(7, '0'), x + 73, 557);
+            context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(player.name, x + 73, 516);
+            context.fillStyle = '#f5fbfc'; context.font = `27px ${MESSAGE_FONT}`; context.fillText(String(Math.floor(player.point)).padStart(7, '0'), x + 73, 557);
         });
     }
 
@@ -1467,18 +1491,18 @@
         game.themeController.drawBezelBackground(context, { x: x - CELL, y: FIELD_TOP - CELL, width: CELL * 8, height: CELL * 14, player });
         game.themeController.drawPlayerBackground(context, { x, y: FIELD_TOP, width: CELL * 6, height: CELL * 12, player });
         context.textAlign = 'center';
-        context.font = '36px "Black Han Sans"';
+        context.font = `36px ${TITLE_FONT}`;
         if (!game.practice || !won) {
             context.fillStyle = won ? '#f7c843' : '#d8f2f5';
             context.fillText(translate(won ? '승리' : '패배'), x + CELL * 3, FIELD_TOP + CELL * 6.4);
         }
-        context.fillStyle = '#d8f2f5'; context.font = '16px "Nanum Gothic Coding"';
+        context.fillStyle = '#d8f2f5'; context.font = `16px ${MESSAGE_FONT}`;
         context.fillText(translate('최종 점수 %1', Math.floor(player.point).toLocaleString()), x + CELL * 3, FIELD_TOP + CELL * 7.15);
         if (game.practice) {
-            context.fillStyle = '#f7c843'; context.font = '15px "Black Han Sans"';
+            context.fillStyle = '#f7c843'; context.font = `15px ${MESSAGE_FONT}`;
             context.fillText(translate(DIFFICULTIES[game.difficulty].name), x + CELL * 3, FIELD_TOP + CELL * 7.75);
         }
-        context.fillStyle = '#e7f8fa'; context.font = '18px "Black Han Sans"'; context.textAlign = 'left';
+        context.fillStyle = '#e7f8fa'; context.font = `18px ${MESSAGE_FONT}`; context.textAlign = 'left';
         context.fillText(player.name, x, 54);
     }
 
@@ -1488,13 +1512,13 @@
      */
     function drawResultCenter() {
         game.themeController.drawCenterBackground(context, { x: 450, y: 0, width: 380, height: HEIGHT });
-        context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = '42px "Black Han Sans"'; context.fillText('Puyo W', WIDTH / 2, 95);
+        context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, 95);
         const enemy = game.players[1];
         if (enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
-        context.fillStyle = '#d8f2f5'; context.font = '18px "Nanum Gothic Coding"';
+        context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
         context.fillText(translate('게임 시간 %1초', Math.floor(game.elapsed / 1000)), WIDTH / 2, 145);
         context.fillStyle = '#ef5350'; context.fillRect(515, 165, 250, 64);
-        context.fillStyle = '#ffffff'; context.font = '22px "Black Han Sans"'; context.fillText(translate('종료'), WIDTH / 2, 207);
+        context.fillStyle = '#ffffff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('종료'), WIDTH / 2, 207);
     }
 
     /** 시뮬레이터를 빈 그리기 보드와 첫 팔레트 포커스로 연다. @returns {void} */
@@ -1669,7 +1693,7 @@
             else if (item.kind === 'eraser') { context.strokeStyle = '#f4f7f8'; context.lineWidth = 7; context.beginPath(); context.moveTo(item.x + 8, item.y + CELL - 8); context.lineTo(item.x + CELL - 8, item.y + 8); context.stroke(); }
             else {
                 const labels = { play: '▶', exit: translate('종료'), copyJson: translate('JSON복사'), pasteJson: translate('JSON넣기') };
-                context.fillStyle = '#fff'; context.font = item.kind === 'play' ? '24px sans-serif' : '15px "Black Han Sans"';
+                context.fillStyle = '#fff'; context.font = item.kind === 'play' ? '24px sans-serif' : `15px ${BUTTON_FONT}`;
                 context.fillText(labels[item.kind], item.x + item.width / 2, item.y + 26);
             }
         });
@@ -1677,7 +1701,7 @@
             const progress = Math.min(1, simulator.messageElapsed / 4000);
             context.save();
             context.globalAlpha = progress < 0.75 ? 1 : (1 - progress) / 0.25;
-            context.fillStyle = '#f7c843'; context.font = '18px "Black Han Sans"';
+            context.fillStyle = '#f7c843'; context.font = `18px ${MESSAGE_FONT}`;
             context.fillText(simulator.message, WIDTH / 2, 635);
             context.restore();
         }
@@ -1688,9 +1712,9 @@
         if (simulator.mode === 'complete') {
             context.fillStyle = '#4cc9b0'; context.fillRect(600, 145, 150, 58);
             context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(600, 145, 150, 58);
-            context.fillStyle = '#fff'; context.font = '22px "Black Han Sans"'; context.fillText(translate('그리기'), 675, 183);
+            context.fillStyle = '#fff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('그리기'), 675, 183);
         }
-        context.fillStyle = '#d8f2f5'; context.font = '18px "Black Han Sans"'; context.fillText(simulator.mode === 'draw' ? translate('그리기') : translate('시뮬레이션'), 675, 486); context.font = '36px "Nanum Gothic Coding"'; context.fillStyle = '#f7c843'; context.fillText(String(Math.floor(player.point)).padStart(7, '0'), 675, 536); context.font = '17px "Black Han Sans"'; context.fillStyle = '#a9d9e5'; context.fillText('POINT', 675, 566);
+        context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`; context.fillText(simulator.mode === 'draw' ? translate('그리기') : translate('시뮬레이션'), 675, 486); context.font = `36px ${MESSAGE_FONT}`; context.fillStyle = '#f7c843'; context.fillText(String(Math.floor(player.point)).padStart(7, '0'), 675, 536); context.font = `17px ${MESSAGE_FONT}`; context.fillStyle = '#a9d9e5'; context.fillText('POINT', 675, 566);
     }
 
     /**
@@ -1699,25 +1723,25 @@
      */
     function drawMenu() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = '68px "Black Han Sans"'; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 112 : 260);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `68px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 112 : 260);
         if (menuScreen === 'opponent') {
-            context.fillStyle = '#d8f2f5'; context.font = '22px "Black Han Sans"'; context.fillText(translate('난이도 선택'), WIDTH / 2, 150);
+            context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('난이도 선택'), WIDTH / 2, 150);
             DIFFICULTIES.forEach((difficulty, index) => {
                 const x = 465 + index * 120;
                 const selected = index === selectedDifficulty;
                 context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 170, 110, 50);
                 context.strokeStyle = opponentMenuFocus === 0 && selected ? '#f7c843' : '#3b6070'; context.lineWidth = opponentMenuFocus === 0 && selected ? 4 : 2;
                 context.strokeRect(x, 170, 110, 50);
-                context.fillStyle = '#f5fbfc'; context.font = '17px "Black Han Sans"'; context.fillText(translate(difficulty.name), x + 55, 202);
+                context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 202);
             });
-            context.fillStyle = '#d8f2f5'; context.font = '22px "Black Han Sans"'; context.fillText(translate('적 선택'), WIDTH / 2, 265);
+            context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('적 선택'), WIDTH / 2, 265);
             ensureSelectedOpponent();
             const opponent = OPPONENTS[selectedOpponent];
             context.fillStyle = '#0b202c'; context.fillRect(WIDTH / 2 - 170, 280, 340, 190);
             context.strokeStyle = opponentMenuFocus === 1 ? '#f7c843' : '#ef8aa0'; context.lineWidth = opponentMenuFocus === 1 ? 4 : 3; context.strokeRect(WIDTH / 2 - 170, 280, 340, 190);
             if (opponent) {
                 opponent.createController().drawPortrait(context, WIDTH / 2, 360, 0.7);
-                context.fillStyle = '#f5fbfc'; context.font = '28px "Black Han Sans"'; context.fillText(opponent.createController().getName(), WIDTH / 2, 450);
+                context.fillStyle = '#f5fbfc'; context.font = `28px ${BUTTON_FONT}`; context.fillText(opponent.createController().getName(), WIDTH / 2, 450);
             }
             if (opponentMenuFocus === 1) {
                 context.fillStyle = '#f7c843';
@@ -1748,42 +1772,42 @@
                     context.globalAlpha = 0.42;
                     entry.createController().drawPortrait(context, cardX + 24, 495, 0.14);
                     context.restore();
-                    context.fillStyle = '#c4cbd0'; context.font = '15px "Black Han Sans"'; context.fillText(entry.createController().getName(), cardX + 94, 500);
-                    context.fillStyle = '#f0c674'; context.font = '13px "Black Han Sans"'; context.fillText(translate(entry.notAvail ? '추후 출시예정' : '잠김'), cardX + 80, 524);
+                    context.fillStyle = '#c4cbd0'; context.font = `15px ${BUTTON_FONT}`; context.fillText(entry.createController().getName(), cardX + 94, 500);
+                    context.fillStyle = '#f0c674'; context.font = `13px ${BUTTON_FONT}`; context.fillText(translate(entry.notAvail ? '추후 출시예정' : '잠김'), cardX + 80, 524);
                 } else {
-                    context.fillStyle = '#f5fbfc'; context.font = '17px "Black Han Sans"'; context.fillText(entry.createController().getName(), cardX + 80, 513);
+                    context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(entry.createController().getName(), cardX + 80, 513);
                 }
             });
             context.fillStyle = '#ef5350'; context.fillRect(440, 600, 250, 58);
             context.strokeStyle = opponentMenuFocus === 2 && selectedOpponentAction === 0 ? '#f7c843' : '#ef5350'; context.lineWidth = opponentMenuFocus === 2 && selectedOpponentAction === 0 ? 4 : 2; context.strokeRect(440, 600, 250, 58);
-            context.fillStyle = '#fff'; context.font = '20px "Black Han Sans"'; context.fillText(translate('시작'), 565, 637);
+            context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('시작'), 565, 637);
             context.fillStyle = '#264b5b'; context.fillRect(710, 600, 130, 58);
             context.strokeStyle = opponentMenuFocus === 2 && selectedOpponentAction === 1 ? '#f7c843' : '#264b5b'; context.lineWidth = opponentMenuFocus === 2 && selectedOpponentAction === 1 ? 4 : 2; context.strokeRect(710, 600, 130, 58);
-            context.fillStyle = '#d8f2f5'; context.font = '18px "Black Han Sans"'; context.fillText(translate('이전'), 775, 637);
+            context.fillStyle = '#d8f2f5'; context.font = `18px ${BUTTON_FONT}`; context.fillText(translate('이전'), 775, 637);
             return;
         }
         context.fillStyle = '#ef5350'; context.fillRect(WIDTH / 2 - 145, 358, 290, 66);
         context.strokeStyle = titleMenuFocus === 0 ? '#f7c843' : '#ef5350'; context.lineWidth = titleMenuFocus === 0 ? 4 : 2; context.strokeRect(WIDTH / 2 - 145, 358, 290, 66);
-        context.fillStyle = '#fff'; context.font = '25px "Black Han Sans"'; context.fillText(translate('게임 시작'), WIDTH / 2, 402);
+        context.fillStyle = '#fff'; context.font = `25px ${BUTTON_FONT}`; context.fillText(translate('게임 시작'), WIDTH / 2, 402);
         context.fillStyle = '#264b5b'; context.fillRect(WIDTH / 2 - 145, 442, 290, 66);
         context.strokeStyle = titleMenuFocus === 1 ? '#f7c843' : '#264b5b'; context.lineWidth = titleMenuFocus === 1 ? 4 : 2; context.strokeRect(WIDTH / 2 - 145, 442, 290, 66);
-        context.fillStyle = '#d8f2f5'; context.font = '25px "Black Han Sans"'; context.fillText(translate('연습'), WIDTH / 2, 486);
+        context.fillStyle = '#d8f2f5'; context.font = `25px ${BUTTON_FONT}`; context.fillText(translate('연습'), WIDTH / 2, 486);
         context.fillStyle = '#34556b'; context.fillRect(WIDTH / 2 - 145, 526, 290, 66);
         context.strokeStyle = titleMenuFocus === 2 ? '#f7c843' : '#34556b'; context.lineWidth = titleMenuFocus === 2 ? 4 : 2; context.strokeRect(WIDTH / 2 - 145, 526, 290, 66);
-        context.fillStyle = '#e3f4ff'; context.font = '25px "Black Han Sans"'; context.fillText(translate('시뮬레이터'), WIDTH / 2, 570);
+        context.fillStyle = '#e3f4ff'; context.font = `25px ${BUTTON_FONT}`; context.fillText(translate('시뮬레이터'), WIDTH / 2, 570);
         context.fillStyle = '#24292f'; context.fillRect(32, 642, 170, 46);
         context.strokeStyle = titleMenuFocus === 3 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 3 ? 4 : 2; context.strokeRect(32, 642, 170, 46);
-        context.fillStyle = '#ffffff'; context.font = '20px "Nanum Gothic Coding"'; context.fillText(translate('GitHub'), 117, 673);
-        context.fillStyle = '#8899a6'; context.font = '14px "Nanum Gothic Coding"'; context.fillText('Copyright (c) HJOW', WIDTH / 2, HEIGHT - 20);
+        context.fillStyle = '#ffffff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 117, 673);
+        context.fillStyle = '#8899a6'; context.font = `14px ${MESSAGE_FONT}`; context.fillText('Copyright (c) HJOW', WIDTH / 2, HEIGHT - 20);
         if (menuScreen === 'practiceDifficulty') {
             context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
-            context.fillStyle = '#d8f2f5'; context.font = '30px "Black Han Sans"'; context.fillText(translate('난이도 선택'), WIDTH / 2, 300);
+            context.fillStyle = '#d8f2f5'; context.font = `30px ${TITLE_FONT}`; context.fillText(translate('난이도 선택'), WIDTH / 2, 300);
             DIFFICULTIES.forEach((difficulty, index) => {
                 const x = 465 + index * 120;
                 const selected = index === selectedDifficulty;
                 context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 335, 110, 58);
                 context.strokeStyle = selected ? '#f7c843' : '#3b6070'; context.lineWidth = selected ? 4 : 2; context.strokeRect(x, 335, 110, 58);
-                context.fillStyle = '#f5fbfc'; context.font = '17px "Black Han Sans"'; context.fillText(translate(difficulty.name), x + 55, 371);
+                context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 371);
             });
         }
     }
@@ -1797,7 +1821,7 @@
         context.fillRect(0, 0, WIDTH, HEIGHT);
         context.textAlign = 'center';
         context.fillStyle = '#f5fbfc';
-        context.font = '48px "Black Han Sans"';
+        context.font = `48px ${TITLE_FONT}`;
         context.fillText(translate('일시정지'), WIDTH / 2, 322);
         context.fillStyle = '#4cc9b0';
         context.fillRect(470, 376, 150, 64);
@@ -1810,7 +1834,7 @@
         context.lineWidth = pauseMenuFocus === 1 ? 4 : 2;
         context.strokeRect(660, 376, 150, 64);
         context.fillStyle = '#ffffff';
-        context.font = '23px "Black Han Sans"';
+        context.font = `23px ${BUTTON_FONT}`;
         context.fillText(translate('재개'), 545, 417);
         context.fillText(translate('종료'), 735, 417);
     }
@@ -1837,7 +1861,7 @@
         // 시작 전에는 카운트다운 오버레이를 최상단에 표시한다.
         if (game.countdown > 0) {
             context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(0, 0, WIDTH, HEIGHT);
-            context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = '76px "Black Han Sans"';
+            context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `76px ${TITLE_FONT}`;
             context.fillText(String(Math.ceil(game.countdown / 1000)), WIDTH / 2, 390);
         } else if (game.paused) {
             drawPauseOverlay();

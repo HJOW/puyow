@@ -4,9 +4,20 @@
         <meta charset="UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title>Web Puyo</title>
+
+        <!-- Google Fonts (없으면 글꼴 미설치 PC에서 일부 텍스트가 다른 글꼴로 나옴) -->
+        <link rel="preconnect" href="https://fonts.googleapis.com"/>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+        <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic&family=Nanum+Gothic+Coding&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans+SC:wght@100..900&display=swap" rel="stylesheet"/>
+        <!-- // Google Fonts -->
+
+        <!-- Game 관련 -->
         <link rel="manifest" href="manifest.webmanifest"/>
         <link rel="stylesheet" href="webpuyo.css"/>
         <script defer src="webpuyo.js"></script>
+        <!-- // Game 관련 -->
+
+        <!-- 게임 로딩 스크립트 -->
         <script>
             document.addEventListener("DOMContentLoaded", function() {
                 const canvas = document.getElementById("webpuyo_canvas");
