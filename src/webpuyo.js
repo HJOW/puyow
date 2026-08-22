@@ -52,7 +52,8 @@
             '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '%1연쇄': '%1 Chain',
-            '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked'
+            '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked',
+            '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser'
         }
     };
 
@@ -72,8 +73,10 @@
     let game = null;
     /** AI가 강조 표시하도록 지정한 플레이어 필드 좌표다. @type {{x:number, y:number}|null} */
     let recommendedPoint = null;
-    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'title'|'opponent'} */
+    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'title'|'opponent'|'simulator'} */
     let menuScreen = 'title';
+    /** 시뮬레이터의 편집·재생 상태다. @type {object|null} */
+    let simulator = null;
     /** 선택된 적의 OPPONENTS 배열 인덱스다. @type {number} */
     let selectedOpponent = 0;
     /** 선택된 난이도의 DIFFICULTIES 배열 인덱스다. @type {number} */
@@ -1399,6 +1402,123 @@
         context.fillStyle = '#ffffff'; context.font = '22px "Black Han Sans"'; context.fillText(translate('종료'), WIDTH / 2, 207);
     }
 
+    /** 시뮬레이터를 빈 그리기 보드와 첫 팔레트 포커스로 연다. @returns {void} */
+    function openSimulator() {
+        simulator = { mode: 'draw', player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0 };
+        menuScreen = 'simulator';
+    }
+
+    /** 시뮬레이터 팔레트와 버튼 영역을 반환한다. @returns {{kind:string,value:string|null,x:number,y:number,width:number,height:number}[]} */
+    function getSimulatorPaletteItems() {
+        const items = [...COLORS, 'garbage'].map((color, index) => ({ kind: 'puyo', value: color, x: 906 + (index % 3) * (CELL + 6), y: 260 + Math.floor(index / 3) * (CELL + 6), width: CELL, height: CELL }));
+        items.push({ kind: 'eraser', value: 'eraser', x: 906, y: 348, width: CELL, height: CELL });
+        items.push({ kind: 'play', value: null, x: 906, y: 408, width: CELL * 3, height: CELL }, { kind: 'exit', value: null, x: 906, y: 454, width: CELL * 3, height: CELL });
+        return items;
+    }
+
+    /** 선택한 항목을 필드 칸에 반영한다. @param {number} x X 좌표 @param {number} y Y 좌표 @returns {void} */
+    function placeSimulatorPuyo(x, y) {
+        if (!simulator || simulator.mode !== 'draw' || x < 0 || x >= COLUMNS || y < 0 || y >= VISIBLE_ROWS) return;
+        simulator.player.board[y][x] = simulator.selected === 'eraser' ? null : simulator.selected;
+    }
+
+    /** 팔레트 항목 선택 또는 버튼 동작을 실행한다. @param {number} index 항목 인덱스 @returns {void} */
+    function activateSimulatorPaletteItem(index) {
+        const item = getSimulatorPaletteItems()[index];
+        if (!simulator || !item) return;
+        simulator.paletteFocus = index;
+        if (item.kind === 'puyo' || item.kind === 'eraser') { simulator.selected = item.value; simulator.focusArea = 'board'; }
+        else if (item.kind === 'play') startSimulatorPlayback();
+        else { simulator = null; menuScreen = 'title'; }
+    }
+
+    /** 편집 보드를 보관하고 중력 단계부터 재생한다. @returns {void} */
+    function startSimulatorPlayback() {
+        if (!simulator || simulator.mode !== 'draw') return;
+        simulator.backup = simulator.player.board.map((row) => [...row]);
+        simulator.mode = 'simulation'; simulator.player.effects = null;
+        startGravity(simulator.player, 'simulatorExplode');
+    }
+
+    /** 시뮬레이션 전 보드 상태로 복원해 그리기 모드로 돌아간다. @returns {void} */
+    function restoreSimulatorDrawing() {
+        if (!simulator) return;
+        if (simulator.backup) simulator.player.board = simulator.backup.map((row) => [...row]);
+        simulator.player.gravityAnimation = null; simulator.player.effects = null; simulator.player.phase = 'idle';
+        simulator.player.point = 0; simulator.player.addPoint = 0; simulator.player.attack = 0; simulator.player.damage = 0; simulator.player.combo = 0;
+        simulator.mode = 'draw'; simulator.focusArea = 'palette'; simulator.paletteFocus = 0; simulator.waitTimer = 0;
+    }
+
+    /** 시뮬레이터 보드의 폭발 및 인접 방해뿌요 제거를 처리한다. @returns {boolean} 폭발 여부 */
+    function explodeSimulatorPuyos() {
+        const player = simulator.player;
+        const exploding = findExplosions(player);
+        if (!exploding.length) return false;
+        const removed = new Map(exploding.map(([x, y]) => [`${x},${y}`, { x, y, color: player.board[y][x] }]));
+        exploding.forEach(([x, y]) => DIRECTIONS.forEach(([dx, dy]) => {
+            const nx = x + dx; const ny = y + dy;
+            if (nx >= 0 && nx < COLUMNS && ny >= 0 && ny < ROWS && player.board[ny][nx] === 'garbage') removed.set(`${nx},${ny}`, { x: nx, y: ny, color: 'garbage' });
+        }));
+        removed.forEach(({ x, y }) => { player.board[y][x] = null; });
+        player.combo += 1;
+        const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
+        player.addPoint += exploding.length * power;
+        player.attack += exploding.length * power / 4;
+        player.effects = { cells: [...removed.values()], elapsed: 0, duration: 420 }; player.phase = 'simulatorEffect';
+        return true;
+    }
+
+    /** 시뮬레이터 중력·폭발·복원 시간을 갱신한다. @param {number} delta 경과 시간(ms) @returns {void} */
+    function updateSimulator(delta) {
+        if (!simulator || simulator.mode === 'draw') return;
+        const player = simulator.player;
+        if (simulator.mode === 'complete') return;
+        if (player.phase === 'gravity') {
+            if (player.gravityAnimation) { player.gravityAnimation.elapsed += delta; if (player.gravityAnimation.elapsed < player.gravityAnimation.duration) return; player.gravityAnimation = null; }
+            if (!explodeSimulatorPuyos()) { player.point += player.addPoint; player.addPoint = 0; player.combo = 0; simulator.mode = 'complete'; simulator.focusArea = 'complete'; }
+        } else if (player.phase === 'simulatorEffect') {
+            player.effects.elapsed += delta;
+            if (player.effects.elapsed >= player.effects.duration) { player.effects = null; startGravity(player, 'simulatorExplode'); }
+        }
+    }
+
+    /** 시뮬레이터 화면을 그린다. @returns {void} */
+    function drawSimulator() {
+        const player = simulator.player; const x = FIELD_LEFT;
+        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.fillStyle = '#0c2433'; context.fillRect(x - CELL, FIELD_TOP - CELL, CELL * 8, CELL * 14);
+        context.fillStyle = '#112f40'; context.fillRect(x, FIELD_TOP, CELL * 6, CELL * 12);
+        context.strokeStyle = 'rgba(162,220,235,.14)'; context.lineWidth = 1;
+        for (let i = 0; i <= COLUMNS; i += 1) { context.beginPath(); context.moveTo(x + i * CELL, FIELD_TOP); context.lineTo(x + i * CELL, FIELD_BOTTOM); context.stroke(); }
+        for (let i = 0; i <= VISIBLE_ROWS; i += 1) { context.beginPath(); context.moveTo(x, FIELD_TOP + i * CELL); context.lineTo(x + COLUMNS * CELL, FIELD_TOP + i * CELL); context.stroke(); }
+        const falling = new Set((player.gravityAnimation?.falling || []).map((puyo) => `${puyo.x},${puyo.toY}`));
+        for (let y = 0; y < VISIBLE_ROWS; y += 1) for (let column = 0; column < COLUMNS; column += 1) if (player.board[y][column] && !falling.has(`${column},${y}`)) drawPuyo(x + column * CELL, FIELD_BOTTOM - (y + 1) * CELL, player.board[y][column]);
+        if (player.gravityAnimation) { const progress = Math.min(1, player.gravityAnimation.elapsed / player.gravityAnimation.duration) ** 2; player.gravityAnimation.falling.forEach((puyo) => { const y = puyo.fromY + (puyo.toY - puyo.fromY) * progress; if (y < VISIBLE_ROWS) drawPuyo(x + puyo.x * CELL, FIELD_BOTTOM - (y + 1) * CELL, puyo.color); }); }
+        if (player.effects) { const progress = Math.min(1, player.effects.elapsed / player.effects.duration); player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress)); }
+        if (simulator.mode === 'draw' && simulator.focusArea === 'board') { const focus = simulator.boardFocus; context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(x + focus.x * CELL + 2, FIELD_BOTTOM - (focus.y + 1) * CELL + 2, CELL - 4, CELL - 4); }
+        context.fillStyle = '#071621'; context.fillRect(500, FIELD_TOP - CELL, 350, CELL * 14); context.fillStyle = '#0c2433'; context.fillRect(FIELD_RIGHT - CELL, FIELD_TOP - CELL, CELL * 8, CELL * 14);
+        for (let i = 0; i < COLUMNS; i += 1) { context.fillStyle = '#0a1d29'; context.fillRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); context.strokeStyle = 'rgba(176,232,244,.25)'; context.strokeRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); }
+        warningUnits(player.attack).forEach((type, index) => drawWarning(FIELD_RIGHT + index * CELL, FIELD_TOP - CELL, type));
+        context.textAlign = 'center';
+        getSimulatorPaletteItems().forEach((item, index) => {
+            const focused = simulator.focusArea === 'palette' && simulator.paletteFocus === index;
+            const selected = (item.kind === 'puyo' || item.kind === 'eraser') && simulator.selected === item.value;
+            context.fillStyle = item.kind === 'play' ? '#4cc9b0' : item.kind === 'exit' ? '#ef5350' : '#173747'; context.fillRect(item.x, item.y, item.width, item.height);
+            if (selected) { context.strokeStyle = '#46d7c4'; context.lineWidth = 4; context.strokeRect(item.x + 4, item.y + 4, item.width - 8, item.height - 8); }
+            context.strokeStyle = focused ? '#ffd54f' : '#497180'; context.lineWidth = focused ? 4 : 2; context.strokeRect(item.x, item.y, item.width, item.height);
+            if (item.kind === 'puyo') drawPuyo(item.x, item.y, item.value);
+            else if (item.kind === 'eraser') { context.strokeStyle = '#f4f7f8'; context.lineWidth = 7; context.beginPath(); context.moveTo(item.x + 8, item.y + CELL - 8); context.lineTo(item.x + CELL - 8, item.y + 8); context.stroke(); }
+            else { context.fillStyle = '#fff'; context.font = item.kind === 'play' ? '24px sans-serif' : '17px "Black Han Sans"'; context.fillText(item.kind === 'play' ? '▶' : translate('종료'), item.x + item.width / 2, item.y + 26); }
+        });
+        if (simulator.mode !== 'draw') { context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(882, 236, 260, 280); }
+        if (simulator.mode === 'complete') {
+            context.fillStyle = '#4cc9b0'; context.fillRect(600, 145, 150, 58);
+            context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(600, 145, 150, 58);
+            context.fillStyle = '#fff'; context.font = '22px "Black Han Sans"'; context.fillText(translate('그리기'), 675, 183);
+        }
+        context.fillStyle = '#d8f2f5'; context.font = '18px "Black Han Sans"'; context.fillText(simulator.mode === 'draw' ? translate('그리기') : translate('시뮬레이션'), 675, 486); context.font = '36px "Nanum Gothic Coding"'; context.fillStyle = '#f7c843'; context.fillText(String(Math.floor(player.point)).padStart(7, '0'), 675, 536); context.font = '17px "Black Han Sans"'; context.fillStyle = '#a9d9e5'; context.fillText('POINT', 675, 566);
+    }
+
     /**
      * 클릭 가능한 게임 시작 메뉴를 그린다.
      * @returns {void}
@@ -1474,8 +1594,11 @@
         context.fillStyle = '#264b5b'; context.fillRect(WIDTH / 2 - 145, 442, 290, 66);
         context.strokeStyle = titleMenuFocus === 1 ? '#f7c843' : '#264b5b'; context.lineWidth = titleMenuFocus === 1 ? 4 : 2; context.strokeRect(WIDTH / 2 - 145, 442, 290, 66);
         context.fillStyle = '#d8f2f5'; context.font = '25px "Black Han Sans"'; context.fillText(translate('연습'), WIDTH / 2, 486);
+        context.fillStyle = '#34556b'; context.fillRect(WIDTH / 2 - 145, 526, 290, 66);
+        context.strokeStyle = titleMenuFocus === 2 ? '#f7c843' : '#34556b'; context.lineWidth = titleMenuFocus === 2 ? 4 : 2; context.strokeRect(WIDTH / 2 - 145, 526, 290, 66);
+        context.fillStyle = '#e3f4ff'; context.font = '25px "Black Han Sans"'; context.fillText(translate('시뮬레이터'), WIDTH / 2, 570);
         context.fillStyle = '#24292f'; context.fillRect(32, 642, 170, 46);
-        context.strokeStyle = titleMenuFocus === 2 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 2 ? 4 : 2; context.strokeRect(32, 642, 170, 46);
+        context.strokeStyle = titleMenuFocus === 3 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 3 ? 4 : 2; context.strokeRect(32, 642, 170, 46);
         context.fillStyle = '#ffffff'; context.font = '20px "Nanum Gothic Coding"'; context.fillText(translate('GitHub'), 117, 673);
     }
 
@@ -1513,7 +1636,11 @@
     function render() {
         context.clearRect(0, 0, WIDTH, HEIGHT);
         // 진행 중인 게임이 없으면 현재 메뉴 화면만 렌더링한다.
-        if (!game) { drawMenu(); return; }
+        if (!game) {
+            if (menuScreen === 'simulator' && simulator) drawSimulator();
+            else drawMenu();
+            return;
+        }
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         // 게임이 끝났으면 결과 화면으로 전환한다.
         if (!game.running) {
@@ -1552,8 +1679,44 @@
                 updatePlayer(game.players[1], game.players[0], delta);
             }
         }
+        if (!game && menuScreen === 'simulator') updateSimulator(delta);
         render();
         animationFrameId = requestAnimationFrame(frame);
+    }
+
+    /** 시뮬레이터 키보드 입력을 처리한다. @param {string} key 입력 키 @returns {void} */
+    function handleSimulatorKeydown(key) {
+        if (!simulator) return;
+        if (simulator.mode === 'complete') {
+            if (key === 'escape' || key === 'enter' || key === ' ') restoreSimulatorDrawing();
+            return;
+        }
+        if (simulator.mode !== 'draw') { if (key === 'escape') restoreSimulatorDrawing(); return; }
+        if (simulator.focusArea === 'board') {
+            if (key === 'escape') { simulator.focusArea = 'palette'; simulator.paletteFocus = 0; return; }
+            if (key === 'arrowleft') simulator.boardFocus.x = Math.max(0, simulator.boardFocus.x - 1);
+            if (key === 'arrowright') simulator.boardFocus.x = Math.min(COLUMNS - 1, simulator.boardFocus.x + 1);
+            if (key === 'arrowdown') simulator.boardFocus.y = Math.max(0, simulator.boardFocus.y - 1);
+            if (key === 'arrowup') simulator.boardFocus.y = Math.min(VISIBLE_ROWS - 1, simulator.boardFocus.y + 1);
+            if (key === 'enter' || key === ' ') placeSimulatorPuyo(simulator.boardFocus.x, simulator.boardFocus.y);
+            return;
+        }
+        const items = getSimulatorPaletteItems();
+        if (key === 'escape') { simulator.paletteFocus = 0; return; }
+        if (key === 'enter' || key === ' ') { activateSimulatorPaletteItem(simulator.paletteFocus); return; }
+        if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
+        const current = items[simulator.paletteFocus];
+        const direction = key === 'arrowleft' ? [-1, 0] : key === 'arrowright' ? [1, 0] : key === 'arrowup' ? [0, -1] : [0, 1];
+        const candidates = items.map((item, index) => ({ item, index })).filter(({ item }) => {
+            const dx = item.x - current.x; const dy = item.y - current.y;
+            return direction[0] * dx > 0 || direction[1] * dy > 0;
+        });
+        if (candidates.length) candidates.sort((a, b) => {
+            const aDistance = Math.abs((a.item.x - current.x) - direction[0] * 66) + Math.abs((a.item.y - current.y) - direction[1] * 66);
+            const bDistance = Math.abs((b.item.x - current.x) - direction[0] * 66) + Math.abs((b.item.y - current.y) - direction[1] * 66);
+            return aDistance - bDistance;
+        });
+        if (candidates.length) simulator.paletteFocus = candidates[0].index;
     }
 
     /**
@@ -1564,6 +1727,7 @@
     function handleKeydown(event) {
         const key = event.key.toLowerCase();
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
+        if (!game && menuScreen === 'simulator') { handleSimulatorKeydown(key); return; }
         // 결과 화면에서는 Enter 또는 ESC로 상대 선택 화면으로 돌아간다.
         if (game && !game.running && (key === 'enter' || key === 'escape')) {
             game = null;
@@ -1574,8 +1738,8 @@
         if (!game) {
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
                 titleMenuFocus = key === 'arrowleft' || key === 'arrowup'
-                    ? (titleMenuFocus + 2) % 3
-                    : (titleMenuFocus + 1) % 3;
+                    ? (titleMenuFocus + 3) % 4
+                    : (titleMenuFocus + 1) % 4;
             } else if (menuScreen === 'opponent' && key === 'arrowup') {
                 opponentMenuFocus = Math.max(0, opponentMenuFocus - 1);
             } else if (menuScreen === 'opponent' && key === 'arrowdown') {
@@ -1643,6 +1807,7 @@
     function activateTitleMenu() {
         if (titleMenuFocus === 0) openOpponentMenu();
         else if (titleMenuFocus === 1) startGame(true);
+        else if (titleMenuFocus === 2) openSimulator();
         else {
             const githubWindow = window.open('https://github.com/HJOW/puyow', '_blank');
             if (githubWindow) githubWindow.opener = null;
@@ -1712,6 +1877,24 @@
         }
         // 실행 중인 게임 화면의 일반 클릭은 메뉴 동작으로 처리하지 않는다.
         if (game) return;
+        if (menuScreen === 'simulator' && simulator) {
+            if (simulator.mode === 'complete') {
+                if (x >= 600 && x <= 750 && y >= 145 && y <= 203) restoreSimulatorDrawing();
+                return;
+            }
+            if (simulator.mode !== 'draw') return;
+            const boardX = Math.floor((x - FIELD_LEFT) / CELL);
+            const boardY = Math.floor((FIELD_BOTTOM - y) / CELL);
+            if (boardX >= 0 && boardX < COLUMNS && boardY >= 0 && boardY < VISIBLE_ROWS) {
+                simulator.boardFocus = { x: boardX, y: boardY };
+                simulator.focusArea = 'board';
+                placeSimulatorPuyo(boardX, boardY);
+                return;
+            }
+            const paletteIndex = getSimulatorPaletteItems().findIndex((item) => x >= item.x && x <= item.x + item.width && y >= item.y && y <= item.y + item.height);
+            if (paletteIndex >= 0) activateSimulatorPaletteItem(paletteIndex);
+            return;
+        }
         if (menuScreen === 'title') {
             if (x >= WIDTH / 2 - 145 && x <= WIDTH / 2 + 145 && y >= 358 && y <= 424) {
                 titleMenuFocus = 0;
@@ -1719,8 +1902,11 @@
             } else if (x >= WIDTH / 2 - 145 && x <= WIDTH / 2 + 145 && y >= 442 && y <= 508) {
                 titleMenuFocus = 1;
                 activateTitleMenu();
-            } else if (x >= 32 && x <= 202 && y >= 642 && y <= 688) {
+            } else if (x >= WIDTH / 2 - 145 && x <= WIDTH / 2 + 145 && y >= 526 && y <= 592) {
                 titleMenuFocus = 2;
+                activateTitleMenu();
+            } else if (x >= 32 && x <= 202 && y >= 642 && y <= 688) {
+                titleMenuFocus = 3;
                 activateTitleMenu();
             }
         } else {
@@ -1755,10 +1941,10 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'main_menu'|'opponent_select'|'countdown'|'playing'|'paused'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'main_menu'|'opponent_select'|'simulator'|'countdown'|'playing'|'paused'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
-        if (!game) return { screen: menuScreen === 'opponent' ? 'opponent_select' : 'main_menu', playerCanControl: false };
+        if (!game) return { screen: menuScreen === 'opponent' ? 'opponent_select' : menuScreen === 'simulator' ? 'simulator' : 'main_menu', playerCanControl: false };
         if (!game.running) return { screen: 'game_over', playerCanControl: false };
         if (game.countdown > 0) return { screen: 'countdown', playerCanControl: false };
         if (game.paused) return { screen: 'paused', playerCanControl: false };
@@ -1822,7 +2008,7 @@
         const screenSchema = {
             type: 'object',
             properties: {
-                screen: { type: 'string', enum: ['main_menu', 'opponent_select', 'countdown', 'playing', 'paused', 'game_over'] },
+                screen: { type: 'string', enum: ['main_menu', 'opponent_select', 'simulator', 'countdown', 'playing', 'paused', 'game_over'] },
                 playerCanControl: { type: 'boolean' }
             },
             required: ['screen', 'playerCanControl']
@@ -1924,6 +2110,7 @@
         canvas = null;
         context = null;
         game = null;
+        simulator = null;
         recommendedPoint = null;
         createdCanvas = false;
         animationFrameId = null;
