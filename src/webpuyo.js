@@ -32,7 +32,7 @@
         en: {
             '게임 시작': 'Game Start', '연습': 'Practice', '난이도 선택': 'Difficulty', '적 선택': 'Opponent',
             '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '시작': 'Start', '이전': 'Back',
-            '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'ESC 키로 재개': 'Press ESC to resume',
+            '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '%1연쇄': '%1 Chain',
             '연습 상대': 'Practice Opponent'
         }
@@ -48,6 +48,7 @@
     let opponentMenuFocus = 0;
     let selectedOpponentAction = 0;
     let titleMenuFocus = 0;
+    let pauseMenuFocus = 0;
     let lastTime = 0;
     let isDownKeyPressed = false;
     let languageCode = 'ko';
@@ -999,9 +1000,7 @@
             const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
             player.addPoint += exploding.length * power;
             player.attack += exploding.length * power / 4;
-            const cancelledAttack = Math.min(Math.floor(player.attack), Math.floor(opponent.attack));
-            player.attack -= cancelledAttack;
-            opponent.attack -= cancelledAttack;
+            cancelPendingAttack(player, opponent);
             const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
             player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
             removed.forEach((puyo) => { player.board[puyo.y][puyo.x] = null; });
@@ -1012,14 +1011,28 @@
         }
         player.point += player.addPoint;
         player.addPoint = 0;
-        const blocked = Math.min(Math.floor(player.damage), Math.floor(player.attack));
-        player.damage -= blocked;
-        player.attack -= blocked;
+        cancelPendingAttack(player, opponent);
         const deliveredAttack = Math.floor(player.attack);
         opponent.damage += deliveredAttack;
         player.attack -= deliveredAttack;
         player.combo = 0;
         player.phase = 'garbage';
+    }
+
+    /**
+     * 새 공격으로 상대의 미정산 공격과 자신의 피해를 즉시 상쇄한다.
+     * 정수 부분만 사용해 ATTACK과 DAMAGE의 소수 잔여값은 다음 정산까지 보존한다.
+     * @param {PlayerState} player 새 공격을 발생시킨 플레이어
+     * @param {PlayerState} opponent 상대 플레이어
+     * @returns {void}
+     */
+    function cancelPendingAttack(player, opponent) {
+        const cancelledOpponentAttack = Math.min(Math.floor(player.attack), Math.floor(opponent.attack));
+        player.attack -= cancelledOpponentAttack;
+        opponent.attack -= cancelledOpponentAttack;
+        const cancelledDamage = Math.min(Math.floor(player.attack), Math.floor(player.damage));
+        player.attack -= cancelledDamage;
+        player.damage -= cancelledDamage;
     }
 
     /**
@@ -1520,6 +1533,8 @@
     function drawResultCenter() {
         game.themeController.drawCenterBackground(context, { x: 450, y: 0, width: 380, height: HEIGHT });
         context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = '42px "Black Han Sans"'; context.fillText('Puyo W', WIDTH / 2, 95);
+        const enemy = game.players[1];
+        if (enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
         context.fillStyle = '#ef5350'; context.fillRect(515, 165, 250, 64);
         context.fillStyle = '#ffffff'; context.font = '22px "Black Han Sans"'; context.fillText(translate('종료'), WIDTH / 2, 207);
     }
@@ -1582,6 +1597,9 @@
         context.fillStyle = '#264b5b'; context.fillRect(WIDTH / 2 - 145, 442, 290, 66);
         context.strokeStyle = titleMenuFocus === 1 ? '#f7c843' : '#264b5b'; context.lineWidth = titleMenuFocus === 1 ? 4 : 2; context.strokeRect(WIDTH / 2 - 145, 442, 290, 66);
         context.fillStyle = '#d8f2f5'; context.font = '25px "Black Han Sans"'; context.fillText(translate('연습'), WIDTH / 2, 486);
+        context.fillStyle = '#24292f'; context.fillRect(32, 642, 170, 46);
+        context.strokeStyle = titleMenuFocus === 2 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 2 ? 4 : 2; context.strokeRect(32, 642, 170, 46);
+        context.fillStyle = '#ffffff'; context.font = '20px "Nanum Gothic Coding"'; context.fillText(translate('GitHub'), 117, 673);
     }
 
     /**
@@ -1597,15 +1615,18 @@
         context.fillText(translate('일시정지'), WIDTH / 2, 322);
         context.fillStyle = '#4cc9b0';
         context.fillRect(470, 376, 150, 64);
+        context.strokeStyle = pauseMenuFocus === 0 ? '#f7c843' : '#4cc9b0';
+        context.lineWidth = pauseMenuFocus === 0 ? 4 : 2;
+        context.strokeRect(470, 376, 150, 64);
         context.fillStyle = '#ef5350';
         context.fillRect(660, 376, 150, 64);
+        context.strokeStyle = pauseMenuFocus === 1 ? '#f7c843' : '#ef5350';
+        context.lineWidth = pauseMenuFocus === 1 ? 4 : 2;
+        context.strokeRect(660, 376, 150, 64);
         context.fillStyle = '#ffffff';
         context.font = '23px "Black Han Sans"';
         context.fillText(translate('재개'), 545, 417);
         context.fillText(translate('종료'), 735, 417);
-        context.fillStyle = '#b3dbe2';
-        context.font = '15px "Nanum Gothic Coding"';
-        context.fillText(translate('ESC 키로 재개'), WIDTH / 2, 478);
     }
 
     /**
@@ -1675,7 +1696,9 @@
         // 게임이 없으면 키 입력을 제목 또는 상대 선택 메뉴로 전달한다.
         if (!game) {
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
-                titleMenuFocus = titleMenuFocus === 0 ? 1 : 0;
+                titleMenuFocus = key === 'arrowleft' || key === 'arrowup'
+                    ? (titleMenuFocus + 2) % 3
+                    : (titleMenuFocus + 1) % 3;
             } else if (menuScreen === 'opponent' && key === 'arrowup') {
                 opponentMenuFocus = Math.max(0, opponentMenuFocus - 1);
             } else if (menuScreen === 'opponent' && key === 'arrowdown') {
@@ -1703,13 +1726,21 @@
         if (!game.running) {
             return;
         }
-        // 종료 연출이 아닐 때 ESC로 일시정지 상태를 전환한다.
-        if (key === 'escape' && !game.ending) {
-            game.paused = !game.paused;
+        // 일시정지 중에는 방향키와 Enter로만 오버레이의 버튼을 조작한다.
+        if (game.paused) {
+            if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
+                pauseMenuFocus = pauseMenuFocus === 0 ? 1 : 0;
+            } else if (key === 'enter' || key === ' ') {
+                activatePauseMenu();
+            }
             return;
         }
-        // 일시정지 중에는 조작 키를 게임 필드에 전달하지 않는다.
-        if (game.paused) return;
+        // 종료 연출이 아닐 때 ESC로 일시정지를 시작한다.
+        if (key === 'escape' && !game.ending) {
+            game.paused = true;
+            pauseMenuFocus = 0;
+            return;
+        }
         const player = game.players[0];
         if (player.phase !== 'control') return;
         if (key === 'arrowleft') moveActive(player, -1, 0);
@@ -1734,7 +1765,24 @@
      */
     function activateTitleMenu() {
         if (titleMenuFocus === 0) openOpponentMenu();
-        else startGame(true);
+        else if (titleMenuFocus === 1) startGame(true);
+        else {
+            const githubWindow = window.open('https://github.com/HJOW/puyow', '_blank');
+            if (githubWindow) githubWindow.opener = null;
+        }
+    }
+
+    /**
+     * 일시정지 오버레이에서 포커스된 명령을 실행한다.
+     * @returns {void}
+     */
+    function activatePauseMenu() {
+        if (pauseMenuFocus === 0) {
+            game.paused = false;
+        } else {
+            game = null;
+            menuScreen = 'title';
+        }
     }
 
     /**
@@ -1776,10 +1824,11 @@
         // 일시정지 중에는 재개와 종료 버튼의 클릭만 처리한다.
         if (game && game.paused) {
             if (x >= 470 && x <= 620 && y >= 376 && y <= 440) {
-                game.paused = false;
+                pauseMenuFocus = 0;
+                activatePauseMenu();
             } else if (x >= 660 && x <= 810 && y >= 376 && y <= 440) {
-                game = null;
-                menuScreen = 'title';
+                pauseMenuFocus = 1;
+                activatePauseMenu();
             }
             return;
         }
@@ -1791,6 +1840,9 @@
                 activateTitleMenu();
             } else if (x >= WIDTH / 2 - 145 && x <= WIDTH / 2 + 145 && y >= 442 && y <= 508) {
                 titleMenuFocus = 1;
+                activateTitleMenu();
+            } else if (x >= 32 && x <= 202 && y >= 642 && y <= 688) {
+                titleMenuFocus = 2;
                 activateTitleMenu();
             }
         } else {
