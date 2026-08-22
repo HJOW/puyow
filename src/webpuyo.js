@@ -228,6 +228,7 @@
             this.aiSimulations = [];
             this.hasPlacedPuyoSinceAllClear = false;
             this.allClearEffectElapsed = 0;
+            this.pendingAllClearDamage = 0;
             this.receivesPuyos = true;
             this.allClearEnabled = true;
             this.clearsGarbage = false;
@@ -967,7 +968,12 @@
         player.comboPopups = player.comboPopups
             .map((popup) => ({ ...popup, elapsed: popup.elapsed + delta }))
             .filter((popup) => popup.elapsed < 2000);
+        const wasAllClearEffectActive = player.allClearEffectElapsed > 0;
         player.allClearEffectElapsed = Math.max(0, player.allClearEffectElapsed - delta);
+        if (wasAllClearEffectActive && player.allClearEffectElapsed === 0 && player.pendingAllClearDamage > 0) {
+            opponent.damage += player.pendingAllClearDamage;
+            player.pendingAllClearDamage = 0;
+        }
         // 대기 중인 연습 상대도 예약된 피해가 있으면 방해뿌요 처리는 수행한다.
         if (player.phase === 'idle') {
             if (player.damage > 0) dropGarbage(player);
@@ -1036,7 +1042,7 @@
                 const isAllClear = player.board.every((row) => row.every((cell) => cell === null));
                 // 뿌요를 놓은 뒤 필드가 비었을 때만 싹쓸이 공격을 보낸다.
                 if (player.allClearEnabled && isAllClear && player.hasPlacedPuyoSinceAllClear) {
-                    opponent.damage += ALL_CLEAR_DAMAGE;
+                    player.pendingAllClearDamage += ALL_CLEAR_DAMAGE;
                     player.point += ALL_CLEAR_POINT;
                     player.allClearEffectElapsed = ALL_CLEAR_EFFECT_DURATION;
                     player.hasPlacedPuyoSinceAllClear = false;
