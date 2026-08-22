@@ -384,6 +384,7 @@
             ending: null,
             countdown: 3000,
             practice,
+            difficulty: selectedDifficulty,
             themeController: controller,
             pairQueueColors: colors,
             pairQueue: Array.from({ length: INITIAL_PAIR_QUEUE_LENGTH }, () => createRandomPair(colors)),
@@ -1405,6 +1406,10 @@
         }
         context.fillStyle = '#d8f2f5'; context.font = '16px "Nanum Gothic Coding"';
         context.fillText(translate('최종 점수 %1', Math.floor(player.point).toLocaleString()), x + CELL * 3, FIELD_TOP + CELL * 7.15);
+        if (game.practice) {
+            context.fillStyle = '#f7c843'; context.font = '15px "Black Han Sans"';
+            context.fillText(translate(DIFFICULTIES[game.difficulty].name), x + CELL * 3, FIELD_TOP + CELL * 7.75);
+        }
         context.fillStyle = '#e7f8fa'; context.font = '18px "Black Han Sans"'; context.textAlign = 'left';
         context.fillText(player.name, x, 54);
     }
@@ -1759,10 +1764,12 @@
         const key = event.key.toLowerCase();
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
         if (!game && menuScreen === 'simulator') { handleSimulatorKeydown(key); return; }
-        // 결과 화면에서는 Enter 또는 ESC로 상대 선택 화면으로 돌아간다.
+        // 결과 화면에서는 Enter 또는 ESC로 연습은 메인, 대전은 적 선택 화면으로 돌아간다.
         if (game && !game.running && (key === 'enter' || key === 'escape')) {
+            const returnToTitle = game.practice;
             game = null;
-            openOpponentMenu();
+            if (returnToTitle) menuScreen = 'title';
+            else openOpponentMenu();
             return;
         }
         // 게임이 없으면 키 입력을 제목 또는 상대 선택 메뉴로 전달한다.
@@ -1897,8 +1904,10 @@
             const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
             const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
             if (x >= 515 && x <= 765 && y >= 165 && y <= 229) {
+                const returnToTitle = game.practice;
                 game = null;
-                openOpponentMenu();
+                if (returnToTitle) menuScreen = 'title';
+                else openOpponentMenu();
             }
             return;
         }
