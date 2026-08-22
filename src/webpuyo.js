@@ -1,7 +1,9 @@
-/*
-Made by HJOW
-Apache 2.0
-*/
+/**
+ * @license Apache-2.0
+ * Copyright 2026 HJOW
+ * Licensed under the Apache License, Version 2.0.
+ * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+ */
 
 (() => {
   'use strict';
@@ -74,7 +76,9 @@ Apache 2.0
    * @returns {void}
    */
   function registerLanguage(locale, entries) {
+    // 초기화 뒤에는 화면 문구의 일관성을 보장하기 위해 언어 등록을 막는다.
     if (initialized) throw new Error('언어 등록은 initialize 호출 전에 해야 합니다.');
+    // 로케일 코드와 번역 항목이 올바른 형태인지 먼저 검증한다.
     if (typeof locale !== 'string' || !locale || !entries || typeof entries !== 'object' || Array.isArray(entries)) {
       throw new TypeError('locale과 번역 문구 객체가 필요합니다.');
     }
@@ -99,7 +103,7 @@ Apache 2.0
     * @param {Enemy|null} controller 자동 조작 컨트롤러
     * @param {string[]} colors 이 플레이어에게 제공할 색 뿌요 목록
      */
-      constructor(name, fieldX, controller = null, colors = COLORS) {
+    constructor(name, fieldX, controller = null, colors = COLORS) {
       this.name = name;
       this.fieldX = fieldX;
       this.controller = controller;
@@ -180,14 +184,17 @@ Apache 2.0
      * @returns {void}
      */
     prepareTurn(player) {
+      // 조작 중인 뿌요가 없으면 이번 턴에 평가할 후보도 없다.
       if (!player.active) {
         player.aiSimulations = [];
         return;
       }
       const simulations = [];
+      // 모든 회전 상태와 열을 순회하며 실제로 착지 가능한 후보를 만든다.
       for (let rotation = 0; rotation < 4; rotation += 1) {
         for (let x = 0; x < COLUMNS; x += 1) {
           const placement = findLandingPlacement(player, x, rotation);
+          // 벽이나 쌓인 뿌요 때문에 놓을 수 없는 후보는 제외한다.
           if (!placement) continue;
           simulations.push({
             x,
@@ -316,6 +323,7 @@ Apache 2.0
        * @returns {number} 목표 X 좌표
        */
       chooseTarget(player) {
+        // 중앙이 높이 쌓였거나 시뮬레이션 단계면 최대 공격 위치를 선택한다.
         if (player.board[9][2] || this.phase === 'simulation') {
           const bestColumn = findBestAttackColumn(player, 0);
           this.phase = 'repeatLeft';
@@ -325,6 +333,7 @@ Apache 2.0
 
         const target = this.phase === 'initialRight' ? COLUMNS - 1 : 0;
         this.turnsRemaining -= 1;
+        // 현재 방향으로 충분히 쌓았으면 다음 배치 단계를 준비한다.
         if (this.turnsRemaining === 0) {
           if (this.phase === 'initialLeft') {
             this.phase = 'initialRight';
@@ -351,6 +360,7 @@ Apache 2.0
         drawingContext.strokeStyle = '#164c50';
         drawingContext.fillStyle = '#237f79';
         drawingContext.lineWidth = 9 * scale;
+        // 양쪽 집게를 대칭으로 그려 갑각형 실루엣을 만든다.
         for (const direction of [-1, 1]) {
           drawingContext.beginPath();
           drawingContext.moveTo(direction * size * 0.32, size * 0.1);
@@ -414,6 +424,7 @@ Apache 2.0
      * @returns {number} 목표 X 좌표
      */
     chooseTarget(player) {
+      // 중앙이 위험 높이에 도달하면 즉시 공격력이 최대인 열을 찾는다.
       if (player.board[9][2]) return findBestAttackColumn(player, 0);
       this.turnCount += 1;
       const stackDirection = COLUMNS - 1;
@@ -563,6 +574,7 @@ Apache 2.0
   function findBestAttackColumn(player, fallback) {
     let bestColumn = fallback;
     let bestAttack = -1;
+    // 세로 배치 후보만 비교해 가장 큰 예상 공격을 내는 열을 고른다.
     player.aiSimulations
       .filter((simulation) => simulation.rotation === 0)
       .forEach((simulation) => {
@@ -599,13 +611,16 @@ Apache 2.0
    * @returns {void}
    */
   function registerOpponent(opponent) {
+    // 등록 정보에 컨트롤러 생성 함수가 있는지 확인한다.
     if (!opponent || typeof opponent.createController !== 'function') {
       throw new TypeError('opponent에는 createController 함수가 필요합니다.');
     }
     const controller = opponent.createController();
+    // 확장 컨트롤러가 엔진의 Enemy 계약을 따르는지 확인한다.
     if (!(controller instanceof Enemy)) {
       throw new TypeError('createController는 Enemy 인스턴스를 반환해야 합니다.');
     }
+    // 선택 화면에 표시할 적 이름이 유효한지 확인한다.
     if (typeof controller.getName() !== 'string' || !controller.getName()) {
       throw new TypeError('Enemy의 getName은 비어 있지 않은 문자열을 반환해야 합니다.');
     }
@@ -623,6 +638,7 @@ Apache 2.0
     const controller = opponent.createController();
     const colors = practice ? COLORS : DIFFICULTIES[selectedDifficulty].colors;
     const practicePlayer = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
+    // 연습전 상대는 공격을 받지 않고 뿌요도 생성하지 않도록 설정한다.
     if (practice) {
       practicePlayer.receivesPuyos = false;
       practicePlayer.allClearEnabled = false;
@@ -657,6 +673,7 @@ Apache 2.0
    * @returns {void}
    */
   function enterControl(player) {
+    // 뿌요를 받지 않는 연습 상대는 대기 상태로 유지한다.
     if (!player.receivesPuyos) {
       player.active = null;
       player.phase = 'idle';
@@ -666,6 +683,7 @@ Apache 2.0
     player.fallTimer = 0;
     player.active = { x: 2, y: 12, rotation: 0, colors: player.nextPairs.shift() };
     player.nextPairs.push(player.createPair());
+    // CPU 플레이어면 이번 뿌요 쌍의 목표 위치와 회전을 미리 결정한다.
     if (player.controller) {
       player.controller.prepareTurn(player);
       player.aiTarget = player.controller.chooseTarget(player);
@@ -706,9 +724,12 @@ Apache 2.0
    * @returns {{x:number, y:number, rotation:number, colors:string[]}|null} 착지 상태 또는 불가능 시 null
    */
   function findLandingPlacement(player, x, rotation) {
+    // 현재 조작 뿌요가 없으면 착지 위치를 계산할 수 없다.
     if (!player.active) return null;
     let placement = { ...player.active, x, rotation };
+    // 시작 위치부터 배치할 수 없는 후보는 무효 처리한다.
     if (!canPlace(player, placement)) return null;
+    // 한 칸씩 내리며 더 이상 내려갈 수 없는 실제 착지 지점을 찾는다.
     while (canPlace(player, { ...placement, y: placement.y - 1 })) {
       placement = { ...placement, y: placement.y - 1 };
     }
@@ -723,8 +744,10 @@ Apache 2.0
    * @returns {boolean} 이동 성공 여부
    */
   function moveActive(player, horizontal, vertical) {
+    // 조작할 뿌요가 없으면 이동 요청을 거절한다.
     if (!player.active) return false;
     const candidate = { ...player.active, x: player.active.x + horizontal, y: player.active.y + vertical };
+    // 이동 목적지가 경계 또는 다른 뿌요와 겹치면 이동하지 않는다.
     if (!canPlace(player, candidate)) return false;
     player.active = candidate;
     return true;
@@ -737,19 +760,23 @@ Apache 2.0
    * @returns {boolean} 회전 성공 여부
    */
   function rotateActive(player, direction) {
+    // 조작할 뿌요가 없으면 회전 요청을 거절한다.
     if (!player.active) return false;
     const candidate = { ...player.active, rotation: (player.active.rotation + direction + 4) % 4 };
+    // 기본 회전 위치가 비어 있으면 그대로 회전한다.
     if (canPlace(player, candidate)) {
       player.active = candidate;
       return true;
     }
     const horizontalKick = candidate.rotation === 1 ? -1 : candidate.rotation === 3 ? 1 : 0;
     const kicked = { ...candidate, x: candidate.x + horizontalKick };
+    // 벽에 막힌 회전은 수평 밀어넣기로 가능한지 검사한다.
     if (horizontalKick && canPlace(player, kicked)) {
       player.active = kicked;
       return true;
     }
     const flipped = { ...player.active, rotation: (player.active.rotation + direction * 2 + 4) % 4 };
+    // 마지막으로 반대편 회전 위치를 시도한다.
     if (canPlace(player, flipped)) {
       player.active = flipped;
       return true;
@@ -763,6 +790,7 @@ Apache 2.0
    * @returns {void}
    */
   function lockActive(player) {
+    // 숨김 행을 포함해 유효한 필드 좌표에만 뿌요를 고정한다.
     activeCells(player.active).forEach((cell) => {
       if (cell.y >= 0 && cell.y < ROWS) player.board[cell.y][cell.x] = cell.color;
     });
@@ -780,11 +808,14 @@ Apache 2.0
   function startGravity(player, nextPhase) {
     const nextBoard = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
     const falling = [];
+    // 각 열을 독립적으로 아래부터 다시 쌓아 중력 결과를 계산한다.
     for (let x = 0; x < COLUMNS; x += 1) {
       const stack = [];
+      // 아래 행부터 기존 뿌요를 수집해 낙하 전 위치를 보관한다.
       for (let y = 0; y < ROWS; y += 1) {
         if (player.board[y][x]) stack.push({ color: player.board[y][x], fromY: y });
       }
+      // 수집한 뿌요를 빈칸 없이 아래쪽부터 다시 배치한다.
       for (let y = 0; y < ROWS; y += 1) {
         const puyo = stack[y];
         if (!puyo) continue;
@@ -816,13 +847,16 @@ Apache 2.0
   function findExplosionsOnBoard(board) {
     const visited = new Set();
     const exploding = [];
+    // 모든 셀을 시작점으로 삼아 아직 방문하지 않은 색 그룹을 탐색한다.
     for (let y = 0; y < ROWS; y += 1) for (let x = 0; x < COLUMNS; x += 1) {
       const color = board[y][x];
       const key = `${x},${y}`;
+      // 빈칸, 방해뿌요, 이미 조사한 색 뿌요는 탐색 대상에서 제외한다.
       if (!color || color === 'garbage' || visited.has(key)) continue;
       const group = [];
       const queue = [[x, y]];
       visited.add(key);
+      // 연결된 같은 색 뿌요를 깊이 우선으로 모두 모은다.
       while (queue.length) {
         const [currentX, currentY] = queue.pop();
         group.push([currentX, currentY]);
@@ -836,6 +870,7 @@ Apache 2.0
           }
         });
       }
+      // 네 개 이상 연결된 그룹만 폭발 목록에 추가한다.
       if (group.length >= 4) exploding.push(...group);
     }
     return exploding;
@@ -848,6 +883,7 @@ Apache 2.0
    */
   function collapseBoard(board) {
     const collapsed = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+    // 열마다 아래쪽 빈칸을 제거해 압축된 새 보드를 만든다.
     for (let x = 0; x < COLUMNS; x += 1) {
       let targetY = 0;
       for (let y = 0; y < ROWS; y += 1) {
@@ -868,8 +904,10 @@ Apache 2.0
    * @returns {number} 연쇄 전체의 예상 ATTACK 값
    */
   function estimateAttack(sourceBoard, colors, positions) {
+    // 두 색상과 두 좌표가 모두 제공되지 않으면 유효한 가상 배치가 아니다.
     if (!Array.isArray(colors) || !Array.isArray(positions) || colors.length !== 2 || positions.length !== 2) return 0;
     let board = sourceBoard.map((row) => [...row]);
+    // 각 뿌요가 필드 안의 빈칸에 놓이는지 확인하며 복사 보드에 배치한다.
     for (let index = 0; index < 2; index += 1) {
       const { x, y } = positions[index] || {};
       if (!COLORS.includes(colors[index]) || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COLUMNS || y < 0 || y >= ROWS || board[y][x]) return 0;
@@ -878,6 +916,7 @@ Apache 2.0
     board = collapseBoard(board);
     let combo = 0;
     let attack = 0;
+    // 폭발과 중력을 반복해 전체 연쇄의 공격력을 누적한다.
     while (true) {
       const exploding = findExplosionsOnBoard(board);
       if (!exploding.length) return attack;
@@ -906,8 +945,10 @@ Apache 2.0
    * @returns {number} 연쇄 전체의 예상 연쇄 수
    */
   function estimateCombo(sourceBoard, colors, positions) {
+    // 두 색상과 두 좌표가 모두 제공되지 않으면 유효한 가상 배치가 아니다.
     if (!Array.isArray(colors) || !Array.isArray(positions) || colors.length !== 2 || positions.length !== 2) return 0;
     let board = sourceBoard.map((row) => [...row]);
+    // 각 뿌요가 필드 안의 빈칸에 놓이는지 확인하며 복사 보드에 배치한다.
     for (let index = 0; index < 2; index += 1) {
       const { x, y } = positions[index] || {};
       if (!COLORS.includes(colors[index]) || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COLUMNS || y < 0 || y >= ROWS || board[y][x]) return 0;
@@ -915,6 +956,7 @@ Apache 2.0
     }
     board = collapseBoard(board);
     let combo = 0;
+    // 더 이상 폭발이 없을 때까지 연쇄 횟수를 센다.
     while (true) {
       const exploding = findExplosionsOnBoard(board);
       if (!exploding.length) return combo;
@@ -941,6 +983,7 @@ Apache 2.0
    */
   function resolveExplosions(player, opponent) {
     const exploding = findExplosions(player);
+    // 이번 단계에 폭발할 색 뿌요가 있으면 점수와 공격을 처리한다.
     if (exploding.length) {
       const removed = new Map(exploding.map(([x, y]) => [`${x},${y}`, { x, y, color: player.board[y][x] }]));
       exploding.forEach(([x, y]) => {
@@ -986,8 +1029,10 @@ Apache 2.0
    */
   function dropGarbage(player) {
     const amount = Math.min(30, Math.floor(player.damage));
+    // 누적 피해가 있으면 한 번에 최대 30개의 방해뿌요를 필드 위에서 떨어뜨린다.
     if (amount) {
       const positions = [];
+      // 필요한 행 수만큼 열 순서를 섞어 방해뿌요 위치를 만든다.
       for (let y = 0; y < Math.ceil(amount / COLUMNS); y += 1) {
         const columns = [...Array(COLUMNS).keys()].sort(() => Math.random() - 0.5);
         columns.forEach((x) => positions.push([x, ROWS - 1 - y]));
@@ -1040,9 +1085,11 @@ Apache 2.0
   function updateDefeatSequence(delta) {
     const ending = game.ending;
     ending.elapsed += delta;
+    // 상대 연쇄가 끝날 때까지는 승리자의 점수 처리를 계속 진행한다.
     if (ending.waitForOpponentResolution && isResolutionPhase(ending.winner.phase)) {
       updatePlayer(ending.winner, ending.loser, delta);
     }
+    // 패배 연출과 남은 연쇄 처리가 끝나면 게임을 종료한다.
     if (ending.elapsed > ending.duration && (!ending.waitForOpponentResolution || !isResolutionPhase(ending.winner.phase))) {
       game.running = false;
       game.winner = ending.winner;
@@ -1061,10 +1108,12 @@ Apache 2.0
     player.comboPopups = player.comboPopups
       .map((popup) => ({ ...popup, elapsed: popup.elapsed + delta }))
       .filter((popup) => popup.elapsed < 2000);
+    // 대기 중인 연습 상대도 예약된 피해가 있으면 방해뿌요 처리는 수행한다.
     if (player.phase === 'idle') {
       if (player.damage > 0) dropGarbage(player);
       return;
     }
+    // 조작 단계에서는 CPU 이동과 낙하 타이머를 갱신한다.
     if (player.phase === 'control') {
       if (player.controller) {
         const rotationDelta = (player.aiRotation - player.active.rotation + 4) % 4;
@@ -1085,6 +1134,7 @@ Apache 2.0
       }
       return;
     }
+    // 중력 애니메이션이 끝날 때까지 낙하 위치를 보간한다.
     if (player.phase === 'gravity') {
       if (!player.gravityAnimation) {
         player.phase = player.gravityNextPhase;
@@ -1097,6 +1147,7 @@ Apache 2.0
       }
       return;
     }
+    // 폭발 연출이 끝난 뒤에는 다시 중력과 폭발 판정을 실행한다.
     if (player.phase === 'burst') {
       player.effects.elapsed += delta;
       if (player.effects.elapsed >= player.effects.duration) {
@@ -1108,6 +1159,7 @@ Apache 2.0
     player.phaseTimer += delta;
     if (player.phaseTimer < 150) return;
     player.phaseTimer = 0;
+    // 대기 시간이 끝난 현재 단계에 맞는 규칙 처리를 실행한다.
     if (player.phase === 'explode') {
       resolveExplosions(player, opponent);
     } else if (player.phase === 'garbage') {
@@ -1117,10 +1169,12 @@ Apache 2.0
         player.board = player.board.map((row) => row.map((cell) => cell === 'garbage' ? null : cell));
         player.damage = 0;
       }
+      // 패배 판정 행의 중앙이 차면 패배 연출을 시작한다.
       if (player.board[11][2]) {
         startDefeatSequence(player, opponent);
       } else {
         const isAllClear = player.board.every((row) => row.every((cell) => cell === null));
+        // 뿌요를 놓은 뒤 필드가 비었을 때만 싹쓸이 공격을 보낸다.
         if (player.allClearEnabled && isAllClear && player.hasPlacedPuyoSinceAllClear) {
           opponent.damage += ALL_CLEAR_DAMAGE;
           player.hasPlacedPuyoSinceAllClear = false;
@@ -1327,10 +1381,12 @@ Apache 2.0
     for (let index = 0; index <= COLUMNS; index += 1) { context.beginPath(); context.moveTo(x + index * CELL, FIELD_TOP); context.lineTo(x + index * CELL, FIELD_BOTTOM); context.stroke(); }
     for (let index = 0; index <= VISIBLE_ROWS; index += 1) { context.beginPath(); context.moveTo(x, FIELD_TOP + index * CELL); context.lineTo(x + CELL * 6, FIELD_TOP + index * CELL); context.stroke(); }
     const fallingTargets = new Set((player.gravityAnimation?.falling || []).map((puyo) => `${puyo.x},${puyo.toY}`));
+    // 패배 연출이 아닐 때 보이는 필드의 고정 뿌요를 한 칸씩 그린다.
     for (let y = 0; !isDefeated && y < VISIBLE_ROWS; y += 1) for (let column = 0; column < COLUMNS; column += 1) {
       const puyo = player.board[y][column];
       if (puyo && !fallingTargets.has(`${column},${y}`)) drawPuyo(x + column * CELL, FIELD_BOTTOM - (y + 1) * CELL, puyo);
     }
+    // 낙하 중인 뿌요는 고정 뿌요 대신 보간된 위치에 그린다.
     if (!isDefeated && player.gravityAnimation) {
       const animation = player.gravityAnimation;
       const progress = Math.min(1, animation.elapsed / animation.duration);
@@ -1340,6 +1396,7 @@ Apache 2.0
         if (y < VISIBLE_ROWS) drawPuyo(x + puyo.x * CELL, FIELD_BOTTOM - (y + 1) * CELL, puyo.color);
       });
     }
+    // 조작 중인 뿌요 쌍은 필드 위에 별도로 표시한다.
     if (!isDefeated && player.active) activeCells(player.active).forEach((cell) => {
       if (cell.y < VISIBLE_ROWS) {
         const cellX = x + cell.x * CELL;
@@ -1391,10 +1448,12 @@ Apache 2.0
    * @returns {'normal'|'crisis'|'defeated'} 중앙 초상화 표정
    */
   function getEnemyPortraitExpression(enemy, opponent) {
+    // 게임 종료 중 패배한 적은 최우선으로 패배 표정을 표시한다.
     if (game.ending?.loser === enemy) return 'defeated';
     const occupiedCells = enemy.board
       .slice(0, VISIBLE_ROWS)
       .reduce((count, row) => count + row.filter((cell) => cell !== null).length, 0);
+    // 필드 점유율 또는 예정 공격량이 높으면 위기 표정을 표시한다.
     if (occupiedCells >= COLUMNS * VISIBLE_ROWS / 2 || enemy.damage + opponent.attack >= 30) return 'crisis';
     return 'normal';
   }
@@ -1555,13 +1614,16 @@ Apache 2.0
    */
   function render() {
     context.clearRect(0, 0, WIDTH, HEIGHT);
+    // 진행 중인 게임이 없으면 현재 메뉴 화면만 렌더링한다.
     if (!game) { drawMenu(); return; }
     context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+    // 게임이 끝났으면 결과 화면으로 전환한다.
     if (!game.running) {
       drawResultField(game.players[0]); drawResultField(game.players[1]); drawResultCenter();
       return;
     }
     drawField(game.players[0], game.players[1]); drawField(game.players[1], game.players[0]); drawCenter();
+    // 시작 전에는 카운트다운 오버레이를 최상단에 표시한다.
     if (game.countdown > 0) {
       context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(0, 0, WIDTH, HEIGHT);
       context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = '76px "Black Han Sans"';
@@ -1579,7 +1641,9 @@ Apache 2.0
   function frame(time) {
     const delta = Math.min(50, time - lastTime || 0);
     lastTime = time;
+    // 실행 중이며 일시정지가 아닐 때만 게임 상태를 시간에 따라 갱신한다.
     if (game && game.running && !game.paused) {
+      // 카운트다운이 끝나면 양쪽 플레이어의 첫 턴을 시작한다.
       if (game.countdown > 0) {
         game.countdown = Math.max(0, game.countdown - delta);
         if (!game.countdown) beginGame();
@@ -1602,11 +1666,13 @@ Apache 2.0
   function handleKeydown(event) {
     const key = event.key.toLowerCase();
     if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
+    // 결과 화면에서는 Enter 또는 ESC로 상대 선택 화면으로 돌아간다.
     if (game && !game.running && (key === 'enter' || key === 'escape')) {
       game = null;
       openOpponentMenu();
       return;
     }
+    // 게임이 없으면 키 입력을 제목 또는 상대 선택 메뉴로 전달한다.
     if (!game) {
       if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
         titleMenuFocus = titleMenuFocus === 0 ? 1 : 0;
@@ -1633,13 +1699,16 @@ Apache 2.0
       } else if (key === 'escape' && menuScreen === 'opponent') menuScreen = 'title';
       return;
     }
+    // 결과 화면에서는 위에서 처리한 메뉴 복귀 외 입력을 무시한다.
     if (!game.running) {
       return;
     }
+    // 종료 연출이 아닐 때 ESC로 일시정지 상태를 전환한다.
     if (key === 'escape' && !game.ending) {
       game.paused = !game.paused;
       return;
     }
+    // 일시정지 중에는 조작 키를 게임 필드에 전달하지 않는다.
     if (game.paused) return;
     const player = game.players[0];
     if (player.phase !== 'control') return;
@@ -1690,6 +1759,7 @@ Apache 2.0
    * @returns {void}
    */
   function handleCanvasClick(event) {
+    // 결과 화면에서는 종료 버튼 영역 클릭만 메뉴 복귀로 처리한다.
     if (game && !game.running) {
       const bounds = canvas.getBoundingClientRect();
       const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
@@ -1703,6 +1773,7 @@ Apache 2.0
     const bounds = canvas.getBoundingClientRect();
     const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
     const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
+    // 일시정지 중에는 재개와 종료 버튼의 클릭만 처리한다.
     if (game && game.paused) {
       if (x >= 470 && x <= 620 && y >= 376 && y <= 440) {
         game.paused = false;
@@ -1712,6 +1783,7 @@ Apache 2.0
       }
       return;
     }
+    // 실행 중인 게임 화면의 일반 클릭은 메뉴 동작으로 처리하지 않는다.
     if (game) return;
     if (menuScreen === 'title') {
       if (x >= WIDTH / 2 - 145 && x <= WIDTH / 2 + 145 && y >= 358 && y <= 424) {
@@ -1751,7 +1823,9 @@ Apache 2.0
    * @returns {void}
    */
   function initialize(target = null) {
+    // 같은 캔버스에 이벤트가 중복 등록되지 않도록 초기화는 한 번만 수행한다.
     if (initialized) return;
+    // 브라우저 DOM이 없는 CommonJS 실행 환경에서는 초기화를 거절한다.
     if (typeof document === 'undefined' || typeof window === 'undefined') {
       throw new Error('Web Puyo 초기화에는 브라우저 DOM 환경이 필요합니다.');
     }
@@ -1759,6 +1833,7 @@ Apache 2.0
     if (languageCode === 'ko-KR') languageCode = 'ko';
     const usesDefaultCanvas = target === null || target === undefined || target === '';
     canvas = usesDefaultCanvas ? document.getElementById('webpuyo_canvas') : typeof target === 'string' ? document.getElementById(target) : target;
+    // 기본 캔버스가 문서에 없으면 접근 가능한 새 캔버스를 생성한다.
     if (usesDefaultCanvas && !canvas) {
       canvas = document.createElement('canvas');
       canvas.id = 'webpuyo_canvas';
@@ -1768,6 +1843,7 @@ Apache 2.0
       canvas.style.cssText = 'display:block;width:min(100vw, 1280px);height:auto;aspect-ratio:16 / 9;';
       document.body.appendChild(canvas);
     }
+    // 전달된 대상이 2D 컨텍스트를 만들 수 있는 캔버스인지 검증한다.
     if (!canvas || typeof canvas.getContext !== 'function') {
       throw new TypeError('유효한 canvas 요소 또는 id를 전달해야 합니다.');
     }
