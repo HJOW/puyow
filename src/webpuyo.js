@@ -49,6 +49,10 @@
     const PLAYER_FALL_INTERVAL = 1040;
     /** 게임 경과 시간에 따른 사용자 낙하 속도의 최대 배율이다. @type {number} */
     const MAX_PLAYER_FALL_SPEED_MULTIPLIER = 4;
+    /** 좌우 방향키를 홀드 입력으로 판정하기 전 대기 시간(ms)이다. @type {number} */
+    const HORIZONTAL_HOLD_DELAY = 100;
+    /** 좌우 방향키 홀드 중 반복 이동 간격(ms)이다. @type {number} */
+    const HORIZONTAL_REPEAT_INTERVAL = 80;
     /** 공통 뿌요 쌍 대기열의 초기 길이다. @type {number} */
     const INITIAL_PAIR_QUEUE_LENGTH = 16;
     /** 브라우저 저장소에 사용할 키다. @type {string} */
@@ -101,6 +105,12 @@
     let lastTime = 0;
     /** 아래 방향키가 눌린 상태인지 여부다. @type {boolean} */
     let isDownKeyPressed = false;
+    /** 현재 홀드 중인 좌우 방향키다. @type {'arrowleft'|'arrowright'|null} */
+    let horizontalKeyPressed = null;
+    /** 좌우 방향키를 누른 뒤 경과한 시간(ms)이다. @type {number} */
+    let horizontalHoldElapsed = 0;
+    /** 좌우 방향키 홀드 반복 이동의 누적 시간(ms)이다. @type {number} */
+    let horizontalRepeatElapsed = 0;
     /** 현재 화면 문구에 적용할 언어 코드다. @type {string} */
     let languageCode = 'ko';
     /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[]}} */
@@ -464,6 +474,10 @@
         }
         player.phase = 'control';
         player.fallTimer = 0;
+        if (player === game?.players[0]) {
+            horizontalHoldElapsed = 0;
+            horizontalRepeatElapsed = 0;
+        }
         player.active = { x: 2, y: 11.5, rotation: 0, colors: takeNextPair(player) };
         // CPU 플레이어면 이번 뿌요 쌍의 목표 위치와 회전을 미리 결정한다.
         if (player.controller) {
@@ -1002,6 +1016,16 @@
         }
         // 조작 단계에서는 CPU 이동과 낙하 타이머를 갱신한다.
         if (player.phase === 'control') {
+            if (!player.controller && player === game?.players[0] && horizontalKeyPressed) {
+                horizontalHoldElapsed += delta;
+                if (horizontalHoldElapsed >= HORIZONTAL_HOLD_DELAY) {
+                    horizontalRepeatElapsed += delta;
+                    while (horizontalRepeatElapsed >= HORIZONTAL_REPEAT_INTERVAL) {
+                        moveActive(player, horizontalKeyPressed === 'arrowleft' ? -1 : 1, 0);
+                        horizontalRepeatElapsed -= HORIZONTAL_REPEAT_INTERVAL;
+                    }
+                }
+            }
             if (player.controller) {
                 const rotationDelta = (player.aiRotation - player.active.rotation + 4) % 4;
                 if (rotationDelta) {
@@ -1876,8 +1900,15 @@
         }
         const player = game.players[0];
         if (player.phase !== 'control') return;
-        if (key === 'arrowleft') moveActive(player, -1, 0);
-        if (key === 'arrowright') moveActive(player, 1, 0);
+        if (key === 'arrowleft' && !event.repeat) moveActive(player, -1, 0);
+        if (key === 'arrowright' && !event.repeat) moveActive(player, 1, 0);
+        if (key === 'arrowleft' || key === 'arrowright') {
+            if (horizontalKeyPressed !== key) {
+                horizontalKeyPressed = key;
+                horizontalHoldElapsed = 0;
+                horizontalRepeatElapsed = 0;
+            }
+        }
         if (key === 'arrowdown') isDownKeyPressed = true;
         if (key === 'z') rotateActive(player, -1);
         if (key === 'x') rotateActive(player, 1);
@@ -1889,7 +1920,13 @@
      * @returns {void}
      */
     function handleKeyup(event) {
-        if (event.key.toLowerCase() === 'arrowdown') isDownKeyPressed = false;
+        const key = event.key.toLowerCase();
+        if (key === 'arrowdown') isDownKeyPressed = false;
+        if (key === horizontalKeyPressed) {
+            horizontalKeyPressed = null;
+            horizontalHoldElapsed = 0;
+            horizontalRepeatElapsed = 0;
+        }
     }
 
     /**
