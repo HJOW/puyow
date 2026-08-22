@@ -28,6 +28,8 @@
     const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     // 싹쓸이 성공 시 상대방에게 즉시 보낼 방해뿌요 갯수
     const ALL_CLEAR_DAMAGE = 12;
+    // 게임 시작 시 공통 뿌요 쌍 대기열에 미리 생성할 쌍의 수
+    const INITIAL_PAIR_QUEUE_LENGTH = 16;
     const STORE_KEY = 'puyow_store';
     // 한국어 원문을 키로 사용하는 화면 문구 번역표. 외부 스크립트는 registerLanguage()로 언어별 항목을 추가할 수 있다.
     const stringTable = {
@@ -168,7 +170,10 @@
             this.gravityNextPhase = 'explode';
             this.effects = null;
             this.comboPopups = [];
-            this.nextPairs = [this.createPair(), this.createPair()];
+            this.nextPairs = [];
+            this.pairQueuePosition = 0;
+            // 이 플레이어가 실제로 필드에 고정한 뿌요 쌍의 누적 횟수
+            this.placedPairCount = 0;
             this.aiTarget = 5;
             this.aiRotation = 0;
             this.aiFastDown = false;
@@ -177,14 +182,6 @@
             this.receivesPuyos = true;
             this.allClearEnabled = true;
             this.clearsGarbage = false;
-        }
-
-        /**
-         * 다음에 제공할 세로 뿌요 한 쌍을 만든다.
-         * @returns {string[]} 아래와 위 뿌요 색상
-         */
-        createPair() {
-            return [randomColor(this.colors), randomColor(this.colors)];
         }
 
         /**
@@ -913,6 +910,7 @@
         const controller = opponent.createController();
         const colors = practice ? COLORS : DIFFICULTIES[selectedDifficulty].colors;
         const practicePlayer = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
+        const players = [new PlayerState('PLAYER 1', FIELD_LEFT, null, colors), practicePlayer];
         // 연습전 상대는 공격을 받지 않고 뿌요도 생성하지 않도록 설정한다.
         if (practice) {
             practicePlayer.receivesPuyos = false;
@@ -929,8 +927,54 @@
             countdown: 3000,
             practice,
             themeController: controller,
-            players: [new PlayerState('PLAYER 1', FIELD_LEFT, null, colors), practicePlayer]
+            pairQueueColors: colors,
+            pairQueue: Array.from({ length: INITIAL_PAIR_QUEUE_LENGTH }, () => createRandomPair(colors)),
+            players
         };
+        players.filter((player) => player.receivesPuyos).forEach(updateNextPairs);
+    }
+
+    /**
+     * 공통 대기열에 넣을 무작위 뿌요 한 쌍을 만든다.
+     * @param {string[]} colors 제공할 색상 목록
+     * @returns {string[]} 아래와 위 뿌요 색상
+     */
+    function createRandomPair(colors) {
+        return [randomColor(colors), randomColor(colors)];
+    }
+
+    /**
+     * 지정 순번까지 공통 뿌요 쌍 대기열을 확장한다.
+     * @param {number} requiredPosition 필요한 마지막 대기열 순번
+     * @returns {void}
+     */
+    function ensurePairQueue(requiredPosition) {
+        while (game.pairQueue.length <= requiredPosition) game.pairQueue.push(createRandomPair(game.pairQueueColors));
+    }
+
+    /**
+     * 플레이어의 현재 대기열 순번 기준으로 다음 두 쌍 표시를 갱신한다.
+     * @param {PlayerState} player 표시를 갱신할 플레이어
+     * @returns {void}
+     */
+    function updateNextPairs(player) {
+        ensurePairQueue(player.pairQueuePosition + 1);
+        player.nextPairs = game.pairQueue
+            .slice(player.pairQueuePosition, player.pairQueuePosition + 2)
+            .map((pair) => [...pair]);
+    }
+
+    /**
+     * 플레이어의 현재 순번에 해당하는 공통 대기열 뿌요 쌍을 지급한다.
+     * @param {PlayerState} player 뿌요를 지급할 플레이어
+     * @returns {string[]} 아래와 위 뿌요 색상
+     */
+    function takeNextPair(player) {
+        ensurePairQueue(player.pairQueuePosition);
+        const pair = [...game.pairQueue[player.pairQueuePosition]];
+        player.pairQueuePosition += 1;
+        updateNextPairs(player);
+        return pair;
     }
 
     /**
@@ -956,8 +1000,7 @@
         }
         player.phase = 'control';
         player.fallTimer = 0;
-        player.active = { x: 2, y: 12, rotation: 0, colors: player.nextPairs.shift() };
-        player.nextPairs.push(player.createPair());
+        player.active = { x: 2, y: 12, rotation: 0, colors: takeNextPair(player) };
         // CPU 플레이어면 이번 뿌요 쌍의 목표 위치와 회전을 미리 결정한다.
         if (player.controller) {
             player.controller.prepareTurn(player);
@@ -1069,6 +1112,7 @@
         activeCells(player.active).forEach((cell) => {
             if (cell.y >= 0 && cell.y < ROWS) player.board[cell.y][cell.x] = cell.color;
         });
+        player.placedPairCount += 1;
         player.hasPlacedPuyoSinceAllClear = true;
         player.active = null;
         startGravity(player, 'explode');
