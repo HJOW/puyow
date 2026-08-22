@@ -459,7 +459,7 @@
         }
         player.phase = 'control';
         player.fallTimer = 0;
-        player.active = { x: 2, y: 12, rotation: 0, colors: takeNextPair(player) };
+        player.active = { x: 2, y: 11.5, rotation: 0, colors: takeNextPair(player) };
         // CPU 플레이어면 이번 뿌요 쌍의 목표 위치와 회전을 미리 결정한다.
         if (player.controller) {
             player.controller.prepareTurn(player);
@@ -475,6 +475,17 @@
      * @returns {{x:number, y:number, color:string}[]} 두 뿌요의 좌표와 색상
      */
     function activeCells(active) {
+        const offsets = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+        const offset = offsets[active.rotation];
+        const baseY = Math.floor(active.y);
+        return [
+            { x: active.x, y: baseY, color: active.colors[0] },
+            { x: active.x + offset[0], y: baseY + offset[1], color: active.colors[1] }
+        ];
+    }
+
+    /** 실수 Y 좌표를 유지한 채 화면에 그릴 조작 중 뿌요의 위치를 반환한다. @param {{x:number,y:number,rotation:number,colors:string[]}} active 조작 중인 뿌요 쌍 @returns {{x:number,y:number,color:string}[]} 화면 표시 좌표 */
+    function activeRenderCells(active) {
         const offsets = [[0, 1], [1, 0], [0, -1], [-1, 0]];
         const offset = offsets[active.rotation];
         return [
@@ -993,11 +1004,17 @@
                     moveActive(player, player.active.x < player.aiTarget ? 1 : -1, 0);
                 }
             }
-            player.fallTimer += delta;
             const fastDown = player.controller ? player.aiFastDown : isDownKeyPressed;
-            if (player.fallTimer >= (fastDown ? 55 : player.controller ? 290 : 520)) {
+            const fallInterval = fastDown ? 55 : player.controller ? 290 : 520;
+            const currentFloor = Math.floor(player.active.y);
+            const nextFloor = currentFloor - 1;
+            if (nextFloor < 0 || !canPlace(player, { ...player.active, y: nextFloor })) {
+                player.active.y = currentFloor;
                 player.fallTimer = 0;
-                if (!moveActive(player, 0, -1)) lockActive(player);
+                lockActive(player);
+            } else {
+                player.active.y -= delta / fallInterval;
+                if (player.active.y <= nextFloor) player.active.y = nextFloor;
             }
             return;
         }
@@ -1289,8 +1306,8 @@
             });
         }
         // 조작 중인 뿌요 쌍은 필드 위에 별도로 표시한다.
-        if (!isDefeated && player.active) activeCells(player.active).forEach((cell) => {
-            if (cell.y < VISIBLE_ROWS) {
+        if (!isDefeated && player.active) activeRenderCells(player.active).forEach((cell) => {
+            if (cell.y < VISIBLE_ROWS && cell.y + 1 > 0) {
                 const cellX = x + cell.x * CELL;
                 const cellY = FIELD_BOTTOM - (cell.y + 1) * CELL;
                 drawPuyo(cellX, cellY, cell.color);
