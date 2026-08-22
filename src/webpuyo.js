@@ -534,7 +534,11 @@
     function moveActive(player, horizontal, vertical) {
         // 조작할 뿌요가 없으면 이동 요청을 거절한다.
         if (!player.active) return false;
-        const candidate = { ...player.active, x: player.active.x + horizontal, y: player.active.y + vertical };
+        const candidate = {
+            ...player.active,
+            x: player.active.x + horizontal,
+            y: vertical ? player.active.y + vertical : player.active.y
+        };
         // 이동 목적지가 경계 또는 다른 뿌요와 겹치면 이동하지 않는다.
         if (!canPlace(player, candidate)) return false;
         player.active = candidate;
