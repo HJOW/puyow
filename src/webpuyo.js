@@ -38,13 +38,21 @@
     /** 연쇄 수에 따른 공격 위력 표다. @type {number[]} */
     const COMBO_POWER = [0, 1, 6, 9, 14, 20, 40, 80, 120, 170, 240, 360, 480, 600, 720, 840, 950, 975, 990];
     /** 화면 제목용 기본 글꼴 이름이다. @type {string} */
-    const TITLE_FONT_NAME = '"Black Han Sans"';
+    const TITLE_FONT_NAME = 'Black Han Sans';
     /** 버튼용 기본 글꼴 이름이다. @type {string} */
-    const BUTTON_FONT_NAME = '"Noto Sans"';
+    const BUTTON_FONT_NAME = 'Noto Sans KR';
     /** 메시지용 기본 글꼴 이름이다. @type {string} */
-    const MESSAGE_FONT_NAME = '"D2Coding"';
+    const MESSAGE_FONT_NAME = 'D2Coding';
     /** 글꼴 지정 시 기본 글꼴 뒤에 대체 글꼴로 붙일 글꼴 이름 목록이다. 배열 내부와 세 글꼴 이름 모두와 중복되지 않도록 자동으로 걸러진다. @type {string[]} */
-    const FALLBACK_FONTS = ['"Nanum Gothic Coding"', '"Nanum Gothic"', '"Noto Sans SC"', '"Noto Sans JP"', 'monospace'];
+    const FALLBACK_FONTS = ['Nanum Gothic Coding', 'Nanum Gothic', 'Noto Sans SC', 'Noto Sans JP', 'monospace', 'sans-serif'];
+    /**
+     * 공백이 있어 CSS font 값에서 여러 키워드로 잘못 해석될 수 있는 글꼴 이름에만 쌍따옴표를 붙인다.
+     * @param {string} fontName 원본 글꼴 이름
+     * @returns {string} font 속성에 안전하게 넣을 수 있는 글꼴 이름
+     */
+    function quoteFontNameIfNeeded(fontName) {
+        return fontName.includes(' ') ? `"${fontName}"` : fontName;
+    }
     /**
      * 기본 글꼴 뒤에 FALLBACK_FONTS를 자기 자신 및 세 기본 글꼴 이름과 겹치지 않게 이어 붙인 글꼴 목록 문자열을 만든다.
      * @param {string} primaryFontName 최우선으로 사용할 글꼴 이름
@@ -53,7 +61,7 @@
     function buildFontStack(primaryFontName) {
         const reserved = new Set([primaryFontName, TITLE_FONT_NAME, BUTTON_FONT_NAME, MESSAGE_FONT_NAME]);
         const uniqueFallbacks = [...new Set(FALLBACK_FONTS)].filter((fontName) => !reserved.has(fontName));
-        return [primaryFontName, ...uniqueFallbacks].join(', ');
+        return [primaryFontName, ...uniqueFallbacks].map(quoteFontNameIfNeeded).join(', ');
     }
     /** 화면 제목이나 절 제목처럼 강조가 필요한 큰 헤더에 사용할 글꼴 목록이다. @type {string} */
     const TITLE_FONT = buildFontStack(TITLE_FONT_NAME);
