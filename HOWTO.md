@@ -12,8 +12,7 @@
 - `src/webpuyo.html`: 게임 캔버스를 포함한 페이지 구조와 초기화 호출을 정의합니다.
 - `src/webpuyo.css`: 전체 화면 캔버스 레이아웃과 글꼴 스타일을 정의합니다.
 - `src/webpuyo.js`: 브라우저/CommonJS 라이브러리, 게임 규칙, 렌더링, 입력, CPU 조작을 구현합니다.
-- `HOWTO.md`: 이 개발 안내 문서입니다.
-- `HOWTO_NEWAI.md`: 새 AI 상대 API를 중심으로 한 기존 상세 참고 문서입니다.
+- `HOWTO.md`: 페이지 구성, 라이브러리 사용법, 번역, 새 AI 상대 제작을 포함한 모든 개발 안내를 제공합니다.
 
 ## 라이브러리 개요
 
@@ -32,22 +31,20 @@
 
 ```html
 <script defer src="webpuyo.js"></script>
-<script defer src="my-opponent.js"></script>
-<script defer src="game-bootstrap.js"></script>
-```
-
-```js
-// game-bootstrap.js
-WebPuyo.initialize('webpuyo_canvas');
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    window.WebPuyo.initialize('webpuyo_canvas');
+});
+</script>
 ```
 
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, registerOpponent, initialize } = require('./webpuyo.js');
+const { Enemy, registerOpponent, initialize } = require('./src/webpuyo.js');
 ```
 
-`initialize()`에 인수를 생략하거나 `null`을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 1280x720 canvas를 만들고 게임을 연결합니다.
+`initialize(target)`의 `target`에는 canvas 요소나 canvas 요소의 `id` 문자열을 전달할 수 있습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 1280x720 canvas를 만들고 게임을 연결합니다. 지정한 요소가 canvas가 아니거나 존재하지 않으면 오류가 발생합니다.
 
 ## 화면 언어 추가
 
@@ -69,7 +66,7 @@ WebPuyo.initialize();
 
 ## 기본 구조
 
-새 상대는 `WebPuyo.Enemy`를 상속하는 클래스로 만듭니다. `getName()`은 화면에 표시할 적 이름을 반환해야 합니다. 게임 루프는 적이 결정한 목표 회전값으로 뿌요 쌍을 돌린 뒤, 목표 X 좌표까지 이동시킵니다.
+새 상대는 `WebPuyo.Enemy`를 상속하는 클래스로 만듭니다. `getName()`은 비어 있지 않은 화면 표시 이름을 반환해야 합니다. 게임 루프는 적이 결정한 목표 회전값으로 뿌요 쌍을 돌린 뒤, 목표 X 좌표까지 이동시킵니다.
 
 ```js
 class CenterEnemy extends WebPuyo.Enemy {
@@ -118,7 +115,9 @@ class CenterEnemy extends WebPuyo.Enemy {
 
 ## 적 등록 방법
 
-새 적은 별도 JavaScript 파일에서 `WebPuyo.registerOpponent()`로 등록합니다. 따라서 새 적을 추가할 때 `webpuyo.js`를 수정할 필요가 없습니다. `createController`는 매 게임마다 새 `Enemy` 인스턴스를 반환해야 합니다.
+새 적은 별도 JavaScript 파일에서 `WebPuyo.registerOpponent()`로 등록합니다. 따라서 새 적을 추가할 때 `webpuyo.js`를 수정할 필요가 없습니다. 등록 객체에는 `createController` 함수가 반드시 필요하며, 이 함수는 매 호출마다 `Enemy`를 상속한 새 인스턴스를 반환해야 합니다. 적 이름은 별도 `name` 속성이 아니라 `getName()`의 반환값을 사용합니다.
+
+`registerOpponent()`는 등록 시 `createController()`를 한 번 호출해 `sortPriority`, `hidden`, `notAvail`을 읽고 검증합니다. 따라서 이 설정은 생성자에서 설정하고, 등록 뒤에 값을 바꾸지 않아야 합니다. 실제 대전에서도 `createController()`를 다시 호출하므로, 게임별 상태는 컨트롤러 인스턴스 멤버로 유지합니다.
 
 ```js
 // my-opponent.js
@@ -133,12 +132,11 @@ class CenterEnemy extends WebPuyo.Enemy {
 }
 
 WebPuyo.registerOpponent({
-	name: '중앙 수집가',
 	createController: () => new CenterEnemy()
 });
 ```
 
-`my-opponent.js`는 `webpuyo.js` 다음, `WebPuyo.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다.
+`my-opponent.js`는 `webpuyo.js` 다음, `WebPuyo.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다. 일반 대전 승리 기록은 컨트롤러 클래스명으로 브라우저 `localStorage`의 `puyow_store.clearList`에 저장되므로, 이미 배포한 적 클래스의 이름을 바꾸면 기존 잠금 해제 기록과 호환되지 않습니다.
 
 ## 게임 화면 테마
 
@@ -231,7 +229,7 @@ class LowestColumnEnemy extends WebPuyo.Enemy {
 }
 ```
 
-더 강한 AI를 만들려면 각 열에 배치한 뒤의 가상 보드를 계산하고, 같은 색의 인접 수, 예상 폭발 수, 필드 높이, 방해뿌요 위험을 점수화해 가장 높은 점수의 열을 선택하면 됩니다.
+더 강한 AI를 만들려면 `player.aiSimulations`의 후보마다 예상 공격력, 같은 색의 인접 수, 필드 높이, 방해뿌요 위험을 점수화해 가장 높은 후보를 선택하면 됩니다. 후보에 없는 열·회전 조합은 현재 보드에서 실제로 착지할 수 없는 조합입니다.
 
 ## 현재 필드 정보 읽기
 
@@ -271,5 +269,3 @@ const combo = player.estimateCombo(
 	[{ x: 2, y: 4 }, { x: 2, y: 5 }]
 );
 ```
-
-AI는 `Enemy` 내부에 유지하면 플레이어 선택 화면을 추가할 때도 적 인스턴스만 교체하면 됩니다.
