@@ -44,7 +44,7 @@ Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 �
 const { Enemy, registerOpponent, initialize } = require('./src/webpuyo.js');
 ```
 
-`initialize(target)`의 `target`에는 canvas 요소나 canvas 요소의 `id` 문자열을 전달할 수 있습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 1280x720 canvas를 만들고 게임을 연결합니다. 지정한 요소가 canvas가 아니거나 존재하지 않으면 오류가 발생합니다.
+`initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 1280x720 canvas를 만들어 게임을 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 그대로 사용하고 `destroy()`가 요소를 제거하지 않습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
 
 ## 종료 및 정리
 

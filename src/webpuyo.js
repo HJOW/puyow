@@ -109,7 +109,7 @@
     let context = null;
     /** 라이브러리가 초기화되어 이벤트와 게임 루프가 연결됐는지 여부다. @type {boolean} */
     let initialized = false;
-    /** initialize()가 기본 canvas를 직접 만들었는지 여부다. @type {boolean} */
+    /** initialize()가 canvas를 직접 만들어 연결했는지 여부다. @type {boolean} */
     let createdCanvas = false;
     /** 다음 게임 프레임 취소에 사용할 요청 식별자다. @type {number|null} */
     let animationFrameId = null;
@@ -2388,8 +2388,25 @@
         languageCode = navigator.language || navigator.userLanguage || 'ko';
         if (languageCode === 'ko-KR') languageCode = 'ko';
         loadStore();
+        createdCanvas = false;
         const usesDefaultCanvas = target === null || target === undefined || target === '';
-        canvas = usesDefaultCanvas ? document.getElementById('webpuyo_canvas') : typeof target === 'string' ? document.getElementById(target) : target;
+        const targetElement = usesDefaultCanvas ? document.getElementById('webpuyo_canvas') : typeof target === 'string' ? document.getElementById(target) : target;
+        if (targetElement && typeof targetElement.getContext === 'function') {
+            // canvas DOM 객체를 직접 전달한 경우에는 해당 요소를 그대로 사용한다.
+            canvas = targetElement;
+        } else if (targetElement && targetElement.nodeType === 1 && targetElement.tagName.toLowerCase() === 'div') {
+            // div를 전달한 경우에는 그 안에 게임용 canvas를 만들어 사용한다.
+            canvas = document.createElement('canvas');
+            createdCanvas = true;
+            canvas.id = 'webpuyo_canvas';
+            canvas.width = WIDTH;
+            canvas.height = HEIGHT;
+            canvas.setAttribute('aria-label', 'Web Puyo puzzle game');
+            canvas.style.cssText = 'display:block;width:min(100vw, 1280px);height:auto;aspect-ratio:16 / 9;';
+            targetElement.appendChild(canvas);
+        } else {
+            canvas = targetElement;
+        }
         // 기본 캔버스가 문서에 없으면 접근 가능한 새 캔버스를 생성한다.
         if (usesDefaultCanvas && !canvas) {
             canvas = document.createElement('canvas');

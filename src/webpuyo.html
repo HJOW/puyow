@@ -21,9 +21,8 @@
         <script>
             document.addEventListener("DOMContentLoaded", function() {
                 const canvas = document.getElementById("webpuyo_canvas");
-                const ctx = canvas.getContext("2d");
                 // Initialize the game here
-                window.WebPuyo.initialize();
+                window.WebPuyo.initialize(canvas);
             });
         </script>
     </head>
