@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function() {
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, registerOpponent, initialize } = require('./src/webpuyo.js');
+const { Enemy, registerOpponent, getSelectedDifficulty, initialize } = require('./src/webpuyo.js');
 ```
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 1280x720 canvas를 만들어 게임을 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 그대로 사용하고 `destroy()`가 요소를 제거하지 않습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
@@ -237,11 +237,20 @@ class NightEnemy extends WebPuyo.Enemy {
 
 ## 알고리즘 작성 방법
 
-CPU 한 차례를 시작할 때 게임은 `prepareTurn(player)`, `chooseTarget(player)`, `chooseRotate(player)`, `useFastDown(player)` 순서로 호출합니다. `prepareTurn()`은 위치와 회전별 가상 착지 결과 및 예상 공격력을 `player.aiSimulations`에 준비합니다. 하위 클래스가 재정의할 때는 `super.prepareTurn(player)`을 먼저 호출해 기본 후보 생성을 유지해야 합니다. 그 다음 선택 메서드는 같은 후보 목록을 읽어 서로 일관된 목표 열과 회전을 반환할 수 있습니다.
+CPU 한 차례를 시작할 때 게임은 `prepareTurn(player)`, `chooseTarget(player)`, `chooseRotate(player)` 순서로 목표를 결정합니다. 그 뒤 조작 단계 동안 `useFastDown(player)`을 매 프레임 호출해 빠른 하강 시점을 확인합니다. `prepareTurn()`은 위치와 회전별 가상 착지 결과 및 예상 공격력을 `player.aiSimulations`에 준비합니다. 하위 클래스가 재정의할 때는 `super.prepareTurn(player)`을 먼저 호출해 기본 후보 생성을 유지해야 합니다. 그 다음 선택 메서드는 같은 후보 목록을 읽어 서로 일관된 목표 열과 회전을 반환할 수 있습니다.
 
 `chooseTarget(player)`에서는 현재 CPU 필드를 읽고, 이번 뿌요 쌍을 어느 열에 둘지 결정합니다. `chooseRotate(player)`는 목표 회전값을 반환합니다. 기본값은 세로 상태인 `0`이며, `1`은 오른쪽, `2`는 아래, `3`은 왼쪽입니다.
 
-`useFastDown(player)`은 목표 열과 회전이 결정된 뒤 AI가 아래 방향키를 눌러 이번 뿌요 쌍을 빠르게 내릴지 결정합니다. 기본 `Enemy` 구현은 `false`를 반환하므로 천천히 떨어지고, 하위 클래스에서 `true`를 반환하도록 재정의하면 빠르게 배치됩니다.
+`useFastDown(player)`은 목표 열과 회전이 결정된 뒤 AI가 아래 방향키를 눌러 이번 뿌요 쌍을 빠르게 내릴지 결정합니다. 기본 `Enemy` 구현은 선택된 AI 난이도에 따라 동작합니다. `쉬움`은 빠른 하강을 사용하지 않고, `보통`은 목표 결정 2,000ms 뒤, `어려움`은 500ms 뒤에도 조작 중일 때 빠르게 하강합니다. 기본 제공되는 안드로말리우스와 단탈리온도 이 정책을 그대로 따릅니다. 사용자 정의 AI가 자체 정책을 사용하려면 이 메서드를 재정의하고, 기본 정책을 일부 유지하려면 `super.useFastDown(player)`를 호출합니다.
+
+`WebPuyo.getSelectedDifficulty()`는 현재 선택되어 게임에 적용되는 AI 난이도를 조회합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환합니다. 반환 객체의 `key`는 `'easy'`, `'normal'`, `'hard'` 중 하나이고, `name`은 표시명, `fastDownDelay`는 빠른 하강 대기 시간(ms)이며 쉬움에서는 `null`입니다.
+
+```js
+const difficulty = WebPuyo.getSelectedDifficulty();
+if (difficulty.key === 'hard') {
+	// 어려움 AI에 맞춘 별도 판단
+}
+```
 
 - `player.board[y][x]`에는 해당 칸의 색상 문자열 또는 빈 칸의 `null`이 있습니다.
 - 좌표는 왼쪽 아래가 `(0, 0)`입니다. `x`는 `0`부터 `5`, `y`는 `0`부터 `16`입니다. `y=0`부터 `11`은 화면에 보이는 12줄이고, `y=12`는 조작 뿌요가 생성되는 기존 숨김 행이며, `y=13`부터 `16`은 방해뿌요 생성 전용의 추가 숨김 행입니다.
