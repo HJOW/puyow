@@ -171,7 +171,7 @@
     let horizontalRepeatElapsed = 0;
     /** 현재 화면 문구에 적용할 언어 코드다. @type {string} */
     let languageCode = 'ko';
-    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[]}} */
+    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} */
     let store = createInitialStore();
     /** 난이도별 표시명과 제공 색상 목록이다. @type {{name:string, colors:string[]}[]} */
     const DIFFICULTIES = [
@@ -192,10 +192,14 @@
 
     /**
      * 저장 데이터의 기본 구조를 만든다.
-     * @returns {{clearList:string[]}} 초기 저장 데이터
+     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} 초기 저장 데이터
      */
     function createInitialStore() {
-        return { clearList: [], settings: { musicVolume: 100, effectsVolume: 100, aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' } };
+        return {
+            clearList: [],
+            clearListByDifficulty: { easy: [], normal: [], hard: [] },
+            settings: { musicVolume: 100, effectsVolume: 100, aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' }
+        };
     }
 
     /**
@@ -225,14 +229,23 @@
             if (!parsed || !Array.isArray(parsed.clearList) || !parsed.clearList.every((name) => typeof name === 'string')) {
                 throw new TypeError('clearList 배열이 필요합니다.');
             }
+            const storedClearListByDifficulty = parsed.clearListByDifficulty && typeof parsed.clearListByDifficulty === 'object' && !Array.isArray(parsed.clearListByDifficulty)
+                ? parsed.clearListByDifficulty
+                : {};
+            const initial = createInitialStore();
+            const clearListByDifficulty = Object.fromEntries(Object.keys(initial.clearListByDifficulty).map((key) => [
+                key,
+                Array.isArray(storedClearListByDifficulty[key])
+                    ? [...new Set(storedClearListByDifficulty[key].filter((name) => typeof name === 'string'))]
+                    : []
+            ]));
             const settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
-            const initial = createInitialStore().settings;
-            store = { clearList: [...new Set(parsed.clearList)], settings: {
-                musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.musicVolume,
-                effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.effectsVolume,
+            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, settings: {
+                musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
+                effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
                 aiProvider: settings.aiProvider === 'Google' ? 'Google' : 'OpenAI',
-                aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.aiApiKey,
-                aiModel: typeof settings.aiModel === 'string' ? settings.aiModel : initial.aiModel
+                aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
+                aiModel: typeof settings.aiModel === 'string' ? settings.aiModel : initial.settings.aiModel
             } };
         } catch (error) {
             console.error('Puyo W 저장 데이터 불러오기에 실패했습니다.', error);
@@ -441,7 +454,9 @@
         const progressionOpponents = OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail);
         const index = progressionOpponents.indexOf(opponent);
         if (index <= 0) return index === 0;
-        return store.clearList.includes(progressionOpponents[index - 1].className);
+        const difficultyKey = getSelectedDifficulty().key;
+        const clearList = store.clearListByDifficulty?.[difficultyKey] || [];
+        return clearList.includes(progressionOpponents[index - 1].className);
     }
 
     /**
@@ -1087,10 +1102,17 @@
     function recordEnemyClear(winner) {
         if (game.practice || winner !== game.players[0]) return;
         const enemyClassName = game.players[1].controller.constructor.name;
+        const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key || AI_DIFFICULTIES[1].key;
+        let changed = false;
+        if (!store.clearListByDifficulty[difficultyKey].includes(enemyClassName)) {
+            store.clearListByDifficulty[difficultyKey].push(enemyClassName);
+            changed = true;
+        }
         if (!store.clearList.includes(enemyClassName)) {
             store.clearList.push(enemyClassName);
-            saveStore();
+            changed = true;
         }
+        if (changed) saveStore();
     }
 
     /**

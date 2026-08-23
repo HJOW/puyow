@@ -23,7 +23,7 @@
 - `hidden`: `true`이면 적 선택 화면에 표시하지 않습니다.
 - `notAvail`: `true`이면 회색의 `추후 출시예정` 카드로만 표시하며, 마우스와 키보드로 선택할 수 없습니다.
 
-일반 대전에서 플레이어가 승리하면 브라우저 `localStorage`의 `puyow_store`에 적 클래스명이 기록됩니다. `hidden` 및 `notAvail`이 아닌 적은 정렬 순서상 바로 이전 적을 한 번 이겨야 선택할 수 있으며, 첫 번째 적은 항상 선택할 수 있습니다. 저장 데이터의 `clearList` 배열은 이 잠금 해제 기록을 보관합니다.
+일반 대전에서 플레이어가 승리하면 브라우저 `localStorage`의 `puyow_store`에 적 클래스명이 기록됩니다. `hidden` 및 `notAvail`이 아닌 적은 정렬 순서상 바로 이전 적을 한 번 이겨야 선택할 수 있으며, 첫 번째 적은 쉬움·보통·어려움 모두에서 항상 선택할 수 있습니다. 저장 데이터의 `clearList` 배열은 기존처럼 전체 승리 적 목록을 보관하지만 해금 판정에는 사용하지 않고, `clearListByDifficulty` 객체가 `easy`, `normal`, `hard` 난이도별 잠금 해제 목록을 전담합니다. 따라서 안드로말리우스를 이겨도 해당 난이도에서만 다음 적이 열립니다.
 
 ## 초기화
 
@@ -206,7 +206,7 @@ WebPuyo.registerOpponent({
 });
 ```
 
-`my-opponent.js`는 `webpuyo.js` 다음, `WebPuyo.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다. 일반 대전 승리 기록은 컨트롤러 클래스명으로 브라우저 `localStorage`의 `puyow_store.clearList`에 저장되므로, 이미 배포한 적 클래스의 이름을 바꾸면 기존 잠금 해제 기록과 호환되지 않습니다.
+`my-opponent.js`는 `webpuyo.js` 다음, `WebPuyo.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다. 일반 대전 승리 기록은 컨트롤러 클래스명으로 브라우저 `localStorage`의 `puyow_store.clearList`와 현재 AI 난이도에 해당하는 `clearListByDifficulty` 배열에 저장됩니다. 해금 판정은 `clearListByDifficulty`만 사용하므로, 이미 배포한 적 클래스의 이름을 바꾸면 기존 난이도별 잠금 해제 기록과 호환되지 않습니다.
 
 ## 게임 화면 테마
 
