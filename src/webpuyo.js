@@ -995,27 +995,41 @@
     }
 
     /**
-     * 세로 배치 후보 중 예상 공격력이 가장 높은 열을 고른다. 동점이면 더 오른쪽 열을 선택한다.
+     * 모든 회전 배치 후보 중 예상 공격력이 가장 높은 배치를 고른다.
      * 지정 열의 후보가 즉시 패배하면 그 후보를 건너뛰어 차순위를 선택한다.
+     * @param {PlayerState} player 자동 조작할 플레이어
+     * @param {number} fallback 유효한 후보가 없을 때 사용할 열
+     * @param {number|null} defeatCheckColumn 즉시 패배를 피할 X 좌표. null이면 검사하지 않는다.
+     * @returns {{x:number, rotation:number, positions:{x:number,y:number}[], attack:number, combo:number}} 목표 배치 후보
+     */
+    function findBestAttackPlacement(player, fallback, defeatCheckColumn = null) {
+        let bestPlacement = {
+            x: fallback,
+            rotation: 0,
+            positions: [],
+            attack: -1,
+            combo: 0
+        };
+        // 회전을 포함한 모든 실제 착지 후보를 비교한다. 공격력이 같으면 더 오른쪽 열을 선택한다.
+        player.aiSimulations.forEach((simulation) => {
+            if (simulation.x === defeatCheckColumn && causesImmediateDefeat(player, simulation)) return;
+            if (simulation.attack > bestPlacement.attack || (simulation.attack === bestPlacement.attack && simulation.x >= bestPlacement.x)) {
+                bestPlacement = simulation;
+            }
+        });
+        return bestPlacement;
+    }
+
+    /**
+     * 기존 열 기반 AI와의 호환을 위해 최고 공격 후보의 X 좌표만 반환한다.
+     * 새 AI는 회전 정보까지 포함하는 findBestAttackPlacement()를 사용해야 한다.
      * @param {PlayerState} player 자동 조작할 플레이어
      * @param {number} fallback 유효한 후보가 없을 때 사용할 열
      * @param {number|null} defeatCheckColumn 즉시 패배를 피할 X 좌표. null이면 검사하지 않는다.
      * @returns {number} 목표 X 좌표
      */
     function findBestAttackColumn(player, fallback, defeatCheckColumn = null) {
-        let bestColumn = fallback;
-        let bestAttack = -1;
-        // 세로 배치 후보만 비교해 가장 큰 예상 공격을 내는 열을 고른다.
-        player.aiSimulations
-            .filter((simulation) => simulation.rotation === 0)
-            .forEach((simulation) => {
-                if (simulation.x === defeatCheckColumn && causesImmediateDefeat(player, simulation)) return;
-                if (simulation.attack >= bestAttack) {
-                    bestAttack = simulation.attack;
-                    bestColumn = simulation.x;
-                }
-            });
-        return bestColumn;
+        return findBestAttackPlacement(player, fallback, defeatCheckColumn).x;
     }
 
     /**
@@ -3107,11 +3121,13 @@
                     const placement = findLandingPlacement(player, x, rotation);
                     // 벽이나 쌓인 뿌요 때문에 놓을 수 없는 후보는 제외한다.
                     if (!placement) continue;
+                    const positions = activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
                     simulations.push({
                         x,
                         rotation,
-                        positions: activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY })),
-                        attack: player.estimateAttack(player.active.colors, activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY })) )
+                        positions,
+                        attack: player.estimateAttack(player.active.colors, positions),
+                        combo: player.estimateCombo(player.active.colors, positions)
                     });
                 }
             }
@@ -3214,6 +3230,7 @@
             super();
             this.phase = 'initialLeft';
             this.turnsRemaining = this.randomTurns();
+            this.attackPlacement = null;
         }
 
         /**
@@ -3240,12 +3257,13 @@
             const trigger = this.attackSimulationTriggerPosition;
             const triggerOccupied = player.board[trigger.y][trigger.x] !== null;
             if (triggerOccupied || this.phase === 'simulation' || player.damage >= AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD) {
-                const bestColumn = findBestAttackColumn(player, 0, triggerOccupied ? trigger.x : null);
+                this.attackPlacement = findBestAttackPlacement(player, 0, triggerOccupied ? trigger.x : null);
                 this.phase = 'repeatLeft';
                 if (!triggerOccupied) this.turnsRemaining = 6;
-                return bestColumn;
+                return this.attackPlacement.x;
             }
 
+            this.attackPlacement = null;
             const target = this.phase === 'initialRight' ? COLUMNS - 1 : 0;
             this.turnsRemaining -= 1;
             // 현재 방향으로 충분히 쌓았으면 다음 배치 단계를 준비한다.
@@ -3258,6 +3276,11 @@
                 }
             }
             return target;
+        }
+
+        /** 공격력 시뮬레이션 단계에서는 최고 공격 후보가 요구하는 회전을 사용한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
+        chooseRotate(player) {
+            return this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player);
         }
 
         /**
@@ -3324,6 +3347,7 @@
             this.sortPriority = 2;
             this.turnCount = 0;
             this.turnsUntilSimulation = this.randomTurnsUntilSimulation();
+            this.attackPlacement = null;
         }
 
         /**
@@ -3343,16 +3367,25 @@
             const trigger = this.attackSimulationTriggerPosition;
             const triggerOccupied = player.board[trigger.y][trigger.x] !== null;
             if (triggerOccupied || player.damage >= AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD) {
-                return findBestAttackColumn(player, 0, triggerOccupied ? trigger.x : null);
+                this.attackPlacement = findBestAttackPlacement(player, 0, triggerOccupied ? trigger.x : null);
+                return this.attackPlacement.x;
             }
             this.turnCount += 1;
             const stackDirection = COLUMNS - 1;
-            if (this.turnCount <= this.turnsUntilSimulation || !player.active) return stackDirection;
+            if (this.turnCount <= this.turnsUntilSimulation || !player.active) {
+                this.attackPlacement = null;
+                return stackDirection;
+            }
 
-            const bestColumn = findBestAttackColumn(player, stackDirection);
+            this.attackPlacement = findBestAttackPlacement(player, stackDirection);
             this.turnCount = 0;
             this.turnsUntilSimulation = this.randomTurnsUntilSimulation();
-            return bestColumn;
+            return this.attackPlacement.x;
+        }
+
+        /** 공격력 시뮬레이션 단계에서는 최고 공격 후보가 요구하는 회전을 사용한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
+        chooseRotate(player) {
+            return this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player);
         }
 
         /**
@@ -3473,13 +3506,14 @@
     }
 
     /**
-     * 세레는 현재 자리에 뿌요를 내리는 임시 알고리즘을 사용하는 예지의 악마다.
+     * 세레는 필드 여유에 따라 연쇄를 모으거나 즉시 공격하는 예지의 악마다.
      */
     class Seere extends Enemy {
         constructor() {
             super();
             this.sortPriority = 3;
-            this.notAvail = true;
+            this.notAvail = false;
+            this.attackPlacement = null;
         }
 
         /**
@@ -3489,14 +3523,132 @@
             return '세레';
         }
 
+        /** 이번 턴에서 사용할 공격 후보를 초기화한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {void} */
+        prepareTurn(player) {
+            super.prepareTurn(player);
+            this.attackPlacement = null;
+        }
+
         /**
-         * 현재 생성된 열에서 수평 이동 없이 뿌요를 내린다.
+         * 현재 보드의 보이는 영역 점유율을 반환한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {number} 0~1 사이 점유율
+         */
+        getFieldOccupancy(player) {
+            let occupied = 0;
+            for (let y = 0; y < VISIBLE_ROWS; y += 1) {
+                for (let x = 0; x < COLUMNS; x += 1) if (player.board[y][x] !== null) occupied += 1;
+            }
+            return occupied / (COLUMNS * VISIBLE_ROWS);
+        }
+
+        /**
+         * 현재 예고된 방해뿌요 수를 반환한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {number} 다음 정산에 받을 수 있는 방해뿌요 수
+         */
+        getIncomingGarbage(player) {
+            const opponent = game?.players.find((candidate) => candidate !== player);
+            return player.damage + (opponent ? opponent.attack : 0);
+        }
+
+        /**
+         * 즉시 패배하는 후보를 제외한다. 특히 착지 좌표에 Y=2가 포함될 때도 최종 폭발·중력 결과를 검사한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {object[]} 안전한 시뮬레이션 후보
+         */
+        getSafeSimulations(player) {
+            return player.aiSimulations.filter((simulation) => {
+                const placedAtThirdRow = simulation.positions.some((position) => position.y === 2);
+                const losesImmediately = causesImmediateDefeat(player, simulation);
+                if (placedAtThirdRow && losesImmediately) return false;
+                return !losesImmediately;
+            });
+        }
+
+        /**
+         * 조건을 통과한 후보 중 점수가 가장 높은 것을 선택한다.
+         * @param {object[]} simulations 시뮬레이션 후보
+         * @param {(simulation:object)=>boolean} predicate 선택 조건
+         * @param {(simulation:object)=>number} score 후보 점수 함수
+         * @returns {object|null} 선택된 후보
+         */
+        selectSimulation(simulations, predicate, score) {
+            let selected = null;
+            let bestScore = -Infinity;
+            simulations.forEach((simulation) => {
+                if (!predicate(simulation)) return;
+                const currentScore = score(simulation);
+                if (currentScore >= bestScore) {
+                    selected = simulation;
+                    bestScore = currentScore;
+                }
+            });
+            return selected;
+        }
+
+        /**
+         * 아직 터뜨리지 않는 후보 중 다음 연쇄 재료를 가장 많이 만드는 배치를 선택한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @param {object[]} simulations 안전한 시뮬레이션 후보
+         * @returns {object|null} 쌓기용 후보
+         */
+        selectBuildSimulation(player, simulations) {
+            return this.selectSimulation(simulations, (simulation) => simulation.combo === 0, (simulation) => {
+                let score = 0;
+                simulation.positions.forEach((position, index) => {
+                    const color = player.active.colors[index];
+                    DIRECTIONS.forEach(([deltaX, deltaY]) => {
+                        const x = position.x + deltaX;
+                        const y = position.y + deltaY;
+                        if (x < 0 || x >= COLUMNS || y < 0 || y >= ROWS) return;
+                        if (player.board[y][x] === color) score += 12;
+                        else if (player.board[y][x] !== null) score += 1;
+                    });
+                    // 낮고 중앙에 가까운 기반을 우선해 여러 단계의 연쇄 재료를 모은다.
+                    score += Math.max(0, 8 - position.y) * 0.45;
+                    score -= Math.abs(position.x - (COLUMNS - 1) / 2) * 0.2;
+                });
+                return score;
+            });
+        }
+
+        /**
+         * 필드 상태에 맞는 공격 또는 쌓기 후보를 선택한다.
          * @param {PlayerState} player 자동 조작할 플레이어
          * @returns {number} 목표 X 좌표
          */
         chooseTarget(player) {
-            // TODO: 세레 정식 출시 시 고유한 AI 알고리즘을 구현한다.
-            return player.active ? player.active.x : 2;
+            const safeSimulations = this.getSafeSimulations(player);
+            const simulations = safeSimulations.length ? safeSimulations : player.aiSimulations;
+            const occupancy = this.getFieldOccupancy(player);
+            const incomingGarbage = this.getIncomingGarbage(player);
+            let selected = null;
+
+            // 예고 방해뿌요가 12개 이상이면 연쇄가 작아도 가장 큰 즉시 공격을 우선한다.
+            if (incomingGarbage >= 12) {
+                selected = this.selectSimulation(simulations, () => true, (simulation) => simulation.attack);
+            } else if (occupancy <= 0.3) {
+                // 여유가 있으면 3~4연쇄가 가능한 때까지는 터뜨리지 않고 재료를 쌓는다.
+                selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 3 && simulation.combo <= 4, (simulation) => simulation.attack);
+                if (!selected) selected = this.selectBuildSimulation(player, simulations);
+            } else if (occupancy >= 0.5) {
+                // 필드가 절반 이상 차면 정확한 2연쇄를 우선하고, 없으면 2연쇄 이상 공격을 선택한다.
+                selected = this.selectSimulation(simulations, (simulation) => simulation.combo === 2, (simulation) => simulation.attack);
+                if (!selected) selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 2, (simulation) => simulation.attack - Math.abs(simulation.combo - 2) * 10000);
+            } else {
+                // 중간 높이에서는 3~4연쇄 기회를 계속 찾되, 아직 없으면 터뜨리지 않고 쌓는다.
+                selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 3 && simulation.combo <= 4, (simulation) => simulation.attack);
+                if (!selected) selected = this.selectBuildSimulation(player, simulations);
+            }
+
+            this.attackPlacement = selected || findBestAttackPlacement(player, player.active ? player.active.x : 2);
+            return this.attackPlacement.x;
+        }
+
+        /** 선택된 공격 또는 쌓기 후보의 회전값을 적용한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
+        chooseRotate(player) {
+            return this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player);
         }
 
         /**
@@ -3595,6 +3747,136 @@
     }
 
     /**
+     * 데카라비아는 추후 정식 AI를 추가할 예정인 출시 예정 적이다.
+     */
+    class Decarabia extends Enemy {
+        constructor() {
+            super();
+            this.sortPriority = 4;
+            this.notAvail = true;
+        }
+
+        /** @returns {string} 적 이름 */
+        getName() {
+            return '데카라비아';
+        }
+
+        /**
+         * TODO: 데카라비아 정식 출시 시 고유한 AI 알고리즘을 구현한다.
+         * 현재는 생성된 열과 세로 상태를 유지해 아무 조작 없이 자연 낙하한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {number} 목표 X 좌표
+         */
+        chooseTarget(player) {
+            return player.active ? player.active.x : 2;
+        }
+
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
+        chooseRotate(player) {
+            return 0;
+        }
+
+        /**
+         * TODO: 데카라비아 정식 출시 시 고유한 AI가 빠른 하강 정책도 결정한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {boolean} 빠른 하강 사용 여부
+         */
+        useFastDown(player) {
+            return false;
+        }
+
+        /**
+         * 박쥐 날개와 별 장식을 가진 데카라비아의 일반·위기·패배 표정을 그린다.
+         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+         * @param {number} centerX 캐릭터 중심 X 좌표
+         * @param {number} centerY 캐릭터 중심 Y 좌표
+         * @param {number} scale 기본 크기 대비 배율
+         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+         * @returns {void}
+         */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            const size = 72 * scale;
+            drawingContext.save();
+            drawingContext.translate(centerX, centerY);
+            drawingContext.lineJoin = 'round';
+            drawingContext.fillStyle = '#5c354e';
+            drawingContext.strokeStyle = '#2b1a31';
+            drawingContext.lineWidth = 4 * scale;
+            [-1, 1].forEach((direction) => {
+                drawingContext.beginPath();
+                drawingContext.moveTo(direction * size * 0.3, -size * 0.05);
+                drawingContext.lineTo(direction * size * 0.92, -size * 0.48);
+                drawingContext.lineTo(direction * size * 0.7, size * 0.4);
+                drawingContext.lineTo(direction * size * 0.27, size * 0.32);
+                drawingContext.closePath();
+                drawingContext.fill();
+                drawingContext.stroke();
+            });
+            drawingContext.fillStyle = '#a55b80';
+            drawingContext.beginPath();
+            drawingContext.arc(0, 0, size * 0.52, 0, Math.PI * 2);
+            drawingContext.fill();
+            drawingContext.stroke();
+            drawingContext.fillStyle = '#ffd76b';
+            drawingContext.beginPath();
+            for (let index = 0; index < 10; index += 1) {
+                const angle = -Math.PI / 2 + index * Math.PI / 5;
+                const radius = index % 2 ? size * 0.15 : size * 0.31;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius - size * 0.58;
+                if (index === 0) drawingContext.moveTo(x, y);
+                else drawingContext.lineTo(x, y);
+            }
+            drawingContext.closePath();
+            drawingContext.fill();
+            drawingContext.stroke();
+
+            if (expression === 'defeated') {
+                drawingContext.strokeStyle = '#f3edff';
+                drawingContext.lineWidth = 3 * scale;
+                [-size * 0.18, size * 0.18].forEach((eyeX) => {
+                    drawingContext.beginPath();
+                    drawingContext.moveTo(eyeX - size * 0.09, -size * 0.1);
+                    drawingContext.lineTo(eyeX + size * 0.09, size * 0.1);
+                    drawingContext.moveTo(eyeX + size * 0.09, -size * 0.1);
+                    drawingContext.lineTo(eyeX - size * 0.09, size * 0.1);
+                    drawingContext.stroke();
+                });
+                drawingContext.fillStyle = '#75c9f0';
+                drawingContext.beginPath();
+                drawingContext.ellipse(0, size * 0.27, size * 0.13, size * 0.08, 0, 0, Math.PI * 2);
+                drawingContext.fill();
+            } else {
+                drawingContext.fillStyle = expression === 'crisis' ? '#fff5bb' : '#f7efff';
+                [-size * 0.18, size * 0.18].forEach((eyeX) => {
+                    drawingContext.beginPath();
+                    drawingContext.ellipse(eyeX, -size * 0.1, size * 0.11, size * 0.14, 0, 0, Math.PI * 2);
+                    drawingContext.fill();
+                });
+                drawingContext.fillStyle = expression === 'crisis' ? '#ef5350' : '#3c2347';
+                [-size * 0.18, size * 0.18].forEach((eyeX) => {
+                    drawingContext.beginPath();
+                    drawingContext.arc(eyeX, -size * 0.08, size * 0.047, 0, Math.PI * 2);
+                    drawingContext.fill();
+                });
+                drawingContext.strokeStyle = '#3c2347';
+                drawingContext.lineWidth = 3 * scale;
+                drawingContext.beginPath();
+                if (expression === 'crisis') drawingContext.arc(0, size * 0.32, size * 0.12, Math.PI, Math.PI * 2);
+                else drawingContext.arc(0, size * 0.16, size * 0.12, 0, Math.PI);
+                drawingContext.stroke();
+                if (expression === 'crisis') {
+                    drawingContext.fillStyle = '#82d9f5';
+                    drawingContext.beginPath();
+                    drawingContext.ellipse(size * 0.42, size * 0.06, size * 0.06, size * 0.11, 0.2, 0, Math.PI * 2);
+                    drawingContext.fill();
+                }
+            }
+            drawingContext.restore();
+        }
+    }
+
+    /**
      * 연습 모드에서 조작하거나 뿌요를 받지 않는 상대다.
      */
     class PracticeEnemy extends Enemy {
@@ -3614,7 +3896,8 @@
     OPPONENTS.push(
         createOpponentEntry(() => new Andromalius()),
         createOpponentEntry(() => new Dantalion()),
-        createOpponentEntry(() => new Seere())
+        createOpponentEntry(() => new Seere()),
+        createOpponentEntry(() => new Decarabia())
     );
 
     WebPuyo = {

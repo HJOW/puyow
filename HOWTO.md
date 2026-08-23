@@ -126,7 +126,7 @@ class CustomEnemy extends WebPuyo.Enemy {
 }
 ```
 
-`prepareTurn(player)`의 기본 구현은 현재 놓을 수 있는 모든 열·회전 조합을 검사해 `player.aiSimulations`를 만듭니다. 각 후보에는 목표 `x`, `rotation`, 실제 착지할 `positions`, 해당 배치의 예상 `attack`이 들어갑니다. 조작 중인 뿌요가 없으면 빈 배열을 저장합니다. 이 목록을 직접 만들거나 재사용하는 AI는 실제로 놓을 수 없는 후보가 포함되지 않는다는 점을 전제로 할 수 있습니다.
+`prepareTurn(player)`의 기본 구현은 현재 놓을 수 있는 모든 열·회전 조합을 검사해 `player.aiSimulations`를 만듭니다. 각 후보에는 목표 `x`, `rotation`, 실제 착지할 `positions`, 해당 배치의 예상 `attack`, 전체 예상 연쇄 수인 `combo`가 들어갑니다. 조작 중인 뿌요가 없으면 빈 배열을 저장합니다. 이 목록을 직접 만들거나 재사용하는 AI는 실제로 놓을 수 없는 후보가 포함되지 않는다는 점을 전제로 할 수 있습니다.
 
 ```js
 class CenterEnemy extends WebPuyo.Enemy {
@@ -249,9 +249,9 @@ class NightEnemy extends WebPuyo.Enemy {
 
 ## 알고리즘 작성 방법
 
-CPU 한 차례를 시작할 때 게임은 `prepareTurn(player)`, `chooseTarget(player)`, `chooseRotate(player)` 순서로 목표를 결정합니다. 그 뒤 조작 단계 동안 `useFastDown(player)`을 매 프레임 호출해 빠른 하강 시점을 확인합니다. `prepareTurn()`은 위치와 회전별 가상 착지 결과 및 예상 공격력을 `player.aiSimulations`에 준비합니다. 하위 클래스가 재정의할 때는 `super.prepareTurn(player)`을 먼저 호출해 기본 후보 생성을 유지해야 합니다. 그 다음 선택 메서드는 같은 후보 목록을 읽어 서로 일관된 목표 열과 회전을 반환할 수 있습니다.
+CPU 한 차례를 시작할 때 게임은 `prepareTurn(player)`, `chooseTarget(player)`, `chooseRotate(player)` 순서로 목표를 결정합니다. 그 뒤 조작 단계 동안 `useFastDown(player)`을 매 프레임 호출해 빠른 하강 시점을 확인합니다. `prepareTurn()`은 위치와 회전별 가상 착지 결과, 예상 공격력, 예상 연쇄 수를 `player.aiSimulations`에 준비합니다. 하위 클래스가 재정의할 때는 `super.prepareTurn(player)`을 먼저 호출해 기본 후보 생성을 유지해야 합니다. 그 다음 선택 메서드는 같은 후보 목록을 읽어 서로 일관된 목표 열과 회전을 반환할 수 있습니다.
 
-`chooseTarget(player)`에서는 현재 CPU 필드를 읽고, 이번 뿌요 쌍을 어느 열에 둘지 결정합니다. `chooseRotate(player)`는 목표 회전값을 반환합니다. 기본값은 세로 상태인 `0`이며, `1`은 오른쪽, `2`는 아래, `3`은 왼쪽입니다.
+`chooseTarget(player)`에서는 현재 CPU 필드를 읽고, 이번 뿌요 쌍을 어느 열에 둘지 결정합니다. `chooseRotate(player)`는 목표 회전값을 반환합니다. 기본값은 세로 상태인 `0`이며, `1`은 오른쪽, `2`는 아래, `3`은 왼쪽입니다. 공격력 시뮬레이션처럼 열과 회전을 함께 골랐다면 `chooseTarget()`에서 선택한 후보를 인스턴스 필드에 보관하고, `chooseRotate()`에서 같은 후보의 `rotation`을 반환해야 합니다.
 
 `useFastDown(player)`은 목표 열과 회전이 결정된 뒤 AI가 아래 방향키를 눌러 이번 뿌요 쌍을 빠르게 내릴지 결정합니다. 기본 `Enemy` 구현은 선택된 AI 난이도에 따라 동작합니다. `쉬움`은 빠른 하강을 사용하지 않고, `보통`은 목표 결정 2,000ms 뒤, `어려움`은 500ms 뒤에도 조작 중일 때 빠르게 하강합니다. 기본 제공되는 안드로말리우스와 단탈리온도 이 정책을 그대로 따릅니다. 사용자 정의 AI가 자체 정책을 사용하려면 이 메서드를 재정의하고, 기본 정책을 일부 유지하려면 `super.useFastDown(player)`를 호출합니다.
 
@@ -276,7 +276,7 @@ const difficultyColors = player.colors.slice(0, colorCount);
 - `player.board[y][x]`에는 해당 칸의 색상 문자열 또는 빈 칸의 `null`이 있습니다.
 - 좌표는 왼쪽 아래가 `(0, 0)`입니다. `x`는 `0`부터 `5`, `y`는 `0`부터 `16`입니다. `y=0`부터 `11`은 화면에 보이는 12줄이고, `y=12`는 조작 뿌요가 생성되는 기존 숨김 행이며, `y=13`부터 `16`은 방해뿌요 생성 전용의 추가 숨김 행입니다.
 - 현재 떨어지는 쌍은 `player.active`에 있고, 색상은 `player.active.colors` 배열에 있습니다.
-- `player.aiSimulations`의 각 항목에는 `x`, `rotation`, `positions`, `attack`이 있습니다. `positions`는 실제 착지 좌표이고 `attack`은 해당 배치의 예상 공격력입니다.
+- `player.aiSimulations`의 각 항목에는 `x`, `rotation`, `positions`, `attack`, `combo`가 있습니다. `positions`는 실제 착지 좌표이고 `attack`은 해당 배치의 예상 공격력이며, `combo`는 그 배치에서 최종적으로 일어날 전체 연쇄 수입니다.
 - 기본 `prepareTurn()`은 현재 보드에서 실제로 착지할 수 있는 후보만 목록에 넣습니다. 따라서 AI는 존재하지 않는 후보를 별도로 걸러낼 필요가 없습니다.
 - 반환값은 `0`부터 `5` 사이의 목표 X 좌표여야 합니다.
 - 회전값은 `0`부터 `3` 사이여야 하며, 게임 루프는 회전과 수평 이동을 모두 수행합니다.
@@ -289,7 +289,7 @@ class AttackEnemy extends WebPuyo.Enemy {
 		super.prepareTurn(player);
 		this.bestMove = player.aiSimulations.reduce(
 			(best, candidate) => candidate.attack >= best.attack ? candidate : best,
-			{ x: 5, rotation: 0, attack: -1 }
+			{ x: 5, rotation: 0, attack: -1, combo: 0 }
 		);
 	}
 
