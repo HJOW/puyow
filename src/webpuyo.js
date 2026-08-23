@@ -97,8 +97,8 @@
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
-            '게임 시작': 'Game Start', '연습': 'Practice', '난이도 선택': 'Difficulty', '색상 수': 'Colors', '빠르게 두기': 'Fast drop', '적 선택': 'Opponent',
-            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '시작': 'Start', '이전': 'Back',
+            '게임 시작': 'Game Start', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent',
+            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
             '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked',
@@ -1904,7 +1904,7 @@
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 90 : 170);
         if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'opponent') {
-            context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('색상 수'), WIDTH / 2, 120);
+            context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('난이도'), WIDTH / 2, 130);
             DIFFICULTIES.forEach((difficulty, index) => {
                 const x = 465 + index * 120;
                 const selected = index === selectedDifficulty;
@@ -1913,14 +1913,13 @@
                 context.strokeRect(x, 135, 110, 44);
                 context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 163);
             });
-            context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('빠르게 두기'), WIDTH / 2, 205);
             AI_DIFFICULTIES.forEach((difficulty, index) => {
                 const x = 465 + index * 120;
                 const selected = index === selectedAiDifficulty;
-                context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 220, 110, 44);
+                context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 195, 110, 44);
                 context.strokeStyle = opponentMenuFocus === 1 && selected ? '#f7c843' : '#3b6070'; context.lineWidth = opponentMenuFocus === 1 && selected ? 4 : 2;
-                context.strokeRect(x, 220, 110, 44);
-                context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 248);
+                context.strokeRect(x, 195, 110, 44);
+                context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 223);
             });
             context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('적 선택'), WIDTH / 2, 285);
             ensureSelectedOpponent();
@@ -1929,7 +1928,7 @@
             context.strokeStyle = opponentMenuFocus === 2 ? '#f7c843' : '#ef8aa0'; context.lineWidth = opponentMenuFocus === 2 ? 4 : 3; context.strokeRect(WIDTH / 2 - 170, 300, 340, 170);
             if (opponent) {
                 opponent.createController().drawPortrait(context, WIDTH / 2, 375, 0.62);
-                context.fillStyle = '#f5fbfc'; context.font = `28px ${BUTTON_FONT}`; context.fillText(opponent.createController().getName(), WIDTH / 2, 450);
+                context.fillStyle = '#f5fbfc'; context.font = `28px ${BUTTON_FONT}`; context.fillText(translate(opponent.createController().getName()), WIDTH / 2, 450);
             }
             if (opponentMenuFocus === 2) {
                 context.fillStyle = '#f7c843';
@@ -1960,10 +1959,10 @@
                     context.globalAlpha = 0.42;
                     entry.createController().drawPortrait(context, cardX + 24, 495, 0.14);
                     context.restore();
-                    context.fillStyle = '#c4cbd0'; context.font = `15px ${BUTTON_FONT}`; context.fillText(entry.createController().getName(), cardX + 94, 500);
+                    context.fillStyle = '#c4cbd0'; context.font = `15px ${BUTTON_FONT}`; context.fillText(translate(entry.createController().getName()), cardX + 94, 500);
                     context.fillStyle = '#f0c674'; context.font = `13px ${BUTTON_FONT}`; context.fillText(translate(entry.notAvail ? '추후 출시예정' : '잠김'), cardX + 80, 524);
                 } else {
-                    context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(entry.createController().getName(), cardX + 80, 513);
+                    context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(entry.createController().getName()), cardX + 80, 513);
                 }
             });
             context.fillStyle = '#ef5350'; context.fillRect(440, 600, 250, 58);
@@ -2419,7 +2418,7 @@
                 opponentMenuFocus = 0;
                 return;
             }
-            const aiDifficultyIndex = AI_DIFFICULTIES.findIndex((difficulty, index) => opponentX >= 465 + index * 120 && opponentX <= 575 + index * 120 && opponentY >= 220 && opponentY <= 264);
+            const aiDifficultyIndex = AI_DIFFICULTIES.findIndex((difficulty, index) => opponentX >= 465 + index * 120 && opponentX <= 575 + index * 120 && opponentY >= 195 && opponentY <= 239);
             if (aiDifficultyIndex >= 0) {
                 selectedAiDifficulty = aiDifficultyIndex;
                 opponentMenuFocus = 1;
