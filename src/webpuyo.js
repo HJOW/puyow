@@ -100,7 +100,7 @@
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
-            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.'
+            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 및 AI 관련 기능은 추후 제공 예정': 'Sound and AI features will be available in a future update.'
         }
     };
 
@@ -118,6 +118,8 @@
     let webMcpAbortController = null;
     /** 현재 실행 중인 게임 상태다. @type {object|null} */
     let game = null;
+    /** 메인 화면 왼쪽에 표시할 notice.txt 원문이다. @type {string} */
+    let noticeText = '';
     /** 설정 화면에서 임시로 편집 중인 값이다. @type {object|null} */
     let settingsDraft = null;
     /** 설정 화면의 포커스 항목 인덱스다. @type {number} */
@@ -128,7 +130,7 @@
     let settingsCursor = 0;
     /** AI가 강조 표시하도록 지정한 플레이어 필드 좌표다. @type {{x:number, y:number}|null} */
     let recommendedPoint = null;
-    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'title'|'opponent'|'practiceDifficulty'|'simulator'} */
+    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'title'|'opponent'|'practiceDifficulty'|'simulator'|'settings'} */
     let menuScreen = 'title';
     /** 시뮬레이터의 편집·재생 상태다. @type {object|null} */
     let simulator = null;
@@ -216,6 +218,25 @@
         } catch (error) {
             console.error('Puyo W 저장 데이터 불러오기에 실패했습니다.', error);
             store = createInitialStore();
+        }
+    }
+
+    /**
+     * webpuyo.js와 같은 경로의 notice.txt를 읽는다. 읽기 실패 시 빈 안내문으로 둔다.
+     * @returns {Promise<void>}
+     */
+    async function loadNotice() {
+        if (typeof fetch !== 'function' || typeof document === 'undefined') return;
+        try {
+            const script = [...(document.scripts || [])].find((element) => /webpuyo(?:\.min)?\.js(?:[?#]|$)/.test(element.src));
+            const baseUrl = script?.src ? new URL(script.src, document.baseURI) : new URL(document.baseURI);
+            baseUrl.pathname = `${baseUrl.pathname.substring(0, baseUrl.pathname.lastIndexOf('/') + 1)}notice.txt`;
+            const response = await fetch(baseUrl.href);
+            if (!response.ok) throw new Error(`notice.txt 요청 실패 (${response.status})`);
+            noticeText = await response.text();
+        } catch (error) {
+            console.error('notice.txt를 불러오지 못했습니다.', error);
+            noticeText = '';
         }
     }
 
@@ -1564,13 +1585,13 @@
         store.settings = { ...settingsDraft };
         saveStore();
         settingsDraft = null; settingsEditing = false;
-        menuScreen = 'title';
+        menuScreen = 'title'; loadNotice();
     }
 
     /** 설정 화면을 저장하지 않고 닫는다. @returns {void} */
     function cancelSettings() {
         settingsDraft = null; settingsEditing = false;
-        menuScreen = 'title';
+        menuScreen = 'title'; loadNotice();
     }
 
     /** 설정 화면의 포커스 항목을 실행한다. @returns {void} */
@@ -1608,9 +1629,29 @@
             }
         });
         context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `14px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 560, 535);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `15px ${MESSAGE_FONT}`; context.fillText(translate('사운드 및 AI 관련 기능은 추후 제공 예정'), WIDTH / 2, 570);
         [{ label: '저장', x: 560, focus: 5, color: '#4cc9b0' }, { label: '취소', x: 800, focus: 6, color: '#ef5350' }].forEach((button) => {
             context.fillStyle = button.color; context.fillRect(button.x, 590, 200, 58); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 4 : 2; context.strokeRect(button.x, 590, 200, 58); context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 100, 627);
         });
+    }
+
+    /** 메인 화면 왼쪽에 notice.txt 내용을 줄바꿈해 표시한다. @returns {void} */
+    function drawNotice() {
+        if (!noticeText) return;
+        const x = 42; const y = 230; const width = 300; const lineHeight = 18; const lines = [];
+        context.save();
+        context.beginPath(); context.rect(x, y, width, 390); context.clip();
+        context.fillStyle = '#a9d9e5'; context.textAlign = 'left'; context.font = `13px ${quoteFontNameIfNeeded(MESSAGE_FONT_NAME)}`;
+        noticeText.split(/\r?\n/).forEach((sourceLine) => {
+            let line = '';
+            for (const character of sourceLine) {
+                const candidate = line + character;
+                if (line && context.measureText(candidate).width > width) { lines.push(line); line = character; } else line = candidate;
+            }
+            lines.push(line);
+        });
+        lines.forEach((line, index) => context.fillText(line, x, y + 16 + index * lineHeight));
+        context.restore();
     }
 
     /** 시뮬레이터 팔레트와 버튼 영역을 반환한다. @returns {{kind:string,value:string|null,x:number,y:number,width:number,height:number}[]} */
@@ -1693,7 +1734,7 @@
         else if (item.kind === 'play') startSimulatorPlayback();
         else if (item.kind === 'copyJson') copySimulatorJson();
         else if (item.kind === 'pasteJson') pasteSimulatorJson();
-        else { simulator = null; menuScreen = 'title'; }
+        else { simulator = null; menuScreen = 'title'; loadNotice(); }
     }
 
     /** 편집 보드를 보관하고 중력 단계부터 재생한다. @returns {void} */
@@ -1810,6 +1851,7 @@
     function drawMenu() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 112 : 170);
+        if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'opponent') {
             context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('난이도 선택'), WIDTH / 2, 150);
             DIFFICULTIES.forEach((difficulty, index) => {
@@ -2062,7 +2104,7 @@
         if (game && !game.running && (key === 'enter' || key === 'escape')) {
             const returnToTitle = game.practice;
             game = null;
-            if (returnToTitle) menuScreen = 'title';
+            if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
             else openOpponentMenu();
             return;
         }
@@ -2072,7 +2114,7 @@
                 if (key === 'arrowleft' || key === 'arrowup') selectedDifficulty = (selectedDifficulty + DIFFICULTIES.length - 1) % DIFFICULTIES.length;
                 else if (key === 'arrowright' || key === 'arrowdown') selectedDifficulty = (selectedDifficulty + 1) % DIFFICULTIES.length;
                 else if (key === 'enter' || key === ' ') startGame(true);
-                else if (key === 'escape') menuScreen = 'title';
+                else if (key === 'escape') { menuScreen = 'title'; loadNotice(); }
                 return;
             }
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
@@ -2101,7 +2143,7 @@
                     opponentMenuFocus = 2;
                     selectedOpponentAction = 0;
                 } else if (selectedOpponentAction === 0) startGame();
-                else menuScreen = 'title';
+                else { menuScreen = 'title'; loadNotice(); }
             } else if (menuScreen === 'settings' && ['arrowup', 'arrowdown'].includes(key)) {
                 settingsFocus = (settingsFocus + (key === 'arrowup' ? 6 : 1)) % 7;
             } else if (menuScreen === 'settings' && ['arrowleft', 'arrowright'].includes(key)) {
@@ -2115,7 +2157,7 @@
                 const field = settingsFocus === 3 ? 'aiApiKey' : 'aiModel'; settingsDraft[field] += event.key;
             } else if (key === 'escape' && menuScreen === 'settings') {
                 cancelSettings();
-            } else if (key === 'escape' && menuScreen === 'opponent') menuScreen = 'title';
+            } else if (key === 'escape' && menuScreen === 'opponent') { menuScreen = 'title'; loadNotice(); }
             return;
         }
         // 결과 화면에서는 위에서 처리한 메뉴 복귀 외 입력을 무시한다.
@@ -2195,7 +2237,7 @@
             game.paused = false;
         } else {
             game = null;
-            menuScreen = 'title';
+            menuScreen = 'title'; loadNotice();
         }
     }
 
@@ -2230,7 +2272,7 @@
             if (x >= 515 && x <= 765 && y >= 165 && y <= 229) {
                 const returnToTitle = game.practice;
                 game = null;
-                if (returnToTitle) menuScreen = 'title';
+                if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
                 else openOpponentMenu();
             }
             return;
@@ -2327,7 +2369,7 @@
                 startGame();
             } else if (x >= 710 && x <= 840 && y >= 600 && y <= 658) {
                 selectedOpponentAction = 1;
-                menuScreen = 'title';
+                menuScreen = 'title'; loadNotice();
             }
         }
     }
@@ -2568,6 +2610,7 @@
         window.addEventListener('keyup', handleKeyup);
         canvas.addEventListener('click', handleCanvasClick);
         registerWebMcpTools();
+        loadNotice();
         animationFrameId = requestAnimationFrame(frame);
     }
 
