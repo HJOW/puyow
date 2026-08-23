@@ -2440,7 +2440,7 @@
                 titleMenuFocus = 3;
                 activateTitleMenu();
             } else if (x >= 32 && x <= 202 && y >= 642 && y <= 688) {
-                titleMenuFocus = 3;
+                titleMenuFocus = 4;
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
@@ -2457,6 +2457,10 @@
                 if (difficultyIndex >= 0) {
                     selectedDifficulty = difficultyIndex;
                     startGame(true);
+                } else {
+                    // 난이도 선택지 바깥을 클릭하면 ESC와 같이 메인 화면으로 돌아간다.
+                    menuScreen = 'title';
+                    loadNotice();
                 }
                 return;
             }
