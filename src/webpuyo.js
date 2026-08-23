@@ -87,6 +87,12 @@
     const HORIZONTAL_HOLD_DELAY = 100;
     /** 좌우 방향키 홀드 중 반복 이동 간격(ms)이다. @type {number} */
     const HORIZONTAL_REPEAT_INTERVAL = 80;
+    /** AI 쉬움 난이도에서 빠른 하강을 사용하지 않음을 나타내는 지연 시간이다. @type {null} */
+    const AI_FAST_DOWN_DELAY_EASY = null;
+    /** AI 보통 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number} */
+    const AI_FAST_DOWN_DELAY_NORMAL = 1000;
+    /** AI 어려움 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number} */
+    const AI_FAST_DOWN_DELAY_HARD = 300;
     /** 공통 뿌요 쌍 대기열의 초기 길이다. @type {number} */
     const INITIAL_PAIR_QUEUE_LENGTH = 16;
     /** 브라우저 저장소에 사용할 키다. @type {string} */
@@ -175,13 +181,13 @@
     ];
     /** AI 빠른 하강 시점별 난이도다. @type {{key:'easy'|'normal'|'hard', name:string, fastDownDelay:number|null}[]} */
     const AI_DIFFICULTIES = [
-        { key: 'easy', name: '쉬움', fastDownDelay: null },
-        { key: 'normal', name: '보통', fastDownDelay: 2000 },
-        { key: 'hard', name: '어려움', fastDownDelay: 500 }
+        { key: 'easy', name: '쉬움', fastDownDelay: AI_FAST_DOWN_DELAY_EASY },
+        { key: 'normal', name: '보통', fastDownDelay: AI_FAST_DOWN_DELAY_NORMAL },
+        { key: 'hard', name: '어려움', fastDownDelay: AI_FAST_DOWN_DELAY_HARD }
     ];
     /** 등록된 기본 및 외부 적 목록이다. @type {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} */
     const OPPONENTS = [];
-    /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {{Enemy:typeof Enemy, registerOpponent:typeof registerOpponent, registerLanguage:typeof registerLanguage, setNoticeFile:typeof setNoticeFile, getSelectedDifficulty:typeof getSelectedDifficulty, initialize:typeof initialize, destroy:typeof destroy}|null} */
+    /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {{Enemy:typeof Enemy, registerOpponent:typeof registerOpponent, registerLanguage:typeof registerLanguage, setNoticeFile:typeof setNoticeFile, getSelectedDifficulty:typeof getSelectedDifficulty, getSelectedColorCount:typeof getSelectedColorCount, initialize:typeof initialize, destroy:typeof destroy}|null} */
     let WebPuyo = null;
 
     /**
@@ -277,6 +283,17 @@
         const index = game ? game.aiDifficulty : selectedAiDifficulty;
         const difficulty = AI_DIFFICULTIES[index] || AI_DIFFICULTIES[1];
         return { ...difficulty };
+    }
+
+    /**
+     * 현재 게임에 적용할 색상 수 설정을 반환한다.
+     * 게임 중에는 시작할 때 선택한 값이 반환되고, 메뉴에서는 현재 선택 중인 값이 반환된다.
+     * @returns {3|4|5} 사용할 일반 뿌요 색상 수
+     */
+    function getSelectedColorCount() {
+        const index = game ? game.difficulty : selectedDifficulty;
+        const difficulty = DIFFICULTIES[index] || DIFFICULTIES[1];
+        return difficulty.colors.length;
     }
 
     /**
@@ -3232,7 +3249,7 @@
         createOpponentEntry(() => new Seere())
     );
 
-    WebPuyo = { Enemy, registerOpponent, registerLanguage, setNoticeFile, getSelectedDifficulty, initialize, destroy };
+    WebPuyo = { Enemy, registerOpponent, registerLanguage, setNoticeFile, getSelectedDifficulty, getSelectedColorCount, initialize, destroy };
     if (typeof module !== 'undefined' && module.exports) module.exports = WebPuyo;
     if (typeof window !== 'undefined') window.WebPuyo = WebPuyo;
 })();

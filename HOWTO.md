@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function() {
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, registerOpponent, getSelectedDifficulty, initialize } = require('./src/webpuyo.js');
+const { Enemy, registerOpponent, getSelectedDifficulty, getSelectedColorCount, initialize } = require('./src/webpuyo.js');
 ```
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 1280x720 canvas를 만들어 게임을 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 그대로 사용하고 `destroy()`가 요소를 제거하지 않습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
@@ -250,6 +250,15 @@ const difficulty = WebPuyo.getSelectedDifficulty();
 if (difficulty.key === 'hard') {
 	// 어려움 AI에 맞춘 별도 판단
 }
+```
+
+빠른 하강 대기 시간은 `AI_FAST_DOWN_DELAY_EASY`(사용하지 않음), `AI_FAST_DOWN_DELAY_NORMAL`(2,000ms), `AI_FAST_DOWN_DELAY_HARD`(500ms)로 난이도별 관리됩니다. 게임 외부에서 이 값을 직접 바꾸는 대신 `getSelectedDifficulty()`의 `fastDownDelay`를 사용해 현재 정책을 확인할 수 있습니다.
+
+`WebPuyo.getSelectedColorCount()`는 게임에 적용할 일반 뿌요 색상 수를 `3`, `4`, `5` 중 하나로 반환합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환하므로 색상 수에 맞춘 AI 후보 생성을 구현할 때 사용할 수 있습니다.
+
+```js
+const colorCount = WebPuyo.getSelectedColorCount();
+const difficultyColors = player.colors.slice(0, colorCount);
 ```
 
 - `player.board[y][x]`에는 해당 칸의 색상 문자열 또는 빈 칸의 `null`이 있습니다.
