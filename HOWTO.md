@@ -273,6 +273,22 @@ const colorCount = WebPuyo.getSelectedColorCount();
 const difficultyColors = player.colors.slice(0, colorCount);
 ```
 
+## 다음 뿌요 정보 읽기
+
+`WebPuyo.getNextPairs()`는 중앙 영역에 표시되는 플레이어와 적의 다음 두 뿌요 쌍을 JSON 직렬화 가능한 복사본으로 반환합니다. 각 쌍의 배열은 아래 뿌요, 위 뿌요 순서입니다. 게임이 아직 생성되지 않은 메뉴 상태에서는 `null`을 반환합니다.
+
+```js
+const next = WebPuyo.getNextPairs();
+if (next) {
+	console.log(next.player.name, next.player.nextPairs);
+	console.log(next.opponent.name, next.opponent.nextPairs);
+}
+// 예: { player: { name, nextPairs: [['red', 'blue'], ['green', 'green']] },
+//       opponent: { name, nextPairs: [['red', 'blue'], ['green', 'green']] } }
+```
+
+반환된 `nextPairs`는 내부 대기열의 복사본이므로 값을 변경해도 실제 게임의 다음 뿌요에는 영향을 주지 않습니다.
+
 - `player.board[y][x]`에는 해당 칸의 색상 문자열 또는 빈 칸의 `null`이 있습니다.
 - 좌표는 왼쪽 아래가 `(0, 0)`입니다. `x`는 `0`부터 `5`, `y`는 `0`부터 `16`입니다. `y=0`부터 `11`은 화면에 보이는 12줄이고, `y=12`는 조작 뿌요가 생성되는 기존 숨김 행이며, `y=13`부터 `16`은 방해뿌요 생성 전용의 추가 숨김 행입니다.
 - 현재 떨어지는 쌍은 `player.active`에 있고, 색상은 `player.active.colors` 배열에 있습니다.

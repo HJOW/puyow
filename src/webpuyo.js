@@ -85,7 +85,7 @@
     const stringTable = {
         en: {
             '게임 시작': 'Game Start', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent',
-            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '시작': 'Start', '이전': 'Back',
+            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
             '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked',
@@ -97,7 +97,7 @@
         },
         ja: {
             '게임 시작': 'ゲーム開始', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手',
-            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '시작': '開始', '이전': '戻る',
+            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '시작': '開始', '이전': '戻る',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
             '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中',
@@ -109,7 +109,7 @@
         },
         zh: {
             '게임 시작': '开始游戏', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手',
-            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '시작': '开始', '이전': '返回',
+            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
             '연습 상대': '练习对手', '추후 출시예정': '即将推出', '잠김': '已锁定',
@@ -992,6 +992,66 @@
             });
             simulatedBoard = collapseBoard(simulatedBoard);
         }
+    }
+
+    /**
+     * 뿌요 한 쌍을 가상 배치하고 폭발·중력을 모두 처리한 안정 상태의 보드를 만든다.
+     * @param {(string|null)[][]} sourceBoard 배치 전 보드
+     * @param {string[]} colors 배치할 두 뿌요 색상
+     * @param {{x:number,y:number}[]} positions 두 뿌요의 착지 좌표
+     * @returns {(string|null)[][]|null} 안정 상태 보드. 유효하지 않은 배치면 null
+     */
+    function simulatePlacementBoard(sourceBoard, colors, positions) {
+        if (!Array.isArray(colors) || !Array.isArray(positions) || colors.length !== 2 || positions.length !== 2) return null;
+        let board = sourceBoard.map((row) => [...row]);
+        for (let index = 0; index < 2; index += 1) {
+            const { x, y } = positions[index] || {};
+            if (!COLORS.includes(colors[index]) || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COLUMNS || y < 0 || y >= ROWS || board[y][x]) return null;
+            board[y][x] = colors[index];
+        }
+        board = collapseBoard(board);
+        while (true) {
+            const exploding = findExplosionsOnBoard(board);
+            if (!exploding.length) return board;
+            const removed = new Set(exploding.map(([x, y]) => `${x},${y}`));
+            exploding.forEach(([x, y]) => DIRECTIONS.forEach(([deltaX, deltaY]) => {
+                const nextX = x + deltaX;
+                const nextY = y + deltaY;
+                if (nextX >= 0 && nextX < COLUMNS && nextY >= 0 && nextY < ROWS && board[nextY][nextX] === 'garbage') removed.add(`${nextX},${nextY}`);
+            }));
+            removed.forEach((key) => {
+                const [x, y] = key.split(',').map(Number);
+                board[y][x] = null;
+            });
+            board = collapseBoard(board);
+        }
+    }
+
+    /**
+     * 가상 보드에서 특정 예고 뿌요 쌍으로 만들 수 있는 최고 연쇄·공격을 계산한다.
+     * @param {(string|null)[][]} board 가상 보드
+     * @param {string[]} colors 예고 뿌요 쌍
+     * @returns {{combo:number,attack:number}} 최고 결과
+     */
+    function findBestPreviewResult(board, colors) {
+        const virtualPlayer = { board, active: { x: 2, y: 11.5, rotation: 0, colors } };
+        let best = { combo: 0, attack: 0 };
+        for (let rotation = 0; rotation < 4; rotation += 1) {
+            for (let x = 0; x < COLUMNS; x += 1) {
+                const placement = findLandingPlacement(virtualPlayer, x, rotation);
+                if (!placement) continue;
+                const positions = activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
+                const combo = estimateCombo(board, colors, positions);
+                const attack = estimateAttack(board, colors, positions);
+                if (combo > best.combo || (combo === best.combo && attack > best.attack)) best = { combo, attack };
+            }
+        }
+        return best;
+    }
+
+    /** @param {(string|null)[][]} board 검사할 보드 @returns {boolean} 빈 보드 여부 */
+    function isAllClearBoard(board) {
+        return board.every((row) => row.every((cell) => cell === null));
     }
 
     /**
@@ -2780,6 +2840,20 @@
         };
     }
 
+    /**
+     * 중앙 영역에 표시되는 양쪽의 다음 두 뿌요 쌍을 JSON 직렬화 가능한 복사본으로 반환한다.
+     * 게임이 생성되지 않은 메뉴 상태에서는 null을 반환한다.
+     * @returns {{player:{name:string,nextPairs:string[][]},opponent:{name:string,nextPairs:string[][]}}|null} 플레이어와 적의 다음 뿌요 정보
+     */
+    function getNextPairs() {
+        if (!game) return null;
+        const [player, opponent] = game.players;
+        return {
+            player: { name: player.name, nextPairs: player.nextPairs.map((pair) => [...pair]) },
+            opponent: { name: opponent.name, nextPairs: opponent.nextPairs.map((pair) => [...pair]) }
+        };
+    }
+
     /** 사운드 풀을 준비한다. */
     function prepareSoundPools() {
         if (!commonSoundPool) commonSoundPool = createSoundPool(true);
@@ -3588,29 +3662,37 @@
         }
 
         /**
+         * 터뜨리지 않고 연쇄 재료를 모으는 후보의 기반 점수를 계산한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @param {object} simulation 시뮬레이션 후보
+         * @returns {number} 쌓기 점수
+         */
+        getBuildScore(player, simulation) {
+            let score = 0;
+            simulation.positions.forEach((position, index) => {
+                const color = player.active.colors[index];
+                DIRECTIONS.forEach(([deltaX, deltaY]) => {
+                    const x = position.x + deltaX;
+                    const y = position.y + deltaY;
+                    if (x < 0 || x >= COLUMNS || y < 0 || y >= ROWS) return;
+                    if (player.board[y][x] === color) score += 12;
+                    else if (player.board[y][x] !== null) score += 1;
+                });
+                // 낮고 중앙에 가까운 기반을 우선해 여러 단계의 연쇄 재료를 모은다.
+                score += Math.max(0, 8 - position.y) * 0.45;
+                score -= Math.abs(position.x - (COLUMNS - 1) / 2) * 0.2;
+            });
+            return score;
+        }
+
+        /**
          * 아직 터뜨리지 않는 후보 중 다음 연쇄 재료를 가장 많이 만드는 배치를 선택한다.
          * @param {PlayerState} player 자동 조작할 플레이어
          * @param {object[]} simulations 안전한 시뮬레이션 후보
          * @returns {object|null} 쌓기용 후보
          */
         selectBuildSimulation(player, simulations) {
-            return this.selectSimulation(simulations, (simulation) => simulation.combo === 0, (simulation) => {
-                let score = 0;
-                simulation.positions.forEach((position, index) => {
-                    const color = player.active.colors[index];
-                    DIRECTIONS.forEach(([deltaX, deltaY]) => {
-                        const x = position.x + deltaX;
-                        const y = position.y + deltaY;
-                        if (x < 0 || x >= COLUMNS || y < 0 || y >= ROWS) return;
-                        if (player.board[y][x] === color) score += 12;
-                        else if (player.board[y][x] !== null) score += 1;
-                    });
-                    // 낮고 중앙에 가까운 기반을 우선해 여러 단계의 연쇄 재료를 모은다.
-                    score += Math.max(0, 8 - position.y) * 0.45;
-                    score -= Math.abs(position.x - (COLUMNS - 1) / 2) * 0.2;
-                });
-                return score;
-            });
+            return this.selectSimulation(simulations, (simulation) => simulation.combo === 0, (simulation) => this.getBuildScore(player, simulation));
         }
 
         /**
@@ -3747,13 +3829,13 @@
     }
 
     /**
-     * 데카라비아는 추후 정식 AI를 추가할 예정인 출시 예정 적이다.
+     * 데카라비아는 세레의 연쇄 축적 전략에 두 예고쌍 평가와 싹쓸이 우선을 더한 적이다.
      */
-    class Decarabia extends Enemy {
+    class Decarabia extends Seere {
         constructor() {
             super();
             this.sortPriority = 4;
-            this.notAvail = true;
+            this.notAvail = false;
         }
 
         /** @returns {string} 적 이름 */
@@ -3762,27 +3844,68 @@
         }
 
         /**
-         * TODO: 데카라비아 정식 출시 시 고유한 AI 알고리즘을 구현한다.
-         * 현재는 생성된 열과 세로 상태를 유지해 아무 조작 없이 자연 낙하한다.
+         * 현재 후보마다 중앙에 표시된 다음 두 쌍으로 만들 수 있는 최고 연쇄를 미리 계산한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {void}
+         */
+        prepareTurn(player) {
+            super.prepareTurn(player);
+            player.aiSimulations.forEach((simulation) => {
+                const board = simulatePlacementBoard(player.board, player.active.colors, simulation.positions);
+                simulation.allClear = board ? isAllClearBoard(board) : false;
+                let preview = { combo: 0, attack: 0 };
+                // 표시되는 두 예고쌍 각각을 현재 후보의 결과 보드에 가상으로 놓아 미래 연쇄 가능성을 반영한다.
+                player.nextPairs.slice(0, 2).forEach((pair) => {
+                    const result = board ? findBestPreviewResult(board, pair) : { combo: 0, attack: 0 };
+                    if (result.combo > preview.combo || (result.combo === preview.combo && result.attack > preview.attack)) preview = result;
+                });
+                simulation.previewCombo = preview.combo;
+                simulation.previewAttack = preview.attack;
+            });
+        }
+
+        /**
+         * 예고쌍으로 이어질 연쇄 가능성을 더해 비폭발 쌓기 후보를 선택한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @param {object[]} simulations 안전한 시뮬레이션 후보
+         * @returns {object|null} 쌓기용 후보
+         */
+        selectBuildSimulation(player, simulations) {
+            return this.selectSimulation(simulations, (simulation) => simulation.combo === 0, (simulation) => {
+                return this.getBuildScore(player, simulation) + (simulation.previewCombo || 0) * 1000 + (simulation.previewAttack || 0);
+            });
+        }
+
+        /**
+         * 싹쓸이, 위험도, 필드 점유율에 맞춰 공격 또는 예고쌍을 고려한 쌓기 배치를 선택한다.
          * @param {PlayerState} player 자동 조작할 플레이어
          * @returns {number} 목표 X 좌표
          */
         chooseTarget(player) {
-            return player.active ? player.active.x : 2;
-        }
+            const safeSimulations = this.getSafeSimulations(player);
+            const simulations = safeSimulations.length ? safeSimulations : player.aiSimulations;
+            const occupancy = this.getFieldOccupancy(player);
+            const incomingGarbage = this.getIncomingGarbage(player);
+            let selected = this.selectSimulation(simulations, (simulation) => simulation.allClear === true, (simulation) => simulation.attack + (simulation.previewAttack || 0));
 
-        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
-        chooseRotate(player) {
-            return 0;
-        }
+            // 싹쓸이 기회가 없을 때에만 필드 높이에 맞춘 연쇄 목표를 적용한다.
+            if (!selected && incomingGarbage >= 12) {
+                selected = this.selectSimulation(simulations, () => true, (simulation) => simulation.attack + (simulation.previewCombo || 0));
+            } else if (!selected && occupancy >= 0.8) {
+                selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 1, (simulation) => simulation.attack + (simulation.previewCombo || 0));
+            } else if (!selected && occupancy >= 0.5) {
+                selected = this.selectSimulation(simulations, (simulation) => simulation.combo === 2, (simulation) => simulation.attack + (simulation.previewCombo || 0));
+                if (!selected) selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 2, (simulation) => simulation.attack - Math.abs(simulation.combo - 2) * 10000 + (simulation.previewCombo || 0));
+            } else if (!selected && occupancy <= 0.3) {
+                selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 4, (simulation) => simulation.attack + (simulation.previewCombo || 0));
+                if (!selected) selected = this.selectBuildSimulation(player, simulations);
+            } else if (!selected) {
+                selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 4, (simulation) => simulation.attack + (simulation.previewCombo || 0));
+                if (!selected) selected = this.selectBuildSimulation(player, simulations);
+            }
 
-        /**
-         * TODO: 데카라비아 정식 출시 시 고유한 AI가 빠른 하강 정책도 결정한다.
-         * @param {PlayerState} player 자동 조작할 플레이어
-         * @returns {boolean} 빠른 하강 사용 여부
-         */
-        useFastDown(player) {
-            return false;
+            this.attackPlacement = selected || findBestAttackPlacement(player, player.active ? player.active.x : 2);
+            return this.attackPlacement.x;
         }
 
         /**
@@ -3877,6 +4000,126 @@
     }
 
     /**
+     * 벨리알은 추후 정식 AI를 추가할 예정인 출시 예정 적이다.
+     */
+    class Belial extends Enemy {
+        constructor() {
+            super();
+            this.sortPriority = 5;
+            this.notAvail = true;
+        }
+
+        /** @returns {string} 적 이름 */
+        getName() {
+            return '벨리알';
+        }
+
+        /**
+         * TODO: 벨리알 정식 출시 시 고유한 AI 알고리즘을 구현한다.
+         * 현재는 생성된 열과 세로 상태를 유지해 아무 조작 없이 자연 낙하한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {number} 목표 X 좌표
+         */
+        chooseTarget(player) {
+            return player.active ? player.active.x : 2;
+        }
+
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
+        chooseRotate(player) {
+            return 0;
+        }
+
+        /**
+         * TODO: 벨리알 정식 출시 시 고유한 AI가 빠른 하강 정책도 결정한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {boolean} 빠른 하강 사용 여부
+         */
+        useFastDown(player) {
+            return false;
+        }
+
+        /**
+         * 왕관과 망토를 두른 벨리알의 일반·위기·패배 표정을 그린다.
+         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+         * @param {number} centerX 캐릭터 중심 X 좌표
+         * @param {number} centerY 캐릭터 중심 Y 좌표
+         * @param {number} scale 기본 크기 대비 배율
+         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+         * @returns {void}
+         */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            const size = 72 * scale;
+            drawingContext.save();
+            drawingContext.translate(centerX, centerY);
+            drawingContext.lineJoin = 'round';
+            drawingContext.fillStyle = '#372446';
+            drawingContext.strokeStyle = '#1d1629';
+            drawingContext.lineWidth = 4 * scale;
+            drawingContext.beginPath();
+            drawingContext.moveTo(-size * 0.7, size * 0.8);
+            drawingContext.lineTo(-size * 0.52, -size * 0.05);
+            drawingContext.lineTo(0, size * 0.26);
+            drawingContext.lineTo(size * 0.52, -size * 0.05);
+            drawingContext.lineTo(size * 0.7, size * 0.8);
+            drawingContext.closePath();
+            drawingContext.fill();
+            drawingContext.stroke();
+            drawingContext.fillStyle = '#d79a73';
+            drawingContext.beginPath();
+            drawingContext.ellipse(0, -size * 0.08, size * 0.42, size * 0.52, 0, 0, Math.PI * 2);
+            drawingContext.fill();
+            drawingContext.stroke();
+            drawingContext.fillStyle = '#e7b846';
+            drawingContext.beginPath();
+            drawingContext.moveTo(-size * 0.34, -size * 0.5);
+            drawingContext.lineTo(-size * 0.24, -size * 0.91);
+            drawingContext.lineTo(0, -size * 0.62);
+            drawingContext.lineTo(size * 0.24, -size * 0.91);
+            drawingContext.lineTo(size * 0.34, -size * 0.5);
+            drawingContext.closePath();
+            drawingContext.fill();
+            drawingContext.stroke();
+
+            if (expression === 'defeated') {
+                drawingContext.strokeStyle = '#413047';
+                drawingContext.lineWidth = 3 * scale;
+                [-size * 0.16, size * 0.16].forEach((eyeX) => {
+                    drawingContext.beginPath();
+                    drawingContext.moveTo(eyeX - size * 0.08, -size * 0.13);
+                    drawingContext.lineTo(eyeX + size * 0.08, size * 0.03);
+                    drawingContext.moveTo(eyeX + size * 0.08, -size * 0.13);
+                    drawingContext.lineTo(eyeX - size * 0.08, size * 0.03);
+                    drawingContext.stroke();
+                });
+                drawingContext.fillStyle = '#75c9f0';
+                drawingContext.beginPath();
+                drawingContext.ellipse(0, size * 0.3, size * 0.15, size * 0.09, 0, 0, Math.PI * 2);
+                drawingContext.fill();
+            } else {
+                drawingContext.fillStyle = '#2a1a32';
+                [-size * 0.16, size * 0.16].forEach((eyeX) => {
+                    drawingContext.beginPath();
+                    drawingContext.ellipse(eyeX, -size * 0.13, size * 0.07, expression === 'crisis' ? size * 0.12 : size * 0.07, 0, 0, Math.PI * 2);
+                    drawingContext.fill();
+                });
+                drawingContext.strokeStyle = '#5a2438';
+                drawingContext.lineWidth = 3 * scale;
+                drawingContext.beginPath();
+                if (expression === 'crisis') drawingContext.arc(0, size * 0.31, size * 0.12, Math.PI, Math.PI * 2);
+                else drawingContext.arc(0, size * 0.15, size * 0.12, 0, Math.PI);
+                drawingContext.stroke();
+                if (expression === 'crisis') {
+                    drawingContext.fillStyle = '#82d9f5';
+                    drawingContext.beginPath();
+                    drawingContext.ellipse(size * 0.42, size * 0.08, size * 0.06, size * 0.11, 0.2, 0, Math.PI * 2);
+                    drawingContext.fill();
+                }
+            }
+            drawingContext.restore();
+        }
+    }
+
+    /**
      * 연습 모드에서 조작하거나 뿌요를 받지 않는 상대다.
      */
     class PracticeEnemy extends Enemy {
@@ -3897,7 +4140,8 @@
         createOpponentEntry(() => new Andromalius()),
         createOpponentEntry(() => new Dantalion()),
         createOpponentEntry(() => new Seere()),
-        createOpponentEntry(() => new Decarabia())
+        createOpponentEntry(() => new Decarabia()),
+        createOpponentEntry(() => new Belial())
     );
 
     WebPuyo = {
@@ -3909,6 +4153,7 @@
         setNoticeFile,
         getSelectedDifficulty,
         getSelectedColorCount,
+        getNextPairs,
         initialize,
         destroy,
         get commonSoundPool() { return commonSoundPool; }
