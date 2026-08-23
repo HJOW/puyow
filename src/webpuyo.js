@@ -2079,15 +2079,17 @@
      * 종료 버튼만 있는 중앙 영역을 그린다.
      * @returns {void}
      */
-    function drawResultCenter() {
+    function drawResultCenter(showExitButton = true) {
         game.themeController.drawCenterBackground(context, { x: 450, y: 0, width: 380, height: HEIGHT });
         context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, 95);
         const enemy = game.players[1];
         if (enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
         context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
         context.fillText(translate('게임 시간 %1초', Math.floor(game.elapsed / 1000)), WIDTH / 2, 145);
-        context.fillStyle = '#ef5350'; context.fillRect(515, 165, 250, 64);
-        context.fillStyle = '#ffffff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('종료'), WIDTH / 2, 207);
+        if (showExitButton) {
+            context.fillStyle = '#ef5350'; context.fillRect(515, 165, 250, 64);
+            context.fillStyle = '#ffffff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('종료'), WIDTH / 2, 207);
+        }
     }
 
     /** 시뮬레이터를 빈 그리기 보드와 첫 팔레트 포커스로 연다. @returns {void} */
@@ -2132,7 +2134,7 @@
             running: true, paused: false, winner: null, ending: null, countdown: 0, countdownStartsGame: false, elapsed: 0, practice: true,
             difficulty: selectedDifficulty, aiDifficulty: selectedAiDifficulty, themeController, pairQueueColors: COLORS,
             pairQueue: [...config.pairs, ['blue', 'yellow'], ['red', 'green']], players: [player, opponent],
-            tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, message: config.intro, messageElapsed: 0, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, finalFocus: 1 }
+            tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, message: config.intro, messageElapsed: 0, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1 }
         };
         updateNextPairs(player);
     }
@@ -2160,9 +2162,14 @@
         const messageDuration = tutorial.mode === 'intro' ? 4800 : 2000;
         if (tutorial.message && tutorial.messageElapsed >= messageDuration) tutorial.message = null;
         if (tutorial.mode === 'complete') return;
+        if (tutorial.mode === 'result') {
+            tutorial.resultElapsed += delta;
+            if (tutorial.resultElapsed >= 2000) tutorial.mode = 'complete';
+            return;
+        }
         if (game.ending) {
             updateDefeatSequence(delta);
-            if (!game.running) tutorial.mode = 'complete';
+            if (!game.running) { tutorial.mode = 'result'; tutorial.resultElapsed = 0; }
             return;
         }
         if (tutorial.mode === 'intro') {
@@ -2221,9 +2228,23 @@
     /** 플레이 방법 안내 화면을 그린다. @returns {void} */
     function drawTutorial() {
         const [player, opponent] = game.players;
+        const tutorial = game.tutorial;
+        if (tutorial.mode === 'result' || tutorial.mode === 'complete') {
+            context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+            drawResultField(player); drawResultField(opponent); drawResultCenter(false);
+            if (tutorial.mode === 'complete') drawTutorialCompleteOverlay(tutorial);
+            return;
+        }
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         drawField(player, opponent); drawField(opponent, player); drawCenter();
-        const tutorial = game.tutorial;
+        if (tutorial.stage === 5 && tutorial.mode === 'intro') {
+            const targetX = player.fieldX + 2 * CELL;
+            const targetY = FIELD_BOTTOM - 12 * CELL;
+            context.save();
+            context.strokeStyle = '#ef5350'; context.lineWidth = 4;
+            context.strokeRect(targetX + 2, targetY + 2, CELL - 4, CELL - 4);
+            context.restore();
+        }
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `20px ${TITLE_FONT}`;
         context.fillText(`${translate('플레이 방법')} ${tutorial.stage} / 5`, WIDTH / 2, 32);
         if (tutorial.message) {
@@ -2234,15 +2255,17 @@
             context.fillStyle = '#f5fbfc'; context.font = `19px ${MESSAGE_FONT}`; context.fillText(translate(tutorial.message), WIDTH / 2, 75);
             context.restore();
         }
-        if (tutorial.mode === 'complete') {
-            context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
-            const buttons = [{ label: '다시보기', x: 470, focus: 0, color: '#4cc9b0' }, { label: '종료', x: 660, focus: 1, color: '#ef5350' }];
-            buttons.forEach((button) => {
-                context.fillStyle = button.color; context.fillRect(button.x, 376, 150, 64);
-                context.strokeStyle = tutorial.finalFocus === button.focus ? '#f7c843' : button.color; context.lineWidth = tutorial.finalFocus === button.focus ? 4 : 2; context.strokeRect(button.x, 376, 150, 64);
-                context.fillStyle = '#fff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate(button.label), button.x + 75, 417);
-            });
-        }
+    }
+
+    /** 게임 종료 화면을 유지한 채 안내 완료 선택지를 겹쳐 그린다. @param {object} tutorial 안내 상태 @returns {void} */
+    function drawTutorialCompleteOverlay(tutorial) {
+        context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        const buttons = [{ label: '다시보기', x: 470, focus: 0, color: '#4cc9b0' }, { label: '종료', x: 660, focus: 1, color: '#ef5350' }];
+        buttons.forEach((button) => {
+            context.fillStyle = button.color; context.fillRect(button.x, 376, 150, 64);
+            context.strokeStyle = tutorial.finalFocus === button.focus ? '#f7c843' : button.color; context.lineWidth = tutorial.finalFocus === button.focus ? 4 : 2; context.strokeRect(button.x, 376, 150, 64);
+            context.fillStyle = '#fff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate(button.label), button.x + 75, 417);
+        });
     }
 
     /** 설정 화면을 열고 저장된 설정의 임시 복사본을 만든다. @returns {void} */
@@ -2727,12 +2750,11 @@
     function frame(time) {
         const delta = Math.min(50, time - lastTime || 0);
         lastTime = time;
-        // 실행 중이며 일시정지가 아닐 때만 게임 상태를 시간에 따라 갱신한다.
-        if (game && game.running && !game.paused) {
-            if (game.tutorial) {
-                game.elapsed += delta;
-                updateTutorial(delta);
-            } else
+        // 플레이 방법은 결과 화면 표시 시간까지 갱신하고, 일반 게임은 실행 중일 때만 갱신한다.
+        if (game?.tutorial && !game.paused) {
+            if (game.running) game.elapsed += delta;
+            updateTutorial(delta);
+        } else if (game && game.running && !game.paused) {
             // 카운트다운이 끝나면 양쪽 플레이어의 첫 턴을 시작한다.
             if (game.countdown > 0) {
                 game.countdown = Math.max(0, game.countdown - delta);
