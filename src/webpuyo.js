@@ -91,7 +91,7 @@
     const STORE_KEY = 'puyow_store';
 
     /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 webpuyo.js 기준으로 해석한다. @type {string} */
-    const NOTICE_FILE = 'notice.txt';
+    let NOTICE_FILE = 'notice.txt';
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
@@ -171,7 +171,7 @@
     ];
     /** 등록된 기본 및 외부 적 목록이다. @type {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} */
     const OPPONENTS = [];
-    /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {{Enemy:typeof Enemy, registerOpponent:typeof registerOpponent, registerLanguage:typeof registerLanguage, initialize:typeof initialize, destroy:typeof destroy}|null} */
+    /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {{Enemy:typeof Enemy, registerOpponent:typeof registerOpponent, registerLanguage:typeof registerLanguage, setNoticeFile:typeof setNoticeFile, initialize:typeof initialize, destroy:typeof destroy}|null} */
     let WebPuyo = null;
 
     /**
@@ -242,6 +242,20 @@
             console.error(`${NOTICE_FILE}를 불러오지 못했습니다.`, error);
             noticeText = '';
         }
+    }
+
+    /**
+     * 메인 화면에서 읽을 공지사항 파일 경로 또는 URL을 설정한다.
+     * 상대경로는 webpuyo.js와 같은 경로를 기준으로 해석한다.
+     * @param {string} noticeFile 공지사항 파일명, 상대경로 또는 절대 URL
+     * @returns {void}
+     */
+    function setNoticeFile(noticeFile) {
+        if (initialized) throw new Error('공지사항 경로 설정은 initialize 호출 전에 해야 합니다.');
+        if (typeof noticeFile !== 'string' || noticeFile.length === 0) {
+            throw new TypeError('공지사항 경로는 비어 있지 않은 문자열이어야 합니다.');
+        }
+        NOTICE_FILE = noticeFile;
     }
 
     /**
@@ -3159,7 +3173,7 @@
         createOpponentEntry(() => new Seere())
     );
 
-    WebPuyo = { Enemy, registerOpponent, registerLanguage, initialize, destroy };
+    WebPuyo = { Enemy, registerOpponent, registerLanguage, setNoticeFile, initialize, destroy };
     if (typeof module !== 'undefined' && module.exports) module.exports = WebPuyo;
     if (typeof window !== 'undefined') window.WebPuyo = WebPuyo;
 })();

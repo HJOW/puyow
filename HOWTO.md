@@ -46,6 +46,25 @@ const { Enemy, registerOpponent, initialize } = require('./src/webpuyo.js');
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 1280x720 canvas를 만들어 게임을 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 그대로 사용하고 `destroy()`가 요소를 제거하지 않습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
 
+## 공지사항 경로 설정
+
+메인 화면 왼쪽에 표시할 공지사항은 기본적으로 `webpuyo.js`와 같은 경로의 `notice.txt`에서 읽습니다. 초기화하기 전에 `WebPuyo.setNoticeFile(noticeFile)`을 호출하면 파일명, 상대경로 또는 절대 URL을 지정할 수 있습니다. 상대경로는 `webpuyo.js`가 로드된 URL을 기준으로 해석하고, `https://`와 같은 절대 URL은 지정한 주소 그대로 사용합니다. 공지사항 파일은 다국어 번역을 거치지 않고 UTF-8 텍스트 그대로 표시합니다.
+
+```js
+// 기본값과 같은 파일을 사용한다.
+WebPuyo.setNoticeFile('notice.txt');
+
+// webpuyo.js가 있는 위치의 notices/notice-ko.txt를 사용한다.
+WebPuyo.setNoticeFile('notices/notice-ko.txt');
+
+// 다른 서버의 공지사항을 사용한다.
+WebPuyo.setNoticeFile('https://example.com/puyo/notice.txt');
+
+WebPuyo.initialize('webpuyo_canvas');
+```
+
+`setNoticeFile()`은 `initialize()` 호출 전에만 사용할 수 있습니다. 초기화가 끝난 뒤 호출하면 오류가 발생하므로, 경로를 바꾸려면 `destroy()`로 게임을 종료한 뒤 다시 설정하고 `initialize()`를 호출해야 합니다.
+
 ## 종료 및 정리
 
 `WebPuyo.destroy()`는 `initialize()`로 시작한 게임 인스턴스를 종료하고 초기화 전 상태로 되돌립니다. 페이지 전환, 동적 UI 제거, 같은 페이지에서 다른 canvas로 게임을 다시 초기화할 때 호출합니다.
