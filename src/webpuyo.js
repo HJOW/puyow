@@ -89,6 +89,9 @@
     const INITIAL_PAIR_QUEUE_LENGTH = 16;
     /** 브라우저 저장소에 사용할 키다. @type {string} */
     const STORE_KEY = 'puyow_store';
+
+    /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 webpuyo.js 기준으로 해석한다. @type {string} */
+    const NOTICE_FILE = 'notice.txt';
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
@@ -118,7 +121,7 @@
     let webMcpAbortController = null;
     /** 현재 실행 중인 게임 상태다. @type {object|null} */
     let game = null;
-    /** 메인 화면 왼쪽에 표시할 notice.txt 원문이다. @type {string} */
+    /** 메인 화면 왼쪽에 표시할 안내문 원문이다. @type {string} */
     let noticeText = '';
     /** 설정 화면에서 임시로 편집 중인 값이다. @type {object|null} */
     let settingsDraft = null;
@@ -222,20 +225,21 @@
     }
 
     /**
-     * webpuyo.js와 같은 경로의 notice.txt를 읽는다. 읽기 실패 시 빈 안내문으로 둔다.
+     * NOTICE_FILE을 읽는다. 상대경로는 webpuyo.js와 같은 경로를 기준으로 해석하고,
+     * 절대 URL은 지정한 주소 그대로 사용한다. 읽기 실패 시 빈 안내문으로 둔다.
      * @returns {Promise<void>}
      */
     async function loadNotice() {
         if (typeof fetch !== 'function' || typeof document === 'undefined') return;
         try {
             const script = [...(document.scripts || [])].find((element) => /webpuyo(?:\.min)?\.js(?:[?#]|$)/.test(element.src));
-            const baseUrl = script?.src ? new URL(script.src, document.baseURI) : new URL(document.baseURI);
-            baseUrl.pathname = `${baseUrl.pathname.substring(0, baseUrl.pathname.lastIndexOf('/') + 1)}notice.txt`;
-            const response = await fetch(baseUrl.href);
-            if (!response.ok) throw new Error(`notice.txt 요청 실패 (${response.status})`);
+            const scriptUrl = script?.src ? new URL(script.src, document.baseURI) : new URL(document.baseURI);
+            const noticeUrl = new URL(NOTICE_FILE, scriptUrl);
+            const response = await fetch(noticeUrl.href);
+            if (!response.ok) throw new Error(`${NOTICE_FILE} 요청 실패 (${response.status})`);
             noticeText = await response.text();
         } catch (error) {
-            console.error('notice.txt를 불러오지 못했습니다.', error);
+            console.error(`${NOTICE_FILE}를 불러오지 못했습니다.`, error);
             noticeText = '';
         }
     }
@@ -1635,7 +1639,7 @@
         });
     }
 
-    /** 메인 화면 왼쪽에 notice.txt 내용을 줄바꿈해 표시한다. @returns {void} */
+    /** 메인 화면 왼쪽에 NOTICE_FILE 내용을 줄바꿈해 표시한다. @returns {void} */
     function drawNotice() {
         if (!noticeText) return;
         const x = 42; const y = 230; const width = 300; const lineHeight = 18; const lines = [];
