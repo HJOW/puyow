@@ -135,6 +135,8 @@
     let webMcpAbortController = null;
     /** 현재 실행 중인 게임 상태다. @type {object|null} */
     let game = null;
+    /** 현재 재생 중인 전투 배경음악이다. @type {HTMLAudioElement|null} */
+    let backgroundMusicAudio = null;
     /** 메인 화면 왼쪽에 표시할 안내문 원문이다. @type {string} */
     let noticeText = '';
     /** 설정 화면에서 임시로 편집 중인 값이다. @type {object|null} */
@@ -197,7 +199,7 @@
     ];
     /** 등록된 기본 및 외부 적 목록이다. @type {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} */
     const OPPONENTS = [];
-    /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {{Enemy:typeof Enemy, registerOpponent:typeof registerOpponent, registerLanguage:typeof registerLanguage, setNoticeFile:typeof setNoticeFile, getSelectedDifficulty:typeof getSelectedDifficulty, getSelectedColorCount:typeof getSelectedColorCount, initialize:typeof initialize, destroy:typeof destroy}|null} */
+    /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {object|null} */
     let WebPuyo = null;
 
     /**
@@ -349,6 +351,78 @@
         const localeTable = stringTable[languageCode] || stringTable[languageCode.split('-')[0]] || stringTable.en;
         const translated = languageCode === 'ko' ? text : localeTable[text] || text;
         return values.reduce((result, value, index) => result.replace(`%${index + 1}`, String(value)), translated);
+    }
+
+    /** 현재 음량 설정을 HTMLAudioElement의 0~1 범위로 변환한다. @param {'music'|'effects'} type 음량 종류 @returns {number} 음량 */
+    function getAudioVolume(type) {
+        if (store.muted) return 0;
+        const value = type === 'music' ? store.settings.musicVolume : store.settings.effectsVolume;
+        return Math.max(0, Math.min(1, Number(value) / 100));
+    }
+
+    /** 음원 URL을 일회성 효과음으로 재생한다. 재생 실패는 기록하고 게임은 계속 진행한다. @param {string|null|undefined} url 음원 URL @param {'music'|'effects'} type 음량 종류 @param {string} label 로그용 설명 @returns {void} */
+    function playSound(url, type, label) {
+        if (url === null || url === undefined || url === '' || typeof Audio === 'undefined' || getAudioVolume(type) <= 0) return;
+        try {
+            const audio = new Audio(url);
+            audio.volume = getAudioVolume(type);
+            const result = audio.play();
+            if (result && typeof result.catch === 'function') result.catch((error) => console.error(`${label} 재생에 실패했습니다.`, error));
+        } catch (error) {
+            console.error(`${label} 재생에 실패했습니다.`, error);
+        }
+    }
+
+    /** 현재 전투 배경음악을 중지하고 재생 위치를 초기화한다. @returns {void} */
+    function stopBackgroundMusic() {
+        if (!backgroundMusicAudio) return;
+        try {
+            backgroundMusicAudio.pause();
+            backgroundMusicAudio.currentTime = 0;
+        } catch (error) {
+            console.error('배경음악 중지에 실패했습니다.', error);
+        }
+        backgroundMusicAudio = null;
+    }
+
+    /** 적 전용 음원이 없으면 공통 음원을 사용해 전투 배경음악을 반복 재생한다. @param {Enemy|null} controller 현재 적 컨트롤러 @returns {void} */
+    function startBackgroundMusic(controller) {
+        stopBackgroundMusic();
+        const enemyMusic = controller?.soundPool?.backgroundMusic;
+        const url = enemyMusic !== null && enemyMusic !== undefined ? enemyMusic : commonSoundPool?.backgroundMusic;
+        if (url === null || url === undefined || url === '' || typeof Audio === 'undefined' || getAudioVolume('music') <= 0) return;
+        try {
+            const audio = new Audio(url);
+            audio.loop = true;
+            audio.volume = getAudioVolume('music');
+            backgroundMusicAudio = audio;
+            const result = audio.play();
+            if (result && typeof result.catch === 'function') result.catch((error) => console.error('배경음악 재생에 실패했습니다.', error));
+        } catch (error) {
+            console.error('배경음악 재생에 실패했습니다.', error);
+            backgroundMusicAudio = null;
+        }
+    }
+
+    /** 저장된 음소거·배경음악 음량 설정을 현재 재생 중인 음악에 적용한다. @returns {void} */
+    function updateBackgroundMusicVolume() {
+        if (backgroundMusicAudio) backgroundMusicAudio.volume = getAudioVolume('music');
+    }
+
+    /** 연쇄 번호에 맞는 사운드 풀 항목을 선택한다. 7 이상은 7번을 사용한다. @param {SoundPool|CommonSoundPool|null|undefined} pool 사운드 풀 @param {string} prefix 속성 접두사 @param {number} combo 연쇄 번호 @returns {string|null} 음원 URL */
+    function getComboSoundUrl(pool, prefix, combo) {
+        if (!pool) return null;
+        const index = Math.max(1, Math.min(7, Math.floor(combo)));
+        const url = pool[`${prefix}${index}`];
+        return url === null || url === undefined || url === '' ? null : url;
+    }
+
+    /** 한 단계의 연쇄에 필요한 주문과 뿌요 폭발 효과음을 재생한다. @param {PlayerState} player 연쇄를 일으킨 플레이어 @returns {void} */
+    function playComboSounds(player) {
+        const spellPool = player.controller ? player.controller.soundPool : commonSoundPool;
+        const combo = player.combo;
+        playSound(getComboSoundUrl(commonSoundPool, 'puyoBurstCombo', combo), 'effects', '뿌요 폭발 효과음');
+        playSound(getComboSoundUrl(spellPool, 'spellCombo', combo), 'effects', '연쇄 주문 효과음');
     }
 
     /**
@@ -582,6 +656,7 @@
             players
         };
         players.filter((player) => player.receivesPuyos).forEach(updateNextPairs);
+        startBackgroundMusic(controller);
     }
 
     /**
@@ -1043,6 +1118,7 @@
                 });
             });
             player.combo += 1;
+            playComboSounds(player);
             const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
             player.point += exploding.length * power;
             player.attack += exploding.length * power / 4;
@@ -1173,6 +1249,7 @@
             game.running = false;
             game.winner = ending.winner;
             game.ending = null;
+            stopBackgroundMusic();
         }
     }
 
@@ -1781,6 +1858,7 @@
     function saveSettings() {
         store.settings = { ...settingsDraft };
         saveStore();
+        updateBackgroundMusicVolume();
         settingsDraft = null; settingsEditing = false;
         menuScreen = 'title'; loadNotice();
     }
@@ -1795,6 +1873,7 @@
     function toggleMuted() {
         store.muted = !store.muted;
         saveStore();
+        updateBackgroundMusicVolume();
     }
 
     /** 설정 화면의 포커스 항목을 실행한다. @returns {void} */
@@ -2328,6 +2407,7 @@
         // 결과 화면에서는 Enter 또는 ESC로 연습은 메인, 대전은 적 선택 화면으로 돌아간다.
         if (game && !game.running && (key === 'enter' || key === 'escape')) {
             const returnToTitle = game.practice;
+            stopBackgroundMusic();
             game = null;
             if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
             else openOpponentMenu();
@@ -2472,6 +2552,7 @@
             game.countdown = 3000;
             game.countdownStartsGame = false;
         } else {
+            stopBackgroundMusic();
             game = null;
             menuScreen = 'title'; loadNotice();
         }
@@ -2506,6 +2587,7 @@
             const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
             if (x >= 515 && x <= 765 && y >= 165 && y <= 229) {
                 const returnToTitle = game.practice;
+                stopBackgroundMusic();
                 game = null;
                 if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
                 else openOpponentMenu();
@@ -2686,7 +2768,7 @@
 
     /** 사운드 풀을 준비한다. */
     function prepareSoundPools() {
-        commonSoundPool = createSoundPool(true);
+        if (!commonSoundPool) commonSoundPool = createSoundPool(true);
     }
 
     /**
@@ -2793,6 +2875,7 @@
      */
     function destroy() {
         if (!initialized) return;
+        stopBackgroundMusic();
         window.removeEventListener('keydown', handleKeydown);
         window.removeEventListener('keyup', handleKeyup);
         canvas.removeEventListener('click', handleCanvasClick);
@@ -2890,27 +2973,27 @@
          * 3연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
          * @type {string|null}
          */
-        spellCombo3 = "";
+        spellCombo3 = null;
         /**  
          * 4연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
          * @type {string|null}
          */
-        spellCombo4 = "";
+        spellCombo4 = null;
         /**  
          * 5연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
          * @type {string|null}
          */
-        spellCombo5 = "";
+        spellCombo5 = null;
         /**  
          * 6연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
          * @type {string|null}
          */
-        spellCombo6 = "";
+        spellCombo6 = null;
         /**  
          * 7 또는 그 이상의 연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
          * @type {string|null}
          */
-        spellCombo7 = "";
+        spellCombo7 = null;
         /**  
          * 적의 경우, 해당 적과 게임 시 사용되는 배경 음악. null 인 경우 해당 상황에서 소리가 나지 않는다.
          *     해당 적의 배경 음악이 없으면, 공통 사운드 풀의 backgroundMusic 을 체크해서 있으면 이용한다.
@@ -2974,11 +3057,11 @@
 
     /**
      * 사운드 풀 객체를 생성한다.
-     * @param {SoundPool} commons 공통 시스템용 사운드 풀 생성 시 true 입력해야 한다. 그외의 경우 false 입력 
-     * @returns 새 사운드 풀 객체
+     * @param {boolean} commons 공통 시스템용 사운드 풀 생성 여부
+     * @returns {SoundPool|CommonSoundPool} 새 사운드 풀 객체
      */
     function createSoundPool(commons) {
-        if(commons) return new CommonSoundPool();
+        if (commons) return new CommonSoundPool();
         return new SoundPool();
     }
 
@@ -3524,6 +3607,9 @@
     }
 
 
+    // 공통 사운드 풀은 외부에서 initialize 호출 전에 음원 URL을 설정할 수 있도록 미리 만든다.
+    prepareSoundPools();
+
     // 기본 적은 모든 함수 선언이 준비된 뒤 등록해 초기화 순서를 명확히 한다.
     OPPONENTS.push(
         createOpponentEntry(() => new Andromalius()),
@@ -3531,7 +3617,19 @@
         createOpponentEntry(() => new Seere())
     );
 
-    WebPuyo = { Enemy, registerOpponent, registerLanguage, setNoticeFile, getSelectedDifficulty, getSelectedColorCount, initialize, destroy };
+    WebPuyo = {
+        Enemy,
+        SoundPool,
+        CommonSoundPool,
+        registerOpponent,
+        registerLanguage,
+        setNoticeFile,
+        getSelectedDifficulty,
+        getSelectedColorCount,
+        initialize,
+        destroy,
+        get commonSoundPool() { return commonSoundPool; }
+    };
     if (typeof module !== 'undefined' && module.exports) module.exports = WebPuyo;
     if (typeof window !== 'undefined') window.WebPuyo = WebPuyo;
 })();

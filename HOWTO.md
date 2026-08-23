@@ -331,6 +331,31 @@ class LowestColumnEnemy extends WebPuyo.Enemy {
 
 더 강한 AI를 만들려면 `player.aiSimulations`의 후보마다 예상 공격력, 같은 색의 인접 수, 필드 높이, 방해뿌요 위험을 점수화해 가장 높은 후보를 선택하면 됩니다. 후보에 없는 열·회전 조합은 현재 보드에서 실제로 착지할 수 없는 조합입니다.
 
+## 사운드 풀 설정
+
+`WebPuyo.SoundPool`은 적의 주문 효과음과 적 전용 배경음악 URL을 담는 클래스입니다. `Enemy`를 상속한 클래스의 생성자에서 `super()`를 호출하면 `this.soundPool`이 자동으로 만들어지므로, 필요한 항목에 상대경로 또는 절대경로 URL을 대입하면 됩니다. URL을 `null`(기본값)로 두면 해당 소리는 재생하지 않습니다.
+
+```js
+class MyEnemy extends WebPuyo.Enemy {
+    constructor() {
+        super();
+        this.soundPool.spellCombo1 = 'sounds/my-combo-1.ogg';
+        this.soundPool.spellCombo7 = 'https://example.com/my-combo-7.ogg';
+        this.soundPool.backgroundMusic = 'sounds/my-bgm.ogg';
+    }
+}
+```
+
+`WebPuyo.commonSoundPool`은 플레이어 주문 효과음, 양쪽 공통 뿌요 폭발 효과음, 공통 배경음악을 담는 `CommonSoundPool` 객체입니다. `initialize()` 호출 전이나 후에 URL을 설정할 수 있습니다.
+
+```js
+WebPuyo.commonSoundPool.spellCombo1 = 'sounds/player-combo-1.ogg';
+WebPuyo.commonSoundPool.puyoBurstCombo1 = 'sounds/puyo-burst-1.ogg';
+WebPuyo.commonSoundPool.backgroundMusic = 'sounds/common-bgm.ogg';
+```
+
+연쇄 번호가 7 이상이면 `spellCombo7` 또는 `puyoBurstCombo7`을 사용합니다. 적의 배경음악이 `null`일 때만 공통 배경음악을 대신 사용하며, 게임이 끝나면 배경음악은 자동으로 중지됩니다. 설정 화면의 배경음악·효과음 음량과 메인 화면의 음소거 상태가 모든 재생에 적용되고, 재생 오류는 `console.error`로 기록한 뒤 게임은 계속 진행됩니다.
+
 ## 현재 필드 정보 읽기
 
 `getMyFieldInfo(player)`은 CPU 자신의 필드 배치 현황을 새 JSON 객체로 반환합니다. 반환값은 `{ columns, rows, cells }` 형식이며, `cells[y][x]`에는 색상 문자열, 방해뿌요의 `'garbage'`, 또는 빈 칸의 `null`이 들어 있습니다. `y`의 `0`행은 필드 맨 아래입니다. 반환된 `cells`는 복사본이므로 값을 바꾸어도 실제 게임 필드는 바뀌지 않습니다.
