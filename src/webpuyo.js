@@ -1285,7 +1285,7 @@
      * @param {number} scale 셀 대비 크기 비율
      * @returns {void}
      */
-    function drawPuyo(x, y, color, scale = 1) {
+    function drawPuyo(x, y, color, scale = 1, slimeDetails = true) {
         const radius = CELL * 0.42 * scale;
         context.save();
         context.translate(x + CELL / 2, y + CELL / 2);
@@ -1297,7 +1297,74 @@
         context.lineWidth = 2;
         context.strokeStyle = color === 'garbage' ? '#f4fbff' : 'rgba(255,255,255,0.45)';
         context.stroke();
-        drawPuyoEyes(radius);
+        // 일반/방해뿌요는 물방울 같은 슬라임이라는 인상을 주는 작은 반사광을 넣는다.
+        // 예고뿌요(태양, 별, 돌 등)는 이 함수가 아닌 drawWarning에서 별도로 그린다.
+        if (slimeDetails) {
+            context.fillStyle = 'rgba(255, 255, 255, 0.72)';
+            context.beginPath();
+            context.ellipse(radius * 0.43, -radius * 0.43, radius * 0.13, radius * 0.22, 0.55, 0, Math.PI * 2);
+            context.fill();
+        }
+        drawPuyoEyes(radius, slimeDetails ? radius * 0.08 : 0);
+        context.restore();
+    }
+
+    /**
+     * 30 단위 예고뿌요인 빨간돌을 한 칸 안에 울퉁불퉁하게 그린다.
+     * @param {number} x 좌측 X 좌표
+     * @param {number} y 위쪽 Y 좌표
+     * @returns {void}
+     */
+    function drawRockWarning(x, y) {
+        const size = CELL * 0.42;
+        context.save();
+        context.translate(x + CELL / 2, y + CELL / 2);
+        context.lineJoin = 'round';
+        context.lineWidth = 2;
+        context.strokeStyle = '#8e2728';
+        context.fillStyle = '#c83f3d';
+        context.beginPath();
+        context.moveTo(-size * 0.78, -size * 0.2);
+        context.lineTo(-size * 0.52, -size * 0.78);
+        context.lineTo(-size * 0.08, -size * 0.91);
+        context.lineTo(size * 0.38, -size * 0.75);
+        context.lineTo(size * 0.84, -size * 0.26);
+        context.lineTo(size * 0.67, size * 0.48);
+        context.lineTo(size * 0.2, size * 0.84);
+        context.lineTo(-size * 0.43, size * 0.76);
+        context.lineTo(-size * 0.86, size * 0.28);
+        context.closePath();
+        context.fill();
+        context.stroke();
+
+        // 각진 면을 겹쳐 표면이 매끈한 뿌요가 아니라는 점을 강조한다.
+        context.fillStyle = '#e4675a';
+        context.beginPath();
+        context.moveTo(-size * 0.52, -size * 0.78);
+        context.lineTo(-size * 0.08, -size * 0.91);
+        context.lineTo(size * 0.05, -size * 0.2);
+        context.lineTo(-size * 0.4, size * 0.02);
+        context.closePath();
+        context.fill();
+        context.fillStyle = '#9d2d31';
+        context.beginPath();
+        context.moveTo(size * 0.05, -size * 0.2);
+        context.lineTo(size * 0.38, -size * 0.75);
+        context.lineTo(size * 0.84, -size * 0.26);
+        context.lineTo(size * 0.67, size * 0.48);
+        context.lineTo(size * 0.2, size * 0.84);
+        context.lineTo(size * 0.12, size * 0.12);
+        context.closePath();
+        context.fill();
+        context.strokeStyle = 'rgba(255, 170, 150, 0.65)';
+        context.lineWidth = 1.5;
+        context.beginPath();
+        context.moveTo(-size * 0.52, -size * 0.78);
+        context.lineTo(-size * 0.08, -size * 0.91);
+        context.lineTo(size * 0.05, -size * 0.2);
+        context.lineTo(size * 0.38, -size * 0.75);
+        context.stroke();
+        drawPuyoEyes(size, size * 0.08);
         context.restore();
     }
 
@@ -1306,16 +1373,16 @@
      * @param {number} radius 뿌요 본체의 반지름
      * @returns {void}
      */
-    function drawPuyoEyes(radius) {
+    function drawPuyoEyes(radius, offsetY = 0) {
         context.fillStyle = '#fff';
         context.beginPath();
-        context.arc(-radius * 0.28, -radius * 0.12, radius * 0.19, 0, Math.PI * 2);
-        context.arc(radius * 0.28, -radius * 0.12, radius * 0.19, 0, Math.PI * 2);
+        context.arc(-radius * 0.28, -radius * 0.12 + offsetY, radius * 0.19, 0, Math.PI * 2);
+        context.arc(radius * 0.28, -radius * 0.12 + offsetY, radius * 0.19, 0, Math.PI * 2);
         context.fill();
         context.fillStyle = '#172031';
         context.beginPath();
-        context.arc(-radius * 0.25, -radius * 0.08, radius * 0.08, 0, Math.PI * 2);
-        context.arc(radius * 0.31, -radius * 0.08, radius * 0.08, 0, Math.PI * 2);
+        context.arc(-radius * 0.25, -radius * 0.08 + offsetY, radius * 0.08, 0, Math.PI * 2);
+        context.arc(radius * 0.31, -radius * 0.08 + offsetY, radius * 0.08, 0, Math.PI * 2);
         context.fill();
     }
 
@@ -1327,7 +1394,7 @@
      * @returns {void}
      */
     function drawWarning(x, y, type) {
-        if (type === 'tiny') return drawPuyo(x + CELL * 0.25, y + CELL * 0.25, 'garbage', 0.45);
+        if (type === 'tiny') return drawPuyo(x + CELL * 0.25, y + CELL * 0.25, 'garbage', 0.45, false);
         if (type === 'sun') {
             context.save();
             context.translate(x + CELL / 2, y + CELL / 2);
@@ -1364,7 +1431,7 @@
             context.closePath(); context.fill(); drawPuyoEyes(CELL * 0.34); context.restore(); return;
         }
         if (type === 'rock') {
-            drawPuyo(x, y, 'red');
+            drawRockWarning(x, y);
             return;
         }
         drawPuyo(x, y, 'garbage');
