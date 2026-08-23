@@ -101,6 +101,8 @@
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
             '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '켜기': 'On', '끄기': 'Off', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 및 AI 관련 기능은 추후 제공 예정': 'Sound and AI features will be available in a future update.',
+            '플레이 방법': 'How to Play', '다시보기': 'Replay',
+            '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': 'An all clear gives you a powerful attack.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
@@ -113,6 +115,8 @@
             'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
             '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
             '설정': '設定', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '켜기': 'オン', '끄기': 'オフ', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 및 AI 관련 기능은 추후 제공 예정': 'サウンドとAI機能は今後のアップデートで提供予定です。',
+            '플레이 방법': '遊び方', '다시보기': 'もう一度見る',
+            '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '左右・下キーでぷよを動かし、Z・Xキーで回転できます。', '좌우 방향키로 뿌요 이동': '左右キーでぷよを移動', '아래 방향키로 빨리 떨어뜨리기': '下キーで速く落下', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Zキーで左回転', 'X 키를 눌러 우측으로 뿌요 회전': 'Xキーで右回転', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '同じ色のぷよを4個以上つなげると消して攻撃できます。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '同じ色のぷよ4個がつながり、相手を攻撃できます。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'ぷよが消えると、隣接するおじゃまぷよも消えます。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '連鎖でぷよを消すと、より強く攻撃できます。', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': '全消しをすると強力な攻撃ができます。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '3段目の端にぷよが残ると負けです。',
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
@@ -125,6 +129,8 @@
             'JSON복사': '复制 JSON', 'JSON넣기': '粘贴 JSON', '배치가 클립보드에 복사됨': '布局已复制到剪贴板',
             '클립보드 복사 실패': '复制到剪贴板失败', 'JSON 파싱 실패': 'JSON 解析失败', '배치 JSON을 입력하세요.': '请输入布局 JSON。',
             '설정': '设置', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '켜기': '开启', '끄기': '关闭', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 및 AI 관련 기능은 추후 제공 예정': '声音和 AI 功能将在未来更新中提供。',
+            '플레이 방법': '玩法说明', '다시보기': '再次观看',
+            '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '使用左右和下方向键移动噗哟，使用 Z、X 键旋转。', '좌우 방향키로 뿌요 이동': '用左右方向键移动噗哟', '아래 방향키로 빨리 떨어뜨리기': '用下方向键快速落下', 'Z 키를 눌러 좌측으로 뿌요 회전': '按 Z 键向左旋转', 'X 키를 눌러 우측으로 뿌요 회전': '按 X 键向右旋转', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '连接四个或更多相同颜色的噗哟即可消除并攻击对手。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '四个相同颜色的噗哟连接后可以攻击对手。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': '消除噗哟时，相邻的垃圾噗哟也会一起消失。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '连续消除噗哟可以发动更强的攻击。', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': '全消时可以发动强力攻击。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '噗哟停留在第 3 行末端时会失败。',
             '음소거(꺼짐)' : '静音（关）', '음소거(활성)' : '静音（开）'
         }
     };
@@ -743,6 +749,8 @@
         }
         player.phase = 'control';
         player.fallTimer = 0;
+        // 플레이 방법 시연은 새 뿌요를 지급할 때마다 빠른 하강 상태를 초기화한다.
+        if (game?.tutorial && player === game.players[0]) player.tutorialFastDown = false;
         if (player === game?.players[0]) {
             horizontalHoldElapsed = 0;
             horizontalRepeatElapsed = 0;
@@ -1364,6 +1372,8 @@
             opponent.damage += player.pendingAllClearDamage;
             player.pendingAllClearDamage = 0;
         }
+        // 플레이 방법 시연은 싹쓸이 예고와 방해뿌요 낙하를 보여주는 동안 다음 뿌요의 낙하를 멈춘다.
+        if (player.tutorialHold) return;
         // 대기 중인 연습 상대도 예약된 피해가 있으면 방해뿌요 처리는 수행한다.
         if (player.phase === 'idle') {
             if (player.damage > 0) dropGarbage(player);
@@ -1405,7 +1415,7 @@
                     moveActive(player, player.active.x < player.aiTarget ? 1 : -1, 0);
                 }
             }
-            const fastDown = player.controller ? player.aiFastDown : isDownKeyPressed || virtualDirectionInput.arrowdown;
+            const fastDown = player.controller ? player.aiFastDown : isDownKeyPressed || virtualDirectionInput.arrowdown || player.tutorialFastDown === true;
             const speedMultiplier = Math.min(MAX_PLAYER_FALL_SPEED_MULTIPLIER, 1 + Math.floor(game.elapsed / 60000) * 0.2);
             const fallInterval = fastDown ? 55 : player.controller ? 290 : PLAYER_FALL_INTERVAL / speedMultiplier;
             const currentFloor = Math.floor(player.active.y);
@@ -1907,7 +1917,7 @@
 
     /** 가상 컨트롤러를 표시할 수 있는 게임 진행 상태인지 확인한다. @returns {boolean} */
     function shouldShowVirtualController() {
-        return Boolean(game && game.running && !game.paused && !game.ending && game.countdown <= 0 && store.settings.virtualController);
+        return Boolean(game && !game.tutorial && game.running && !game.paused && !game.ending && game.countdown <= 0 && store.settings.virtualController);
     }
 
     /** 가상 방향 패드의 한 방향 버튼을 그린다. @param {number} x X 좌표 @param {number} y Y 좌표 @param {string} label 표시 문자 @param {boolean} pressed 눌림 여부 @returns {void} */
@@ -2084,6 +2094,155 @@
     function openSimulator() {
         simulator = { mode: 'draw', player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0, message: null, messageElapsed: 0 };
         menuScreen = 'simulator';
+    }
+
+    /** 플레이 방법 안내를 연다. @returns {void} */
+    function openTutorial() {
+        enterTutorialStage(1);
+    }
+
+    /** @param {number} stage 안내 단계 @returns {{pairs:string[][], targets:number[], intro:string, preset:{x:number,y:number,color:string}[]}} */
+    function getTutorialStageConfig(stage) {
+        const presets = {
+            2: [{ x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 0, y: 1, color: 'green' }, { x: 0, y: 2, color: 'garbage' }, { x: 0, y: 3, color: 'purple' }],
+            3: [...Array(3).keys()].flatMap((y) => [{ x: 5, y, color: 'red' }, { x: 4, y, color: 'blue' }, { x: 3, y, color: 'green' }, { x: 2, y, color: 'red' }]).concat([{ x: 4, y: 3, color: 'red' }, { x: 3, y: 3, color: 'blue' }, { x: 2, y: 3, color: 'green' }, { x: 0, y: 0, color: 'purple' }]),
+            4: [{ x: 1, y: 0, color: 'purple' }, { x: 2, y: 0, color: 'purple' }],
+            5: [...Array(10).keys()].flatMap((y) => [...Array(COLUMNS).keys()].map((x) => ({ x, y, color: 'garbage' })))
+        };
+        const configs = {
+            1: { pairs: [['red', 'blue'], ['yellow', 'green'], ['yellow', 'red']], targets: [3, 2, 3], intro: '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어' },
+            2: { pairs: [['red', 'red'], ['green', 'green'], ['green', 'green']], targets: [2, 1, 1], intro: '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.' },
+            3: { pairs: [['green', 'red']], targets: [1], intro: '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.' },
+            4: { pairs: [['purple', 'purple']], targets: [2], intro: '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.' },
+            5: { pairs: [['red', 'blue']], targets: [2], intro: '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.' }
+        };
+        return { ...configs[stage], preset: presets[stage] || [] };
+    }
+
+    /** 안내의 지정 단계를 초기화한다. @param {number} stage 단계 번호 @returns {void} */
+    function enterTutorialStage(stage) {
+        const config = getTutorialStageConfig(stage);
+        const themeController = new PracticeEnemy();
+        const player = new PlayerState('PLAYER 1', FIELD_LEFT, null, COLORS);
+        const opponent = new PlayerState('', FIELD_RIGHT, themeController, COLORS);
+        opponent.receivesPuyos = false;
+        opponent.phase = 'idle';
+        config.preset.forEach(({ x, y, color }) => { player.board[y][x] = color; });
+        game = {
+            running: true, paused: false, winner: null, ending: null, countdown: 0, countdownStartsGame: false, elapsed: 0, practice: true,
+            difficulty: selectedDifficulty, aiDifficulty: selectedAiDifficulty, themeController, pairQueueColors: COLORS,
+            pairQueue: [...config.pairs, ['blue', 'yellow'], ['red', 'green']], players: [player, opponent],
+            tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, message: config.intro, messageElapsed: 0, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, finalFocus: 1 }
+        };
+        updateNextPairs(player);
+    }
+
+    /** 플레이 방법 안내를 끝내고 메인 화면으로 돌아간다. @returns {void} */
+    function closeTutorial() {
+        game = null;
+        menuScreen = 'title';
+        loadNotice();
+    }
+
+    /** 안내 문구를 표시한다. @param {string} message 번역 키 @returns {void} */
+    function showTutorialMessage(message) {
+        if (!game?.tutorial) return;
+        game.tutorial.message = message;
+        game.tutorial.messageElapsed = 0;
+    }
+
+    /** 안내 시연을 시간에 따라 진행한다. @param {number} delta 경과 시간 @returns {void} */
+    function updateTutorial(delta) {
+        const tutorial = game.tutorial;
+        const [player, opponent] = game.players;
+        tutorial.elapsed += delta;
+        tutorial.messageElapsed += delta;
+        const messageDuration = tutorial.mode === 'intro' ? 4800 : 2000;
+        if (tutorial.message && tutorial.messageElapsed >= messageDuration) tutorial.message = null;
+        if (tutorial.mode === 'complete') return;
+        if (game.ending) {
+            updateDefeatSequence(delta);
+            if (!game.running) tutorial.mode = 'complete';
+            return;
+        }
+        if (tutorial.mode === 'intro') {
+            if (tutorial.elapsed >= 4800) {
+                tutorial.mode = 'demo'; tutorial.elapsed = 0; tutorial.message = null;
+                enterControl(player);
+            }
+            return;
+        }
+        let holdAllClearGarbage = false;
+        if (tutorial.stage === 4 && opponent.damage >= ALL_CLEAR_DAMAGE) {
+            if (tutorial.allClearPreviewElapsed === null) tutorial.allClearPreviewElapsed = 0;
+            tutorial.allClearPreviewElapsed += delta;
+            holdAllClearGarbage = tutorial.allClearPreviewElapsed < 2000;
+        }
+        if (!holdAllClearGarbage) updatePlayer(opponent, player, delta);
+        const waitingForGarbage = tutorial.stage >= 2 && opponent.phase !== 'idle' && player.phase === 'control' && player.placedPairCount > 0;
+        player.tutorialHold = tutorial.stage === 4 && (player.allClearEffectElapsed > 0 || holdAllClearGarbage);
+        if (!waitingForGarbage) updatePlayer(player, opponent, delta);
+        const currentPiece = Math.min(player.placedPairCount, tutorial.config.pairs.length - 1);
+        if (player.placedPairCount !== tutorial.placedCount) {
+            tutorial.placedCount = player.placedPairCount;
+            tutorial.pieceElapsed = 0;
+            tutorial.actionFlags = {};
+        }
+        if (player.active) {
+            tutorial.pieceElapsed += delta;
+            const target = tutorial.config.targets[currentPiece];
+            if (tutorial.stage !== 1 && tutorial.pieceElapsed >= 250) player.active.x = target;
+            if (tutorial.stage === 1 && currentPiece === 0 && tutorial.pieceElapsed >= 220 && tutorial.pieceElapsed < 700) {
+                player.active.x = tutorial.pieceElapsed < 460 ? Math.max(0, target - 1) : target;
+                if (tutorial.pieceElapsed < 260) showTutorialMessage('좌우 방향키로 뿌요 이동');
+            }
+            if (tutorial.stage === 1 && currentPiece === 1 && tutorial.pieceElapsed >= 500 && !tutorial.actionFlags.leftRotate) { rotateActive(player, -1); tutorial.actionFlags.leftRotate = true; showTutorialMessage('Z 키를 눌러 좌측으로 뿌요 회전'); }
+            if (tutorial.stage === 1 && currentPiece === 2 && tutorial.pieceElapsed >= 500 && !tutorial.actionFlags.rightRotate1) { rotateActive(player, 1); tutorial.actionFlags.rightRotate1 = true; showTutorialMessage('X 키를 눌러 우측으로 뿌요 회전'); }
+            if (tutorial.stage === 1 && currentPiece === 2 && tutorial.pieceElapsed >= 1500 && !tutorial.actionFlags.rightRotate2) { rotateActive(player, 1); tutorial.actionFlags.rightRotate2 = true; }
+            const fastDownStart = tutorial.stage === 1 && currentPiece === 2 ? 2700 : tutorial.stage === 1 && currentPiece === 1 ? 2600 : tutorial.stage === 1 && currentPiece === 0 ? 2300 : 2050;
+            if (tutorial.pieceElapsed >= fastDownStart) {
+                player.tutorialFastDown = true;
+                if (tutorial.stage === 1 && currentPiece === 0 && !tutorial.actionFlags.fastDownMessage) { tutorial.actionFlags.fastDownMessage = true; showTutorialMessage('아래 방향키로 빨리 떨어뜨리기'); }
+            }
+        }
+        if (player.combo > tutorial.lastCombo) {
+            tutorial.lastCombo = player.combo;
+            if (tutorial.stage === 2) showTutorialMessage(player.placedPairCount <= 1 ? '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어' : '뿌요가 터질 때 인접한 방해뿌요도 같이 터져');
+        }
+        if (tutorial.stage === 4 && tutorial.allClearPreviewElapsed !== null && tutorial.allClearPreviewElapsed >= 2000 && opponent.phase === 'idle' && opponent.damage <= 0) {
+            tutorial.allClearGarbageShown = true;
+        }
+        const stageFourComplete = tutorial.stage !== 4 || (tutorial.allClearGarbageShown && player.allClearEffectElapsed <= 0 && player.pendingAllClearDamage <= 0);
+        if (player.placedPairCount >= tutorial.config.pairs.length && player.phase === 'control' && opponent.phase === 'idle' && !tutorial.message && !holdAllClearGarbage && stageFourComplete) {
+            if (tutorial.stage < 5) enterTutorialStage(tutorial.stage + 1);
+        }
+    }
+
+    /** 플레이 방법 안내 화면을 그린다. @returns {void} */
+    function drawTutorial() {
+        const [player, opponent] = game.players;
+        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        drawField(player, opponent); drawField(opponent, player); drawCenter();
+        const tutorial = game.tutorial;
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `20px ${TITLE_FONT}`;
+        context.fillText(`${translate('플레이 방법')} ${tutorial.stage} / 5`, WIDTH / 2, 32);
+        if (tutorial.message) {
+            const duration = tutorial.mode === 'intro' ? 4800 : 2000;
+            const alpha = Math.max(0, Math.min(1, (duration - tutorial.messageElapsed) / 700));
+            context.save(); context.globalAlpha = alpha;
+            context.fillStyle = 'rgba(3, 11, 19, 0.82)'; context.fillRect(160, 42, 960, 52);
+            context.fillStyle = '#f5fbfc'; context.font = `19px ${MESSAGE_FONT}`; context.fillText(translate(tutorial.message), WIDTH / 2, 75);
+            context.restore();
+        }
+        if (tutorial.mode === 'complete') {
+            context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+            const buttons = [{ label: '다시보기', x: 470, focus: 0, color: '#4cc9b0' }, { label: '종료', x: 660, focus: 1, color: '#ef5350' }];
+            buttons.forEach((button) => {
+                context.fillStyle = button.color; context.fillRect(button.x, 376, 150, 64);
+                context.strokeStyle = tutorial.finalFocus === button.focus ? '#f7c843' : button.color; context.lineWidth = tutorial.finalFocus === button.focus ? 4 : 2; context.strokeRect(button.x, 376, 150, 64);
+                context.fillStyle = '#fff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate(button.label), button.x + 75, 417);
+            });
+        }
     }
 
     /** 설정 화면을 열고 저장된 설정의 임시 복사본을 만든다. @returns {void} */
@@ -2474,12 +2633,15 @@
         context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('시뮬레이터'), WIDTH / 2, 412);
         context.fillStyle = '#405c70'; context.fillRect(menuX, 445, menuWidth, menuHeight);
         context.strokeStyle = titleMenuFocus === 3 ? '#f7c843' : '#405c70'; context.lineWidth = titleMenuFocus === 3 ? 4 : 2; context.strokeRect(menuX, 445, menuWidth, menuHeight);
-        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 477);
+        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('플레이 방법'), WIDTH / 2, 477);
+        context.fillStyle = '#405c70'; context.fillRect(menuX, 510, menuWidth, menuHeight);
+        context.strokeStyle = titleMenuFocus === 4 ? '#f7c843' : '#405c70'; context.lineWidth = titleMenuFocus === 4 ? 4 : 2; context.strokeRect(menuX, 510, menuWidth, menuHeight);
+        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 542);
         context.fillStyle = '#24292f'; context.fillRect(32, 665, 85, 23);
-        context.strokeStyle = titleMenuFocus === 4 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 4 ? 2 : 1; context.strokeRect(32, 665, 85, 23);
+        context.strokeStyle = titleMenuFocus === 5 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 5 ? 2 : 1; context.strokeRect(32, 665, 85, 23);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 74.5, 681);
         context.fillStyle = store.muted ? '#52606d' : '#264b5b'; context.fillRect(WIDTH - 117, 665, 85, 23);
-        context.strokeStyle = titleMenuFocus === 5 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 5 ? 2 : 1; context.strokeRect(WIDTH - 117, 665, 85, 23);
+        context.strokeStyle = titleMenuFocus === 6 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 6 ? 2 : 1; context.strokeRect(WIDTH - 117, 665, 85, 23);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate(store.muted ? '음소거(활성)' : '음소거(꺼짐)'), WIDTH - 74.5, 681);
         context.fillStyle = '#8899a6'; context.font = `14px ${MESSAGE_FONT}`; context.fillText('Copyright (c) HJOW', WIDTH / 2, HEIGHT - 20);
         if (menuScreen === 'practiceDifficulty') {
@@ -2535,6 +2697,10 @@
             else drawMenu();
             return;
         }
+        if (game.tutorial) {
+            drawTutorial();
+            return;
+        }
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         // 게임이 끝났으면 결과 화면으로 전환한다.
         if (!game.running) {
@@ -2563,6 +2729,10 @@
         lastTime = time;
         // 실행 중이며 일시정지가 아닐 때만 게임 상태를 시간에 따라 갱신한다.
         if (game && game.running && !game.paused) {
+            if (game.tutorial) {
+                game.elapsed += delta;
+                updateTutorial(delta);
+            } else
             // 카운트다운이 끝나면 양쪽 플레이어의 첫 턴을 시작한다.
             if (game.countdown > 0) {
                 game.countdown = Math.max(0, game.countdown - delta);
@@ -2656,6 +2826,15 @@
         const key = event.key.toLowerCase();
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
         if (!game && menuScreen === 'simulator') { handleSimulatorKeydown(key); return; }
+        if (game?.tutorial) {
+            const tutorial = game.tutorial;
+            if (key === 'escape') { closeTutorial(); return; }
+            if (tutorial.mode === 'complete') {
+                if (key === 'arrowleft' || key === 'arrowright') tutorial.finalFocus = tutorial.finalFocus === 0 ? 1 : 0;
+                else if (key === 'enter' || key === ' ') { if (tutorial.finalFocus === 0) enterTutorialStage(1); else closeTutorial(); }
+            }
+            return;
+        }
         // 결과 화면에서는 Enter 또는 ESC로 연습은 메인, 대전은 적 선택 화면으로 돌아간다.
         if (game && !game.running && (key === 'enter' || key === 'escape')) {
             const returnToTitle = game.practice;
@@ -2676,8 +2855,8 @@
             }
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
                 titleMenuFocus = key === 'arrowleft' || key === 'arrowup'
-                    ? (titleMenuFocus + 5) % 6
-                    : (titleMenuFocus + 1) % 6;
+                    ? (titleMenuFocus + 6) % 7
+                    : (titleMenuFocus + 1) % 7;
             } else if (menuScreen === 'opponent' && key === 'arrowup') {
                 opponentMenuFocus = Math.max(0, opponentMenuFocus - 1);
             } else if (menuScreen === 'opponent' && key === 'arrowdown') {
@@ -2774,8 +2953,9 @@
             menuScreen = 'practiceDifficulty';
         }
         else if (titleMenuFocus === 2) openSimulator();
-        else if (titleMenuFocus === 3) openSettings();
-        else if (titleMenuFocus === 4) {
+        else if (titleMenuFocus === 3) openTutorial();
+        else if (titleMenuFocus === 4) openSettings();
+        else if (titleMenuFocus === 5) {
             const githubWindow = window.open('https://github.com/HJOW/puyow', '_blank');
             if (githubWindow) githubWindow.opener = null;
         } else {
@@ -2823,6 +3003,16 @@
      * @returns {void}
      */
     function handleCanvasClick(event) {
+        if (game?.tutorial) {
+            const bounds = canvas.getBoundingClientRect();
+            const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
+            const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
+            if (game.tutorial.mode === 'complete' && y >= 376 && y <= 440) {
+                if (x >= 470 && x <= 620) enterTutorialStage(1);
+                else if (x >= 660 && x <= 810) closeTutorial();
+            }
+            return;
+        }
         // 결과 화면에서는 종료 버튼 영역 클릭만 메뉴 복귀로 처리한다.
         if (game && !game.running) {
             const bounds = canvas.getBoundingClientRect();
@@ -2884,10 +3074,13 @@
             } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 445 && y <= 495) {
                 titleMenuFocus = 3;
                 activateTitleMenu();
+            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 510 && y <= 560) {
+                titleMenuFocus = 4;
+                activateTitleMenu();
             } else if (x >= WIDTH - 117 && x <= WIDTH - 32 && y >= 665 && y <= 688) {
                 toggleMuted();
             } else if (x >= 32 && x <= 117 && y >= 665 && y <= 688) {
-                titleMenuFocus = 4;
+                titleMenuFocus = 5;
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
