@@ -2995,7 +2995,7 @@
             this.notAvail = false;
             // 이 좌표에 뿌요가 있으면 AI는 일반 쌓기 대신 공격력 시뮬레이션을 우선한다.
             this.attackSimulationTriggerPosition = { x: 2, y: 8 };
-            this.soundPool = new SoundPool();
+            this.soundPool = createSoundPool(false);
         }
 
         /**
