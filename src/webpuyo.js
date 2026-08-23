@@ -543,6 +543,7 @@
             winner: null,
             ending: null,
             countdown: 3000,
+            countdownStartsGame: true,
             elapsed: 0,
             practice,
             difficulty: selectedDifficulty,
@@ -2092,7 +2093,7 @@
             return;
         }
         drawField(game.players[0], game.players[1]); drawField(game.players[1], game.players[0]); drawCenter();
-        // 시작 전에는 카운트다운 오버레이를 최상단에 표시한다.
+        // 시작 또는 재개 카운트다운 중에는 카운트다운 오버레이를 최상단에 표시한다.
         if (game.countdown > 0) {
             context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(0, 0, WIDTH, HEIGHT);
             context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `76px ${TITLE_FONT}`;
@@ -2115,7 +2116,10 @@
             // 카운트다운이 끝나면 양쪽 플레이어의 첫 턴을 시작한다.
             if (game.countdown > 0) {
                 game.countdown = Math.max(0, game.countdown - delta);
-                if (!game.countdown) beginGame();
+                if (!game.countdown && game.countdownStartsGame) {
+                    game.countdownStartsGame = false;
+                    beginGame();
+                }
             } else if (game.ending) {
                 game.elapsed += delta;
                 updateDefeatSequence(delta);
@@ -2268,6 +2272,10 @@
         if (!game.running) {
             return;
         }
+        // 시작 또는 재개 카운트다운 중에는 일시정지를 포함한 게임 조작을 받지 않는다.
+        if (game.countdown > 0) {
+            return;
+        }
         // 일시정지 중에는 방향키와 Enter로만 오버레이의 버튼을 조작한다.
         if (game.paused) {
             if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
@@ -2339,6 +2347,8 @@
     function activatePauseMenu() {
         if (pauseMenuFocus === 0) {
             game.paused = false;
+            game.countdown = 3000;
+            game.countdownStartsGame = false;
         } else {
             game = null;
             menuScreen = 'title'; loadNotice();
