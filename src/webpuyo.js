@@ -2915,6 +2915,15 @@
         }
 
         /**
+         * 목표 열과 회전을 정한 뒤 아래 방향키를 눌러 빠르게 배치한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {boolean} 항상 빠른 하강을 사용함
+         */
+        useFastDown(player) {
+            return true;
+        }
+
+        /**
          * 가상의 인간형 몬스터 단탈리온을 캔버스 도형으로 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
