@@ -69,6 +69,14 @@
     const HORIZONTAL_HOLD_DELAY = 100;
     /** 좌우 방향키 홀드 중 반복 이동 간격(ms)이다. @type {number} */
     const HORIZONTAL_REPEAT_INTERVAL = 80;
+    /** 가상 컨트롤러 방향키 홀드 중 반복 이동 전 대기 시간(ms)이다. @type {number} */
+    const VIRTUAL_HORIZONTAL_HOLD_DELAY = 100;
+    /** 가상 컨트롤러 방향키 홀드 반복 이동 간격(ms)이다. @type {number} */
+    const VIRTUAL_HORIZONTAL_REPEAT_INTERVAL = 80;
+    /** 가상 컨트롤러 방향 패드 중심 좌표와 한 방향 버튼의 크기다. @type {{x:number,y:number,size:number}} */
+    const VIRTUAL_DPAD = { x: 118, y: 610, size: 52 };
+    /** 가상 컨트롤러 Z, X, ESC 버튼의 중심 좌표와 크기다. @type {{z:{x:number,y:number},x:{x:number,y:number},escape:{x:number,y:number},radius:number}} */
+    const VIRTUAL_ACTION_BUTTONS = { z: { x: 1090, y: 590 }, x: { x: 1170, y: 590 }, escape: { x: 1170, y: 500 }, radius: 31 };
     /** AI 쉬움 난이도에서 빠른 하강을 사용하지 않음을 나타내는 지연 시간이다. @type {null} */
     const AI_FAST_DOWN_DELAY_EASY = null;
     /** AI 보통 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number} */
@@ -92,7 +100,7 @@
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
-            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 및 AI 관련 기능은 추후 제공 예정': 'Sound and AI features will be available in a future update.',
+            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '켜기': 'On', '끄기': 'Off', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 및 AI 관련 기능은 추후 제공 예정': 'Sound and AI features will be available in a future update.',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
@@ -104,7 +112,7 @@
             '시뮬레이터': 'シミュレーター', '팔레트': 'パレット', '재생': '再生', '그리기': '描画', '시뮬레이션': 'シミュレーション', '지우개': '消しゴム',
             'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
             '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
-            '설정': '設定', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 및 AI 관련 기능은 추후 제공 예정': 'サウンドとAI機能は今後のアップデートで提供予定です。',
+            '설정': '設定', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '켜기': 'オン', '끄기': 'オフ', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 및 AI 관련 기능은 추후 제공 예정': 'サウンドとAI機能は今後のアップデートで提供予定です。',
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
@@ -116,7 +124,7 @@
             '시뮬레이터': '模拟器', '팔레트': '调色板', '재생': '播放', '그리기': '绘制', '시뮬레이션': '模拟', '지우개': '橡皮擦',
             'JSON복사': '复制 JSON', 'JSON넣기': '粘贴 JSON', '배치가 클립보드에 복사됨': '布局已复制到剪贴板',
             '클립보드 복사 실패': '复制到剪贴板失败', 'JSON 파싱 실패': 'JSON 解析失败', '배치 JSON을 입력하세요.': '请输入布局 JSON。',
-            '설정': '设置', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 및 AI 관련 기능은 추후 제공 예정': '声音和 AI 功能将在未来更新中提供。',
+            '설정': '设置', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '켜기': '开启', '끄기': '关闭', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 및 AI 관련 기능은 추후 제공 예정': '声音和 AI 功能将在未来更新中提供。',
             '음소거(꺼짐)' : '静音（关）', '음소거(활성)' : '静音（开）'
         }
     };
@@ -177,6 +185,14 @@
     let horizontalHoldElapsed = 0;
     /** 좌우 방향키 홀드 반복 이동의 누적 시간(ms)이다. @type {number} */
     let horizontalRepeatElapsed = 0;
+    /** 가상 컨트롤러에서 현재 홀드 중인 방향키 상태다. @type {{arrowleft:boolean,arrowright:boolean,arrowup:boolean,arrowdown:boolean}} */
+    let virtualDirectionInput = { arrowleft: false, arrowright: false, arrowup: false, arrowdown: false };
+    /** 터치·포인터별로 누르고 있는 가상 컨트롤러 버튼 목록이다. @type {Map<number,string[]>} */
+    let virtualPointerButtons = new Map();
+    /** 가상 컨트롤러 좌우 방향키를 누른 뒤 경과한 시간(ms)이다. @type {number} */
+    let virtualHorizontalHoldElapsed = 0;
+    /** 가상 컨트롤러 좌우 방향키 홀드 반복 이동의 누적 시간(ms)이다. @type {number} */
+    let virtualHorizontalRepeatElapsed = 0;
     /** 현재 화면 문구에 적용할 언어 코드다. @type {string} */
     let languageCode = 'ko';
     /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} */
@@ -229,7 +245,7 @@
         return {
             clearList: [],
             clearListByDifficulty: { easy: [], normal: [], hard: [] },
-            settings: { musicVolume: 100, effectsVolume: 100, aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' },
+            settings: { musicVolume: 100, effectsVolume: 100, virtualController: false, aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' },
             muted: false
         };
     }
@@ -275,6 +291,7 @@
             store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, settings: {
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
+                virtualController: settings.virtualController === true,
                 aiProvider: settings.aiProvider === 'Google' ? 'Google' : 'OpenAI',
                 aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
                 aiModel: typeof settings.aiModel === 'string' ? settings.aiModel : initial.settings.aiModel
@@ -626,6 +643,7 @@
      */
     function startGame(practice = false) {
         if (!practice && !ensureSelectedOpponent()) return;
+        resetVirtualControllerInput();
         const opponent = practice ? { createController: () => new PracticeEnemy() } : OPPONENTS[selectedOpponent];
         const controller = opponent.createController();
         const colors = DIFFICULTIES[selectedDifficulty].colors;
@@ -1361,6 +1379,17 @@
                     }
                 }
             }
+            if (!player.controller && player === game?.players[0] && (virtualDirectionInput.arrowleft || virtualDirectionInput.arrowright)) {
+                virtualHorizontalHoldElapsed += delta;
+                if (virtualHorizontalHoldElapsed >= VIRTUAL_HORIZONTAL_HOLD_DELAY) {
+                    virtualHorizontalRepeatElapsed += delta;
+                    while (virtualHorizontalRepeatElapsed >= VIRTUAL_HORIZONTAL_REPEAT_INTERVAL) {
+                        if (virtualDirectionInput.arrowleft) moveActive(player, -1, 0);
+                        if (virtualDirectionInput.arrowright) moveActive(player, 1, 0);
+                        virtualHorizontalRepeatElapsed -= VIRTUAL_HORIZONTAL_REPEAT_INTERVAL;
+                    }
+                }
+            }
             if (player.controller) {
                 player.aiDecisionElapsed += delta;
                 player.aiFastDown = player.controller.useFastDown(player) === true;
@@ -1374,7 +1403,7 @@
                     moveActive(player, player.active.x < player.aiTarget ? 1 : -1, 0);
                 }
             }
-            const fastDown = player.controller ? player.aiFastDown : isDownKeyPressed;
+            const fastDown = player.controller ? player.aiFastDown : isDownKeyPressed || virtualDirectionInput.arrowdown;
             const speedMultiplier = Math.min(MAX_PLAYER_FALL_SPEED_MULTIPLIER, 1 + Math.floor(game.elapsed / 60000) * 0.2);
             const fallInterval = fastDown ? 55 : player.controller ? 290 : PLAYER_FALL_INTERVAL / speedMultiplier;
             const currentFloor = Math.floor(player.active.y);
@@ -1874,6 +1903,140 @@
         });
     }
 
+    /** 가상 컨트롤러를 표시할 수 있는 게임 진행 상태인지 확인한다. @returns {boolean} */
+    function shouldShowVirtualController() {
+        return Boolean(game && game.running && !game.paused && !game.ending && game.countdown <= 0 && store.settings.virtualController);
+    }
+
+    /** 가상 방향 패드의 한 방향 버튼을 그린다. @param {number} x X 좌표 @param {number} y Y 좌표 @param {string} label 표시 문자 @param {boolean} pressed 눌림 여부 @returns {void} */
+    function drawVirtualDirectionButton(x, y, label, pressed) {
+        const size = VIRTUAL_DPAD.size;
+        context.fillStyle = pressed ? 'rgba(247, 200, 67, 0.88)' : 'rgba(11, 32, 44, 0.78)';
+        context.fillRect(x, y, size, size);
+        context.strokeStyle = pressed ? '#fff6c7' : '#9cc9d2'; context.lineWidth = 2; context.strokeRect(x, y, size, size);
+        context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillStyle = pressed ? '#263238' : '#f5fbfc'; context.font = `28px ${BUTTON_FONT}`;
+        context.fillText(label, x + size / 2, y + size / 2 + 1);
+    }
+
+    /** 가상 조작 버튼을 그린다. @param {number} x 중심 X 좌표 @param {number} y 중심 Y 좌표 @param {string} label 표시 문자 @param {boolean} pressed 눌림 여부 @returns {void} */
+    function drawVirtualActionButton(x, y, label, pressed) {
+        context.beginPath(); context.arc(x, y, VIRTUAL_ACTION_BUTTONS.radius, 0, Math.PI * 2);
+        context.fillStyle = pressed ? 'rgba(247, 200, 67, 0.92)' : 'rgba(86, 48, 104, 0.85)'; context.fill();
+        context.strokeStyle = pressed ? '#fff6c7' : '#e5c7f5'; context.lineWidth = 2; context.stroke();
+        context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillStyle = '#ffffff'; context.font = `${label === 'ESC' ? 14 : 23}px ${BUTTON_FONT}`;
+        context.fillText(label, x, y + 1);
+    }
+
+    /** 터치 조작이 가능한 가상 컨트롤러를 게임 화면 위에 그린다. @returns {void} */
+    function drawVirtualController() {
+        const { x, y, size } = VIRTUAL_DPAD;
+        drawVirtualDirectionButton(x - size / 2, y - size * 1.5, '↑', virtualDirectionInput.arrowup);
+        drawVirtualDirectionButton(x - size * 1.5, y - size / 2, '←', virtualDirectionInput.arrowleft);
+        drawVirtualDirectionButton(x + size / 2, y - size / 2, '→', virtualDirectionInput.arrowright);
+        drawVirtualDirectionButton(x - size / 2, y + size / 2, '↓', virtualDirectionInput.arrowdown);
+        drawVirtualDirectionButton(x - size * 1.5, y + size / 2, '↙', virtualDirectionInput.arrowleft && virtualDirectionInput.arrowdown);
+        drawVirtualDirectionButton(x + size / 2, y + size / 2, '↘', virtualDirectionInput.arrowright && virtualDirectionInput.arrowdown);
+        const pressed = new Set([...virtualPointerButtons.values()].flat());
+        drawVirtualActionButton(VIRTUAL_ACTION_BUTTONS.z.x, VIRTUAL_ACTION_BUTTONS.z.y, 'Z', pressed.has('z'));
+        drawVirtualActionButton(VIRTUAL_ACTION_BUTTONS.x.x, VIRTUAL_ACTION_BUTTONS.x.y, 'X', pressed.has('x'));
+        drawVirtualActionButton(VIRTUAL_ACTION_BUTTONS.escape.x, VIRTUAL_ACTION_BUTTONS.escape.y, 'ESC', pressed.has('escape'));
+        context.textBaseline = 'alphabetic';
+    }
+
+    /** 가상 컨트롤러의 모든 누름 상태를 해제한다. @returns {void} */
+    function resetVirtualControllerInput() {
+        virtualDirectionInput = { arrowleft: false, arrowright: false, arrowup: false, arrowdown: false };
+        virtualPointerButtons.clear();
+        virtualHorizontalHoldElapsed = 0;
+        virtualHorizontalRepeatElapsed = 0;
+    }
+
+    /** 포인터별 누름 상태를 합쳐 가상 방향 입력을 갱신한다. @returns {void} */
+    function refreshVirtualDirectionInput() {
+        const previous = virtualDirectionInput;
+        const next = { arrowleft: false, arrowright: false, arrowup: false, arrowdown: false };
+        virtualPointerButtons.forEach((buttons) => buttons.forEach((button) => {
+            if (Object.hasOwn(next, button)) next[button] = true;
+        }));
+        virtualDirectionInput = next;
+        if ((!previous.arrowleft && next.arrowleft) || (!previous.arrowright && next.arrowright)) {
+            virtualHorizontalHoldElapsed = 0;
+            virtualHorizontalRepeatElapsed = 0;
+            const player = game?.players[0];
+            if (shouldShowVirtualController() && player?.phase === 'control') {
+                if (!previous.arrowleft && next.arrowleft) moveActive(player, -1, 0);
+                if (!previous.arrowright && next.arrowright) moveActive(player, 1, 0);
+            }
+        }
+        if (!next.arrowleft && !next.arrowright) {
+            virtualHorizontalHoldElapsed = 0;
+            virtualHorizontalRepeatElapsed = 0;
+        }
+    }
+
+    /** 캔버스 좌표에서 눌린 가상 컨트롤러 버튼을 구한다. @param {number} x X 좌표 @param {number} y Y 좌표 @returns {string[]} */
+    function getVirtualControllerButtonsAt(x, y) {
+        const buttons = [];
+        const { x: centerX, y: centerY, size } = VIRTUAL_DPAD;
+        const inButton = (left, top) => x >= left && x < left + size && y >= top && y < top + size;
+        if (inButton(centerX - size / 2, centerY - size * 1.5)) buttons.push('arrowup');
+        if (inButton(centerX - size * 1.5, centerY - size / 2)) buttons.push('arrowleft');
+        if (inButton(centerX + size / 2, centerY - size / 2)) buttons.push('arrowright');
+        if (inButton(centerX - size / 2, centerY + size / 2)) buttons.push('arrowdown');
+        if (inButton(centerX - size * 1.5, centerY + size / 2)) buttons.push('arrowleft', 'arrowdown');
+        if (inButton(centerX + size / 2, centerY + size / 2)) buttons.push('arrowright', 'arrowdown');
+        Object.entries(VIRTUAL_ACTION_BUTTONS).forEach(([button, value]) => {
+            if (button !== 'radius' && (x - value.x) ** 2 + (y - value.y) ** 2 <= VIRTUAL_ACTION_BUTTONS.radius ** 2) buttons.push(button);
+        });
+        return buttons;
+    }
+
+    /** 가상 버튼의 한 번 누름 동작을 처리한다. @param {string} button 버튼 식별자 @returns {void} */
+    function triggerVirtualButton(button) {
+        if (!shouldShowVirtualController()) return;
+        if (button === 'escape') {
+            resetVirtualControllerInput();
+            game.paused = true;
+            pauseMenuFocus = 0;
+            return;
+        }
+        const player = game.players[0];
+        if (player.phase !== 'control') return;
+        if (button === 'arrowup' || button === 'x') rotateActive(player, 1);
+        else if (button === 'z') rotateActive(player, -1);
+    }
+
+    /** 포인터 이벤트를 가상 컨트롤러 입력으로 바꾼다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
+    function updateVirtualPointer(event) {
+        if (!shouldShowVirtualController()) return;
+        const bounds = canvas.getBoundingClientRect();
+        const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
+        const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
+        const pointerId = Number.isFinite(event.pointerId) ? event.pointerId : 0;
+        const previous = virtualPointerButtons.get(pointerId) || [];
+        const buttons = getVirtualControllerButtonsAt(x, y);
+        if (buttons.length) virtualPointerButtons.set(pointerId, buttons);
+        else virtualPointerButtons.delete(pointerId);
+        refreshVirtualDirectionInput();
+        buttons.filter((button) => !previous.includes(button)).forEach(triggerVirtualButton);
+        if (buttons.length && event.cancelable) event.preventDefault();
+    }
+
+    /** 가상 컨트롤러 포인터 누름을 처리한다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
+    function handleVirtualPointerDown(event) {
+        updateVirtualPointer(event);
+        if (virtualPointerButtons.has(event.pointerId) && canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
+    }
+
+    /** 가상 컨트롤러 포인터 이동을 처리한다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
+    function handleVirtualPointerMove(event) { updateVirtualPointer(event); }
+
+    /** 가상 컨트롤러 포인터 해제를 처리한다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
+    function handleVirtualPointerUp(event) {
+        virtualPointerButtons.delete(event.pointerId);
+        refreshVirtualDirectionInput();
+    }
+
     /**
      * 종료 화면에서 비어 있는 플레이 영역과 각 플레이어의 결과를 그린다.
      * @param {PlayerState} player 결과를 표시할 플레이어
@@ -1952,42 +2115,53 @@
 
     /** 설정 화면의 포커스 항목을 실행한다. @returns {void} */
     function activateSettingsFocus() {
-        if (settingsFocus === 5) saveSettings();
-        else if (settingsFocus === 6) cancelSettings();
+        if (settingsFocus === 2) settingsDraft.virtualController = !settingsDraft.virtualController;
+        else if (settingsFocus === 6) saveSettings();
+        else if (settingsFocus === 7) cancelSettings();
     }
 
     /** 설정 화면을 그린다. @returns {void} */
     function drawSettings() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `48px ${TITLE_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 78);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `38px ${TITLE_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 56);
         const rows = [
-            { label: '배경음악 볼륨', y: 150, value: settingsDraft.musicVolume, kind: 'slider' },
-            { label: '효과음 볼륨', y: 230, value: settingsDraft.effectsVolume, kind: 'slider' },
-            { label: 'AI 서비스 제공자', y: 310, value: settingsDraft.aiProvider, kind: 'provider' },
-            { label: 'AI API 키', y: 390, value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(24, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
-            { label: '사용 모델명', y: 470, value: settingsDraft.aiModel, kind: 'text' }
+            { label: '배경음악 볼륨', y: 105, value: settingsDraft.musicVolume, kind: 'slider' },
+            { label: '효과음 볼륨', y: 155, value: settingsDraft.effectsVolume, kind: 'slider' },
+            { label: '가상 컨트롤러 사용', y: 205, value: settingsDraft.virtualController, kind: 'radio' },
+            { label: 'AI 서비스 제공자', y: 255, value: settingsDraft.aiProvider, kind: 'provider' },
+            { label: 'AI API 키', y: 305, value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
+            { label: '사용 모델명', y: 355, value: settingsDraft.aiModel, kind: 'text' }
         ];
         rows.forEach((row, index) => {
-            context.textAlign = 'left'; context.fillStyle = '#d8f2f5'; context.font = `18px ${BUTTON_FONT}`; context.fillText(translate(row.label), 260, row.y + 8);
+            context.textAlign = 'left'; context.fillStyle = '#d8f2f5'; context.font = `15px ${BUTTON_FONT}`; context.fillText(translate(row.label), 270, row.y + 5);
             const focused = settingsFocus === index;
             if (row.kind === 'slider') {
-                context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 4 : 2; context.strokeRect(560, row.y - 12, 430, 24);
-                context.fillStyle = '#4cc9b0'; context.fillRect(562, row.y - 10, 426 * row.value / 100, 20);
-                context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 1040, row.y + 8);
+                context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(530, row.y - 10, 390, 20);
+                context.fillStyle = '#4cc9b0'; context.fillRect(532, row.y - 8, 386 * row.value / 100, 16);
+                context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 958, row.y + 5);
+            } else if (row.kind === 'radio') {
+                [{ label: '켜기', value: true, x: 530 }, { label: '끄기', value: false, x: 690 }].forEach((option) => {
+                    const selected = row.value === option.value;
+                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(option.x, row.y - 19, 140, 38);
+                    context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(option.x, row.y - 19, 140, 38);
+                    context.beginPath(); context.arc(option.x + 20, row.y, 7, 0, Math.PI * 2); context.fillStyle = '#d8f2f5'; context.strokeStyle = '#d8f2f5'; context.lineWidth = 2; context.stroke();
+                    if (selected) { context.beginPath(); context.arc(option.x + 20, row.y, 4, 0, Math.PI * 2); context.fill(); }
+                    context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(translate(option.label), option.x + 84, row.y + 5);
+                });
             } else if (row.kind === 'provider') {
                 ['OpenAI', 'Google'].forEach((provider, providerIndex) => {
-                    const x = 560 + providerIndex * 180; const selected = row.value === provider;
-                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, row.y - 24, 160, 48); context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 4 : 2; context.strokeRect(x, row.y - 24, 160, 48); context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(provider, x + 80, row.y + 7);
+                    const x = 530 + providerIndex * 160; const selected = row.value === provider;
+                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, row.y - 19, 140, 38); context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(x, row.y - 19, 140, 38); context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(provider, x + 70, row.y + 5);
                 });
             } else {
-                context.fillStyle = '#0b202c'; context.fillRect(560, row.y - 24, 480, 48); context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 4 : 2; context.strokeRect(560, row.y - 24, 480, 48); context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(row.value || ' ', 575, row.y + 7);
-                if (settingsEditing && settingsFocus === index) { const cursorX = 575 + context.measureText(row.value.slice(0, settingsCursor)).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 16, 2, 27); }
+                context.fillStyle = '#0b202c'; context.fillRect(530, row.y - 19, 450, 38); context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(530, row.y - 19, 450, 38); context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(row.value || ' ', 543, row.y + 5);
+                if (settingsEditing && settingsFocus === index) { const cursorX = 543 + context.measureText(row.value.slice(0, settingsCursor)).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 13, 2, 21); }
             }
         });
-        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `14px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 560, 535);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `15px ${MESSAGE_FONT}`; context.fillText(translate('사운드 및 AI 관련 기능은 추후 제공 예정'), WIDTH / 2, 570);
-        [{ label: '저장', x: 560, focus: 5, color: '#4cc9b0' }, { label: '취소', x: 800, focus: 6, color: '#ef5350' }].forEach((button) => {
-            context.fillStyle = button.color; context.fillRect(button.x, 590, 200, 58); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 4 : 2; context.strokeRect(button.x, 590, 200, 58); context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 100, 627);
+        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 530, 402);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `13px ${MESSAGE_FONT}`; context.fillText(translate('사운드 및 AI 관련 기능은 추후 제공 예정'), WIDTH / 2, 430);
+        [{ label: '저장', x: 580, focus: 6, color: '#4cc9b0' }, { label: '취소', x: 760, focus: 7, color: '#ef5350' }].forEach((button) => {
+            context.fillStyle = button.color; context.fillRect(button.x, 455, 160, 46); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 455, 160, 46); context.fillStyle = '#fff'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 80, 485);
         });
     }
 
@@ -2366,6 +2540,7 @@
             return;
         }
         drawField(game.players[0], game.players[1]); drawField(game.players[1], game.players[0]); drawCenter();
+        if (shouldShowVirtualController()) drawVirtualController();
         // 시작 또는 재개 카운트다운 중에는 카운트다운 오버레이를 최상단에 표시한다.
         if (game.countdown > 0) {
             context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -2444,9 +2619,9 @@
 
     /** 설정 화면에서 포커스 이동과 문자열 편집을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @param {string} key 소문자 키 @returns {void} */
     function handleSettingsKeydown(event, key) {
-        const textField = settingsFocus === 3 || settingsFocus === 4;
+        const textField = settingsFocus === 4 || settingsFocus === 5;
         if (settingsEditing && textField) {
-            const field = settingsFocus === 3 ? 'aiApiKey' : 'aiModel';
+            const field = settingsFocus === 4 ? 'aiApiKey' : 'aiModel';
             if (key === 'enter' || key === 'escape') { settingsEditing = false; return; }
             if (key === 'arrowleft') { settingsCursor = Math.max(0, settingsCursor - 1); return; }
             if (key === 'arrowright') { settingsCursor = Math.min(settingsDraft[field].length, settingsCursor + 1); return; }
@@ -2455,17 +2630,18 @@
             return;
         }
         if (key === 'enter' || key === ' ') {
-            if (textField) { settingsEditing = true; settingsCursor = settingsDraft[settingsFocus === 3 ? 'aiApiKey' : 'aiModel'].length; }
+            if (textField) { settingsEditing = true; settingsCursor = settingsDraft[settingsFocus === 4 ? 'aiApiKey' : 'aiModel'].length; }
             else activateSettingsFocus();
         } else if (key === 'escape') cancelSettings();
-        else if (key === 'arrowup' || key === 'arrowdown') settingsFocus = (settingsFocus + (key === 'arrowup' ? 6 : 1)) % 7;
+        else if (key === 'arrowup' || key === 'arrowdown') settingsFocus = (settingsFocus + (key === 'arrowup' ? 7 : 1)) % 8;
         else if (key === 'arrowleft' || key === 'arrowright') {
             const direction = key === 'arrowleft' ? -1 : 1;
             if (settingsFocus === 0) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
             else if (settingsFocus === 1) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
-            else if (settingsFocus === 2) settingsDraft.aiProvider = settingsDraft.aiProvider === 'OpenAI' ? 'Google' : 'OpenAI';
-            else if (settingsFocus === 5) settingsFocus = 6;
-            else if (settingsFocus === 6) settingsFocus = 5;
+            else if (settingsFocus === 2) settingsDraft.virtualController = direction < 0;
+            else if (settingsFocus === 3) settingsDraft.aiProvider = settingsDraft.aiProvider === 'OpenAI' ? 'Google' : 'OpenAI';
+            else if (settingsFocus === 6) settingsFocus = 7;
+            else if (settingsFocus === 7) settingsFocus = 6;
         }
     }
 
@@ -2526,19 +2702,6 @@
                     selectedOpponentAction = 0;
                 } else if (selectedOpponentAction === 0) startGame();
                 else { menuScreen = 'title'; loadNotice(); }
-            } else if (menuScreen === 'settings' && ['arrowup', 'arrowdown'].includes(key)) {
-                settingsFocus = (settingsFocus + (key === 'arrowup' ? 6 : 1)) % 7;
-            } else if (menuScreen === 'settings' && ['arrowleft', 'arrowright'].includes(key)) {
-                const direction = key === 'arrowleft' ? -1 : 1;
-                if (settingsFocus === 0) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
-                else if (settingsFocus === 1) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
-                else if (settingsFocus === 2) settingsDraft.aiProvider = settingsDraft.aiProvider === 'OpenAI' ? 'Google' : 'OpenAI';
-            } else if (menuScreen === 'settings' && (settingsFocus === 3 || settingsFocus === 4) && key === 'backspace') {
-                const field = settingsFocus === 3 ? 'aiApiKey' : 'aiModel'; settingsDraft[field] = settingsDraft[field].slice(0, -1);
-            } else if (menuScreen === 'settings' && (settingsFocus === 3 || settingsFocus === 4) && key.length === 1) {
-                const field = settingsFocus === 3 ? 'aiApiKey' : 'aiModel'; settingsDraft[field] += event.key;
-            } else if (key === 'escape' && menuScreen === 'settings') {
-                cancelSettings();
             } else if (key === 'escape' && menuScreen === 'opponent') { menuScreen = 'title'; loadNotice(); }
             return;
         }
@@ -2561,6 +2724,7 @@
         }
         // 종료 연출이 아닐 때 ESC로 일시정지를 시작한다.
         if (key === 'escape' && !game.ending) {
+            resetVirtualControllerInput();
             game.paused = true;
             pauseMenuFocus = 0;
             return;
@@ -2569,6 +2733,7 @@
         if (player.phase !== 'control') return;
         if (key === 'arrowleft' && !event.repeat) moveActive(player, -1, 0);
         if (key === 'arrowright' && !event.repeat) moveActive(player, 1, 0);
+        if (key === 'arrowup' && !event.repeat) rotateActive(player, 1);
         if (key === 'arrowleft' || key === 'arrowright') {
             if (horizontalKeyPressed !== key) {
                 horizontalKeyPressed = key;
@@ -2622,10 +2787,12 @@
      */
     function activatePauseMenu() {
         if (pauseMenuFocus === 0) {
+            resetVirtualControllerInput();
             game.paused = false;
             game.countdown = 3000;
             game.countdownStartsGame = false;
         } else {
+            resetVirtualControllerInput();
             stopBackgroundMusic();
             game = null;
             menuScreen = 'title'; loadNotice();
@@ -2722,13 +2889,15 @@
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
-            if (y >= 590 && y <= 648 && x >= 560 && x <= 760) { settingsFocus = 5; saveSettings(); }
-            else if (y >= 590 && y <= 648 && x >= 800 && x <= 1000) { settingsFocus = 6; cancelSettings(); }
-            else if (y >= 126 && y <= 174) { settingsFocus = 0; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 560) / 430 * 100))); }
-            else if (y >= 206 && y <= 254) { settingsFocus = 1; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 560) / 430 * 100))); }
-            else if (y >= 286 && y <= 334) { settingsFocus = 2; settingsDraft.aiProvider = x < 740 ? 'OpenAI' : 'Google'; }
-            else if (y >= 366 && y <= 414) { settingsFocus = 3; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; }
-            else if (y >= 446 && y <= 494) { settingsFocus = 4; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
+            if (y >= 455 && y <= 501 && x >= 580 && x <= 740) { settingsFocus = 6; saveSettings(); }
+            else if (y >= 455 && y <= 501 && x >= 760 && x <= 920) { settingsFocus = 7; cancelSettings(); }
+            else if (y >= 95 && y <= 115) { settingsFocus = 0; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
+            else if (y >= 145 && y <= 165) { settingsFocus = 1; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
+            else if (y >= 186 && y <= 224 && x >= 530 && x <= 670) { settingsFocus = 2; settingsDraft.virtualController = true; }
+            else if (y >= 186 && y <= 224 && x >= 690 && x <= 830) { settingsFocus = 2; settingsDraft.virtualController = false; }
+            else if (y >= 236 && y <= 274) { settingsFocus = 3; settingsDraft.aiProvider = x < 690 ? 'OpenAI' : 'Google'; }
+            else if (y >= 286 && y <= 324) { settingsFocus = 4; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; }
+            else if (y >= 336 && y <= 374) { settingsFocus = 5; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
         } else {
             if (menuScreen === 'practiceDifficulty') {
                 const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => x >= 465 + index * 120 && x <= 575 + index * 120 && y >= 335 && y <= 393);
@@ -2967,6 +3136,11 @@
         window.removeEventListener('keydown', handleKeydown);
         window.removeEventListener('keyup', handleKeyup);
         canvas.removeEventListener('click', handleCanvasClick);
+        canvas.removeEventListener('pointerdown', handleVirtualPointerDown);
+        canvas.removeEventListener('pointermove', handleVirtualPointerMove);
+        canvas.removeEventListener('pointerup', handleVirtualPointerUp);
+        canvas.removeEventListener('pointercancel', handleVirtualPointerUp);
+        resetVirtualControllerInput();
         if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
         if (webMcpAbortController) webMcpAbortController.abort();
         if (createdCanvas && canvas.parentNode) canvas.parentNode.removeChild(canvas);
@@ -3037,6 +3211,10 @@
         window.addEventListener('keydown', handleKeydown);
         window.addEventListener('keyup', handleKeyup);
         canvas.addEventListener('click', handleCanvasClick);
+        canvas.addEventListener('pointerdown', handleVirtualPointerDown);
+        canvas.addEventListener('pointermove', handleVirtualPointerMove);
+        canvas.addEventListener('pointerup', handleVirtualPointerUp);
+        canvas.addEventListener('pointercancel', handleVirtualPointerUp);
         prepareSoundPools();
         registerWebMcpTools();
         loadNotice();

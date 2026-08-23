@@ -31,5 +31,6 @@ canvas {
 	display: block;
 	height: 100%;
 	image-rendering: auto;
+	touch-action: none;
 	width: 100%;
 }
