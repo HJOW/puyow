@@ -3170,13 +3170,28 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'main_menu'|'opponent_select'|'simulator'|'settings'|'countdown'|'playing'|'paused'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'main_menu'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
-        if (!game) return { screen: menuScreen === 'opponent' ? 'opponent_select' : menuScreen === 'simulator' ? 'simulator' : menuScreen === 'settings' ? 'settings' : 'main_menu', playerCanControl: false };
+        if (!game) {
+            if (menuScreen === 'opponent') return { screen: 'opponent_select', playerCanControl: false };
+            if (menuScreen === 'practiceDifficulty') return { screen: 'practice_difficulty', playerCanControl: false };
+            if (menuScreen === 'simulator') {
+                const screen = simulator?.mode === 'draw' ? 'simulator_draw' : simulator?.mode === 'complete' ? 'simulator_complete' : 'simulator_simulation';
+                return { screen, playerCanControl: false };
+            }
+            if (menuScreen === 'settings') return { screen: 'settings', playerCanControl: false };
+            return { screen: 'main_menu', playerCanControl: false };
+        }
+        if (game.tutorial) {
+            if (game.tutorial.mode === 'complete') return { screen: 'tutorial_complete', playerCanControl: false };
+            if (game.tutorial.mode === 'result' || game.ending || !game.running) return { screen: 'tutorial_result', playerCanControl: false };
+            return { screen: game.tutorial.mode === 'intro' ? 'tutorial_intro' : 'tutorial_demo', playerCanControl: false };
+        }
         if (!game.running) return { screen: 'game_over', playerCanControl: false };
         if (game.countdown > 0) return { screen: 'countdown', playerCanControl: false };
         if (game.paused) return { screen: 'paused', playerCanControl: false };
+        if (game.ending) return { screen: 'ending', playerCanControl: false };
         return { screen: 'playing', playerCanControl: game.players[0].phase === 'control' && game.players[0].active !== null };
     }
 
@@ -3213,8 +3228,8 @@
      */
     function getNowGameStatus() {
         const screen = getNowScreen();
-        if (screen.screen !== 'playing' && screen.screen !== 'paused') {
-            throw new Error('now_game_status is available only while playing or paused.');
+        if (!game || game.tutorial || (screen.screen !== 'playing' && screen.screen !== 'paused')) {
+            throw new Error('now_game_status is available only during a normal match while playing or paused.');
         }
         const [player, opponent] = game.players;
         return {
@@ -3256,7 +3271,7 @@
         const screenSchema = {
             type: 'object',
             properties: {
-                screen: { type: 'string', enum: ['main_menu', 'opponent_select', 'simulator', 'settings', 'countdown', 'playing', 'paused', 'game_over'] },
+                screen: { type: 'string', enum: ['main_menu', 'practice_difficulty', 'opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'], description: 'The exact visible menu, simulator, tutorial, or match screen.' },
                 playerCanControl: { type: 'boolean' }
             },
             required: ['screen', 'playerCanControl']
@@ -3301,11 +3316,11 @@
                 name: 'manual',
                 description: 'Return English instructions for playing Puyo W and using the other available game tools.',
                 inputSchema: emptyInput,
-                execute: () => 'Puyo W is a falling-pair puzzle battle. During your control turn, use left/right to move, Z/X to rotate, and down to fall faster. Match four or more same-color puyos to clear them and send attacks. Use now_screen to learn which screen is visible, now_game_status only while playing or paused to inspect both boards and active pairs, and point_recommend during a controllable player turn to highlight one recommended board coordinate.'
+                execute: () => 'Puyo W is a falling-pair puzzle battle. During a normal match control turn, use left/right to move, Z/X to rotate, and down to fall faster. Match four or more same-color puyos to clear them and send attacks. Use now_screen to identify the exact menu, simulator, tutorial, or match screen. Use now_game_status only during a normal match while playing or paused, and point_recommend only during a controllable normal-match turn.'
             },
             {
                 name: 'now_screen',
-                description: 'Get the currently visible game screen. The JSON result states whether it is the main menu, opponent selection, countdown, play, pause, or game-over screen, and whether the human player can currently control a pair.',
+                description: 'Get the exact visible Puyo W screen, including practice difficulty selection, simulator modes, tutorial phases, match countdown, ending animation, pause, and game-over. playerCanControl is true only when the human can control an active pair in a normal match.',
                 inputSchema: emptyInput,
                 outputSchema: screenSchema,
                 execute: getNowScreen
