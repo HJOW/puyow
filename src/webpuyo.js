@@ -150,7 +150,7 @@
     /** 선택된 적의 OPPONENTS 배열 인덱스다. @type {number} */
     let selectedOpponent = 0;
     /** 선택된 색상 수의 DIFFICULTIES 배열 인덱스다. @type {number} */
-    let selectedDifficulty = 2;
+    let selectedDifficulty = 1;
     /** 선택된 AI 빠른 하강 난이도의 AI_DIFFICULTIES 배열 인덱스다. @type {number} */
     let selectedAiDifficulty = 1;
     /** 적 선택 메뉴에서 포커스된 행이다. 0: 색상, 1: AI 난이도, 2: 적, 3: 동작이다. @type {number} */
@@ -2356,12 +2356,10 @@
     }
 
     /**
-     * 적 선택 화면을 색상 4색·AI 보통 난이도와 첫 포커스 상태로 연다.
+     * 적 선택 화면을 현재 선택값과 첫 포커스 상태로 연다.
      * @returns {void}
      */
     function openOpponentMenu() {
-        selectedDifficulty = 1;
-        selectedAiDifficulty = 1;
         ensureSelectedOpponent();
         opponentMenuFocus = 0;
         selectedOpponentAction = 0;
