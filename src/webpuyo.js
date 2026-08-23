@@ -1090,6 +1090,8 @@
         };
         // 회전을 포함한 모든 실제 착지 후보를 비교한다. 공격력이 같으면 더 오른쪽 열을 선택한다.
         player.aiSimulations.forEach((simulation) => {
+            // Y=2에 닿는 후보는 다른 조건보다 먼저 즉시 패배 여부를 확인해 배제한다.
+            if (simulation.positions.some((position) => position.y === 2) && causesImmediateDefeat(player, simulation)) return;
             if (simulation.x === defeatCheckColumn && causesImmediateDefeat(player, simulation)) return;
             if (simulation.attack > bestPlacement.attack || (simulation.attack === bestPlacement.attack && simulation.x >= bestPlacement.x)) {
                 bestPlacement = simulation;
@@ -3574,7 +3576,7 @@
     }
 
     /**
-   * 단탈리온 적 정의
+     * 단탈리온 적 정의
      */
     class Dantalion extends Enemy {
         /**
@@ -3600,6 +3602,32 @@
             return 6 + Math.floor(Math.random() * 3);
         }
 
+        /** @param {PlayerState} player 자동 조작할 플레이어 @param {number} side 목표 측 X 좌표 @returns {boolean} 목표 측 하단 두 칸이 모두 채워졌는지 */
+        isSideFilled(player, side) {
+            return player.board[0][side] !== null && player.board[1][side] !== null;
+        }
+
+        /**
+         * 목표 측 하단 두 칸을 채우되, 폭발과 Y=2 즉시 패배 후보를 피하는 배치를 고른다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @param {number} side 목표 측 X 좌표
+         * @returns {object|null} 배치 후보
+         */
+        selectSideBuildPlacement(player, side) {
+            let selected = null;
+            let bestScore = -Infinity;
+            player.aiSimulations.forEach((simulation) => {
+                if (simulation.combo !== 0) return;
+                if (simulation.positions.some((position) => position.y === 2) && causesImmediateDefeat(player, simulation)) return;
+                const score = simulation.positions.reduce((total, position) => {
+                    const targetRow = position.y <= 1 ? 1000 : 0;
+                    return total + targetRow - Math.abs(position.x - side) * 50 - position.y;
+                }, 0);
+                if (score >= bestScore) { selected = simulation; bestScore = score; }
+            });
+            return selected;
+        }
+
         /**
          * @param {PlayerState} player 자동 조작할 플레이어
          * @returns {number} 목표 X 좌표
@@ -3615,10 +3643,18 @@
                 return this.attackPlacement.x;
             }
 
-            this.attackPlacement = null;
             const target = this.phase === 'initialRight' ? COLUMNS - 1 : 0;
+            const buildPlacement = this.selectSideBuildPlacement(player, target);
+            const safeFallback = player.aiSimulations.find((simulation) => !simulation.positions.some((position) => position.y === 2 && causesImmediateDefeat(player, simulation)));
+            const basicPlacement = buildPlacement || safeFallback;
+            // 좌·우 끝의 하단 두 칸이 차기 전에는 회전을 포함한 비폭발 쌓기를 계속한다.
+            if (!this.isSideFilled(player, target) && basicPlacement) {
+                this.attackPlacement = basicPlacement;
+                return basicPlacement.x;
+            }
+            this.attackPlacement = basicPlacement;
             this.turnsRemaining -= 1;
-            if (this.turnsRemaining === 0) {
+            if (this.turnsRemaining <= 0) {
                 if (this.phase === 'initialLeft') {
                     this.phase = 'initialRight';
                     this.turnsRemaining = this.randomTurns();
@@ -3626,7 +3662,7 @@
                     this.phase = 'simulation';
                 }
             }
-            return target;
+            return basicPlacement ? basicPlacement.x : target;
         }
 
         /** 공격력 시뮬레이션 단계에서는 최고 공격 후보가 요구하는 회전을 사용한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
@@ -3994,7 +4030,8 @@
     }
 
     /**
-     * 세레는 일정 횟수 동안 오른쪽에 쌓은 뒤 공격력 시뮬레이션을 수행한다.
+     * 적 세레의 정의.
+     *     적 세레는 일정 횟수 동안 오른쪽에 쌓은 뒤 공격력 시뮬레이션을 수행한다.
      */
     class Seere extends Enemy {
         constructor() {
@@ -4015,6 +4052,31 @@
             return 10 + Math.floor(Math.random() * 6);
         }
 
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {boolean} 우측 하단 세 칸이 모두 채워졌는지 */
+        isRightThreeRowsFilled(player) {
+            return [0, 1, 2].every((y) => player.board[y][COLUMNS - 1] !== null);
+        }
+
+        /**
+         * 우측 하단 세 칸을 우선 채우는 비폭발 후보를 선택한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {object|null} 배치 후보
+         */
+        selectRightBuildPlacement(player) {
+            let selected = null;
+            let bestScore = -Infinity;
+            player.aiSimulations.forEach((simulation) => {
+                if (simulation.combo !== 0) return;
+                if (simulation.positions.some((position) => position.y === 2) && causesImmediateDefeat(player, simulation)) return;
+                const score = simulation.positions.reduce((total, position) => {
+                    const targetRow = position.x === COLUMNS - 1 && position.y <= 2 ? 1000 : 0;
+                    return total + targetRow - Math.abs(position.x - (COLUMNS - 1)) * 50 - position.y;
+                }, 0);
+                if (score >= bestScore) { selected = simulation; bestScore = score; }
+            });
+            return selected;
+        }
+
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 X 좌표 */
         chooseTarget(player) {
             const trigger = this.attackSimulationTriggerPosition;
@@ -4023,10 +4085,18 @@
                 this.attackPlacement = findBestAttackPlacement(player, 0, triggerOccupied ? trigger.x : null);
                 return this.attackPlacement.x;
             }
+            const buildPlacement = this.selectRightBuildPlacement(player);
+            const safeFallback = player.aiSimulations.find((simulation) => !simulation.positions.some((position) => position.y === 2 && causesImmediateDefeat(player, simulation)));
+            const basicPlacement = buildPlacement || safeFallback;
+            // 우측 하단 세 칸이 차기 전에는 폭발을 만들지 않는 회전·배치만 사용한다.
+            if (!this.isRightThreeRowsFilled(player) && basicPlacement) {
+                this.attackPlacement = basicPlacement;
+                return basicPlacement.x;
+            }
             this.turnCount += 1;
             if (this.turnCount <= this.turnsUntilSimulation || !player.active) {
-                this.attackPlacement = null;
-                return COLUMNS - 1;
+                this.attackPlacement = basicPlacement;
+                return basicPlacement ? basicPlacement.x : COLUMNS - 1;
             }
             this.attackPlacement = findBestAttackPlacement(player, COLUMNS - 1);
             this.turnCount = 0;
@@ -4039,7 +4109,7 @@
             return this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player);
         }
 
-        /** 세레의 기존 초상화는 유지한다. */
+        /** 세레의 기존 초상화 */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
             const size = 72 * scale;
             drawingContext.save();
@@ -4067,7 +4137,8 @@
     }
 
     /**
-     * 데카라비아는 세레의 기존 연쇄 축적 전략을 사용한다.
+     * 적 데카라비아
+     *     데카라비아는 세레의 기존 연쇄 축적 전략을 기반으로 수정하여 사용한다.
      */
     class Decarabia extends ChainBuildingEnemy {
         constructor() {
