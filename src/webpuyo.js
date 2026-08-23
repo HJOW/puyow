@@ -90,7 +90,7 @@
     /** AI 쉬움 난이도에서 빠른 하강을 사용하지 않음을 나타내는 지연 시간이다. @type {null} */
     const AI_FAST_DOWN_DELAY_EASY = null;
     /** AI 보통 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number} */
-    const AI_FAST_DOWN_DELAY_NORMAL = 1000;
+    const AI_FAST_DOWN_DELAY_NORMAL = 1500;
     /** AI 어려움 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number} */
     const AI_FAST_DOWN_DELAY_HARD = 300;
     /** 적이 공격 위력 시뮬레이션을 우선할 피해량 기준이다. @type {number} */
@@ -1302,7 +1302,8 @@
         if (slimeDetails) {
             context.fillStyle = 'rgba(255, 255, 255, 0.72)';
             context.beginPath();
-            context.ellipse(radius * 0.43, -radius * 0.43, radius * 0.13, radius * 0.22, 0.55, 0, Math.PI * 2);
+            // 긴 축을 기존 방향에서 90도 돌려 표면을 따라 반사되게 한다.
+            context.ellipse(radius * 0.43, -radius * 0.43, radius * 0.13, radius * 0.22, 0.55 + Math.PI / 2, 0, Math.PI * 2);
             context.fill();
         }
         drawPuyoEyes(radius, slimeDetails ? radius * 0.08 : 0);
@@ -1394,7 +1395,7 @@
      * @returns {void}
      */
     function drawWarning(x, y, type) {
-        if (type === 'tiny') return drawPuyo(x + CELL * 0.25, y + CELL * 0.25, 'garbage', 0.45, false);
+        if (type === 'tiny') return drawPuyo(x + CELL * 0.05, y + CELL * 0.25, 'garbage', 0.45, false);
         if (type === 'sun') {
             context.save();
             context.translate(x + CELL / 2, y + CELL / 2);
@@ -1435,6 +1436,21 @@
             return;
         }
         drawPuyo(x, y, 'garbage');
+    }
+
+    /**
+     * 예고뿌요 목록을 그린다. 1개 단위 예고뿌요끼리는 조금 더 촘촘하게 배치한다.
+     * @param {number} x 좌측 X 좌표
+     * @param {number} y 위쪽 Y 좌표
+     * @param {string[]} units 예고뿌요 단위 목록
+     * @returns {void}
+     */
+    function drawWarningUnits(x, y, units) {
+        let tinyCount = 0;
+        units.forEach((type, index) => {
+            const tinyOffset = type === 'tiny' ? tinyCount++ * 0.35 : 0;
+            drawWarning(x + (index - tinyOffset) * CELL, y, type);
+        });
     }
 
     /**
@@ -1580,7 +1596,7 @@
             context.fillStyle = '#0a1d29'; context.fillRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
             context.strokeStyle = 'rgba(176, 232, 244, 0.25)'; context.strokeRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
         }
-        warningUnits(opponent.attack + player.damage).forEach((type, index) => drawWarning(x + index * CELL, FIELD_TOP - CELL, type));
+        drawWarningUnits(x, FIELD_TOP - CELL, warningUnits(opponent.attack + player.damage));
         if (player.effects) {
             const progress = Math.min(1, player.effects.elapsed / player.effects.duration);
             player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress));
@@ -1961,7 +1977,7 @@
         if (simulator.mode === 'draw' && simulator.focusArea === 'board') { const focus = simulator.boardFocus; context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(x + focus.x * CELL + 2, FIELD_BOTTOM - (focus.y + 1) * CELL + 2, CELL - 4, CELL - 4); }
         context.fillStyle = '#071621'; context.fillRect(500, FIELD_TOP - CELL, 350, CELL * 14); context.fillStyle = '#0c2433'; context.fillRect(FIELD_RIGHT - CELL, FIELD_TOP - CELL, CELL * 8, CELL * 14);
         for (let i = 0; i < COLUMNS; i += 1) { context.fillStyle = '#0a1d29'; context.fillRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); context.strokeStyle = 'rgba(176,232,244,.25)'; context.strokeRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); }
-        warningUnits(player.attack).forEach((type, index) => drawWarning(FIELD_RIGHT + index * CELL, FIELD_TOP - CELL, type));
+        drawWarningUnits(FIELD_RIGHT, FIELD_TOP - CELL, warningUnits(player.attack));
         context.textAlign = 'center';
         getSimulatorPaletteItems().forEach((item, index) => {
             const focused = simulator.focusArea === 'palette' && simulator.paletteFocus === index;
