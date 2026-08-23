@@ -93,6 +93,8 @@
     const AI_FAST_DOWN_DELAY_NORMAL = 1000;
     /** AI 어려움 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number} */
     const AI_FAST_DOWN_DELAY_HARD = 300;
+    /** 적이 공격 위력 시뮬레이션을 우선할 피해량 기준이다. @type {number} */
+    const AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD = 12;
     /** 공통 뿌요 쌍 대기열의 초기 길이다. @type {number} */
     const INITIAL_PAIR_QUEUE_LENGTH = 16;
     /** 브라우저 저장소에 사용할 키다. @type {string} */
@@ -2899,7 +2901,7 @@
             // 중앙이 높이 쌓였거나 시뮬레이션 단계면 최대 공격 위치를 선택한다.
             const trigger = this.attackSimulationTriggerPosition;
             const triggerOccupied = player.board[trigger.y][trigger.x] !== null;
-            if (triggerOccupied || this.phase === 'simulation') {
+            if (triggerOccupied || this.phase === 'simulation' || player.damage >= AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD) {
                 const bestColumn = findBestAttackColumn(player, 0, triggerOccupied ? trigger.x : null);
                 this.phase = 'repeatLeft';
                 if (!triggerOccupied) this.turnsRemaining = 6;
@@ -3001,7 +3003,10 @@
         chooseTarget(player) {
             // 중앙이 위험 높이에 도달하면 즉시 공격력이 최대인 열을 찾는다.
             const trigger = this.attackSimulationTriggerPosition;
-            if (player.board[trigger.y][trigger.x]) return findBestAttackColumn(player, 0, trigger.x);
+            const triggerOccupied = player.board[trigger.y][trigger.x] !== null;
+            if (triggerOccupied || player.damage >= AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD) {
+                return findBestAttackColumn(player, 0, triggerOccupied ? trigger.x : null);
+            }
             this.turnCount += 1;
             const stackDirection = COLUMNS - 1;
             if (this.turnCount <= this.turnsUntilSimulation || !player.active) return stackDirection;
