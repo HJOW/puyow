@@ -99,7 +99,8 @@
             '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked',
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
-            '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.'
+            '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
+            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.'
         }
     };
 
@@ -117,6 +118,14 @@
     let webMcpAbortController = null;
     /** 현재 실행 중인 게임 상태다. @type {object|null} */
     let game = null;
+    /** 설정 화면에서 임시로 편집 중인 값이다. @type {object|null} */
+    let settingsDraft = null;
+    /** 설정 화면의 포커스 항목 인덱스다. @type {number} */
+    let settingsFocus = 0;
+    /** API 키·모델명 입력란이 실제 편집 상태인지 여부다. @type {boolean} */
+    let settingsEditing = false;
+    /** 현재 편집 중인 문자열의 커서 위치다. @type {number} */
+    let settingsCursor = 0;
     /** AI가 강조 표시하도록 지정한 플레이어 필드 좌표다. @type {{x:number, y:number}|null} */
     let recommendedPoint = null;
     /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'title'|'opponent'|'practiceDifficulty'|'simulator'} */
@@ -165,7 +174,7 @@
      * @returns {{clearList:string[]}} 초기 저장 데이터
      */
     function createInitialStore() {
-        return { clearList: [] };
+        return { clearList: [], settings: { musicVolume: 100, effectsVolume: 100, aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' } };
     }
 
     /**
@@ -195,7 +204,15 @@
             if (!parsed || !Array.isArray(parsed.clearList) || !parsed.clearList.every((name) => typeof name === 'string')) {
                 throw new TypeError('clearList 배열이 필요합니다.');
             }
-            store = { clearList: [...new Set(parsed.clearList)] };
+            const settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
+            const initial = createInitialStore().settings;
+            store = { clearList: [...new Set(parsed.clearList)], settings: {
+                musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.musicVolume,
+                effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.effectsVolume,
+                aiProvider: settings.aiProvider === 'Google' ? 'Google' : 'OpenAI',
+                aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.aiApiKey,
+                aiModel: typeof settings.aiModel === 'string' ? settings.aiModel : initial.aiModel
+            } };
         } catch (error) {
             console.error('Puyo W 저장 데이터 불러오기에 실패했습니다.', error);
             store = createInitialStore();
@@ -1535,6 +1552,67 @@
         menuScreen = 'simulator';
     }
 
+    /** 설정 화면을 열고 저장된 설정의 임시 복사본을 만든다. @returns {void} */
+    function openSettings() {
+        settingsDraft = { ...store.settings };
+        settingsFocus = 0; settingsEditing = false; settingsCursor = 0;
+        menuScreen = 'settings';
+    }
+
+    /** 설정 화면의 변경 사항을 저장한다. @returns {void} */
+    function saveSettings() {
+        store.settings = { ...settingsDraft };
+        saveStore();
+        settingsDraft = null; settingsEditing = false;
+        menuScreen = 'title';
+    }
+
+    /** 설정 화면을 저장하지 않고 닫는다. @returns {void} */
+    function cancelSettings() {
+        settingsDraft = null; settingsEditing = false;
+        menuScreen = 'title';
+    }
+
+    /** 설정 화면의 포커스 항목을 실행한다. @returns {void} */
+    function activateSettingsFocus() {
+        if (settingsFocus === 5) saveSettings();
+        else if (settingsFocus === 6) cancelSettings();
+    }
+
+    /** 설정 화면을 그린다. @returns {void} */
+    function drawSettings() {
+        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `48px ${TITLE_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 78);
+        const rows = [
+            { label: '배경음악 볼륨', y: 150, value: settingsDraft.musicVolume, kind: 'slider' },
+            { label: '효과음 볼륨', y: 230, value: settingsDraft.effectsVolume, kind: 'slider' },
+            { label: 'AI 서비스 제공자', y: 310, value: settingsDraft.aiProvider, kind: 'provider' },
+            { label: 'AI API 키', y: 390, value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(24, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
+            { label: '사용 모델명', y: 470, value: settingsDraft.aiModel, kind: 'text' }
+        ];
+        rows.forEach((row, index) => {
+            context.textAlign = 'left'; context.fillStyle = '#d8f2f5'; context.font = `18px ${BUTTON_FONT}`; context.fillText(translate(row.label), 260, row.y + 8);
+            const focused = settingsFocus === index;
+            if (row.kind === 'slider') {
+                context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 4 : 2; context.strokeRect(560, row.y - 12, 430, 24);
+                context.fillStyle = '#4cc9b0'; context.fillRect(562, row.y - 10, 426 * row.value / 100, 20);
+                context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 1040, row.y + 8);
+            } else if (row.kind === 'provider') {
+                ['OpenAI', 'Google'].forEach((provider, providerIndex) => {
+                    const x = 560 + providerIndex * 180; const selected = row.value === provider;
+                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, row.y - 24, 160, 48); context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 4 : 2; context.strokeRect(x, row.y - 24, 160, 48); context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(provider, x + 80, row.y + 7);
+                });
+            } else {
+                context.fillStyle = '#0b202c'; context.fillRect(560, row.y - 24, 480, 48); context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 4 : 2; context.strokeRect(560, row.y - 24, 480, 48); context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(row.value || ' ', 575, row.y + 7);
+                if (settingsEditing && settingsFocus === index) { const cursorX = 575 + context.measureText(row.value.slice(0, settingsCursor)).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 16, 2, 27); }
+            }
+        });
+        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `14px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 560, 535);
+        [{ label: '저장', x: 560, focus: 5, color: '#4cc9b0' }, { label: '취소', x: 800, focus: 6, color: '#ef5350' }].forEach((button) => {
+            context.fillStyle = button.color; context.fillRect(button.x, 590, 200, 58); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 4 : 2; context.strokeRect(button.x, 590, 200, 58); context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 100, 627);
+        });
+    }
+
     /** 시뮬레이터 팔레트와 버튼 영역을 반환한다. @returns {{kind:string,value:string|null,x:number,y:number,width:number,height:number}[]} */
     function getSimulatorPaletteItems() {
         const items = [...COLORS, 'garbage'].map((color, index) => ({ kind: 'puyo', value: color, x: 906 + (index % 3) * (CELL + 6), y: 184 + Math.floor(index / 3) * (CELL + 6), width: CELL, height: CELL }));
@@ -1731,7 +1809,7 @@
      */
     function drawMenu() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `68px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 112 : 260);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 112 : 170);
         if (menuScreen === 'opponent') {
             context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('난이도 선택'), WIDTH / 2, 150);
             DIFFICULTIES.forEach((difficulty, index) => {
@@ -1794,17 +1872,21 @@
             context.fillStyle = '#d8f2f5'; context.font = `18px ${BUTTON_FONT}`; context.fillText(translate('이전'), 775, 637);
             return;
         }
-        context.fillStyle = '#ef5350'; context.fillRect(WIDTH / 2 - 145, 358, 290, 66);
-        context.strokeStyle = titleMenuFocus === 0 ? '#f7c843' : '#ef5350'; context.lineWidth = titleMenuFocus === 0 ? 4 : 2; context.strokeRect(WIDTH / 2 - 145, 358, 290, 66);
-        context.fillStyle = '#fff'; context.font = `25px ${BUTTON_FONT}`; context.fillText(translate('게임 시작'), WIDTH / 2, 402);
-        context.fillStyle = '#264b5b'; context.fillRect(WIDTH / 2 - 145, 442, 290, 66);
-        context.strokeStyle = titleMenuFocus === 1 ? '#f7c843' : '#264b5b'; context.lineWidth = titleMenuFocus === 1 ? 4 : 2; context.strokeRect(WIDTH / 2 - 145, 442, 290, 66);
-        context.fillStyle = '#d8f2f5'; context.font = `25px ${BUTTON_FONT}`; context.fillText(translate('연습'), WIDTH / 2, 486);
-        context.fillStyle = '#34556b'; context.fillRect(WIDTH / 2 - 145, 526, 290, 66);
-        context.strokeStyle = titleMenuFocus === 2 ? '#f7c843' : '#34556b'; context.lineWidth = titleMenuFocus === 2 ? 4 : 2; context.strokeRect(WIDTH / 2 - 145, 526, 290, 66);
-        context.fillStyle = '#e3f4ff'; context.font = `25px ${BUTTON_FONT}`; context.fillText(translate('시뮬레이터'), WIDTH / 2, 570);
+        const menuX = WIDTH / 2 - 109; const menuWidth = 218; const menuHeight = 50;
+        context.fillStyle = '#ef5350'; context.fillRect(menuX, 250, menuWidth, menuHeight);
+        context.strokeStyle = titleMenuFocus === 0 ? '#f7c843' : '#ef5350'; context.lineWidth = titleMenuFocus === 0 ? 4 : 2; context.strokeRect(menuX, 250, menuWidth, menuHeight);
+        context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('게임 시작'), WIDTH / 2, 282);
+        context.fillStyle = '#264b5b'; context.fillRect(menuX, 315, menuWidth, menuHeight);
+        context.strokeStyle = titleMenuFocus === 1 ? '#f7c843' : '#264b5b'; context.lineWidth = titleMenuFocus === 1 ? 4 : 2; context.strokeRect(menuX, 315, menuWidth, menuHeight);
+        context.fillStyle = '#d8f2f5'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('연습'), WIDTH / 2, 347);
+        context.fillStyle = '#34556b'; context.fillRect(menuX, 380, menuWidth, menuHeight);
+        context.strokeStyle = titleMenuFocus === 2 ? '#f7c843' : '#34556b'; context.lineWidth = titleMenuFocus === 2 ? 4 : 2; context.strokeRect(menuX, 380, menuWidth, menuHeight);
+        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('시뮬레이터'), WIDTH / 2, 412);
+        context.fillStyle = '#405c70'; context.fillRect(menuX, 445, menuWidth, menuHeight);
+        context.strokeStyle = titleMenuFocus === 3 ? '#f7c843' : '#405c70'; context.lineWidth = titleMenuFocus === 3 ? 4 : 2; context.strokeRect(menuX, 445, menuWidth, menuHeight);
+        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 477);
         context.fillStyle = '#24292f'; context.fillRect(32, 642, 170, 46);
-        context.strokeStyle = titleMenuFocus === 3 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 3 ? 4 : 2; context.strokeRect(32, 642, 170, 46);
+        context.strokeStyle = titleMenuFocus === 4 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 4 ? 4 : 2; context.strokeRect(32, 642, 170, 46);
         context.fillStyle = '#ffffff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 117, 673);
         context.fillStyle = '#8899a6'; context.font = `14px ${MESSAGE_FONT}`; context.fillText('Copyright (c) HJOW', WIDTH / 2, HEIGHT - 20);
         if (menuScreen === 'practiceDifficulty') {
@@ -1856,6 +1938,7 @@
         // 진행 중인 게임이 없으면 현재 메뉴 화면만 렌더링한다.
         if (!game) {
             if (menuScreen === 'simulator' && simulator) drawSimulator();
+            else if (menuScreen === 'settings' && settingsDraft) drawSettings();
             else drawMenu();
             return;
         }
@@ -1939,6 +2022,33 @@
         if (candidates.length) simulator.paletteFocus = candidates[0].index;
     }
 
+    /** 설정 화면에서 포커스 이동과 문자열 편집을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @param {string} key 소문자 키 @returns {void} */
+    function handleSettingsKeydown(event, key) {
+        const textField = settingsFocus === 3 || settingsFocus === 4;
+        if (settingsEditing && textField) {
+            const field = settingsFocus === 3 ? 'aiApiKey' : 'aiModel';
+            if (key === 'enter' || key === 'escape') { settingsEditing = false; return; }
+            if (key === 'arrowleft') { settingsCursor = Math.max(0, settingsCursor - 1); return; }
+            if (key === 'arrowright') { settingsCursor = Math.min(settingsDraft[field].length, settingsCursor + 1); return; }
+            if (key === 'backspace') { if (settingsCursor > 0) { settingsDraft[field] = settingsDraft[field].slice(0, settingsCursor - 1) + settingsDraft[field].slice(settingsCursor); settingsCursor -= 1; } return; }
+            if (key.length === 1) { settingsDraft[field] = settingsDraft[field].slice(0, settingsCursor) + event.key + settingsDraft[field].slice(settingsCursor); settingsCursor += event.key.length; }
+            return;
+        }
+        if (key === 'enter' || key === ' ') {
+            if (textField) { settingsEditing = true; settingsCursor = settingsDraft[settingsFocus === 3 ? 'aiApiKey' : 'aiModel'].length; }
+            else activateSettingsFocus();
+        } else if (key === 'escape') cancelSettings();
+        else if (key === 'arrowup' || key === 'arrowdown') settingsFocus = (settingsFocus + (key === 'arrowup' ? 6 : 1)) % 7;
+        else if (key === 'arrowleft' || key === 'arrowright') {
+            const direction = key === 'arrowleft' ? -1 : 1;
+            if (settingsFocus === 0) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
+            else if (settingsFocus === 1) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
+            else if (settingsFocus === 2) settingsDraft.aiProvider = settingsDraft.aiProvider === 'OpenAI' ? 'Google' : 'OpenAI';
+            else if (settingsFocus === 5) settingsFocus = 6;
+            else if (settingsFocus === 6) settingsFocus = 5;
+        }
+    }
+
     /**
      * 키 입력을 현재 메뉴 또는 플레이어 조작에 전달한다.
      * @param {KeyboardEvent} event 키보드 이벤트
@@ -1967,8 +2077,8 @@
             }
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
                 titleMenuFocus = key === 'arrowleft' || key === 'arrowup'
-                    ? (titleMenuFocus + 3) % 4
-                    : (titleMenuFocus + 1) % 4;
+                    ? (titleMenuFocus + 4) % 5
+                    : (titleMenuFocus + 1) % 5;
             } else if (menuScreen === 'opponent' && key === 'arrowup') {
                 opponentMenuFocus = Math.max(0, opponentMenuFocus - 1);
             } else if (menuScreen === 'opponent' && key === 'arrowdown') {
@@ -1981,14 +2091,30 @@
                 if (opponentMenuFocus === 0) selectedDifficulty = (selectedDifficulty + 1) % DIFFICULTIES.length;
                 else if (opponentMenuFocus === 1) selectRelativeOpponent(1);
                 else selectedOpponentAction = 1;
+            } else if (menuScreen === 'settings') {
+                handleSettingsKeydown(event, key);
             } else if (key === 'enter' || key === ' ') {
                 if (menuScreen === 'title') activateTitleMenu();
+                else if (menuScreen === 'settings') activateSettingsFocus();
                 else if (opponentMenuFocus === 0) opponentMenuFocus = 1;
                 else if (opponentMenuFocus === 1) {
                     opponentMenuFocus = 2;
                     selectedOpponentAction = 0;
                 } else if (selectedOpponentAction === 0) startGame();
                 else menuScreen = 'title';
+            } else if (menuScreen === 'settings' && ['arrowup', 'arrowdown'].includes(key)) {
+                settingsFocus = (settingsFocus + (key === 'arrowup' ? 6 : 1)) % 7;
+            } else if (menuScreen === 'settings' && ['arrowleft', 'arrowright'].includes(key)) {
+                const direction = key === 'arrowleft' ? -1 : 1;
+                if (settingsFocus === 0) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
+                else if (settingsFocus === 1) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
+                else if (settingsFocus === 2) settingsDraft.aiProvider = settingsDraft.aiProvider === 'OpenAI' ? 'Google' : 'OpenAI';
+            } else if (menuScreen === 'settings' && (settingsFocus === 3 || settingsFocus === 4) && key === 'backspace') {
+                const field = settingsFocus === 3 ? 'aiApiKey' : 'aiModel'; settingsDraft[field] = settingsDraft[field].slice(0, -1);
+            } else if (menuScreen === 'settings' && (settingsFocus === 3 || settingsFocus === 4) && key.length === 1) {
+                const field = settingsFocus === 3 ? 'aiApiKey' : 'aiModel'; settingsDraft[field] += event.key;
+            } else if (key === 'escape' && menuScreen === 'settings') {
+                cancelSettings();
             } else if (key === 'escape' && menuScreen === 'opponent') menuScreen = 'title';
             return;
         }
@@ -2053,6 +2179,7 @@
             menuScreen = 'practiceDifficulty';
         }
         else if (titleMenuFocus === 2) openSimulator();
+        else if (titleMenuFocus === 3) openSettings();
         else {
             const githubWindow = window.open('https://github.com/HJOW/puyow', '_blank');
             if (githubWindow) githubWindow.opener = null;
@@ -2143,19 +2270,30 @@
             return;
         }
         if (menuScreen === 'title') {
-            if (x >= WIDTH / 2 - 145 && x <= WIDTH / 2 + 145 && y >= 358 && y <= 424) {
+            if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 250 && y <= 300) {
                 titleMenuFocus = 0;
                 activateTitleMenu();
-            } else if (x >= WIDTH / 2 - 145 && x <= WIDTH / 2 + 145 && y >= 442 && y <= 508) {
+            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 315 && y <= 365) {
                 titleMenuFocus = 1;
                 activateTitleMenu();
-            } else if (x >= WIDTH / 2 - 145 && x <= WIDTH / 2 + 145 && y >= 526 && y <= 592) {
+            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 380 && y <= 430) {
                 titleMenuFocus = 2;
+                activateTitleMenu();
+            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 445 && y <= 495) {
+                titleMenuFocus = 3;
                 activateTitleMenu();
             } else if (x >= 32 && x <= 202 && y >= 642 && y <= 688) {
                 titleMenuFocus = 3;
                 activateTitleMenu();
             }
+        } else if (menuScreen === 'settings') {
+            if (y >= 590 && y <= 648 && x >= 560 && x <= 760) { settingsFocus = 5; saveSettings(); }
+            else if (y >= 590 && y <= 648 && x >= 800 && x <= 1000) { settingsFocus = 6; cancelSettings(); }
+            else if (y >= 126 && y <= 174) { settingsFocus = 0; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 560) / 430 * 100))); }
+            else if (y >= 206 && y <= 254) { settingsFocus = 1; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 560) / 430 * 100))); }
+            else if (y >= 286 && y <= 334) { settingsFocus = 2; settingsDraft.aiProvider = x < 740 ? 'OpenAI' : 'Google'; }
+            else if (y >= 366 && y <= 414) { settingsFocus = 3; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; }
+            else if (y >= 446 && y <= 494) { settingsFocus = 4; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
         } else {
             if (menuScreen === 'practiceDifficulty') {
                 const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => x >= 465 + index * 120 && x <= 575 + index * 120 && y >= 335 && y <= 393);
@@ -2196,10 +2334,10 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'main_menu'|'opponent_select'|'simulator'|'countdown'|'playing'|'paused'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'main_menu'|'opponent_select'|'simulator'|'settings'|'countdown'|'playing'|'paused'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
-        if (!game) return { screen: menuScreen === 'opponent' ? 'opponent_select' : menuScreen === 'simulator' ? 'simulator' : 'main_menu', playerCanControl: false };
+        if (!game) return { screen: menuScreen === 'opponent' ? 'opponent_select' : menuScreen === 'simulator' ? 'simulator' : menuScreen === 'settings' ? 'settings' : 'main_menu', playerCanControl: false };
         if (!game.running) return { screen: 'game_over', playerCanControl: false };
         if (game.countdown > 0) return { screen: 'countdown', playerCanControl: false };
         if (game.paused) return { screen: 'paused', playerCanControl: false };
@@ -2263,7 +2401,7 @@
         const screenSchema = {
             type: 'object',
             properties: {
-                screen: { type: 'string', enum: ['main_menu', 'opponent_select', 'simulator', 'countdown', 'playing', 'paused', 'game_over'] },
+                screen: { type: 'string', enum: ['main_menu', 'opponent_select', 'simulator', 'settings', 'countdown', 'playing', 'paused', 'game_over'] },
                 playerCanControl: { type: 'boolean' }
             },
             required: ['screen', 'playerCanControl']
@@ -2366,6 +2504,7 @@
         context = null;
         game = null;
         simulator = null;
+        settingsDraft = null;
         recommendedPoint = null;
         createdCanvas = false;
         animationFrameId = null;
