@@ -81,9 +81,6 @@
     const INITIAL_PAIR_QUEUE_LENGTH = 16;
     /** 브라우저 저장소에 사용할 키다. @type {string} */
     const STORE_KEY = 'puyow_store';
-
-    /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 webpuyo.js 기준으로 해석한다. @type {string} */
-    let NOTICE_FILE = 'notice.txt';
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
@@ -182,6 +179,10 @@
     let languageCode = 'ko';
     /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} */
     let store = createInitialStore();
+    /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 webpuyo.js 기준으로 해석한다. @type {string} */
+    let noticeUrl = 'notice.txt';
+    /** 공통 사운드 풀 @type {CommonSoundPool} */
+    let commonSoundPool = null;
     /** 난이도별 표시명과 제공 색상 목록이다. @type {{name:string, colors:string[]}[]} */
     const DIFFICULTIES = [
         { name: '3색', colors: ['green', 'yellow', 'blue'] },
@@ -283,7 +284,7 @@
     }
 
     /**
-     * NOTICE_FILE을 읽는다. 상대경로는 webpuyo.js와 같은 경로를 기준으로 해석하고,
+     * noticeUrl을 읽는다. 상대경로는 webpuyo.js와 같은 경로를 기준으로 해석하고,
      * 절대 URL은 지정한 주소 그대로 사용한다. 읽기 실패 시 빈 안내문으로 둔다.
      * @returns {Promise<void>}
      */
@@ -292,12 +293,12 @@
         try {
             const script = [...(document.scripts || [])].find((element) => /webpuyo(?:\.min)?\.js(?:[?#]|$)/.test(element.src));
             const scriptUrl = script?.src ? new URL(script.src, document.baseURI) : new URL(document.baseURI);
-            const noticeUrl = new URL(NOTICE_FILE, scriptUrl);
-            const response = await fetch(noticeUrl.href);
-            if (!response.ok) throw new Error(`${NOTICE_FILE} 요청 실패 (${response.status})`);
+            const notiUrl = new URL(noticeUrl, scriptUrl);
+            const response = await fetch(notiUrl.href);
+            if (!response.ok) throw new Error(`${noticeUrl} 요청 실패 (${response.status})`);
             noticeText = await response.text();
         } catch (error) {
-            console.error(`${NOTICE_FILE}를 불러오지 못했습니다.`, error);
+            console.error(`${noticeUrl}를 불러오지 못했습니다.`, error);
             noticeText = '';
         }
     }
@@ -313,7 +314,7 @@
         if (typeof noticeFile !== 'string' || noticeFile.length === 0) {
             throw new TypeError('공지사항 경로는 비어 있지 않은 문자열이어야 합니다.');
         }
-        NOTICE_FILE = noticeFile;
+        noticeUrl = noticeFile;
     }
 
     /**
@@ -1837,7 +1838,7 @@
         });
     }
 
-    /** 메인 화면 왼쪽에 NOTICE_FILE 내용을 줄바꿈해 표시한다. @returns {void} */
+    /** 메인 화면 왼쪽에 noticeUrl 내용을 줄바꿈해 표시한다. @returns {void} */
     function drawNotice() {
         if (!noticeText) return;
         const x = 42; const y = 230; const width = 300; const lineHeight = 18; const lines = [];
@@ -2683,6 +2684,11 @@
         };
     }
 
+    /** 사운드 풀을 준비한다. */
+    function prepareSoundPools() {
+        commonSoundPool = createSoundPool(true);
+    }
+
     /**
      * WebMCP에 노출할 게임 도구를 등록한다. 미지원 브라우저에서는 아무 작업도 하지 않는다.
      * @returns {void}
@@ -2860,9 +2866,120 @@
         window.addEventListener('keydown', handleKeydown);
         window.addEventListener('keyup', handleKeyup);
         canvas.addEventListener('click', handleCanvasClick);
+        prepareSoundPools();
         registerWebMcpTools();
         loadNotice();
         animationFrameId = requestAnimationFrame(frame);
+    }
+
+    /**
+     * 사운드 풀. 음원 파일이 있는 상대/절대경로 URL 주소들을 담는 객체를 만들기 위한 클래스. 플레이어 / 적이 공통으로 갖는 효과음들을 담는다.
+     */
+    class SoundPool {
+        /**  
+         * 1연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        spellCombo1 = null;
+        /**  
+         * 2연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        spellCombo2 = null;
+        /**  
+         * 3연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        spellCombo3 = "";
+        /**  
+         * 4연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        spellCombo4 = "";
+        /**  
+         * 5연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        spellCombo5 = "";
+        /**  
+         * 6연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        spellCombo6 = "";
+        /**  
+         * 7 또는 그 이상의 연쇄 발생 시 주인공 / 적이 말하는 주문 효과음. (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        spellCombo7 = "";
+        /**  
+         * 적의 경우, 해당 적과 게임 시 사용되는 배경 음악. null 인 경우 해당 상황에서 소리가 나지 않는다.
+         *     해당 적의 배경 음악이 없으면, 공통 사운드 풀의 backgroundMusic 을 체크해서 있으면 이용한다.
+         *     배경 음악이므로 반복되어야 한다.
+         * @type {string|null}
+         */
+        backgroundMusic = null;
+
+        constructor() {}
+    }
+
+    /**
+     * 공통 사운드 풀. 플레이어 주인공의 주문 효과음과 더불어, 시스템에서 공통으로 사용되는 효과음들도 포함한다.
+     */
+    class CommonSoundPool extends SoundPool {
+        /**  
+         * 뿌요가 터지는 소리 효과음, 1연쇄일 때에만 사용, (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        puyoBurstCombo1 = null;
+
+        /**  
+         * 뿌요가 터지는 소리 효과음, 2연쇄일 때에만 사용, (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        puyoBurstCombo2 = null;
+
+        /**  
+         * 뿌요가 터지는 소리 효과음, 3연쇄일 때에만 사용, (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        puyoBurstCombo3 = null;
+
+        /**  
+         * 뿌요가 터지는 소리 효과음, 4연쇄일 때에만 사용, (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        puyoBurstCombo4 = null;
+
+        /**  
+         * 뿌요가 터지는 소리 효과음, 5연쇄일 때에만 사용, (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        puyoBurstCombo5 = null;
+
+        /**  
+         * 뿌요가 터지는 소리 효과음, 6연쇄일 때에만 사용, (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        puyoBurstCombo6 = null;
+
+        /**  
+         * 뿌요가 터지는 소리 효과음, 7 또는 그 이상의 연쇄일 때에만 사용, (null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        puyoBurstCombo7 = null;
+
+
+        constructor() { super(); }
+    }
+
+    /**
+     * 사운드 풀 객체를 생성한다.
+     * @param {SoundPool} commons 공통 시스템용 사운드 풀 생성 시 true 입력해야 한다. 그외의 경우 false 입력 
+     * @returns 새 사운드 풀 객체
+     */
+    function createSoundPool(commons) {
+        if(commons) return new CommonSoundPool();
+        return new SoundPool();
     }
 
     // Enemy 계층은 파일 하단에 모아 확장 지점을 한곳에서 확인할 수 있게 한다.
@@ -2870,12 +2987,15 @@
      * 자동 플레이어의 이동 목표를 결정하는 확장 지점이다.
      */
     class Enemy {
+        /** 이 적이 연쇄 시 재생되는 효과음들을 담은 사운드풀 @type {SoundPool} */
+        soundPool = null;
         constructor() {
             this.sortPriority = 1;
             this.hidden = false;
             this.notAvail = false;
             // 이 좌표에 뿌요가 있으면 AI는 일반 쌓기 대신 공격력 시뮬레이션을 우선한다.
             this.attackSimulationTriggerPosition = { x: 2, y: 8 };
+            this.soundPool = new SoundPool();
         }
 
         /**
