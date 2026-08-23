@@ -47,24 +47,6 @@
     const MESSAGE_FONT_NAME = 'D2Coding';
     /** 글꼴 지정 시 기본 글꼴 뒤에 대체 글꼴로 붙일 글꼴 이름 목록이다. 배열 내부와 세 글꼴 이름 모두와 중복되지 않도록 자동으로 걸러진다. @type {string[]} */
     const FALLBACK_FONTS = ['Nanum Gothic Coding', 'Nanum Gothic', 'Noto Sans SC', 'Noto Sans JP', 'monospace', 'sans-serif'];
-    /**
-     * 공백이 있어 CSS font 값에서 여러 키워드로 잘못 해석될 수 있는 글꼴 이름에만 쌍따옴표를 붙인다.
-     * @param {string} fontName 원본 글꼴 이름
-     * @returns {string} font 속성에 안전하게 넣을 수 있는 글꼴 이름
-     */
-    function quoteFontNameIfNeeded(fontName) {
-        return fontName.includes(' ') ? `"${fontName}"` : fontName;
-    }
-    /**
-     * 기본 글꼴 뒤에 FALLBACK_FONTS를 자기 자신 및 세 기본 글꼴 이름과 겹치지 않게 이어 붙인 글꼴 목록 문자열을 만든다.
-     * @param {string} primaryFontName 최우선으로 사용할 글꼴 이름
-     * @returns {string} 콤마로 구분된 글꼴 목록 문자열
-     */
-    function buildFontStack(primaryFontName) {
-        const reserved = new Set([primaryFontName, TITLE_FONT_NAME, BUTTON_FONT_NAME, MESSAGE_FONT_NAME]);
-        const uniqueFallbacks = [...new Set(FALLBACK_FONTS)].filter((fontName) => !reserved.has(fontName));
-        return [primaryFontName, ...uniqueFallbacks].map(quoteFontNameIfNeeded).join(', ');
-    }
     /** 화면 제목이나 절 제목처럼 강조가 필요한 큰 헤더에 사용할 글꼴 목록이다. @type {string} */
     const TITLE_FONT = buildFontStack(TITLE_FONT_NAME);
     /** 버튼, 선택 카드 등 클릭 가능한 항목의 라벨에 사용할 글꼴 목록이다. @type {string} */
@@ -113,7 +95,8 @@
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
-            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 및 AI 관련 기능은 추후 제공 예정': 'Sound and AI features will be available in a future update.'
+            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 및 AI 관련 기능은 추후 제공 예정': 'Sound and AI features will be available in a future update.',
+            '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         }
     };
 
@@ -193,6 +176,25 @@
     let WebPuyo = null;
 
     /**
+     * 공백이 있어 CSS font 값에서 여러 키워드로 잘못 해석될 수 있는 글꼴 이름에만 쌍따옴표를 붙인다.
+     * @param {string} fontName 원본 글꼴 이름
+     * @returns {string} font 속성에 안전하게 넣을 수 있는 글꼴 이름
+     */
+    function quoteFontNameIfNeeded(fontName) {
+        return fontName.includes(' ') ? `"${fontName}"` : fontName;
+    }
+    /**
+     * 기본 글꼴 뒤에 FALLBACK_FONTS를 자기 자신 및 세 기본 글꼴 이름과 겹치지 않게 이어 붙인 글꼴 목록 문자열을 만든다.
+     * @param {string} primaryFontName 최우선으로 사용할 글꼴 이름
+     * @returns {string} 콤마로 구분된 글꼴 목록 문자열
+     */
+    function buildFontStack(primaryFontName) {
+        const reserved = new Set([primaryFontName, TITLE_FONT_NAME, BUTTON_FONT_NAME, MESSAGE_FONT_NAME]);
+        const uniqueFallbacks = [...new Set(FALLBACK_FONTS)].filter((fontName) => !reserved.has(fontName));
+        return [primaryFontName, ...uniqueFallbacks].map(quoteFontNameIfNeeded).join(', ');
+    }
+
+    /**
      * 저장 데이터의 기본 구조를 만든다.
      * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} 초기 저장 데이터
      */
@@ -200,7 +202,8 @@
         return {
             clearList: [],
             clearListByDifficulty: { easy: [], normal: [], hard: [] },
-            settings: { musicVolume: 100, effectsVolume: 100, aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' }
+            settings: { musicVolume: 100, effectsVolume: 100, aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' },
+            muted: false
         };
     }
 
@@ -248,7 +251,7 @@
                 aiProvider: settings.aiProvider === 'Google' ? 'Google' : 'OpenAI',
                 aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
                 aiModel: typeof settings.aiModel === 'string' ? settings.aiModel : initial.settings.aiModel
-            } };
+            }, muted: parsed.muted === true };
         } catch (error) {
             console.error('Puyo W 저장 데이터 불러오기에 실패했습니다.', error);
             store = createInitialStore();
@@ -1763,6 +1766,12 @@
         menuScreen = 'title'; loadNotice();
     }
 
+    /** 메인 화면의 음소거 상태를 토글하고 별도 저장한다. @returns {void} */
+    function toggleMuted() {
+        store.muted = !store.muted;
+        saveStore();
+    }
+
     /** 설정 화면의 포커스 항목을 실행한다. @returns {void} */
     function activateSettingsFocus() {
         if (settingsFocus === 5) saveSettings();
@@ -2115,6 +2124,9 @@
         context.fillStyle = '#24292f'; context.fillRect(32, 642, 170, 46);
         context.strokeStyle = titleMenuFocus === 4 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 4 ? 4 : 2; context.strokeRect(32, 642, 170, 46);
         context.fillStyle = '#ffffff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 117, 673);
+        context.fillStyle = store.muted ? '#52606d' : '#264b5b'; context.fillRect(WIDTH - 202, 642, 170, 46);
+        context.strokeStyle = titleMenuFocus === 5 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 5 ? 4 : 2; context.strokeRect(WIDTH - 202, 642, 170, 46);
+        context.fillStyle = '#ffffff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate(store.muted ? '음소거(활성)' : '음소거(꺼짐)'), WIDTH - 117, 673);
         context.fillStyle = '#8899a6'; context.font = `14px ${MESSAGE_FONT}`; context.fillText('Copyright (c) HJOW', WIDTH / 2, HEIGHT - 20);
         if (menuScreen === 'practiceDifficulty') {
             context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -2307,8 +2319,8 @@
             }
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
                 titleMenuFocus = key === 'arrowleft' || key === 'arrowup'
-                    ? (titleMenuFocus + 4) % 5
-                    : (titleMenuFocus + 1) % 5;
+                    ? (titleMenuFocus + 5) % 6
+                    : (titleMenuFocus + 1) % 6;
             } else if (menuScreen === 'opponent' && key === 'arrowup') {
                 opponentMenuFocus = Math.max(0, opponentMenuFocus - 1);
             } else if (menuScreen === 'opponent' && key === 'arrowdown') {
@@ -2417,9 +2429,11 @@
         }
         else if (titleMenuFocus === 2) openSimulator();
         else if (titleMenuFocus === 3) openSettings();
-        else {
+        else if (titleMenuFocus === 4) {
             const githubWindow = window.open('https://github.com/HJOW/puyow', '_blank');
             if (githubWindow) githubWindow.opener = null;
+        } else {
+            toggleMuted();
         }
     }
 
@@ -2520,6 +2534,8 @@
             } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 445 && y <= 495) {
                 titleMenuFocus = 3;
                 activateTitleMenu();
+            } else if (x >= WIDTH - 202 && x <= WIDTH - 32 && y >= 642 && y <= 688) {
+                toggleMuted();
             } else if (x >= 32 && x <= 202 && y >= 642 && y <= 688) {
                 titleMenuFocus = 4;
                 activateTitleMenu();
