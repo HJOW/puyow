@@ -2145,12 +2145,12 @@
         context.fillStyle = '#405c70'; context.fillRect(menuX, 445, menuWidth, menuHeight);
         context.strokeStyle = titleMenuFocus === 3 ? '#f7c843' : '#405c70'; context.lineWidth = titleMenuFocus === 3 ? 4 : 2; context.strokeRect(menuX, 445, menuWidth, menuHeight);
         context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 477);
-        context.fillStyle = '#24292f'; context.fillRect(32, 642, 170, 46);
-        context.strokeStyle = titleMenuFocus === 4 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 4 ? 4 : 2; context.strokeRect(32, 642, 170, 46);
-        context.fillStyle = '#ffffff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 117, 673);
-        context.fillStyle = store.muted ? '#52606d' : '#264b5b'; context.fillRect(WIDTH - 202, 642, 170, 46);
-        context.strokeStyle = titleMenuFocus === 5 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 5 ? 4 : 2; context.strokeRect(WIDTH - 202, 642, 170, 46);
-        context.fillStyle = '#ffffff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate(store.muted ? '음소거(활성)' : '음소거(꺼짐)'), WIDTH - 117, 673);
+        context.fillStyle = '#24292f'; context.fillRect(32, 665, 85, 23);
+        context.strokeStyle = titleMenuFocus === 4 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 4 ? 2 : 1; context.strokeRect(32, 665, 85, 23);
+        context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 74.5, 681);
+        context.fillStyle = store.muted ? '#52606d' : '#264b5b'; context.fillRect(WIDTH - 117, 665, 85, 23);
+        context.strokeStyle = titleMenuFocus === 5 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 5 ? 2 : 1; context.strokeRect(WIDTH - 117, 665, 85, 23);
+        context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate(store.muted ? '음소거(활성)' : '음소거(꺼짐)'), WIDTH - 74.5, 681);
         context.fillStyle = '#8899a6'; context.font = `14px ${MESSAGE_FONT}`; context.fillText('Copyright (c) HJOW', WIDTH / 2, HEIGHT - 20);
         if (menuScreen === 'practiceDifficulty') {
             context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -2558,9 +2558,9 @@
             } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 445 && y <= 495) {
                 titleMenuFocus = 3;
                 activateTitleMenu();
-            } else if (x >= WIDTH - 202 && x <= WIDTH - 32 && y >= 642 && y <= 688) {
+            } else if (x >= WIDTH - 117 && x <= WIDTH - 32 && y >= 665 && y <= 688) {
                 toggleMuted();
-            } else if (x >= 32 && x <= 202 && y >= 642 && y <= 688) {
+            } else if (x >= 32 && x <= 117 && y >= 665 && y <= 688) {
                 titleMenuFocus = 4;
                 activateTitleMenu();
             }
