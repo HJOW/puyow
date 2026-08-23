@@ -3475,7 +3475,7 @@
     }
 
         /**
-         * 안드로말리우스는 좌우로 기반을 쌓은 뒤 예상 공격이 큰 위치를 노린다.
+         * 안드로말리우스 적 정의
          */
     class Andromalius extends Enemy {
         constructor() {
@@ -3486,7 +3486,7 @@
         }
 
         /**
-         * 단탈리온과 같은 방식으로 일반 배치 턴 수를 정한다.
+         * 일반 배치 턴 수를 정한다.
          * @returns {number} 6부터 8 사이의 일반 배치 턴 수
          */
         randomTurns() {
@@ -3536,7 +3536,7 @@
         }
 
         /**
-         * 단탈리온과 구별되는 갑각형 악마 모습을 그린다.
+         * 안드로말리우스 외형 - 갑각형 악마 모습을 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 2D 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -3584,7 +3584,7 @@
     }
 
     /**
-   * 단탈리온의 배치 목표를 결정한다. 10~15회 일반 배치 후 예상 공격이 가장 큰 열을 고른다.
+   * 단탈리온 적 정의
      */
     class Dantalion extends Enemy {
         /**
