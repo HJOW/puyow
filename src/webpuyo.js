@@ -18,6 +18,8 @@
     const ROWS = 17;
     /** 화면에 보이는 필드의 세로 칸 수다. @type {number} */
     const VISIBLE_ROWS = 12;
+    /** 적 선택 화면 UI를 축소해 표시할 배율이다. @type {number} */
+    const OPPONENT_MENU_SCALE = 0.9;
     /** 한 칸의 논리 픽셀 크기다. @type {number} */
     const CELL = 38;
     /** 필드 표시 영역의 위쪽 논리 좌표다. @type {number} */
@@ -96,7 +98,7 @@
     const stringTable = {
         en: {
             '게임 시작': 'Game Start', '연습': 'Practice', '난이도 선택': 'Difficulty', '적 선택': 'Opponent',
-            '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '시작': 'Start', '이전': 'Back',
+            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
             '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked',
@@ -165,9 +167,9 @@
     let store = createInitialStore();
     /** 난이도별 표시명과 제공 색상 목록이다. @type {{name:string, colors:string[]}[]} */
     const DIFFICULTIES = [
-        { name: '쉬움', colors: ['green', 'yellow', 'blue'] },
-        { name: '보통', colors: ['red', 'green', 'yellow', 'blue'] },
-        { name: '어려움', colors: COLORS }
+        { name: '3색', colors: ['green', 'yellow', 'blue'] },
+        { name: '4색', colors: ['red', 'green', 'yellow', 'blue'] },
+        { name: '5색', colors: COLORS }
     ];
     /** 등록된 기본 및 외부 적 목록이다. @type {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} */
     const OPPONENTS = [];
@@ -1868,6 +1870,13 @@
      */
     function drawMenu() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        const opponentMenuScaled = menuScreen === 'opponent';
+        if (opponentMenuScaled) {
+            context.save();
+            context.translate(WIDTH / 2, HEIGHT / 2);
+            context.scale(OPPONENT_MENU_SCALE, OPPONENT_MENU_SCALE);
+            context.translate(-WIDTH / 2, -HEIGHT / 2);
+        }
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 112 : 170);
         if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'opponent') {
@@ -1930,6 +1939,7 @@
             context.fillStyle = '#264b5b'; context.fillRect(710, 600, 130, 58);
             context.strokeStyle = opponentMenuFocus === 2 && selectedOpponentAction === 1 ? '#f7c843' : '#264b5b'; context.lineWidth = opponentMenuFocus === 2 && selectedOpponentAction === 1 ? 4 : 2; context.strokeRect(710, 600, 130, 58);
             context.fillStyle = '#d8f2f5'; context.font = `18px ${BUTTON_FONT}`; context.fillText(translate('이전'), 775, 637);
+            context.restore();
             return;
         }
         const menuX = WIDTH / 2 - 109; const menuWidth = 218; const menuHeight = 50;
@@ -2363,7 +2373,10 @@
                 }
                 return;
             }
-            const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => x >= 465 + index * 120 && x <= 575 + index * 120 && y >= 170 && y <= 220);
+            // 축소해 그린 적 선택 화면의 클릭 좌표를 원래 논리 좌표로 되돌린다.
+            const opponentX = (x - WIDTH / 2) / OPPONENT_MENU_SCALE + WIDTH / 2;
+            const opponentY = (y - HEIGHT / 2) / OPPONENT_MENU_SCALE + HEIGHT / 2;
+            const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => opponentX >= 465 + index * 120 && opponentX <= 575 + index * 120 && opponentY >= 170 && opponentY <= 220);
             if (difficultyIndex >= 0) {
                 selectedDifficulty = difficultyIndex;
                 opponentMenuFocus = 0;
@@ -2374,7 +2387,7 @@
             const selectedVisibleIndex = visibleOpponents.indexOf(selectedEntry);
             const cardIndex = visibleOpponents.findIndex((entry, index) => {
                 const cardX = WIDTH / 2 - 80 + (index - selectedVisibleIndex) * 180;
-                return x >= cardX && x <= cardX + 160 && y >= 475 && y <= 537;
+                return opponentX >= cardX && opponentX <= cardX + 160 && opponentY >= 475 && opponentY <= 537;
             });
             if (cardIndex >= 0) {
                 const clickedOpponent = visibleOpponents[cardIndex];
@@ -2382,10 +2395,10 @@
                     selectedOpponent = OPPONENTS.indexOf(clickedOpponent);
                     opponentMenuFocus = 1;
                 }
-            } else if (x >= 440 && x <= 690 && y >= 600 && y <= 658) {
+            } else if (opponentX >= 440 && opponentX <= 690 && opponentY >= 600 && opponentY <= 658) {
                 selectedOpponentAction = 0;
                 startGame();
-            } else if (x >= 710 && x <= 840 && y >= 600 && y <= 658) {
+            } else if (opponentX >= 710 && opponentX <= 840 && opponentY >= 600 && opponentY <= 658) {
                 selectedOpponentAction = 1;
                 menuScreen = 'title'; loadNotice();
             }
