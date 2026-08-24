@@ -645,6 +645,14 @@
             this.hasPlacedPuyoSinceAllClear = false;
             this.allClearEffectElapsed = 0;
             this.pendingAllClearDamage = 0;
+            // 실제 수치는 먼저 차감하되, 예고뿌요 표시는 에너지 도착까지 유지한다.
+            this.warningReductionDelay = 0;
+            // 연쇄가 끝나기 전까지 상대에게 보이지 않아야 하는 누적 공격의 정수 부분이다.
+            this.outgoingWarningDelay = 0;
+            // 상대 필드에 에너지 도착으로 이미 알려진 정수 ATTACK이다.
+            this.announcedAttack = 0;
+            this.lastAttackTransfer = null;
+            this.lastAttackEnergySource = null;
             this.receivesPuyos = true;
             this.allClearEnabled = true;
             this.clearsGarbage = false;
@@ -810,6 +818,7 @@
             themeController: controller,
             pairQueueColors: colors,
             pairQueue: Array.from({ length: INITIAL_PAIR_QUEUE_LENGTH }, () => createRandomPair(colors)),
+            energyTransfers: [],
             players
         };
         players.filter((player) => player.receivesPuyos).forEach(updateNextPairs);
@@ -1357,8 +1366,8 @@
             const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
             player.point += exploding.length * power;
             player.attack += exploding.length * power / 4;
-            cancelPendingAttack(player, opponent);
             const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
+            sendAttackEnergy(player, opponent, center.x / exploding.length, center.y / exploding.length);
             player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
             removed.forEach((puyo) => { player.board[puyo.y][puyo.x] = null; });
             player.effects = { cells: [...removed.values()], elapsed: 0, duration: 430 };
@@ -1366,10 +1375,7 @@
             player.phaseTimer = 0;
             return;
         }
-        cancelPendingAttack(player, opponent);
-        const deliveredAttack = Math.floor(player.attack);
-        opponent.damage += deliveredAttack;
-        player.attack -= deliveredAttack;
+        deliverFinalAttackEnergy(player, opponent);
         player.combo = 0;
         player.phase = 'garbage';
     }
@@ -1381,13 +1387,115 @@
      * @param {PlayerState} opponent 상대 플레이어
      * @returns {void}
      */
-    function cancelPendingAttack(player, opponent) {
-        const cancelledOpponentAttack = Math.min(Math.floor(player.attack), Math.floor(opponent.attack));
+    function sendAttackEnergy(player, opponent, sourceX, sourceY) {
+        const amount = Math.floor(player.attack);
+        if (amount < 1) return;
+        let remaining = amount;
+        const cancelledOpponentAttack = Math.min(remaining, Math.floor(opponent.attack));
         player.attack -= cancelledOpponentAttack;
         opponent.attack -= cancelledOpponentAttack;
-        const cancelledDamage = Math.min(Math.floor(player.attack), Math.floor(player.damage));
-        player.attack -= cancelledDamage;
+        opponent.outgoingWarningDelay = Math.floor(opponent.attack);
+        remaining -= cancelledOpponentAttack;
+        const cancelledDamage = Math.min(remaining, Math.floor(player.damage));
         player.damage -= cancelledDamage;
+        player.attack -= cancelledDamage;
+        remaining -= cancelledDamage;
+        if (cancelledDamage) player.warningReductionDelay += cancelledDamage;
+        const source = { x: player.fieldX + (sourceX + 0.5) * CELL, y: FIELD_BOTTOM - (sourceY + 0.5) * CELL };
+        player.lastAttackEnergySource = source;
+        player.outgoingWarningDelay = Math.floor(player.attack);
+        // 연쇄 중에는 에너지만 상대 천장까지 보낸다. 도착 시 예고뿌요만 갱신하고 DAMAGE는 정산하지 않는다.
+        if (cancelledOpponentAttack || cancelledDamage || remaining) {
+            const energy = queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledOpponentAttack, 0, remaining > 0, Math.floor(player.attack));
+            if (remaining > 0) player.lastAttackTransfer = energy;
+        }
+    }
+
+    function deliverFinalAttackEnergy(player, opponent) {
+        const amount = Math.floor(player.attack);
+        if (amount < 1) return;
+        player.attack -= amount;
+        player.outgoingWarningDelay = Math.floor(player.attack);
+        const energyTransfers = getEnergyTransfers();
+        const lastEnergy = player.lastAttackTransfer;
+        // 마지막 폭발에서 이미 출발한 에너지를 최종 DAMAGE 정산에 사용한다.
+        // 해당 연출이 끝난 상태라면 지금이 곧 "에너지 완료 후" 시점이다.
+        if (lastEnergy && energyTransfers?.includes(lastEnergy)) {
+            lastEnergy.finalDamageAmount = amount;
+        } else {
+            opponent.damage += amount;
+            player.announcedAttack = 0;
+        }
+        player.lastAttackTransfer = null;
+    }
+
+    function sendAllClearEnergy(player, opponent, amount) {
+        if (amount < 1) return;
+        queueEnergyTransfer(player, opponent, { x: player.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP + VISIBLE_ROWS * CELL / 2 }, 0, 0, amount);
+    }
+
+    function getEnergyTransfers() {
+        if (game?.energyTransfers) return game.energyTransfers;
+        return simulator?.energyTransfers || null;
+    }
+
+    function queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledAttack, delivered, travelToOpponent = false, previewAmount = null) {
+        const energyTransfers = getEnergyTransfers();
+        if (!energyTransfers) return;
+        const ownTarget = { x: player.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP - CELL / 2 };
+        const opponentTarget = { x: opponent.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP - CELL / 2 };
+        const route = [];
+        if (cancelledDamage || cancelledAttack) route.push({ target: ownTarget, kind: 'cancel', amount: cancelledDamage, attackAmount: cancelledAttack });
+        if (delivered || travelToOpponent) route.push({ target: opponentTarget, kind: 'damage', amount: delivered, previewAmount });
+        if (!route.length) return null;
+        const energy = { player, opponent, position: source, route, routeIndex: 0, elapsed: 0, fading: false, finalDamageAmount: 0 };
+        energyTransfers.push(energy);
+        return energy;
+    }
+
+    function warningAmount(player, opponent) {
+        return player.damage + opponent.announcedAttack + player.warningReductionDelay;
+    }
+
+    function updateEnergyTransfers(delta) {
+        const energyTransfers = getEnergyTransfers();
+        if (!energyTransfers?.length) return;
+        const remainingTransfers = energyTransfers.filter((energy) => {
+            if (energy.fading) {
+                energy.elapsed += delta;
+                if (energy.elapsed < 150) return true;
+                if (energy.finalDamageAmount) {
+                    energy.opponent.damage += energy.finalDamageAmount;
+                    energy.player.announcedAttack = 0;
+                }
+                return false;
+            }
+            energy.elapsed += delta;
+            if (energy.elapsed < 250) return true;
+            const segment = energy.route[energy.routeIndex];
+            energy.position = segment.target;
+            if (segment.kind === 'cancel') {
+                energy.player.warningReductionDelay = Math.max(0, energy.player.warningReductionDelay - segment.amount);
+                energy.opponent.announcedAttack = Math.max(0, energy.opponent.announcedAttack - segment.attackAmount);
+            } else {
+                if (segment.previewAmount !== null) energy.player.announcedAttack = segment.previewAmount;
+                if (segment.amount) {
+                    energy.opponent.damage += segment.amount;
+                    energy.player.announcedAttack = 0;
+                }
+            }
+            energy.routeIndex += 1;
+            energy.elapsed = 0;
+            if (energy.routeIndex < energy.route.length) return true;
+            energy.fading = true;
+            return true;
+        });
+        if (game?.energyTransfers === energyTransfers) game.energyTransfers = remainingTransfers;
+        else if (simulator?.energyTransfers === energyTransfers) simulator.energyTransfers = remainingTransfers;
+    }
+
+    function hasPendingEnergyTransfers() {
+        return Boolean(getEnergyTransfers()?.length);
     }
 
     /**
@@ -1432,7 +1540,7 @@
             elapsed: 0,
             duration: 1050,
             fallingPuyos,
-            waitForOpponentResolution: isResolutionPhase(winner.phase)
+            waitForOpponentResolution: isWinnerSettlementPending(winner)
         };
     }
 
@@ -1463,7 +1571,11 @@
      * @returns {boolean} 중력 또는 폭발 연출 중인지 여부
      */
     function isResolutionPhase(phase) {
-        return phase === 'gravity' || phase === 'explode' || phase === 'burst';
+        return phase === 'gravity' || phase === 'explode' || phase === 'burst' || phase === 'garbage' || phase === 'check';
+    }
+
+    function isWinnerSettlementPending(player) {
+        return isResolutionPhase(player.phase) || player.allClearEffectElapsed > 0 || player.pendingAllClearDamage > 0 || hasPendingEnergyTransfers();
     }
 
     /**
@@ -1479,7 +1591,7 @@
             updatePlayer(ending.winner, ending.loser, delta);
         }
         // 패배 연출과 남은 연쇄 처리가 끝나면 게임을 종료한다.
-        if (ending.elapsed > ending.duration && (!ending.waitForOpponentResolution || !isResolutionPhase(ending.winner.phase))) {
+        if (ending.elapsed > ending.duration && (!ending.waitForOpponentResolution || !isWinnerSettlementPending(ending.winner))) {
             recordEnemyClear(ending.winner);
             game.running = false;
             game.winner = ending.winner;
@@ -1502,13 +1614,15 @@
         const wasAllClearEffectActive = player.allClearEffectElapsed > 0;
         player.allClearEffectElapsed = Math.max(0, player.allClearEffectElapsed - delta);
         if (wasAllClearEffectActive && player.allClearEffectElapsed === 0 && player.pendingAllClearDamage > 0) {
-            opponent.damage += player.pendingAllClearDamage;
+            sendAllClearEnergy(player, opponent, player.pendingAllClearDamage);
             player.pendingAllClearDamage = 0;
         }
         // 플레이 방법 시연은 싹쓸이 예고와 방해뿌요 낙하를 보여주는 동안 다음 뿌요의 낙하를 멈춘다.
         if (player.tutorialHold) return;
         // 대기 중인 연습 상대도 예약된 피해가 있으면 방해뿌요 처리는 수행한다.
         if (player.phase === 'idle') {
+            // 연습·플레이 방법에서는 연쇄와 그에 딸린 모든 에너지 이동이 끝난 뒤에만 방해뿌요를 떨어뜨린다.
+            if (game?.practice && (opponent.combo > 0 || isResolutionPhase(opponent.phase) || opponent.allClearEffectElapsed > 0 || opponent.pendingAllClearDamage > 0 || hasPendingEnergyTransfers())) return;
             if (player.damage > 0) dropGarbage(player);
             return;
         }
@@ -1833,6 +1947,44 @@
         context.restore();
     }
 
+    function drawEnergyTransfers() {
+        const energyTransfers = getEnergyTransfers();
+        if (!energyTransfers) return;
+        energyTransfers.forEach((energy) => {
+            const segment = energy.route[energy.routeIndex] || energy.route[energy.route.length - 1];
+            let x = energy.position.x;
+            let y = energy.position.y;
+            let scale = 1;
+            let alpha = 1;
+            if (energy.fading) {
+                const progress = Math.min(1, energy.elapsed / 150);
+                scale = 1 + progress * 1.8;
+                alpha = 1 - progress;
+            } else {
+                const progress = Math.min(1, energy.elapsed / 250);
+                const start = energy.position;
+                const end = segment.target;
+                // 자신의 천장으로는 위쪽, 필드 사이로는 아래쪽으로 얕게 휜다.
+                const arc = Math.abs(start.x - end.x) > CELL ? CELL * 3 : -CELL * 0.7;
+                const inverse = 1 - progress;
+                x = inverse * start.x + progress * end.x;
+                y = inverse * start.y + progress * end.y + 4 * inverse * progress * arc;
+            }
+            const radius = CELL * 0.17 * scale;
+            const gradient = context.createRadialGradient(x - radius * 0.35, y - radius * 0.35, 1, x, y, radius * 1.9);
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(0.35, '#fff6a7');
+            gradient.addColorStop(1, 'rgba(82, 220, 255, 0)');
+            context.save();
+            context.globalAlpha = alpha;
+            context.fillStyle = gradient;
+            context.beginPath(); context.arc(x, y, radius * 1.9, 0, Math.PI * 2); context.fill();
+            context.fillStyle = '#ffffff';
+            context.beginPath(); context.arc(x, y, radius, 0, Math.PI * 2); context.fill();
+            context.restore();
+        });
+    }
+
     /**
      * 폭발 중심에서 위로 올라가며 사라지는 연쇄 수 텍스트를 그린다.
      * @param {number} fieldX 필드의 왼쪽 X 좌표
@@ -1945,7 +2097,7 @@
             context.fillStyle = '#0a1d29'; context.fillRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
             context.strokeStyle = 'rgba(176, 232, 244, 0.25)'; context.strokeRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
         }
-        drawWarningUnits(x, FIELD_TOP - CELL, warningUnits(opponent.attack + player.damage));
+        drawWarningUnits(x, FIELD_TOP - CELL, warningUnits(warningAmount(player, opponent)));
         if (player.effects) {
             const progress = Math.min(1, player.effects.elapsed / player.effects.duration);
             player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress));
@@ -2313,7 +2465,7 @@
 
     /** 시뮬레이터를 빈 그리기 보드와 첫 팔레트 포커스로 연다. @returns {void} */
     function openSimulator() {
-        simulator = { mode: 'draw', player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0, message: null, messageElapsed: 0 };
+        simulator = { mode: 'draw', player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), target: new PlayerState('', FIELD_RIGHT, null, COLORS), energyTransfers: [], selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0, message: null, messageElapsed: 0 };
         menuScreen = 'simulator';
         syncBackgroundMusic();
     }
@@ -2353,7 +2505,7 @@
         game = {
             running: true, paused: false, winner: null, ending: null, countdown: 0, countdownStartsGame: false, elapsed: 0, practice: true,
             difficulty: selectedDifficulty, aiDifficulty: selectedAiDifficulty, themeController, pairQueueColors: COLORS,
-            pairQueue: [...config.pairs, ['blue', 'yellow'], ['red', 'green']], players: [player, opponent],
+            pairQueue: [...config.pairs, ['blue', 'yellow'], ['red', 'green']], energyTransfers: [], players: [player, opponent],
             tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, message: config.intro, messageElapsed: 0, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1 }
         };
         updateNextPairs(player);
@@ -2441,7 +2593,7 @@
         if (tutorial.stage === 4 && tutorial.allClearPreviewElapsed !== null && tutorial.allClearPreviewElapsed >= 2000 && opponent.phase === 'idle' && opponent.damage <= 0) {
             tutorial.allClearGarbageShown = true;
         }
-        const stageFourComplete = tutorial.stage !== 4 || (tutorial.allClearGarbageShown && player.allClearEffectElapsed <= 0 && player.pendingAllClearDamage <= 0);
+        const stageFourComplete = tutorial.stage !== 4 || (tutorial.allClearGarbageShown && player.allClearEffectElapsed <= 0 && player.pendingAllClearDamage <= 0 && !hasPendingEnergyTransfers());
         if (player.placedPairCount >= tutorial.config.pairs.length && player.phase === 'control' && opponent.phase === 'idle' && !tutorial.message && !holdAllClearGarbage && stageFourComplete) {
             if (tutorial.stage < 5) enterTutorialStage(tutorial.stage + 1);
         }
@@ -2458,7 +2610,7 @@
             return;
         }
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        drawField(player, opponent); drawField(opponent, player); drawCenter();
+        drawField(player, opponent); drawField(opponent, player); drawCenter(); drawEnergyTransfers();
         if (tutorial.stage === 5 && tutorial.mode === 'intro') {
             const targetX = player.fieldX + 2 * CELL;
             const targetY = FIELD_BOTTOM - 12 * CELL;
@@ -2677,7 +2829,8 @@
     function startSimulatorPlayback() {
         if (!simulator || simulator.mode !== 'draw') return;
         simulator.backup = simulator.player.board.map((row) => [...row]);
-        simulator.mode = 'simulation'; simulator.player.effects = null; simulator.player.comboPopups = [];
+        simulator.mode = 'simulation'; simulator.player.effects = null; simulator.player.comboPopups = []; simulator.energyTransfers = [];
+        simulator.target.damage = 0; simulator.target.attack = 0; simulator.target.warningReductionDelay = 0; simulator.target.outgoingWarningDelay = 0; simulator.target.announcedAttack = 0;
         startGravity(simulator.player, 'simulatorExplode');
         syncBackgroundMusic();
     }
@@ -2688,6 +2841,7 @@
         if (simulator.backup) simulator.player.board = simulator.backup.map((row) => [...row]);
         simulator.player.gravityAnimation = null; simulator.player.effects = null; simulator.player.phase = 'idle';
         simulator.player.point = 0; simulator.player.attack = 0; simulator.player.damage = 0; simulator.player.combo = 0; simulator.player.comboPopups = [];
+        simulator.target.damage = 0; simulator.target.attack = 0; simulator.target.warningReductionDelay = 0; simulator.target.outgoingWarningDelay = 0; simulator.target.announcedAttack = 0; simulator.energyTransfers = [];
         simulator.mode = 'draw'; simulator.focusArea = 'palette'; simulator.paletteFocus = 0; simulator.waitTimer = 0;
         syncBackgroundMusic();
     }
@@ -2709,6 +2863,7 @@
         const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
         player.point += exploding.length * power;
         player.attack += exploding.length * power / 4;
+        sendAttackEnergy(player, simulator.target, center.x / exploding.length, center.y / exploding.length);
         player.effects = { cells: [...removed.values()], elapsed: 0, duration: 420 }; player.phase = 'simulatorEffect';
         return true;
     }
@@ -2726,9 +2881,18 @@
             .map((popup) => ({ ...popup, elapsed: popup.elapsed + delta }))
             .filter((popup) => popup.elapsed < 2000);
         if (simulator.mode === 'complete') return;
+        if (simulator.mode === 'settling') {
+            if (!hasPendingEnergyTransfers()) { simulator.mode = 'complete'; simulator.focusArea = 'complete'; }
+            return;
+        }
         if (player.phase === 'gravity') {
             if (player.gravityAnimation) { player.gravityAnimation.elapsed += delta; if (player.gravityAnimation.elapsed < player.gravityAnimation.duration) return; player.gravityAnimation = null; }
-            if (!explodeSimulatorPuyos()) { player.combo = 0; simulator.mode = 'complete'; simulator.focusArea = 'complete'; }
+            if (!explodeSimulatorPuyos()) {
+                deliverFinalAttackEnergy(player, simulator.target);
+                player.combo = 0;
+                simulator.mode = hasPendingEnergyTransfers() ? 'settling' : 'complete';
+                simulator.focusArea = 'complete';
+            }
         } else if (player.phase === 'simulatorEffect') {
             player.effects.elapsed += delta;
             if (player.effects.elapsed >= player.effects.duration) { player.effects = null; startGravity(player, 'simulatorExplode'); }
@@ -2752,7 +2916,8 @@
         if (simulator.mode === 'draw' && simulator.focusArea === 'board') { const focus = simulator.boardFocus; context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(x + focus.x * CELL + 2, FIELD_BOTTOM - (focus.y + 1) * CELL + 2, CELL - 4, CELL - 4); }
         context.fillStyle = '#071621'; context.fillRect(500, FIELD_TOP - CELL, 350, CELL * 14); context.fillStyle = '#0c2433'; context.fillRect(FIELD_RIGHT - CELL, FIELD_TOP - CELL, CELL * 8, CELL * 14);
         for (let i = 0; i < COLUMNS; i += 1) { context.fillStyle = '#0a1d29'; context.fillRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); context.strokeStyle = 'rgba(176,232,244,.25)'; context.strokeRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); }
-        drawWarningUnits(FIELD_RIGHT, FIELD_TOP - CELL, warningUnits(player.attack));
+        drawWarningUnits(FIELD_RIGHT, FIELD_TOP - CELL, warningUnits(warningAmount(simulator.target, player)));
+        drawEnergyTransfers();
         context.textAlign = 'center';
         getSimulatorPaletteItems().forEach((item, index) => {
             const focused = simulator.focusArea === 'palette' && simulator.paletteFocus === index;
@@ -3023,7 +3188,7 @@
             drawResultField(game.players[0]); drawResultField(game.players[1]); drawResultCenter();
             return;
         }
-        drawField(game.players[0], game.players[1]); drawField(game.players[1], game.players[0]); drawCenter();
+        drawField(game.players[0], game.players[1]); drawField(game.players[1], game.players[0]); drawCenter(); drawEnergyTransfers();
         if (shouldShowVirtualController()) drawVirtualController();
         // 시작 또는 재개 카운트다운 중에는 카운트다운 오버레이를 최상단에 표시한다.
         if (game.countdown > 0) {
@@ -3065,7 +3230,8 @@
                 updatePlayer(game.players[1], game.players[0], delta);
             }
         }
-        if (!game && menuScreen === 'simulator') updateSimulator(delta);
+        if (game?.running && !game.paused) updateEnergyTransfers(delta);
+        if (!game && menuScreen === 'simulator') { updateSimulator(delta); updateEnergyTransfers(delta); }
         syncBackgroundMusic();
         render();
         animationFrameId = requestAnimationFrame(frame);
@@ -3574,7 +3740,7 @@
             placedPairCount: player.placedPairCount,
             board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos },
             nextPairs: player.nextPairs.map((pair) => [...pair]),
-            warningPuyos: warningUnits(opponent.attack + player.damage).map((unit) => unit.type),
+            warningPuyos: warningUnits(warningAmount(player, opponent)).map((unit) => unit.type),
             active
         };
     }
