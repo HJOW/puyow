@@ -2506,7 +2506,7 @@
             running: true, paused: false, winner: null, ending: null, countdown: 0, countdownStartsGame: false, elapsed: 0, practice: true,
             difficulty: selectedDifficulty, aiDifficulty: selectedAiDifficulty, themeController, pairQueueColors: COLORS,
             pairQueue: [...config.pairs, ['blue', 'yellow'], ['red', 'green']], energyTransfers: [], players: [player, opponent],
-            tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, message: config.intro, messageElapsed: 0, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1 }
+            tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, greenExplosionShown: false, stageThreeGarbageDropped: false, message: config.intro, messageElapsed: 0, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1 }
         };
         updateNextPairs(player);
         syncBackgroundMusic();
@@ -2560,6 +2560,8 @@
             holdAllClearGarbage = tutorial.allClearPreviewElapsed < 2000;
         }
         if (!holdAllClearGarbage) updatePlayer(opponent, player, delta);
+        // 3단계는 예고 표시만으로 끝내지 않고, 적 필드의 실제 방해뿌요 낙하를 한 번 확인한다.
+        if (tutorial.stage === 3 && opponent.phase !== 'idle') tutorial.stageThreeGarbageDropped = true;
         const waitingForGarbage = tutorial.stage >= 2 && opponent.phase !== 'idle' && player.phase === 'control' && player.placedPairCount > 0;
         player.tutorialHold = tutorial.stage === 4 && (player.allClearEffectElapsed > 0 || holdAllClearGarbage);
         if (!waitingForGarbage) updatePlayer(player, opponent, delta);
@@ -2586,15 +2588,24 @@
                 if (tutorial.stage === 1 && currentPiece === 0 && !tutorial.actionFlags.fastDownMessage) { tutorial.actionFlags.fastDownMessage = true; showTutorialMessage('아래 방향키로 빨리 떨어뜨리기'); }
             }
         }
+        if (player.combo === 0) tutorial.lastCombo = 0;
         if (player.combo > tutorial.lastCombo) {
             tutorial.lastCombo = player.combo;
-            if (tutorial.stage === 2) showTutorialMessage(player.placedPairCount <= 1 ? '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어' : '뿌요가 터질 때 인접한 방해뿌요도 같이 터져');
+            if (tutorial.stage === 2) {
+                if (player.placedPairCount <= 1) showTutorialMessage('같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어');
+                else {
+                    tutorial.greenExplosionShown = true;
+                    showTutorialMessage('뿌요가 터질 때 인접한 방해뿌요도 같이 터져');
+                }
+            }
         }
         if (tutorial.stage === 4 && tutorial.allClearPreviewElapsed !== null && tutorial.allClearPreviewElapsed >= 2000 && opponent.phase === 'idle' && opponent.damage <= 0) {
             tutorial.allClearGarbageShown = true;
         }
         const stageFourComplete = tutorial.stage !== 4 || (tutorial.allClearGarbageShown && player.allClearEffectElapsed <= 0 && player.pendingAllClearDamage <= 0 && !hasPendingEnergyTransfers());
-        if (player.placedPairCount >= tutorial.config.pairs.length && player.phase === 'control' && opponent.phase === 'idle' && !tutorial.message && !holdAllClearGarbage && stageFourComplete) {
+        const stageTwoComplete = tutorial.stage !== 2 || (tutorial.greenExplosionShown && !hasPendingEnergyTransfers());
+        const stageThreeComplete = tutorial.stage !== 3 || (tutorial.stageThreeGarbageDropped && !hasPendingEnergyTransfers());
+        if (player.placedPairCount >= tutorial.config.pairs.length && player.phase === 'control' && opponent.phase === 'idle' && !tutorial.message && !holdAllClearGarbage && stageFourComplete && stageTwoComplete && stageThreeComplete) {
             if (tutorial.stage < 5) enterTutorialStage(tutorial.stage + 1);
         }
     }
