@@ -38,6 +38,12 @@ async function installMockGamepad(page) {
         this.paused = true;
       }
     };
+    window.testCanvasTexts = [];
+    const originalFillText = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+      window.testCanvasTexts.push(String(text));
+      return originalFillText.call(this, text, ...args);
+    };
   });
 }
 
@@ -64,12 +70,19 @@ test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한�
 test('메뉴에서 Z 키는 Enter 키처럼 동작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('z');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
 });
 
 test('게임패드 A와 X, Y 버튼은 메뉴 확인과 취소 입력으로 동작한다', async ({ page }) => {
   await page.evaluate(() => window.setTestGamepad([0, 0], [0]));
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  await page.evaluate(() => window.setTestGamepad());
+  await page.waitForTimeout(50);
+  await page.evaluate(() => window.setTestGamepad([0, 0], [0]));
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
 
   await page.evaluate(() => window.setTestGamepad());
   await page.waitForTimeout(50);
@@ -84,7 +97,24 @@ test('게임패드 A와 X, Y 버튼은 메뉴 확인과 취소 입력으로 동�
   await page.evaluate(() => window.setTestGamepad());
   await page.waitForTimeout(50);
   await page.evaluate(() => window.setTestGamepad([0, 0], [2]));
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+
+  await page.evaluate(() => window.setTestGamepad());
+  await page.waitForTimeout(50);
+  await page.evaluate(() => window.setTestGamepad([0, 0], [2]));
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+});
+
+test('게임 규칙 선택지 밖 클릭과 ESC는 메인 메뉴로 돌아간다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  await page.keyboard.press('Enter');
+  await page.locator('#webpuyo_canvas').click({ position: { x: 20, y: 20 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
 test('게임 중 왼쪽 아래 스틱은 왼쪽 이동과 빠른 하강을 함께 처리한다', async ({ page }) => {
@@ -118,4 +148,19 @@ test('게임 외와 연습 게임 배경음악은 하나만 재생되고 일시�
   await expect.poll(() => page.evaluate(() => window.testAudioInstances[1].paused)).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.testAudioInstances[1].paused)).toBe(false);
+});
+
+test('시뮬레이터 연쇄 시 일반 게임과 같은 연쇄 문구를 그린다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  const canvas = page.locator('#webpuyo_canvas');
+  for (const x of [207, 245, 283, 321]) {
+    await canvas.click({ position: { x, y: 539 } });
+  }
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => text === '1연쇄' || text === '1 Chain'))).toBe(true);
 });

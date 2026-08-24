@@ -92,7 +92,7 @@
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
-            '게임 시작': 'Game Start', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': 'Press ENTER or click anywhere.',
+            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': 'Press ENTER or click anywhere.',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -106,7 +106,7 @@
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
-            '게임 시작': 'ゲーム開始', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': 'ENTERキーを押すか、どこかをクリックしてください。',
+            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': 'ENTERキーを押すか、どこかをクリックしてください。',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '시작': '開始', '이전': '戻る',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -120,7 +120,7 @@
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
-            '게임 시작': '开始游戏', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': '请按 ENTER 键或点击任意位置。',
+            '게임 시작': '开始游戏', '기본 룰': '基本规则', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': '请按 ENTER 键或点击任意位置。',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -183,6 +183,10 @@
     let selectedOpponentAction = 0;
     /** 메인 메뉴에서 포커스된 항목이다. @type {number} */
     let titleMenuFocus = 0;
+    /** 메인 메뉴의 게임 규칙 선택 오버레이가 열려 있는지 여부다. @type {boolean} */
+    let ruleSelectionOpen = false;
+    /** 게임 규칙 선택 오버레이에서 포커스된 항목이다. @type {number} */
+    let ruleSelectionFocus = 0;
     /** 일시정지 메뉴에서 포커스된 항목이다. @type {number} */
     let pauseMenuFocus = 0;
     /** 직전 애니메이션 프레임의 시각이다. @type {number} */
@@ -231,6 +235,10 @@
     ];
     /** 등록된 기본 및 외부 적 목록이다. @type {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} */
     const OPPONENTS = [];
+    /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,activate:()=>void}[]} */
+    const GAME_RULE_OPTIONS = [
+        { label: '기본 룰', activate: () => openOpponentMenu() }
+    ];
     /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {object|null} */
     let WebPuyo = null;
 
@@ -2669,7 +2677,7 @@
     function startSimulatorPlayback() {
         if (!simulator || simulator.mode !== 'draw') return;
         simulator.backup = simulator.player.board.map((row) => [...row]);
-        simulator.mode = 'simulation'; simulator.player.effects = null;
+        simulator.mode = 'simulation'; simulator.player.effects = null; simulator.player.comboPopups = [];
         startGravity(simulator.player, 'simulatorExplode');
         syncBackgroundMusic();
     }
@@ -2679,7 +2687,7 @@
         if (!simulator) return;
         if (simulator.backup) simulator.player.board = simulator.backup.map((row) => [...row]);
         simulator.player.gravityAnimation = null; simulator.player.effects = null; simulator.player.phase = 'idle';
-        simulator.player.point = 0; simulator.player.attack = 0; simulator.player.damage = 0; simulator.player.combo = 0;
+        simulator.player.point = 0; simulator.player.attack = 0; simulator.player.damage = 0; simulator.player.combo = 0; simulator.player.comboPopups = [];
         simulator.mode = 'draw'; simulator.focusArea = 'palette'; simulator.paletteFocus = 0; simulator.waitTimer = 0;
         syncBackgroundMusic();
     }
@@ -2696,6 +2704,8 @@
         }));
         removed.forEach(({ x, y }) => { player.board[y][x] = null; });
         player.combo += 1;
+        const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
+        player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
         const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
         player.point += exploding.length * power;
         player.attack += exploding.length * power / 4;
@@ -2710,8 +2720,11 @@
             simulator.messageElapsed += delta;
             if (simulator.messageElapsed >= 4000) simulator.message = null;
         }
-        if (simulator.mode === 'draw') return;
         const player = simulator.player;
+        if (simulator.mode === 'draw') return;
+        player.comboPopups = player.comboPopups
+            .map((popup) => ({ ...popup, elapsed: popup.elapsed + delta }))
+            .filter((popup) => popup.elapsed < 2000);
         if (simulator.mode === 'complete') return;
         if (player.phase === 'gravity') {
             if (player.gravityAnimation) { player.gravityAnimation.elapsed += delta; if (player.gravityAnimation.elapsed < player.gravityAnimation.duration) return; player.gravityAnimation = null; }
@@ -2735,6 +2748,7 @@
         for (let y = 0; y < VISIBLE_ROWS; y += 1) for (let column = 0; column < COLUMNS; column += 1) if (player.board[y][column] && !falling.has(`${column},${y}`)) drawPuyo(x + column * CELL, FIELD_BOTTOM - (y + 1) * CELL, player.board[y][column]);
         if (player.gravityAnimation) { const progress = Math.min(1, player.gravityAnimation.elapsed / player.gravityAnimation.duration) ** 2; player.gravityAnimation.falling.forEach((puyo) => { const y = puyo.fromY + (puyo.toY - puyo.fromY) * progress; if (y < VISIBLE_ROWS) drawPuyo(x + puyo.x * CELL, FIELD_BOTTOM - (y + 1) * CELL, puyo.color); }); }
         if (player.effects) { const progress = Math.min(1, player.effects.elapsed / player.effects.duration); player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress)); }
+        player.comboPopups.forEach((popup) => drawComboPopup(x, popup));
         if (simulator.mode === 'draw' && simulator.focusArea === 'board') { const focus = simulator.boardFocus; context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(x + focus.x * CELL + 2, FIELD_BOTTOM - (focus.y + 1) * CELL + 2, CELL - 4, CELL - 4); }
         context.fillStyle = '#071621'; context.fillRect(500, FIELD_TOP - CELL, 350, CELL * 14); context.fillStyle = '#0c2433'; context.fillRect(FIELD_RIGHT - CELL, FIELD_TOP - CELL, CELL * 8, CELL * 14);
         for (let i = 0; i < COLUMNS; i += 1) { context.fillStyle = '#0a1d29'; context.fillRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); context.strokeStyle = 'rgba(176,232,244,.25)'; context.strokeRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); }
@@ -2781,6 +2795,58 @@
         context.fillText('Puyo W', WIDTH / 2, 115);
         context.fillStyle = '#f5fbfc'; context.font = `22px ${MESSAGE_FONT}`;
         context.fillText(translate('ENTER키를 누르거나, 아무 곳이나 클릭해 주세요'), WIDTH / 2, HEIGHT - 70);
+    }
+
+    /** 게임 규칙 선택지 하나의 화면 영역을 반환한다. @param {number} index 선택지 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getRuleSelectionButtonBounds(index) {
+        const width = 280;
+        const height = 58;
+        const gap = 16;
+        const totalHeight = GAME_RULE_OPTIONS.length * height + Math.max(0, GAME_RULE_OPTIONS.length - 1) * gap;
+        return { x: (WIDTH - width) / 2, y: (HEIGHT - totalHeight) / 2 + index * (height + gap), width, height };
+    }
+
+    /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 연다. @returns {void} */
+    function openRuleSelection() {
+        ruleSelectionOpen = true;
+        ruleSelectionFocus = 0;
+    }
+
+    /** 게임 규칙 선택 오버레이를 닫고 메인 메뉴로 돌아간다. @returns {void} */
+    function closeRuleSelection() {
+        ruleSelectionOpen = false;
+        ruleSelectionFocus = 0;
+    }
+
+    /** 포커스된 게임 규칙을 선택한다. @returns {void} */
+    function activateRuleSelection() {
+        const option = GAME_RULE_OPTIONS[ruleSelectionFocus];
+        if (!option) return;
+        closeRuleSelection();
+        option.activate();
+    }
+
+    /** 게임 규칙 선택 오버레이의 키보드·게임패드 키 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
+    function handleRuleSelectionKey(key) {
+        if (key === 'escape') { closeRuleSelection(); return; }
+        if (key === 'enter' || key === ' ') { activateRuleSelection(); return; }
+        if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key) && GAME_RULE_OPTIONS.length) {
+            const direction = key === 'arrowleft' || key === 'arrowup' ? -1 : 1;
+            ruleSelectionFocus = (ruleSelectionFocus + direction + GAME_RULE_OPTIONS.length) % GAME_RULE_OPTIONS.length;
+        }
+    }
+
+    /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 그린다. @returns {void} */
+    function drawRuleSelectionOverlay() {
+        context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        GAME_RULE_OPTIONS.forEach((option, index) => {
+            const bounds = getRuleSelectionButtonBounds(index);
+            const focused = index === ruleSelectionFocus;
+            context.fillStyle = '#264b5b'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
+            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + 37);
+        });
     }
 
     /**
@@ -2903,6 +2969,7 @@
                 context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 371);
             });
         }
+        if (menuScreen === 'title' && ruleSelectionOpen) drawRuleSelectionOverlay();
     }
 
     /**
@@ -3125,6 +3192,10 @@
         }
         // 게임이 없으면 키 입력을 제목 또는 상대 선택 메뉴로 전달한다.
         if (!game) {
+            if (menuScreen === 'title' && ruleSelectionOpen) {
+                handleRuleSelectionKey(key);
+                return;
+            }
             if (menuScreen === 'practiceDifficulty') {
                 if (key === 'arrowleft' || key === 'arrowup') selectedDifficulty = (selectedDifficulty + DIFFICULTIES.length - 1) % DIFFICULTIES.length;
                 else if (key === 'arrowright' || key === 'arrowdown') selectedDifficulty = (selectedDifficulty + 1) % DIFFICULTIES.length;
@@ -3227,7 +3298,7 @@
      * @returns {void}
      */
     function activateTitleMenu() {
-        if (titleMenuFocus === 0) openOpponentMenu();
+        if (titleMenuFocus === 0) openRuleSelection();
         else if (titleMenuFocus === 1) {
             selectedDifficulty = 1;
             menuScreen = 'practiceDifficulty';
@@ -3329,6 +3400,19 @@
         }
         // 실행 중인 게임 화면의 일반 클릭은 메뉴 동작으로 처리하지 않는다.
         if (game) return;
+        if (menuScreen === 'title' && ruleSelectionOpen) {
+            const selectedIndex = GAME_RULE_OPTIONS.findIndex((option, index) => {
+                const bounds = getRuleSelectionButtonBounds(index);
+                return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+            });
+            if (selectedIndex >= 0) {
+                ruleSelectionFocus = selectedIndex;
+                activateRuleSelection();
+            } else {
+                closeRuleSelection();
+            }
+            return;
+        }
         if (menuScreen === 'simulator' && simulator) {
             if (simulator.mode === 'complete') {
                 if (x >= 600 && x <= 750 && y >= 145 && y <= 203) restoreSimulatorDrawing();
@@ -3434,11 +3518,12 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'initial_title'|'main_menu'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
         if (!game) {
             if (menuScreen === 'initialTitle') return { screen: 'initial_title', playerCanControl: false };
+            if (menuScreen === 'title' && ruleSelectionOpen) return { screen: 'rule_select', playerCanControl: false };
             if (menuScreen === 'opponent') return { screen: 'opponent_select', playerCanControl: false };
             if (menuScreen === 'practiceDifficulty') return { screen: 'practice_difficulty', playerCanControl: false };
             if (menuScreen === 'simulator') {
@@ -3516,7 +3601,7 @@
     /**
      * 현재 표시 중인 화면과 플레이어 조작 가능 여부를 반환한다.
      * 메뉴, 튜토리얼, 대전 진행 상태 모두에서 사용할 수 있다.
-     * @returns {{screen:'initial_title'|'main_menu'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getScreenState() {
         return getNowScreen();
@@ -3587,7 +3672,7 @@
         const screenSchema = {
             type: 'object',
             properties: {
-                screen: { type: 'string', enum: ['initial_title', 'main_menu', 'practice_difficulty', 'opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'], description: 'The exact visible title, menu, simulator, tutorial, or match screen.' },
+                screen: { type: 'string', enum: ['initial_title', 'main_menu', 'rule_select', 'practice_difficulty', 'opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'], description: 'The exact visible title, menu, simulator, tutorial, or match screen.' },
                 playerCanControl: { type: 'boolean' }
             },
             required: ['screen', 'playerCanControl']
@@ -3701,6 +3786,8 @@
         recommendedPoint = null;
         menuScreen = 'initialTitle';
         hasUserStarted = false;
+        ruleSelectionOpen = false;
+        ruleSelectionFocus = 0;
         createdCanvas = false;
         animationFrameId = null;
         webMcpAbortController = null;
