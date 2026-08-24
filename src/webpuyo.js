@@ -92,7 +92,7 @@
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
-            '게임 시작': 'Game Start', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent',
+            '게임 시작': 'Game Start', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': 'Press ENTER or click anywhere.',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -106,7 +106,7 @@
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
-            '게임 시작': 'ゲーム開始', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手',
+            '게임 시작': 'ゲーム開始', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': 'ENTERキーを押すか、どこかをクリックしてください。',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '시작': '開始', '이전': '戻る',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -120,7 +120,7 @@
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
-            '게임 시작': '开始游戏', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手',
+            '게임 시작': '开始游戏', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': '请按 ENTER 键或点击任意位置。',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -149,8 +149,12 @@
     let webMcpAbortController = null;
     /** 현재 실행 중인 게임 상태다. @type {object|null} */
     let game = null;
-    /** 현재 재생 중인 전투 배경음악이다. @type {HTMLAudioElement|null} */
+    /** 현재 재생 중인 배경음악이다. 화면 종류와 상관없이 한 개만 유지한다. @type {HTMLAudioElement|null} */
     let backgroundMusicAudio = null;
+    /** 현재 배경음악 요소가 재생하는 음원 URL이다. @type {string|null} */
+    let backgroundMusicUrl = null;
+    /** 초기 타이틀을 벗어나 브라우저가 재생을 허용하는 사용자 조작이 발생했는지 여부다. @type {boolean} */
+    let hasUserStarted = false;
     /** 메인 화면 왼쪽에 표시할 안내문 원문이다. @type {string} */
     let noticeText = '';
     /** 설정 화면에서 임시로 편집 중인 값이다. @type {object|null} */
@@ -163,8 +167,8 @@
     let settingsCursor = 0;
     /** AI가 강조 표시하도록 지정한 플레이어 필드 좌표다. @type {{x:number, y:number}|null} */
     let recommendedPoint = null;
-    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'title'|'opponent'|'practiceDifficulty'|'simulator'|'settings'} */
-    let menuScreen = 'title';
+    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'initialTitle'|'title'|'opponent'|'practiceDifficulty'|'simulator'|'settings'} */
+    let menuScreen = 'initialTitle';
     /** 시뮬레이터의 편집·재생 상태다. @type {object|null} */
     let simulator = null;
     /** 선택된 적의 OPPONENTS 배열 인덱스다. @type {number} */
@@ -412,7 +416,7 @@
         }
     }
 
-    /** 현재 전투 배경음악을 중지하고 재생 위치를 초기화한다. @returns {void} */
+    /** 현재 배경음악을 중지하고 재생 위치를 초기화한다. @returns {void} */
     function stopBackgroundMusic() {
         if (!backgroundMusicAudio) return;
         try {
@@ -422,30 +426,103 @@
             console.error('배경음악 중지에 실패했습니다.', error);
         }
         backgroundMusicAudio = null;
+        backgroundMusicUrl = null;
     }
 
-    /** 적 전용 음원이 없으면 공통 음원을 사용해 전투 배경음악을 반복 재생한다. @param {Enemy|null} controller 현재 적 컨트롤러 @returns {void} */
-    function startBackgroundMusic(controller) {
+    /** 현재 배경음악을 일시정지한다. @returns {void} */
+    function pauseBackgroundMusic() {
+        if (!backgroundMusicAudio) return;
+        try {
+            backgroundMusicAudio.pause();
+        } catch (error) {
+            console.error('배경음악 일시정지에 실패했습니다.', error);
+        }
+    }
+
+    /** 일시정지된 현재 배경음악을 재개한다. @returns {void} */
+    function resumeBackgroundMusic() {
+        if (!backgroundMusicAudio) return;
+        try {
+            backgroundMusicAudio.volume = getAudioVolume('music');
+            if (!backgroundMusicAudio.paused) return;
+            const result = backgroundMusicAudio.play();
+            if (result && typeof result.catch === 'function') result.catch((error) => console.error('배경음악 재개에 실패했습니다.', error));
+        } catch (error) {
+            console.error('배경음악 재개에 실패했습니다.', error);
+        }
+    }
+
+    /** 하나의 배경음악만 반복 재생하도록 음원을 교체한다. @param {string|null|undefined} url 음원 URL @returns {void} */
+    function startBackgroundMusic(url) {
+        if (url === null || url === undefined || url === '' || typeof Audio === 'undefined' || !hasUserStarted) {
+            stopBackgroundMusic();
+            return;
+        }
+        if (backgroundMusicAudio && backgroundMusicUrl === url) {
+            updateBackgroundMusicVolume();
+            return;
+        }
         stopBackgroundMusic();
-        const enemyMusic = controller?.soundPool?.backgroundMusic;
-        const url = enemyMusic !== null && enemyMusic !== undefined ? enemyMusic : commonSoundPool?.backgroundMusic;
-        if (url === null || url === undefined || url === '' || typeof Audio === 'undefined' || getAudioVolume('music') <= 0) return;
         try {
             const audio = new Audio(url);
             audio.loop = true;
             audio.volume = getAudioVolume('music');
             backgroundMusicAudio = audio;
+            backgroundMusicUrl = url;
             const result = audio.play();
             if (result && typeof result.catch === 'function') result.catch((error) => console.error('배경음악 재생에 실패했습니다.', error));
         } catch (error) {
             console.error('배경음악 재생에 실패했습니다.', error);
             backgroundMusicAudio = null;
+            backgroundMusicUrl = null;
+        }
+    }
+
+    /** 게임용 배경음악을 시작한다. 연습·시뮬레이션·플레이 방법은 항상 공통 음원을 사용한다. @param {Enemy|null} controller 현재 적 컨트롤러 @param {boolean} useCommonMusic 공통 음원만 사용할지 여부 @returns {void} */
+    function startGameBackgroundMusic(controller, useCommonMusic = false) {
+        const enemyMusic = useCommonMusic ? null : controller?.soundPool?.backgroundMusic;
+        const url = enemyMusic !== null && enemyMusic !== undefined ? enemyMusic : commonSoundPool?.backgroundMusic;
+        startBackgroundMusic(url);
+    }
+
+    /** 게임 외 화면용 공통 배경음악을 시작한다. @returns {void} */
+    function startOtherBackgroundMusic() {
+        startBackgroundMusic(commonSoundPool?.otherBackgroundMusic);
+    }
+
+    /** 현재 화면에 맞는 단일 배경음악을 재생 또는 일시정지 상태로 맞춘다. @returns {void} */
+    function syncBackgroundMusic() {
+        try {
+            if (!hasUserStarted) {
+                stopBackgroundMusic();
+                return;
+            }
+            if (!game) {
+                if (menuScreen === 'simulator' && simulator?.mode === 'simulation') startGameBackgroundMusic(null, true);
+                else startOtherBackgroundMusic();
+                return;
+            }
+            if (!game.running) {
+                startOtherBackgroundMusic();
+                return;
+            }
+            if (game.tutorial) startGameBackgroundMusic(null, true);
+            else startGameBackgroundMusic(game.practice ? null : game.themeController, game.practice);
+            if (game.paused) pauseBackgroundMusic();
+            else resumeBackgroundMusic();
+        } catch (error) {
+            console.error('배경음악 상태를 동기화하지 못했습니다.', error);
         }
     }
 
     /** 저장된 음소거·배경음악 음량 설정을 현재 재생 중인 음악에 적용한다. @returns {void} */
     function updateBackgroundMusicVolume() {
-        if (backgroundMusicAudio) backgroundMusicAudio.volume = getAudioVolume('music');
+        if (!backgroundMusicAudio) return;
+        try {
+            backgroundMusicAudio.volume = getAudioVolume('music');
+        } catch (error) {
+            console.error('배경음악 음량을 적용하지 못했습니다.', error);
+        }
     }
 
     /** 연쇄 번호에 맞는 사운드 풀 항목을 선택한다. 7 이상은 7번을 사용한다. @param {SoundPool|CommonSoundPool|null|undefined} pool 사운드 풀 @param {string} prefix 속성 접두사 @param {number} combo 연쇄 번호 @returns {string|null} 음원 URL */
@@ -696,7 +773,7 @@
             players
         };
         players.filter((player) => player.receivesPuyos).forEach(updateNextPairs);
-        startBackgroundMusic(controller);
+        syncBackgroundMusic();
     }
 
     /**
@@ -2115,6 +2192,7 @@
             resetVirtualControllerInput();
             game.paused = true;
             pauseMenuFocus = 0;
+            pauseBackgroundMusic();
             return;
         }
         const player = game.players[0];
@@ -2201,6 +2279,7 @@
     function openSimulator() {
         simulator = { mode: 'draw', player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0, message: null, messageElapsed: 0 };
         menuScreen = 'simulator';
+        syncBackgroundMusic();
     }
 
     /** 플레이 방법 안내를 연다. @returns {void} */
@@ -2242,6 +2321,7 @@
             tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, message: config.intro, messageElapsed: 0, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1 }
         };
         updateNextPairs(player);
+        syncBackgroundMusic();
     }
 
     /** 플레이 방법 안내를 끝내고 메인 화면으로 돌아간다. @returns {void} */
@@ -2249,6 +2329,7 @@
         game = null;
         menuScreen = 'title';
         loadNotice();
+        syncBackgroundMusic();
     }
 
     /** 안내 문구를 표시한다. @param {string} message 번역 키 @returns {void} */
@@ -2562,6 +2643,7 @@
         simulator.backup = simulator.player.board.map((row) => [...row]);
         simulator.mode = 'simulation'; simulator.player.effects = null;
         startGravity(simulator.player, 'simulatorExplode');
+        syncBackgroundMusic();
     }
 
     /** 시뮬레이션 전 보드 상태로 복원해 그리기 모드로 돌아간다. @returns {void} */
@@ -2571,6 +2653,7 @@
         simulator.player.gravityAnimation = null; simulator.player.effects = null; simulator.player.phase = 'idle';
         simulator.player.point = 0; simulator.player.attack = 0; simulator.player.damage = 0; simulator.player.combo = 0;
         simulator.mode = 'draw'; simulator.focusArea = 'palette'; simulator.paletteFocus = 0; simulator.waitTimer = 0;
+        syncBackgroundMusic();
     }
 
     /** 시뮬레이터 보드의 폭발 및 인접 방해뿌요 제거를 처리한다. @returns {boolean} 폭발 여부 */
@@ -2661,6 +2744,15 @@
             context.fillStyle = '#fff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('그리기'), 675, 183);
         }
         context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`; context.fillText(simulator.mode === 'draw' ? translate('그리기') : translate('시뮬레이션'), 675, 486); context.font = `36px ${MESSAGE_FONT}`; context.fillStyle = '#f7c843'; context.fillText(String(Math.floor(player.point)).padStart(7, '0'), 675, 536); context.font = `17px ${MESSAGE_FONT}`; context.fillStyle = '#a9d9e5'; context.fillText('POINT', 675, 566);
+    }
+
+    /** 초기 타이틀을 그리고 시작 조작을 안내한다. @returns {void} */
+    function drawInitialTitle() {
+        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `58px ${TITLE_FONT}`;
+        context.fillText('Puyo W', WIDTH / 2, 115);
+        context.fillStyle = '#f5fbfc'; context.font = `22px ${MESSAGE_FONT}`;
+        context.fillText(translate('ENTER키를 누르거나, 아무 곳이나 클릭해 주세요'), WIDTH / 2, HEIGHT - 70);
     }
 
     /**
@@ -2820,7 +2912,8 @@
         context.clearRect(0, 0, WIDTH, HEIGHT);
         // 진행 중인 게임이 없으면 현재 메뉴 화면만 렌더링한다.
         if (!game) {
-            if (menuScreen === 'simulator' && simulator) drawSimulator();
+            if (menuScreen === 'initialTitle') drawInitialTitle();
+            else if (menuScreen === 'simulator' && simulator) drawSimulator();
             else if (menuScreen === 'settings' && settingsDraft) drawSettings();
             else drawMenu();
             return;
@@ -2878,6 +2971,7 @@
             }
         }
         if (!game && menuScreen === 'simulator') updateSimulator(delta);
+        syncBackgroundMusic();
         render();
         animationFrameId = requestAnimationFrame(frame);
     }
@@ -2960,6 +3054,15 @@
         return !isTextInputInProgress(event) && (!game || !game.running || game.paused);
     }
 
+    /** 초기 타이틀에서 사용자 조작을 받은 뒤 메인 메뉴와 게임 외 배경음악을 시작한다. @returns {void} */
+    function enterMainMenu() {
+        if (menuScreen !== 'initialTitle') return;
+        hasUserStarted = true;
+        menuScreen = 'title';
+        loadNotice();
+        syncBackgroundMusic();
+    }
+
     /**
      * 키 입력을 현재 메뉴 또는 플레이어 조작에 전달한다.
      * @param {KeyboardEvent} event 키보드 이벤트
@@ -2969,6 +3072,10 @@
         let key = event.key.toLowerCase();
         if (key === 'z' && shouldTreatZAsEnter(event)) key = 'enter';
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
+        if (!game && menuScreen === 'initialTitle') {
+            if (key === 'enter') enterMainMenu();
+            return;
+        }
         if (!game && menuScreen === 'simulator') { handleSimulatorKeydown(key); return; }
         if (game?.tutorial) {
             const tutorial = game.tutorial;
@@ -3052,6 +3159,7 @@
             resetVirtualControllerInput();
             game.paused = true;
             pauseMenuFocus = 0;
+            pauseBackgroundMusic();
             return;
         }
         const player = game.players[0];
@@ -3117,11 +3225,13 @@
             game.paused = false;
             game.countdown = 3000;
             game.countdownStartsGame = false;
+            resumeBackgroundMusic();
         } else {
             resetVirtualControllerInput();
             stopBackgroundMusic();
             game = null;
             menuScreen = 'title'; loadNotice();
+            syncBackgroundMusic();
         }
     }
 
@@ -3147,6 +3257,10 @@
      * @returns {void}
      */
     function handleCanvasClick(event) {
+        if (!game && menuScreen === 'initialTitle') {
+            enterMainMenu();
+            return;
+        }
         if (game?.tutorial) {
             const bounds = canvas.getBoundingClientRect();
             const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
@@ -3292,10 +3406,11 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'main_menu'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
         if (!game) {
+            if (menuScreen === 'initialTitle') return { screen: 'initial_title', playerCanControl: false };
             if (menuScreen === 'opponent') return { screen: 'opponent_select', playerCanControl: false };
             if (menuScreen === 'practiceDifficulty') return { screen: 'practice_difficulty', playerCanControl: false };
             if (menuScreen === 'simulator') {
@@ -3373,7 +3488,7 @@
     /**
      * 현재 표시 중인 화면과 플레이어 조작 가능 여부를 반환한다.
      * 메뉴, 튜토리얼, 대전 진행 상태 모두에서 사용할 수 있다.
-     * @returns {{screen:'main_menu'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getScreenState() {
         return getNowScreen();
@@ -3444,7 +3559,7 @@
         const screenSchema = {
             type: 'object',
             properties: {
-                screen: { type: 'string', enum: ['main_menu', 'practice_difficulty', 'opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'], description: 'The exact visible menu, simulator, tutorial, or match screen.' },
+                screen: { type: 'string', enum: ['initial_title', 'main_menu', 'practice_difficulty', 'opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'], description: 'The exact visible title, menu, simulator, tutorial, or match screen.' },
                 playerCanControl: { type: 'boolean' }
             },
             required: ['screen', 'playerCanControl']
@@ -3556,6 +3671,8 @@
         simulator = null;
         settingsDraft = null;
         recommendedPoint = null;
+        menuScreen = 'initialTitle';
+        hasUserStarted = false;
         createdCanvas = false;
         animationFrameId = null;
         webMcpAbortController = null;

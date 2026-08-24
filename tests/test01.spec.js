@@ -18,21 +18,61 @@ async function installMockGamepad(page) {
         })),
       };
     };
+    window.testAudioInstances = [];
+    window.Audio = class TestAudio {
+      constructor(src) {
+        this.src = src;
+        this.loop = false;
+        this.volume = 1;
+        this.currentTime = 0;
+        this.paused = true;
+        window.testAudioInstances.push(this);
+      }
+
+      play() {
+        this.paused = false;
+        return Promise.resolve();
+      }
+
+      pause() {
+        this.paused = true;
+      }
+    };
   });
 }
 
 test.beforeEach(async ({ page }) => {
   await installMockGamepad(page);
   await page.goto('/webpuyo.html');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+});
+
+async function enterMainMenu(page) {
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+}
+
+test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한다', async ({ page }) => {
+  await enterMainMenu(page);
+
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 360 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
 test('메뉴에서 Z 키는 Enter 키처럼 동작한다', async ({ page }) => {
+  await enterMainMenu(page);
   await page.keyboard.press('z');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
 });
 
 test('게임패드 A와 X, Y 버튼은 메뉴 확인과 취소 입력으로 동작한다', async ({ page }) => {
+  await page.evaluate(() => window.setTestGamepad([0, 0], [0]));
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  await page.evaluate(() => window.setTestGamepad());
+  await page.waitForTimeout(50);
   await page.evaluate(() => window.setTestGamepad([0, 0], [0]));
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
 
@@ -48,6 +88,7 @@ test('게임패드 A와 X, Y 버튼은 메뉴 확인과 취소 입력으로 동�
 });
 
 test('게임 중 왼쪽 아래 스틱은 왼쪽 이동과 빠른 하강을 함께 처리한다', async ({ page }) => {
+  await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
@@ -57,4 +98,24 @@ test('게임 중 왼쪽 아래 스틱은 왼쪽 이동과 빠른 하강을 함�
   await page.evaluate(() => window.setTestGamepad([-1, 1]));
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState().player.active.x)).toBeLessThan(initial.x);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState().player.active.y)).toBeLessThan(initial.y);
+});
+
+test('게임 외와 연습 게임 배경음악은 하나만 재생되고 일시정지에 맞춰 멈춘다', async ({ page }) => {
+  await page.evaluate(() => {
+    window.WebPuyo.commonSoundPool.otherBackgroundMusic = 'other.mp3';
+    window.WebPuyo.commonSoundPool.backgroundMusic = 'game.mp3';
+  });
+  await enterMainMenu(page);
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(['other.mp3']);
+
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(['other.mp3', 'game.mp3']);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances[1].paused)).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances[1].paused)).toBe(false);
 });
