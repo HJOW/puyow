@@ -199,6 +199,12 @@
     let virtualHorizontalHoldElapsed = 0;
     /** 가상 컨트롤러 좌우 방향키 홀드 반복 이동의 누적 시간(ms)이다. @type {number} */
     let virtualHorizontalRepeatElapsed = 0;
+    /** Gamepad API의 스틱 입력을 방향 입력으로 판단하는 최소 절댓값이다. @type {number} */
+    const GAMEPAD_STICK_DEAD_ZONE = 0.5;
+    /** 게임패드에서 현재 누르고 있는 방향키다. 키보드 입력과 별도로 해제하기 위해 보관한다. @type {Set<string>} */
+    let gamepadDirectionKeys = new Set();
+    /** 게임패드의 한 번 누름 동작 버튼 상태다. @type {{z:boolean,x:boolean,enter:boolean,escape:boolean}} */
+    let gamepadActionInput = { z: false, x: false, enter: false, escape: false };
     /** 현재 화면 문구에 적용할 언어 코드다. @type {string} */
     let languageCode = 'ko';
     /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} */
@@ -1973,6 +1979,95 @@
         virtualHorizontalRepeatElapsed = 0;
     }
 
+    /** 게임패드에서 내부 키 입력 처리기로 전달할 최소 키보드 이벤트를 만든다. @param {string} key 키 이름 @returns {{key:string,repeat:boolean,preventDefault:()=>void}} */
+    function createGamepadKeyboardEvent(key) {
+        return { key, repeat: false, preventDefault: () => {} };
+    }
+
+    /** 게임패드 버튼이 눌린 상태인지 확인한다. @param {Gamepad} gamepad 게임패드 @param {number} index 버튼 번호 @returns {boolean} */
+    function isGamepadButtonPressed(gamepad, index) {
+        const button = gamepad.buttons?.[index];
+        return Boolean(button?.pressed || (typeof button?.value === 'number' && button.value >= GAMEPAD_STICK_DEAD_ZONE));
+    }
+
+    /** 현재 화면에서 스틱의 하단 대각선 조합을 함께 처리해야 하는지 확인한다. @returns {boolean} */
+    function canUseGamepadDownDiagonal() {
+        return Boolean(game && game.running && !game.paused && !game.ending && game.countdown <= 0);
+    }
+
+    /** 게임패드 왼쪽 스틱 상태를 게임 내부 방향키 상태로 변환한다. @param {Gamepad} gamepad 게임패드 @returns {Set<string>} */
+    function getGamepadDirectionKeys(gamepad) {
+        const axisX = Number(gamepad.axes?.[0]) || 0;
+        const axisY = Number(gamepad.axes?.[1]) || 0;
+        const horizontal = axisX <= -GAMEPAD_STICK_DEAD_ZONE ? 'arrowleft' : axisX >= GAMEPAD_STICK_DEAD_ZONE ? 'arrowright' : null;
+        const vertical = axisY <= -GAMEPAD_STICK_DEAD_ZONE ? 'arrowup' : axisY >= GAMEPAD_STICK_DEAD_ZONE ? 'arrowdown' : null;
+        if (!horizontal || !vertical) return new Set([horizontal || vertical].filter(Boolean));
+        // 실제 게임에서는 하단 대각선을 빠른 하강과 좌우 이동의 동시 입력으로 처리한다.
+        if (vertical === 'arrowdown' && canUseGamepadDownDiagonal()) return new Set([horizontal, vertical]);
+        // 메뉴와 그 밖의 화면에서는 대각선이 한 번에 둘 이상의 메뉴 동작을 일으키지 않게 큰 축 하나만 사용한다.
+        return new Set([Math.abs(axisX) >= Math.abs(axisY) ? horizontal : vertical]);
+    }
+
+    /** 게임패드가 해제되거나 연결이 끊겼을 때 게임패드가 누르던 방향키만 해제한다. @returns {void} */
+    function resetGamepadInput() {
+        try {
+            gamepadDirectionKeys.forEach((key) => handleKeyup(createGamepadKeyboardEvent(key)));
+            gamepadDirectionKeys.clear();
+            gamepadActionInput = { z: false, x: false, enter: false, escape: false };
+        } catch (error) {
+            console.error('게임패드 입력을 해제하지 못했습니다.', error);
+        }
+    }
+
+    /** 현재 연결된 첫 게임패드의 입력을 키보드 입력으로 반영한다. @param {boolean} suppressActions 초기 인식 시 이미 누르고 있던 버튼은 실행하지 않을지 여부 @returns {void} */
+    function updateGamepadInput(suppressActions = false) {
+        try {
+            if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') {
+                resetGamepadInput();
+                return;
+            }
+            const gamepads = navigator.getGamepads();
+            const gamepad = Array.from(gamepads || []).find((candidate) => candidate && candidate.connected !== false);
+            if (!gamepad) {
+                resetGamepadInput();
+                return;
+            }
+            const nextDirections = getGamepadDirectionKeys(gamepad);
+            gamepadDirectionKeys.forEach((key) => {
+                if (!nextDirections.has(key)) handleKeyup(createGamepadKeyboardEvent(key));
+            });
+            nextDirections.forEach((key) => {
+                if (!gamepadDirectionKeys.has(key)) handleKeydown(createGamepadKeyboardEvent(key));
+            });
+            gamepadDirectionKeys = nextDirections;
+
+            const nextActions = {
+                z: isGamepadButtonPressed(gamepad, 0) || isGamepadButtonPressed(gamepad, 4),
+                x: isGamepadButtonPressed(gamepad, 1) || isGamepadButtonPressed(gamepad, 5),
+                enter: isGamepadButtonPressed(gamepad, 2),
+                escape: isGamepadButtonPressed(gamepad, 3)
+            };
+            if (!suppressActions) {
+                Object.entries(nextActions).forEach(([key, pressed]) => {
+                    if (pressed && !gamepadActionInput[key]) handleKeydown(createGamepadKeyboardEvent(key));
+                });
+            }
+            gamepadActionInput = nextActions;
+        } catch (error) {
+            console.error('게임패드 입력을 처리하지 못했습니다.', error);
+        }
+    }
+
+    /** 초기화 시 Gamepad API 지원 여부와 첫 게임패드 상태를 안전하게 확인한다. @returns {void} */
+    function initializeGamepadInput() {
+        try {
+            if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') return;
+            updateGamepadInput(true);
+        } catch (error) {
+            console.error('Gamepad API를 초기화하지 못했습니다.', error);
+        }
+    }
+
     /** 포인터별 누름 상태를 합쳐 가상 방향 입력을 갱신한다. @returns {void} */
     function refreshVirtualDirectionInput() {
         const previous = virtualDirectionInput;
@@ -2760,6 +2855,7 @@
     function frame(time) {
         const delta = Math.min(50, time - lastTime || 0);
         lastTime = time;
+        updateGamepadInput();
         // 플레이 방법은 결과 화면 표시 시간까지 갱신하고, 일반 게임은 실행 중일 때만 갱신한다.
         if (game?.tutorial && !game.paused) {
             if (game.running) game.elapsed += delta;
@@ -2849,13 +2945,29 @@
         }
     }
 
+    /** 실제 텍스트 입력 중에는 Z 키를 메뉴 확인 키로 바꾸지 않아야 하는지 확인한다. @param {KeyboardEvent|{target?:EventTarget|null}} event 입력 이벤트 @returns {boolean} */
+    function isTextInputInProgress(event) {
+        if (settingsEditing) return true;
+        const target = event.target;
+        if (!target || typeof target !== 'object') return false;
+        if (target.isContentEditable) return true;
+        const tagName = typeof target.tagName === 'string' ? target.tagName.toLowerCase() : '';
+        return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+    }
+
+    /** 게임 플레이 중이 아닐 때 Z 키를 메뉴 확인 키로 처리할지 확인한다. @param {KeyboardEvent|{target?:EventTarget|null}} event 입력 이벤트 @returns {boolean} */
+    function shouldTreatZAsEnter(event) {
+        return !isTextInputInProgress(event) && (!game || !game.running || game.paused);
+    }
+
     /**
      * 키 입력을 현재 메뉴 또는 플레이어 조작에 전달한다.
      * @param {KeyboardEvent} event 키보드 이벤트
      * @returns {void}
      */
     function handleKeydown(event) {
-        const key = event.key.toLowerCase();
+        let key = event.key.toLowerCase();
+        if (key === 'z' && shouldTreatZAsEnter(event)) key = 'enter';
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
         if (!game && menuScreen === 'simulator') { handleSimulatorKeydown(key); return; }
         if (game?.tutorial) {
@@ -3434,6 +3546,7 @@
         canvas.removeEventListener('pointerup', handleVirtualPointerUp);
         canvas.removeEventListener('pointercancel', handleVirtualPointerUp);
         resetVirtualControllerInput();
+        resetGamepadInput();
         if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
         if (webMcpAbortController) webMcpAbortController.abort();
         if (createdCanvas && canvas.parentNode) canvas.parentNode.removeChild(canvas);
@@ -3508,6 +3621,7 @@
         canvas.addEventListener('pointermove', handleVirtualPointerMove);
         canvas.addEventListener('pointerup', handleVirtualPointerUp);
         canvas.addEventListener('pointercancel', handleVirtualPointerUp);
+        initializeGamepadInput();
         prepareSoundPools();
         registerWebMcpTools();
         loadNotice();
