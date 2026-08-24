@@ -4073,7 +4073,13 @@
             5,
             ['yellow', 'yellow'],
             1
-        )
+        ),
+        new FeverStageState(
+            {"puyos":[{"x":0,"y":0,"color":"yellow"},{"x":1,"y":0,"color":"yellow"},{"x":2,"y":0,"color":"yellow"},{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"green"},{"x":0,"y":1,"color":"blue"},{"x":1,"y":1,"color":"blue"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"green"},{"x":4,"y":1,"color":"red"},{"x":5,"y":1,"color":"green"},{"x":0,"y":2,"color":"yellow"},{"x":1,"y":2,"color":"yellow"},{"x":2,"y":2,"color":"yellow"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"green"},{"x":5,"y":2,"color":"blue"},{"x":0,"y":3,"color":"blue"},{"x":1,"y":3,"color":"blue"},{"x":2,"y":3,"color":"blue"},{"x":3,"y":3,"color":"yellow"},{"x":4,"y":3,"color":"blue"},{"x":5,"y":3,"color":"blue"},{"x":0,"y":4,"color":"green"},{"x":1,"y":4,"color":"green"},{"x":2,"y":4,"color":"green"},{"x":3,"y":4,"color":"red"},{"x":4,"y":4,"color":"yellow"},{"x":5,"y":4,"color":"yellow"},{"x":0,"y":5,"color":"blue"},{"x":2,"y":5,"color":"red"},{"x":3,"y":5,"color":"green"},{"x":4,"y":5,"color":"red"},{"x":5,"y":5,"color":"yellow"},{"x":0,"y":6,"color":"yellow"},{"x":3,"y":6,"color":"blue"},{"x":4,"y":6,"color":"green"},{"x":5,"y":6,"color":"red"},{"x":0,"y":7,"color":"blue"},{"x":4,"y":7,"color":"blue"},{"x":5,"y":7,"color":"red"},{"x":5,"y":8,"color":"green"},{"x":5,"y":9,"color":"green"},{"x":5,"y":10,"color":"blue"},{"x":5,"y":11,"color":"blue"}]},
+            12,
+            ['yellow', 'green'],
+            3
+        ),
     ];
 
     /**
