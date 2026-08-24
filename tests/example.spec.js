@@ -1,3 +1,6 @@
+// PlayWright 설치 시 자동 생성된 예제용 샘플
+// 사용되지 않음
+
 // @ts-check
 import { test, expect } from '@playwright/test';
 
