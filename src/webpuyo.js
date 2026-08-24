@@ -225,6 +225,16 @@
     let WebPuyo = null;
 
     /**
+     * 0 이상 1 미만의 난수를 반환한다.
+     *     자동 테스트 시 임시로 이 메소드를 수정한 후 테스트할 수 있다.
+     *     테스트를 위해서는 이 게임 내에서 랜덤 수 생성 시 반드시 이 함수를 이용해 생성해야만 한다.
+     * @returns {number}
+     */
+    function randomFloat() {
+        return Math.random();
+    }
+
+    /**
      * 공백이 있어 CSS font 값에서 여러 키워드로 잘못 해석될 수 있는 글꼴 이름에만 쌍따옴표를 붙인다.
      * @param {string} fontName 원본 글꼴 이름
      * @returns {string} font 속성에 안전하게 넣을 수 있는 글꼴 이름
@@ -469,7 +479,7 @@
      * @returns {string} 뿌요 색상 이름
      */
     function randomColor(colors = COLORS) {
-        return colors[Math.floor(Math.random() * colors.length)];
+        return colors[Math.floor(randomFloat() * colors.length)];
     }
 
     /**
@@ -1269,7 +1279,7 @@
             const positions = [];
             // 필요한 행 수만큼 열 순서를 섞어 방해뿌요 위치를 만든다.
             for (let y = 0; y < Math.ceil(amount / COLUMNS); y += 1) {
-                const columns = [...Array(COLUMNS).keys()].sort(() => Math.random() - 0.5);
+                const columns = [...Array(COLUMNS).keys()].sort(() => randomFloat() - 0.5);
                 columns.forEach((x) => positions.push([x, ROWS - 1 - y]));
             }
             positions.slice(0, amount).forEach(([x, y]) => { player.board[y][x] = 'garbage'; });
@@ -3880,7 +3890,7 @@
          * @returns {number} 6부터 8 사이의 일반 배치 턴 수
          */
         randomTurns() {
-            return 6 + Math.floor(Math.random() * 3);
+            return 6 + Math.floor(randomFloat() * 3);
         }
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @param {number} side 목표 측 X 좌표 @returns {boolean} 목표 측 하단 두 칸이 모두 채워졌는지 */
@@ -4330,7 +4340,7 @@
 
         /** @returns {number} 다음 공격 시뮬레이션 전까지의 일반 배치 턴 수 */
         randomTurnsUntilSimulation() {
-            return 10 + Math.floor(Math.random() * 6);
+            return 10 + Math.floor(randomFloat() * 6);
         }
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {boolean} 우측 하단 세 칸이 모두 채워졌는지 */
@@ -4836,6 +4846,7 @@
         registerOpponent,
         registerLanguage,
         setNoticeFile,
+        randomFloat,
         getSelectedDifficulty,
         getSelectedColorCount,
         getScreenState,

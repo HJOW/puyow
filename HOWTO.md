@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function() {
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, registerOpponent, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, initialize } = require('./src/webpuyo.js');
+const { Enemy, registerOpponent, randomFloat, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, initialize } = require('./src/webpuyo.js');
 ```
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 1280x720 canvas를 만들어 게임을 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 그대로 사용하고 `destroy()`가 요소를 제거하지 않습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
@@ -316,6 +316,26 @@ Playwright에서는 다음처럼 브라우저의 실제 게임 상태를 직접 
 const state = await page.evaluate(() => window.WebPuyo.getGameState());
 expect(state).not.toBeNull();
 expect(state.player.board.columns).toBe(6);
+```
+
+## 랜덤 난수 생성
+
+`WebPuyo.randomFloat()`는 `0` 이상 `1` 미만의 실수 난수를 반환합니다. 게임 내부에서 색상 선택, 방해뿌요 열 순서 섞기, AI의 무작위 턴 수 결정 등 모든 랜덤 값은 이 함수를 통해 생성됩니다. 게임 내부에 새로운 랜덤 동작을 추가할 때도 `Math.random()`을 직접 호출하지 말고 `randomFloat()`을 사용해야 테스트에서 랜덤 생성 지점을 한 곳으로 관리할 수 있습니다.
+
+```js
+const value = WebPuyo.randomFloat();
+// 0 <= value < 1
+const index = Math.floor(value * items.length);
+const item = items[index];
+```
+
+`randomFloat()` 자체는 기본적으로 브라우저의 `Math.random()`을 호출합니다. Playwright에서 특정 게임 상황을 재현하려면 게임 스크립트가 로드되기 전에 `Math.random`을 테스트용 함수로 바꾼 뒤 페이지를 초기화할 수 있습니다. 테스트가 끝난 뒤에는 원래 함수를 복원하거나 테스트 컨텍스트를 폐기해야 합니다.
+
+```js
+await page.addInitScript(() => {
+    Math.random = () => 0.25;
+});
+await page.goto('/webpuyo.html');
 ```
 
 - `player.board[y][x]`에는 해당 칸의 색상 문자열 또는 빈 칸의 `null`이 있습니다.

@@ -7,7 +7,7 @@
   "type": "commonjs",
   "main": "webpuyo.js",
   "scripts": {
-    "start": "node nodeserver.js",
+    "start": "npm run test && node nodeserver.js",
     "test": "eslint"
   },
   "devDependencies": {
