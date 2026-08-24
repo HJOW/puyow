@@ -3890,6 +3890,56 @@
         return new SoundPool();
     }
 
+    /** 
+     * 퍼즐 및 피버 모드 (추후 구현 예정) 에 쓰일, 
+     *    플레이 영역에 사전에 뿌요들을 배치하는 정보와 그 연쇄 수를 담은 객체를 위한 클래스. 
+     *    "피버 스테이지" 객체 라고 부를 예정.
+     * 
+     * 이 객체의 데이터대로 플레이어의 보드에 뿌요를 배치하고, 플레이어가 특정 위치에 뿌요를 놓으면, 해당 연쇄가 발생한다.
+     *     뿌요 배치 정보와, 연쇄 수, 뿌요 배치 직후에 제공되는 뿌요 색과 구성 정보 포함
+     * 
+    */
+    class FeverStageState {
+        /**
+         * 뿌요 배치 정보, 시뮬레이터 모드의 JSON복사 기능으로 생성된 데이터와 호환된다.
+         *    예: {"puyos":[{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":5,"y":1,"color":"red"}]}
+         * @type {Object}
+         */
+        stageData = {};
+
+        /**
+         * 목표 연쇄 수, 1 ~ 19 사이의 정수가 들어가야 한다. (19연쇄 초과는 논리적으로 불가능하다. 6 * 13 = 78칸, 78칸에 4개씩 뿌요를 배치하면 최대 19연쇄까지 가능.)
+         * @type {number}
+         */
+        targetCombo = 1;
+
+        /**
+         * 이 배치가 끝나자마자 그 다음에 플레이어의 컨트롤 차례가 됐을 때 제공되어야 하는 뿌요 색 목록, 배열로 안에는 색 이름 (red, blue, ...) 의 문자열이 2개가 들어가야 한다.
+         * @type {string[]}
+         */
+        suppliedNextPuyos = [];
+        constructor() {}
+    }
+
+    /**
+     * "피버 스테이지" 객체들을 담을 배열.
+     * 
+     * @type {FeverStageState[]}
+     */
+    const FEVER_STAGES = [];
+
+    /**
+     * * "피버 스테이지" 객체를 등록한다.
+     * 
+     * @param {FeverStageState} feverStateObject 
+     */
+    function registerFeverStage(feverStateObject) {
+        if (!(feverStateObject instanceof FeverStageState)) {
+            throw new TypeError('registerFeverStage requires a FeverStageState instance.');
+        }
+        FEVER_STAGES.push(feverStateObject);
+    }
+
     // Enemy 계층은 파일 하단에 모아 확장 지점을 한곳에서 확인할 수 있게 한다.
     /**
      * 자동 플레이어의 이동 목표를 결정하는 확장 지점이다.
