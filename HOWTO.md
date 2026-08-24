@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function() {
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, registerOpponent, randomFloat, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, initialize } = require('./src/webpuyo.js');
+const { Enemy, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, initialize } = require('./src/webpuyo.js');
 ```
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 1280x720 canvas를 만들어 게임을 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 그대로 사용하고 `destroy()`가 요소를 제거하지 않습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
@@ -105,6 +105,47 @@ WebPuyo.registerLanguage('ja', {
 
 WebPuyo.initialize();
 ```
+
+## 사용자 정의 예고뿌요 단위 추가
+
+방해뿌요 예고줄은 단위가 큰 순서로 분해됩니다. `WebPuyo.WarningPuyo`를 상속한 클래스를 만들고 `WebPuyo.registerWarningPuyo()`에 전달하면 새 단위를 등록할 수 있습니다. 등록은 반드시 `initialize()` 전에 해야 하며, 등록된 클래스는 `static unitCount`의 큰 값부터 자동 정렬됩니다.
+
+클래스에는 다음 계약이 필요합니다.
+
+- `static unitCount`: 양의 정수 단위값입니다.
+- 생성자: `super(클래스명.unitCount, '고유한-종류명')`을 호출해야 합니다. 인스턴스의 `unitCount`는 static 값과 같아야 합니다.
+- `draw(drawingContext, x, y, cellSize)`: 예고뿌요 한 개를 그립니다. `x`, `y`, `cellSize`는 게임의 논리 좌표와 셀 크기입니다.
+- 선택 사항인 `getDisplayX(startX, index, sameTypeIndex)`를 재정의하면 같은 종류 예고뿌요의 가로 배치를 바꿀 수 있습니다.
+
+```js
+class CrownWarningPuyo extends WebPuyo.WarningPuyo {
+    static unitCount = 100;
+
+    constructor() {
+        super(CrownWarningPuyo.unitCount, 'crown');
+    }
+
+    draw(drawingContext, x, y, cellSize) {
+        drawingContext.save();
+        drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
+        drawingContext.fillStyle = '#c98b24';
+        drawingContext.beginPath();
+        drawingContext.moveTo(-cellSize * 0.35, cellSize * 0.26);
+        drawingContext.lineTo(-cellSize * 0.35, -cellSize * 0.26);
+        drawingContext.lineTo(0, -cellSize * 0.02);
+        drawingContext.lineTo(cellSize * 0.35, -cellSize * 0.26);
+        drawingContext.lineTo(cellSize * 0.35, cellSize * 0.26);
+        drawingContext.closePath();
+        drawingContext.fill();
+        drawingContext.restore();
+    }
+}
+
+WebPuyo.registerWarningPuyo(CrownWarningPuyo);
+WebPuyo.initialize('webpuyo_canvas');
+```
+
+같은 클래스를 두 번 등록하거나, `WarningPuyo`를 상속하지 않은 클래스, `draw()`를 구현하지 않은 클래스, 잘못된 단위값을 등록하면 오류가 발생합니다. 예고줄에는 기존과 같이 최대 6개 아이콘만 표시됩니다.
 
 ## 음소거 토글 (끄기/켜기)
 

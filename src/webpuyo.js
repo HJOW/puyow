@@ -558,6 +558,38 @@
     }
 
     /**
+     * 초기화 전에 사용자 정의 예고뿌요 클래스를 등록한다.
+     * 클래스는 WarningPuyo를 상속하고, 양의 정수 static unitCount 및 해당 값과 같은 인스턴스 unitCount,
+     * 비어 있지 않은 type, 그리고 자체 draw 메소드를 제공해야 한다. 등록 뒤에는 단위가 큰 순서로 자동 정렬된다.
+     * @param {new () => WarningPuyo} WarningPuyoType 등록할 예고뿌요 클래스
+     * @returns {void}
+     */
+    function registerWarningPuyo(WarningPuyoType) {
+        if (initialized) throw new Error('예고뿌요 등록은 initialize 호출 전에 해야 합니다.');
+        if (typeof WarningPuyoType !== 'function' || !(WarningPuyoType.prototype instanceof WarningPuyo)) {
+            throw new TypeError('WarningPuyo를 상속한 예고뿌요 클래스가 필요합니다.');
+        }
+        if (!Number.isInteger(WarningPuyoType.unitCount) || WarningPuyoType.unitCount <= 0) {
+            throw new RangeError('예고뿌요 클래스의 static unitCount는 양의 정수여야 합니다.');
+        }
+        let warningPuyo;
+        try {
+            warningPuyo = new WarningPuyoType();
+        } catch (error) {
+            throw new TypeError('예고뿌요 클래스의 인스턴스를 만들 수 없습니다.', { cause: error });
+        }
+        if (warningPuyo.unitCount !== WarningPuyoType.unitCount || typeof warningPuyo.type !== 'string' || !warningPuyo.type) {
+            throw new TypeError('예고뿌요의 unitCount와 비어 있지 않은 type을 올바르게 설정해야 합니다.');
+        }
+        if (WarningPuyoType.prototype.draw === WarningPuyo.prototype.draw) {
+            throw new TypeError('예고뿌요 클래스는 draw 메소드를 구현해야 합니다.');
+        }
+        if (WARNING_PUYO_CLASSES.includes(WarningPuyoType)) throw new Error('이미 등록된 예고뿌요 클래스입니다.');
+        WARNING_PUYO_CLASSES.push(WarningPuyoType);
+        WARNING_PUYO_CLASSES.sort((left, right) => right.unitCount - left.unitCount);
+    }
+
+    /**
      * 색 뿌요 하나를 무작위로 선택한다.
      * @returns {string} 뿌요 색상 이름
      */
@@ -1576,21 +1608,6 @@
     }
 
     /**
-     * 공격량을 예고뿌요 단위 목록으로 변환한다.
-     * @param {number} amount 예고할 방해뿌요 수
-     * @returns {string[]} 왼쪽부터 그릴 예고뿌요 종류
-     */
-    function warningUnits(amount) {
-        const units = [];
-        [[500, 'sun'], [210, 'star'], [30, 'rock'], [6, 'drop'], [1, 'tiny']].forEach(([value, type]) => {
-            const count = Math.floor(amount / value);
-            amount %= value;
-            for (let index = 0; index < count && units.length < 6; index += 1) units.push(type);
-        });
-        return units;
-    }
-
-    /**
      * 눈이 있는 색 뿌요 또는 반투명 방해뿌요를 그린다.
      * @param {number} x 셀의 왼쪽 X 좌표
      * @param {number} y 셀의 위쪽 Y 좌표
@@ -1611,7 +1628,7 @@
         context.strokeStyle = color === 'garbage' ? '#f4fbff' : 'rgba(255,255,255,0.45)';
         context.stroke();
         // 일반/방해뿌요는 물방울 같은 슬라임이라는 인상을 주는 작은 반사광을 넣는다.
-        // 예고뿌요(태양, 별, 돌 등)는 이 함수가 아닌 drawWarning에서 별도로 그린다.
+        // 예고뿌요(태양, 별, 돌 등)는 각 WarningPuyo 하위 클래스에서 별도로 그린다.
         if (slimeDetails) {
             context.fillStyle = 'rgba(255, 255, 255, 0.72)';
             context.beginPath();
@@ -1624,67 +1641,113 @@
     }
 
     /**
-     * 30 단위 예고뿌요인 빨간돌을 한 칸 안에 울퉁불퉁하게 그린다.
-     * @param {number} x 좌측 X 좌표
-     * @param {number} y 위쪽 Y 좌표
-     * @returns {void}
+     * 모든 예고뿌요가 공유하는 단위와 렌더링 규약이다.
+     * 하위 클래스는 단위 수와 draw 메소드를 재정의한다.
      */
-    function drawRockWarning(x, y) {
-        const size = CELL * 0.42;
-        context.save();
-        context.translate(x + CELL / 2, y + CELL / 2);
-        context.lineJoin = 'round';
-        context.lineWidth = 2;
-        context.strokeStyle = '#8e2728';
-        context.fillStyle = '#c83f3d';
-        context.beginPath();
-        context.moveTo(-size * 0.78, -size * 0.2);
-        context.lineTo(-size * 0.52, -size * 0.78);
-        context.lineTo(-size * 0.08, -size * 0.91);
-        context.lineTo(size * 0.38, -size * 0.75);
-        context.lineTo(size * 0.84, -size * 0.26);
-        context.lineTo(size * 0.67, size * 0.48);
-        context.lineTo(size * 0.2, size * 0.84);
-        context.lineTo(-size * 0.43, size * 0.76);
-        context.lineTo(-size * 0.86, size * 0.28);
-        context.closePath();
-        context.fill();
-        context.stroke();
+    class WarningPuyo {
+        /** @param {number} unitCount 이 예고뿌요 하나가 나타내는 방해뿌요 수 @param {string} type 외부 상태용 종류 식별자 */
+        constructor(unitCount, type) {
+            /** 이 예고뿌요 하나가 나타내는 방해뿌요 수다. @type {number} */
+            this.unitCount = unitCount;
+            /** WebMCP 등 외부 상태에 공개하는 종류 식별자다. @type {string} */
+            this.type = type;
+        }
 
-        // 각진 면을 겹쳐 표면이 매끈한 뿌요가 아니라는 점을 강조한다.
-        context.fillStyle = '#e4675a';
-        context.beginPath();
-        context.moveTo(-size * 0.52, -size * 0.78);
-        context.lineTo(-size * 0.08, -size * 0.91);
-        context.lineTo(size * 0.05, -size * 0.2);
-        context.lineTo(-size * 0.4, size * 0.02);
-        context.closePath();
-        context.fill();
-        context.fillStyle = '#9d2d31';
-        context.beginPath();
-        context.moveTo(size * 0.05, -size * 0.2);
-        context.lineTo(size * 0.38, -size * 0.75);
-        context.lineTo(size * 0.84, -size * 0.26);
-        context.lineTo(size * 0.67, size * 0.48);
-        context.lineTo(size * 0.2, size * 0.84);
-        context.lineTo(size * 0.12, size * 0.12);
-        context.closePath();
-        context.fill();
-        context.strokeStyle = 'rgba(255, 170, 150, 0.65)';
-        context.lineWidth = 1.5;
-        context.beginPath();
-        context.moveTo(-size * 0.52, -size * 0.78);
-        context.lineTo(-size * 0.08, -size * 0.91);
-        context.lineTo(size * 0.05, -size * 0.2);
-        context.lineTo(size * 0.38, -size * 0.75);
-        context.stroke();
-        drawPuyoEyes(size, size * 0.08);
-        context.restore();
+        /** 표시 목록 내에서 이 예고뿌요를 그릴 X 좌표를 계산한다. 하위 클래스에서 좁은 배치를 위해 재정의할 수 있다. @param {number} startX 시작 X 좌표 @param {number} index 목록 순번 @param {number} sameTypeIndex 같은 종류의 앞선 개수 @returns {number} 그릴 X 좌표 */
+        getDisplayX(startX, index, sameTypeIndex) {
+            return startX + index * CELL;
+        }
+
+        /** 예고뿌요 한 개를 그린다. 하위 클래스에서 각 모양을 구현한다. @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
+        draw(drawingContext, x, y, cellSize) {}
     }
+
+    /** 1개 단위의 작은 낱개 예고뿌요다. */
+    class TinyWarningPuyo extends WarningPuyo {
+        /** 이 종류가 나타내는 방해뿌요 수다. @type {number} */
+        static unitCount = 1;
+        /** 1개 단위 작은 낱개 예고뿌요를 만든다. */
+        constructor() { super(TinyWarningPuyo.unitCount, 'tiny'); }
+        /** 작은 낱개들은 기존처럼 서로 조금 겹치게 배치한다. @override @param {number} startX 시작 X 좌표 @param {number} index 목록 순번 @param {number} sameTypeIndex 앞선 작은 낱개 수 @returns {number} 그릴 X 좌표 */
+        getDisplayX(startX, index, sameTypeIndex) { return startX + (index - sameTypeIndex * 0.35) * CELL; }
+        /** 작은 낱개 예고뿌요를 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
+        draw(drawingContext, x, y, cellSize) { drawPuyo(x + cellSize * 0.05, y + cellSize * 0.25, 'garbage', 0.45, false); }
+    }
+
+    /** 6개 단위의 한 칸 크기 예고뿌요다. */
+    class DropWarningPuyo extends WarningPuyo {
+        /** 이 종류가 나타내는 방해뿌요 수다. @type {number} */
+        static unitCount = 6;
+        /** 6개 단위 한 칸 예고뿌요를 만든다. */
+        constructor() { super(DropWarningPuyo.unitCount, 'drop'); }
+        /** 한 칸 크기 예고뿌요를 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
+        draw(drawingContext, x, y, cellSize) { drawPuyo(x, y, 'garbage'); }
+    }
+
+    /** 30개 단위의 빨간 돌 예고뿌요다. */
+    class RockWarningPuyo extends WarningPuyo {
+        /** 이 종류가 나타내는 방해뿌요 수다. @type {number} */
+        static unitCount = 30;
+        /** 30개 단위 빨간 돌 예고뿌요를 만든다. */
+        constructor() { super(RockWarningPuyo.unitCount, 'rock'); }
+        /** 빨간 돌 예고뿌요를 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
+        draw(drawingContext, x, y, cellSize) {
+            const size = CELL * 0.42;
+            context.save(); context.translate(x + CELL / 2, y + CELL / 2); context.lineJoin = 'round'; context.lineWidth = 2;
+            context.strokeStyle = '#8e2728'; context.fillStyle = '#c83f3d'; context.beginPath();
+            context.moveTo(-size * 0.78, -size * 0.2); context.lineTo(-size * 0.52, -size * 0.78); context.lineTo(-size * 0.08, -size * 0.91); context.lineTo(size * 0.38, -size * 0.75); context.lineTo(size * 0.84, -size * 0.26); context.lineTo(size * 0.67, size * 0.48); context.lineTo(size * 0.2, size * 0.84); context.lineTo(-size * 0.43, size * 0.76); context.lineTo(-size * 0.86, size * 0.28); context.closePath(); context.fill(); context.stroke();
+            context.fillStyle = '#e4675a'; context.beginPath(); context.moveTo(-size * 0.52, -size * 0.78); context.lineTo(-size * 0.08, -size * 0.91); context.lineTo(size * 0.05, -size * 0.2); context.lineTo(-size * 0.4, size * 0.02); context.closePath(); context.fill();
+            context.fillStyle = '#9d2d31'; context.beginPath(); context.moveTo(size * 0.05, -size * 0.2); context.lineTo(size * 0.38, -size * 0.75); context.lineTo(size * 0.84, -size * 0.26); context.lineTo(size * 0.67, size * 0.48); context.lineTo(size * 0.2, size * 0.84); context.lineTo(size * 0.12, size * 0.12); context.closePath(); context.fill();
+            context.strokeStyle = 'rgba(255, 170, 150, 0.65)'; context.lineWidth = 1.5; context.beginPath(); context.moveTo(-size * 0.52, -size * 0.78); context.lineTo(-size * 0.08, -size * 0.91); context.lineTo(size * 0.05, -size * 0.2); context.lineTo(size * 0.38, -size * 0.75); context.stroke();
+            drawPuyoEyes(size, size * 0.08); context.restore();
+        }
+    }
+
+    /** 210개 단위의 별 모양 예고뿌요다. */
+    class StarWarningPuyo extends WarningPuyo {
+        /** 이 종류가 나타내는 방해뿌요 수다. @type {number} */
+        static unitCount = 210;
+        /** 210개 단위 별 예고뿌요를 만든다. */
+        constructor() { super(StarWarningPuyo.unitCount, 'star'); }
+        /** 별 모양 예고뿌요를 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
+        draw(drawingContext, x, y, cellSize) {
+            context.save(); context.translate(x + CELL / 2, y + CELL / 2); context.fillStyle = '#ffd54f'; context.beginPath();
+            for (let index = 0; index < 10; index += 1) {
+                const angle = -Math.PI / 2 + index * Math.PI / 5;
+                const radius = index % 2 ? CELL * 0.18 : CELL * 0.42;
+                context[index ? 'lineTo' : 'moveTo'](Math.cos(angle) * radius, Math.sin(angle) * radius);
+            }
+            context.closePath(); context.fill(); drawPuyoEyes(CELL * 0.34); context.restore();
+        }
+    }
+
+    /** 500개 단위의 태양 모양 예고뿌요다. */
+    class SunWarningPuyo extends WarningPuyo {
+        /** 이 종류가 나타내는 방해뿌요 수다. @type {number} */
+        static unitCount = 500;
+        /** 500개 단위 태양 예고뿌요를 만든다. */
+        constructor() { super(SunWarningPuyo.unitCount, 'sun'); }
+        /** 태양 모양 예고뿌요를 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
+        draw(drawingContext, x, y, cellSize) {
+            context.save(); context.translate(x + CELL / 2, y + CELL / 2); context.fillStyle = '#ff9f1c';
+            for (let index = 0; index < 8; index += 1) {
+                context.save(); context.rotate(index * Math.PI / 4); context.beginPath(); context.moveTo(CELL * 0.22, 0); context.lineTo(CELL * 0.48, -CELL * 0.1); context.lineTo(CELL * 0.48, CELL * 0.1); context.closePath(); context.fill(); context.restore();
+            }
+            context.fillStyle = '#ff6b35'; context.beginPath(); context.arc(0, 0, CELL * 0.31, 0, Math.PI * 2); context.fill(); context.lineWidth = 2; context.strokeStyle = '#ffe082'; context.stroke(); drawPuyoEyes(CELL * 0.31); context.restore();
+        }
+    }
+
+    /**
+     * 등록된 예고뿌요 클래스 목록이다. 큰 단위부터 배치해야 공격량을 기존 규칙대로 분해한다.
+     * 새 예고뿌요는 이 배열에 클래스를 추가해 등록한다.
+     * @type {Array<new () => WarningPuyo>}
+     */
+    const WARNING_PUYO_CLASSES = [SunWarningPuyo, StarWarningPuyo, RockWarningPuyo, DropWarningPuyo, TinyWarningPuyo];
 
     /**
      * 현재 변환 좌표를 기준으로 뿌요의 귀여운 두 눈을 그린다.
      * @param {number} radius 뿌요 본체의 반지름
+     * @param {number} offsetY 눈의 세로 보정값
      * @returns {void}
      */
     function drawPuyoEyes(radius, offsetY = 0) {
@@ -1701,68 +1764,33 @@
     }
 
     /**
-     * 단위별 예고뿌요 모양을 한 칸에 그린다.
-     * @param {number} x 셀의 왼쪽 X 좌표
-     * @param {number} y 셀의 위쪽 Y 좌표
-     * @param {string} type 예고뿌요 단위 종류
-     * @returns {void}
+     * 공격량을 단위별 예고뿌요 객체 목록으로 변환한다.
+     * @param {number} amount 예고할 방해뿌요 수
+     * @returns {WarningPuyo[]} 왼쪽부터 그릴 예고뿌요 객체
      */
-    function drawWarning(x, y, type) {
-        if (type === 'tiny') return drawPuyo(x + CELL * 0.05, y + CELL * 0.25, 'garbage', 0.45, false);
-        if (type === 'sun') {
-            context.save();
-            context.translate(x + CELL / 2, y + CELL / 2);
-            context.fillStyle = '#ff9f1c';
-            for (let index = 0; index < 8; index += 1) {
-                context.save();
-                context.rotate(index * Math.PI / 4);
-                context.beginPath();
-                context.moveTo(CELL * 0.22, 0);
-                context.lineTo(CELL * 0.48, -CELL * 0.1);
-                context.lineTo(CELL * 0.48, CELL * 0.1);
-                context.closePath();
-                context.fill();
-                context.restore();
-            }
-            context.fillStyle = '#ff6b35';
-            context.beginPath();
-            context.arc(0, 0, CELL * 0.31, 0, Math.PI * 2);
-            context.fill();
-            context.lineWidth = 2;
-            context.strokeStyle = '#ffe082';
-            context.stroke();
-            drawPuyoEyes(CELL * 0.31);
-            context.restore();
-            return;
-        }
-        if (type === 'star') {
-            context.save(); context.translate(x + CELL / 2, y + CELL / 2); context.fillStyle = '#ffd54f'; context.beginPath();
-            for (let index = 0; index < 10; index += 1) {
-                const angle = -Math.PI / 2 + index * Math.PI / 5;
-                const radius = index % 2 ? CELL * 0.18 : CELL * 0.42;
-                context[index ? 'lineTo' : 'moveTo'](Math.cos(angle) * radius, Math.sin(angle) * radius);
-            }
-            context.closePath(); context.fill(); drawPuyoEyes(CELL * 0.34); context.restore(); return;
-        }
-        if (type === 'rock') {
-            drawRockWarning(x, y);
-            return;
-        }
-        drawPuyo(x, y, 'garbage');
+    function warningUnits(amount) {
+        const units = [];
+        WARNING_PUYO_CLASSES.forEach((WarningPuyoType) => {
+            const count = Math.floor(amount / WarningPuyoType.unitCount);
+            amount %= WarningPuyoType.unitCount;
+            for (let index = 0; index < count && units.length < 6; index += 1) units.push(new WarningPuyoType());
+        });
+        return units;
     }
 
     /**
-     * 예고뿌요 목록을 그린다. 1개 단위 예고뿌요끼리는 조금 더 촘촘하게 배치한다.
+     * 예고뿌요 객체 목록을 그린다. 작은 낱개는 자신의 배치 메소드를 통해 조금 더 촘촘하게 표시한다.
      * @param {number} x 좌측 X 좌표
      * @param {number} y 위쪽 Y 좌표
-     * @param {string[]} units 예고뿌요 단위 목록
+     * @param {WarningPuyo[]} units 예고뿌요 객체 목록
      * @returns {void}
      */
     function drawWarningUnits(x, y, units) {
-        let tinyCount = 0;
-        units.forEach((type, index) => {
-            const tinyOffset = type === 'tiny' ? tinyCount++ * 0.35 : 0;
-            drawWarning(x + (index - tinyOffset) * CELL, y, type);
+        const sameTypeCounts = new Map();
+        units.forEach((unit, index) => {
+            const sameTypeIndex = sameTypeCounts.get(unit.type) || 0;
+            sameTypeCounts.set(unit.type, sameTypeIndex + 1);
+            unit.draw(context, unit.getDisplayX(x, index, sameTypeIndex), y, CELL);
         });
     }
 
@@ -3461,7 +3489,7 @@
             placedPairCount: player.placedPairCount,
             board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos },
             nextPairs: player.nextPairs.map((pair) => [...pair]),
-            warningPuyos: warningUnits(opponent.attack + player.damage),
+            warningPuyos: warningUnits(opponent.attack + player.damage).map((unit) => unit.type),
             active
         };
     }
@@ -5079,9 +5107,11 @@
 
     WebPuyo = {
         Enemy,
+        WarningPuyo,
         SoundPool,
         CommonSoundPool,
         registerOpponent,
+        registerWarningPuyo,
         registerLanguage,
         setNoticeFile,
         randomFloat,
