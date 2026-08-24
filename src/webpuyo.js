@@ -1406,7 +1406,7 @@
         player.outgoingWarningDelay = Math.floor(player.attack);
         // 연쇄 중에는 에너지만 상대 천장까지 보낸다. 도착 시 예고뿌요만 갱신하고 DAMAGE는 정산하지 않는다.
         if (cancelledOpponentAttack || cancelledDamage || remaining) {
-            const energy = queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledOpponentAttack, 0, remaining > 0, Math.floor(player.attack));
+            const energy = queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledOpponentAttack, 0, remaining > 0, Math.floor(player.attack), true);
             if (remaining > 0) player.lastAttackTransfer = energy;
         }
     }
@@ -1439,14 +1439,14 @@
         return simulator?.energyTransfers || null;
     }
 
-    function queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledAttack, delivered, travelToOpponent = false, previewAmount = null) {
+    function queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledAttack, delivered, travelToOpponent = false, previewAmount = null, startsAtExplosion = false) {
         const energyTransfers = getEnergyTransfers();
         if (!energyTransfers) return;
         const ownTarget = { x: player.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP - CELL / 2 };
         const opponentTarget = { x: opponent.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP - CELL / 2 };
         const route = [];
-        if (cancelledDamage || cancelledAttack) route.push({ target: ownTarget, kind: 'cancel', amount: cancelledDamage, attackAmount: cancelledAttack });
-        if (delivered || travelToOpponent) route.push({ target: opponentTarget, kind: 'damage', amount: delivered, previewAmount });
+        if (cancelledDamage || cancelledAttack) route.push({ target: ownTarget, kind: 'cancel', amount: cancelledDamage, attackAmount: cancelledAttack, arcDirection: 'up' });
+        if (delivered || travelToOpponent) route.push({ target: opponentTarget, kind: 'damage', amount: delivered, previewAmount, arcDirection: (cancelledDamage || cancelledAttack) ? 'down' : startsAtExplosion ? 'up' : 'down' });
         if (!route.length) return null;
         const energy = { player, opponent, position: source, route, routeIndex: 0, elapsed: 0, fading: false, finalDamageAmount: 0 };
         energyTransfers.push(energy);
@@ -1964,8 +1964,8 @@
                 const progress = Math.min(1, energy.elapsed / 250);
                 const start = energy.position;
                 const end = segment.target;
-                // 자신의 천장으로는 위쪽, 필드 사이로는 아래쪽으로 얕게 휜다.
-                const arc = Math.abs(start.x - end.x) > CELL ? CELL * 3 : -CELL * 0.7;
+                // 폭발 지점에서 천장으로 직행할 때는 위쪽, 내 천장 경유 후 상대 천장으로 갈 때는 아래쪽으로 휜다.
+                const arc = segment.arcDirection === 'down' ? CELL * 3 : -CELL * 0.7;
                 const inverse = 1 - progress;
                 x = inverse * start.x + progress * end.x;
                 y = inverse * start.y + progress * end.y + 4 * inverse * progress * arc;
