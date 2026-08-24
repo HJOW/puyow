@@ -11,5 +11,10 @@
     "background_color" : "#000000",
     "theme_color" : "#000000",
     "icons" : [
+        {
+            "src" : "./icon45.png",
+            "sizes" : "45x45",
+            "type" : "image/png"
+        }
     ]
 }

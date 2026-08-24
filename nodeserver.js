@@ -150,6 +150,7 @@ const server = http.createServer((req, res) => {
         case '.docx': contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'; break;
         case '.pptx': contentType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'; break;
         case '.xlsx': contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'; break;
+        case '.webmanifest': contentType = 'application/manifest+json'; break;
     }
 
     fs.readFile(filePath, (err, content) => {
