@@ -20,6 +20,8 @@ module.exports = [
         },
         rules: {
             ...js.configs.recommended.rules,
+            // 공개 API, 콜백, 상속용 메서드의 함수와 매개변수는 미사용이어도 유지한다.
+            'no-unused-vars': 'off',
         },
     },
 ]
