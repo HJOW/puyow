@@ -74,3 +74,9 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Claude Code configuration rules
+.claude/worktrees/
+.claude/memory/
+.claude/*.local.json
+.claude/*.local.md
