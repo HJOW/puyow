@@ -3670,6 +3670,7 @@
         /**  
          * 적의 경우, 해당 적과 게임 시 사용되는 배경 음악. null 인 경우 해당 상황에서 소리가 나지 않는다.
          *     해당 적의 배경 음악이 없으면, 공통 사운드 풀의 backgroundMusic 을 체크해서 있으면 이용한다.
+         *     (연습 모드이거나, 시뮬레이터 화면에서 시뮬레이션 모드이거나, 플레이 방법 화면에서도 공통 사운드 풀의 backgroundMusic 이 있으면 재생해야 한다.)
          *     배경 음악이므로 반복되어야 한다.
          * @type {string|null}
          */
@@ -3724,6 +3725,12 @@
          */
         puyoBurstCombo7 = null;
 
+        /**  
+         * 전투 중이 아닌 상황에서 재생되는 배경 음악, null 인 경우 해당 상황에서 소리가 나지 않는다.
+         *     배경 음악이므로 반복되어야 한다.
+         * @type {string|null}
+         */
+        otherBackgroundMusic = null;
 
         constructor() { super(); }
     }
