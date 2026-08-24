@@ -3199,7 +3199,7 @@
      * 한 플레이어의 보드와 대기열을 JSON으로 직렬화 가능한 상태로 만든다.
      * @param {PlayerState} player 상태를 읽을 플레이어
      * @param {PlayerState} opponent 상대 플레이어
-     * @returns {{name:string, board:{columns:number, rows:number, visibleRows:number, puyos:{x:number,y:number,color:string}[]}, nextPairs:string[][], warningPuyos:string[], active:{x:number,y:number,rotation:number,colors:string[],cells:{x:number,y:number,color:string}[]}|null}}
+     * @returns {{name:string, isCpu:boolean, phase:string, point:number, attack:number, damage:number, combo:number, placedPairCount:number, board:{columns:number, rows:number, visibleRows:number, puyos:{x:number,y:number,color:string}[]}, nextPairs:string[][], warningPuyos:string[], active:{x:number,y:number,rotation:number,colors:string[],cells:{x:number,y:number,color:string}[]}|null}}
      */
     function getPlayerGameStatus(player, opponent) {
         const puyos = [];
@@ -3215,6 +3215,13 @@
         } : null;
         return {
             name: player.name,
+            isCpu: player.controller !== null,
+            phase: player.phase,
+            point: player.point,
+            attack: player.attack,
+            damage: player.damage,
+            combo: player.combo,
+            placedPairCount: player.placedPairCount,
             board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos },
             nextPairs: player.nextPairs.map((pair) => [...pair]),
             warningPuyos: warningUnits(opponent.attack + player.damage),
@@ -3235,6 +3242,50 @@
         return {
             screen: screen.screen,
             playerCanControl: screen.playerCanControl,
+            player: getPlayerGameStatus(player, opponent),
+            opponent: getPlayerGameStatus(opponent, player),
+            recommendedPoint: recommendedPoint ? { ...recommendedPoint } : null
+        };
+    }
+
+    /**
+     * 현재 표시 중인 화면과 플레이어 조작 가능 여부를 반환한다.
+     * 메뉴, 튜토리얼, 대전 진행 상태 모두에서 사용할 수 있다.
+     * @returns {{screen:'main_menu'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     */
+    function getScreenState() {
+        return getNowScreen();
+    }
+
+    /**
+     * 현재 일반 대전의 읽기 전용 상태 스냅샷을 반환한다.
+     * 반환된 객체와 그 안의 배열을 변경해도 실제 게임 상태에는 영향을 주지 않는다.
+     * 메뉴, 튜토리얼 또는 초기화 전 상태에서는 null을 반환한다.
+     * @returns {{screen:string, playerCanControl:boolean, running:boolean, paused:boolean, countdown:number, elapsed:number, practice:boolean, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
+     */
+    function getGameState() {
+        if (!game || game.tutorial) return null;
+        const screen = getNowScreen();
+        const [player, opponent] = game.players;
+        const getRole = (target) => target === player ? 'player' : target === opponent ? 'opponent' : null;
+        return {
+            screen: screen.screen,
+            playerCanControl: screen.playerCanControl,
+            running: game.running,
+            paused: game.paused,
+            countdown: game.countdown,
+            elapsed: game.elapsed,
+            practice: game.practice,
+            colorCount: game.pairQueueColors.length,
+            colors: [...game.pairQueueColors],
+            aiDifficulty: getSelectedDifficulty(),
+            winner: getRole(game.winner),
+            ending: game.ending ? {
+                loser: getRole(game.ending.loser),
+                winner: getRole(game.ending.winner),
+                elapsed: game.ending.elapsed,
+                duration: game.ending.duration
+            } : null,
             player: getPlayerGameStatus(player, opponent),
             opponent: getPlayerGameStatus(opponent, player),
             recommendedPoint: recommendedPoint ? { ...recommendedPoint } : null
@@ -4787,6 +4838,8 @@
         setNoticeFile,
         getSelectedDifficulty,
         getSelectedColorCount,
+        getScreenState,
+        getGameState,
         getNextPairs,
         initialize,
         destroy,

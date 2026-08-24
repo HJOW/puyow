@@ -7,9 +7,11 @@
   "type": "commonjs",
   "main": "webpuyo.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "eslint"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^26.2.0",
     "eslint": "^9.39.5"
   }
 }

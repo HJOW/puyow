@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function() {
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, registerOpponent, getSelectedDifficulty, getSelectedColorCount, initialize } = require('./src/webpuyo.js');
+const { Enemy, registerOpponent, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, initialize } = require('./src/webpuyo.js');
 ```
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 1280x720 canvas를 만들어 게임을 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 그대로 사용하고 `destroy()`가 요소를 제거하지 않습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
@@ -288,6 +288,35 @@ if (next) {
 ```
 
 반환된 `nextPairs`는 내부 대기열의 복사본이므로 값을 변경해도 실제 게임의 다음 뿌요에는 영향을 주지 않습니다.
+
+## 현재 게임 상태 읽기
+
+`WebPuyo.getScreenState()`는 메뉴, 튜토리얼, 대전을 포함해 현재 화면을 `{ screen, playerCanControl }` 형태로 반환합니다. `screen`은 `main_menu`, `opponent_select`, `countdown`, `playing`, `paused`, `ending`, `game_over` 등 현재 표시 화면을 나타내며, `playerCanControl`은 플레이어가 실제로 조작 중인 뿌요 쌍을 움직일 수 있을 때만 `true`입니다. Playwright에서는 화면 전환이나 입력 가능 시점을 기다리는 조건으로 사용할 수 있습니다.
+
+`WebPuyo.getGameState()`는 일반 대전과 연습전의 읽기 전용 상태 스냅샷을 반환합니다. 메뉴, 튜토리얼, 초기화 전에는 `null`을 반환합니다. 카운트다운, 진행 중, 일시정지, 종료 연출, 게임 오버 상태도 조회할 수 있습니다. 반환된 객체와 배열은 내부 상태의 복사본이므로 AI나 테스트 코드에서 바꿔도 실제 게임에는 영향을 주지 않습니다.
+
+```js
+const screen = WebPuyo.getScreenState();
+if (screen.playerCanControl) {
+    const state = WebPuyo.getGameState();
+    console.log(state.player.active);
+    console.log(state.player.board.puyos);
+}
+```
+
+`getGameState()`의 최상위에는 `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, `ending`이 있습니다. `player`와 `opponent`에는 다음 정보가 각각 들어 있습니다.
+
+- `isCpu`, `phase`, `point`, `attack`, `damage`, `combo`, `placedPairCount`
+- `board.columns`, `board.rows`, `board.visibleRows`, `board.puyos` — 고정된 뿌요를 `{ x, y, color }` 목록으로 반환합니다. 좌표의 원점은 왼쪽 아래입니다.
+- `nextPairs`, `warningPuyos`, `active` — `active`는 조작 중인 쌍이 없으면 `null`이며, 있을 때는 `x`, `y`, `rotation`, `colors`, `cells`를 포함합니다.
+
+Playwright에서는 다음처럼 브라우저의 실제 게임 상태를 직접 검증할 수 있습니다.
+
+```js
+const state = await page.evaluate(() => window.WebPuyo.getGameState());
+expect(state).not.toBeNull();
+expect(state.player.board.columns).toBe(6);
+```
 
 - `player.board[y][x]`에는 해당 칸의 색상 문자열 또는 빈 칸의 `null`이 있습니다.
 - 좌표는 왼쪽 아래가 `(0, 0)`입니다. `x`는 `0`부터 `5`, `y`는 `0`부터 `16`입니다. `y=0`부터 `11`은 화면에 보이는 12줄이고, `y=12`는 조작 뿌요가 생성되는 기존 숨김 행이며, `y=13`부터 `16`은 방해뿌요 생성 전용의 추가 숨김 행입니다.
