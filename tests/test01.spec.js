@@ -157,8 +157,8 @@ test('피버 룰은 전용 적 선택 화면에서 5색 대전으로 시작한�
   expect(state.feverRule).toBe(true);
   expect(state.continuousFever).toBe(false);
   expect(state.colorCount).toBe(5);
-  expect(state.player.fever).toMatchObject({ active: false, gauge: 0, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
-  expect(state.opponent.fever).toMatchObject({ active: false, gauge: 0, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
+  expect(state.player.fever).toMatchObject({ active: false, gauge: 4, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
+  expect(state.opponent.fever).toMatchObject({ active: false, gauge: 4, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
 });
 
 test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {

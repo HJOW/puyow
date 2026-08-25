@@ -86,7 +86,7 @@
     /** 피버 룰에서 피버를 발동시키는 상쇄 전등 수다. @type {number} */
     const FEVER_GAUGE_MAX = 7;
     /** 피버 룰의 게임 시작 및 피버 종료 직후 켜져 있는 전등 수다. @type {number} */
-    const FEVER_LIGHT_STARTS = 4;
+    const FEVER_LIGHT_STARTS = 0;
     /** 피버 룰의 시작 목표 연쇄 수다. @type {number} */
     const FEVER_INITIAL_TARGET_COMBO = 5;
     /** 피버 룰의 시작 다음 피버 시간(초)이다. @type {number} */
@@ -2138,6 +2138,11 @@
         return Math.min(CONTINUOUS_FEVER_MAX_TARGET_COMBO, nextTarget);
     }
 
+    /** 배치 시작 전 또는 배치·연쇄 처리 도중 피버 시간이 만료되었는지 확인한다. @param {object} feverState 피버 상태 @returns {boolean} 종료 처리 필요 여부 */
+    function isFeverTimeExpired(feverState) {
+        return feverState.expiredPlacement || feverState.leftTime <= 0;
+    }
+
     /** 연쇄 후 상대 방해뿌요 낙하와 모든 에너지·싹쓸이 연출이 끝났는지 확인한다. @param {PlayerState} player 사용자 @param {PlayerState} opponent 연습 상대 @returns {boolean} 아직 기다려야 하는지 여부 */
     function isContinuousFeverSettlementPending(player, opponent) {
         return player.allClearEffectElapsed > 0
@@ -2150,7 +2155,7 @@
     /** 피버 연쇄 정산 후 종료하거나 목표·시간을 갱신하고 다음 피버 턴을 시작한다. 시간 만료 뒤에는 연쇄·싹쓸이 보너스로 시간을 되살리지 않는다. @param {PlayerState} player 사용자 @param {PlayerState} opponent 연습 상대 @returns {void} */
     function finishContinuousFeverResolution(player, opponent) {
         if (!game?.continuousFever || !game.fever) return;
-        if (game.fever.expiredPlacement) {
+        if (isFeverTimeExpired(game.fever)) {
             startDefeatSequence(player, opponent);
             return;
         }
@@ -2184,7 +2189,7 @@
     function finishFeverRuleResolution(player) {
         const state = player.fever;
         if (!game?.feverRule || !state?.active) return;
-        if (state.expiredPlacement) {
+        if (isFeverTimeExpired(state)) {
             finishPlayerFever(player, 'B');
             return;
         }
@@ -2364,7 +2369,7 @@
                         player.phase = 'feverWait';
                         return;
                     }
-                    if (game.fever.expiredPlacement) {
+                    if (isFeverTimeExpired(game.fever)) {
                         startDefeatSequence(player, opponent);
                         return;
                     }
@@ -2377,7 +2382,7 @@
                             player.phase = 'feverWait';
                             return;
                         }
-                        if (state.expiredPlacement) {
+                        if (isFeverTimeExpired(state)) {
                             finishPlayerFever(player, 'A');
                             return;
                         }
@@ -2867,8 +2872,6 @@
             context.font = `28px ${MESSAGE_FONT}`;
             context.textAlign = 'center';
             context.fillText(String(Math.ceil(player.fever.leftTime / 1000)), x + COLUMNS * CELL / 2, FIELD_TOP + 31);
-            context.font = `12px ${MESSAGE_FONT}`;
-            context.fillText(`${translate('목표 연쇄')} ${player.fever.targetCombo}`, x + COLUMNS * CELL / 2, FIELD_TOP + 51);
         }
         if (player.effects) {
             const progress = Math.min(1, player.effects.elapsed / player.effects.duration);
