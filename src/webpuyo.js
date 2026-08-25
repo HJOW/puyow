@@ -238,6 +238,7 @@
     /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,disabled?:boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', activate: () => openOpponentMenu() },
+        { label: '연습', activate: () => openPracticeDifficulty() },
         { label: '연속 피버', statusLabel: '(출시 예정)', disabled: true }
     ];
     /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {object|null} */
@@ -3000,6 +3001,12 @@
         ruleSelectionFocus = 0;
     }
 
+    /** 게임 규칙 선택지에서 연습을 고른 뒤 색상 수 선택 화면을 연다. @returns {void} */
+    function openPracticeDifficulty() {
+        selectedDifficulty = 1;
+        menuScreen = 'practiceDifficulty';
+    }
+
     /** 포커스된 게임 규칙을 선택한다. @returns {void} */
     function activateRuleSelection() {
         const option = GAME_RULE_OPTIONS[ruleSelectionFocus];
@@ -3051,7 +3058,7 @@
             context.scale(OPPONENT_MENU_SCALE, OPPONENT_MENU_SCALE);
             context.translate(-WIDTH / 2, -HEIGHT / 2);
         }
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 90 : 170);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 90 : 110);
         if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'opponent') {
             context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('난이도'), WIDTH / 2, 130);
@@ -3125,26 +3132,23 @@
             return;
         }
         const menuX = WIDTH / 2 - 109; const menuWidth = 218; const menuHeight = 50;
-        context.fillStyle = '#ef5350'; context.fillRect(menuX, 250, menuWidth, menuHeight);
-        context.strokeStyle = titleMenuFocus === 0 ? '#f7c843' : '#ef5350'; context.lineWidth = titleMenuFocus === 0 ? 4 : 2; context.strokeRect(menuX, 250, menuWidth, menuHeight);
-        context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('게임 시작'), WIDTH / 2, 282);
-        context.fillStyle = '#264b5b'; context.fillRect(menuX, 315, menuWidth, menuHeight);
-        context.strokeStyle = titleMenuFocus === 1 ? '#f7c843' : '#264b5b'; context.lineWidth = titleMenuFocus === 1 ? 4 : 2; context.strokeRect(menuX, 315, menuWidth, menuHeight);
-        context.fillStyle = '#d8f2f5'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('연습'), WIDTH / 2, 347);
-        context.fillStyle = '#34556b'; context.fillRect(menuX, 380, menuWidth, menuHeight);
-        context.strokeStyle = titleMenuFocus === 2 ? '#f7c843' : '#34556b'; context.lineWidth = titleMenuFocus === 2 ? 4 : 2; context.strokeRect(menuX, 380, menuWidth, menuHeight);
-        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('시뮬레이터'), WIDTH / 2, 412);
-        context.fillStyle = '#405c70'; context.fillRect(menuX, 445, menuWidth, menuHeight);
-        context.strokeStyle = titleMenuFocus === 3 ? '#f7c843' : '#405c70'; context.lineWidth = titleMenuFocus === 3 ? 4 : 2; context.strokeRect(menuX, 445, menuWidth, menuHeight);
-        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('플레이 방법'), WIDTH / 2, 477);
-        context.fillStyle = '#405c70'; context.fillRect(menuX, 510, menuWidth, menuHeight);
-        context.strokeStyle = titleMenuFocus === 4 ? '#f7c843' : '#405c70'; context.lineWidth = titleMenuFocus === 4 ? 4 : 2; context.strokeRect(menuX, 510, menuWidth, menuHeight);
-        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 542);
+        context.fillStyle = '#ef5350'; context.fillRect(menuX, 310, menuWidth, menuHeight);
+        context.strokeStyle = titleMenuFocus === 0 ? '#f7c843' : '#ef5350'; context.lineWidth = titleMenuFocus === 0 ? 4 : 2; context.strokeRect(menuX, 310, menuWidth, menuHeight);
+        context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('게임 시작'), WIDTH / 2, 342);
+        context.fillStyle = '#34556b'; context.fillRect(menuX, 375, menuWidth, menuHeight);
+        context.strokeStyle = titleMenuFocus === 1 ? '#f7c843' : '#34556b'; context.lineWidth = titleMenuFocus === 1 ? 4 : 2; context.strokeRect(menuX, 375, menuWidth, menuHeight);
+        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('시뮬레이터'), WIDTH / 2, 407);
+        context.fillStyle = '#405c70'; context.fillRect(menuX, 440, menuWidth, menuHeight);
+        context.strokeStyle = titleMenuFocus === 2 ? '#f7c843' : '#405c70'; context.lineWidth = titleMenuFocus === 2 ? 4 : 2; context.strokeRect(menuX, 440, menuWidth, menuHeight);
+        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('플레이 방법'), WIDTH / 2, 472);
+        context.fillStyle = '#405c70'; context.fillRect(menuX, 505, menuWidth, menuHeight);
+        context.strokeStyle = titleMenuFocus === 3 ? '#f7c843' : '#405c70'; context.lineWidth = titleMenuFocus === 3 ? 4 : 2; context.strokeRect(menuX, 505, menuWidth, menuHeight);
+        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 537);
         context.fillStyle = '#24292f'; context.fillRect(32, 665, 85, 23);
-        context.strokeStyle = titleMenuFocus === 5 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 5 ? 2 : 1; context.strokeRect(32, 665, 85, 23);
+        context.strokeStyle = titleMenuFocus === 4 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 4 ? 2 : 1; context.strokeRect(32, 665, 85, 23);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 74.5, 681);
         context.fillStyle = store.muted ? '#52606d' : '#264b5b'; context.fillRect(WIDTH - 117, 665, 85, 23);
-        context.strokeStyle = titleMenuFocus === 6 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 6 ? 2 : 1; context.strokeRect(WIDTH - 117, 665, 85, 23);
+        context.strokeStyle = titleMenuFocus === 5 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 5 ? 2 : 1; context.strokeRect(WIDTH - 117, 665, 85, 23);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate(store.muted ? '음소거(활성)' : '음소거(꺼짐)'), WIDTH - 74.5, 681);
         context.fillStyle = '#8899a6'; context.font = `14px ${MESSAGE_FONT}`; context.fillText('Copyright (c) HJOW', WIDTH / 2, HEIGHT - 20);
         if (menuScreen === 'practiceDifficulty') {
@@ -3395,8 +3399,8 @@
             }
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
                 titleMenuFocus = key === 'arrowleft' || key === 'arrowup'
-                    ? (titleMenuFocus + 6) % 7
-                    : (titleMenuFocus + 1) % 7;
+                    ? (titleMenuFocus + 5) % 6
+                    : (titleMenuFocus + 1) % 6;
             } else if (menuScreen === 'opponent' && key === 'arrowup') {
                 opponentMenuFocus = Math.max(0, opponentMenuFocus - 1);
             } else if (menuScreen === 'opponent' && key === 'arrowdown') {
@@ -3489,14 +3493,10 @@
      */
     function activateTitleMenu() {
         if (titleMenuFocus === 0) openRuleSelection();
-        else if (titleMenuFocus === 1) {
-            selectedDifficulty = 1;
-            menuScreen = 'practiceDifficulty';
-        }
-        else if (titleMenuFocus === 2) openSimulator();
-        else if (titleMenuFocus === 3) openTutorial();
-        else if (titleMenuFocus === 4) openSettings();
-        else if (titleMenuFocus === 5) {
+        else if (titleMenuFocus === 1) openSimulator();
+        else if (titleMenuFocus === 2) openTutorial();
+        else if (titleMenuFocus === 3) openSettings();
+        else if (titleMenuFocus === 4) {
             const githubWindow = window.open('https://github.com/HJOW/puyow', '_blank');
             if (githubWindow) githubWindow.opener = null;
         } else {
@@ -3624,25 +3624,22 @@
             return;
         }
         if (menuScreen === 'title') {
-            if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 250 && y <= 300) {
+            if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 310 && y <= 360) {
                 titleMenuFocus = 0;
                 activateTitleMenu();
-            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 315 && y <= 365) {
+            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 375 && y <= 425) {
                 titleMenuFocus = 1;
                 activateTitleMenu();
-            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 380 && y <= 430) {
+            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 440 && y <= 490) {
                 titleMenuFocus = 2;
                 activateTitleMenu();
-            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 445 && y <= 495) {
+            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 505 && y <= 555) {
                 titleMenuFocus = 3;
-                activateTitleMenu();
-            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 510 && y <= 560) {
-                titleMenuFocus = 4;
                 activateTitleMenu();
             } else if (x >= WIDTH - 117 && x <= WIDTH - 32 && y >= 665 && y <= 688) {
                 toggleMuted();
             } else if (x >= 32 && x <= 117 && y >= 665 && y <= 688) {
-                titleMenuFocus = 5;
+                titleMenuFocus = 4;
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
