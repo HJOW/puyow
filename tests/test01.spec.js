@@ -75,6 +75,19 @@ test('메뉴에서 Z 키는 Enter 키처럼 동작한다', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
 });
 
+test('게임 규칙 선택지에 출시 예정 모드가 비활성 상태로 표시되고 포커스되지 않는다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => {
+    const texts = window.testCanvasTexts;
+    return texts.includes('기본 룰') && texts.includes('연속 피버') && texts.includes('(출시 예정)');
+  })).toBe(true);
+
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+});
+
 test('플레이 방법 시연은 에너지 이동 초기화 오류 없이 시작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');

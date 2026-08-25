@@ -92,7 +92,7 @@
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
-            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': 'Press ENTER or click anywhere.',
+            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '연속 피버': 'Continuous Fever', '(출시 예정)': '(Coming soon)', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': 'Press ENTER or click anywhere.',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -106,7 +106,7 @@
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
-            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': 'ENTERキーを押すか、どこかをクリックしてください。',
+            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '연속 피버': '連続フィーバー', '(출시 예정)': '(近日公開)', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': 'ENTERキーを押すか、どこかをクリックしてください。',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '시작': '開始', '이전': '戻る',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -120,7 +120,7 @@
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
-            '게임 시작': '开始游戏', '기본 룰': '基本规则', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': '请按 ENTER 键或点击任意位置。',
+            '게임 시작': '开始游戏', '기본 룰': '基本规则', '연속 피버': '连续狂热', '(출시 예정)': '(即将推出)', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER키를 누르거나, 아무 곳이나 클릭해 주세요': '请按 ENTER 键或点击任意位置。',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -235,9 +235,10 @@
     ];
     /** 등록된 기본 및 외부 적 목록이다. @type {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} */
     const OPPONENTS = [];
-    /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,activate:()=>void}[]} */
+    /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,disabled?:boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
-        { label: '기본 룰', activate: () => openOpponentMenu() }
+        { label: '기본 룰', activate: () => openOpponentMenu() },
+        { label: '연속 피버', statusLabel: '(출시 예정)', disabled: true }
     ];
     /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {object|null} */
     let WebPuyo = null;
@@ -2973,19 +2974,24 @@
         context.fillText(translate('ENTER키를 누르거나, 아무 곳이나 클릭해 주세요'), WIDTH / 2, HEIGHT - 70);
     }
 
+    /** 포커스 가능한 게임 규칙 선택지의 실제 배열 순번을 반환한다. @returns {number[]} 포커스 가능한 선택지 순번 */
+    function getSelectableRuleOptionIndices() {
+        return GAME_RULE_OPTIONS.map((option, index) => option.disabled ? -1 : index).filter((index) => index >= 0);
+    }
+
     /** 게임 규칙 선택지 하나의 화면 영역을 반환한다. @param {number} index 선택지 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
     function getRuleSelectionButtonBounds(index) {
         const width = 280;
-        const height = 58;
-        const gap = 16;
-        const totalHeight = GAME_RULE_OPTIONS.length * height + Math.max(0, GAME_RULE_OPTIONS.length - 1) * gap;
-        return { x: (WIDTH - width) / 2, y: (HEIGHT - totalHeight) / 2 + index * (height + gap), width, height };
+        const height = 78;
+        const gap = 24;
+        const totalWidth = GAME_RULE_OPTIONS.length * width + Math.max(0, GAME_RULE_OPTIONS.length - 1) * gap;
+        return { x: (WIDTH - totalWidth) / 2 + index * (width + gap), y: (HEIGHT - height) / 2, width, height };
     }
 
     /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 연다. @returns {void} */
     function openRuleSelection() {
         ruleSelectionOpen = true;
-        ruleSelectionFocus = 0;
+        ruleSelectionFocus = getSelectableRuleOptionIndices()[0] ?? 0;
     }
 
     /** 게임 규칙 선택 오버레이를 닫고 메인 메뉴로 돌아간다. @returns {void} */
@@ -2997,7 +3003,7 @@
     /** 포커스된 게임 규칙을 선택한다. @returns {void} */
     function activateRuleSelection() {
         const option = GAME_RULE_OPTIONS[ruleSelectionFocus];
-        if (!option) return;
+        if (!option || option.disabled) return;
         closeRuleSelection();
         option.activate();
     }
@@ -3006,9 +3012,11 @@
     function handleRuleSelectionKey(key) {
         if (key === 'escape') { closeRuleSelection(); return; }
         if (key === 'enter' || key === ' ') { activateRuleSelection(); return; }
-        if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key) && GAME_RULE_OPTIONS.length) {
+        const selectableIndices = getSelectableRuleOptionIndices();
+        if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key) && selectableIndices.length) {
             const direction = key === 'arrowleft' || key === 'arrowup' ? -1 : 1;
-            ruleSelectionFocus = (ruleSelectionFocus + direction + GAME_RULE_OPTIONS.length) % GAME_RULE_OPTIONS.length;
+            const currentPosition = Math.max(0, selectableIndices.indexOf(ruleSelectionFocus));
+            ruleSelectionFocus = selectableIndices[(currentPosition + direction + selectableIndices.length) % selectableIndices.length];
         }
     }
 
@@ -3017,11 +3025,16 @@
         context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
         GAME_RULE_OPTIONS.forEach((option, index) => {
             const bounds = getRuleSelectionButtonBounds(index);
-            const focused = index === ruleSelectionFocus;
-            context.fillStyle = '#264b5b'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-            context.strokeStyle = focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
-            context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
-            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + 37);
+            const disabled = option.disabled === true;
+            const focused = !disabled && index === ruleSelectionFocus;
+            context.fillStyle = disabled ? '#3c4650' : '#264b5b'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = disabled ? '#7c8791' : focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.textAlign = 'center'; context.fillStyle = disabled ? '#c4cbd0' : '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
+            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (option.statusLabel ? 32 : 47));
+            if (option.statusLabel) {
+                context.fillStyle = disabled ? '#f0c674' : '#f5fbfc'; context.font = `15px ${BUTTON_FONT}`;
+                context.fillText(translate(option.statusLabel), bounds.x + bounds.width / 2, bounds.y + 59);
+            }
         });
     }
 
@@ -3583,8 +3596,10 @@
                 return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
             });
             if (selectedIndex >= 0) {
-                ruleSelectionFocus = selectedIndex;
-                activateRuleSelection();
+                if (!GAME_RULE_OPTIONS[selectedIndex].disabled) {
+                    ruleSelectionFocus = selectedIndex;
+                    activateRuleSelection();
+                }
             } else {
                 closeRuleSelection();
             }
