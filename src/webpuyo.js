@@ -37,9 +37,19 @@
         red: '#ef5350', green: '#66bb6a', yellow: '#f7c843', blue: '#42a5f5', purple: '#ab73e8',
         garbage: '#d3edf4'
     };
-    /** 연쇄 수에 따른 공격 위력 표다. @type {number[]} */
-    const COMBO_POWER = [0, 1, 6, 9, 14, 20, 40, 80, 120, 170, 240, 360, 480, 600, 720, 840, 950, 975, 990];
-    /** 뿌요 폭발로 얻는 점수와 ATTACK의 공통 배율이다. 밸런스 조절 및 임시 테스트에 사용한다. @type {number} */
+    /** 연쇄 수별 점수 보너스다. 20연쇄 이상은 마지막 값에 연쇄 초과분을 곱해 계산한다. @type {number[]} */
+    const CHAIN_BONUS = [0, 0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512];
+    /** 한 색 뿌요 연결 그룹의 크기별 점수 보너스다. 11개 이상은 마지막 값을 사용한다. @type {number[]} */
+    const CONNECTION_BONUS = [0, 0, 0, 0, 0, 2, 3, 4, 5, 6, 7, 10];
+    /** 동시에 폭발한 서로 다른 색 수별 점수 보너스다. 6색 이상은 마지막 값에서 색 수만큼 증가한다. @type {number[]} */
+    const COLOR_BONUS = [0, 0, 3, 6, 12, 24];
+    /** 게임 경과 초에 따라 ATTACK 계산에 사용할 마진 레이트 표다. @type {{startSecond:number, rate:number}[]} */
+    const MARGIN_RATE_SCHEDULE = [
+        { startSecond: 0, rate: 70 }, { startSecond: 96, rate: 52 }, { startSecond: 112, rate: 34 }, { startSecond: 128, rate: 25 },
+        { startSecond: 144, rate: 16 }, { startSecond: 160, rate: 12 }, { startSecond: 176, rate: 8 }, { startSecond: 192, rate: 6 },
+        { startSecond: 208, rate: 4 }, { startSecond: 224, rate: 3 }, { startSecond: 240, rate: 2 }, { startSecond: 256, rate: 1 }
+    ];
+    /** 뿌요 폭발로 계산된 ATTACK에 적용할 배율이다. 밸런스 조절 및 임시 테스트에 사용한다. @type {number} */
     const EXPLOSION_REWARD_MULTIPLIER = 1;
     /** 화면 제목용 기본 글꼴 이름이다. @type {string} */
     const TITLE_FONT_NAME = 'Black Han Sans';
@@ -839,6 +849,7 @@
             countdown: 3000,
             countdownStartsGame: true,
             elapsed: 0,
+            marginRate: MARGIN_RATE_SCHEDULE[0].rate,
             practice: soloMode,
             continuousFever,
             fever: continuousFever ? {
@@ -1196,22 +1207,22 @@
     }
 
     /**
-     * 상하좌우로 4개 이상 연결된 색 뿌요를 모두 찾는다.
-     * @param {PlayerState} player 탐색할 플레이어
-     * @returns {number[][]} 폭발할 [x, y] 좌표 목록
-     */
-    function findExplosions(player) {
-        return findExplosionsOnBoard(player.board);
-    }
-
-    /**
      * 보드 복사본에서 상하좌우로 4개 이상 연결된 색 뿌요를 모두 찾는다.
      * @param {(string|null)[][]} board 탐색할 보드
      * @returns {number[][]} 폭발할 [x, y] 좌표 목록
      */
     function findExplosionsOnBoard(board) {
+        return findExplosionGroupsOnBoard(board).flatMap((group) => group.cells);
+    }
+
+    /**
+     * 보드 복사본에서 폭발하는 같은 색 뿌요 연결 그룹을 찾는다.
+     * @param {(string|null)[][]} board 탐색할 보드
+     * @returns {{color:string, cells:number[][]}[]} 폭발할 색상과 [x, y] 좌표 그룹 목록
+     */
+    function findExplosionGroupsOnBoard(board) {
         const visited = new Set();
-        const exploding = [];
+        const explosionGroups = [];
         // 모든 셀을 시작점으로 삼아 아직 방문하지 않은 색 그룹을 탐색한다.
         for (let y = 0; y < ROWS; y += 1) for (let x = 0; x < COLUMNS; x += 1) {
             const color = board[y][x];
@@ -1236,9 +1247,61 @@
                 });
             }
             // 네 개 이상 연결된 그룹만 폭발 목록에 추가한다.
-            if (group.length >= 4) exploding.push(...group);
+            if (group.length >= 4) explosionGroups.push({ color, cells: group });
         }
-        return exploding;
+        return explosionGroups;
+    }
+
+    /** 연쇄 수에 맞는 점수 보너스를 구한다. @param {number} combo 현재 연쇄 수 @returns {number} 연쇄 보너스 */
+    function getChainBonus(combo) {
+        if (combo < CHAIN_BONUS.length) return CHAIN_BONUS[Math.max(0, combo)];
+        return CHAIN_BONUS[CHAIN_BONUS.length - 1] * (combo - 18);
+    }
+
+    /** 연결 그룹 크기에 맞는 점수 보너스를 구한다. @param {number} groupSize 연결된 뿌요 수 @returns {number} 연결 보너스 */
+    function getConnectionBonus(groupSize) {
+        return CONNECTION_BONUS[Math.min(Math.max(0, groupSize), CONNECTION_BONUS.length - 1)];
+    }
+
+    /** 동시에 폭발한 색 수에 맞는 점수 보너스를 구한다. @param {number} colorCount 서로 다른 색 수 @returns {number} 색수 보너스 */
+    function getColorBonus(colorCount) {
+        if (colorCount < COLOR_BONUS.length) return COLOR_BONUS[Math.max(0, colorCount)];
+        return COLOR_BONUS[COLOR_BONUS.length - 1] + colorCount - 5;
+    }
+
+    /**
+     * 한 폭발 단계의 점수 증가량을 계산한다. 인접 방해뿌요는 점수용 뿌요 수에 포함하지 않는다.
+     * @param {{color:string, cells:number[][]}[]} explosionGroups 이번 단계에 폭발한 색 뿌요 연결 그룹
+     * @param {number} combo 현재 연쇄 수
+     * @returns {number} 이번 폭발 단계의 점수 증가량
+     */
+    function calculateExplosionPoint(explosionGroups, combo) {
+        const puyoCount = explosionGroups.reduce((total, group) => total + group.cells.length, 0);
+        const connectionBonus = explosionGroups.reduce((total, group) => total + getConnectionBonus(group.cells.length), 0);
+        const colorBonus = getColorBonus(new Set(explosionGroups.map((group) => group.color)).size);
+        const bonus = Math.max(1, getChainBonus(combo) + connectionBonus + colorBonus);
+        return puyoCount * bonus * 10;
+    }
+
+    /** 게임 경과 시간에 해당하는 마진 레이트를 구한다. @param {number} elapsed 게임 경과 시간(ms) @returns {number} 마진 레이트 */
+    function getMarginRate(elapsed) {
+        const elapsedSecond = Math.max(0, Math.floor(elapsed / 1000));
+        let marginRate = MARGIN_RATE_SCHEDULE[0].rate;
+        MARGIN_RATE_SCHEDULE.forEach((entry) => {
+            if (elapsedSecond >= entry.startSecond) marginRate = entry.rate;
+        });
+        return marginRate;
+    }
+
+    /** 현재 게임 경과 시간을 반영해 마진 레이트를 갱신한다. @returns {void} */
+    function refreshGameMarginRate() {
+        if (game) game.marginRate = getMarginRate(game.elapsed);
+    }
+
+    /** 점수 증가량을 현재 마진 레이트와 ATTACK 배율로 변환한다. @param {number} point 점수 증가량 @returns {number} ATTACK 증가량 */
+    function calculateExplosionAttack(point) {
+        const marginRate = game?.marginRate ?? MARGIN_RATE_SCHEDULE[0].rate;
+        return point / marginRate * EXPLOSION_REWARD_MULTIPLIER;
     }
 
     /**
@@ -1415,11 +1478,11 @@
         let attack = 0;
         // 폭발과 중력을 반복해 전체 연쇄의 공격력을 누적한다.
         while (true) {
-            const exploding = findExplosionsOnBoard(board);
-            if (!exploding.length) return attack;
+            const explosionGroups = findExplosionGroupsOnBoard(board);
+            if (!explosionGroups.length) return attack;
+            const exploding = explosionGroups.flatMap((group) => group.cells);
             combo += 1;
-            const power = COMBO_POWER[Math.min(combo, 18)] || 999;
-            attack += exploding.length * power * EXPLOSION_REWARD_MULTIPLIER / 4;
+            attack += calculateExplosionAttack(calculateExplosionPoint(explosionGroups, combo));
             const removed = new Set(exploding.map(([x, y]) => `${x},${y}`));
             exploding.forEach(([x, y]) => DIRECTIONS.forEach(([deltaX, deltaY]) => {
                 const nextX = x + deltaX;
@@ -1479,7 +1542,8 @@
      * @returns {void}
      */
     function resolveExplosions(player, opponent) {
-        const exploding = findExplosions(player);
+        const explosionGroups = findExplosionGroupsOnBoard(player.board);
+        const exploding = explosionGroups.flatMap((group) => group.cells);
         // 이번 단계에 폭발할 색 뿌요가 있으면 점수와 공격을 처리한다.
         if (exploding.length) {
             const removed = new Map(exploding.map(([x, y]) => [`${x},${y}`, { x, y, color: player.board[y][x] }]));
@@ -1494,10 +1558,9 @@
             });
             player.combo += 1;
             playComboSounds(player);
-            const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
-            const explosionReward = exploding.length * power * EXPLOSION_REWARD_MULTIPLIER;
-            player.point += explosionReward;
-            player.attack += explosionReward / 4;
+            const point = calculateExplosionPoint(explosionGroups, player.combo);
+            player.point += point;
+            player.attack += calculateExplosionAttack(point);
             const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
             sendAttackEnergy(player, opponent, center.x / exploding.length, center.y / exploding.length);
             player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
@@ -2747,7 +2810,7 @@
         opponent.phase = 'idle';
         config.preset.forEach(({ x, y, color }) => { player.board[y][x] = color; });
         game = {
-            running: true, paused: false, winner: null, ending: null, countdown: 0, countdownStartsGame: false, elapsed: 0, practice: true,
+            running: true, paused: false, winner: null, ending: null, countdown: 0, countdownStartsGame: false, elapsed: 0, marginRate: MARGIN_RATE_SCHEDULE[0].rate, practice: true,
             difficulty: selectedDifficulty, aiDifficulty: selectedAiDifficulty, themeController, pairQueueColors: COLORS,
             pairQueue: [...config.pairs, ['blue', 'yellow'], ['red', 'green']], energyTransfers: [], players: [player, opponent],
             tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, greenExplosionShown: false, stageThreeGarbageDropped: false, message: config.intro, messageElapsed: 0, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1 }
@@ -3104,7 +3167,8 @@
     /** 시뮬레이터 보드의 폭발 및 인접 방해뿌요 제거를 처리한다. @returns {boolean} 폭발 여부 */
     function explodeSimulatorPuyos() {
         const player = simulator.player;
-        const exploding = findExplosions(player);
+        const explosionGroups = findExplosionGroupsOnBoard(player.board);
+        const exploding = explosionGroups.flatMap((group) => group.cells);
         if (!exploding.length) return false;
         const removed = new Map(exploding.map(([x, y]) => [`${x},${y}`, { x, y, color: player.board[y][x] }]));
         exploding.forEach(([x, y]) => DIRECTIONS.forEach(([dx, dy]) => {
@@ -3115,10 +3179,9 @@
         player.combo += 1;
         const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
         player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
-        const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
-        const explosionReward = exploding.length * power * EXPLOSION_REWARD_MULTIPLIER;
-        player.point += explosionReward;
-        player.attack += explosionReward / 4;
+        const point = calculateExplosionPoint(explosionGroups, player.combo);
+        player.point += point;
+        player.attack += calculateExplosionAttack(point);
         sendAttackEnergy(player, simulator.target, center.x / exploding.length, center.y / exploding.length);
         player.effects = { cells: [...removed.values()], elapsed: 0, duration: 420 }; player.phase = 'simulatorEffect';
         return true;
@@ -3501,7 +3564,10 @@
         updateGamepadInput();
         // 플레이 방법은 결과 화면 표시 시간까지 갱신하고, 일반 게임은 실행 중일 때만 갱신한다.
         if (game?.tutorial && !game.paused) {
-            if (game.running) game.elapsed += delta;
+            if (game.running) {
+                game.elapsed += delta;
+                refreshGameMarginRate();
+            }
             updateTutorial(delta);
         } else if (game && game.running && !game.paused) {
             // 카운트다운이 끝나면 양쪽 플레이어의 첫 턴을 시작한다.
@@ -3513,9 +3579,11 @@
                 }
             } else if (game.ending) {
                 game.elapsed += delta;
+                refreshGameMarginRate();
                 updateDefeatSequence(delta);
             } else {
                 game.elapsed += delta;
+                refreshGameMarginRate();
                 updateContinuousFeverTime(delta);
                 updatePlayer(game.players[0], game.players[1], delta);
                 updatePlayer(game.players[1], game.players[0], delta);
@@ -4073,7 +4141,7 @@
      * 현재 일반 대전의 읽기 전용 상태 스냅샷을 반환한다.
      * 반환된 객체와 그 안의 배열을 변경해도 실제 게임 상태에는 영향을 주지 않는다.
      * 메뉴, 튜토리얼 또는 초기화 전 상태에서는 null을 반환한다.
-     * @returns {{screen:string, playerCanControl:boolean, running:boolean, paused:boolean, countdown:number, elapsed:number, practice:boolean, continuousFever:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
+     * @returns {{screen:string, playerCanControl:boolean, running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, practice:boolean, continuousFever:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
      */
     function getGameState() {
         if (!game || game.tutorial) return null;
@@ -4087,6 +4155,7 @@
             paused: game.paused,
             countdown: game.countdown,
             elapsed: game.elapsed,
+            marginRate: game.marginRate,
             practice: game.practice,
             continuousFever: game.continuousFever === true,
             fever: game.fever ? {

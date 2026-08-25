@@ -244,7 +244,17 @@ test('게임 외와 연습 게임 배경음악은 하나만 재생되고 일시�
   await expect.poll(() => page.evaluate(() => window.testAudioInstances[1].paused)).toBe(false);
 });
 
-test('시뮬레이터 연쇄 시 일반 게임과 같은 연쇄 문구를 그린다', async ({ page }) => {
+test('새 게임의 마진 레이트는 70으로 시작한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().marginRate)).toBe(70);
+});
+
+test('시뮬레이터 연쇄는 새 점수 계산식과 같은 연쇄 문구를 표시한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -256,4 +266,37 @@ test('시뮬레이터 연쇄 시 일반 게임과 같은 연쇄 문구를 그린
   }
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => text === '1연쇄' || text === '1 Chain'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('0000040'))).toBe(true);
+});
+
+test('시뮬레이터 점수는 동시 폭발의 색수 보너스를 합산한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  const canvas = page.locator('#webpuyo_canvas');
+  for (const x of [207, 245, 283, 321]) {
+    await canvas.click({ position: { x, y: 539 } });
+  }
+  await canvas.click({ position: { x: 970, y: 200 } });
+  for (const x of [207, 245, 283, 321]) {
+    await canvas.click({ position: { x, y: 501 } });
+  }
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('0000240'))).toBe(true);
+});
+
+test('시뮬레이터 점수는 다섯 뿌요 연결 보너스를 적용한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  const canvas = page.locator('#webpuyo_canvas');
+  for (const x of [207, 245, 283, 321, 359]) {
+    await canvas.click({ position: { x, y: 539 } });
+  }
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('0000100'))).toBe(true);
 });
