@@ -61,6 +61,12 @@
     const ALL_CLEAR_POINT = 100;
     /** 싹쓸이 황금빛 필드 효과의 지속 시간(ms)이다. @type {number} */
     const ALL_CLEAR_EFFECT_DURATION = 1000;
+    /** 연속 피버 모드의 시작 목표 연쇄 수다. @type {number} */
+    const CONTINUOUS_FEVER_INITIAL_TARGET_COMBO = 5;
+    /** 연속 피버 모드의 시작 제한 시간(ms)이다. @type {number} */
+    const CONTINUOUS_FEVER_INITIAL_TIME = 60000;
+    /** 연속 피버 모드의 목표 연쇄 최댓값이다. @type {number} */
+    const CONTINUOUS_FEVER_MAX_TARGET_COMBO = 12;
     /** 사용자 컨트롤의 기본 자동 낙하 간격(ms)이다. @type {number} */
     const PLAYER_FALL_INTERVAL = 1040;
     /** 게임 경과 시간에 따른 사용자 낙하 속도의 최대 배율이다. @type {number} */
@@ -92,7 +98,7 @@
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
-            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '연속 피버': 'Continuous Fever', '(출시 예정)': '(Coming soon)', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
+            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '연속 피버': 'Continuous Fever', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -106,7 +112,7 @@
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
-            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '연속 피버': '連続フィーバー', '(출시 예정)': '(近日公開)', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
+            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '연속 피버': '連続フィーバー', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '시작': '開始', '이전': '戻る',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -120,7 +126,7 @@
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
-            '게임 시작': '开始游戏', '기본 룰': '基本规则', '연속 피버': '连续狂热', '(출시 예정)': '(即将推出)', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
+            '게임 시작': '开始游戏', '기본 룰': '基本规则', '연속 피버': '连续狂热', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -239,7 +245,7 @@
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', activate: () => openOpponentMenu() },
         { label: '연습', activate: () => openPracticeDifficulty() },
-        { label: '연속 피버', statusLabel: '(출시 예정)', disabled: true }
+        { label: '연속 피버', activate: () => startContinuousFeverGame() }
     ];
     /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {object|null} */
     let WebPuyo = null;
@@ -786,20 +792,23 @@
     }
 
     /**
-     * 대전 또는 연습 상태를 초기화한다.
+     * 대전, 연습 또는 연속 피버 상태를 초기화한다.
      * @param {boolean} practice 연습 모드 여부
+     * @param {boolean} continuousFever 연속 피버 모드 여부
      * @returns {void}
      */
-    function startGame(practice = false) {
-        if (!practice && !ensureSelectedOpponent()) return;
+    function startGame(practice = false, continuousFever = false) {
+        const soloMode = practice || continuousFever;
+        if (!soloMode && !ensureSelectedOpponent()) return;
         resetVirtualControllerInput();
-        const opponent = practice ? { createController: () => new PracticeEnemy() } : OPPONENTS[selectedOpponent];
+        const opponent = soloMode ? { createController: () => new PracticeEnemy() } : OPPONENTS[selectedOpponent];
         const controller = opponent.createController();
-        const colors = DIFFICULTIES[selectedDifficulty].colors;
+        const difficulty = continuousFever ? DIFFICULTIES.length - 1 : selectedDifficulty;
+        const colors = DIFFICULTIES[difficulty].colors;
         const practicePlayer = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
         const players = [new PlayerState('PLAYER 1', FIELD_LEFT, null, colors), practicePlayer];
-        // 연습전 상대는 공격을 받지 않고 뿌요도 생성하지 않도록 설정한다.
-        if (practice) {
+        // 연습과 연속 피버의 상대는 공격만 받아 방해뿌요 연출을 보여주고 일반 뿌요는 생성하지 않는다.
+        if (soloMode) {
             practicePlayer.receivesPuyos = false;
             practicePlayer.allClearEnabled = false;
             practicePlayer.clearsGarbage = true;
@@ -814,8 +823,19 @@
             countdown: 3000,
             countdownStartsGame: true,
             elapsed: 0,
-            practice,
-            difficulty: selectedDifficulty,
+            practice: soloMode,
+            continuousFever,
+            fever: continuousFever ? {
+                targetCombo: CONTINUOUS_FEVER_INITIAL_TARGET_COMBO,
+                leftTime: CONTINUOUS_FEVER_INITIAL_TIME,
+                turn: 0,
+                pendingCombo: 0,
+                pendingAllClear: false,
+                expiredPlacement: false,
+                selectedStageTarget: null,
+                stageSuppliedPair: []
+            } : null,
+            difficulty,
             aiDifficulty: selectedAiDifficulty,
             themeController: controller,
             pairQueueColors: colors,
@@ -825,6 +845,11 @@
         };
         players.filter((player) => player.receivesPuyos).forEach(updateNextPairs);
         syncBackgroundMusic();
+    }
+
+    /** 연속 피버 모드를 5색, 목표 5연쇄, 60초 상태로 시작한다. @returns {void} */
+    function startContinuousFeverGame() {
+        startGame(false, true);
     }
 
     /**
@@ -870,11 +895,94 @@
         return pair;
     }
 
+    /** 플레이어가 다음에 바로 지급받을 뿌요 쌍을 복사해 반환한다. @param {PlayerState} player 대상 플레이어 @returns {string[]} 다음 뿌요 쌍 */
+    function peekNextPair(player) {
+        ensurePairQueue(player.pairQueuePosition);
+        return [...game.pairQueue[player.pairQueuePosition]];
+    }
+
+    /** 배열 복사본을 randomFloat 기반 Fisher-Yates 방식으로 섞는다. @param {string[]} values 원본 배열 @returns {string[]} 섞인 복사본 */
+    function shuffledCopy(values) {
+        const result = [...values];
+        for (let index = result.length - 1; index > 0; index -= 1) {
+            const swapIndex = Math.floor(randomFloat() * (index + 1));
+            [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+        }
+        return result;
+    }
+
+    /** 목표 연쇄와 다음 뿌요의 동색 여부가 일치하는 피버 스테이지를 무작위로 고른다. @param {number} targetCombo 목표 연쇄 @param {string[]} nextPair 바로 지급할 뿌요 @returns {FeverStageState} 선택된 피버 스테이지 */
+    function selectContinuousFeverStage(targetCombo, nextPair) {
+        const nextPairIsSameColor = nextPair[0] === nextPair[1];
+        const candidates = FEVER_STAGES.filter((stage) => stage.targetCombo === targetCombo
+            && (stage.suppliedNextPuyos[0] === stage.suppliedNextPuyos[1]) === nextPairIsSameColor);
+        if (!candidates.length) throw new Error(`목표 ${targetCombo}연쇄와 다음 뿌요 구성에 맞는 피버 스테이지가 없습니다.`);
+        return candidates[Math.floor(randomFloat() * candidates.length)];
+    }
+
+    /** 스테이지 원본 색을 실제 다음 뿌요 색에 맞춘 중복 없는 1:1 색상표로 만든다. @param {FeverStageState} stage 원본 스테이지 @param {string[]} nextPair 실제 다음 뿌요 @param {string[]} availableColors 게임 색상 목록 @returns {Map<string,string>} 원본색-변환색 대응표 */
+    function createContinuousFeverColorMap(stage, nextPair, availableColors) {
+        const colorMap = new Map();
+        const usedTargets = new Set();
+        const assign = (source, target) => {
+            if (source === 'garbage') return;
+            if (colorMap.has(source) && colorMap.get(source) !== target) throw new Error('피버 스테이지의 suppliedNextPuyos 색상 구성이 올바르지 않습니다.');
+            if (!colorMap.has(source) && usedTargets.has(target)) throw new Error('피버 스테이지 색상은 중복 없이 1:1로 변환되어야 합니다.');
+            colorMap.set(source, target);
+            usedTargets.add(target);
+        };
+        assign(stage.suppliedNextPuyos[0], nextPair[0]);
+        assign(stage.suppliedNextPuyos[1], nextPair[1]);
+        const sourceColors = [...new Set([
+            ...stage.suppliedNextPuyos,
+            ...(stage.stageData.puyos || []).map((puyo) => puyo.color)
+        ].filter((color) => color && color !== 'garbage'))];
+        const remainingTargets = shuffledCopy(availableColors.filter((color) => !usedTargets.has(color)));
+        sourceColors.filter((color) => !colorMap.has(color)).forEach((source) => {
+            const target = remainingTargets.shift();
+            if (!target) throw new Error('피버 스테이지의 색상을 변환할 게임 색상이 부족합니다.');
+            assign(source, target);
+        });
+        return colorMap;
+    }
+
+    /** 다음 뿌요에 맞춰 피버 스테이지를 복사·변환하고 플레이어 필드를 새 피버 턴으로 초기화한다. @returns {void} */
+    function prepareContinuousFeverTurn() {
+        if (!game?.continuousFever || !game.fever) return;
+        const player = game.players[0];
+        const nextPair = peekNextPair(player);
+        const stage = selectContinuousFeverStage(game.fever.targetCombo, nextPair);
+        const colorMap = createContinuousFeverColorMap(stage, nextPair, player.colors);
+        const transformedSupplied = stage.suppliedNextPuyos.map((color) => colorMap.get(color));
+        game.pairQueue[player.pairQueuePosition] = transformedSupplied;
+        player.board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+        (stage.stageData.puyos || []).forEach((puyo) => {
+            if (!Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= ROWS) return;
+            player.board[puyo.y][puyo.x] = puyo.color === 'garbage' ? 'garbage' : colorMap.get(puyo.color);
+        });
+        player.active = null;
+        player.combo = 0;
+        player.phaseTimer = 0;
+        player.gravityAnimation = null;
+        player.effects = null;
+        player.hasPlacedPuyoSinceAllClear = false;
+        player.allClearEffectElapsed = 0;
+        player.pendingAllClearDamage = 0;
+        game.fever.turn += 1;
+        game.fever.pendingCombo = 0;
+        game.fever.pendingAllClear = false;
+        game.fever.expiredPlacement = false;
+        game.fever.selectedStageTarget = stage.targetCombo;
+        game.fever.stageSuppliedPair = [...transformedSupplied];
+        updateNextPairs(player);
+    }
+
     /**
      * 카운트다운이 끝난 뒤 각 플레이어에게 첫 조작 뿌요를 제공한다.
      * @returns {void}
      */
     function beginGame() {
+        if (game.continuousFever) prepareContinuousFeverTurn();
         enterControl(game.players[0]);
         enterControl(game.players[1]);
     }
@@ -1023,6 +1131,11 @@
      * @returns {void}
      */
     function lockActive(player) {
+        if (game?.continuousFever && player === game.players[0] && game.fever) {
+            game.fever.pendingCombo = 0;
+            game.fever.pendingAllClear = false;
+            game.fever.expiredPlacement = game.fever.leftTime <= 0;
+        }
         // 숨김 행을 포함해 유효한 필드 좌표에만 뿌요를 고정한다.
         activeCells(player.active).forEach((cell) => {
             if (cell.y >= 0 && cell.y < ROWS) player.board[cell.y][cell.x] = cell.color;
@@ -1377,7 +1490,9 @@
             player.phaseTimer = 0;
             return;
         }
+        const completedCombo = player.combo;
         deliverFinalAttackEnergy(player, opponent);
+        if (game?.continuousFever && player === game.players[0] && game.fever) game.fever.pendingCombo = completedCombo;
         player.combo = 0;
         player.phase = 'garbage';
     }
@@ -1580,6 +1695,39 @@
         return isResolutionPhase(player.phase) || player.allClearEffectElapsed > 0 || player.pendingAllClearDamage > 0 || hasPendingEnergyTransfers();
     }
 
+    /** 완료한 연쇄와 싹쓸이 여부로 다음 목표 연쇄를 계산한다. @param {number} target 현재 목표 @param {number} combo 완료 연쇄 @param {boolean} allClear 싹쓸이 여부 @returns {number} 5~12 범위의 다음 목표 */
+    function calculateContinuousFeverTarget(target, combo, allClear) {
+        let nextTarget = target;
+        if (combo <= target - 2) nextTarget = Math.max(CONTINUOUS_FEVER_INITIAL_TARGET_COMBO, target - 1);
+        else if (combo === target) nextTarget = target + 1;
+        else if (combo > target) nextTarget = combo + 1;
+        if (allClear) nextTarget += 2;
+        return Math.min(CONTINUOUS_FEVER_MAX_TARGET_COMBO, nextTarget);
+    }
+
+    /** 연쇄 후 상대 방해뿌요 낙하와 모든 에너지·싹쓸이 연출이 끝났는지 확인한다. @param {PlayerState} player 사용자 @param {PlayerState} opponent 연습 상대 @returns {boolean} 아직 기다려야 하는지 여부 */
+    function isContinuousFeverSettlementPending(player, opponent) {
+        return player.allClearEffectElapsed > 0
+            || player.pendingAllClearDamage > 0
+            || hasPendingEnergyTransfers()
+            || opponent.damage > 0
+            || opponent.phase !== 'idle';
+    }
+
+    /** 피버 연쇄 정산 후 종료하거나 목표·시간을 갱신하고 다음 피버 턴을 시작한다. @param {PlayerState} player 사용자 @param {PlayerState} opponent 연습 상대 @returns {void} */
+    function finishContinuousFeverResolution(player, opponent) {
+        if (!game?.continuousFever || !game.fever) return;
+        if (game.fever.expiredPlacement) {
+            startDefeatSequence(player, opponent);
+            return;
+        }
+        const combo = game.fever.pendingCombo;
+        game.fever.targetCombo = calculateContinuousFeverTarget(game.fever.targetCombo, combo, game.fever.pendingAllClear);
+        game.fever.leftTime += Math.floor(combo / 2) * 1000;
+        prepareContinuousFeverTurn();
+        enterControl(player);
+    }
+
     /**
      * 패배 연출과, 진행 중이던 승리자의 연쇄 처리를 갱신한다.
      * @param {number} delta 이전 프레임 후 경과한 밀리초
@@ -1621,6 +1769,10 @@
         }
         // 플레이 방법 시연은 싹쓸이 예고와 방해뿌요 낙하를 보여주는 동안 다음 뿌요의 낙하를 멈춘다.
         if (player.tutorialHold) return;
+        if (player.phase === 'feverWait') {
+            if (!isContinuousFeverSettlementPending(player, opponent)) finishContinuousFeverResolution(player, opponent);
+            return;
+        }
         // 대기 중인 연습 상대도 예약된 피해가 있으면 방해뿌요 처리는 수행한다.
         if (player.phase === 'idle') {
             // 연습·플레이 방법에서는 연쇄와 그에 딸린 모든 에너지 이동이 끝난 뒤에만 방해뿌요를 떨어뜨린다.
@@ -1720,11 +1872,23 @@
             } else {
                 const isAllClear = player.board.every((row) => row.every((cell) => cell === null));
                 // 뿌요를 놓은 뒤 필드가 비었을 때만 싹쓸이 공격을 보낸다.
-                if (player.allClearEnabled && isAllClear && player.hasPlacedPuyoSinceAllClear) {
+                const triggeredAllClear = player.allClearEnabled && isAllClear && player.hasPlacedPuyoSinceAllClear;
+                if (triggeredAllClear) {
                     player.pendingAllClearDamage += ALL_CLEAR_DAMAGE;
                     player.point += ALL_CLEAR_POINT;
                     player.allClearEffectElapsed = ALL_CLEAR_EFFECT_DURATION;
                     player.hasPlacedPuyoSinceAllClear = false;
+                }
+                if (game?.continuousFever && player === game.players[0] && game.fever) {
+                    game.fever.pendingAllClear = triggeredAllClear;
+                    if (game.fever.pendingCombo > 0) {
+                        player.phase = 'feverWait';
+                        return;
+                    }
+                    if (game.fever.expiredPlacement) {
+                        startDefeatSequence(player, opponent);
+                        return;
+                    }
                 }
                 enterControl(player);
             }
@@ -2185,7 +2349,19 @@
                 context.fillStyle = 'rgba(216, 242, 245, 0.4)'; context.fillRect(x + 74, 158, 1, 92);
             });
         });
-        right.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, getEnemyPortraitExpression(right, left));
+        if (game.continuousFever && game.fever) {
+            context.fillStyle = '#0b202c'; context.fillRect(500, 300, 280, 76);
+            context.strokeStyle = '#ef8aa0'; context.lineWidth = 2; context.strokeRect(500, 300, 280, 76);
+            context.fillStyle = '#ef8aa0'; context.font = `15px ${MESSAGE_FONT}`; context.fillText(translate('목표 연쇄'), WIDTH / 2, 324);
+            context.fillStyle = '#f5fbfc'; context.font = `32px ${MESSAGE_FONT}`; context.fillText(String(game.fever.targetCombo), WIDTH / 2, 360);
+            context.fillStyle = '#0b202c'; context.fillRect(500, 392, 280, 76);
+            context.strokeStyle = '#6bbce8'; context.lineWidth = 2; context.strokeRect(500, 392, 280, 76);
+            context.fillStyle = '#6bbce8'; context.font = `15px ${MESSAGE_FONT}`; context.fillText(translate('남은 시간'), WIDTH / 2, 416);
+            context.fillStyle = game.fever.leftTime <= 10000 ? '#ef5350' : '#f5fbfc'; context.font = `32px ${MESSAGE_FONT}`;
+            context.fillText(String(Math.ceil(game.fever.leftTime / 1000)), WIDTH / 2, 452);
+        } else {
+            right.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, getEnemyPortraitExpression(right, left));
+        }
         const scores = [
             { player: left, x: 488, color: '#ef8aa0' },
             { player: right, x: 646, color: '#6bbce8' }
@@ -2442,7 +2618,7 @@
         context.fillText(translate('최종 점수 %1', Math.floor(player.point).toLocaleString()), x + CELL * 3, FIELD_TOP + CELL * 7.15);
         if (game.practice) {
             context.fillStyle = '#f7c843'; context.font = `15px ${MESSAGE_FONT}`;
-            context.fillText(translate(DIFFICULTIES[game.difficulty].name), x + CELL * 3, FIELD_TOP + CELL * 7.75);
+            context.fillText(translate(game.continuousFever ? '연속 피버' : DIFFICULTIES[game.difficulty].name), x + CELL * 3, FIELD_TOP + CELL * 7.75);
         }
         context.fillStyle = '#e7f8fa'; context.font = `18px ${MESSAGE_FONT}`; context.textAlign = 'left';
         context.fillText(player.name, x, 54);
@@ -3228,6 +3404,12 @@
         }
     }
 
+    /** 카운트다운과 일시정지 밖에서 연속 피버 남은 시간을 0까지 감소시킨다. @param {number} delta 이전 프레임 후 경과한 밀리초 @returns {void} */
+    function updateContinuousFeverTime(delta) {
+        if (!game?.continuousFever || !game.fever || game.countdown > 0 || game.ending) return;
+        game.fever.leftTime = Math.max(0, game.fever.leftTime - delta);
+    }
+
     /**
      * 애니메이션 프레임을 갱신하고 다음 프레임을 예약한다.
      * @param {number} time 브라우저가 제공한 현재 시각
@@ -3254,6 +3436,7 @@
                 updateDefeatSequence(delta);
             } else {
                 game.elapsed += delta;
+                updateContinuousFeverTime(delta);
                 updatePlayer(game.players[0], game.players[1], delta);
                 updatePlayer(game.players[1], game.players[0], delta);
             }
@@ -3781,6 +3964,16 @@
         return {
             screen: screen.screen,
             playerCanControl: screen.playerCanControl,
+            continuousFever: game.continuousFever === true,
+            fever: game.fever ? {
+                targetCombo: game.fever.targetCombo,
+                leftTime: game.fever.leftTime,
+                turn: game.fever.turn,
+                pendingCombo: game.fever.pendingCombo,
+                pendingAllClear: game.fever.pendingAllClear,
+                selectedStageTarget: game.fever.selectedStageTarget,
+                stageSuppliedPair: [...game.fever.stageSuppliedPair]
+            } : null,
             player: getPlayerGameStatus(player, opponent),
             opponent: getPlayerGameStatus(opponent, player),
             recommendedPoint: recommendedPoint ? { ...recommendedPoint } : null
@@ -3800,7 +3993,7 @@
      * 현재 일반 대전의 읽기 전용 상태 스냅샷을 반환한다.
      * 반환된 객체와 그 안의 배열을 변경해도 실제 게임 상태에는 영향을 주지 않는다.
      * 메뉴, 튜토리얼 또는 초기화 전 상태에서는 null을 반환한다.
-     * @returns {{screen:string, playerCanControl:boolean, running:boolean, paused:boolean, countdown:number, elapsed:number, practice:boolean, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
+     * @returns {{screen:string, playerCanControl:boolean, running:boolean, paused:boolean, countdown:number, elapsed:number, practice:boolean, continuousFever:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
      */
     function getGameState() {
         if (!game || game.tutorial) return null;
@@ -3815,6 +4008,16 @@
             countdown: game.countdown,
             elapsed: game.elapsed,
             practice: game.practice,
+            continuousFever: game.continuousFever === true,
+            fever: game.fever ? {
+                targetCombo: game.fever.targetCombo,
+                leftTime: game.fever.leftTime,
+                turn: game.fever.turn,
+                pendingCombo: game.fever.pendingCombo,
+                pendingAllClear: game.fever.pendingAllClear,
+                selectedStageTarget: game.fever.selectedStageTarget,
+                stageSuppliedPair: [...game.fever.stageSuppliedPair]
+            } : null,
             colorCount: game.pairQueueColors.length,
             colors: [...game.pairQueueColors],
             aiDifficulty: getSelectedDifficulty(),
@@ -3891,15 +4094,31 @@
                 warningPuyos: { type: 'array', items: { type: 'string' } }, active: activeSchema
             }, required: ['name', 'board', 'nextPairs', 'warningPuyos', 'active']
         };
+        const feverSchema = {
+            type: ['object', 'null'],
+            properties: {
+                targetCombo: { type: 'integer', minimum: CONTINUOUS_FEVER_INITIAL_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO },
+                leftTime: { type: 'number', minimum: 0, description: 'Remaining continuous-fever time in milliseconds.' },
+                turn: { type: 'integer', minimum: 0 },
+                pendingCombo: { type: 'integer', minimum: 0 },
+                pendingAllClear: { type: 'boolean' },
+                selectedStageTarget: { type: ['integer', 'null'], minimum: CONTINUOUS_FEVER_INITIAL_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO },
+                stageSuppliedPair: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 0, maxItems: 2 }
+            },
+            required: ['targetCombo', 'leftTime', 'turn', 'pendingCombo', 'pendingAllClear', 'selectedStageTarget', 'stageSuppliedPair']
+        };
         const statusSchema = {
             type: 'object',
             description: 'Both game fields, upcoming pairs, warning puyos, and the currently controlled pair. Board coordinates start at the bottom-left.',
             properties: {
                 screen: { type: 'string', enum: ['playing', 'paused'] },
-                playerCanControl: { type: 'boolean' }, player: playerSchema, opponent: playerSchema,
+                playerCanControl: { type: 'boolean' },
+                continuousFever: { type: 'boolean' },
+                fever: feverSchema,
+                player: playerSchema, opponent: playerSchema,
                 recommendedPoint: { type: ['object', 'null'], properties: { x: { type: 'integer' }, y: { type: 'integer' } } }
             },
-            required: ['screen', 'playerCanControl', 'player', 'opponent', 'recommendedPoint']
+            required: ['screen', 'playerCanControl', 'continuousFever', 'fever', 'player', 'opponent', 'recommendedPoint']
         };
         const tools = [
             {

@@ -75,17 +75,46 @@ test('메뉴에서 Z 키는 Enter 키처럼 동작한다', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
 });
 
-test('게임 규칙 선택지에 출시 예정 모드가 비활성 상태로 표시되고 포커스되지 않는다', async ({ page }) => {
+test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 피버 스테이지를 시작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
     const texts = window.testCanvasTexts;
-    return texts.includes('기본 룰') && texts.includes('연속 피버') && texts.includes('(출시 예정)');
+    const localizedOptions = [
+      ['기본 룰', '연습', '연속 피버'],
+      ['Standard Rules', 'Practice', 'Continuous Fever'],
+      ['基本ルール', '練習', '連続フィーバー'],
+      ['基本规则', '练习', '连续狂热'],
+    ];
+    const comingSoonLabels = ['(출시 예정)', '(Coming soon)', '(近日公開)', '(即将推出)'];
+    return localizedOptions.some((options) => options.every((text) => texts.includes(text)))
+      && comingSoonLabels.every((text) => !texts.includes(text));
   })).toBe(true);
 
   await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state.continuousFever && state.fever.targetCombo === 5 && state.fever.leftTime === 60000;
+  })).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('playing');
+  const feverState = await page.evaluate(() => window.WebPuyo.getGameState());
+  expect(feverState.fever.turn).toBe(1);
+  expect(feverState.fever.selectedStageTarget).toBe(5);
+  expect(feverState.player.board.puyos.length).toBeGreaterThan(0);
+  expect(feverState.player.active.colors).toEqual(feverState.fever.stageSuppliedPair);
+  expect(feverState.colors).toEqual(['red', 'green', 'yellow', 'blue', 'purple']);
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  const pausedTime = await page.evaluate(() => window.WebPuyo.getGameState().fever.leftTime);
+  await page.waitForTimeout(250);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().fever.leftTime)).toBe(pausedTime);
 });
 
 test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {
