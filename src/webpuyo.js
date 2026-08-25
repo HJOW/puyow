@@ -118,6 +118,7 @@
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
+            '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'Fever Rules', '연속 피버': 'Continuous Fever', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
@@ -132,6 +133,7 @@
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
+            '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
             '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'フィーバールール', '연속 피버': '連続フィーバー', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '시작': '開始', '이전': '戻る',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
@@ -146,6 +148,7 @@
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
+            '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
             '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': '狂热规则', '연속 피버': '连续狂热', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
@@ -191,6 +194,10 @@
     let settingsEditing = false;
     /** 현재 편집 중인 문자열의 커서 위치다. @type {number} */
     let settingsCursor = 0;
+    /** 설정 전체 초기화 확인 후 표시하는 초기화 진행 화면 여부다. @type {boolean} */
+    let settingsResetting = false;
+    /** 설정 전체 초기화 후 첫 화면으로 돌아가기 위한 타이머다. @type {number|null} */
+    let settingsResetTimer = null;
     /** AI가 강조 표시하도록 지정한 플레이어 필드 좌표다. @type {{x:number, y:number}|null} */
     let recommendedPoint = null;
     /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'initialTitle'|'title'|'opponent'|'practiceDifficulty'|'simulator'|'settings'|'gallery'} */
@@ -3152,6 +3159,40 @@
         menuScreen = 'title'; loadNotice();
     }
 
+    /** 모든 저장 데이터를 지우고 2초 뒤 첫 화면으로 돌아간다. @returns {void} */
+    function resetAllSettings() {
+        try {
+            if (typeof window.confirm === 'function' && !window.confirm(translate('이 게임의 모든 설정을 초기화하시겠습니까?'))) return;
+        } catch (error) {
+            console.error('Puyo W 설정 초기화 확인 창을 표시하지 못했습니다.', error);
+            return;
+        }
+        try {
+            window.localStorage.clear();
+        } catch (error) {
+            console.error('Puyo W 설정 초기화 중 저장 데이터 삭제에 실패했습니다.', error);
+        }
+        stopBackgroundMusic();
+        settingsDraft = null;
+        settingsEditing = false;
+        settingsResetting = true;
+        store = createInitialStore();
+        galleryUnlocks = createInitialGalleryUnlocks();
+        initialGalleryPreview = { loaded: false, items: [], startIndex: 0, elapsed: 0 };
+        game = null;
+        simulator = null;
+        gallery = null;
+        ruleSelectionOpen = false;
+        if (settingsResetTimer !== null) window.clearTimeout(settingsResetTimer);
+        settingsResetTimer = window.setTimeout(() => {
+            settingsResetTimer = null;
+            settingsResetting = false;
+            menuScreen = 'initialTitle';
+            hasUserStarted = false;
+            loadInitialGalleryPreview();
+        }, 2000);
+    }
+
     /** 메인 화면의 음소거 상태를 토글하고 별도 저장한다. @returns {void} */
     function toggleMuted() {
         store.muted = !store.muted;
@@ -3164,6 +3205,7 @@
         if (settingsFocus === 2) settingsDraft.virtualController = !settingsDraft.virtualController;
         else if (settingsFocus === 6) saveSettings();
         else if (settingsFocus === 7) cancelSettings();
+        else if (settingsFocus === 8) resetAllSettings();
     }
 
     /** 설정 화면을 그린다. @returns {void} */
@@ -3206,9 +3248,19 @@
         });
         context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 530, 402);
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `13px ${MESSAGE_FONT}`; context.fillText(translate('사운드 및 AI 관련 기능은 추후 제공 예정'), WIDTH / 2, 430);
-        [{ label: '저장', x: 580, focus: 6, color: '#4cc9b0' }, { label: '취소', x: 760, focus: 7, color: '#ef5350' }].forEach((button) => {
+        [{ label: '저장', x: 380, focus: 6, color: '#4cc9b0' }, { label: '취소', x: 560, focus: 7, color: '#ef5350' }, { label: '초기화', x: 740, focus: 8, color: '#7e6bc4' }].forEach((button) => {
             context.fillStyle = button.color; context.fillRect(button.x, 455, 160, 46); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 455, 160, 46); context.fillStyle = '#fff'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 80, 485);
         });
+    }
+
+    /** 설정 초기화 중 다른 그래픽 없이 진행 문구만 표시한다. @returns {void} */
+    function drawSettingsResetting() {
+        context.fillStyle = '#071621';
+        context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.textAlign = 'center';
+        context.fillStyle = '#f5fbfc';
+        context.font = `34px ${TITLE_FONT}`;
+        context.fillText(translate('초기화 중...'), WIDTH / 2, HEIGHT / 2);
     }
 
     /** 메인 화면 왼쪽에 noticeUrl 내용을 줄바꿈해 표시한다. @returns {void} */
@@ -3838,6 +3890,10 @@
      */
     function render() {
         context.clearRect(0, 0, WIDTH, HEIGHT);
+        if (settingsResetting) {
+            drawSettingsResetting();
+            return;
+        }
         // 진행 중인 게임이 없으면 현재 메뉴 화면만 렌더링한다.
         if (!game) {
             if (menuScreen === 'initialTitle') drawInitialTitle();
@@ -3990,15 +4046,14 @@
             if (textField) { settingsEditing = true; settingsCursor = settingsDraft[settingsFocus === 4 ? 'aiApiKey' : 'aiModel'].length; }
             else activateSettingsFocus();
         } else if (key === 'escape') cancelSettings();
-        else if (key === 'arrowup' || key === 'arrowdown') settingsFocus = (settingsFocus + (key === 'arrowup' ? 7 : 1)) % 8;
+        else if (key === 'arrowup' || key === 'arrowdown') settingsFocus = (settingsFocus + (key === 'arrowup' ? 8 : 1)) % 9;
         else if (key === 'arrowleft' || key === 'arrowright') {
             const direction = key === 'arrowleft' ? -1 : 1;
             if (settingsFocus === 0) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
             else if (settingsFocus === 1) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
             else if (settingsFocus === 2) settingsDraft.virtualController = direction < 0;
             else if (settingsFocus === 3) settingsDraft.aiProvider = settingsDraft.aiProvider === 'OpenAI' ? 'Google' : 'OpenAI';
-            else if (settingsFocus === 6) settingsFocus = 7;
-            else if (settingsFocus === 7) settingsFocus = 6;
+            else if (settingsFocus >= 6) settingsFocus = 6 + (settingsFocus - 6 + (direction < 0 ? 2 : 1)) % 3;
         }
     }
 
@@ -4035,6 +4090,7 @@
         let key = event.key.toLowerCase();
         if (key === 'z' && shouldTreatZAsEnter(event)) key = 'enter';
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
+        if (settingsResetting) return;
         if (!game && menuScreen === 'initialTitle') {
             if (key === 'enter') enterMainMenu();
             return;
@@ -4222,6 +4278,7 @@
      * @returns {void}
      */
     function handleCanvasClick(event) {
+        if (settingsResetting) return;
         if (!game && menuScreen === 'initialTitle') {
             enterMainMenu();
             return;
@@ -4345,8 +4402,9 @@
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
-            if (y >= 455 && y <= 501 && x >= 580 && x <= 740) { settingsFocus = 6; saveSettings(); }
-            else if (y >= 455 && y <= 501 && x >= 760 && x <= 920) { settingsFocus = 7; cancelSettings(); }
+            if (y >= 455 && y <= 501 && x >= 380 && x <= 540) { settingsFocus = 6; saveSettings(); }
+            else if (y >= 455 && y <= 501 && x >= 560 && x <= 720) { settingsFocus = 7; cancelSettings(); }
+            else if (y >= 455 && y <= 501 && x >= 740 && x <= 900) { settingsFocus = 8; resetAllSettings(); }
             else if (y >= 95 && y <= 115) { settingsFocus = 0; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 145 && y <= 165) { settingsFocus = 1; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 186 && y <= 224 && x >= 530 && x <= 670) { settingsFocus = 2; settingsDraft.virtualController = true; }
@@ -4409,9 +4467,10 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
+        if (settingsResetting) return { screen: 'settings_resetting', playerCanControl: false };
         if (!game) {
             if (menuScreen === 'initialTitle') return { screen: 'initial_title', playerCanControl: false };
             if (menuScreen === 'title' && ruleSelectionOpen) return { screen: 'rule_select', playerCanControl: false };
@@ -4695,6 +4754,9 @@
     function destroy() {
         if (!initialized) return;
         stopBackgroundMusic();
+        if (settingsResetTimer !== null) window.clearTimeout(settingsResetTimer);
+        settingsResetTimer = null;
+        settingsResetting = false;
         window.removeEventListener('keydown', handleKeydown);
         window.removeEventListener('keyup', handleKeyup);
         canvas.removeEventListener('click', handleCanvasClick);
