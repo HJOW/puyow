@@ -157,12 +157,20 @@ WebPuyo.initialize('webpuyo_canvas');
 
 `Enemy`의 생성자는 모든 상대에 공통으로 사용할 기본 상태를 설정합니다. `sortPriority`는 `1`, `hidden`과 `notAvail`은 `false`로 시작하며, `attackSimulationTriggerPosition`은 `{ x: 2, y: 8 }`입니다. 이 좌표에 뿌요가 쌓이면 기본 AI가 일반적인 방향 쌓기보다 공격력 시뮬레이션을 우선하도록 만든 기준점입니다. 상대의 전략에 맞춰 생성자에서 이 좌표를 바꿀 수 있습니다.
 
+### 적 유형 식별자: `getClassType()`
+
+`getClassType()`은 적의 효과음 설정을 식별하는 고유하고 변하지 않는 문자열을 반환합니다. `Enemy`를 상속한 새 적은 반드시 이 메서드를 재정의해야 합니다. 이 클래스의 코드상의 이름을 반환해야 하며, 표시 이름인 `getName()`과 달리 번역하거나 실행 중에 바꾸지 않아야 합니다.
+
 ```js
 class CustomEnemy extends WebPuyo.Enemy {
 	constructor() {
 		super();
 		// 중앙이 이 높이에 도달하면 공격 배치를 찾는다.
 		this.attackSimulationTriggerPosition = { x: 2, y: 7 };
+	}
+
+	getClassType() {
+		return 'CustomEnemy';
 	}
 }
 ```
@@ -450,6 +458,19 @@ class MyEnemy extends WebPuyo.Enemy {
         this.soundPool.backgroundMusic = 'sounds/my-bgm.ogg';
     }
 }
+```
+
+이미 등록된 적의 효과음이나 전용 배경음악을 외부 설정 파일에서 바꾸려면 `WebPuyo.createSoundPool(false)`로 적 전용의 빈 사운드 풀을 만든 뒤 `WebPuyo.setEnemySoundPool()`에 전달합니다. `false`는 적 전용 `EnemySoundPool`을 뜻하며, `true`를 넘기면 공통 시스템용 `CommonSoundPool`이 만들어지므로 적 효과음 교체에는 사용하지 않습니다.
+
+`setEnemySoundPool(enemyClassType, soundPoolObject)`은 등록된 적의 `getClassType()` 반환값으로 대상을 찾습니다. 따라서 적을 먼저 `registerOpponent()`로 등록한 다음 호출해야 합니다. 이후 새로 생성되는 해당 적은 지정한 사운드 풀을 사용하며, 이미 대전 중인 같은 적도 다음 연쇄 효과음부터 새 풀을 사용합니다. 존재하지 않는 유형에는 경고를 남기고, 사운드 풀이 아니거나 빈 유형 문자열이면 오류를 발생시킵니다.
+
+```js
+// 기본 적 안드로말리우스의 음원을 프로젝트 설정으로 교체한다.
+const andromaliusSounds = WebPuyo.createSoundPool(false);
+andromaliusSounds.spellCombo1 = 'sounds/andromalius-combo-1.ogg';
+andromaliusSounds.spellCombo7 = 'sounds/andromalius-combo-7.ogg';
+andromaliusSounds.backgroundMusic = 'sounds/andromalius-bgm.ogg';
+WebPuyo.setEnemySoundPool('Andromalius', andromaliusSounds);
 ```
 
 `WebPuyo.commonSoundPool`은 플레이어 주문 효과음, 양쪽 공통 뿌요 폭발 효과음, 공통 배경음악을 담는 `CommonSoundPool` 객체입니다. `initialize()` 호출 전이나 후에 URL을 설정할 수 있습니다.

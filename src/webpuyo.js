@@ -241,8 +241,10 @@
         { key: 'normal', name: '보통', fastDownDelay: AI_FAST_DOWN_DELAY_NORMAL },
         { key: 'hard', name: '어려움', fastDownDelay: AI_FAST_DOWN_DELAY_HARD }
     ];
-    /** 등록된 기본 및 외부 적 목록이다. @type {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} */
+    /** 등록된 기본 및 외부 적 목록이다. @type {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} */
     const OPPONENTS = [];
+    /** getClassType()별로 외부에서 지정한 적 사운드 풀이다. @type {Map<string, SoundPool>} */
+    const enemySoundPools = new Map();
     /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,disabled?:boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', activate: () => openOpponentMenu() },
@@ -694,13 +696,20 @@
     /**
      * 적 인스턴스의 선택 화면 표시 설정을 등록 항목으로 만든다.
      * @param {()=>Enemy} createController 새 적 인스턴스 생성 함수
-     * @returns {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}} 적 등록 항목
+     * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean}} 적 등록 항목
      */
     function createOpponentEntry(createController) {
         const controller = createController();
+        const classType = controller.getClassType();
         return {
-            createController,
+            createController: () => {
+                const enemy = createController();
+                const soundPool = enemySoundPools.get(classType);
+                if (soundPool) enemy.soundPool = soundPool;
+                return enemy;
+            },
             className: controller.constructor.name,
+            classType,
             sortPriority: controller.sortPriority,
             hidden: controller.hidden === true,
             notAvail: controller.notAvail === true
@@ -4375,13 +4384,20 @@
     }
 
     /**
+     * 적 음성 및 배경음악을 저장하는 사운드 풀
+     */
+    class EnemySoundPool extends SoundPool {
+        constructor() { super(); }
+    }
+
+    /**
      * 사운드 풀 객체를 생성한다.
-     * @param {boolean} commons 공통 시스템용 사운드 풀 생성 여부
+     * @param {boolean} commons 공통 시스템용으로 생성할 지 여부 (false 시 적 캐릭터를 위한 사운드 풀 반환)
      * @returns {SoundPool|CommonSoundPool} 새 사운드 풀 객체
      */
     function createSoundPool(commons) {
         if (commons) return new CommonSoundPool();
-        return new SoundPool();
+        return new EnemySoundPool();
     }
 
     /** 
@@ -4608,6 +4624,11 @@
             this.soundPool = createSoundPool(false);
         }
 
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'Enemy';
+        }
+
         /**
          * 적의 화면 표시 이름을 반환한다.
          * @returns {string} 적 이름
@@ -4744,6 +4765,11 @@
             this.attackPlacement = null;
         }
 
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'Andromalius';
+        }
+
         /**
          * @returns {string} 적 이름
          */
@@ -4838,6 +4864,11 @@
      * 단탈리온 적 정의
      */
     class Dantalion extends Enemy {
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'Dantalion';
+        }
+
         /**
          * @returns {string} 적 이름
          */
@@ -5055,6 +5086,11 @@
             this.sortPriority = 3;
             this.notAvail = false;
             this.attackPlacement = null;
+        }
+
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'ChainBuildingEnemy';
         }
 
         /** 이번 턴에서 사용할 공격 후보를 초기화한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {void} */
@@ -5301,6 +5337,11 @@
             this.attackPlacement = null;
         }
 
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'Seere';
+        }
+
         /** @returns {string} 적 이름 */
         getName() {
             return '세레';
@@ -5404,6 +5445,11 @@
             super();
             this.sortPriority = 4;
             this.notAvail = false;
+        }
+
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'Decarabia';
         }
 
         /** @returns {string} 적 이름 */
@@ -5577,6 +5623,11 @@
             this.notAvail = false;
         }
 
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'Belial';
+        }
+
         /** @returns {string} 적 이름 */
         getName() {
             return '벨리알';
@@ -5719,6 +5770,11 @@
             this.notAvail = true;
         }
 
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'Amdusias';
+        }
+
         /** @returns {string} 적 이름 */
         getName() {
             return '암두시아스';
@@ -5785,11 +5841,20 @@
      * 연습 모드에서 조작하거나 뿌요를 받지 않는 상대다.
      */
     class PracticeEnemy extends Enemy {
+        constructor() {
+            super();
+        }
+
         /**
          * @returns {string} 적 이름
          */
         getName() {
             return translate('연습 상대');
+        }
+
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'PracticeEnemy';
         }
     }
 
@@ -5807,11 +5872,35 @@
         createOpponentEntry(() => new Amdusias())
     );
 
+    /**
+     * 적의 사운드 풀을 변경한다.
+     *
+     * @param {string} enemyClassType 적 클래스명 (getClassType() 반환값)
+     * @param {SoundPool} soundPoolObject 사운드풀 객체
+     */
+    function setEnemySoundPool(enemyClassType, soundPoolObject) {
+        if (typeof enemyClassType !== 'string' || !enemyClassType) throw new TypeError('enemyClassType은 비어 있지 않은 getClassType() 반환 문자열이어야 합니다.');
+        if (!(soundPoolObject instanceof SoundPool)) throw new TypeError('soundPoolObject는 WebPuyo.createSoundPool(false)로 만든 SoundPool이어야 합니다.');
+        const enemyEntry = OPPONENTS.find((entry) => entry.classType === enemyClassType);
+        if (!enemyEntry) {
+            console.warn(`setEnemySoundPool: Enemy class type "${enemyClassType}" not found.`);
+            return;
+        }
+        enemySoundPools.set(enemyClassType, soundPoolObject);
+        // 이미 대전 중인 같은 적도 다음 연쇄 효과음부터 새 사운드 풀을 사용한다.
+        game?.players.forEach((player) => {
+            if (player.controller?.getClassType?.() === enemyClassType) player.controller.soundPool = soundPoolObject;
+        });
+    }
+
     WebPuyo = {
         Enemy,
         WarningPuyo,
         SoundPool,
         CommonSoundPool,
+        EnemySoundPool,
+        createSoundPool,
+        setEnemySoundPool,
         registerOpponent,
         registerWarningPuyo,
         registerLanguage,
