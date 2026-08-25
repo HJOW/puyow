@@ -1133,6 +1133,12 @@
         enterControl(game.players[1]);
     }
 
+    /** 적의 새 조작 턴에 플레이어가 2연쇄 이상을 진행 중인지 판별한다. @param {PlayerState} player 조작 턴을 시작할 적 @returns {boolean} 즉시 공격 우선 여부 */
+    function shouldCounterPlayerChain(player) {
+        const opponent = game?.players[0];
+        return Boolean(player === game?.players[1] && opponent && opponent.combo >= 2 && isResolutionPhase(opponent.phase));
+    }
+
     /**
      * 조작 단계로 전환하고 다음 뿌요 한 쌍을 꺼낸다.
      * @param {PlayerState} player 전환할 플레이어
@@ -1157,8 +1163,17 @@
         // CPU 플레이어면 이번 뿌요 쌍의 목표 위치와 회전을 미리 결정한다.
         if (player.controller) {
             player.controller.prepareTurn(player);
-            player.aiTarget = player.controller.chooseTarget(player);
-            player.aiRotation = ((player.controller.chooseRotate(player) % 4) + 4) % 4;
+            // 기본 제공 적에 한해서만 플레이어 연쇄 대응 같은 엔진 공통 특수 규칙을 적용한다.
+            // 외부 등록 적은 자신의 chooseTarget·chooseRotate 결정만 사용한다.
+            // findBestAttackPlacement가 즉시 패배 후보를 먼저 제외하므로 생존 조건만 이 우선순위보다 앞선다.
+            if (player.controller instanceof BundledEnemy && shouldCounterPlayerChain(player)) {
+                const attackPlacement = findBestAttackPlacement(player, player.active.x, null, true);
+                player.aiTarget = attackPlacement.x;
+                player.aiRotation = ((attackPlacement.rotation % 4) + 4) % 4;
+            } else {
+                player.aiTarget = player.controller.chooseTarget(player);
+                player.aiRotation = ((player.controller.chooseRotate(player) % 4) + 4) % 4;
+            }
             player.aiFastDown = false;
             player.aiDecisionElapsed = 0;
         }
@@ -1551,9 +1566,10 @@
      * @param {PlayerState} player 자동 조작할 플레이어
      * @param {number} fallback 유효한 후보가 없을 때 사용할 열
      * @param {number|null} defeatCheckColumn 즉시 패배를 피할 X 좌표. null이면 검사하지 않는다.
+     * @param {boolean} excludeAllImmediateDefeats 모든 즉시 패배 후보를 제외할지 여부
      * @returns {{x:number, rotation:number, positions:{x:number,y:number}[], attack:number, combo:number}} 목표 배치 후보
      */
-    function findBestAttackPlacement(player, fallback, defeatCheckColumn = null) {
+    function findBestAttackPlacement(player, fallback, defeatCheckColumn = null, excludeAllImmediateDefeats = false) {
         let bestPlacement = {
             x: fallback,
             rotation: 0,
@@ -1564,6 +1580,7 @@
         // 회전을 포함한 모든 실제 착지 후보를 비교한다. 공격력이 같으면 더 오른쪽 열을 선택한다.
         player.aiSimulations.forEach((simulation) => {
             // Y=2에 닿는 후보는 다른 조건보다 먼저 즉시 패배 여부를 확인해 배제한다.
+            if (excludeAllImmediateDefeats && causesImmediateDefeat(player, simulation)) return;
             if (simulation.positions.some((position) => position.y === 2) && causesImmediateDefeat(player, simulation)) return;
             if (simulation.x === defeatCheckColumn && causesImmediateDefeat(player, simulation)) return;
             if (simulation.attack > bestPlacement.attack || (simulation.attack === bestPlacement.attack && simulation.x >= bestPlacement.x)) {
@@ -5257,10 +5274,20 @@
         }
     }
 
-        /**
-         * 안드로말리우스 적 정의
-         */
-    class Andromalius extends Enemy {
+    /** 기본 제공되는 적임을 의미하는 클래스 */
+    class BundledEnemy extends Enemy {
+        constructor() { super(); }
+
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'BundledEnemy';
+        }
+    }
+
+    /**
+     * 안드로말리우스 적 정의
+     */
+    class Andromalius extends BundledEnemy {
         constructor() {
             super();
             this.attackPlacement = null;
@@ -5364,7 +5391,7 @@
     /**
      * 단탈리온 적 정의
      */
-    class Dantalion extends Enemy {
+    class Dantalion extends BundledEnemy {
         /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
         getClassType() {
             return 'Dantalion';
@@ -5581,7 +5608,7 @@
     /**
      * 연쇄 축적형 적들이 공유하는 필드 평가와 안전 배치 전략이다.
      */
-    class ChainBuildingEnemy extends Enemy {
+    class ChainBuildingEnemy extends BundledEnemy {
         constructor() {
             super();
             this.sortPriority = 3;
@@ -5829,7 +5856,7 @@
      * 적 세레의 정의.
      *     적 세레는 일정 횟수 동안 오른쪽에 쌓은 뒤 공격력 시뮬레이션을 수행한다.
      */
-    class Seere extends Enemy {
+    class Seere extends BundledEnemy {
         constructor() {
             super();
             this.sortPriority = 3;
@@ -6264,7 +6291,7 @@
     /**
      * 암두시아스는 향후 AI를 추가할 출시 예정 적이다.
      */
-    class Amdusias extends Enemy {
+    class Amdusias extends BundledEnemy {
         constructor() {
             super();
             this.sortPriority = 6;
@@ -6341,7 +6368,7 @@
     /**
      * 연습 모드에서 조작하거나 뿌요를 받지 않는 상대다.
      */
-    class PracticeEnemy extends Enemy {
+    class PracticeEnemy extends BundledEnemy {
         constructor() {
             super();
         }
