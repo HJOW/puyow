@@ -1306,9 +1306,14 @@
         return point / marginRate * EXPLOSION_REWARD_MULTIPLIER;
     }
 
-    /** 화면용 점수를 소수점 없이 9자리 이상으로 변환한다. @param {number} point 점수 @returns {string} 표시용 점수 */
+    /** 화면용 점수를 소수점 없이 정수 문자열로 변환한다. @param {number} point 점수 @returns {string} 표시용 점수 */
+    function formatIntegerPoint(point) {
+        return String(Math.max(0, Math.floor(point)));
+    }
+
+    /** 게임 진행 중 화면용 점수를 9자리 이상으로 변환한다. @param {number} point 점수 @returns {string} 표시용 점수 */
     function formatPoint(point) {
-        return String(Math.max(0, Math.floor(point))).padStart(SCORE_DISPLAY_DIGITS, '0');
+        return formatIntegerPoint(point).padStart(SCORE_DISPLAY_DIGITS, '0');
     }
 
     /**
@@ -2751,7 +2756,7 @@
             context.fillText(translate(won ? '승리' : '패배'), x + CELL * 3, FIELD_TOP + CELL * 6.4);
         }
         context.fillStyle = '#d8f2f5'; context.font = `16px ${MESSAGE_FONT}`;
-        context.fillText(translate('최종 점수 %1', formatPoint(player.point)), x + CELL * 3, FIELD_TOP + CELL * 7.15);
+        context.fillText(translate('최종 점수 %1', formatIntegerPoint(player.point)), x + CELL * 3, FIELD_TOP + CELL * 7.15);
         if (game.practice) {
             context.fillStyle = '#f7c843'; context.font = `15px ${MESSAGE_FONT}`;
             context.fillText(translate(game.continuousFever ? '연속 피버' : DIFFICULTIES[game.difficulty].name), x + CELL * 3, FIELD_TOP + CELL * 7.75);
