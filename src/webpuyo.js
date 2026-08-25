@@ -4133,8 +4133,11 @@
                     context.globalAlpha = 0.42;
                     entry.createController().drawPortrait(context, cardX + 24, 495, 0.14);
                     context.restore();
-                    context.fillStyle = '#c4cbd0'; context.font = `15px ${BUTTON_FONT}`; context.fillText(translate(entry.createController().getName()), cardX + 94, 500);
-                    context.fillStyle = '#f0c674'; context.font = `13px ${BUTTON_FONT}`; context.fillText(translate(entry.notAvail ? '추후 출시예정' : '잠김'), cardX + 80, 524);
+                    // 잠긴 적은 이름을 숨긴다. 출시 예정 적은 기존처럼 이름과 안내를 함께 표시한다.
+                    if (entry.notAvail) {
+                        context.fillStyle = '#c4cbd0'; context.font = `15px ${BUTTON_FONT}`; context.fillText(translate(entry.createController().getName()), cardX + 94, 500);
+                    }
+                    context.fillStyle = '#f0c674'; context.font = `13px ${BUTTON_FONT}`; context.fillText(translate(entry.notAvail ? '추후 출시예정' : '잠김'), cardX + 80, entry.notAvail ? 524 : 500);
                 } else {
                     context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(entry.createController().getName()), cardX + 80, 513);
                 }
