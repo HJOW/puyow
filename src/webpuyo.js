@@ -2319,6 +2319,15 @@
             const currentFloor = Math.floor(player.active.y);
             const nextFloor = currentFloor - 1;
             if (nextFloor < 0 || !canPlace(player, { ...player.active, y: nextFloor })) {
+                // 다음 칸이 막혀 있어도 현재 칸의 바닥에 닿기 전까지는
+                // 남은 소수점 거리만큼 평소 하강 속도로 계속 내려간다.
+                // 여기서 즉시 currentFloor로 보정하면 1칸 미만의 간격을
+                // 건너뛰고 자석처럼 잠기는 현상이 발생한다.
+                const nextY = player.active.y - delta / fallInterval;
+                if (nextY > currentFloor) {
+                    player.active.y = nextY;
+                    return;
+                }
                 player.active.y = currentFloor;
                 player.fallTimer = 0;
                 lockActive(player);
