@@ -106,9 +106,7 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
       ['基本ルール', 'フィーバールール', '練習', '連続フィーバー'],
       ['基本规则', '狂热规则', '练习', '连续狂热'],
     ];
-    const comingSoonLabels = ['(출시 예정)', '(Coming soon)', '(近日公開)', '(即将推出)'];
-    return localizedOptions.some((options) => options.every((text) => texts.includes(text)))
-      && comingSoonLabels.some((text) => texts.includes(text));
+    return localizedOptions.some((options) => options.every((text) => texts.includes(text)));
   })).toBe(true);
 
   await page.keyboard.press('ArrowDown');
@@ -142,6 +140,25 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   const pausedTime = await page.evaluate(() => window.WebPuyo.getGameState().fever.leftTime);
   await page.waitForTimeout(250);
   expect(await page.evaluate(() => window.WebPuyo.getGameState().fever.leftTime)).toBe(pausedTime);
+});
+
+test('피버 룰은 전용 적 선택 화면에서 5색 대전으로 시작한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  const state = await page.evaluate(() => window.WebPuyo.getGameState());
+  expect(state.feverRule).toBe(true);
+  expect(state.continuousFever).toBe(false);
+  expect(state.colorCount).toBe(5);
+  expect(state.player.fever).toMatchObject({ active: false, gauge: 0, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
+  expect(state.opponent.fever).toMatchObject({ active: false, gauge: 0, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
 });
 
 test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {

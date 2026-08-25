@@ -83,6 +83,16 @@
     const CONTINUOUS_FEVER_MAX_TARGET_COMBO = 12;
     /** 연속 피버에서 싹쓸이를 완료했을 때 추가하는 시간(ms)이다. @type {number} */
     const CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS = 5000;
+    /** 피버 룰에서 피버를 발동시키는 상쇄 전등 수다. @type {number} */
+    const FEVER_GAUGE_MAX = 7;
+    /** 피버 룰의 게임 시작 및 피버 종료 직후 켜져 있는 전등 수다. @type {number} */
+    const FEVER_LIGHT_STARTS = 4;
+    /** 피버 룰의 시작 목표 연쇄 수다. @type {number} */
+    const FEVER_INITIAL_TARGET_COMBO = 5;
+    /** 피버 룰의 시작 다음 피버 시간(초)이다. @type {number} */
+    const FEVER_INITIAL_TIME = 15;
+    /** 상쇄로 늘어날 수 있는 다음 피버 시간의 최댓값(초)이다. @type {number} */
+    const FEVER_MAX_TIME = 30;
     /** 사용자 컨트롤의 기본 자동 낙하 간격(ms)이다. @type {number} */
     const PLAYER_FALL_INTERVAL = 2048;
     /** 모든 게임 모드에서 새로 지급한 뿌요 쌍의 회전축 생성 Y 좌표다.  @type {number} */
@@ -220,6 +230,8 @@
     let opponentMenuFocus = 0;
     /** 적 선택 메뉴 하단에서 포커스된 동작이다. @type {number} */
     let selectedOpponentAction = 0;
+    /** 적 선택 화면에서 시작할 대전 규칙이다. @type {'standard'|'fever'} */
+    let opponentMenuRule = 'standard';
     /** 메인 메뉴에서 포커스된 항목이다. @type {number} */
     let titleMenuFocus = 0;
     /** 메인 메뉴의 게임 규칙 선택 오버레이가 열려 있는지 여부다. @type {boolean} */
@@ -254,7 +266,7 @@
     let gamepadActionInput = { z: false, x: false, enter: false, escape: false };
     /** 현재 화면 문구에 적용할 언어 코드다. @type {string} */
     let languageCode = 'ko';
-    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} */
+    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} */
     let store = createInitialStore();
     /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 webpuyo.js 기준으로 해석한다. @type {string} */
     let noticeUrl = 'notice.txt';
@@ -278,8 +290,8 @@
     const enemySoundPools = new Map();
     /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,disabled?:boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
-        { label: '기본 룰', activate: () => openOpponentMenu() },
-        { label: '피버 룰', statusLabel: '(출시 예정)', disabled: true },
+        { label: '기본 룰', activate: () => openOpponentMenu(false) },
+        { label: '피버 룰', activate: () => openOpponentMenu(true) },
         { label: '연습', activate: () => openPracticeDifficulty() },
         { label: '연속 피버', activate: () => startContinuousFeverGame() }
     ];
@@ -317,12 +329,13 @@
 
     /**
      * 저장 데이터의 기본 구조를 만든다.
-     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} 초기 저장 데이터
+     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} 초기 저장 데이터
      */
     function createInitialStore() {
         return {
             clearList: [],
             clearListByDifficulty: { easy: [], normal: [], hard: [] },
+            feverClearListByDifficulty: { easy: [], normal: [], hard: [] },
             settings: { musicVolume: 100, effectsVolume: 100, virtualController: false, aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' },
             muted: false
         };
@@ -384,7 +397,7 @@
 
     /** 현재 실제 플레이가 갤러리 해금을 허용하는 기본 룰·연습·연속 피버인지 판별한다. @returns {boolean} 해금 가능 여부 */
     function canUnlockGalleryWarningInCurrentGame() {
-        return Boolean(game && game.running && game.countdown <= 0 && !game.paused && !game.ending && !game.tutorial);
+        return Boolean(game && !game.feverRule && game.running && game.countdown <= 0 && !game.paused && !game.ending && !game.tutorial);
     }
 
     /** 초기 타이틀 중앙에 그릴, 잠금 해제된 갤러리 대상 목록을 만든다. @returns {{draw:()=>void}[]} */
@@ -474,8 +487,17 @@
                     ? [...new Set(storedClearListByDifficulty[key].filter((name) => typeof name === 'string'))]
                     : []
             ]));
+            const storedFeverClearListByDifficulty = parsed.feverClearListByDifficulty && typeof parsed.feverClearListByDifficulty === 'object' && !Array.isArray(parsed.feverClearListByDifficulty)
+                ? parsed.feverClearListByDifficulty
+                : {};
+            const feverClearListByDifficulty = Object.fromEntries(Object.keys(initial.feverClearListByDifficulty).map((key) => [
+                key,
+                Array.isArray(storedFeverClearListByDifficulty[key])
+                    ? [...new Set(storedFeverClearListByDifficulty[key].filter((name) => typeof name === 'string'))]
+                    : []
+            ]));
             const settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
-            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, settings: {
+            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, settings: {
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
                 virtualController: settings.virtualController === true,
@@ -773,10 +795,12 @@
             this.fieldX = fieldX;
             this.controller = controller;
             this.colors = colors;
-            this.board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+            /** 피버가 아닐 때 사용하는 일반 플레이 영역이다. @type {(string|null)[][]} */
+            this.normalBoard = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
             this.point = 0;
             this.attack = 0;
-            this.damage = 0;
+            /** 피버가 아닐 때 사용하는 일반 피해다. @type {number} */
+            this.normalDamage = 0;
             this.combo = 0;
             this.phase = 'control';
             this.active = null;
@@ -798,6 +822,8 @@
             this.hasPlacedPuyoSinceAllClear = false;
             this.allClearEffectElapsed = 0;
             this.pendingAllClearDamage = 0;
+            /** 실제 방해뿌요 낙하가 일어난 누적 횟수다. 피버 턴 정산 대기에 사용한다. @type {number} */
+            this.garbageDropCount = 0;
             // 실제 수치는 먼저 차감하되, 예고뿌요 표시는 에너지 도착까지 유지한다.
             this.warningReductionDelay = 0;
             // 연쇄가 끝나기 전까지 상대에게 보이지 않아야 하는 누적 공격의 정수 부분이다.
@@ -809,6 +835,30 @@
             this.receivesPuyos = true;
             this.allClearEnabled = true;
             this.clearsGarbage = false;
+            /** 피버 룰에서만 사용하는 플레이어별 피버 상태다. @type {object|null} */
+            this.fever = null;
+        }
+
+        /** 현재 일반 또는 피버 플레이 영역을 반환한다. @returns {(string|null)[][]} 활성 플레이 영역 */
+        get board() {
+            return this.fever?.active ? this.fever.field : this.normalBoard;
+        }
+
+        /** 현재 일반 또는 피버 플레이 영역을 교체한다. @param {(string|null)[][]} value 새 플레이 영역 */
+        set board(value) {
+            if (this.fever?.active) this.fever.field = value;
+            else this.normalBoard = value;
+        }
+
+        /** 현재 일반 또는 피버 상황에 적용되는 피해를 반환한다. @returns {number} 활성 피해 값 */
+        get damage() {
+            return this.fever?.active ? this.fever.damage : this.normalDamage;
+        }
+
+        /** 현재 일반 또는 피버 상황에 적용되는 피해를 갱신한다. @param {number} value 새 피해 값 */
+        set damage(value) {
+            if (this.fever?.active) this.fever.damage = value;
+            else this.normalDamage = value;
         }
 
         /**
@@ -883,7 +933,8 @@
         const index = progressionOpponents.indexOf(opponent);
         if (index <= 0) return index === 0;
         const difficultyKey = getSelectedDifficulty().key;
-        const clearList = store.clearListByDifficulty?.[difficultyKey] || [];
+        const progressStore = opponentMenuRule === 'fever' ? store.feverClearListByDifficulty : store.clearListByDifficulty;
+        const clearList = progressStore?.[difficultyKey] || [];
         return clearList.includes(progressionOpponents[index - 1].className);
     }
 
@@ -943,22 +994,47 @@
         ensureSelectedOpponent();
     }
 
+    /** 플레이어 한 명의 피버 룰 상태를 만든다. @returns {object} 초기 피버 상태 */
+    function createFeverRuleState() {
+        return {
+            active: false,
+            gauge: FEVER_LIGHT_STARTS,
+            nextTime: FEVER_INITIAL_TIME,
+            targetCombo: FEVER_INITIAL_TARGET_COMBO,
+            leftTime: 0,
+            field: Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null)),
+            damage: 0,
+            turn: 0,
+            pendingCombo: 0,
+            pendingAllClear: false,
+            expiredPlacement: false,
+            selectedStageTarget: null,
+            stageSuppliedPair: [],
+            pendingActivation: false,
+            deferGarbage: false,
+            pendingAllClearStage: false,
+            opponentGarbageDropBaseline: null
+        };
+    }
+
     /**
-     * 대전, 연습 또는 연속 피버 상태를 초기화한다.
+     * 대전, 연습, 피버 룰 또는 연속 피버 상태를 초기화한다.
      * @param {boolean} practice 연습 모드 여부
      * @param {boolean} continuousFever 연속 피버 모드 여부
+     * @param {boolean} feverRule 피버 룰 대전 여부
      * @returns {void}
      */
-    function startGame(practice = false, continuousFever = false) {
+    function startGame(practice = false, continuousFever = false, feverRule = false) {
         const soloMode = practice || continuousFever;
         if (!soloMode && !ensureSelectedOpponent()) return;
         resetVirtualControllerInput();
         const opponent = soloMode ? { createController: () => new PracticeEnemy() } : OPPONENTS[selectedOpponent];
         const controller = opponent.createController();
-        const difficulty = continuousFever ? DIFFICULTIES.length - 1 : selectedDifficulty;
+        const difficulty = continuousFever || feverRule ? DIFFICULTIES.length - 1 : selectedDifficulty;
         const colors = DIFFICULTIES[difficulty].colors;
         const practicePlayer = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
         const players = [new PlayerState('PLAYER 1', FIELD_LEFT, null, colors), practicePlayer];
+        if (feverRule) players.forEach((player) => { player.fever = createFeverRuleState(); });
         // 연습과 연속 피버의 상대는 공격만 받아 방해뿌요 연출을 보여주고 일반 뿌요는 생성하지 않는다.
         if (soloMode) {
             practicePlayer.receivesPuyos = false;
@@ -978,6 +1054,7 @@
             marginRate: MARGIN_RATE_SCHEDULE[0].rate,
             practice: soloMode,
             continuousFever,
+            feverRule,
             fever: continuousFever ? {
                 targetCombo: CONTINUOUS_FEVER_INITIAL_TARGET_COMBO,
                 leftTime: CONTINUOUS_FEVER_INITIAL_TIME,
@@ -1099,12 +1176,10 @@
         return colorMap;
     }
 
-    /** 다음 뿌요에 맞춰 피버 스테이지를 복사·변환하고 플레이어 필드를 새 피버 턴으로 초기화한다. @returns {void} */
-    function prepareContinuousFeverTurn() {
-        if (!game?.continuousFever || !game.fever) return;
-        const player = game.players[0];
+    /** 다음 뿌요에 맞춰 피버 스테이지를 복사·변환하고 지정 플레이어 필드를 초기화한다. @param {PlayerState} player 대상 플레이어 @param {object} feverState 갱신할 피버 상태 @param {number} targetCombo 스테이지 목표 연쇄 @param {boolean} countTurn 피버 턴 수 증가 여부 @returns {void} */
+    function prepareFeverTurn(player, feverState, targetCombo = feverState.targetCombo, countTurn = true) {
         const nextPair = peekNextPair(player);
-        const stage = selectContinuousFeverStage(game.fever.targetCombo, nextPair);
+        const stage = selectContinuousFeverStage(targetCombo, nextPair);
         const colorMap = createContinuousFeverColorMap(stage, nextPair, player.colors);
         const transformedSupplied = stage.suppliedNextPuyos.map((color) => colorMap.get(color));
         game.pairQueue[player.pairQueuePosition] = transformedSupplied;
@@ -1121,13 +1196,19 @@
         player.hasPlacedPuyoSinceAllClear = false;
         player.allClearEffectElapsed = 0;
         player.pendingAllClearDamage = 0;
-        game.fever.turn += 1;
-        game.fever.pendingCombo = 0;
-        game.fever.pendingAllClear = false;
-        game.fever.expiredPlacement = false;
-        game.fever.selectedStageTarget = stage.targetCombo;
-        game.fever.stageSuppliedPair = [...transformedSupplied];
+        if (countTurn) feverState.turn += 1;
+        feverState.pendingCombo = 0;
+        feverState.pendingAllClear = false;
+        feverState.expiredPlacement = false;
+        feverState.selectedStageTarget = stage.targetCombo;
+        feverState.stageSuppliedPair = [...transformedSupplied];
         updateNextPairs(player);
+    }
+
+    /** 연속 피버의 사용자 필드를 새 피버 턴으로 초기화한다. @returns {void} */
+    function prepareContinuousFeverTurn() {
+        if (!game?.continuousFever || !game.fever) return;
+        prepareFeverTurn(game.players[0], game.fever);
     }
 
     /**
@@ -1138,6 +1219,72 @@
         if (game.continuousFever) prepareContinuousFeverTurn();
         enterControl(game.players[0]);
         enterControl(game.players[1]);
+    }
+
+    /** 피버 룰의 상쇄가 발생했을 때 전등과 상대의 다음 피버 시간을 갱신한다. @param {PlayerState} player 상쇄한 플레이어 @param {PlayerState} opponent 상대 플레이어 @returns {void} */
+    function registerFeverOffset(player, opponent) {
+        if (!game?.feverRule || !player.fever || player.fever.active) return;
+        player.fever.gauge = Math.min(FEVER_GAUGE_MAX, player.fever.gauge + 1);
+        if (opponent.fever) opponent.fever.nextTime = Math.min(FEVER_MAX_TIME, opponent.fever.nextTime + 1);
+        if (player.fever.gauge >= FEVER_GAUGE_MAX) player.fever.pendingActivation = true;
+    }
+
+    /** 일반 필드를 보관하고 플레이어를 피버 상황으로 전환한다. @param {PlayerState} player 대상 플레이어 @returns {void} */
+    function activatePlayerFever(player) {
+        const state = player.fever;
+        if (!game?.feverRule || !state || state.active) return;
+        // 일반 필드와 일반 DAMAGE는 PlayerState에 그대로 보존하고, 새 피버 전용 상태를 활성화한다.
+        state.field = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+        state.damage = 0;
+        state.active = true;
+        state.gauge = FEVER_LIGHT_STARTS;
+        state.pendingActivation = false;
+        state.leftTime = state.nextTime * 1000;
+        state.nextTime = FEVER_INITIAL_TIME;
+        state.deferGarbage = false;
+        prepareFeverTurn(player, state);
+        enterControl(player);
+    }
+
+    /** 피버 전용 필드와 피해를 초기화하고 보존된 일반 필드로 돌아가 누적 피해를 합산한다. @param {PlayerState} player 대상 플레이어 @param {'A'|'B'} exitType 종료 유형 @returns {void} */
+    function finishPlayerFever(player, exitType) {
+        const state = player.fever;
+        if (!state?.active) return;
+        const feverDamage = state.damage;
+        state.active = false;
+        // active를 먼저 해제하면 damage 접근자가 다시 일반 DAMAGE를 가리킨다.
+        player.damage += feverDamage;
+        state.field = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+        state.damage = 0;
+        state.gauge = FEVER_LIGHT_STARTS;
+        state.leftTime = 0;
+        state.pendingCombo = 0;
+        state.pendingAllClear = false;
+        state.expiredPlacement = false;
+        state.selectedStageTarget = null;
+        state.stageSuppliedPair = [];
+        state.pendingActivation = false;
+        state.pendingAllClearStage = false;
+        state.opponentGarbageDropBaseline = null;
+        // targetCombo와 nextTime은 다음 피버 발동에서 이어서 사용하므로 초기화하지 않는다.
+        player.active = null;
+        player.combo = 0;
+        if (exitType === 'A' && Math.floor(player.damage) > 0) {
+            player.phase = 'garbage';
+            player.phaseTimer = 0;
+            return;
+        }
+        state.deferGarbage = exitType === 'B' && Math.floor(player.damage) > 0;
+        enterControl(player);
+    }
+
+    /** 기본 제공 적이 피버 중이면 즉시 패배하지 않는 후보 가운데 예상 연쇄가 가장 큰 배치를 고른다. @param {PlayerState} player CPU 플레이어 @returns {object|null} 선택 후보 */
+    function findBestFeverComboPlacement(player) {
+        return player.aiSimulations.reduce((best, simulation) => {
+            if (causesImmediateDefeat(player, simulation)) return best;
+            if (!best || simulation.combo > best.combo || (simulation.combo === best.combo && simulation.attack > best.attack)) return simulation;
+            return best;
+        }, null);
     }
 
     /** 적의 새 조작 턴에 플레이어가 2연쇄 이상을 진행 중인지 판별한다. @param {PlayerState} player 조작 턴을 시작할 적 @returns {boolean} 즉시 공격 우선 여부 */
@@ -1173,7 +1320,11 @@
             // 기본 제공 적에 한해서만 플레이어 연쇄 대응 같은 엔진 공통 특수 규칙을 적용한다.
             // 외부 등록 적은 자신의 chooseTarget·chooseRotate 결정만 사용한다.
             // findBestAttackPlacement가 즉시 패배 후보를 먼저 제외하므로 생존 조건만 이 우선순위보다 앞선다.
-            if (player.controller instanceof BundledEnemy && shouldCounterPlayerChain(player)) {
+            if (player.controller instanceof BundledEnemy && game?.feverRule && player.fever?.active) {
+                const feverPlacement = findBestFeverComboPlacement(player) || findBestAttackPlacement(player, player.active.x, null, true);
+                player.aiTarget = feverPlacement.x;
+                player.aiRotation = ((feverPlacement.rotation % 4) + 4) % 4;
+            } else if (player.controller instanceof BundledEnemy && shouldCounterPlayerChain(player)) {
                 const attackPlacement = findBestAttackPlacement(player, player.active.x, null, true);
                 player.aiTarget = attackPlacement.x;
                 player.aiRotation = ((attackPlacement.rotation % 4) + 4) % 4;
@@ -1299,10 +1450,18 @@
      * @returns {void}
      */
     function lockActive(player) {
+        // 피버 룰의 방해뿌요 지연은 배치마다 새로 판정한다. 이번 배치가 폭발에 성공하면
+        // resolveExplosions에서 다시 true가 되어 다음 컨트롤까지 DAMAGE 낙하를 미룬다.
+        if (game?.feverRule && player.fever) player.fever.deferGarbage = false;
         if (game?.continuousFever && player === game.players[0] && game.fever) {
             game.fever.pendingCombo = 0;
             game.fever.pendingAllClear = false;
             game.fever.expiredPlacement = game.fever.leftTime <= 0;
+        }
+        if (game?.feverRule && player.fever?.active) {
+            player.fever.pendingCombo = 0;
+            player.fever.pendingAllClear = false;
+            player.fever.expiredPlacement = player.fever.leftTime <= 0;
         }
         // 숨김 행을 포함해 유효한 필드 좌표에만 뿌요를 고정한다.
         activeCells(player.active).forEach((cell) => {
@@ -1490,7 +1649,7 @@
         // 실제 폭발 단계처럼 색 뿌요와 인접 방해뿌요를 제거하고 중력을 반복 적용한다.
         while (true) {
             const exploding = findExplosionsOnBoard(simulatedBoard);
-            if (!exploding.length) return simulatedBoard[11][2] !== null;
+            if (!exploding.length) return isDefeatBoard(simulatedBoard);
             const removed = new Set(exploding.map(([x, y]) => `${x},${y}`));
             exploding.forEach(([x, y]) => DIRECTIONS.forEach(([deltaX, deltaY]) => {
                 const nextX = x + deltaX;
@@ -1505,6 +1664,11 @@
             });
             simulatedBoard = collapseBoard(simulatedBoard);
         }
+    }
+
+    /** 현재 규칙의 패배 칸에 뿌요가 있는지 확인한다. @param {(string|null)[][]} board 검사할 필드 @returns {boolean} 패배 여부 */
+    function isDefeatBoard(board) {
+        return board[11][2] !== null || (game?.feverRule === true && board[11][3] !== null);
     }
 
     /**
@@ -1714,6 +1878,10 @@
             const point = calculateExplosionPoint(explosionGroups, player.combo);
             player.point += point;
             player.attack += calculateExplosionAttack(point);
+            // 피버 룰에서는 상쇄할 DAMAGE 또는 상대 ATTACK이 있으면 폭발 공격을 최소 1 이상 보장한다.
+            if (game?.feverRule && Math.floor(player.attack) < 1 && (Math.floor(player.damage) > 0 || Math.floor(opponent.attack) > 0)) {
+                player.attack = 1;
+            }
             const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
             sendAttackEnergy(player, opponent, center.x / exploding.length, center.y / exploding.length);
             player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
@@ -1726,8 +1894,16 @@
         const completedCombo = player.combo;
         deliverFinalAttackEnergy(player, opponent);
         if (game?.continuousFever && player === game.players[0] && game.fever) game.fever.pendingCombo = completedCombo;
+        if (game?.feverRule && player.fever?.active) player.fever.pendingCombo = completedCombo;
         player.combo = 0;
-        player.phase = 'garbage';
+        if (game?.feverRule && completedCombo > 0) {
+            // 현재 DAMAGE의 유무와 관계없이 성공한 배치임을 보존한다. 공격 에너지가 비동기로
+            // 도착하더라도 이 배치에서 폭발했다면 일반/피버 필드 모두 방해뿌요를 받지 않는다.
+            if (player.fever) player.fever.deferGarbage = true;
+            player.phase = 'check';
+        } else {
+            player.phase = 'garbage';
+        }
     }
 
     /**
@@ -1751,6 +1927,7 @@
         player.attack -= cancelledDamage;
         remaining -= cancelledDamage;
         if (cancelledDamage) player.warningReductionDelay += cancelledDamage;
+        if (cancelledOpponentAttack || cancelledDamage) registerFeverOffset(player, opponent);
         const source = { x: player.fieldX + (sourceX + 0.5) * CELL, y: FIELD_BOTTOM - (sourceY + 0.5) * CELL };
         player.lastAttackEnergySource = source;
         player.outgoingWarningDelay = Math.floor(player.attack);
@@ -1764,6 +1941,7 @@
     function deliverFinalAttackEnergy(player, opponent) {
         const amount = Math.floor(player.attack);
         if (amount < 1) return;
+        if (game?.feverRule && player.fever?.active) player.fever.opponentGarbageDropBaseline = opponent.garbageDropCount;
         player.attack -= amount;
         player.outgoingWarningDelay = Math.floor(player.attack);
         const energyTransfers = getEnergyTransfers();
@@ -1781,6 +1959,7 @@
 
     function sendAllClearEnergy(player, opponent, amount) {
         if (amount < 1) return;
+        if (game?.feverRule && player.fever?.active) player.fever.opponentGarbageDropBaseline = opponent.garbageDropCount;
         queueEnergyTransfer(player, opponent, { x: player.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP + VISIBLE_ROWS * CELL / 2 }, 0, 0, amount);
     }
 
@@ -1857,6 +2036,7 @@
         const amount = Math.min(30, Math.floor(player.damage));
         // 누적 피해가 있으면 한 번에 최대 30개의 방해뿌요를 필드 위에서 떨어뜨린다.
         if (amount) {
+            player.garbageDropCount += 1;
             const positions = [];
             // 필요한 행 수만큼 열 순서를 섞어 방해뿌요 위치를 만든다.
             for (let y = 0; y < Math.ceil(amount / COLUMNS); y += 1) {
@@ -1889,8 +2069,7 @@
             winner,
             elapsed: 0,
             duration: 1050,
-            fallingPuyos,
-            waitForOpponentResolution: isWinnerSettlementPending(winner)
+            fallingPuyos
         };
     }
 
@@ -1903,14 +2082,15 @@
         if (game.practice || winner !== game.players[0]) return;
         const enemyController = game.players[1].controller;
         const enemyClassName = enemyController.constructor.name;
-        unlockGalleryEnemy(enemyController.getClassType());
+        if (!game.feverRule) unlockGalleryEnemy(enemyController.getClassType());
         const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key || AI_DIFFICULTIES[1].key;
+        const progressStore = game.feverRule ? store.feverClearListByDifficulty : store.clearListByDifficulty;
         let changed = false;
-        if (!store.clearListByDifficulty[difficultyKey].includes(enemyClassName)) {
-            store.clearListByDifficulty[difficultyKey].push(enemyClassName);
+        if (!progressStore[difficultyKey].includes(enemyClassName)) {
+            progressStore[difficultyKey].push(enemyClassName);
             changed = true;
         }
-        if (!store.clearList.includes(enemyClassName)) {
+        if (!game.feverRule && !store.clearList.includes(enemyClassName)) {
             store.clearList.push(enemyClassName);
             changed = true;
         }
@@ -1928,6 +2108,24 @@
 
     function isWinnerSettlementPending(player) {
         return isResolutionPhase(player.phase) || player.allClearEffectElapsed > 0 || player.pendingAllClearDamage > 0 || hasPendingEnergyTransfers();
+    }
+
+    /**
+     * 싹쓸이 표시 시간을 진행하고 효과가 끝나면 예약된 공격 에너지를 보낸다.
+     * 패배 연출 중에도 호출할 수 있도록 일반 플레이어 단계 갱신과 분리한다.
+     * @param {PlayerState} player 싹쓸이를 발생시킨 플레이어
+     * @param {PlayerState} opponent 공격을 받을 상대
+     * @param {number} delta 이전 프레임 후 경과한 밀리초
+     * @returns {void}
+     */
+    function updateAllClearEffect(player, opponent, delta) {
+        player.allClearEffectElapsed = Math.max(0, player.allClearEffectElapsed - delta);
+        // 패배 연출이 시작된 프레임 경계에서 효과 시간이 이미 0이 되었더라도 예약 공격은
+        // 반드시 상대 예고뿌요까지 전달되도록 남은 값을 즉시 에너지로 전환한다.
+        if (player.allClearEffectElapsed === 0 && player.pendingAllClearDamage > 0) {
+            sendAllClearEnergy(player, opponent, player.pendingAllClearDamage);
+            player.pendingAllClearDamage = 0;
+        }
     }
 
     /** 완료한 연쇄와 싹쓸이 여부로 다음 목표 연쇄를 계산한다. @param {number} target 현재 목표 @param {number} combo 완료 연쇄 @param {boolean} allClear 싹쓸이 여부 @returns {number} 5~12 범위의 다음 목표 */
@@ -1967,6 +2165,38 @@
         enterControl(player);
     }
 
+    /** 피버 룰 연쇄의 에너지·싹쓸이·상대 방해뿌요 처리가 끝났는지 확인한다. @param {PlayerState} player 연쇄 플레이어 @param {PlayerState} opponent 상대 플레이어 @returns {boolean} 대기 필요 여부 */
+    function isFeverRuleSettlementPending(player, opponent) {
+        const opponentDroppingGarbage = opponent.phase === 'garbage'
+            || (opponent.phase === 'gravity' && opponent.gravityNextPhase === 'check');
+        const waitingForOpponentGarbage = player.fever?.opponentGarbageDropBaseline !== null
+            && opponent.garbageDropCount <= player.fever.opponentGarbageDropBaseline
+            && warningAmount(opponent, player) >= 1
+            && !opponent.fever?.deferGarbage;
+        return player.allClearEffectElapsed > 0
+            || player.pendingAllClearDamage > 0
+            || hasPendingEnergyTransfers()
+            || waitingForOpponentGarbage
+            || opponentDroppingGarbage;
+    }
+
+    /** 피버 룰의 한 피버 턴을 정산하고 다음 턴 또는 피버 종료로 전환한다. @param {PlayerState} player 대상 플레이어 @returns {void} */
+    function finishFeverRuleResolution(player) {
+        const state = player.fever;
+        if (!game?.feverRule || !state?.active) return;
+        if (state.expiredPlacement) {
+            finishPlayerFever(player, 'B');
+            return;
+        }
+        const combo = state.pendingCombo;
+        state.opponentGarbageDropBaseline = null;
+        const previousTarget = state.targetCombo;
+        state.targetCombo = calculateContinuousFeverTarget(previousTarget, combo, state.pendingAllClear);
+        if (state.targetCombo !== previousTarget) state.leftTime += Math.floor(combo / 2) * 1000;
+        prepareFeverTurn(player, state);
+        enterControl(player);
+    }
+
     /**
      * 패배 연출과, 진행 중이던 승리자의 연쇄 처리를 갱신한다.
      * @param {number} delta 이전 프레임 후 경과한 밀리초
@@ -1975,12 +2205,13 @@
     function updateDefeatSequence(delta) {
         const ending = game.ending;
         ending.elapsed += delta;
-        // 상대 연쇄가 끝날 때까지는 승리자의 점수 처리를 계속 진행한다.
-        if (ending.waitForOpponentResolution && isResolutionPhase(ending.winner.phase)) {
-            updatePlayer(ending.winner, ending.loser, delta);
-        }
-        // 패배 연출과 남은 연쇄 처리가 끝나면 게임을 종료한다.
-        if (ending.elapsed > ending.duration && (!ending.waitForOpponentResolution || !isWinnerSettlementPending(ending.winner))) {
+        // 승자의 연쇄 단계는 계속 갱신한다. 그 밖의 단계에서도 싹쓸이 효과와 예약 공격을
+        // 별도로 진행한다. 시작 시점의 스냅샷에 의존하지 않고 매 프레임 정산 상태를 확인해야
+        // 양측 어느 쪽이 먼저 패배하더라도 싹쓸이 예고뿌요 생성까지 완료할 수 있다.
+        if (isResolutionPhase(ending.winner.phase)) updatePlayer(ending.winner, ending.loser, delta);
+        else updateAllClearEffect(ending.winner, ending.loser, delta);
+        // 패배 연출과 승자의 연쇄·싹쓸이·에너지 이동이 모두 끝난 뒤에만 게임을 종료한다.
+        if (ending.elapsed > ending.duration && !isWinnerSettlementPending(ending.winner)) {
             recordEnemyClear(ending.winner);
             game.running = false;
             game.winner = ending.winner;
@@ -2000,16 +2231,22 @@
         player.comboPopups = player.comboPopups
             .map((popup) => ({ ...popup, elapsed: popup.elapsed + delta }))
             .filter((popup) => popup.elapsed < 2000);
-        const wasAllClearEffectActive = player.allClearEffectElapsed > 0;
-        player.allClearEffectElapsed = Math.max(0, player.allClearEffectElapsed - delta);
-        if (wasAllClearEffectActive && player.allClearEffectElapsed === 0 && player.pendingAllClearDamage > 0) {
-            sendAllClearEnergy(player, opponent, player.pendingAllClearDamage);
-            player.pendingAllClearDamage = 0;
-        }
+        updateAllClearEffect(player, opponent, delta);
         // 플레이 방법 시연은 싹쓸이 예고와 방해뿌요 낙하를 보여주는 동안 다음 뿌요의 낙하를 멈춘다.
         if (player.tutorialHold) return;
         if (player.phase === 'feverWait') {
-            if (!isContinuousFeverSettlementPending(player, opponent)) finishContinuousFeverResolution(player, opponent);
+            if (game?.continuousFever) {
+                if (!isContinuousFeverSettlementPending(player, opponent)) finishContinuousFeverResolution(player, opponent);
+            } else if (game?.feverRule && !isFeverRuleSettlementPending(player, opponent)) {
+                finishFeverRuleResolution(player);
+            }
+            return;
+        }
+        if (player.phase === 'feverAllClearWait') {
+            if (player.allClearEffectElapsed > 0 || hasPendingEnergyTransfers()) return;
+            player.fever.pendingAllClearStage = false;
+            prepareFeverTurn(player, player.fever, FEVER_INITIAL_TARGET_COMBO, false);
+            enterControl(player);
             return;
         }
         // 대기 중인 연습 상대도 예약된 피해가 있으면 방해뿌요 처리는 수행한다.
@@ -2108,15 +2345,15 @@
                 player.board = player.board.map((row) => row.map((cell) => cell === 'garbage' ? null : cell));
                 player.damage = 0;
             }
-            // 패배 판정 행의 중앙이 차면 패배 연출을 시작한다.
-            if (player.board[11][2]) {
+            // 피버 룰은 두 패배 칸을, 다른 규칙은 기존 중앙 패배 칸을 검사한다.
+            if (isDefeatBoard(player.board)) {
                 startDefeatSequence(player, opponent);
             } else {
                 const isAllClear = player.board.every((row) => row.every((cell) => cell === null));
                 // 뿌요를 놓은 뒤 필드가 비었을 때만 싹쓸이 공격을 보낸다.
                 const triggeredAllClear = player.allClearEnabled && isAllClear && player.hasPlacedPuyoSinceAllClear;
                 if (triggeredAllClear) {
-                    player.pendingAllClearDamage += ALL_CLEAR_DAMAGE;
+                    if (!(game?.feverRule && player.fever && !player.fever.active)) player.pendingAllClearDamage += ALL_CLEAR_DAMAGE;
                     player.point += ALL_CLEAR_POINT;
                     player.allClearEffectElapsed = ALL_CLEAR_EFFECT_DURATION;
                     player.hasPlacedPuyoSinceAllClear = false;
@@ -2130,6 +2367,30 @@
                     if (game.fever.expiredPlacement) {
                         startDefeatSequence(player, opponent);
                         return;
+                    }
+                }
+                if (game?.feverRule && player.fever) {
+                    const state = player.fever;
+                    if (state.active) {
+                        state.pendingAllClear = triggeredAllClear;
+                        if (state.pendingCombo > 0) {
+                            player.phase = 'feverWait';
+                            return;
+                        }
+                        if (state.expiredPlacement) {
+                            finishPlayerFever(player, 'A');
+                            return;
+                        }
+                    } else {
+                        if (state.pendingActivation) {
+                            activatePlayerFever(player);
+                            return;
+                        }
+                        if (triggeredAllClear) {
+                            state.pendingAllClearStage = true;
+                            player.phase = 'feverAllClearWait';
+                            return;
+                        }
                     }
                 }
                 enterControl(player);
@@ -2518,6 +2779,29 @@
         context.restore();
     }
 
+    /** 피버 룰 필드 옆 베젤에 상쇄 전등 7개와 다음 피버 시간을 그린다. @param {PlayerState} player 표시 대상 @returns {void} */
+    function drawFeverGauge(player) {
+        if (!game?.feverRule || !player.fever) return;
+        const isLeftPlayer = player === game.players[0];
+        const centerX = isLeftPlayer ? player.fieldX + COLUMNS * CELL + CELL / 2 : player.fieldX - CELL / 2;
+        const topY = 190;
+        for (let visualIndex = 0; visualIndex < FEVER_GAUGE_MAX; visualIndex += 1) {
+            const gaugeIndex = FEVER_GAUGE_MAX - 1 - visualIndex;
+            const lit = gaugeIndex < player.fever.gauge;
+            context.beginPath();
+            context.arc(centerX, topY + visualIndex * 34, 8, 0, Math.PI * 2);
+            context.fillStyle = lit ? '#ffe45c' : '#45505a';
+            context.fill();
+            context.strokeStyle = lit ? '#fff2a6' : '#26333d';
+            context.lineWidth = 2;
+            context.stroke();
+        }
+        context.fillStyle = '#f5fbfc';
+        context.font = `17px ${MESSAGE_FONT}`;
+        context.textAlign = 'center';
+        context.fillText(String(player.fever.nextTime).padStart(2, '0'), centerX, topY + FEVER_GAUGE_MAX * 34 + 4);
+    }
+
     /**
      * 한 플레이어의 필드, 예고줄, 낙하와 폭발 효과를 그린다.
      * @param {PlayerState} player 그릴 플레이어
@@ -2577,6 +2861,15 @@
         // 기본 룰·연습·연속 피버의 실제 플레이 중 나타난 예고뿌요만 갤러리에 공개한다.
         if (canUnlockGalleryWarningInCurrentGame()) displayedWarnings.forEach((unit) => unlockGalleryWarning(unit.type));
         drawWarningUnits(x, FIELD_TOP - CELL, displayedWarnings);
+        drawFeverGauge(player);
+        if (game?.feverRule && player.fever?.active) {
+            context.fillStyle = player.fever.leftTime <= 10000 ? '#ef5350' : '#f5fbfc';
+            context.font = `28px ${MESSAGE_FONT}`;
+            context.textAlign = 'center';
+            context.fillText(String(Math.ceil(player.fever.leftTime / 1000)), x + COLUMNS * CELL / 2, FIELD_TOP + 31);
+            context.font = `12px ${MESSAGE_FONT}`;
+            context.fillText(`${translate('목표 연쇄')} ${player.fever.targetCombo}`, x + COLUMNS * CELL / 2, FIELD_TOP + 51);
+        }
         if (player.effects) {
             const progress = Math.min(1, player.effects.elapsed / player.effects.duration);
             player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress));
@@ -3688,6 +3981,7 @@
     function closeRuleSelection() {
         ruleSelectionOpen = false;
         ruleSelectionFocus = 0;
+        opponentMenuRule = 'standard';
     }
 
     /** 게임 규칙 선택지에서 연습을 고른 뒤 색상 수 선택 화면을 연다. @returns {void} */
@@ -3755,15 +4049,19 @@
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 90 : 110);
         if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'opponent') {
-            context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('난이도'), WIDTH / 2, 130);
-            DIFFICULTIES.forEach((difficulty, index) => {
-                const x = 465 + index * 120;
-                const selected = index === selectedDifficulty;
-                context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 135, 110, 44);
-                context.strokeStyle = opponentMenuFocus === 0 && selected ? '#f7c843' : '#3b6070'; context.lineWidth = opponentMenuFocus === 0 && selected ? 4 : 2;
-                context.strokeRect(x, 135, 110, 44);
-                context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 163);
-            });
+            if (opponentMenuRule !== 'fever') {
+                context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('난이도'), WIDTH / 2, 130);
+                DIFFICULTIES.forEach((difficulty, index) => {
+                    const x = 465 + index * 120;
+                    const selected = index === selectedDifficulty;
+                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 135, 110, 44);
+                    context.strokeStyle = opponentMenuFocus === 0 && selected ? '#f7c843' : '#3b6070'; context.lineWidth = opponentMenuFocus === 0 && selected ? 4 : 2;
+                    context.strokeRect(x, 135, 110, 44);
+                    context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 163);
+                });
+            } else {
+                context.fillStyle = '#ffd54f'; context.font = `24px ${TITLE_FONT}`; context.fillText(translate('피버 룰'), WIDTH / 2, 157);
+            }
             AI_DIFFICULTIES.forEach((difficulty, index) => {
                 const x = 465 + index * 120;
                 const selected = index === selectedAiDifficulty;
@@ -3931,6 +4229,14 @@
         game.fever.leftTime = Math.max(0, game.fever.leftTime - delta);
     }
 
+    /** 피버 룰에서 각 플레이어의 피버 남은 시간을 독립적으로 감소시킨다. @param {number} delta 이전 프레임 후 경과한 밀리초 @returns {void} */
+    function updateFeverRuleTime(delta) {
+        if (!game?.feverRule || game.countdown > 0 || game.ending) return;
+        game.players.forEach((player) => {
+            if (player.fever?.active) player.fever.leftTime = Math.max(0, player.fever.leftTime - delta);
+        });
+    }
+
     /**
      * 애니메이션 프레임을 갱신하고 다음 프레임을 예약한다.
      * @param {number} time 브라우저가 제공한 현재 시각
@@ -3963,6 +4269,7 @@
                 game.elapsed += delta;
                 refreshGameMarginRate();
                 updateContinuousFeverTime(delta);
+                updateFeverRuleTime(delta);
                 updatePlayer(game.players[0], game.players[1], delta);
                 updatePlayer(game.players[1], game.players[0], delta);
             }
@@ -4109,10 +4416,11 @@
         // 결과 화면에서는 Enter 또는 ESC로 연습은 메인, 대전은 적 선택 화면으로 돌아간다.
         if (game && !game.running && (key === 'enter' || key === 'escape')) {
             const returnToTitle = game.practice;
+            const returnToFeverOpponent = game.feverRule === true;
             stopBackgroundMusic();
             game = null;
             if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
-            else openOpponentMenu();
+            else openOpponentMenu(returnToFeverOpponent);
             return;
         }
         // 게임이 없으면 키 입력을 제목 또는 상대 선택 메뉴로 전달한다.
@@ -4133,7 +4441,7 @@
                     ? (titleMenuFocus + 6) % 7
                     : (titleMenuFocus + 1) % 7;
             } else if (menuScreen === 'opponent' && key === 'arrowup') {
-                opponentMenuFocus = Math.max(0, opponentMenuFocus - 1);
+                opponentMenuFocus = Math.max(opponentMenuRule === 'fever' ? 1 : 0, opponentMenuFocus - 1);
             } else if (menuScreen === 'opponent' && key === 'arrowdown') {
                 opponentMenuFocus = Math.min(3, opponentMenuFocus + 1);
             } else if (menuScreen === 'opponent' && key === 'arrowleft') {
@@ -4156,7 +4464,7 @@
                 else if (opponentMenuFocus === 2) {
                     opponentMenuFocus = 3;
                     selectedOpponentAction = 0;
-                } else if (selectedOpponentAction === 0) startGame();
+                } else if (selectedOpponentAction === 0) startGame(false, false, opponentMenuRule === 'fever');
                 else { menuScreen = 'title'; loadNotice(); }
             } else if (key === 'escape' && menuScreen === 'opponent') { menuScreen = 'title'; loadNotice(); }
             return;
@@ -4260,9 +4568,11 @@
      * 적 선택 화면을 현재 선택값과 첫 포커스 상태로 연다.
      * @returns {void}
      */
-    function openOpponentMenu() {
+    function openOpponentMenu(feverRule = false) {
+        opponentMenuRule = feverRule ? 'fever' : 'standard';
+        if (feverRule) selectedDifficulty = DIFFICULTIES.length - 1;
         ensureSelectedOpponent();
-        opponentMenuFocus = 0;
+        opponentMenuFocus = feverRule ? 1 : 0;
         selectedOpponentAction = 0;
         menuScreen = 'opponent';
     }
@@ -4300,10 +4610,11 @@
             const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
             if (x >= 515 && x <= 765 && y >= 165 && y <= 229) {
                 const returnToTitle = game.practice;
+                const returnToFeverOpponent = game.feverRule === true;
                 stopBackgroundMusic();
                 game = null;
                 if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
-                else openOpponentMenu();
+                else openOpponentMenu(returnToFeverOpponent);
             }
             return;
         }
@@ -4429,7 +4740,7 @@
             const opponentX = (x - WIDTH / 2) / OPPONENT_MENU_SCALE + WIDTH / 2;
             const opponentY = (y - HEIGHT / 2) / OPPONENT_MENU_SCALE + HEIGHT / 2;
             const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => opponentX >= 465 + index * 120 && opponentX <= 575 + index * 120 && opponentY >= 135 && opponentY <= 179);
-            if (difficultyIndex >= 0) {
+            if (difficultyIndex >= 0 && opponentMenuRule !== 'fever') {
                 selectedDifficulty = difficultyIndex;
                 opponentMenuFocus = 0;
                 return;
@@ -4456,7 +4767,7 @@
             } else if (opponentX >= 440 && opponentX <= 690 && opponentY >= 600 && opponentY <= 658) {
                 selectedOpponentAction = 0;
                 opponentMenuFocus = 3;
-                startGame();
+                startGame(false, false, opponentMenuRule === 'fever');
             } else if (opponentX >= 710 && opponentX <= 840 && opponentY >= 600 && opponentY <= 658) {
                 selectedOpponentAction = 1;
                 opponentMenuFocus = 3;
@@ -4467,14 +4778,14 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'practice_difficulty'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
         if (settingsResetting) return { screen: 'settings_resetting', playerCanControl: false };
         if (!game) {
             if (menuScreen === 'initialTitle') return { screen: 'initial_title', playerCanControl: false };
             if (menuScreen === 'title' && ruleSelectionOpen) return { screen: 'rule_select', playerCanControl: false };
-            if (menuScreen === 'opponent') return { screen: 'opponent_select', playerCanControl: false };
+            if (menuScreen === 'opponent') return { screen: opponentMenuRule === 'fever' ? 'fever_opponent_select' : 'opponent_select', playerCanControl: false };
             if (menuScreen === 'practiceDifficulty') return { screen: 'practice_difficulty', playerCanControl: false };
             if (menuScreen === 'simulator') {
                 const screen = simulator?.mode === 'draw' ? 'simulator_draw' : simulator?.mode === 'complete' ? 'simulator_complete' : 'simulator_simulation';
@@ -4526,6 +4837,16 @@
             board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos },
             nextPairs: player.nextPairs.map((pair) => [...pair]),
             warningPuyos: warningUnits(warningAmount(player, opponent)).map((unit) => unit.type),
+            fever: player.fever ? {
+                active: player.fever.active,
+                gauge: player.fever.gauge,
+                nextTime: player.fever.nextTime,
+                targetCombo: player.fever.targetCombo,
+                leftTime: player.fever.leftTime,
+                damage: player.fever.damage,
+                turn: player.fever.turn,
+                field: player.fever.active ? { columns: COLUMNS, rows: ROWS, cells: player.board.map((row) => [...row]) } : null
+            } : null,
             active
         };
     }
@@ -4544,6 +4865,7 @@
             screen: screen.screen,
             playerCanControl: screen.playerCanControl,
             continuousFever: game.continuousFever === true,
+            feverRule: game.feverRule === true,
             fever: game.fever ? {
                 targetCombo: game.fever.targetCombo,
                 leftTime: game.fever.leftTime,
@@ -4562,7 +4884,7 @@
     /**
      * 현재 표시 중인 화면과 플레이어 조작 가능 여부를 반환한다.
      * 메뉴, 튜토리얼, 대전 진행 상태 모두에서 사용할 수 있다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'practice_difficulty'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getScreenState() {
         return getNowScreen();
@@ -4589,6 +4911,7 @@
             marginRate: game.marginRate,
             practice: game.practice,
             continuousFever: game.continuousFever === true,
+            feverRule: game.feverRule === true,
             fever: game.fever ? {
                 targetCombo: game.fever.targetCombo,
                 leftTime: game.fever.leftTime,
@@ -4644,7 +4967,7 @@
         const screenSchema = {
             type: 'object',
             properties: {
-                screen: { type: 'string', enum: ['initial_title', 'main_menu', 'rule_select', 'practice_difficulty', 'opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'], description: 'The exact visible title, menu, simulator, tutorial, or match screen.' },
+                screen: { type: 'string', enum: ['initial_title', 'main_menu', 'rule_select', 'practice_difficulty', 'opponent_select', 'fever_opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'settings_resetting', 'gallery', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'], description: 'The exact visible title, menu, gallery, simulator, tutorial, or match screen.' },
                 playerCanControl: { type: 'boolean' }
             },
             required: ['screen', 'playerCanControl']
@@ -4671,8 +4994,15 @@
                     puyos: { type: 'array', items: puyoSchema, description: 'All fixed puyos, including hidden rows.' }
                 }, required: ['columns', 'rows', 'visibleRows', 'puyos'] },
                 nextPairs: { type: 'array', items: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 2, maxItems: 2 } },
-                warningPuyos: { type: 'array', items: { type: 'string' } }, active: activeSchema
-            }, required: ['name', 'board', 'nextPairs', 'warningPuyos', 'active']
+                warningPuyos: { type: 'array', items: { type: 'string' } },
+                fever: { type: ['object', 'null'], properties: {
+                    active: { type: 'boolean' }, gauge: { type: 'integer', minimum: 0, maximum: FEVER_GAUGE_MAX },
+                    nextTime: { type: 'integer', minimum: FEVER_INITIAL_TIME, maximum: FEVER_MAX_TIME },
+                    targetCombo: { type: 'integer', minimum: FEVER_INITIAL_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO },
+                    leftTime: { type: 'number', minimum: 0 }, damage: { type: 'number', minimum: 0 }, turn: { type: 'integer', minimum: 0 },
+                    field: { type: ['object', 'null'] }
+                } }, active: activeSchema
+            }, required: ['name', 'board', 'nextPairs', 'warningPuyos', 'fever', 'active']
         };
         const feverSchema = {
             type: ['object', 'null'],
@@ -4694,29 +5024,30 @@
                 screen: { type: 'string', enum: ['playing', 'paused'] },
                 playerCanControl: { type: 'boolean' },
                 continuousFever: { type: 'boolean' },
+                feverRule: { type: 'boolean' },
                 fever: feverSchema,
                 player: playerSchema, opponent: playerSchema,
                 recommendedPoint: { type: ['object', 'null'], properties: { x: { type: 'integer' }, y: { type: 'integer' } } }
             },
-            required: ['screen', 'playerCanControl', 'continuousFever', 'fever', 'player', 'opponent', 'recommendedPoint']
+            required: ['screen', 'playerCanControl', 'continuousFever', 'feverRule', 'fever', 'player', 'opponent', 'recommendedPoint']
         };
         const tools = [
             {
                 name: 'manual',
                 description: 'Return English instructions for playing Puyo W and using the other available game tools.',
                 inputSchema: emptyInput,
-                execute: () => 'Puyo W is a falling-pair puzzle battle. During a normal match control turn, use left/right to move, Z/X to rotate, and down to fall faster. Match four or more same-color puyos to clear them and send attacks. Use now_screen to identify the exact menu, simulator, tutorial, or match screen. Use now_game_status only during a normal match while playing or paused, and point_recommend only during a controllable normal-match turn.'
+                execute: () => 'Puyo W is a falling-pair puzzle battle. During a match control turn, use left/right to move, Z/X to rotate, and down to fall faster. Match four or more same-color puyos to clear them and send attacks. Fever-rule players have independent gauge, nextTime, targetCombo, leftTime, and fever field state. Use now_screen to identify the exact menu, gallery, simulator, tutorial, or match screen. Use now_game_status while a match is playing or paused, and point_recommend only during a controllable player turn.'
             },
             {
                 name: 'now_screen',
-                description: 'Get the exact visible Puyo W screen, including practice difficulty selection, simulator modes, tutorial phases, match countdown, ending animation, pause, and game-over. playerCanControl is true only when the human can control an active pair in a normal match.',
+                description: 'Get the exact visible Puyo W screen, including gallery, standard or fever opponent selection, practice difficulty selection, simulator modes, tutorial phases, match countdown, ending animation, pause, and game-over. playerCanControl is true only when the human can control an active pair in a match.',
                 inputSchema: emptyInput,
                 outputSchema: screenSchema,
                 execute: getNowScreen
             },
             {
                 name: 'now_game_status',
-                description: 'Get complete JSON game state only while the match is playing or paused: every placed puyo on both boards, upcoming pairs, warning puyos, and both active pairs with coordinates.',
+                description: 'Get complete JSON game state only while the match is playing or paused: both boards, upcoming pairs, warning puyos, per-player fever state and fields, and both active pairs with coordinates.',
                 inputSchema: emptyInput,
                 outputSchema: statusSchema,
                 execute: getNowGameStatus
@@ -5287,6 +5618,35 @@
                 columns: COLUMNS,
                 rows: ROWS,
                 cells: player.board.map((row) => [...row])
+            };
+        }
+
+        /** CPU 자신이 피버 상황인지 확인한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {boolean} 피버 상황 여부 */
+        isInFever(player) {
+            return player.fever?.active === true;
+        }
+
+        /** CPU 자신의 피버 전용 필드 배치를 반환한다. 피버 중이 아니면 null이다. @param {PlayerState} player 자동 조작할 플레이어 @returns {{columns:number,rows:number,cells:(string|null)[][]}|null} 피버 필드 복사본 */
+        getMyFeverFieldInfo(player) {
+            if (!this.isInFever(player)) return null;
+            return {
+                columns: COLUMNS,
+                rows: ROWS,
+                cells: player.board.map((row) => [...row])
+            };
+        }
+
+        /** CPU 자신의 피버 게이지·시간·피해·목표 연쇄 상태를 반환한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {object|null} 피버 룰 상태 */
+        getMyFeverStatus(player) {
+            if (!player.fever) return null;
+            return {
+                active: player.fever.active,
+                gauge: player.fever.gauge,
+                nextTime: player.fever.nextTime,
+                targetCombo: player.fever.targetCombo,
+                leftTime: player.fever.leftTime,
+                damage: player.fever.damage,
+                turn: player.fever.turn
             };
         }
 

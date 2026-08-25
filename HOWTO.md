@@ -31,7 +31,7 @@ webpuyo.js 는 CDN으로도 사용할 수 있습니다.
 - `hidden`: `true`이면 적 선택 화면에 표시하지 않습니다.
 - `notAvail`: `true`이면 회색의 `추후 출시예정` 카드로만 표시하며, 마우스와 키보드로 선택할 수 없습니다.
 
-일반 대전에서 플레이어가 승리하면 브라우저 `localStorage`의 `puyow_store`에 적 클래스명이 기록됩니다. `hidden` 및 `notAvail`이 아닌 적은 정렬 순서상 바로 이전 적을 한 번 이겨야 선택할 수 있으며, 첫 번째 적은 쉬움·보통·어려움 모두에서 항상 선택할 수 있습니다. 저장 데이터의 `clearList` 배열은 기존처럼 전체 승리 적 목록을 보관하지만 해금 판정에는 사용하지 않고, `clearListByDifficulty` 객체가 `easy`, `normal`, `hard` 난이도별 잠금 해제 목록을 전담합니다. 따라서 안드로말리우스를 이겨도 해당 난이도에서만 다음 적이 열립니다.
+일반 대전에서 플레이어가 승리하면 브라우저 `localStorage`의 `puyow_store`에 적 클래스명이 기록됩니다. `hidden` 및 `notAvail`이 아닌 적은 정렬 순서상 바로 이전 적을 한 번 이겨야 선택할 수 있으며, 첫 번째 적은 쉬움·보통·어려움 모두에서 항상 선택할 수 있습니다. 기본 룰은 `clearListByDifficulty`, 피버 룰은 `feverClearListByDifficulty`의 `easy`, `normal`, `hard` 배열을 각각 사용하므로 두 규칙의 적 잠금 해제 진행도는 서로 영향을 주지 않습니다. `clearList`는 기존 기본 룰의 전체 승리 적 목록만 보관합니다.
 
 ## 초기화
 
@@ -267,7 +267,7 @@ WebPuyo.registerOpponent({
 });
 ```
 
-`my-opponent.js`는 `webpuyo.js` 다음, `WebPuyo.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다. 일반 대전 승리 기록은 컨트롤러 클래스명으로 브라우저 `localStorage`의 `puyow_store.clearList`와 현재 AI 난이도에 해당하는 `clearListByDifficulty` 배열에 저장됩니다. 해금 판정은 `clearListByDifficulty`만 사용하므로, 이미 배포한 적 클래스의 이름을 바꾸면 기존 난이도별 잠금 해제 기록과 호환되지 않습니다.
+`my-opponent.js`는 `webpuyo.js` 다음, `WebPuyo.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다. 기본 룰 승리 기록은 컨트롤러 클래스명으로 `puyow_store.clearList`와 현재 AI 난이도의 `clearListByDifficulty` 배열에 저장되고, 피버 룰 승리 기록은 별도 `feverClearListByDifficulty` 배열에 저장됩니다. 이미 배포한 적 클래스의 이름을 바꾸면 기존 난이도별 잠금 해제 기록과 호환되지 않습니다.
 
 ## 게임 화면 테마
 
@@ -485,7 +485,7 @@ WebPuyo.commonSoundPool.backgroundMusic = 'sounds/common-bgm.ogg';
 
 ## 피버 패턴 추가
 
-피버 모드의 피버 패턴을 추가할 수 있습니다. 피버 모드에서 플레이어 컨트롤 차례가 되면 필드를 비운 뒤 `FeverStageState`에 정의한 뿌요 배치 패턴을 채우고, 지정된 다음 뿌요 쌍을 제공합니다. 외부 스크립트에서는 `WebPuyo.FeverStageState`를 만들고 `WebPuyo.registerFeverStageState()`로 등록해 목표 연쇄별 패턴을 추가할 수 있습니다. 피버 모드 게임을 시작하기 전에 등록하는 것을 권장합니다.
+피버 룰의 피버 상황과 연속 피버 모드에서 사용할 피버 패턴을 추가할 수 있습니다. 새 피버 턴에는 필드를 비운 뒤 `FeverStageState`에 정의한 뿌요 배치 패턴을 채우고, 지정된 다음 뿌요 쌍을 제공합니다. 외부 스크립트에서는 `WebPuyo.FeverStageState`를 만들고 `WebPuyo.registerFeverStageState()`로 등록해 목표 연쇄별 패턴을 추가할 수 있습니다. 피버 게임을 시작하기 전에 등록하는 것을 권장합니다.
 
 `FeverStageState` 생성자는 `new WebPuyo.FeverStageState(stageData, targetCombo, suppliedNextPuyos, difficulty)` 형식입니다.
 
@@ -516,7 +516,7 @@ const fiveChainStage = new WebPuyo.FeverStageState(
 WebPuyo.registerFeverStageState(fiveChainStage);
 ```
 
-JSON복사 결과에는 클릭해서 고정한 필드 뿌요만 들어갑니다. 연속 피버에서 줄 다음 뿌요 쌍은 포함되지 않으므로, 등록할 때는 동색·이색 구성에 맞춰 `suppliedNextPuyos`를 별도로 지정합니다.
+JSON복사 결과에는 클릭해서 고정한 필드 뿌요만 들어갑니다. 피버 턴에 줄 다음 뿌요 쌍은 포함되지 않으므로, 등록할 때는 동색·이색 구성에 맞춰 `suppliedNextPuyos`를 별도로 지정합니다.
 
 새 피버 턴에서는 스테이지의 `suppliedNextPuyos`와 배치 안의 일반 색상이 실제 다음 쌍에 맞게 중복 없이 1:1로 다시 매핑됩니다. 따라서 특정 색 이름 자체보다 색의 연결 구조가 중요하며, `'garbage'`는 색상 변환 없이 유지됩니다. 각 목표 연쇄에는 동색 쌍용 패턴과 이색 쌍용 패턴을 모두 하나 이상 등록해야 어느 다음 쌍이 나와도 후보를 고를 수 있습니다.
 
@@ -525,6 +525,14 @@ JSON복사 결과에는 클릭해서 고정한 필드 뿌요만 들어갑니다.
 ## 현재 필드 정보 읽기
 
 `getMyFieldInfo(player)`은 CPU 자신의 필드 배치 현황을 새 JSON 객체로 반환합니다. 반환값은 `{ columns, rows, cells }` 형식이며, `cells[y][x]`에는 색상 문자열, 방해뿌요의 `'garbage'`, 또는 빈 칸의 `null`이 들어 있습니다. `y`의 `0`행은 필드 맨 아래입니다. 반환된 `cells`는 복사본이므로 값을 바꾸어도 실제 게임 필드는 바뀌지 않습니다.
+
+피버 룰 대응 AI는 다음 메서드로 자신의 피버 상태를 읽을 수 있습니다.
+
+- `isInFever(player)`: 현재 피버 상황이면 `true`를 반환합니다.
+- `getMyFeverFieldInfo(player)`: 피버 중인 경우 피버 전용 필드를 `{ columns, rows, cells }` 복사본으로 반환하고, 피버 중이 아니면 `null`을 반환합니다.
+- `getMyFeverStatus(player)`: `{ active, gauge, nextTime, targetCombo, leftTime, damage, turn }`을 반환합니다. `leftTime`은 밀리초 단위이고 `damage`는 일반 피해와 분리된 피버 전용 피해이며, 피버 룰이 아닌 게임에서는 `null`입니다.
+
+기본 제공 적인 `BundledEnemy` 하위 클래스는 피버 상황에서 패배 위치를 피한 뒤 예상 연쇄 수가 가장 큰 위치와 회전을 자동으로 선택합니다. 외부에서 `Enemy`를 직접 상속한 적에게는 이 공통 특수 조건이 적용되지 않으므로, 필요하면 위 메서드와 `player.aiSimulations`를 이용해 자체 전략을 구현해야 합니다.
 
 이 메서드는 주로 `chooseTarget()`에서 현재 필드 높이, 색상 연결, 방해뿌요 위치를 판단할 때 사용합니다.
 
