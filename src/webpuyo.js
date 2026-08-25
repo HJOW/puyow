@@ -54,13 +54,13 @@
     /** 화면에 표시할 점수의 최소 자릿수다. @type {number} */
     const SCORE_DISPLAY_DIGITS = 9;
     /** 화면 제목용 기본 글꼴 이름이다. @type {string} */
-    const TITLE_FONT_NAME = 'Black Han Sans';
+    const TITLE_FONT_NAME = 'Pretendard';
     /** 버튼용 기본 글꼴 이름이다. @type {string} */
     const BUTTON_FONT_NAME = 'Noto Sans KR';
     /** 메시지용 기본 글꼴 이름이다. @type {string} */
     const MESSAGE_FONT_NAME = 'D2Coding';
     /** 글꼴 지정 시 기본 글꼴 뒤에 대체 글꼴로 붙일 글꼴 이름 목록이다. 배열 내부와 세 글꼴 이름 모두와 중복되지 않도록 자동으로 걸러진다. @type {string[]} */
-    const FALLBACK_FONTS = ['Nanum Gothic Coding', 'Nanum Gothic', 'Noto Sans SC', 'Noto Sans JP', 'monospace', 'sans-serif'];
+    const FALLBACK_FONTS = ['Nanum Gothic Coding', 'Nanum Gothic', 'Noto Sans SC', 'Noto Sans JP', 'Black Han Sans', 'monospace', 'sans-serif'];
     /** 화면 제목이나 절 제목처럼 강조가 필요한 큰 헤더에 사용할 글꼴 목록이다. @type {string} */
     const TITLE_FONT = buildFontStack(TITLE_FONT_NAME);
     /** 버튼, 선택 카드 등 클릭 가능한 항목의 라벨에 사용할 글꼴 목록이다. @type {string} */
@@ -129,7 +129,7 @@
     const stringTable = {
         en: {
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
-            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'Fever Rules', '연속 피버': 'Continuous Fever', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
+            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -144,7 +144,7 @@
         },
         ja: {
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
-            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'フィーバールール', '연속 피버': '連続フィーバー', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
+            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '시작': '開始', '이전': '戻る',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -159,7 +159,7 @@
         },
         zh: {
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
-            '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': '狂热规则', '연속 피버': '连续狂热', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
+            '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',

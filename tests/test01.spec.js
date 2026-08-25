@@ -102,9 +102,9 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
     const texts = window.testCanvasTexts;
     const localizedOptions = [
       ['기본 룰', '피버 룰', '연습', '연속 피버'],
-      ['Standard Rules', 'Fever Rules', 'Practice', 'Continuous Fever'],
-      ['基本ルール', 'フィーバールール', '練習', '連続フィーバー'],
-      ['基本规则', '狂热规则', '练习', '连续狂热'],
+      ['Standard Rules', 'FEVER Rules', 'Practice', 'Continuous FEVER'],
+      ['基本ルール', 'FEVERルール', '練習', '連続FEVER'],
+      ['基本规则', 'FEVER规则', '练习', '连续FEVER'],
     ];
     return localizedOptions.some((options) => options.every((text) => texts.includes(text)));
   })).toBe(true);
