@@ -197,6 +197,8 @@
     let menuScreen = 'initialTitle';
     /** 갤러리의 현재 선택과 포커스 상태다. @type {{typeIndex:number,itemIndex:number,focus:'type'|'target',portraitElapsed:number}|null} */
     let gallery = null;
+    /** 초기 타이틀 중앙에 순환 표시할 갤러리 대상 상태다. @type {{loaded:boolean,items:{draw:()=>void}[],startIndex:number,elapsed:number}} */
+    let initialGalleryPreview = { loaded: false, items: [], startIndex: 0, elapsed: 0 };
     /** localStorage에서 읽은 갤러리 잠금 해제 정보다. @type {{warning:string[],enemies:string[]}} */
     let galleryUnlocks = createInitialGalleryUnlocks();
     /** 시뮬레이터의 편집·재생 상태다. @type {object|null} */
@@ -371,6 +373,56 @@
         galleryUnlocks.enemies.push(classType);
         // saveGalleryUnlocks는 setTimeout(1)과 try-catch로 저장 실패가 게임 흐름을 막지 않게 한다.
         saveGalleryUnlocks();
+    }
+
+    /** 초기 타이틀 중앙에 그릴, 잠금 해제된 갤러리 대상 목록을 만든다. @returns {{draw:()=>void}[]} */
+    function getInitialGalleryPreviewItems() {
+        const centerX = WIDTH / 2;
+        const centerY = 380;
+        const puyos = [...COLORS, 'garbage'].map((color) => ({
+            draw: () => {
+                context.save(); context.translate(centerX, centerY); context.scale(5.6, 5.6);
+                drawPuyo(-CELL / 2, -CELL / 2, color);
+                context.restore();
+            }
+        }));
+        const warnings = [...WARNING_PUYO_CLASSES]
+            .sort((left, right) => left.unitCount - right.unitCount)
+            .map((WarningPuyoType) => new WarningPuyoType())
+            .filter((unit) => galleryUnlocks.warning.includes(unit.type))
+            .map((unit) => ({
+                draw: () => {
+                    context.save(); context.translate(centerX, centerY); context.scale(5.2, 5.2);
+                    unit.draw(context, -CELL / 2, -CELL / 2, CELL);
+                    context.restore();
+                }
+            }));
+        const enemies = getVisibleOpponents()
+            .filter((entry) => galleryUnlocks.enemies.includes(entry.classType))
+            .map((entry) => ({ draw: () => entry.createController().drawPortrait(context, centerX, centerY, 2.8, 'normal') }));
+        return [...puyos, ...warnings, ...enemies];
+    }
+
+    /** 초기 타이틀을 먼저 그린 뒤 비동기로 갤러리 잠금 데이터를 읽고 미리보기를 준비한다. @returns {void} */
+    function loadInitialGalleryPreview() {
+        initialGalleryPreview = { loaded: false, items: [], startIndex: 0, elapsed: 0 };
+        setTimeout(() => {
+            try {
+                // loadGalleryUnlocks 내부에서도 저장소 오류를 처리한다.
+                loadGalleryUnlocks();
+                const items = getInitialGalleryPreviewItems();
+                initialGalleryPreview = {
+                    loaded: true,
+                    items,
+                    startIndex: items.length ? Math.floor(randomFloat() * items.length) : 0,
+                    elapsed: 0
+                };
+            } catch (error) {
+                console.error('Puyo W 초기 갤러리 미리보기를 준비하지 못했습니다.', error);
+                galleryUnlocks = createInitialGalleryUnlocks();
+                initialGalleryPreview = { loaded: true, items: getInitialGalleryPreviewItems(), startIndex: 0, elapsed: 0 };
+            }
+        }, 1);
     }
 
     /**
@@ -3502,6 +3554,11 @@
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `58px ${TITLE_FONT}`;
         context.fillText('Puyo W', WIDTH / 2, 115);
+        if (initialGalleryPreview.loaded && initialGalleryPreview.items.length) {
+            const offset = Math.floor(initialGalleryPreview.elapsed / 2000);
+            const index = (initialGalleryPreview.startIndex + offset) % initialGalleryPreview.items.length;
+            initialGalleryPreview.items[index].draw();
+        }
         context.fillStyle = '#f5fbfc'; context.font = `22px ${MESSAGE_FONT}`;
         context.fillText(translate('ENTER 혹은 클릭하여 시작'), WIDTH / 2, HEIGHT - 70);
     }
@@ -3816,6 +3873,7 @@
         if (game?.running && !game.paused) updateEnergyTransfers(delta);
         if (!game && menuScreen === 'simulator') { updateSimulator(delta); updateEnergyTransfers(delta); }
         if (!game && menuScreen === 'gallery' && gallery) gallery.portraitElapsed += delta;
+        if (!game && menuScreen === 'initialTitle' && initialGalleryPreview.loaded) initialGalleryPreview.elapsed += delta;
         syncBackgroundMusic();
         render();
         animationFrameId = requestAnimationFrame(frame);
@@ -4613,6 +4671,7 @@
         game = null;
         simulator = null;
         gallery = null;
+        initialGalleryPreview = { loaded: false, items: [], startIndex: 0, elapsed: 0 };
         settingsDraft = null;
         recommendedPoint = null;
         menuScreen = 'initialTitle';
@@ -4640,7 +4699,6 @@
         languageCode = navigator.language || navigator.userLanguage || 'ko';
         if (languageCode === 'ko-KR') languageCode = 'ko';
         loadStore();
-        loadGalleryUnlocks();
         createdCanvas = false;
         const usesDefaultCanvas = target === null || target === undefined || target === '';
         const targetElement = usesDefaultCanvas ? document.getElementById('webpuyo_canvas') : typeof target === 'string' ? document.getElementById(target) : target;
@@ -4689,6 +4747,9 @@
         prepareSoundPools();
         registerWebMcpTools();
         loadNotice();
+        // 첫 화면은 제목과 시작 문구만 즉시 표시한 뒤 갤러리 미리보기를 비동기로 준비한다.
+        render();
+        loadInitialGalleryPreview();
         animationFrameId = requestAnimationFrame(frame);
     }
 
