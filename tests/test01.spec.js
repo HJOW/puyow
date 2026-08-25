@@ -266,7 +266,7 @@ test('시뮬레이터 연쇄는 새 점수 계산식과 같은 연쇄 문구를 
   }
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => text === '1연쇄' || text === '1 Chain'))).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('0000040'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000040'))).toBe(true);
 });
 
 test('시뮬레이터 점수는 동시 폭발의 색수 보너스를 합산한다', async ({ page }) => {
@@ -284,7 +284,7 @@ test('시뮬레이터 점수는 동시 폭발의 색수 보너스를 합산한�
     await canvas.click({ position: { x, y: 501 } });
   }
   await canvas.click({ position: { x: 960, y: 350 } });
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('0000240'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000240'))).toBe(true);
 });
 
 test('시뮬레이터 점수는 다섯 뿌요 연결 보너스를 적용한다', async ({ page }) => {
@@ -298,5 +298,5 @@ test('시뮬레이터 점수는 다섯 뿌요 연결 보너스를 적용한다',
     await canvas.click({ position: { x, y: 539 } });
   }
   await canvas.click({ position: { x: 960, y: 350 } });
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('0000100'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000100'))).toBe(true);
 });

@@ -51,6 +51,8 @@
     ];
     /** 뿌요 폭발로 계산된 ATTACK에 적용할 배율이다. 밸런스 조절 및 임시 테스트에 사용한다. @type {number} */
     const EXPLOSION_REWARD_MULTIPLIER = 1;
+    /** 화면에 표시할 점수의 최소 자릿수다. @type {number} */
+    const SCORE_DISPLAY_DIGITS = 9;
     /** 화면 제목용 기본 글꼴 이름이다. @type {string} */
     const TITLE_FONT_NAME = 'Black Han Sans';
     /** 버튼용 기본 글꼴 이름이다. @type {string} */
@@ -1304,6 +1306,11 @@
         return point / marginRate * EXPLOSION_REWARD_MULTIPLIER;
     }
 
+    /** 화면용 점수를 소수점 없이 9자리 이상으로 변환한다. @param {number} point 점수 @returns {string} 표시용 점수 */
+    function formatPoint(point) {
+        return String(Math.max(0, Math.floor(point))).padStart(SCORE_DISPLAY_DIGITS, '0');
+    }
+
     /**
      * 보드의 모든 뿌요를 열별로 아래로 내린다.
      * @param {(string|null)[][]} board 중력을 적용할 보드
@@ -2499,7 +2506,7 @@
             context.fillStyle = '#0b202c'; context.fillRect(x, 492, 146, 92);
             context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, 492, 146, 92);
             context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(player.name, x + 73, 516);
-            context.fillStyle = '#f5fbfc'; context.font = `27px ${MESSAGE_FONT}`; context.fillText(String(Math.floor(player.point)).padStart(7, '0'), x + 73, 557);
+            context.fillStyle = '#f5fbfc'; context.font = `22px ${MESSAGE_FONT}`; context.fillText(formatPoint(player.point), x + 73, 557);
         });
     }
 
@@ -2744,7 +2751,7 @@
             context.fillText(translate(won ? '승리' : '패배'), x + CELL * 3, FIELD_TOP + CELL * 6.4);
         }
         context.fillStyle = '#d8f2f5'; context.font = `16px ${MESSAGE_FONT}`;
-        context.fillText(translate('최종 점수 %1', Math.floor(player.point).toLocaleString()), x + CELL * 3, FIELD_TOP + CELL * 7.15);
+        context.fillText(translate('최종 점수 %1', formatPoint(player.point)), x + CELL * 3, FIELD_TOP + CELL * 7.15);
         if (game.practice) {
             context.fillStyle = '#f7c843'; context.font = `15px ${MESSAGE_FONT}`;
             context.fillText(translate(game.continuousFever ? '연속 피버' : DIFFICULTIES[game.difficulty].name), x + CELL * 3, FIELD_TOP + CELL * 7.75);
@@ -3269,7 +3276,7 @@
             context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(600, 145, 150, 58);
             context.fillStyle = '#fff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('그리기'), 675, 183);
         }
-        context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`; context.fillText(simulator.mode === 'draw' ? translate('그리기') : translate('시뮬레이션'), 675, 486); context.font = `36px ${MESSAGE_FONT}`; context.fillStyle = '#f7c843'; context.fillText(String(Math.floor(player.point)).padStart(7, '0'), 675, 536); context.font = `17px ${MESSAGE_FONT}`; context.fillStyle = '#a9d9e5'; context.fillText('POINT', 675, 566);
+        context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`; context.fillText(simulator.mode === 'draw' ? translate('그리기') : translate('시뮬레이션'), 675, 486); context.font = `30px ${MESSAGE_FONT}`; context.fillStyle = '#f7c843'; context.fillText(formatPoint(player.point), 675, 536); context.font = `17px ${MESSAGE_FONT}`; context.fillStyle = '#a9d9e5'; context.fillText('POINT', 675, 566);
     }
 
     /** 초기 타이틀을 그리고 시작 조작을 안내한다. @returns {void} */
