@@ -483,6 +483,45 @@ WebPuyo.commonSoundPool.backgroundMusic = 'sounds/common-bgm.ogg';
 
 연쇄 번호가 7 이상이면 `spellCombo7` 또는 `puyoBurstCombo7`을 사용합니다. 적의 배경음악이 `null`일 때만 공통 배경음악을 대신 사용하며, 게임이 끝나면 배경음악은 자동으로 중지됩니다. 설정 화면의 배경음악·효과음 음량과 메인 화면의 음소거 상태가 모든 재생에 적용되고, 재생 오류는 `console.error`로 기록한 뒤 게임은 계속 진행됩니다.
 
+## 피버 패턴 추가
+
+피버 모드의 피버 패턴을 추가할 수 있습니다. 피버 모드에서 플레이어 컨트롤 차례가 되면 필드를 비운 뒤 `FeverStageState`에 정의한 뿌요 배치 패턴을 채우고, 지정된 다음 뿌요 쌍을 제공합니다. 외부 스크립트에서는 `WebPuyo.FeverStageState`를 만들고 `WebPuyo.registerFeverStageState()`로 등록해 목표 연쇄별 패턴을 추가할 수 있습니다. 피버 모드 게임을 시작하기 전에 등록하는 것을 권장합니다.
+
+`FeverStageState` 생성자는 `new WebPuyo.FeverStageState(stageData, targetCombo, suppliedNextPuyos, difficulty)` 형식입니다.
+
+- `stageData`: `{ puyos: [{ x, y, color }, ...] }` 형식의 배치 데이터입니다. `x`는 0~5, `y`는 0~16이며 `color`는 일반 색상 문자열 또는 `'garbage'`입니다. 시뮬레이터의 JSON 복사 결과를 그대로 사용할 수 있습니다.
+- `targetCombo`: 이 패턴이 유도해야 하는 연쇄 수입니다. 현재 연속 피버는 5~12만 선택하므로 이 범위의 패턴을 등록해야 합니다.
+- `suppliedNextPuyos`: 배치 직후 제공할 두 색상 문자열입니다. 연속 피버는 실제 다음 쌍이 동색인지 이색인지에 맞는 패턴만 후보로 사용합니다.
+- `difficulty`: 패턴 난이도를 기록하는 숫자 메타데이터입니다.
+
+### 시뮬레이터로 `stageData` 만들기
+
+직접 좌표와 색상을 작성할 필요는 없습니다. 메인 메뉴의 **시뮬레이터**에서 팔레트를 선택해 필드에 뿌요를 직접 배치하고, **재생**으로 연쇄가 목표 연쇄 수와 일치하는지 시험합니다. 패턴을 완성한 뒤 **JSON복사**를 누르면 클립보드에 `{ "puyos": [...] }` 형식의 JSON 문자열이 복사됩니다. 이 문자열은 `stageData`와 완전히 호환되므로, 아래처럼 그대로 붙여 넣으면 됩니다.
+
+```js
+// 시뮬레이터의 JSON복사 결과를 그대로 붙여 넣는다.
+const fiveChainStageData = {
+    "puyos": [
+        // 시뮬레이터에서 복사한 { "x": 0, "y": 0, "color": "red" } 등의 목록
+    ]
+};
+
+const fiveChainStage = new WebPuyo.FeverStageState(
+    fiveChainStageData,
+    5,
+    ['red', 'blue'], // 이색 다음 쌍을 위한 패턴
+    2
+);
+
+WebPuyo.registerFeverStageState(fiveChainStage);
+```
+
+JSON복사 결과에는 클릭해서 고정한 필드 뿌요만 들어갑니다. 연속 피버에서 줄 다음 뿌요 쌍은 포함되지 않으므로, 등록할 때는 동색·이색 구성에 맞춰 `suppliedNextPuyos`를 별도로 지정합니다.
+
+새 피버 턴에서는 스테이지의 `suppliedNextPuyos`와 배치 안의 일반 색상이 실제 다음 쌍에 맞게 중복 없이 1:1로 다시 매핑됩니다. 따라서 특정 색 이름 자체보다 색의 연결 구조가 중요하며, `'garbage'`는 색상 변환 없이 유지됩니다. 각 목표 연쇄에는 동색 쌍용 패턴과 이색 쌍용 패턴을 모두 하나 이상 등록해야 어느 다음 쌍이 나와도 후보를 고를 수 있습니다.
+
+`registerFeverStageState()`는 `FeverStageState` 인스턴스만 받으며 다른 값은 `TypeError`를 발생시킵니다. 좌표, 색상, 목표 연쇄가 실제로 올바른지는 등록 시 자동으로 시뮬레이션하지 않으므로, 시뮬레이터 또는 `estimateCombo()`로 실제 착지 가능한 배치와 목표 연쇄 수를 반드시 검증한 뒤 등록해야 합니다.
+
 ## 현재 필드 정보 읽기
 
 `getMyFieldInfo(player)`은 CPU 자신의 필드 배치 현황을 새 JSON 객체로 반환합니다. 반환값은 `{ columns, rows, cells }` 형식이며, `cells[y][x]`에는 색상 문자열, 방해뿌요의 `'garbage'`, 또는 빈 칸의 `null`이 들어 있습니다. `y`의 `0`행은 필드 맨 아래입니다. 반환된 `cells`는 복사본이므로 값을 바꾸어도 실제 게임 필드는 바뀌지 않습니다.

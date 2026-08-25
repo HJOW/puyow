@@ -5893,14 +5893,26 @@
         });
     }
 
+    /**
+     * 피버 연쇄 패턴을 추가한다.
+     * 
+     * @param {FeverStageState} feverStageState 피버 연쇄 패턴
+     */
+    function registerFeverStageState(feverStageState) {
+        if (!(feverStageState instanceof FeverStageState)) throw new TypeError('feverStageState는 FeverStageState 인스턴스여야 합니다.');
+        FEVER_STAGES.push(feverStageState);
+    }
+
     WebPuyo = {
         Enemy,
         WarningPuyo,
         SoundPool,
         CommonSoundPool,
         EnemySoundPool,
+        FeverStageState,
         createSoundPool,
         setEnemySoundPool,
+        registerFeverStageState,
         registerOpponent,
         registerWarningPuyo,
         registerLanguage,
