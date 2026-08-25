@@ -1332,6 +1332,19 @@
                 player.aiTarget = player.controller.chooseTarget(player);
                 player.aiRotation = ((player.controller.chooseRotate(player) % 4) + 4) % 4;
             }
+            // 기본 제공 적의 개별 쌓기 전략보다 즉시 패배 회피를 항상 우선한다. 피버 룰에서는
+            // isDefeatBoard가 (2,11)과 (3,11)을 모두 검사하므로, 최종 x·회전 조합도 두 칸을
+            // 포함한 실제 폭발·중력 결과로 재검증한 뒤 위험하면 안전한 후보로 교체한다.
+            if (player.controller instanceof BundledEnemy) {
+                const selectedPlacement = player.aiSimulations.find((simulation) => simulation.x === player.aiTarget && simulation.rotation === player.aiRotation);
+                if (selectedPlacement && causesImmediateDefeat(player, selectedPlacement)) {
+                    const safePlacement = findBestAttackPlacement(player, player.active.x, null, true);
+                    if (safePlacement.positions.length) {
+                        player.aiTarget = safePlacement.x;
+                        player.aiRotation = safePlacement.rotation;
+                    }
+                }
+            }
             player.aiFastDown = false;
             player.aiDecisionElapsed = 0;
         }
@@ -5851,7 +5864,7 @@
         }
 
         /**
-         * 목표 측 하단 두 칸을 채우되, 폭발과 Y=2 즉시 패배 후보를 피하는 배치를 고른다.
+         * 목표 측 하단 두 칸을 채우되, 폭발 뒤 최종 보드에서 즉시 패배하는 후보를 피하는 배치를 고른다.
          * @param {PlayerState} player 자동 조작할 플레이어
          * @param {number} side 목표 측 X 좌표
          * @returns {object|null} 배치 후보
@@ -5861,7 +5874,7 @@
             let bestScore = -Infinity;
             player.aiSimulations.forEach((simulation) => {
                 if (simulation.combo !== 0) return;
-                if (simulation.positions.some((position) => position.y === 2) && causesImmediateDefeat(player, simulation)) return;
+                if (causesImmediateDefeat(player, simulation)) return;
                 const score = simulation.positions.reduce((total, position) => {
                     const targetRow = position.y <= 1 ? 1000 : 0;
                     return total + targetRow - Math.abs(position.x - side) * 50 - position.y;
@@ -5880,7 +5893,7 @@
             const trigger = this.attackSimulationTriggerPosition;
             const triggerOccupied = player.board[trigger.y][trigger.x] !== null;
             if (triggerOccupied || this.phase === 'simulation' || player.damage >= AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD) {
-                this.attackPlacement = findBestAttackPlacement(player, 0, triggerOccupied ? trigger.x : null);
+                this.attackPlacement = findBestAttackPlacement(player, 0, triggerOccupied ? trigger.x : null, true);
                 this.phase = 'repeatLeft';
                 if (!triggerOccupied) this.turnsRemaining = 6;
                 return this.attackPlacement.x;
@@ -5888,7 +5901,7 @@
 
             const target = this.phase === 'initialRight' ? COLUMNS - 1 : 0;
             const buildPlacement = this.selectSideBuildPlacement(player, target);
-            const safeFallback = player.aiSimulations.find((simulation) => !simulation.positions.some((position) => position.y === 2 && causesImmediateDefeat(player, simulation)));
+            const safeFallback = player.aiSimulations.find((simulation) => !causesImmediateDefeat(player, simulation));
             const basicPlacement = buildPlacement || safeFallback;
             // 좌·우 끝의 하단 두 칸이 차기 전에는 회전을 포함한 비폭발 쌓기를 계속한다.
             if (!this.isSideFilled(player, target) && basicPlacement) {
@@ -6311,7 +6324,7 @@
         }
 
         /**
-         * 우측 하단 세 칸을 우선 채우는 비폭발 후보를 선택한다.
+         * 우측 하단 세 칸을 우선 채우되, 폭발 뒤 최종 보드에서 즉시 패배하는 후보를 제외한다.
          * @param {PlayerState} player 자동 조작할 플레이어
          * @returns {object|null} 배치 후보
          */
@@ -6320,7 +6333,7 @@
             let bestScore = -Infinity;
             player.aiSimulations.forEach((simulation) => {
                 if (simulation.combo !== 0) return;
-                if (simulation.positions.some((position) => position.y === 2) && causesImmediateDefeat(player, simulation)) return;
+                if (causesImmediateDefeat(player, simulation)) return;
                 const score = simulation.positions.reduce((total, position) => {
                     const targetRow = position.x === COLUMNS - 1 && position.y <= 2 ? 1000 : 0;
                     return total + targetRow - Math.abs(position.x - (COLUMNS - 1)) * 50 - position.y;
@@ -6335,11 +6348,11 @@
             const trigger = this.attackSimulationTriggerPosition;
             const triggerOccupied = player.board[trigger.y][trigger.x] !== null;
             if (triggerOccupied || player.damage >= AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD) {
-                this.attackPlacement = findBestAttackPlacement(player, 0, triggerOccupied ? trigger.x : null);
+                this.attackPlacement = findBestAttackPlacement(player, 0, triggerOccupied ? trigger.x : null, true);
                 return this.attackPlacement.x;
             }
             const buildPlacement = this.selectRightBuildPlacement(player);
-            const safeFallback = player.aiSimulations.find((simulation) => !simulation.positions.some((position) => position.y === 2 && causesImmediateDefeat(player, simulation)));
+            const safeFallback = player.aiSimulations.find((simulation) => !causesImmediateDefeat(player, simulation));
             const basicPlacement = buildPlacement || safeFallback;
             // 우측 하단 세 칸이 차기 전에는 폭발을 만들지 않는 회전·배치만 사용한다.
             if (!this.isRightThreeRowsFilled(player) && basicPlacement) {
@@ -6351,7 +6364,7 @@
                 this.attackPlacement = basicPlacement;
                 return basicPlacement ? basicPlacement.x : COLUMNS - 1;
             }
-            this.attackPlacement = findBestAttackPlacement(player, COLUMNS - 1);
+            this.attackPlacement = findBestAttackPlacement(player, COLUMNS - 1, null, true);
             this.turnCount = 0;
             this.turnsUntilSimulation = this.randomTurnsUntilSimulation();
             return this.attackPlacement.x;
