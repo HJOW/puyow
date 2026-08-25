@@ -71,6 +71,8 @@
     const CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS = 5000;
     /** 사용자 컨트롤의 기본 자동 낙하 간격(ms)이다. @type {number} */
     const PLAYER_FALL_INTERVAL = 2048;
+    /** 모든 게임 모드에서 새로 지급한 뿌요 쌍의 회전축 생성 Y 좌표다.  @type {number} */
+    const ACTIVE_PUYO_SPAWN_Y = 11.9;
     /** 게임 경과 시간에 따른 사용자 낙하 속도의 최대 배율이다. @type {number} */
     const MAX_PLAYER_FALL_SPEED_MULTIPLIER = 4;
     /** 좌우 방향키를 홀드 입력으로 판정하기 전 대기 시간(ms)이다. @type {number} */
@@ -1018,7 +1020,7 @@
             horizontalHoldElapsed = 0;
             horizontalRepeatElapsed = 0;
         }
-        player.active = { x: 2, y: 11.5, rotation: 0, colors: takeNextPair(player) };
+        player.active = { x: 2, y: ACTIVE_PUYO_SPAWN_Y, rotation: 0, colors: takeNextPair(player) };
         // CPU 플레이어면 이번 뿌요 쌍의 목표 위치와 회전을 미리 결정한다.
         if (player.controller) {
             player.controller.prepareTurn(player);
@@ -1328,7 +1330,7 @@
      * @returns {{combo:number,attack:number}} 최고 결과
      */
     function findBestPreviewResult(board, colors) {
-        const virtualPlayer = { board, active: { x: 2, y: 11.5, rotation: 0, colors } };
+        const virtualPlayer = { board, active: { x: 2, y: ACTIVE_PUYO_SPAWN_Y, rotation: 0, colors } };
         let best = { combo: 0, attack: 0 };
         for (let rotation = 0; rotation < 4; rotation += 1) {
             for (let x = 0; x < COLUMNS; x += 1) {
