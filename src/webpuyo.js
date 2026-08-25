@@ -5374,6 +5374,12 @@
          */
         difficulty = 1;
 
+        /**
+         * 사용하는 색상 목록
+         * @type {string[]}
+         */
+        usingColors = ['red', 'blue', 'green', 'yellow'];
+
         constructor(pStageData, pTargetCombo, pSuppliedNextPuyos, difficulty) {
             if(typeof(pStageData) != 'undefined') this.stageData = pStageData;
             if(typeof(pTargetCombo) != 'undefined') this.targetCombo = pTargetCombo;
