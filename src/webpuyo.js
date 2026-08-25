@@ -74,7 +74,7 @@
     /** 모든 게임 모드에서 새로 지급한 뿌요 쌍의 회전축 생성 Y 좌표다.  @type {number} */
     const ACTIVE_PUYO_SPAWN_Y = 11.9;
     /** 게임 경과 시간에 따른 사용자 낙하 속도의 최대 배율이다. @type {number} */
-    const MAX_PLAYER_FALL_SPEED_MULTIPLIER = 4;
+    const MAX_PLAYER_FALL_SPEED_MULTIPLIER = 8;
     /** 좌우 방향키를 홀드 입력으로 판정하기 전 대기 시간(ms)이다. @type {number} */
     const HORIZONTAL_HOLD_DELAY = 100;
     /** 좌우 방향키 홀드 중 반복 이동 간격(ms)이다. @type {number} */
