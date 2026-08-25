@@ -70,7 +70,7 @@
     /** 연속 피버에서 싹쓸이를 완료했을 때 추가하는 시간(ms)이다. @type {number} */
     const CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS = 5000;
     /** 사용자 컨트롤의 기본 자동 낙하 간격(ms)이다. @type {number} */
-    const PLAYER_FALL_INTERVAL = 1040;
+    const PLAYER_FALL_INTERVAL = 2048;
     /** 게임 경과 시간에 따른 사용자 낙하 속도의 최대 배율이다. @type {number} */
     const MAX_PLAYER_FALL_SPEED_MULTIPLIER = 4;
     /** 좌우 방향키를 홀드 입력으로 판정하기 전 대기 시간(ms)이다. @type {number} */
@@ -1831,8 +1831,11 @@
                     moveActive(player, player.active.x < player.aiTarget ? 1 : -1, 0);
                 }
             }
+            // AI 정책 또는 사용자·가상 컨트롤러·튜토리얼 입력으로 빠른 하강을 적용할지 여부다.
             const fastDown = player.controller ? player.aiFastDown : isDownKeyPressed || virtualDirectionInput.arrowdown || player.tutorialFastDown === true;
+            // 경과 시간 1분마다 0.2씩 증가하며 최대 배율을 넘지 않는 사용자 자동 낙하 속도 배율이다.
             const speedMultiplier = Math.min(MAX_PLAYER_FALL_SPEED_MULTIPLIER, 1 + Math.floor(game.elapsed / 60000) * 0.2);
+            // 빠른 하강·AI·사용자 자동 낙하 각각에 적용할 한 칸 낙하 간격(ms)이다.
             const fallInterval = fastDown ? 55 : player.controller ? 290 : PLAYER_FALL_INTERVAL / speedMultiplier;
             const currentFloor = Math.floor(player.active.y);
             const nextFloor = currentFloor - 1;
