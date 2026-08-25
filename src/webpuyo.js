@@ -113,6 +113,8 @@
     const INITIAL_PAIR_QUEUE_LENGTH = 16;
     /** 브라우저 저장소에 사용할 키다. @type {string} */
     const STORE_KEY = 'puyow_store';
+    /** 갤러리 잠금 해제 정보를 저장할 브라우저 저장소 키다. @type {string} */
+    const GALLERY_STORE_KEY = 'puyow_gallery';
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
@@ -125,7 +127,7 @@
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
             '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '켜기': 'On', '끄기': 'Off', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 및 AI 관련 기능은 추후 제공 예정': 'Sound and AI features will be available in a future update.',
-            '플레이 방법': 'How to Play', '다시보기': 'Replay',
+            '플레이 방법': 'How to Play', '갤러리': 'Gallery', '대상 유형': 'Category', '대상': 'Item', '일반뿌요': 'Puyos', '예고뿌요': 'Warning Puyos', '적': 'Enemies', '빨강뿌요': 'Red Puyo', '초록뿌요': 'Green Puyo', '노랑뿌요': 'Yellow Puyo', '파랑뿌요': 'Blue Puyo', '보라뿌요': 'Purple Puyo', '방해뿌요': 'Garbage Puyo', '%1개 단위': '%1-unit', '위기': 'Crisis', '다시보기': 'Replay',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': 'An all clear gives you a powerful attack.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
@@ -139,7 +141,7 @@
             'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
             '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
             '설정': '設定', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '켜기': 'オン', '끄기': 'オフ', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 및 AI 관련 기능은 추후 제공 예정': 'サウンドとAI機能は今後のアップデートで提供予定です。',
-            '플레이 방법': '遊び方', '다시보기': 'もう一度見る',
+            '플레이 방법': '遊び方', '갤러리': 'ギャラリー', '대상 유형': '種類', '대상': '対象', '일반뿌요': 'ぷよ', '예고뿌요': '予告ぷよ', '적': '敵', '빨강뿌요': '赤ぷよ', '초록뿌요': '緑ぷよ', '노랑뿌요': '黄ぷよ', '파랑뿌요': '青ぷよ', '보라뿌요': '紫ぷよ', '방해뿌요': 'おじゃまぷよ', '%1개 단위': '%1個単位', '위기': 'ピンチ', '다시보기': 'もう一度見る',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '左右・下キーでぷよを動かし、Z・Xキーで回転できます。', '좌우 방향키로 뿌요 이동': '左右キーでぷよを移動', '아래 방향키로 빨리 떨어뜨리기': '下キーで速く落下', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Zキーで左回転', 'X 키를 눌러 우측으로 뿌요 회전': 'Xキーで右回転', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '同じ色のぷよを4個以上つなげると消して攻撃できます。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '同じ色のぷよ4個がつながり、相手を攻撃できます。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'ぷよが消えると、隣接するおじゃまぷよも消えます。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '連鎖でぷよを消すと、より強く攻撃できます。', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': '全消しをすると強力な攻撃ができます。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '3段目の端にぷよが残ると負けです。',
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
@@ -153,7 +155,7 @@
             'JSON복사': '复制 JSON', 'JSON넣기': '粘贴 JSON', '배치가 클립보드에 복사됨': '布局已复制到剪贴板',
             '클립보드 복사 실패': '复制到剪贴板失败', 'JSON 파싱 실패': 'JSON 解析失败', '배치 JSON을 입력하세요.': '请输入布局 JSON。',
             '설정': '设置', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '켜기': '开启', '끄기': '关闭', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 및 AI 관련 기능은 추후 제공 예정': '声音和 AI 功能将在未来更新中提供。',
-            '플레이 방법': '玩法说明', '다시보기': '再次观看',
+            '플레이 방법': '玩法说明', '갤러리': '图鉴', '대상 유형': '类别', '대상': '对象', '일반뿌요': '普通噗哟', '예고뿌요': '预告噗哟', '적': '敌人', '빨강뿌요': '红噗哟', '초록뿌요': '绿噗哟', '노랑뿌요': '黄噗哟', '파랑뿌요': '蓝噗哟', '보라뿌요': '紫噗哟', '방해뿌요': '垃圾噗哟', '%1개 단위': '%1 个单位', '위기': '危机', '다시보기': '再次观看',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '使用左右和下方向键移动噗哟，使用 Z、X 键旋转。', '좌우 방향키로 뿌요 이동': '用左右方向键移动噗哟', '아래 방향키로 빨리 떨어뜨리기': '用下方向键快速落下', 'Z 키를 눌러 좌측으로 뿌요 회전': '按 Z 键向左旋转', 'X 키를 눌러 우측으로 뿌요 회전': '按 X 键向右旋转', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '连接四个或更多相同颜色的噗哟即可消除并攻击对手。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '四个相同颜色的噗哟连接后可以攻击对手。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': '消除噗哟时，相邻的垃圾噗哟也会一起消失。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '连续消除噗哟可以发动更强的攻击。', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': '全消时可以发动强力攻击。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '噗哟停留在第 3 行末端时会失败。',
             '음소거(꺼짐)' : '静音（关）', '음소거(활성)' : '静音（开）'
         }
@@ -191,8 +193,12 @@
     let settingsCursor = 0;
     /** AI가 강조 표시하도록 지정한 플레이어 필드 좌표다. @type {{x:number, y:number}|null} */
     let recommendedPoint = null;
-    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'initialTitle'|'title'|'opponent'|'practiceDifficulty'|'simulator'|'settings'} */
+    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'initialTitle'|'title'|'opponent'|'practiceDifficulty'|'simulator'|'settings'|'gallery'} */
     let menuScreen = 'initialTitle';
+    /** 갤러리의 현재 선택과 포커스 상태다. @type {{typeIndex:number,itemIndex:number,focus:'type'|'target',portraitElapsed:number}|null} */
+    let gallery = null;
+    /** localStorage에서 읽은 갤러리 잠금 해제 정보다. @type {{warning:string[],enemies:string[]}} */
+    let galleryUnlocks = createInitialGalleryUnlocks();
     /** 시뮬레이터의 편집·재생 상태다. @type {object|null} */
     let simulator = null;
     /** 선택된 적의 OPPONENTS 배열 인덱스다. @type {number} */
@@ -311,6 +317,60 @@
             settings: { musicVolume: 100, effectsVolume: 100, virtualController: false, aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' },
             muted: false
         };
+    }
+
+    /** 갤러리에서 처음부터 공개할 항목을 만든다. @returns {{warning:string[],enemies:string[]}} */
+    function createInitialGalleryUnlocks() {
+        return { warning: ['tiny'], enemies: ['Andromalius'] };
+    }
+
+    /** 갤러리 잠금 해제 정보를 매 진입 시점에 불러온다. @returns {void} */
+    function loadGalleryUnlocks() {
+        const initial = createInitialGalleryUnlocks();
+        try {
+            const serialized = window.localStorage.getItem(GALLERY_STORE_KEY);
+            if (!serialized) {
+                galleryUnlocks = initial;
+                return;
+            }
+            const parsed = JSON.parse(serialized);
+            if (!parsed || typeof parsed !== 'object') throw new TypeError('갤러리 저장 형식이 올바르지 않습니다.');
+            const warning = Array.isArray(parsed.warning) ? parsed.warning.filter((type) => typeof type === 'string') : [];
+            const enemies = Array.isArray(parsed.enemies) ? parsed.enemies.filter((type) => typeof type === 'string') : [];
+            galleryUnlocks = {
+                warning: [...new Set([...initial.warning, ...warning])],
+                enemies: [...new Set([...initial.enemies, ...enemies])]
+            };
+        } catch (error) {
+            console.error('Puyo W 갤러리 저장 데이터 불러오기에 실패했습니다.', error);
+            galleryUnlocks = initial;
+        }
+    }
+
+    /** 갤러리 잠금 해제 정보를 짧은 지연 뒤 안전하게 기록한다. @returns {void} */
+    function saveGalleryUnlocks() {
+        setTimeout(() => {
+            try {
+                window.localStorage.setItem(GALLERY_STORE_KEY, JSON.stringify(galleryUnlocks));
+            } catch (error) {
+                console.error('Puyo W 갤러리 저장 데이터 기록에 실패했습니다.', error);
+            }
+        }, 1);
+    }
+
+    /** 게임에서 표시된 예고뿌요를 갤러리에 공개한다. @param {string} type 예고뿌요 종류 @returns {void} */
+    function unlockGalleryWarning(type) {
+        if (galleryUnlocks.warning.includes(type)) return;
+        galleryUnlocks.warning.push(type);
+        saveGalleryUnlocks();
+    }
+
+    /** 일반 룰 대전에서 이긴 적을 갤러리에 공개한다. @param {string} classType 적 종류 식별자 @returns {void} */
+    function unlockGalleryEnemy(classType) {
+        if (galleryUnlocks.enemies.includes(classType)) return;
+        galleryUnlocks.enemies.push(classType);
+        // saveGalleryUnlocks는 setTimeout(1)과 try-catch로 저장 실패가 게임 흐름을 막지 않게 한다.
+        saveGalleryUnlocks();
     }
 
     /**
@@ -1760,7 +1820,9 @@
      */
     function recordEnemyClear(winner) {
         if (game.practice || winner !== game.players[0]) return;
-        const enemyClassName = game.players[1].controller.constructor.name;
+        const enemyController = game.players[1].controller;
+        const enemyClassName = enemyController.constructor.name;
+        unlockGalleryEnemy(enemyController.getClassType());
         const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key || AI_DIFFICULTIES[1].key;
         let changed = false;
         if (!store.clearListByDifficulty[difficultyKey].includes(enemyClassName)) {
@@ -2411,7 +2473,10 @@
             context.fillStyle = '#0a1d29'; context.fillRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
             context.strokeStyle = 'rgba(176, 232, 244, 0.25)'; context.strokeRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
         }
-        drawWarningUnits(x, FIELD_TOP - CELL, warningUnits(warningAmount(player, opponent)));
+        const displayedWarnings = warningUnits(warningAmount(player, opponent));
+        // 실제 대전 화면에 나타난 예고뿌요만 갤러리에 공개한다.
+        displayedWarnings.forEach((unit) => unlockGalleryWarning(unit.type));
+        drawWarningUnits(x, FIELD_TOP - CELL, displayedWarnings);
         if (player.effects) {
             const progress = Math.min(1, player.effects.elapsed / player.effects.duration);
             player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress));
@@ -3072,6 +3137,154 @@
         context.restore();
     }
 
+    /** 갤러리에 표시할 대상 유형 목록이다. @returns {{label:string,key:'puyo'|'warning'|'enemy'}[]} */
+    function getGalleryTypes() {
+        return [
+            { label: '일반뿌요', key: 'puyo' },
+            { label: '예고뿌요', key: 'warning' },
+            { label: '적', key: 'enemy' }
+        ];
+    }
+
+    /** 갤러리 항목의 현재 언어 표시명을 반환한다. @param {{label?:string,labelValues?:unknown[],displayLabel?:string}} item 갤러리 항목 @returns {string} 표시명 */
+    function getGalleryItemLabel(item) {
+        return item.displayLabel || translate(item.label || '', ...(item.labelValues || []));
+    }
+
+    /** 갤러리의 현재 유형에 맞는 대상 목록을 만든다. @returns {{id:string,label?:string,labelValues?:unknown[],displayLabel?:string,locked:boolean,draw:(expressionIndex?:number)=>void}[]} */
+    function getGalleryItems() {
+        if (!gallery) return [];
+        const type = getGalleryTypes()[gallery.typeIndex]?.key;
+        if (type === 'puyo') {
+            const labels = { red: '빨강뿌요', green: '초록뿌요', yellow: '노랑뿌요', blue: '파랑뿌요', purple: '보라뿌요', garbage: '방해뿌요' };
+            return [...COLORS, 'garbage'].map((color) => ({
+                id: color, label: labels[color], locked: false,
+                draw: () => {
+                    context.save(); context.translate(805, 410); context.scale(5.6, 5.6);
+                    drawPuyo(-CELL / 2, -CELL / 2, color);
+                    context.restore();
+                }
+            }));
+        }
+        if (type === 'warning') {
+            return [...WARNING_PUYO_CLASSES].sort((left, right) => left.unitCount - right.unitCount).map((WarningPuyoType) => {
+                const unit = new WarningPuyoType();
+                return {
+                    id: unit.type, displayLabel: String(unit.unitCount), locked: !galleryUnlocks.warning.includes(unit.type),
+                    draw: () => {
+                        context.save(); context.translate(805, 410); context.scale(5.2, 5.2);
+                        unit.draw(context, -CELL / 2, -CELL / 2, CELL);
+                        context.restore();
+                    }
+                };
+            });
+        }
+        const expressions = ['normal', 'crisis', 'defeated'];
+        return getVisibleOpponents().map((entry) => {
+            const enemy = entry.createController();
+            return {
+                id: entry.classType, displayLabel: translate(enemy.getName()),
+                locked: !galleryUnlocks.enemies.includes(entry.classType),
+                draw: (expressionIndex = 0) => enemy.drawPortrait(context, 805, 420, 2.8, expressions[expressionIndex % expressions.length])
+            };
+        });
+    }
+
+    /** 갤러리 대상 목록의 스크롤 시작 위치를 반환한다. @returns {number} */
+    function getGalleryListStart() {
+        const itemCount = getGalleryItems().length;
+        return Math.max(0, Math.min(Math.max(0, itemCount - 8), (gallery?.itemIndex || 0) - 3));
+    }
+
+    /** 갤러리 대상 하나의 클릭 영역을 반환한다. @param {number} index 대상 순번 @returns {{x:number,y:number,width:number,height:number}} */
+    function getGalleryTargetBounds(index) {
+        return { x: 54, y: 220 + (index - getGalleryListStart()) * 51, width: 310, height: 43 };
+    }
+
+    /** 갤러리 우측 상단 닫기 버튼의 클릭 영역을 반환한다. @returns {{x:number,y:number,width:number,height:number}} */
+    function getGalleryCloseButtonBounds() {
+        return { x: 1221, y: 16, width: 29, height: 24 };
+    }
+
+    /** 갤러리를 닫고 메인 메뉴로 돌아간다. @returns {void} */
+    function closeGallery() {
+        gallery = null;
+        menuScreen = 'title';
+        loadNotice();
+    }
+
+    /** 갤러리를 첫 유형·첫 대상으로 열고 저장된 잠금 상태를 새로 읽는다. @returns {void} */
+    function openGallery() {
+        loadGalleryUnlocks();
+        gallery = { typeIndex: 0, itemIndex: 0, focus: 'type', portraitElapsed: 0 };
+        menuScreen = 'gallery';
+    }
+
+    /** 갤러리 유형을 바꾸며 첫 공개 대상을 선택한다. @param {number} amount 이동 방향 @returns {void} */
+    function selectGalleryType(amount) {
+        if (!gallery) return;
+        const types = getGalleryTypes();
+        gallery.typeIndex = (gallery.typeIndex + amount + types.length) % types.length;
+        const items = getGalleryItems();
+        gallery.itemIndex = Math.max(0, items.findIndex((item) => !item.locked));
+        gallery.portraitElapsed = 0;
+    }
+
+    /** 갤러리 대상에서 잠긴 항목을 건너뛰어 이동한다. @param {number} amount 이동 방향 @returns {void} */
+    function selectRelativeGalleryItem(amount) {
+        if (!gallery) return;
+        const items = getGalleryItems();
+        if (!items.length) return;
+        for (let offset = 1; offset <= items.length; offset += 1) {
+            const index = (gallery.itemIndex + amount * offset + items.length) % items.length;
+            if (!items[index].locked) { gallery.itemIndex = index; gallery.portraitElapsed = 0; return; }
+        }
+    }
+
+    /** 갤러리 화면을 그린다. @returns {void} */
+    function drawGallery() {
+        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        const closeButton = getGalleryCloseButtonBounds();
+        context.fillStyle = '#264b5b'; context.fillRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
+        context.strokeStyle = '#6ea2b8'; context.lineWidth = 2; context.strokeRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
+        context.fillStyle = '#f5fbfc'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText('×', closeButton.x + closeButton.width / 2, closeButton.y + 18);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `34px ${TITLE_FONT}`;
+        context.fillText(translate('갤러리'), WIDTH / 2, 48);
+        const types = getGalleryTypes();
+        const typeWidth = 190; const typeY = 91;
+        types.forEach((type, index) => {
+            const x = WIDTH / 2 - (types.length * typeWidth + (types.length - 1) * 14) / 2 + index * (typeWidth + 14);
+            const selected = index === gallery.typeIndex;
+            context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, typeY, typeWidth, 54);
+            context.strokeStyle = selected && gallery.focus === 'type' ? '#f7c843' : '#3b6070'; context.lineWidth = selected && gallery.focus === 'type' ? 4 : 2; context.strokeRect(x, typeY, typeWidth, 54);
+            context.fillStyle = '#f5fbfc'; context.font = `19px ${BUTTON_FONT}`; context.fillText(translate(type.label), x + typeWidth / 2, typeY + 34);
+        });
+        context.fillStyle = '#0c2433'; context.fillRect(34, 180, 350, 500);
+        context.strokeStyle = gallery.focus === 'target' ? '#f7c843' : '#3b6070'; context.lineWidth = gallery.focus === 'target' ? 3 : 2; context.strokeRect(34, 180, 350, 500);
+        const items = getGalleryItems();
+        const start = getGalleryListStart();
+        items.slice(start, start + 8).forEach((item, relativeIndex) => {
+            const index = start + relativeIndex;
+            const bounds = getGalleryTargetBounds(index);
+            const selected = index === gallery.itemIndex;
+            context.fillStyle = item.locked ? '#303b45' : selected ? '#563068' : '#102c3b'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = selected && gallery.focus === 'target' ? '#f7c843' : item.locked ? '#65727d' : '#3b6070'; context.lineWidth = selected && gallery.focus === 'target' ? 3 : 1; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            const itemLabel = getGalleryItemLabel(item);
+            context.fillStyle = item.locked ? '#adb7bd' : '#f5fbfc'; context.font = `16px ${BUTTON_FONT}`; context.fillText(item.locked ? translate('잠김') : itemLabel, bounds.x + bounds.width / 2, bounds.y + 28);
+        });
+        context.fillStyle = '#102c3b'; context.fillRect(414, 180, 832, 500);
+        context.strokeStyle = '#3b6070'; context.lineWidth = 2; context.strokeRect(414, 180, 832, 500);
+        const selected = items[gallery.itemIndex];
+        if (selected?.locked) {
+            context.fillStyle = '#65727d'; context.font = `82px ${TITLE_FONT}`; context.fillText('🔒', 830, 414);
+            context.fillStyle = '#d8f2f5'; context.font = `23px ${BUTTON_FONT}`; context.fillText(translate('잠김'), 830, 510);
+        } else if (selected) {
+            const portraitExpression = getGalleryTypes()[gallery.typeIndex]?.key === 'enemy' ? Math.floor(gallery.portraitElapsed / 2000) % 3 : 0;
+            selected.draw(portraitExpression);
+        }
+        context.textBaseline = 'alphabetic';
+    }
+
     /** 시뮬레이터 팔레트와 버튼 영역을 반환한다. @returns {{kind:string,value:string|null,x:number,y:number,width:number,height:number}[]} */
     function getSimulatorPaletteItems() {
         const items = [...COLORS, 'garbage'].map((color, index) => ({ kind: 'puyo', value: color, x: 906 + (index % 3) * (CELL + 6), y: 184 + Math.floor(index / 3) * (CELL + 6), width: CELL, height: CELL }));
@@ -3462,24 +3675,22 @@
             context.restore();
             return;
         }
-        const menuX = WIDTH / 2 - 109; const menuWidth = 218; const menuHeight = 50;
-        context.fillStyle = '#ef5350'; context.fillRect(menuX, 310, menuWidth, menuHeight);
-        context.strokeStyle = titleMenuFocus === 0 ? '#f7c843' : '#ef5350'; context.lineWidth = titleMenuFocus === 0 ? 4 : 2; context.strokeRect(menuX, 310, menuWidth, menuHeight);
-        context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('게임 시작'), WIDTH / 2, 342);
-        context.fillStyle = '#34556b'; context.fillRect(menuX, 375, menuWidth, menuHeight);
-        context.strokeStyle = titleMenuFocus === 1 ? '#f7c843' : '#34556b'; context.lineWidth = titleMenuFocus === 1 ? 4 : 2; context.strokeRect(menuX, 375, menuWidth, menuHeight);
-        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('시뮬레이터'), WIDTH / 2, 407);
-        context.fillStyle = '#405c70'; context.fillRect(menuX, 440, menuWidth, menuHeight);
-        context.strokeStyle = titleMenuFocus === 2 ? '#f7c843' : '#405c70'; context.lineWidth = titleMenuFocus === 2 ? 4 : 2; context.strokeRect(menuX, 440, menuWidth, menuHeight);
-        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('플레이 방법'), WIDTH / 2, 472);
-        context.fillStyle = '#405c70'; context.fillRect(menuX, 505, menuWidth, menuHeight);
-        context.strokeStyle = titleMenuFocus === 3 ? '#f7c843' : '#405c70'; context.lineWidth = titleMenuFocus === 3 ? 4 : 2; context.strokeRect(menuX, 505, menuWidth, menuHeight);
-        context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 537);
+        const menuX = WIDTH / 2 - 109; const menuWidth = 218; const menuHeight = 46; const menuStartY = 280; const menuGap = 10;
+        const titleOptions = [
+            { label: '게임 시작', color: '#ef5350' }, { label: '시뮬레이터', color: '#34556b' }, { label: '플레이 방법', color: '#405c70' },
+            { label: '갤러리', color: '#405c70' }, { label: '설정', color: '#405c70' }
+        ];
+        titleOptions.forEach((option, index) => {
+            const y = menuStartY + index * (menuHeight + menuGap);
+            context.fillStyle = option.color; context.fillRect(menuX, y, menuWidth, menuHeight);
+            context.strokeStyle = titleMenuFocus === index ? '#f7c843' : option.color; context.lineWidth = titleMenuFocus === index ? 4 : 2; context.strokeRect(menuX, y, menuWidth, menuHeight);
+            context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate(option.label), WIDTH / 2, y + 30);
+        });
         context.fillStyle = '#24292f'; context.fillRect(32, 665, 85, 23);
-        context.strokeStyle = titleMenuFocus === 4 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 4 ? 2 : 1; context.strokeRect(32, 665, 85, 23);
+        context.strokeStyle = titleMenuFocus === 5 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 5 ? 2 : 1; context.strokeRect(32, 665, 85, 23);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 74.5, 681);
         context.fillStyle = store.muted ? '#52606d' : '#264b5b'; context.fillRect(WIDTH - 117, 665, 85, 23);
-        context.strokeStyle = titleMenuFocus === 5 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 5 ? 2 : 1; context.strokeRect(WIDTH - 117, 665, 85, 23);
+        context.strokeStyle = titleMenuFocus === 6 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 6 ? 2 : 1; context.strokeRect(WIDTH - 117, 665, 85, 23);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate(store.muted ? '음소거(활성)' : '음소거(꺼짐)'), WIDTH - 74.5, 681);
         context.fillStyle = '#8899a6'; context.font = `14px ${MESSAGE_FONT}`; context.fillText('Copyright (c) HJOW', WIDTH / 2, HEIGHT - 20);
         if (menuScreen === 'practiceDifficulty') {
@@ -3534,6 +3745,7 @@
             if (menuScreen === 'initialTitle') drawInitialTitle();
             else if (menuScreen === 'simulator' && simulator) drawSimulator();
             else if (menuScreen === 'settings' && settingsDraft) drawSettings();
+            else if (menuScreen === 'gallery' && gallery) drawGallery();
             else drawMenu();
             return;
         }
@@ -3603,6 +3815,7 @@
         }
         if (game?.running && !game.paused) updateEnergyTransfers(delta);
         if (!game && menuScreen === 'simulator') { updateSimulator(delta); updateEnergyTransfers(delta); }
+        if (!game && menuScreen === 'gallery' && gallery) gallery.portraitElapsed += delta;
         syncBackgroundMusic();
         render();
         animationFrameId = requestAnimationFrame(frame);
@@ -3641,6 +3854,25 @@
             return aDistance - bDistance;
         });
         if (candidates.length) simulator.paletteFocus = candidates[0].index;
+    }
+
+    /** 갤러리의 키보드·게임패드 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
+    function handleGalleryKeydown(key) {
+        if (!gallery) return;
+        if (key === 'escape') { closeGallery(); return; }
+        if (gallery.focus === 'type') {
+            if (key === 'arrowleft') selectGalleryType(-1);
+            else if (key === 'arrowright') selectGalleryType(1);
+            else if (key === 'arrowdown' || key === 'enter' || key === ' ') gallery.focus = 'target';
+            return;
+        }
+        if (key === 'arrowleft' || key === 'arrowright') {
+            gallery.focus = 'type';
+            selectGalleryType(key === 'arrowleft' ? -1 : 1);
+        } else if (key === 'arrowup') {
+            if (gallery.itemIndex === 0) gallery.focus = 'type';
+            else selectRelativeGalleryItem(-1);
+        } else if (key === 'arrowdown') selectRelativeGalleryItem(1);
     }
 
     /** 설정 화면에서 포커스 이동과 문자열 편집을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @param {string} key 소문자 키 @returns {void} */
@@ -3709,6 +3941,7 @@
             return;
         }
         if (!game && menuScreen === 'simulator') { handleSimulatorKeydown(key); return; }
+        if (!game && menuScreen === 'gallery') { handleGalleryKeydown(key); return; }
         if (game?.tutorial) {
             const tutorial = game.tutorial;
             if (key === 'escape') { closeTutorial(); return; }
@@ -3742,8 +3975,8 @@
             }
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
                 titleMenuFocus = key === 'arrowleft' || key === 'arrowup'
-                    ? (titleMenuFocus + 5) % 6
-                    : (titleMenuFocus + 1) % 6;
+                    ? (titleMenuFocus + 6) % 7
+                    : (titleMenuFocus + 1) % 7;
             } else if (menuScreen === 'opponent' && key === 'arrowup') {
                 opponentMenuFocus = Math.max(0, opponentMenuFocus - 1);
             } else if (menuScreen === 'opponent' && key === 'arrowdown') {
@@ -3838,8 +4071,9 @@
         if (titleMenuFocus === 0) openRuleSelection();
         else if (titleMenuFocus === 1) openSimulator();
         else if (titleMenuFocus === 2) openTutorial();
-        else if (titleMenuFocus === 3) openSettings();
-        else if (titleMenuFocus === 4) {
+        else if (titleMenuFocus === 3) openGallery();
+        else if (titleMenuFocus === 4) openSettings();
+        else if (titleMenuFocus === 5) {
             const githubWindow = window.open('https://github.com/HJOW/puyow', '_blank');
             if (githubWindow) githubWindow.opener = null;
         } else {
@@ -3966,23 +4200,49 @@
             if (paletteIndex >= 0) activateSimulatorPaletteItem(paletteIndex);
             return;
         }
+        if (menuScreen === 'gallery' && gallery) {
+            const closeButton = getGalleryCloseButtonBounds();
+            if (x >= closeButton.x && x <= closeButton.x + closeButton.width && y >= closeButton.y && y <= closeButton.y + closeButton.height) {
+                closeGallery();
+                return;
+            }
+            const types = getGalleryTypes();
+            const typeWidth = 190; const typeY = 91;
+            const typeIndex = types.findIndex((type, index) => {
+                const typeX = WIDTH / 2 - (types.length * typeWidth + (types.length - 1) * 14) / 2 + index * (typeWidth + 14);
+                return x >= typeX && x <= typeX + typeWidth && y >= typeY && y <= typeY + 54;
+            });
+            if (typeIndex >= 0) {
+                gallery.typeIndex = typeIndex;
+                gallery.itemIndex = Math.max(0, getGalleryItems().findIndex((item) => !item.locked));
+                gallery.focus = 'type';
+                gallery.portraitElapsed = 0;
+                return;
+            }
+            const items = getGalleryItems();
+            const targetIndex = items.findIndex((item, index) => {
+                const targetBounds = getGalleryTargetBounds(index);
+                return x >= targetBounds.x && x <= targetBounds.x + targetBounds.width && y >= targetBounds.y && y <= targetBounds.y + targetBounds.height;
+            });
+            if (targetIndex >= 0 && !items[targetIndex].locked) {
+                gallery.itemIndex = targetIndex;
+                gallery.focus = 'target';
+                gallery.portraitElapsed = 0;
+            }
+            return;
+        }
         if (menuScreen === 'title') {
-            if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 310 && y <= 360) {
-                titleMenuFocus = 0;
-                activateTitleMenu();
-            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 375 && y <= 425) {
-                titleMenuFocus = 1;
-                activateTitleMenu();
-            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 440 && y <= 490) {
-                titleMenuFocus = 2;
-                activateTitleMenu();
-            } else if (x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= 505 && y <= 555) {
-                titleMenuFocus = 3;
+            const titleItemIndex = Array.from({ length: 5 }, (unused, index) => index).find((index) => {
+                const itemY = 280 + index * 56;
+                return x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= itemY && y <= itemY + 46;
+            });
+            if (titleItemIndex !== undefined) {
+                titleMenuFocus = titleItemIndex;
                 activateTitleMenu();
             } else if (x >= WIDTH - 117 && x <= WIDTH - 32 && y >= 665 && y <= 688) {
                 toggleMuted();
             } else if (x >= 32 && x <= 117 && y >= 665 && y <= 688) {
-                titleMenuFocus = 4;
+                titleMenuFocus = 5;
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
@@ -4050,7 +4310,7 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'practice_difficulty'|'opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
         if (!game) {
@@ -4063,6 +4323,7 @@
                 return { screen, playerCanControl: false };
             }
             if (menuScreen === 'settings') return { screen: 'settings', playerCanControl: false };
+            if (menuScreen === 'gallery') return { screen: 'gallery', playerCanControl: false };
             return { screen: 'main_menu', playerCanControl: false };
         }
         if (game.tutorial) {
@@ -4351,6 +4612,7 @@
         context = null;
         game = null;
         simulator = null;
+        gallery = null;
         settingsDraft = null;
         recommendedPoint = null;
         menuScreen = 'initialTitle';
@@ -4378,6 +4640,7 @@
         languageCode = navigator.language || navigator.userLanguage || 'ko';
         if (languageCode === 'ko-KR') languageCode = 'ko';
         loadStore();
+        loadGalleryUnlocks();
         createdCanvas = false;
         const usesDefaultCanvas = target === null || target === undefined || target === '';
         const targetElement = usesDefaultCanvas ? document.getElementById('webpuyo_canvas') : typeof target === 'string' ? document.getElementById(target) : target;

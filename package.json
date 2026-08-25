@@ -8,7 +8,8 @@
   "main": "webpuyo.js",
   "scripts": {
     "start": "npm run test && node nodeserver.js",
-    "test": "eslint"
+    "test": "eslint",
+    "test:playwright": "playwright test --project=chromium --project=firefox --project=webkit"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
