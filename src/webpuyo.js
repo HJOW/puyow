@@ -68,7 +68,7 @@
     /** 연속 피버 모드의 목표 연쇄 최댓값이다. @type {number} */
     const CONTINUOUS_FEVER_MAX_TARGET_COMBO = 12;
     /** 연속 피버에서 싹쓸이를 완료했을 때 추가하는 시간(ms)이다. @type {number} */
-    const CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS = 3000;
+    const CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS = 5000;
     /** 사용자 컨트롤의 기본 자동 낙하 간격(ms)이다. @type {number} */
     const PLAYER_FALL_INTERVAL = 1040;
     /** 게임 경과 시간에 따른 사용자 낙하 속도의 최대 배율이다. @type {number} */
@@ -2356,15 +2356,8 @@
             });
         });
         if (game.continuousFever && game.fever) {
-            context.fillStyle = '#0b202c'; context.fillRect(500, 300, 280, 76);
-            context.strokeStyle = '#ef8aa0'; context.lineWidth = 2; context.strokeRect(500, 300, 280, 76);
-            context.fillStyle = '#ef8aa0'; context.font = `15px ${MESSAGE_FONT}`; context.fillText(translate('목표 연쇄'), WIDTH / 2, 324);
-            context.fillStyle = '#f5fbfc'; context.font = `32px ${MESSAGE_FONT}`; context.fillText(String(game.fever.targetCombo), WIDTH / 2, 360);
-            context.fillStyle = '#0b202c'; context.fillRect(500, 392, 280, 76);
-            context.strokeStyle = '#6bbce8'; context.lineWidth = 2; context.strokeRect(500, 392, 280, 76);
-            context.fillStyle = '#6bbce8'; context.font = `15px ${MESSAGE_FONT}`; context.fillText(translate('남은 시간'), WIDTH / 2, 416);
-            context.fillStyle = game.fever.leftTime <= 10000 ? '#ef5350' : '#f5fbfc'; context.font = `32px ${MESSAGE_FONT}`;
-            context.fillText(String(Math.ceil(game.fever.leftTime / 1000)), WIDTH / 2, 452);
+            context.fillStyle = game.fever.leftTime <= 10000 ? '#ef5350' : '#f5fbfc'; context.font = `48px ${MESSAGE_FONT}`;
+            context.fillText(String(Math.ceil(game.fever.leftTime / 1000)), WIDTH / 2, 396);
         } else {
             right.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, getEnemyPortraitExpression(right, left));
         }

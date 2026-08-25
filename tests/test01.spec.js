@@ -109,6 +109,13 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   expect(feverState.player.board.puyos.length).toBeGreaterThan(0);
   expect(feverState.player.active.colors).toEqual(feverState.fever.stageSuppliedPair);
   expect(feverState.colors).toEqual(['red', 'green', 'yellow', 'blue', 'purple']);
+  expect(await page.evaluate(() => {
+    const texts = window.testCanvasTexts;
+    return [
+      '목표 연쇄', 'TARGET COMBO', '目標連鎖', '目标连锁',
+      '남은 시간', 'LEFT TIME', '残り時間', '剩余时间',
+    ].every((label) => !texts.includes(label));
+  })).toBe(true);
 
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
