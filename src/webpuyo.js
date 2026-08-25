@@ -2046,12 +2046,61 @@
         }
     }
 
+    /** 2,000개 단위의 밝은 청백색 중성자별 예고뿌요다. */
+    class NeutronStarWarningPuyo extends WarningPuyo {
+        /** 이 종류가 나타내는 방해뿌요 수다. @type {number} */
+        static unitCount = 2000;
+        /** 2,000개 단위 중성자별 예고뿌요를 만든다. */
+        constructor() { super(NeutronStarWarningPuyo.unitCount, 'neutron-star'); }
+        /** 중성자별의 고밀도 청백색 광구와 짧은 방사광을 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
+        draw(drawingContext, x, y, cellSize) {
+            const radius = cellSize * 0.3;
+            drawingContext.save();
+            drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
+            drawingContext.strokeStyle = 'rgba(122, 209, 255, 0.58)'; drawingContext.lineWidth = cellSize * 0.07;
+            for (let index = 0; index < 8; index += 1) {
+                drawingContext.save(); drawingContext.rotate(index * Math.PI / 4); drawingContext.beginPath();
+                drawingContext.moveTo(radius * 1.05, 0); drawingContext.lineTo(radius * 1.48, 0); drawingContext.stroke(); drawingContext.restore();
+            }
+            const glow = drawingContext.createRadialGradient(-radius * 0.2, -radius * 0.24, radius * 0.06, 0, 0, radius * 1.14);
+            glow.addColorStop(0, '#ffffff'); glow.addColorStop(0.36, '#edfaff'); glow.addColorStop(0.72, '#bce9ff'); glow.addColorStop(1, '#4ba9e8');
+            drawingContext.fillStyle = glow; drawingContext.beginPath(); drawingContext.arc(0, 0, radius, 0, Math.PI * 2); drawingContext.fill();
+            drawingContext.strokeStyle = '#d9f6ff'; drawingContext.lineWidth = cellSize * 0.045; drawingContext.stroke();
+            drawingContext.fillStyle = 'rgba(255, 255, 255, 0.8)'; drawingContext.beginPath(); drawingContext.arc(-radius * 0.31, -radius * 0.38, radius * 0.2, 0, Math.PI * 2); drawingContext.fill();
+            drawPuyoEyes(radius, radius * 0.08); drawingContext.restore();
+        }
+    }
+
+    /** 13,000개 단위의 강착 원반을 두른 블랙홀 예고뿌요다. */
+    class BlackHoleWarningPuyo extends WarningPuyo {
+        /** 이 종류가 나타내는 방해뿌요 수다. @type {number} */
+        static unitCount = 13000;
+        /** 13,000개 단위 블랙홀 예고뿌요를 만든다. */
+        constructor() { super(BlackHoleWarningPuyo.unitCount, 'black-hole'); }
+        /** 검은 중심과 빛나는 강착 원반을 한 칸 크기로 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
+        draw(drawingContext, x, y, cellSize) {
+            const radius = cellSize * 0.29;
+            drawingContext.save();
+            drawingContext.translate(x + cellSize / 2, y + cellSize / 2); drawingContext.rotate(-0.32);
+            const disk = drawingContext.createRadialGradient(0, 0, radius * 0.35, 0, 0, radius * 1.55);
+            disk.addColorStop(0, 'rgba(8, 12, 25, 0)'); disk.addColorStop(0.48, 'rgba(255, 241, 193, 0.96)'); disk.addColorStop(0.66, 'rgba(255, 166, 78, 0.86)'); disk.addColorStop(1, 'rgba(92, 74, 166, 0)');
+            drawingContext.fillStyle = disk; drawingContext.beginPath(); drawingContext.ellipse(0, 0, radius * 1.6, radius * 0.59, 0, 0, Math.PI * 2); drawingContext.fill();
+            drawingContext.strokeStyle = 'rgba(255, 224, 139, 0.82)'; drawingContext.lineWidth = cellSize * 0.055; drawingContext.beginPath(); drawingContext.ellipse(0, 0, radius * 1.32, radius * 0.46, 0, Math.PI * 0.08, Math.PI * 1.08); drawingContext.stroke();
+            drawingContext.rotate(0.32);
+            const rim = drawingContext.createRadialGradient(-radius * 0.2, -radius * 0.25, radius * 0.12, 0, 0, radius * 1.05);
+            rim.addColorStop(0, '#0a0d1b'); rim.addColorStop(0.64, '#05060d'); rim.addColorStop(0.8, '#30205e'); rim.addColorStop(1, '#9a76e8');
+            drawingContext.fillStyle = rim; drawingContext.beginPath(); drawingContext.arc(0, 0, radius, 0, Math.PI * 2); drawingContext.fill();
+            drawingContext.strokeStyle = '#c2a7ff'; drawingContext.lineWidth = cellSize * 0.04; drawingContext.stroke();
+            drawPuyoEyes(radius * 0.72, radius * 0.08); drawingContext.restore();
+        }
+    }
+
     /**
      * 등록된 예고뿌요 클래스 목록이다. 큰 단위부터 배치해야 공격량을 기존 규칙대로 분해한다.
      * 새 예고뿌요는 이 배열에 클래스를 추가해 등록한다.
      * @type {Array<new () => WarningPuyo>}
      */
-    const WARNING_PUYO_CLASSES = [SunWarningPuyo, StarWarningPuyo, RockWarningPuyo, DropWarningPuyo, TinyWarningPuyo];
+    const WARNING_PUYO_CLASSES = [BlackHoleWarningPuyo, NeutronStarWarningPuyo, SunWarningPuyo, StarWarningPuyo, RockWarningPuyo, DropWarningPuyo, TinyWarningPuyo];
 
     /**
      * 현재 변환 좌표를 기준으로 뿌요의 귀여운 두 눈을 그린다.
