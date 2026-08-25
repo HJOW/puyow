@@ -101,17 +101,17 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   await expect.poll(() => page.evaluate(() => {
     const texts = window.testCanvasTexts;
     const localizedOptions = [
-      ['기본 룰', '연습', '연속 피버'],
-      ['Standard Rules', 'Practice', 'Continuous Fever'],
-      ['基本ルール', '練習', '連続フィーバー'],
-      ['基本规则', '练习', '连续狂热'],
+      ['기본 룰', '피버 룰', '연습', '연속 피버'],
+      ['Standard Rules', 'Fever Rules', 'Practice', 'Continuous Fever'],
+      ['基本ルール', 'フィーバールール', '練習', '連続フィーバー'],
+      ['基本规则', '狂热规则', '练习', '连续狂热'],
     ];
     const comingSoonLabels = ['(출시 예정)', '(Coming soon)', '(近日公開)', '(即将推出)'];
     return localizedOptions.some((options) => options.every((text) => texts.includes(text)))
-      && comingSoonLabels.every((text) => !texts.includes(text));
+      && comingSoonLabels.some((text) => texts.includes(text));
   })).toBe(true);
 
-  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
@@ -147,7 +147,7 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
 test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
 

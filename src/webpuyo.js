@@ -102,7 +102,7 @@
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
-            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '연속 피버': 'Continuous Fever', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
+            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'Fever Rules', '연속 피버': 'Continuous Fever', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -116,7 +116,7 @@
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
-            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '연속 피버': '連続フィーバー', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
+            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'フィーバールール', '연속 피버': '連続フィーバー', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '시작': '開始', '이전': '戻る',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -130,7 +130,7 @@
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
-            '게임 시작': '开始游戏', '기본 룰': '基本规则', '연속 피버': '连续狂热', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
+            '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': '狂热规则', '연속 피버': '连续狂热', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -250,6 +250,7 @@
     /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,disabled?:boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', activate: () => openOpponentMenu() },
+        { label: '피버 룰', statusLabel: '(출시 예정)', disabled: true },
         { label: '연습', activate: () => openPracticeDifficulty() },
         { label: '연속 피버', activate: () => startContinuousFeverGame() }
     ];
@@ -3174,8 +3175,16 @@
         const width = 280;
         const height = 78;
         const gap = 24;
-        const totalWidth = GAME_RULE_OPTIONS.length * width + Math.max(0, GAME_RULE_OPTIONS.length - 1) * gap;
-        return { x: (WIDTH - totalWidth) / 2 + index * (width + gap), y: (HEIGHT - height) / 2, width, height };
+        const columns = 2;
+        const rows = Math.ceil(GAME_RULE_OPTIONS.length / columns);
+        const totalWidth = columns * width + (columns - 1) * gap;
+        const totalHeight = rows * height + (rows - 1) * gap;
+        return {
+            x: (WIDTH - totalWidth) / 2 + (index % columns) * (width + gap),
+            y: (HEIGHT - totalHeight) / 2 + Math.floor(index / columns) * (height + gap),
+            width,
+            height
+        };
     }
 
     /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 연다. @returns {void} */
@@ -3208,12 +3217,17 @@
     function handleRuleSelectionKey(key) {
         if (key === 'escape') { closeRuleSelection(); return; }
         if (key === 'enter' || key === ' ') { activateRuleSelection(); return; }
-        const selectableIndices = getSelectableRuleOptionIndices();
-        if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key) && selectableIndices.length) {
-            const direction = key === 'arrowleft' || key === 'arrowup' ? -1 : 1;
-            const currentPosition = Math.max(0, selectableIndices.indexOf(ruleSelectionFocus));
-            ruleSelectionFocus = selectableIndices[(currentPosition + direction + selectableIndices.length) % selectableIndices.length];
-        }
+        if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
+        const columns = 2;
+        const row = Math.floor(ruleSelectionFocus / columns);
+        const column = ruleSelectionFocus % columns;
+        const rowDelta = key === 'arrowup' ? -1 : key === 'arrowdown' ? 1 : 0;
+        const columnDelta = key === 'arrowleft' ? -1 : key === 'arrowright' ? 1 : 0;
+        const nextRow = row + rowDelta;
+        const nextColumn = column + columnDelta;
+        if (nextRow < 0 || nextRow >= Math.ceil(GAME_RULE_OPTIONS.length / columns) || nextColumn < 0 || nextColumn >= columns) return;
+        const nextIndex = nextRow * columns + nextColumn;
+        if (GAME_RULE_OPTIONS[nextIndex] && !GAME_RULE_OPTIONS[nextIndex].disabled) ruleSelectionFocus = nextIndex;
     }
 
     /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 그린다. @returns {void} */
