@@ -4310,7 +4310,38 @@
             5,
             ['yellow', 'yellow'],
             3
+        ),
+        new FeverStageState(
+            {"puyos":[{"x":0,"y":0,"color":"yellow"},{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"blue"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"yellow"},{"x":1,"y":1,"color":"red"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"yellow"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"blue"},{"x":3,"y":2,"color":"red"},{"x":4,"y":2,"color":"blue"},{"x":5,"y":2,"color":"red"},{"x":0,"y":3,"color":"red"},{"x":1,"y":3,"color":"blue"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"blue"},{"x":4,"y":3,"color":"red"},{"x":5,"y":3,"color":"green"},{"x":0,"y":4,"color":"red"},{"x":1,"y":4,"color":"red"},{"x":2,"y":4,"color":"blue"},{"x":3,"y":4,"color":"green"},{"x":4,"y":4,"color":"green"},{"x":0,"y":5,"color":"yellow"},{"x":1,"y":5,"color":"blue"},{"x":2,"y":5,"color":"blue"},{"x":4,"y":5,"color":"green"},{"x":0,"y":6,"color":"red"}]},
+            9,
+            ['red', 'blue'],
+            1
+        ),
+        new FeverStageState(
+            {"puyos":[{"x":0,"y":0,"color":"yellow"},{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"blue"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"yellow"},{"x":1,"y":1,"color":"red"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"yellow"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"blue"},{"x":3,"y":2,"color":"red"},{"x":4,"y":2,"color":"blue"},{"x":5,"y":2,"color":"red"},{"x":0,"y":3,"color":"red"},{"x":1,"y":3,"color":"blue"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"blue"},{"x":4,"y":3,"color":"red"},{"x":5,"y":3,"color":"green"},{"x":0,"y":4,"color":"red"},{"x":1,"y":4,"color":"red"},{"x":3,"y":4,"color":"green"},{"x":4,"y":4,"color":"green"},{"x":0,"y":5,"color":"yellow"},{"x":4,"y":5,"color":"green"}]},
+            8,
+            ['red', 'red'],
+            2
+        ),
+        new FeverStageState(
+            {"puyos":[{"x":0,"y":0,"color":"yellow"},{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"blue"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"yellow"},{"x":1,"y":1,"color":"red"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"yellow"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"blue"},{"x":3,"y":2,"color":"red"},{"x":4,"y":2,"color":"blue"},{"x":5,"y":2,"color":"red"},{"x":0,"y":3,"color":"red"},{"x":1,"y":3,"color":"blue"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"blue"},{"x":4,"y":3,"color":"red"},{"x":0,"y":4,"color":"red"},{"x":1,"y":4,"color":"red"},{"x":0,"y":5,"color":"yellow"}]},
+            7,
+            ['red', 'red'],
+            2
+        ),
+        new FeverStageState(
+            {"puyos":[{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"blue"},{"x":5,"y":0,"color":"red"},{"x":1,"y":1,"color":"red"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"blue"},{"x":3,"y":2,"color":"red"},{"x":4,"y":2,"color":"blue"},{"x":5,"y":2,"color":"red"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"blue"},{"x":4,"y":3,"color":"red"},{"x":5,"y":3,"color":"green"},{"x":3,"y":4,"color":"green"},{"x":4,"y":4,"color":"green"},{"x":4,"y":5,"color":"green"}]},
+            6,
+            ['red', 'blue'],
+            2
+        ),
+        new FeverStageState(
+            {"puyos":[{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"blue"},{"x":5,"y":0,"color":"red"},{"x":1,"y":1,"color":"red"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"blue"},{"x":3,"y":2,"color":"red"},{"x":4,"y":2,"color":"blue"},{"x":5,"y":2,"color":"red"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"blue"},{"x":4,"y":3,"color":"red"}]},
+            5,
+            ['red', 'blue'],
+            2
         )
+        
     ];
 
     /**
