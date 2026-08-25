@@ -67,6 +67,8 @@
     const CONTINUOUS_FEVER_INITIAL_TIME = 60000;
     /** 연속 피버 모드의 목표 연쇄 최댓값이다. @type {number} */
     const CONTINUOUS_FEVER_MAX_TARGET_COMBO = 12;
+    /** 연속 피버에서 싹쓸이를 완료했을 때 추가하는 시간(ms)이다. @type {number} */
+    const CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS = 3000;
     /** 사용자 컨트롤의 기본 자동 낙하 간격(ms)이다. @type {number} */
     const PLAYER_FALL_INTERVAL = 1040;
     /** 게임 경과 시간에 따른 사용자 낙하 속도의 최대 배율이다. @type {number} */
@@ -1714,7 +1716,7 @@
             || opponent.phase !== 'idle';
     }
 
-    /** 피버 연쇄 정산 후 종료하거나 목표·시간을 갱신하고 다음 피버 턴을 시작한다. @param {PlayerState} player 사용자 @param {PlayerState} opponent 연습 상대 @returns {void} */
+    /** 피버 연쇄 정산 후 종료하거나 목표·시간을 갱신하고 다음 피버 턴을 시작한다. 시간 만료 뒤에는 연쇄·싹쓸이 보너스로 시간을 되살리지 않는다. @param {PlayerState} player 사용자 @param {PlayerState} opponent 연습 상대 @returns {void} */
     function finishContinuousFeverResolution(player, opponent) {
         if (!game?.continuousFever || !game.fever) return;
         if (game.fever.expiredPlacement) {
@@ -1723,7 +1725,11 @@
         }
         const combo = game.fever.pendingCombo;
         game.fever.targetCombo = calculateContinuousFeverTarget(game.fever.targetCombo, combo, game.fever.pendingAllClear);
-        game.fever.leftTime += Math.floor(combo / 2) * 1000;
+        if (game.fever.leftTime > 0) {
+            const comboTimeBonus = Math.floor(combo / 2) * 1000;
+            const allClearTimeBonus = game.fever.pendingAllClear ? CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS : 0;
+            game.fever.leftTime += comboTimeBonus + allClearTimeBonus;
+        }
         prepareContinuousFeverTurn();
         enterControl(player);
     }
