@@ -39,6 +39,8 @@
     };
     /** 연쇄 수에 따른 공격 위력 표다. @type {number[]} */
     const COMBO_POWER = [0, 1, 6, 9, 14, 20, 40, 80, 120, 170, 240, 360, 480, 600, 720, 840, 950, 975, 990];
+    /** 뿌요 폭발로 얻는 점수와 ATTACK의 공통 배율이다. 밸런스 조절 및 임시 테스트에 사용한다. @type {number} */
+    const EXPLOSION_REWARD_MULTIPLIER = 1;
     /** 화면 제목용 기본 글꼴 이름이다. @type {string} */
     const TITLE_FONT_NAME = 'Black Han Sans';
     /** 버튼용 기본 글꼴 이름이다. @type {string} */
@@ -1417,7 +1419,7 @@
             if (!exploding.length) return attack;
             combo += 1;
             const power = COMBO_POWER[Math.min(combo, 18)] || 999;
-            attack += exploding.length * power / 4;
+            attack += exploding.length * power * EXPLOSION_REWARD_MULTIPLIER / 4;
             const removed = new Set(exploding.map(([x, y]) => `${x},${y}`));
             exploding.forEach(([x, y]) => DIRECTIONS.forEach(([deltaX, deltaY]) => {
                 const nextX = x + deltaX;
@@ -1493,8 +1495,9 @@
             player.combo += 1;
             playComboSounds(player);
             const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
-            player.point += exploding.length * power;
-            player.attack += exploding.length * power / 4;
+            const explosionReward = exploding.length * power * EXPLOSION_REWARD_MULTIPLIER;
+            player.point += explosionReward;
+            player.attack += explosionReward / 4;
             const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
             sendAttackEnergy(player, opponent, center.x / exploding.length, center.y / exploding.length);
             player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
@@ -3113,8 +3116,9 @@
         const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
         player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
         const power = COMBO_POWER[Math.min(player.combo, 18)] || 999;
-        player.point += exploding.length * power;
-        player.attack += exploding.length * power / 4;
+        const explosionReward = exploding.length * power * EXPLOSION_REWARD_MULTIPLIER;
+        player.point += explosionReward;
+        player.attack += explosionReward / 4;
         sendAttackEnergy(player, simulator.target, center.x / exploding.length, center.y / exploding.length);
         player.effects = { cells: [...removed.values()], elapsed: 0, duration: 420 }; player.phase = 'simulatorEffect';
         return true;
