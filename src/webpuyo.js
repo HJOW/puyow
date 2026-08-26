@@ -35,7 +35,9 @@
     /** 색상 이름별 캔버스 색상값이다. @type {Record<string, string>} */
     const PALETTE = {
         red: '#ef5350', green: '#66bb6a', yellow: '#f7c843', blue: '#42a5f5', purple: '#ab73e8',
-        garbage: '#d3edf4'
+        garbage: '#d3edf4',
+        // 예고뿌요 전용 색상이다. 방해뿌요의 투명도·눈·반사선은 그대로 두고 본체 색만 바꾼다.
+        warningInk: '#30363f'
     };
     /** 연쇄 수별 점수 보너스다. 20연쇄 이상은 마지막 값에 연쇄 초과분을 곱해 계산한다. @type {number[]} */
     const CHAIN_BONUS = [0, 0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512];
@@ -2476,12 +2478,13 @@
         context.save();
         context.translate(x + CELL / 2, y + CELL / 2);
         context.fillStyle = PALETTE[color];
-        context.globalAlpha = color === 'garbage' ? 0.75 : 1;
+        const garbageStyle = color === 'garbage' || color === 'warningInk';
+        context.globalAlpha = garbageStyle ? 0.75 : 1;
         context.beginPath();
         context.arc(0, 0, radius, 0, Math.PI * 2);
         context.fill();
         context.lineWidth = 2;
-        context.strokeStyle = color === 'garbage' ? '#f4fbff' : 'rgba(255,255,255,0.45)';
+        context.strokeStyle = garbageStyle ? '#f4fbff' : 'rgba(255,255,255,0.45)';
         context.stroke();
         // 일반/방해뿌요는 물방울 같은 슬라임이라는 인상을 주는 작은 반사광을 넣는다.
         // 예고뿌요(태양, 별, 돌 등)는 각 WarningPuyo 하위 클래스에서 별도로 그린다.
@@ -2534,7 +2537,7 @@
         /** 작은 낱개들은 기존처럼 서로 조금 겹치게 배치한다. @override @param {number} startX 시작 X 좌표 @param {number} index 목록 순번 @param {number} sameTypeIndex 앞선 작은 낱개 수 @returns {number} 그릴 X 좌표 */
         getDisplayX(startX, index, sameTypeIndex) { return startX + (index - sameTypeIndex * 0.35) * CELL; }
         /** 작은 낱개 예고뿌요를 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
-        draw(drawingContext, x, y, cellSize) { drawPuyo(x + cellSize * 0.05, y + cellSize * 0.25, 'garbage', 0.45, false); }
+        draw(drawingContext, x, y, cellSize) { drawPuyo(x + cellSize * 0.05, y + cellSize * 0.25, 'warningInk', 0.45, false); }
     }
 
     /** 6개 단위의 한 칸 크기 예고뿌요다. */
@@ -2546,7 +2549,7 @@
         /** 예고뿌요 이름을 반환 @return {string} */
         getName() { return '큰 예고뿌요'; }
         /** 한 칸 크기 예고뿌요를 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
-        draw(drawingContext, x, y, cellSize) { drawPuyo(x, y, 'garbage'); }
+        draw(drawingContext, x, y, cellSize) { drawPuyo(x, y, 'warningInk'); }
     }
 
     /** 30개 단위의 빨간 돌 예고뿌요다. */
