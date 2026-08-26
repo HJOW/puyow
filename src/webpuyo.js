@@ -125,6 +125,8 @@
     const STORE_KEY = 'puyow_store';
     /** 갤러리 잠금 해제 정보를 저장할 브라우저 저장소 키다. @type {string} */
     const GALLERY_STORE_KEY = 'puyow_gallery';
+    /** 설정 화면에서 선택할 수 있는 AI 서비스 제공자 목록이다. Google은 현재 제공하지 않는다. @type {string[]} */
+    const AI_SERVICE_PROVIDERS = ['OpenAI'];
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
@@ -503,7 +505,8 @@
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
                 virtualController: settings.virtualController === true,
-                aiProvider: settings.aiProvider === 'Google' ? 'Google' : 'OpenAI',
+                // 이전 Google 설정값은 더 이상 선택할 수 없으므로 기본 제공자인 OpenAI로 정규화한다.
+                aiProvider: AI_SERVICE_PROVIDERS.includes(settings.aiProvider) ? settings.aiProvider : initial.settings.aiProvider,
                 aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
                 aiModel: typeof settings.aiModel === 'string' ? settings.aiModel : initial.settings.aiModel
             }, muted: parsed.muted === true };
@@ -3596,7 +3599,7 @@
                     context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(translate(option.label), option.x + 84, row.y + 5);
                 });
             } else if (row.kind === 'provider') {
-                ['OpenAI', 'Google'].forEach((provider, providerIndex) => {
+                AI_SERVICE_PROVIDERS.forEach((provider, providerIndex) => {
                     const x = 530 + providerIndex * 160; const selected = row.value === provider;
                     context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, row.y - 19, 140, 38); context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(x, row.y - 19, 140, 38); context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(provider, x + 70, row.y + 5);
                 });
@@ -4450,7 +4453,6 @@
             if (settingsFocus === 0) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
             else if (settingsFocus === 1) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
             else if (settingsFocus === 2) settingsDraft.virtualController = direction < 0;
-            else if (settingsFocus === 3) settingsDraft.aiProvider = settingsDraft.aiProvider === 'OpenAI' ? 'Google' : 'OpenAI';
             else if (settingsFocus >= 6) settingsFocus = 6 + (settingsFocus - 6 + (direction < 0 ? 2 : 1)) % 3;
         }
     }
@@ -4821,7 +4823,7 @@
             else if (y >= 145 && y <= 165) { settingsFocus = 1; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 186 && y <= 224 && x >= 530 && x <= 670) { settingsFocus = 2; settingsDraft.virtualController = true; }
             else if (y >= 186 && y <= 224 && x >= 690 && x <= 830) { settingsFocus = 2; settingsDraft.virtualController = false; }
-            else if (y >= 236 && y <= 274) { settingsFocus = 3; settingsDraft.aiProvider = x < 690 ? 'OpenAI' : 'Google'; }
+            else if (y >= 236 && y <= 274 && x >= 530 && x <= 670) { settingsFocus = 3; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
             else if (y >= 286 && y <= 324) { settingsFocus = 4; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; }
             else if (y >= 336 && y <= 374) { settingsFocus = 5; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
         } else {

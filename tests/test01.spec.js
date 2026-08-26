@@ -75,6 +75,29 @@ test('메뉴에서 Z 키는 Enter 키처럼 동작한다', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
 });
 
+test('설정의 AI 서비스 제공자는 OpenAI만 표시하고 기존 Google 값은 정규화한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { aiProvider: 'Google' } }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('OpenAI'))).toBe(true);
+  expect(await page.evaluate(() => window.testCanvasTexts.includes('Google'))).toBe(false);
+
+  // Google이 있던 오른쪽 영역을 클릭해도 선택값을 되살릴 수 없어야 한다.
+  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 255 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 460, y: 478 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('OpenAI');
+});
+
 test('setEnemySoundPool은 getClassType에 해당하는 새 적의 사운드 풀을 교체한다', async ({ page }) => {
   await page.evaluate(() => {
     const sounds = window.WebPuyo.createSoundPool(false);
