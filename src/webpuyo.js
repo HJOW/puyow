@@ -1659,15 +1659,15 @@
     }
 
     /**
-     * 보드 복사본에서 폭발하는 같은 색 뿌요 연결 그룹을 찾는다.
+     * 보드 복사본에서 폭발하는 같은 색 뿌요 연결 그룹을 찾는다. 숨김 행은 중력 완료 전까지 인접 판정에서 제외한다.
      * @param {(string|null)[][]} board 탐색할 보드
      * @returns {{color:string, cells:number[][]}[]} 폭발할 색상과 [x, y] 좌표 그룹 목록
      */
     function findExplosionGroupsOnBoard(board) {
         const visited = new Set();
         const explosionGroups = [];
-        // 모든 셀을 시작점으로 삼아 아직 방문하지 않은 색 그룹을 탐색한다.
-        for (let y = 0; y < ROWS; y += 1) for (let x = 0; x < COLUMNS; x += 1) {
+        // 화면에 보이는 셀만 시작점으로 삼는다. 숨김 행은 중력으로 내려온 다음 폭발 단계부터 참여한다.
+        for (let y = 0; y < VISIBLE_ROWS; y += 1) for (let x = 0; x < COLUMNS; x += 1) {
             const color = board[y][x];
             const key = `${x},${y}`;
             // 빈칸, 방해뿌요, 이미 조사한 색 뿌요는 탐색 대상에서 제외한다.
@@ -1683,7 +1683,7 @@
                     const nx = currentX + deltaX;
                     const ny = currentY + deltaY;
                     const nextKey = `${nx},${ny}`;
-                    if (nx >= 0 && nx < COLUMNS && ny >= 0 && ny < ROWS && board[ny][nx] === color && !visited.has(nextKey)) {
+                    if (nx >= 0 && nx < COLUMNS && ny >= 0 && ny < VISIBLE_ROWS && board[ny][nx] === color && !visited.has(nextKey)) {
                         visited.add(nextKey);
                         queue.push([nx, ny]);
                     }

@@ -620,6 +620,42 @@ test('시뮬레이터 그리기 모드에서는 마우스와 키보드로 13번�
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.editableRows)).toBe(13);
 });
 
+test('숨김 13번째 줄 뿌요는 폭발 연결 수에 포함되지 않는다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  const puyos = [];
+  // 13번째 줄의 빨강 하나가 내려오지 않도록 아래쪽을 채운다.
+  for (let x = 0; x < 3; x += 1) for (let y = 0; y <= 10; y += 1) puyos.push({ x, y, color: (x + y) % 2 === 0 ? 'blue' : 'green' });
+  puyos.push({ x: 0, y: 11, color: 'red' }, { x: 1, y: 11, color: 'red' }, { x: 2, y: 11, color: 'red' }, { x: 0, y: 12, color: 'red' });
+  await page.evaluate((pastedPuyos) => { window.prompt = () => JSON.stringify({ puyos: pastedPuyos }); }, puyos);
+
+  const canvas = page.locator('#webpuyo_canvas');
+  await canvas.click({ position: { x: 960, y: 440 } });
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.filter((puyo) => puyo.color === 'red').length)).toBe(4);
+});
+
+test('숨김 13번째 줄 뿌요는 중력으로 내려온 뒤 다음 폭발 판정에 참여한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  // y=12의 빨강은 중력 후 y=3으로 내려와 y=0~2의 세 뿌요와 함께 폭발한다.
+  await page.evaluate(() => { window.prompt = () => JSON.stringify({ puyos: [
+    { x: 0, y: 0, color: 'red' }, { x: 0, y: 1, color: 'red' }, { x: 0, y: 2, color: 'red' }, { x: 0, y: 12, color: 'red' },
+  ] }); });
+  const canvas = page.locator('#webpuyo_canvas');
+  await canvas.click({ position: { x: 960, y: 440 } });
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.color === 'red'))).toBe(false);
+});
+
 test('시뮬레이터 점수는 동시 폭발의 색수 보너스를 합산한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
