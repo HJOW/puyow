@@ -2060,22 +2060,41 @@
         const amount = Math.floor(player.attack);
         if (amount < 1) return;
         let remaining = amount;
-        const cancelledOpponentAttack = Math.min(remaining, Math.floor(opponent.attack));
-        player.attack -= cancelledOpponentAttack;
-        opponent.attack -= cancelledOpponentAttack;
+        let cancelledOpponentAttack = 0;
+        let cancelledDamage = 0;
+        let cancelledNormalDamage = 0;
+        if (game?.feverRule && player.fever?.active) {
+            // 피버 공격은 피버 DAMAGE와 보존된 일반 DAMAGE를 모두 상쇄한 뒤 상대 ATTACK을 상쇄한다.
+            cancelledDamage = Math.min(remaining, Math.floor(player.fever.damage));
+            player.fever.damage -= cancelledDamage;
+            player.attack -= cancelledDamage;
+            remaining -= cancelledDamage;
+            cancelledNormalDamage = Math.min(remaining, Math.floor(player.normalDamage));
+            player.normalDamage -= cancelledNormalDamage;
+            player.attack -= cancelledNormalDamage;
+            remaining -= cancelledNormalDamage;
+            cancelledOpponentAttack = Math.min(remaining, Math.floor(opponent.attack));
+            player.attack -= cancelledOpponentAttack;
+            opponent.attack -= cancelledOpponentAttack;
+            remaining -= cancelledOpponentAttack;
+        } else {
+            cancelledOpponentAttack = Math.min(remaining, Math.floor(opponent.attack));
+            player.attack -= cancelledOpponentAttack;
+            opponent.attack -= cancelledOpponentAttack;
+            remaining -= cancelledOpponentAttack;
+            cancelledDamage = Math.min(remaining, Math.floor(player.damage));
+            player.damage -= cancelledDamage;
+            player.attack -= cancelledDamage;
+            remaining -= cancelledDamage;
+        }
         opponent.outgoingWarningDelay = Math.floor(opponent.attack);
-        remaining -= cancelledOpponentAttack;
-        const cancelledDamage = Math.min(remaining, Math.floor(player.damage));
-        player.damage -= cancelledDamage;
-        player.attack -= cancelledDamage;
-        remaining -= cancelledDamage;
         if (cancelledDamage) player.warningReductionDelay += cancelledDamage;
-        if (cancelledOpponentAttack || cancelledDamage) registerFeverOffset(player, opponent);
+        if (cancelledOpponentAttack || cancelledDamage || cancelledNormalDamage) registerFeverOffset(player, opponent);
         const source = { x: player.fieldX + (sourceX + 0.5) * CELL, y: FIELD_BOTTOM - (sourceY + 0.5) * CELL };
         player.lastAttackEnergySource = source;
         player.outgoingWarningDelay = Math.floor(player.attack);
         // 연쇄 중에는 에너지만 상대 천장까지 보낸다. 도착 시 예고뿌요만 갱신하고 DAMAGE는 정산하지 않는다.
-        if (cancelledOpponentAttack || cancelledDamage || remaining) {
+        if (cancelledOpponentAttack || cancelledDamage || cancelledNormalDamage || remaining) {
             const energy = queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledOpponentAttack, 0, remaining > 0, Math.floor(player.attack), true);
             if (remaining > 0) player.lastAttackTransfer = energy;
         }
@@ -3001,6 +3020,8 @@
     const FEVER_PLAYER_BACKGROUND_COLOR = '#e89035';
     /** 피버 전용 플레이 영역의 뒷배경보다 더 붉은 베젤 색상이다. @type {string} */
     const FEVER_BEZEL_BACKGROUND_COLOR = '#cf5e38';
+    /** 피버 중 뒤편 일반 영역 예고뿌요를 겹침이 보이도록 옮길 가로 거리다. @type {number} */
+    const FEVER_NORMAL_WARNING_OFFSET_X = -8;
 
     /** 지정 필드가 적 테마보다 우선하는 피버 배경을 써야 하는지 판별한다. @param {PlayerState} player 검사할 플레이어 @returns {boolean} 피버 배경 적용 여부 */
     function usesFeverFieldTheme(player) {
@@ -3082,6 +3103,8 @@
             context.strokeStyle = 'rgba(176, 232, 244, 0.25)'; context.strokeRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
         }
         const displayedWarnings = warningUnits(warningAmount(player, opponent));
+        // 피버 중에는 보존된 일반 필드의 DAMAGE 예고도 좌측 뒤에 먼저 그린다. 피버 필드 예고가 앞쪽에서 일부를 덮는다.
+        if (game?.feverRule && player.fever?.active && player.normalDamage > 0) drawWarningUnits(x + FEVER_NORMAL_WARNING_OFFSET_X, FIELD_TOP - CELL, warningUnits(player.normalDamage));
         // 기본 룰·연습·연속 피버의 실제 플레이 중 나타난 예고뿌요만 갤러리에 공개한다.
         if (canUnlockGalleryWarningInCurrentGame()) displayedWarnings.forEach((unit) => unlockGalleryWarning(unit.type));
         drawWarningUnits(x, FIELD_TOP - CELL, displayedWarnings);
@@ -5216,7 +5239,7 @@
      * 한 플레이어의 보드와 대기열을 JSON으로 직렬화 가능한 상태로 만든다.
      * @param {PlayerState} player 상태를 읽을 플레이어
      * @param {PlayerState} opponent 상대 플레이어
-     * @returns {{name:string, isCpu:boolean, phase:string, point:number, attack:number, damage:number, combo:number, placedPairCount:number, board:{columns:number, rows:number, visibleRows:number, puyos:{x:number,y:number,color:string}[]}, nextPairs:string[][], warningPuyos:string[], active:{x:number,y:number,rotation:number,colors:string[],cells:{x:number,y:number,color:string}[]}|null}}
+     * @returns {{name:string, isCpu:boolean, phase:string, point:number, attack:number, damage:number, normalDamage:number, combo:number, placedPairCount:number, board:{columns:number, rows:number, visibleRows:number, puyos:{x:number,y:number,color:string}[]}, nextPairs:string[][], warningPuyos:string[], active:{x:number,y:number,rotation:number,colors:string[],cells:{x:number,y:number,color:string}[]}|null}}
      */
     function getPlayerGameStatus(player, opponent) {
         const puyos = [];
@@ -5237,6 +5260,7 @@
             point: player.point,
             attack: player.attack,
             damage: player.damage,
+            normalDamage: player.normalDamage,
             combo: player.combo,
             placedPairCount: player.placedPairCount,
             board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos },

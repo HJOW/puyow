@@ -446,6 +446,53 @@ test('피버 상태의 싹쓸이는 목표 연쇄만 올리고 별도 ATTACK을 
   expect(state.player.warningPuyos).toEqual([]);
 });
 
+test('피버 중 공격은 피버와 일반 DAMAGE를 모두 상쇄한 뒤 남은 수치를 전달한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverDualDamageCancelEnemy extends window.WebPuyo.Enemy {
+      constructor() {
+        super();
+        this.sortPriority = -1;
+        this.prepared = false;
+      }
+
+      getClassType() { return 'FeverDualDamageCancelEnemy'; }
+      getName() { return '피버 피해 상쇄 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.prepared) return;
+        this.prepared = true;
+        player.fever.active = true;
+        player.fever.leftTime = 10000;
+        player.fever.damage = 1;
+        player.normalDamage = 2;
+        // 4의 공격으로 피버 DAMAGE 1, 일반 DAMAGE 2를 상쇄하고 남은 1을 상대에게 보낸다.
+        player.attack = 4;
+        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+        player.phase = 'explode';
+        player.phaseTimer = 0;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverDualDamageCancelEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state?.opponent.normalDamage === 0 && state.opponent.fever?.damage === 0 && state.player.damage >= 1;
+  }), { timeout: 10000 }).toBe(true);
+});
+
 test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
