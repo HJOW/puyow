@@ -3037,6 +3037,8 @@
     const FEVER_BEZEL_BACKGROUND_COLOR = '#cf5e38';
     /** 피버 중 뒤편 일반 영역 예고뿌요를 겹침이 보이도록 옮길 가로 거리다. @type {number} */
     const FEVER_NORMAL_WARNING_OFFSET_X = -8;
+    /** 피버 중 뒤편 일반 영역 예고뿌요에 적용할 불투명도다. @type {number} */
+    const FEVER_NORMAL_WARNING_ALPHA = 0.3;
 
     /** 지정 필드가 적 테마보다 우선하는 피버 배경을 써야 하는지 판별한다. @param {PlayerState} player 검사할 플레이어 @returns {boolean} 피버 배경 적용 여부 */
     function usesFeverFieldTheme(player) {
@@ -3118,8 +3120,13 @@
             context.strokeStyle = 'rgba(176, 232, 244, 0.25)'; context.strokeRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
         }
         const displayedWarnings = warningUnits(warningAmount(player, opponent));
-        // 피버 중에는 보존된 일반 필드의 DAMAGE 예고도 좌측 뒤에 먼저 그린다. 피버 필드 예고가 앞쪽에서 일부를 덮는다.
-        if (game?.feverRule && player.fever?.active && player.normalDamage > 0) drawWarningUnits(x + FEVER_NORMAL_WARNING_OFFSET_X, FIELD_TOP - CELL, warningUnits(player.normalDamage));
+        // 피버 중에는 보존된 일반 필드의 DAMAGE 예고를 흐리게 뒤에 먼저 그린다. 피버 필드 예고는 현행 불투명도로 앞에 그린다.
+        if (game?.feverRule && player.fever?.active && player.normalDamage > 0) {
+            context.save();
+            context.globalAlpha = FEVER_NORMAL_WARNING_ALPHA;
+            drawWarningUnits(x + FEVER_NORMAL_WARNING_OFFSET_X, FIELD_TOP - CELL, warningUnits(player.normalDamage));
+            context.restore();
+        }
         // 기본 룰·연습·연속 피버의 실제 플레이 중 나타난 예고뿌요만 갤러리에 공개한다.
         if (canUnlockGalleryWarningInCurrentGame()) displayedWarnings.forEach((unit) => unlockGalleryWarning(unit.type));
         drawWarningUnits(x, FIELD_TOP - CELL, displayedWarnings);
