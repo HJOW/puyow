@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "author": "HJOW",
   "type": "commonjs",
-  "main": "webpuyo.js",
+  "main": "src/puyow.js",
   "scripts": {
     "start": "npm run test && node nodeserver.js",
     "test": "eslint",

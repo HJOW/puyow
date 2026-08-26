@@ -49,7 +49,7 @@ async function installMockGamepad(page) {
 
 test.beforeEach(async ({ page }) => {
   await installMockGamepad(page);
-  await page.goto('/webpuyo.html');
+  await page.goto('/puyow.html');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
 });
 

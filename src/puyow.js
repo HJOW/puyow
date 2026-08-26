@@ -325,7 +325,7 @@
     let languageCode = 'ko';
     /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>}} */
     let store = createInitialStore();
-    /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 webpuyo.js 기준으로 해석한다. @type {string} */
+    /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 puyow.js 기준으로 해석한다. @type {string} */
     let noticeUrl = 'notice.txt';
     /** 공통 사운드 풀 @type {CommonSoundPool} */
     let commonSoundPool = null;
@@ -710,14 +710,14 @@
     }
 
     /**
-     * noticeUrl을 읽는다. 상대경로는 webpuyo.js와 같은 경로를 기준으로 해석하고,
+     * noticeUrl을 읽는다. 상대경로는 puyow.js와 같은 경로를 기준으로 해석하고,
      * 절대 URL은 지정한 주소 그대로 사용한다. 읽기 실패 시 빈 안내문으로 둔다.
      * @returns {Promise<void>}
      */
     async function loadNotice() {
         if (typeof fetch !== 'function' || typeof document === 'undefined') return;
         try {
-            const script = [...(document.scripts || [])].find((element) => /webpuyo(?:\.min)?\.js(?:[?#]|$)/.test(element.src));
+            const script = [...(document.scripts || [])].find((element) => /puyow(?:\.min)?\.js(?:[?#]|$)/.test(element.src));
             const scriptUrl = script?.src ? new URL(script.src, document.baseURI) : new URL(document.baseURI);
             const notiUrl = new URL(noticeUrl, scriptUrl);
             const response = await fetch(notiUrl.href);
@@ -731,7 +731,7 @@
 
     /**
      * 메인 화면에서 읽을 공지사항 파일 경로 또는 URL을 설정한다.
-     * 상대경로는 webpuyo.js와 같은 경로를 기준으로 해석한다.
+     * 상대경로는 puyow.js와 같은 경로를 기준으로 해석한다.
      * @param {string} noticeFile 공지사항 파일명, 상대경로 또는 절대 URL
      * @returns {void}
      */

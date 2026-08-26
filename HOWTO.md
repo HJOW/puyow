@@ -9,22 +9,22 @@
 ## 프로젝트 구성
 
 - `index.html`: 배포 페이지의 진입점입니다.
-- `src/webpuyo.html`: 게임 캔버스를 포함한 페이지 구조와 초기화 호출을 정의합니다.
-- `src/webpuyo.css`: 전체 화면 캔버스 레이아웃과 글꼴 스타일을 정의합니다.
-- `src/webpuyo.js`: 브라우저/CommonJS 라이브러리, 게임 규칙, 렌더링, 입력, CPU 조작을 구현합니다.
+- `src/puyow.html`: 게임 캔버스를 포함한 페이지 구조와 초기화 호출을 정의합니다.
+- `src/puyow.css`: 전체 화면 캔버스 레이아웃과 글꼴 스타일을 정의합니다.
+- `src/puyow.js`: 브라우저/CommonJS 라이브러리, 게임 규칙, 렌더링, 입력, CPU 조작을 구현합니다.
 - `HOWTO.md`: 페이지 구성, 라이브러리 사용법, 번역, 새 AI 상대 제작을 포함한 모든 개발 안내를 제공합니다.
 
 ## CDN
 
-webpuyo.js 는 CDN으로도 사용할 수 있습니다.
+puyow.js 는 CDN으로도 사용할 수 있습니다.
 ```html
-<script src='https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/webpuyo.js'></script>
+<script src='https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/puyow.js'></script>
 ```
 
 
 ## 라이브러리 개요
 
-`webpuyo.js`는 CommonJS와 브라우저 스크립트 방식 모두에서 사용할 수 있는 라이브러리입니다. `Enemy`는 CPU 조작 알고리즘과 게임 화면 테마를 넣기 위한 기본 클래스입니다. 메인 화면에서 게임 시작을 선택하면 적 선택 화면이 열리며, 외부 파일에서 등록한 상대를 선택해 대전합니다. `sortPriority` 멤버 변수의 기본값은 `1`이며, 작은 값의 적이 적 선택 화면에서 왼쪽에 표시됩니다.
+`puyow.js`는 CommonJS와 브라우저 스크립트 방식 모두에서 사용할 수 있는 라이브러리입니다. `Enemy`는 CPU 조작 알고리즘과 게임 화면 테마를 넣기 위한 기본 클래스입니다. 메인 화면에서 게임 시작을 선택하면 적 선택 화면이 열리며, 외부 파일에서 등록한 상대를 선택해 대전합니다. `sortPriority` 멤버 변수의 기본값은 `1`이며, 작은 값의 적이 적 선택 화면에서 왼쪽에 표시됩니다.
 
 `Enemy`에는 선택 화면 공개 상태를 위한 boolean 멤버 변수도 있습니다. 둘 다 기본값은 `false`입니다.
 
@@ -38,7 +38,7 @@ webpuyo.js 는 CDN으로도 사용할 수 있습니다.
 라이브러리를 불러오는 것만으로는 게임이 초기화되지 않습니다. 브라우저에서는 모든 적 등록 스크립트를 불러온 뒤 `WebPuyo.initialize()`를 명시적으로 호출해야 메뉴와 입력 처리가 시작됩니다.
 
 ```html
-<script defer src="webpuyo.js"></script>
+<script defer src="puyow.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     window.WebPuyo.initialize('webpuyo_canvas');
@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function() {
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, initialize } = require('./src/webpuyo.js');
+const { Enemy, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, initialize } = require('./src/puyow.js');
 ```
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 게임용 canvas를 만들어 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 사용하고 `destroy()`가 요소를 제거하지 않습니다. 다만 게임의 그래픽 설정에 따라 해당 canvas의 실제 `width`와 `height`는 설정됩니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
@@ -97,13 +97,13 @@ WebMCP를 지원하는 브라우저에서는 AI도 `show_message` 도구로 동�
 
 ## 공지사항 경로 설정
 
-메인 화면 왼쪽에 표시할 공지사항은 기본적으로 `webpuyo.js`와 같은 경로의 `notice.txt`에서 읽습니다. 초기화하기 전에 `WebPuyo.setNoticeFile(noticeFile)`을 호출하면 파일명, 상대경로 또는 절대 URL을 지정할 수 있습니다. 상대경로는 `webpuyo.js`가 로드된 URL을 기준으로 해석하고, `https://`와 같은 절대 URL은 지정한 주소 그대로 사용합니다. 공지사항 파일은 다국어 번역을 거치지 않고 UTF-8 텍스트 그대로 표시합니다.
+메인 화면 왼쪽에 표시할 공지사항은 기본적으로 `puyow.js`와 같은 경로의 `notice.txt`에서 읽습니다. 초기화하기 전에 `WebPuyo.setNoticeFile(noticeFile)`을 호출하면 파일명, 상대경로 또는 절대 URL을 지정할 수 있습니다. 상대경로는 `puyow.js`가 로드된 URL을 기준으로 해석하고, `https://`와 같은 절대 URL은 지정한 주소 그대로 사용합니다. 공지사항 파일은 다국어 번역을 거치지 않고 UTF-8 텍스트 그대로 표시합니다.
 
 ```js
 // 기본값과 같은 파일을 사용한다.
 WebPuyo.setNoticeFile('notice.txt');
 
-// webpuyo.js가 있는 위치의 notices/notice-ko.txt를 사용한다.
+// puyow.js가 있는 위치의 notices/notice-ko.txt를 사용한다.
 WebPuyo.setNoticeFile('notices/notice-ko.txt');
 
 // 다른 서버의 공지사항을 사용한다.
@@ -287,7 +287,7 @@ class CenterEnemy extends WebPuyo.Enemy {
 
 ## 적 등록 방법
 
-새 적은 별도 JavaScript 파일에서 `WebPuyo.registerOpponent()`로 등록합니다. 따라서 새 적을 추가할 때 `webpuyo.js`를 수정할 필요가 없습니다. 등록 객체에는 `createController` 함수가 반드시 필요하며, 이 함수는 매 호출마다 `Enemy`를 상속한 새 인스턴스를 반환해야 합니다. 적 이름은 별도 `name` 속성이 아니라 `getName()`의 반환값을 사용합니다.
+새 적은 별도 JavaScript 파일에서 `WebPuyo.registerOpponent()`로 등록합니다. 따라서 새 적을 추가할 때 `puyow.js`를 수정할 필요가 없습니다. 등록 객체에는 `createController` 함수가 반드시 필요하며, 이 함수는 매 호출마다 `Enemy`를 상속한 새 인스턴스를 반환해야 합니다. 적 이름은 별도 `name` 속성이 아니라 `getName()`의 반환값을 사용합니다.
 
 `registerOpponent()`는 등록 시 `createController()`를 한 번 호출해 `sortPriority`, `hidden`, `notAvail`을 읽고 검증합니다. 따라서 이 설정은 생성자에서 설정하고, 등록 뒤에 값을 바꾸지 않아야 합니다. 실제 대전에서도 `createController()`를 다시 호출하므로, 게임별 상태는 컨트롤러 인스턴스 멤버로 유지합니다.
 
@@ -308,7 +308,7 @@ WebPuyo.registerOpponent({
 });
 ```
 
-`my-opponent.js`는 `webpuyo.js` 다음, `WebPuyo.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다. 기본 룰 승리 기록은 컨트롤러 클래스명으로 `puyow_store.clearList`와 현재 AI 난이도의 `clearListByDifficulty` 배열에 저장되고, 피버 룰 승리 기록은 별도 `feverClearListByDifficulty` 배열에 저장됩니다. 이미 배포한 적 클래스의 이름을 바꾸면 기존 난이도별 잠금 해제 기록과 호환되지 않습니다.
+`my-opponent.js`는 `puyow.js` 다음, `WebPuyo.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다. 기본 룰 승리 기록은 컨트롤러 클래스명으로 `puyow_store.clearList`와 현재 AI 난이도의 `clearListByDifficulty` 배열에 저장되고, 피버 룰 승리 기록은 별도 `feverClearListByDifficulty` 배열에 저장됩니다. 이미 배포한 적 클래스의 이름을 바꾸면 기존 난이도별 잠금 해제 기록과 호환되지 않습니다.
 
 ## 게임 화면 테마
 
@@ -431,7 +431,7 @@ const item = items[index];
 await page.addInitScript(() => {
     Math.random = () => 0.25;
 });
-await page.goto('/webpuyo.html');
+await page.goto('/puyow.html');
 ```
 
 - `player.board[y][x]`에는 해당 칸의 색상 문자열 또는 빈 칸의 `null`이 있습니다.

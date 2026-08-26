@@ -2,7 +2,7 @@
     "id" : "webpuyo",
     "name" : "Puyo W",
     "short_name" : "Puyo W",
-    "start_url" : "webpuyo.html",
+    "start_url" : "puyow.html",
     "display" : "fullscreen",
     "orientation" : "any",
     "categories" : [
