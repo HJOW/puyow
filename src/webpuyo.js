@@ -128,7 +128,7 @@
     /** AI 어려움 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number|null} */
     const AI_FAST_DOWN_DELAY_HARD = 300;
     /** AI 극한 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number|null} */
-    const AI_FAST_DOWN_DELAY_EXTREME = 50;
+    const AI_FAST_DOWN_DELAY_EXTREME = 100;
     /** 적이 공격 위력 시뮬레이션을 우선할 피해량 기준이다. @type {number} */
     const AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD = 12;
     /** 공통 뿌요 쌍 대기열의 초기 길이다. @type {number} */
@@ -335,12 +335,19 @@
     const OPPONENTS = [];
     /** getClassType()별로 외부에서 지정한 적 사운드 풀이다. @type {Map<string, SoundPool>} */
     const enemySoundPools = new Map();
-    /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,disabled?:boolean,activate?:()=>void}[]} */
+    /** 메인 메뉴 게임 규칙 선택지의 버튼 배경색이다. */
+    const RULE_OPTION_BACKGROUND_COLORS = {
+        standard: '#264b5b',
+        fever: '#b0007a',
+        practice: '#386779',
+        continuousFever: '#cf4bb0'
+    };
+    /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
-        { label: '기본 룰', activate: () => openOpponentMenu(false) },
-        { label: '피버 룰', activate: () => openOpponentMenu(true) },
-        { label: '연습', activate: () => openPracticeDifficulty() },
-        { label: '연속 피버', activate: () => openContinuousFeverDifficulty() }
+        { label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard, activate: () => openOpponentMenu(false) },
+        { label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, activate: () => openOpponentMenu(true) },
+        { label: '연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice, activate: () => openPracticeDifficulty() },
+        { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() }
     ];
     /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {object|null} */
     let WebPuyo = null;
@@ -4480,7 +4487,7 @@
             const bounds = getRuleSelectionButtonBounds(index);
             const disabled = option.disabled === true;
             const focused = !disabled && index === ruleSelectionFocus;
-            context.fillStyle = disabled ? '#3c4650' : '#264b5b'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = disabled ? '#3c4650' : option.backgroundColor; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.strokeStyle = disabled ? '#7c8791' : focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.textAlign = 'center'; context.fillStyle = disabled ? '#c4cbd0' : '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
             context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (option.statusLabel ? 32 : 47));
