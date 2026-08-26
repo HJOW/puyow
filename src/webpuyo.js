@@ -24,6 +24,8 @@
     const OPPONENT_MENU_SCALE = 0.9;
     /** 한 칸의 논리 픽셀 크기다. @type {number} */
     const CELL = 38;
+    /** 패배 연출에서 필드 밖으로 더 떨어뜨릴 줄 수다. @type {number} */
+    const DEFEAT_EXTRA_FALL_ROWS = 5;
     /** 메인 메뉴에서 갤러리 대상이 떠다니는 최소 개수다. 이 값을 바꾸면 추첨 범위가 함께 바뀐다. @type {number} */
     const MAIN_MENU_GALLERY_FLOATER_MIN_COUNT = 3;
     /** 메인 메뉴에서 갤러리 대상이 떠다니는 최대 개수다. 최소 개수 이상으로 설정한다. @type {number} */
@@ -3147,7 +3149,8 @@
     function drawDefeatAnimation(player) {
         const animation = game.ending;
         const progress = Math.min(1, animation.elapsed / animation.duration);
-        const distance = progress * progress * (HEIGHT - FIELD_TOP + CELL);
+        // 베젤과 뿌요가 캔버스 밖으로 충분히 빠져나간 것처럼 보이도록 5줄을 더 떨어뜨린다.
+        const distance = progress * progress * (HEIGHT - FIELD_TOP + CELL + CELL * DEFEAT_EXTRA_FALL_ROWS);
         const opacity = 1 - progress * 0.45;
         const x = player.fieldX;
         context.save();
