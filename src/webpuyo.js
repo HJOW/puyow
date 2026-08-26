@@ -18,6 +18,8 @@
     const ROWS = 17;
     /** 화면에 보이는 필드의 세로 칸 수다. @type {number} */
     const VISIBLE_ROWS = 12;
+    /** 시뮬레이터 그리기 모드에서 편집할 수 있는 줄 수다. 13번째 줄은 실행 중 베젤 뒤에 숨겨진다. @type {number} */
+    const SIMULATOR_EDITABLE_ROWS = VISIBLE_ROWS + 1;
     /** 적 선택 화면 UI를 축소해 표시할 배율이다. @type {number} */
     const OPPONENT_MENU_SCALE = 0.9;
     /** 한 칸의 논리 픽셀 크기다. @type {number} */
@@ -4121,7 +4123,7 @@
             if (!parsed || !Array.isArray(parsed.puyos)) throw new TypeError('puyos 배열이 필요합니다.');
             const board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
             parsed.puyos.forEach((puyo) => {
-                if (!puyo || !Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= VISIBLE_ROWS || ![...COLORS, 'garbage'].includes(puyo.color)) {
+                if (!puyo || !Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= SIMULATOR_EDITABLE_ROWS || ![...COLORS, 'garbage'].includes(puyo.color)) {
                     throw new TypeError('유효하지 않은 뿌요 좌표 또는 색상입니다.');
                 }
                 if (board[puyo.y][puyo.x]) throw new TypeError('같은 칸에 뿌요가 중복됩니다.');
@@ -4135,7 +4137,7 @@
 
     /** 선택한 항목을 필드 칸에 반영한다. @param {number} x X 좌표 @param {number} y Y 좌표 @returns {void} */
     function placeSimulatorPuyo(x, y) {
-        if (!simulator || simulator.mode !== 'draw' || x < 0 || x >= COLUMNS || y < 0 || y >= VISIBLE_ROWS) return;
+        if (!simulator || simulator.mode !== 'draw' || x < 0 || x >= COLUMNS || y < 0 || y >= SIMULATOR_EDITABLE_ROWS) return;
         simulator.player.board[y][x] = simulator.selected === 'eraser' ? null : simulator.selected;
     }
 
@@ -4226,6 +4228,15 @@
         }
     }
 
+    /** 시뮬레이션 중 상단·측면 베젤을 전경으로 다시 그려 숨김 행의 낙하 뿌요를 가린다. @returns {void} */
+    function drawSimulatorBezelForeground() {
+        const x = FIELD_LEFT;
+        context.fillStyle = '#0c2433';
+        context.fillRect(x - CELL, FIELD_TOP - CELL, CELL * 8, CELL);
+        context.fillRect(x - CELL, FIELD_TOP, CELL, CELL * VISIBLE_ROWS);
+        context.fillRect(x + CELL * COLUMNS, FIELD_TOP, CELL, CELL * VISIBLE_ROWS);
+    }
+
     /** 시뮬레이터 화면을 그린다. @returns {void} */
     function drawSimulator() {
         const player = simulator.player; const x = FIELD_LEFT;
@@ -4236,10 +4247,14 @@
         for (let i = 0; i <= COLUMNS; i += 1) { context.beginPath(); context.moveTo(x + i * CELL, FIELD_TOP); context.lineTo(x + i * CELL, FIELD_BOTTOM); context.stroke(); }
         for (let i = 0; i <= VISIBLE_ROWS; i += 1) { context.beginPath(); context.moveTo(x, FIELD_TOP + i * CELL); context.lineTo(x + COLUMNS * CELL, FIELD_TOP + i * CELL); context.stroke(); }
         const falling = new Set((player.gravityAnimation?.falling || []).map((puyo) => `${puyo.x},${puyo.toY}`));
-        for (let y = 0; y < VISIBLE_ROWS; y += 1) for (let column = 0; column < COLUMNS; column += 1) if (player.board[y][column] && !falling.has(`${column},${y}`)) drawPuyo(x + column * CELL, FIELD_BOTTOM - (y + 1) * CELL, player.board[y][column]);
+        // 그리기 중에만 13번째 줄을 베젤 위에 표시한다. 시뮬레이션에서는 기존처럼 베젤 뒤에 숨긴다.
+        const renderedRows = simulator.mode === 'draw' ? SIMULATOR_EDITABLE_ROWS : VISIBLE_ROWS;
+        for (let y = 0; y < renderedRows; y += 1) for (let column = 0; column < COLUMNS; column += 1) if (player.board[y][column] && !falling.has(`${column},${y}`)) drawPuyo(x + column * CELL, FIELD_BOTTOM - (y + 1) * CELL, player.board[y][column]);
         if (player.gravityAnimation) { const progress = Math.min(1, player.gravityAnimation.elapsed / player.gravityAnimation.duration) ** 2; player.gravityAnimation.falling.forEach((puyo) => { const y = puyo.fromY + (puyo.toY - puyo.fromY) * progress; if (y < VISIBLE_ROWS) drawPuyo(x + puyo.x * CELL, FIELD_BOTTOM - (y + 1) * CELL, puyo.color); }); }
         if (player.effects) { const progress = Math.min(1, player.effects.elapsed / player.effects.duration); player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress)); }
         player.comboPopups.forEach((popup) => drawComboPopup(x, popup));
+        // 낙하 애니메이션도 베젤보다 먼저 그려지므로, 시뮬레이션에서는 베젤을 전경으로 복원한다.
+        if (simulator.mode !== 'draw') drawSimulatorBezelForeground();
         if (simulator.mode === 'draw' && simulator.focusArea === 'board') { const focus = simulator.boardFocus; context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(x + focus.x * CELL + 2, FIELD_BOTTOM - (focus.y + 1) * CELL + 2, CELL - 4, CELL - 4); }
         context.fillStyle = '#071621'; context.fillRect(500, FIELD_TOP - CELL, 350, CELL * 14); context.fillStyle = '#0c2433'; context.fillRect(FIELD_RIGHT - CELL, FIELD_TOP - CELL, CELL * 8, CELL * 14);
         for (let i = 0; i < COLUMNS; i += 1) { context.fillStyle = '#0a1d29'; context.fillRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); context.strokeStyle = 'rgba(176,232,244,.25)'; context.strokeRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); }
@@ -4674,7 +4689,7 @@
             if (key === 'arrowleft') simulator.boardFocus.x = Math.max(0, simulator.boardFocus.x - 1);
             if (key === 'arrowright') simulator.boardFocus.x = Math.min(COLUMNS - 1, simulator.boardFocus.x + 1);
             if (key === 'arrowdown') simulator.boardFocus.y = Math.max(0, simulator.boardFocus.y - 1);
-            if (key === 'arrowup') simulator.boardFocus.y = Math.min(VISIBLE_ROWS - 1, simulator.boardFocus.y + 1);
+            if (key === 'arrowup') simulator.boardFocus.y = Math.min(SIMULATOR_EDITABLE_ROWS - 1, simulator.boardFocus.y + 1);
             if (key === 'enter' || key === ' ') placeSimulatorPuyo(simulator.boardFocus.x, simulator.boardFocus.y);
             return;
         }
@@ -5044,7 +5059,7 @@
             if (simulator.mode !== 'draw') return;
             const boardX = Math.floor((x - FIELD_LEFT) / CELL);
             const boardY = Math.floor((FIELD_BOTTOM - y) / CELL);
-            if (boardX >= 0 && boardX < COLUMNS && boardY >= 0 && boardY < VISIBLE_ROWS) {
+            if (boardX >= 0 && boardX < COLUMNS && boardY >= 0 && boardY < SIMULATOR_EDITABLE_ROWS) {
                 simulator.boardFocus = { x: boardX, y: boardY };
                 simulator.focusArea = 'board';
                 placeSimulatorPuyo(boardX, boardY);
@@ -5278,6 +5293,25 @@
      */
     function getScreenState() {
         return getNowScreen();
+    }
+
+    /**
+     * 현재 시뮬레이터 편집 상태의 읽기 전용 스냅샷을 반환한다.
+     * @returns {{mode:'draw'|'simulation'|'settling'|'complete', selected:string, focusArea:'palette'|'board'|'complete', boardFocus:{x:number,y:number}, board:{columns:number,rows:number,visibleRows:number,editableRows:number,puyos:{x:number,y:number,color:string}[]}}|null}
+     */
+    function getSimulatorState() {
+        if (!simulator) return null;
+        const puyos = [];
+        simulator.player.board.forEach((row, y) => row.forEach((color, x) => {
+            if (color) puyos.push({ x, y, color });
+        }));
+        return {
+            mode: simulator.mode,
+            selected: simulator.selected,
+            focusArea: simulator.focusArea,
+            boardFocus: { ...simulator.boardFocus },
+            board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, editableRows: SIMULATOR_EDITABLE_ROWS, puyos }
+        };
     }
 
     /**
@@ -7347,6 +7381,7 @@
         getSelectedDifficulty,
         getSelectedColorCount,
         getScreenState,
+        getSimulatorState,
         getGameState,
         getNextPairs,
         initialize,

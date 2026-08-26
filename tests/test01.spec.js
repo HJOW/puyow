@@ -600,6 +600,26 @@ test('시뮬레이터 연쇄는 새 점수 계산식과 같은 연쇄 문구를 
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000040'))).toBe(true);
 });
 
+test('시뮬레이터 그리기 모드에서는 마우스와 키보드로 13번째 줄에 뿌요를 배치한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  const canvas = page.locator('#webpuyo_canvas');
+  // 13번째 줄(y=12)은 FIELD_TOP 바로 위의 숨김 영역이며, 그리기 중에는 마우스로 편집할 수 있다.
+  await canvas.click({ position: { x: 207, y: 83 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.x === 0 && puyo.y === 12 && puyo.color === 'red'))).toBe(true);
+
+  // 방향키로 13번째 줄까지 이동한 뒤 Enter로 다음 칸을 배치한다.
+  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.x === 1 && puyo.y === 12 && puyo.color === 'red'))).toBe(true);
+  expect(await page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.editableRows)).toBe(13);
+});
+
 test('시뮬레이터 점수는 동시 폭발의 색수 보너스를 합산한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
