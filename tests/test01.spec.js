@@ -58,6 +58,13 @@ async function enterMainMenu(page) {
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 }
 
+async function openSettings(page) {
+  await enterMainMenu(page);
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+}
+
 test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한다', async ({ page }) => {
   await enterMainMenu(page);
 
@@ -81,21 +88,103 @@ test('설정의 AI 서비스 제공자는 OpenAI만 표시하고 기존 Google �
   });
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
-  await enterMainMenu(page);
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+  await openSettings(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('OpenAI'))).toBe(true);
   expect(await page.evaluate(() => window.testCanvasTexts.includes('Google'))).toBe(false);
 
   // Google이 있던 오른쪽 영역을 클릭해도 선택값을 되살릴 수 없어야 한다.
   await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 255 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 460, y: 478 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 460, y: 528 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('OpenAI');
+});
+
+test('빈 사용 모델명은 기본값으로 보정되고 API 테스트 버튼은 API 키 없이는 비활성이다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('gpt-5.6-luna'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
+    'AI API 테스트', 'Test AI API', 'AI APIテスト', 'AI API 测试',
+  ].includes(text)))).toBe(true);
+
+  let requestCount = 0;
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    requestCount += 1;
+    await route.fulfill({ status: 500 });
+  });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 405 } });
+  await page.waitForTimeout(100);
+  expect(requestCount).toBe(0);
+});
+
+test('AI API 테스트는 저장된 OpenAI 설정으로 구조화된 Responses 요청을 보내고 응답을 검증한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'OpenAI', aiApiKey: 'test-key', aiModel: 'gpt-5.6-luna' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  let requestBody = null;
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    requestBody = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify({ output_text: '{"success":true}' }),
+    });
+  });
+  await openSettings(page);
+  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
+    'AI API 테스트 성공 (JSON 스키마 검사: 통과)',
+    'AI API test succeeded (JSON schema: passed).',
+    'AI APIテスト成功（JSONスキーマ検証: 合格）',
+    'AI API 测试成功（JSON 架构检查：通过）',
+  ].includes(text)))).toBe(true);
+  expect(requestBody).toMatchObject({
+    model: 'gpt-5.6-luna',
+    reasoning: { effort: 'low' },
+    text: { format: { type: 'json_schema', name: 'ai_api_test_result', strict: true, schema: { required: ['success'] } } },
+  });
+});
+
+test('저장하지 않은 AI 설정은 API 테스트 요청 대신 저장 안내를 표시한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'OpenAI', aiApiKey: 'test-key', aiModel: 'gpt-5.6-luna' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  let requestCount = 0;
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    requestCount += 1;
+    await route.fulfill({ status: 500 });
+  });
+  await openSettings(page);
+  await page.locator('#webpuyo_canvas').click({ position: { x: 600, y: 355 } });
+  await page.keyboard.press('x');
+  await page.keyboard.press('Enter');
+  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 405 } });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
+    '설정 저장 후 다시 시도해 주세요',
+    'Save your settings and try again.',
+    '設定を保存してから、もう一度お試しください。',
+    '请先保存设置后再试。',
+  ].includes(text)))).toBe(true);
+  expect(requestCount).toBe(0);
 });
 
 test('setEnemySoundPool은 getClassType에 해당하는 새 적의 사운드 풀을 교체한다', async ({ page }) => {

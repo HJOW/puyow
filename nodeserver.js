@@ -41,6 +41,18 @@ const http = require('http')
 const fs   = require('fs');
 const path = require('path');
 
+/*
+로컬 게임 테스트를 위한 CORS 응답 헤더. 
+인증 정보를 포함한 요청은 별도 허용 출처가 필요하므로
+이 간이 서버에서는 자격 증명을 사용하지 않는 개발용 요청만 모든 출처에 공개.
+*/
+const CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '600'
+};
+
 // 포트
 let PORT = 9891;
 // 웹 경로
@@ -57,10 +69,21 @@ const blacklistFilePattern = [
     '/META-INF/'
 ];
 
-// 동적 URL
+// 동적 URL (나중에 백엔드 구현 시 이 객체 안에 추가 예정)
 const apis = {};
 
+// 서버 구동 시작 (종료 시에는 CTRL+C 단축키를 입력할 것)
 const server = http.createServer((req, res) => {
+    // 모든 정적·동적 응답에 CORS 헤더를 먼저 설정한다.
+    Object.entries(CORS_HEADERS).forEach(([name, value]) => res.setHeader(name, value));
+
+    // JSON POST 등 브라우저 preflight 요청에는 본문 없이 성공을 반환한다.
+    if(req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+    }
+
     // URL 경로 설정 (기본값: index.html)
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const url = req.url;

@@ -125,8 +125,23 @@
     const STORE_KEY = 'puyow_store';
     /** 갤러리 잠금 해제 정보를 저장할 브라우저 저장소 키다. @type {string} */
     const GALLERY_STORE_KEY = 'puyow_gallery';
+    /** 설정에서 새로 제안하고 저장값이 비어 있을 때 보정할 기본 OpenAI 모델명이다. @type {string} */
+    const DEFAULT_AI_MODEL = 'gpt-5.6-luna';
     /** 설정 화면에서 선택할 수 있는 AI 서비스 제공자 목록이다. Google은 현재 제공하지 않는다. @type {string[]} */
     const AI_SERVICE_PROVIDERS = ['OpenAI'];
+    /** 브라우저에서 직접 호출할 OpenAI Responses API 주소다. @type {string} */
+    const OPENAI_RESPONSES_API_URL = 'https://api.openai.com/v1/responses';
+    /** 설정 화면 API 테스트 결과를 표시할 전체 시간(ms)이다. 마지막 500ms 동안 사라진다. @type {number} */
+    const AI_API_TEST_MESSAGE_DURATION = 2000;
+    /** 설정 화면 API 테스트 결과가 페이드아웃되는 시간(ms)이다. @type {number} */
+    const AI_API_TEST_MESSAGE_FADE_DURATION = 500;
+    /** API 테스트 응답에 요구할 최소 JSON Schema다. @type {object} */
+    const AI_API_TEST_JSON_SCHEMA = {
+        type: 'object',
+        properties: { success: { type: 'boolean' } },
+        required: ['success'],
+        additionalProperties: false
+    };
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
@@ -139,7 +154,7 @@
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
-            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '켜기': 'On', '끄기': 'Off', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 및 AI 관련 기능은 추후 제공 예정': 'Sound and AI features will be available in a future update.',
+            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '켜기': 'On', '끄기': 'Off', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
             '플레이 방법': 'How to Play', '갤러리': 'Gallery', '대상 유형': 'Category', '대상': 'Item', '일반뿌요': 'Puyos', '예고뿌요': 'Warning Puyos', '적': 'Enemies', '빨강뿌요': 'Red Puyo', '초록뿌요': 'Green Puyo', '노랑뿌요': 'Yellow Puyo', '파랑뿌요': 'Blue Puyo', '보라뿌요': 'Purple Puyo', '방해뿌요': 'Garbage Puyo', '작은 예고뿌요': 'Small Warning Puyo', '큰 예고뿌요': 'Large Warning Puyo', '빨간 돌': 'Red Rock', '별': 'Star', '태양': 'Sun', '중성자별': 'Neutron Star', '블랙홀': 'Black Hole', '위기': 'Crisis', '다시보기': 'Replay',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': 'An all clear gives you a powerful attack.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
@@ -154,7 +169,7 @@
             '시뮬레이터': 'シミュレーター', '팔레트': 'パレット', '재생': '再生', '그리기': '描画', '시뮬레이션': 'シミュレーション', '지우개': '消しゴム',
             'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
             '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
-            '설정': '設定', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '켜기': 'オン', '끄기': 'オフ', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 및 AI 관련 기능은 추후 제공 예정': 'サウンドとAI機能は今後のアップデートで提供予定です。',
+            '설정': '設定', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '켜기': 'オン', '끄기': 'オフ', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', 'AI API 테스트': 'AI APIテスト', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 관련 기능은 추후 제공 예정': 'サウンド機能は今後のアップデートで提供予定です。', '설정 저장 후 다시 시도해 주세요': '設定を保存してから、もう一度お試しください。', 'AI API 테스트 요청 중...': 'AI APIをテスト中…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI APIテスト成功（JSONスキーマ検証: 合格）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI APIテスト失敗（JSONスキーマ検証: 失敗）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI APIテスト失敗（JSONスキーマ検証: 未実施）',
             '플레이 방법': '遊び方', '갤러리': 'ギャラリー', '대상 유형': '種類', '대상': '対象', '일반뿌요': 'ぷよ', '예고뿌요': '予告ぷよ', '적': '敵', '빨강뿌요': '赤ぷよ', '초록뿌요': '緑ぷよ', '노랑뿌요': '黄ぷよ', '파랑뿌요': '青ぷよ', '보라뿌요': '紫ぷよ', '방해뿌요': 'おじゃまぷよ', '작은 예고뿌요': '小さい予告ぷよ', '큰 예고뿌요': '大きい予告ぷよ', '빨간 돌': '赤い岩', '별': '星', '태양': '太陽', '중성자별': '中性子星', '블랙홀': 'ブラックホール', '위기': 'ピンチ', '다시보기': 'もう一度見る',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '左右・下キーでぷよを動かし、Z・Xキーで回転できます。', '좌우 방향키로 뿌요 이동': '左右キーでぷよを移動', '아래 방향키로 빨리 떨어뜨리기': '下キーで速く落下', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Zキーで左回転', 'X 키를 눌러 우측으로 뿌요 회전': 'Xキーで右回転', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '同じ色のぷよを4個以上つなげると消して攻撃できます。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '同じ色のぷよ4個がつながり、相手を攻撃できます。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'ぷよが消えると、隣接するおじゃまぷよも消えます。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '連鎖でぷよを消すと、より強く攻撃できます。', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': '全消しをすると強力な攻撃ができます。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '3段目の端にぷよが残ると負けです。',
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
@@ -169,7 +184,7 @@
             '시뮬레이터': '模拟器', '팔레트': '调色板', '재생': '播放', '그리기': '绘制', '시뮬레이션': '模拟', '지우개': '橡皮擦',
             'JSON복사': '复制 JSON', 'JSON넣기': '粘贴 JSON', '배치가 클립보드에 복사됨': '布局已复制到剪贴板',
             '클립보드 복사 실패': '复制到剪贴板失败', 'JSON 파싱 실패': 'JSON 解析失败', '배치 JSON을 입력하세요.': '请输入布局 JSON。',
-            '설정': '设置', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '켜기': '开启', '끄기': '关闭', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 및 AI 관련 기능은 추후 제공 예정': '声音和 AI 功能将在未来更新中提供。',
+            '설정': '设置', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '켜기': '开启', '끄기': '关闭', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', 'AI API 테스트': 'AI API 测试', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 관련 기능은 추후 제공 예정': '声音功能将在未来更新中提供。', '설정 저장 후 다시 시도해 주세요': '请先保存设置后再试。', 'AI API 테스트 요청 중...': '正在测试 AI API…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API 测试成功（JSON 架构检查：通过）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API 测试失败（JSON 架构检查：失败）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API 测试失败（JSON 架构检查：未执行）',
             '플레이 방법': '玩法说明', '갤러리': '图鉴', '대상 유형': '类别', '대상': '对象', '일반뿌요': '普通噗哟', '예고뿌요': '预告噗哟', '적': '敌人', '빨강뿌요': '红噗哟', '초록뿌요': '绿噗哟', '노랑뿌요': '黄噗哟', '파랑뿌요': '蓝噗哟', '보라뿌요': '紫噗哟', '방해뿌요': '垃圾噗哟', '작은 예고뿌요': '小型预告噗哟', '큰 예고뿌요': '大型预告噗哟', '빨간 돌': '红色岩石', '별': '星星', '태양': '太阳', '중성자별': '中子星', '블랙홀': '黑洞', '위기': '危机', '다시보기': '再次观看',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '使用左右和下方向键移动噗哟，使用 Z、X 键旋转。', '좌우 방향키로 뿌요 이동': '用左右方向键移动噗哟', '아래 방향키로 빨리 떨어뜨리기': '用下方向键快速落下', 'Z 키를 눌러 좌측으로 뿌요 회전': '按 Z 键向左旋转', 'X 키를 눌러 우측으로 뿌요 회전': '按 X 键向右旋转', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '连接四个或更多相同颜色的噗哟即可消除并攻击对手。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '四个相同颜色的噗哟连接后可以攻击对手。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': '消除噗哟时，相邻的垃圾噗哟也会一起消失。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '连续消除噗哟可以发动更强的攻击。', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': '全消时可以发动强力攻击。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '噗哟停留在第 3 行末端时会失败。',
             '음소거(꺼짐)' : '静音（关）', '음소거(활성)' : '静音（开）'
@@ -206,6 +221,12 @@
     let settingsEditing = false;
     /** 현재 편집 중인 문자열의 커서 위치다. @type {number} */
     let settingsCursor = 0;
+    /** AI API 테스트 안내문과 표시 경과 시간이다. @type {{message:string, elapsed:number}|null} */
+    let settingsApiTestMessage = null;
+    /** AI API 테스트 요청이 진행 중인지 여부다. @type {boolean} */
+    let settingsApiTestPending = false;
+    /** 종료된 설정 화면의 비동기 응답을 무시하기 위한 요청 식별자다. @type {number} */
+    let settingsApiTestRequestId = 0;
     /** 설정 전체 초기화 확인 후 표시하는 초기화 진행 화면 여부다. @type {boolean} */
     let settingsResetting = false;
     /** 설정 전체 초기화 후 첫 화면으로 돌아가기 위한 타이머다. @type {number|null} */
@@ -340,7 +361,7 @@
             clearList: [],
             clearListByDifficulty: { easy: [], normal: [], hard: [] },
             feverClearListByDifficulty: { easy: [], normal: [], hard: [] },
-            settings: { musicVolume: 100, effectsVolume: 100, virtualController: false, aiProvider: 'OpenAI', aiApiKey: '', aiModel: '' },
+            settings: { musicVolume: 100, effectsVolume: 100, virtualController: false, aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
     }
@@ -508,7 +529,7 @@
                 // 이전 Google 설정값은 더 이상 선택할 수 없으므로 기본 제공자인 OpenAI로 정규화한다.
                 aiProvider: AI_SERVICE_PROVIDERS.includes(settings.aiProvider) ? settings.aiProvider : initial.settings.aiProvider,
                 aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
-                aiModel: typeof settings.aiModel === 'string' ? settings.aiModel : initial.settings.aiModel
+                aiModel: typeof settings.aiModel === 'string' && settings.aiModel.trim() ? settings.aiModel : initial.settings.aiModel
             }, muted: parsed.muted === true };
         } catch (error) {
             console.error('Puyo W 저장 데이터 불러오기에 실패했습니다.', error);
@@ -3501,6 +3522,7 @@
 
     /** 설정 화면을 열고 저장된 설정의 임시 복사본을 만든다. @returns {void} */
     function openSettings() {
+        clearSettingsApiTest();
         settingsDraft = { ...store.settings };
         settingsFocus = 0; settingsEditing = false; settingsCursor = 0;
         menuScreen = 'settings';
@@ -3508,6 +3530,7 @@
 
     /** 설정 화면의 변경 사항을 저장한다. @returns {void} */
     function saveSettings() {
+        clearSettingsApiTest();
         store.settings = { ...settingsDraft };
         saveStore();
         updateBackgroundMusicVolume();
@@ -3517,6 +3540,7 @@
 
     /** 설정 화면을 저장하지 않고 닫는다. @returns {void} */
     function cancelSettings() {
+        clearSettingsApiTest();
         settingsDraft = null; settingsEditing = false;
         menuScreen = 'title'; loadNotice();
     }
@@ -3535,6 +3559,7 @@
             console.error('Puyo W 설정 초기화 중 저장 데이터 삭제에 실패했습니다.', error);
         }
         stopBackgroundMusic();
+        clearSettingsApiTest();
         settingsDraft = null;
         settingsEditing = false;
         settingsResetting = true;
@@ -3562,12 +3587,121 @@
         updateBackgroundMusicVolume();
     }
 
+    /** AI API 테스트에 필요한 세 입력값이 모두 채워졌는지 확인한다. @param {object|null} settings 설정값 @returns {boolean} 실행 가능 여부 */
+    function hasCompleteAiApiSettings(settings) {
+        return Boolean(settings && ['aiProvider', 'aiApiKey', 'aiModel'].every((key) => typeof settings[key] === 'string' && settings[key].trim()));
+    }
+
+    /** 편집 중인 AI 설정이 저장된 설정과 같은지 확인한다. @returns {boolean} 저장된 설정 사용 여부 */
+    function hasSavedAiApiSettings() {
+        return Boolean(settingsDraft && store.settings
+            && settingsDraft.aiProvider === store.settings.aiProvider
+            && settingsDraft.aiApiKey === store.settings.aiApiKey
+            && settingsDraft.aiModel === store.settings.aiModel);
+    }
+
+    /** 현재 API 테스트 버튼을 활성화할 수 있는지 확인한다. @returns {boolean} 버튼 활성화 여부 */
+    function canRunAiApiTest() {
+        return !settingsApiTestPending && hasCompleteAiApiSettings(settingsDraft);
+    }
+
+    /** API 테스트 실행 가능 여부를 반영한 설정 화면 포커스 순서를 만든다. @returns {number[]} 포커스 인덱스 목록 */
+    function getSelectableSettingsFocuses() {
+        return [0, 1, 2, 3, 4, 5, ...(canRunAiApiTest() ? [6] : []), 7, 8, 9];
+    }
+
+    /** 설정 화면에서 다음 또는 이전 포커스로 이동한다. @param {number} direction 이동 방향 @returns {void} */
+    function moveSettingsFocus(direction) {
+        const focuses = getSelectableSettingsFocuses();
+        const currentIndex = focuses.indexOf(settingsFocus);
+        const nextIndex = (Math.max(0, currentIndex) + direction + focuses.length) % focuses.length;
+        settingsFocus = focuses[nextIndex];
+    }
+
+    /** API 테스트 안내문을 2초간 표시한다. @param {string} message 표시할 원문 @returns {void} */
+    function showSettingsApiTestMessage(message) {
+        settingsApiTestMessage = { message, elapsed: 0 };
+    }
+
+    /** 화면을 닫거나 초기화할 때 남은 API 테스트 결과를 무효화한다. @returns {void} */
+    function clearSettingsApiTest() {
+        settingsApiTestRequestId += 1;
+        settingsApiTestPending = false;
+        settingsApiTestMessage = null;
+    }
+
+    /** API 테스트 결과의 표시 시간을 갱신한다. @param {number} delta 지난 시간(ms) @returns {void} */
+    function updateSettingsApiTestMessage(delta) {
+        if (!settingsApiTestMessage) return;
+        settingsApiTestMessage.elapsed += delta;
+        if (settingsApiTestMessage.elapsed >= AI_API_TEST_MESSAGE_DURATION) settingsApiTestMessage = null;
+    }
+
+    /** Responses API 응답에서 생성된 텍스트를 꺼낸다. @param {object} response API 응답 @returns {string|null} JSON 텍스트 */
+    function getResponsesOutputText(response) {
+        if (typeof response?.output_text === 'string') return response.output_text;
+        for (const outputItem of response?.output || []) {
+            for (const content of outputItem?.content || []) {
+                if (content?.type === 'output_text' && typeof content.text === 'string') return content.text;
+            }
+        }
+        return null;
+    }
+
+    /** API 테스트의 최소 응답 스키마를 브라우저에서도 검사한다. @param {unknown} value 파싱된 응답 @returns {boolean} 스키마 통과 여부 */
+    function isAiApiTestResult(value) {
+        return Boolean(value && typeof value === 'object' && !Array.isArray(value)
+            && Object.keys(value).length === 1 && value.success === true);
+    }
+
+    /** 저장된 OpenAI 설정으로 Responses API를 직접 호출해 연결을 확인한다. @returns {Promise<void>} 완료 시점 */
+    async function runAiApiTest() {
+        if (!hasCompleteAiApiSettings(settingsDraft) || !hasSavedAiApiSettings()) {
+            showSettingsApiTestMessage('설정 저장 후 다시 시도해 주세요');
+            return;
+        }
+        if (settingsApiTestPending) return;
+        const requestId = ++settingsApiTestRequestId;
+        const settings = { ...store.settings };
+        settingsApiTestPending = true;
+        showSettingsApiTestMessage('AI API 테스트 요청 중...');
+        try {
+            const response = await window.fetch(OPENAI_RESPONSES_API_URL, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: settings.aiModel,
+                    reasoning: { effort: 'low' },
+                    input: [{ role: 'user', content: 'Return only JSON matching the supplied schema, with success set to true.' }],
+                    text: { format: { type: 'json_schema', name: 'ai_api_test_result', strict: true, schema: AI_API_TEST_JSON_SCHEMA } },
+                    max_output_tokens: 64
+                })
+            });
+            if (!response.ok) {
+                showSettingsApiTestMessage('AI API 테스트 실패 (JSON 스키마 검사: 미실시)');
+                return;
+            }
+            const outputText = getResponsesOutputText(await response.json());
+            let result;
+            try { result = outputText ? JSON.parse(outputText) : null; } catch (error) { result = null; }
+            showSettingsApiTestMessage(isAiApiTestResult(result)
+                ? 'AI API 테스트 성공 (JSON 스키마 검사: 통과)'
+                : 'AI API 테스트 실패 (JSON 스키마 검사: 실패)');
+        } catch (error) {
+            console.error('Puyo W AI API 테스트 요청에 실패했습니다.', error);
+            showSettingsApiTestMessage('AI API 테스트 실패 (JSON 스키마 검사: 미실시)');
+        } finally {
+            if (requestId === settingsApiTestRequestId) settingsApiTestPending = false;
+        }
+    }
+
     /** 설정 화면의 포커스 항목을 실행한다. @returns {void} */
     function activateSettingsFocus() {
         if (settingsFocus === 2) settingsDraft.virtualController = !settingsDraft.virtualController;
-        else if (settingsFocus === 6) saveSettings();
-        else if (settingsFocus === 7) cancelSettings();
-        else if (settingsFocus === 8) resetAllSettings();
+        else if (settingsFocus === 6 && canRunAiApiTest()) runAiApiTest();
+        else if (settingsFocus === 7) saveSettings();
+        else if (settingsFocus === 8) cancelSettings();
+        else if (settingsFocus === 9) resetAllSettings();
     }
 
     /** 설정 화면을 그린다. @returns {void} */
@@ -3608,11 +3742,23 @@
                 if (settingsEditing && settingsFocus === index) { const cursorX = 543 + context.measureText(row.value.slice(0, settingsCursor)).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 13, 2, 21); }
             }
         });
-        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 530, 402);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `13px ${MESSAGE_FONT}`; context.fillText(translate('사운드 및 AI 관련 기능은 추후 제공 예정'), WIDTH / 2, 430);
-        [{ label: '저장', x: 380, focus: 6, color: '#4cc9b0' }, { label: '취소', x: 560, focus: 7, color: '#ef5350' }, { label: '초기화', x: 740, focus: 8, color: '#7e6bc4' }].forEach((button) => {
-            context.fillStyle = button.color; context.fillRect(button.x, 455, 160, 46); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 455, 160, 46); context.fillStyle = '#fff'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 80, 485);
+        const apiTestEnabled = canRunAiApiTest();
+        context.fillStyle = apiTestEnabled ? '#264b5b' : '#263640'; context.fillRect(530, 385, 450, 40);
+        context.strokeStyle = settingsFocus === 6 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 6 && apiTestEnabled ? 3 : 2; context.strokeRect(530, 385, 450, 40);
+        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), 755, 411);
+        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 530, 455);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `13px ${MESSAGE_FONT}`; context.fillText(translate('사운드 관련 기능은 추후 제공 예정'), WIDTH / 2, 478);
+        [{ label: '저장', x: 380, focus: 7, color: '#4cc9b0' }, { label: '취소', x: 560, focus: 8, color: '#ef5350' }, { label: '초기화', x: 740, focus: 9, color: '#7e6bc4' }].forEach((button) => {
+            context.fillStyle = button.color; context.fillRect(button.x, 505, 160, 46); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 505, 160, 46); context.fillStyle = '#fff'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 80, 535);
         });
+        if (settingsApiTestMessage) {
+            const fadeStart = AI_API_TEST_MESSAGE_DURATION - AI_API_TEST_MESSAGE_FADE_DURATION;
+            const alpha = settingsApiTestMessage.elapsed <= fadeStart ? 1 : Math.max(0, (AI_API_TEST_MESSAGE_DURATION - settingsApiTestMessage.elapsed) / AI_API_TEST_MESSAGE_FADE_DURATION);
+            context.save(); context.globalAlpha = alpha;
+            context.fillStyle = 'rgba(3, 11, 19, 0.82)'; context.fillRect(260, 575, 760, 42);
+            context.fillStyle = '#f5fbfc'; context.font = `15px ${MESSAGE_FONT}`; context.textAlign = 'center'; context.fillText(translate(settingsApiTestMessage.message), WIDTH / 2, 602);
+            context.restore();
+        }
     }
 
     /** 설정 초기화 중 다른 그래픽 없이 진행 문구만 표시한다. @returns {void} */
@@ -4340,6 +4486,7 @@
         const delta = Math.min(50, time - lastTime || 0);
         lastTime = time;
         updateGamepadInput();
+        if (!game && menuScreen === 'settings') updateSettingsApiTestMessage(delta);
         // 플레이 방법은 결과 화면 표시 시간까지 갱신하고, 일반 게임은 실행 중일 때만 갱신한다.
         if (game?.tutorial && !game.paused) {
             if (game.running) {
@@ -4447,13 +4594,13 @@
             if (textField) { settingsEditing = true; settingsCursor = settingsDraft[settingsFocus === 4 ? 'aiApiKey' : 'aiModel'].length; }
             else activateSettingsFocus();
         } else if (key === 'escape') cancelSettings();
-        else if (key === 'arrowup' || key === 'arrowdown') settingsFocus = (settingsFocus + (key === 'arrowup' ? 8 : 1)) % 9;
+        else if (key === 'arrowup' || key === 'arrowdown') moveSettingsFocus(key === 'arrowup' ? -1 : 1);
         else if (key === 'arrowleft' || key === 'arrowright') {
             const direction = key === 'arrowleft' ? -1 : 1;
             if (settingsFocus === 0) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
             else if (settingsFocus === 1) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
             else if (settingsFocus === 2) settingsDraft.virtualController = direction < 0;
-            else if (settingsFocus >= 6) settingsFocus = 6 + (settingsFocus - 6 + (direction < 0 ? 2 : 1)) % 3;
+            else if (settingsFocus >= 7) settingsFocus = 7 + (settingsFocus - 7 + (direction < 0 ? 2 : 1)) % 3;
         }
     }
 
@@ -4816,9 +4963,10 @@
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
-            if (y >= 455 && y <= 501 && x >= 380 && x <= 540) { settingsFocus = 6; saveSettings(); }
-            else if (y >= 455 && y <= 501 && x >= 560 && x <= 720) { settingsFocus = 7; cancelSettings(); }
-            else if (y >= 455 && y <= 501 && x >= 740 && x <= 900) { settingsFocus = 8; resetAllSettings(); }
+            if (y >= 385 && y <= 425 && x >= 530 && x <= 980 && canRunAiApiTest()) { settingsFocus = 6; runAiApiTest(); }
+            else if (y >= 505 && y <= 551 && x >= 380 && x <= 540) { settingsFocus = 7; saveSettings(); }
+            else if (y >= 505 && y <= 551 && x >= 560 && x <= 720) { settingsFocus = 8; cancelSettings(); }
+            else if (y >= 505 && y <= 551 && x >= 740 && x <= 900) { settingsFocus = 9; resetAllSettings(); }
             else if (y >= 95 && y <= 115) { settingsFocus = 0; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 145 && y <= 165) { settingsFocus = 1; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 186 && y <= 224 && x >= 530 && x <= 670) { settingsFocus = 2; settingsDraft.virtualController = true; }
