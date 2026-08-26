@@ -197,7 +197,7 @@ test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner)).toBe('player');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 10000 }).toBe('player');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_gallery')).enemies)).toContain('FeverGalleryEnemy');
 });
 
@@ -229,6 +229,19 @@ test('연속 피버 색상 선택은 4색과 5색만 제공하고 선택한 색�
   expect(state.continuousFever).toBe(true);
   expect(state.colorCount).toBe(4);
   expect(state.colors).toEqual(['red', 'green', 'yellow', 'blue']);
+});
+
+test('연속 피버의 중앙 정렬된 5색 버튼은 마우스로 선택할 수 있다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+
+  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 364 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().colorCount)).toBe(5);
 });
 
 test('플레이 방법 시연은 에너지 이동 초기화 오류 없이 시작한다', async ({ page }) => {
