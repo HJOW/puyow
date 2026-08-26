@@ -141,6 +141,14 @@
     const DEFAULT_AI_MODEL = 'gpt-5.6-luna';
     /** 설정 화면에서 선택할 수 있는 AI 서비스 제공자 목록이다. Google은 현재 제공하지 않는다. @type {string[]} */
     const AI_SERVICE_PROVIDERS = ['OpenAI'];
+    /** 그래픽 품질별 캔버스 출력 해상도다. 게임 내부 좌표는 항상 WIDTH x HEIGHT를 사용한다. @type {{key:'low'|'medium'|'high', label:string, width:number, height:number}[]} */
+    const GRAPHICS_QUALITY_OPTIONS = [
+        { key: 'low', label: '낮음', width: WIDTH, height: HEIGHT },
+        { key: 'medium', label: '중간', width: 1920, height: 1080 },
+        { key: 'high', label: '높음', width: 3840, height: 2160 }
+    ];
+    /** 새 설정 및 잘못된 저장값에 사용할 기본 그래픽 품질이다. @type {'low'} */
+    const DEFAULT_GRAPHICS_QUALITY = 'low';
     /** 브라우저에서 직접 호출할 OpenAI Responses API 주소다. @type {string} */
     const OPENAI_RESPONSES_API_URL = 'https://api.openai.com/v1/responses';
     /** API 테스트 응답에 요구할 최소 JSON Schema다. @type {object} */
@@ -163,7 +171,7 @@
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
-            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '켜기': 'On', '끄기': 'Off', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
+            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '켜기': 'On', '끄기': 'Off', '그래픽 설정': 'Graphics quality', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
             '플레이 방법': 'How to Play', '갤러리': 'Gallery', '대상 유형': 'Category', '대상': 'Item', '일반뿌요': 'Puyos', '예고뿌요': 'Warning Puyos', '적': 'Enemies', '빨강뿌요': 'Red Puyo', '초록뿌요': 'Green Puyo', '노랑뿌요': 'Yellow Puyo', '파랑뿌요': 'Blue Puyo', '보라뿌요': 'Purple Puyo', '방해뿌요': 'Garbage Puyo', '작은 예고뿌요': 'Small Warning Puyo', '큰 예고뿌요': 'Large Warning Puyo', '빨간 돌': 'Red Rock', '별': 'Star', '태양': 'Sun', '중성자별': 'Neutron Star', '블랙홀': 'Black Hole', '위기': 'Crisis', '다시보기': 'Replay',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': 'An all clear gives you a powerful attack.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
             '은하': 'Galaxy',
@@ -180,7 +188,7 @@
             '시뮬레이터': 'シミュレーター', '팔레트': 'パレット', '재생': '再生', '그리기': '描画', '시뮬레이션': 'シミュレーション', '지우개': '消しゴム',
             'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
             '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
-            '설정': '設定', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '켜기': 'オン', '끄기': 'オフ', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', 'AI API 테스트': 'AI APIテスト', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 관련 기능은 추후 제공 예정': 'サウンド機能は今後のアップデートで提供予定です。', '설정 저장 후 다시 시도해 주세요': '設定を保存してから、もう一度お試しください。', 'AI API 테스트 요청 중...': 'AI APIをテスト中…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI APIテスト成功（JSONスキーマ検証: 合格）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI APIテスト失敗（JSONスキーマ検証: 失敗）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI APIテスト失敗（JSONスキーマ検証: 未実施）',
+            '설정': '設定', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '켜기': 'オン', '끄기': 'オフ', '그래픽 설정': 'グラフィック設定', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', 'AI API 테스트': 'AI APIテスト', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 관련 기능은 추후 제공 예정': 'サウンド機能は今後のアップデートで提供予定です。', '설정 저장 후 다시 시도해 주세요': '設定を保存してから、もう一度お試しください。', 'AI API 테스트 요청 중...': 'AI APIをテスト中…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI APIテスト成功（JSONスキーマ検証: 合格）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI APIテスト失敗（JSONスキーマ検証: 失敗）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI APIテスト失敗（JSONスキーマ検証: 未実施）',
             '플레이 방법': '遊び方', '갤러리': 'ギャラリー', '대상 유형': '種類', '대상': '対象', '일반뿌요': 'ぷよ', '예고뿌요': '予告ぷよ', '적': '敵', '빨강뿌요': '赤ぷよ', '초록뿌요': '緑ぷよ', '노랑뿌요': '黄ぷよ', '파랑뿌요': '青ぷよ', '보라뿌요': '紫ぷよ', '방해뿌요': 'おじゃまぷよ', '작은 예고뿌요': '小さい予告ぷよ', '큰 예고뿌요': '大きい予告ぷよ', '빨간 돌': '赤い岩', '별': '星', '태양': '太陽', '중성자별': '中性子星', '블랙홀': 'ブラックホール', '위기': 'ピンチ', '다시보기': 'もう一度見る',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '左右・下キーでぷよを動かし、Z・Xキーで回転できます。', '좌우 방향키로 뿌요 이동': '左右キーでぷよを移動', '아래 방향키로 빨리 떨어뜨리기': '下キーで速く落下', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Zキーで左回転', 'X 키를 눌러 우측으로 뿌요 회전': 'Xキーで右回転', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '同じ色のぷよを4個以上つなげると消して攻撃できます。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '同じ色のぷよ4個がつながり、相手を攻撃できます。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'ぷよが消えると、隣接するおじゃまぷよも消えます。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '連鎖でぷよを消すと、より強く攻撃できます。', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': '全消しをすると強力な攻撃ができます。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '3段目の端にぷよが残ると負けです。',
             '은하': '銀河',
@@ -198,7 +206,7 @@
             '시뮬레이터': '模拟器', '팔레트': '调色板', '재생': '播放', '그리기': '绘制', '시뮬레이션': '模拟', '지우개': '橡皮擦',
             'JSON복사': '复制 JSON', 'JSON넣기': '粘贴 JSON', '배치가 클립보드에 복사됨': '布局已复制到剪贴板',
             '클립보드 복사 실패': '复制到剪贴板失败', 'JSON 파싱 실패': 'JSON 解析失败', '배치 JSON을 입력하세요.': '请输入布局 JSON。',
-            '설정': '设置', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '켜기': '开启', '끄기': '关闭', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', 'AI API 테스트': 'AI API 测试', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 관련 기능은 추후 제공 예정': '声音功能将在未来更新中提供。', '설정 저장 후 다시 시도해 주세요': '请先保存设置后再试。', 'AI API 테스트 요청 중...': '正在测试 AI API…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API 测试成功（JSON 架构检查：通过）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API 测试失败（JSON 架构检查：失败）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API 测试失败（JSON 架构检查：未执行）',
+            '설정': '设置', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '켜기': '开启', '끄기': '关闭', '그래픽 설정': '图形设置', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', 'AI API 테스트': 'AI API 测试', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 관련 기능은 추후 제공 예정': '声音功能将在未来更新中提供。', '설정 저장 후 다시 시도해 주세요': '请先保存设置后再试。', 'AI API 테스트 요청 중...': '正在测试 AI API…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API 测试成功（JSON 架构检查：通过）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API 测试失败（JSON 架构检查：失败）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API 测试失败（JSON 架构检查：未执行）',
             '플레이 방법': '玩法说明', '갤러리': '图鉴', '대상 유형': '类别', '대상': '对象', '일반뿌요': '普通噗哟', '예고뿌요': '预告噗哟', '적': '敌人', '빨강뿌요': '红噗哟', '초록뿌요': '绿噗哟', '노랑뿌요': '黄噗哟', '파랑뿌요': '蓝噗哟', '보라뿌요': '紫噗哟', '방해뿌요': '垃圾噗哟', '작은 예고뿌요': '小型预告噗哟', '큰 예고뿌요': '大型预告噗哟', '빨간 돌': '红色岩石', '별': '星星', '태양': '太阳', '중성자별': '中子星', '블랙홀': '黑洞', '위기': '危机', '다시보기': '再次观看',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '使用左右和下方向键移动噗哟，使用 Z、X 键旋转。', '좌우 방향키로 뿌요 이동': '用左右方向键移动噗哟', '아래 방향키로 빨리 떨어뜨리기': '用下方向键快速落下', 'Z 키를 눌러 좌측으로 뿌요 회전': '按 Z 键向左旋转', 'X 키를 눌러 우측으로 뿌요 회전': '按 X 键向右旋转', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '连接四个或更多相同颜色的噗哟即可消除并攻击对手。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '四个相同颜色的噗哟连接后可以攻击对手。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': '消除噗哟时，相邻的垃圾噗哟也会一起消失。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '连续消除噗哟可以发动更强的攻击。', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': '全消时可以发动强力攻击。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '噗哟停留在第 3 行末端时会失败。',
             '은하': '银河',
@@ -390,9 +398,61 @@
             clearList: [],
             clearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
-            settings: { musicVolume: 100, effectsVolume: 100, virtualController: false, aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
+            settings: { musicVolume: 100, effectsVolume: 100, virtualController: false, graphicsQuality: DEFAULT_GRAPHICS_QUALITY, aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
+    }
+
+    /** 그래픽 품질 키에 맞는 출력 해상도 항목을 반환한다. @param {unknown} quality 그래픽 품질 키 @returns {{key:'low'|'medium'|'high', label:string, width:number, height:number}} */
+    function getGraphicsQualityOption(quality) {
+        return GRAPHICS_QUALITY_OPTIONS.find((option) => option.key === quality)
+            || GRAPHICS_QUALITY_OPTIONS.find((option) => option.key === DEFAULT_GRAPHICS_QUALITY);
+    }
+
+    /**
+     * 현재 그래픽 설정의 캔버스 출력 크기와 논리 좌표 배율을 반환한다.
+     * @returns {{graphicsQuality:'low'|'medium'|'high', width:number, height:number, scaleX:number, scaleY:number}}
+     */
+    function getCanvasOutputSize() {
+        const option = getGraphicsQualityOption(store?.settings?.graphicsQuality);
+        return {
+            graphicsQuality: option.key,
+            width: option.width,
+            height: option.height,
+            scaleX: option.width / WIDTH,
+            scaleY: option.height / HEIGHT
+        };
+    }
+
+    /** 논리 게임 좌표를 현재 캔버스의 실제 출력 좌표로 변환한다. @param {number} x 논리 X 좌표 @param {number} y 논리 Y 좌표 @returns {{x:number, y:number}} 실제 캔버스 좌표 */
+    function toCanvasCoordinates(x, y) {
+        if (!Number.isFinite(x) || !Number.isFinite(y)) throw new TypeError('x와 y는 유한한 숫자여야 합니다.');
+        const { scaleX, scaleY } = getCanvasOutputSize();
+        return { x: x * scaleX, y: y * scaleY };
+    }
+
+    /** 논리 게임 길이를 현재 캔버스의 실제 출력 길이로 변환한다. @param {number} length 논리 길이 @returns {number} 실제 캔버스 길이 */
+    function toCanvasLength(length) {
+        if (!Number.isFinite(length)) throw new TypeError('length는 유한한 숫자여야 합니다.');
+        return length * getCanvasOutputSize().scaleX;
+    }
+
+    /** 현재 캔버스 컨텍스트에 논리 1280x720 좌표계를 적용한다. @returns {{graphicsQuality:'low'|'medium'|'high', width:number, height:number, scaleX:number, scaleY:number}} 적용한 출력 정보 */
+    function applyCanvasCoordinateTransform() {
+        const outputSize = getCanvasOutputSize();
+        if (context) context.setTransform(outputSize.scaleX, 0, 0, outputSize.scaleY, 0, 0);
+        return outputSize;
+    }
+
+    /** 현재 그래픽 설정에 맞춰 실제 캔버스 크기를 바꾸고 논리 좌표계를 다시 적용한다. @returns {{graphicsQuality:'low'|'medium'|'high', width:number, height:number, scaleX:number, scaleY:number}} 적용한 출력 정보 */
+    function applyCanvasOutputResolution() {
+        const outputSize = getCanvasOutputSize();
+        if (!canvas) return outputSize;
+        if (canvas.width !== outputSize.width) canvas.width = outputSize.width;
+        if (canvas.height !== outputSize.height) canvas.height = outputSize.height;
+        context = canvas.getContext('2d');
+        if (!context) throw new Error('2D 캔버스 컨텍스트를 만들 수 없습니다.');
+        return applyCanvasCoordinateTransform();
     }
 
     /** 갤러리에서 처음부터 공개할 항목을 만든다. @returns {{warning:string[],enemies:string[]}} */
@@ -634,6 +694,7 @@
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
                 virtualController: settings.virtualController === true,
+                graphicsQuality: getGraphicsQualityOption(settings.graphicsQuality).key,
                 // 이전 Google 설정값은 더 이상 선택할 수 없으므로 기본 제공자인 OpenAI로 정규화한다.
                 aiProvider: AI_SERVICE_PROVIDERS.includes(settings.aiProvider) ? settings.aiProvider : initial.settings.aiProvider,
                 aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
@@ -3773,6 +3834,7 @@
         clearSettingsApiTest();
         store.settings = { ...settingsDraft };
         saveStore();
+        applyCanvasOutputResolution();
         updateBackgroundMusicVolume();
         settingsDraft = null; settingsEditing = false;
         menuScreen = 'title'; loadNotice();
@@ -3804,6 +3866,7 @@
         settingsEditing = false;
         settingsResetting = true;
         store = createInitialStore();
+        applyCanvasOutputResolution();
         galleryUnlocks = createInitialGalleryUnlocks();
         initialGalleryPreview = { loaded: false, items: [], startIndex: 0, elapsed: 0 };
         game = null;
@@ -3847,7 +3910,7 @@
 
     /** API 테스트 실행 가능 여부를 반영한 설정 화면 포커스 순서를 만든다. @returns {number[]} 포커스 인덱스 목록 */
     function getSelectableSettingsFocuses() {
-        return [0, 1, 2, 3, 4, 5, ...(canRunAiApiTest() ? [6] : []), 7, 8, 9];
+        return [0, 1, 2, 3, 4, 5, 6, ...(canRunAiApiTest() ? [7] : []), 8, 9, 10];
     }
 
     /** 설정 화면에서 다음 또는 이전 포커스로 이동한다. @param {number} direction 이동 방향 @returns {void} */
@@ -3930,10 +3993,13 @@
     /** 설정 화면의 포커스 항목을 실행한다. @returns {void} */
     function activateSettingsFocus() {
         if (settingsFocus === 2) settingsDraft.virtualController = !settingsDraft.virtualController;
-        else if (settingsFocus === 6 && canRunAiApiTest()) runAiApiTest();
-        else if (settingsFocus === 7) saveSettings();
-        else if (settingsFocus === 8) cancelSettings();
-        else if (settingsFocus === 9) resetAllSettings();
+        else if (settingsFocus === 3) {
+            const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
+            settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + 1) % GRAPHICS_QUALITY_OPTIONS.length].key;
+        } else if (settingsFocus === 7 && canRunAiApiTest()) runAiApiTest();
+        else if (settingsFocus === 8) saveSettings();
+        else if (settingsFocus === 9) cancelSettings();
+        else if (settingsFocus === 10) resetAllSettings();
     }
 
     /** 설정 화면을 그린다. @returns {void} */
@@ -3943,10 +4009,11 @@
         const rows = [
             { label: '배경음악 볼륨', y: 105, value: settingsDraft.musicVolume, kind: 'slider' },
             { label: '효과음 볼륨', y: 155, value: settingsDraft.effectsVolume, kind: 'slider' },
-            { label: '가상 컨트롤러 사용', y: 205, value: settingsDraft.virtualController, kind: 'radio' },
-            { label: 'AI 서비스 제공자', y: 255, value: settingsDraft.aiProvider, kind: 'provider' },
-            { label: 'AI API 키', y: 305, value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
-            { label: '사용 모델명', y: 355, value: settingsDraft.aiModel, kind: 'text' }
+            { label: '가상 컨트롤러 사용', y: 205, value: settingsDraft.virtualController, kind: 'radio', options: [{ label: '켜기', value: true, x: 530, width: 140 }, { label: '끄기', value: false, x: 690, width: 140 }] },
+            { label: '그래픽 설정', y: 255, value: settingsDraft.graphicsQuality, kind: 'radio', options: GRAPHICS_QUALITY_OPTIONS.map((option, optionIndex) => ({ label: option.label, value: option.key, x: 530 + optionIndex * 150, width: 130 })) },
+            { label: 'AI 서비스 제공자', y: 305, value: settingsDraft.aiProvider, kind: 'provider' },
+            { label: 'AI API 키', y: 355, value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
+            { label: '사용 모델명', y: 405, value: settingsDraft.aiModel, kind: 'text' }
         ];
         rows.forEach((row, index) => {
             context.textAlign = 'left'; context.fillStyle = '#d8f2f5'; context.font = `15px ${BUTTON_FONT}`; context.fillText(translate(row.label), 270, row.y + 5);
@@ -3956,13 +4023,13 @@
                 context.fillStyle = '#4cc9b0'; context.fillRect(532, row.y - 8, 386 * row.value / 100, 16);
                 context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 958, row.y + 5);
             } else if (row.kind === 'radio') {
-                [{ label: '켜기', value: true, x: 530 }, { label: '끄기', value: false, x: 690 }].forEach((option) => {
+                row.options.forEach((option) => {
                     const selected = row.value === option.value;
-                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(option.x, row.y - 19, 140, 38);
-                    context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(option.x, row.y - 19, 140, 38);
+                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(option.x, row.y - 19, option.width, 38);
+                    context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(option.x, row.y - 19, option.width, 38);
                     context.beginPath(); context.arc(option.x + 20, row.y, 7, 0, Math.PI * 2); context.fillStyle = '#d8f2f5'; context.strokeStyle = '#d8f2f5'; context.lineWidth = 2; context.stroke();
                     if (selected) { context.beginPath(); context.arc(option.x + 20, row.y, 4, 0, Math.PI * 2); context.fill(); }
-                    context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(translate(option.label), option.x + 84, row.y + 5);
+                    context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(translate(option.label), option.x + (option.width + 20) / 2, row.y + 5);
                 });
             } else if (row.kind === 'provider') {
                 AI_SERVICE_PROVIDERS.forEach((provider, providerIndex) => {
@@ -3975,13 +4042,13 @@
             }
         });
         const apiTestEnabled = canRunAiApiTest();
-        context.fillStyle = apiTestEnabled ? '#264b5b' : '#263640'; context.fillRect(530, 385, 450, 40);
-        context.strokeStyle = settingsFocus === 6 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 6 && apiTestEnabled ? 3 : 2; context.strokeRect(530, 385, 450, 40);
-        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), 755, 411);
-        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 530, 455);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `13px ${MESSAGE_FONT}`; context.fillText(translate('사운드 관련 기능은 추후 제공 예정'), WIDTH / 2, 478);
-        [{ label: '저장', x: 380, focus: 7, color: '#4cc9b0' }, { label: '취소', x: 560, focus: 8, color: '#ef5350' }, { label: '초기화', x: 740, focus: 9, color: '#7e6bc4' }].forEach((button) => {
-            context.fillStyle = button.color; context.fillRect(button.x, 505, 160, 46); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 505, 160, 46); context.fillStyle = '#fff'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 80, 535);
+        context.fillStyle = apiTestEnabled ? '#264b5b' : '#263640'; context.fillRect(530, 435, 450, 40);
+        context.strokeStyle = settingsFocus === 7 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 7 && apiTestEnabled ? 3 : 2; context.strokeRect(530, 435, 450, 40);
+        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), 755, 461);
+        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 530, 500);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `13px ${MESSAGE_FONT}`; context.fillText(translate('사운드 관련 기능은 추후 제공 예정'), WIDTH / 2, 523);
+        [{ label: '저장', x: 380, focus: 8, color: '#4cc9b0' }, { label: '취소', x: 560, focus: 9, color: '#ef5350' }, { label: '초기화', x: 740, focus: 10, color: '#7e6bc4' }].forEach((button) => {
+            context.fillStyle = button.color; context.fillRect(button.x, 555, 160, 46); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 555, 160, 46); context.fillStyle = '#fff'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 80, 585);
         });
     }
 
@@ -4661,6 +4728,7 @@
      * @returns {void}
      */
     function render() {
+        applyCanvasCoordinateTransform();
         context.clearRect(0, 0, WIDTH, HEIGHT);
         if (settingsResetting) {
             drawSettingsResetting();
@@ -4835,9 +4903,9 @@
 
     /** 설정 화면에서 포커스 이동과 문자열 편집을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @param {string} key 소문자 키 @returns {void} */
     function handleSettingsKeydown(event, key) {
-        const textField = settingsFocus === 4 || settingsFocus === 5;
+        const textField = settingsFocus === 5 || settingsFocus === 6;
         if (settingsEditing && textField) {
-            const field = settingsFocus === 4 ? 'aiApiKey' : 'aiModel';
+            const field = settingsFocus === 5 ? 'aiApiKey' : 'aiModel';
             if (key === 'enter' || key === 'escape') { settingsEditing = false; return; }
             if (key === 'arrowleft') { settingsCursor = Math.max(0, settingsCursor - 1); return; }
             if (key === 'arrowright') { settingsCursor = Math.min(settingsDraft[field].length, settingsCursor + 1); return; }
@@ -4846,7 +4914,7 @@
             return;
         }
         if (key === 'enter' || key === ' ') {
-            if (textField) { settingsEditing = true; settingsCursor = settingsDraft[settingsFocus === 4 ? 'aiApiKey' : 'aiModel'].length; }
+            if (textField) { settingsEditing = true; settingsCursor = settingsDraft[settingsFocus === 5 ? 'aiApiKey' : 'aiModel'].length; }
             else activateSettingsFocus();
         } else if (key === 'escape') cancelSettings();
         else if (key === 'arrowup' || key === 'arrowdown') moveSettingsFocus(key === 'arrowup' ? -1 : 1);
@@ -4855,7 +4923,10 @@
             if (settingsFocus === 0) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
             else if (settingsFocus === 1) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
             else if (settingsFocus === 2) settingsDraft.virtualController = direction < 0;
-            else if (settingsFocus >= 7) settingsFocus = 7 + (settingsFocus - 7 + (direction < 0 ? 2 : 1)) % 3;
+            else if (settingsFocus === 3) {
+                const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
+                settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + direction + GRAPHICS_QUALITY_OPTIONS.length) % GRAPHICS_QUALITY_OPTIONS.length].key;
+            } else if (settingsFocus >= 8) settingsFocus = 8 + (settingsFocus - 8 + (direction < 0 ? 2 : 1)) % 3;
         }
     }
 
@@ -5218,17 +5289,20 @@
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
-            if (y >= 385 && y <= 425 && x >= 530 && x <= 980 && canRunAiApiTest()) { settingsFocus = 6; runAiApiTest(); }
-            else if (y >= 505 && y <= 551 && x >= 380 && x <= 540) { settingsFocus = 7; saveSettings(); }
-            else if (y >= 505 && y <= 551 && x >= 560 && x <= 720) { settingsFocus = 8; cancelSettings(); }
-            else if (y >= 505 && y <= 551 && x >= 740 && x <= 900) { settingsFocus = 9; resetAllSettings(); }
+            if (y >= 435 && y <= 475 && x >= 530 && x <= 980 && canRunAiApiTest()) { settingsFocus = 7; runAiApiTest(); }
+            else if (y >= 555 && y <= 601 && x >= 380 && x <= 540) { settingsFocus = 8; saveSettings(); }
+            else if (y >= 555 && y <= 601 && x >= 560 && x <= 720) { settingsFocus = 9; cancelSettings(); }
+            else if (y >= 555 && y <= 601 && x >= 740 && x <= 900) { settingsFocus = 10; resetAllSettings(); }
             else if (y >= 95 && y <= 115) { settingsFocus = 0; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 145 && y <= 165) { settingsFocus = 1; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 186 && y <= 224 && x >= 530 && x <= 670) { settingsFocus = 2; settingsDraft.virtualController = true; }
             else if (y >= 186 && y <= 224 && x >= 690 && x <= 830) { settingsFocus = 2; settingsDraft.virtualController = false; }
-            else if (y >= 236 && y <= 274 && x >= 530 && x <= 670) { settingsFocus = 3; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
-            else if (y >= 286 && y <= 324) { settingsFocus = 4; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; }
-            else if (y >= 336 && y <= 374) { settingsFocus = 5; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
+            else if (y >= 236 && y <= 274 && x >= 530 && x <= 660) { settingsFocus = 3; settingsDraft.graphicsQuality = 'low'; }
+            else if (y >= 236 && y <= 274 && x >= 680 && x <= 810) { settingsFocus = 3; settingsDraft.graphicsQuality = 'medium'; }
+            else if (y >= 236 && y <= 274 && x >= 830 && x <= 960) { settingsFocus = 3; settingsDraft.graphicsQuality = 'high'; }
+            else if (y >= 286 && y <= 324 && x >= 530 && x <= 670) { settingsFocus = 4; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
+            else if (y >= 336 && y <= 374) { settingsFocus = 5; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; }
+            else if (y >= 386 && y <= 424) { settingsFocus = 6; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
         } else {
             if (menuScreen === 'practiceDifficulty') {
                 const fourAndFiveOnly = colorSelectionMode === 'continuousFever';
@@ -5728,6 +5802,7 @@
         }
         context = canvas.getContext('2d');
         if (!context) throw new Error('2D 캔버스 컨텍스트를 만들 수 없습니다.');
+        applyCanvasOutputResolution();
         initialized = true;
         window.addEventListener('keydown', handleKeydown);
         window.addEventListener('keyup', handleKeyup);
@@ -7513,6 +7588,10 @@
         registerLanguage,
         setNoticeFile,
         randomFloat,
+        getCanvasOutputSize,
+        toCanvasCoordinates,
+        toCanvasLength,
+        applyCanvasCoordinateTransform,
         getSelectedDifficulty,
         getSelectedColorCount,
         getScreenState,

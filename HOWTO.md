@@ -49,10 +49,37 @@ document.addEventListener("DOMContentLoaded", function() {
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, initialize } = require('./src/webpuyo.js');
+const { Enemy, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, initialize } = require('./src/webpuyo.js');
 ```
 
-`initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 1280x720 canvas를 만들어 게임을 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 그대로 사용하고 `destroy()`가 요소를 제거하지 않습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
+`initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 게임용 canvas를 만들어 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 사용하고 `destroy()`가 요소를 제거하지 않습니다. 다만 게임의 그래픽 설정에 따라 해당 canvas의 실제 `width`와 `height`는 설정됩니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
+
+## 그래픽 설정과 캔버스 좌표
+
+설정 화면의 `그래픽 설정`은 `puyow_store.settings.graphicsQuality`에 저장됩니다. 기본값은 `low`이며, 기존 저장 데이터에 이 값이 없어도 자동으로 `low`로 보정합니다. 설정을 저장하면 실제 canvas의 `width`와 `height`가 아래 값으로 즉시 바뀝니다. CSS 표시 크기와 게임 내부 논리 좌표계는 변하지 않습니다.
+
+| 값 | 표시 문구 | 실제 canvas 출력 해상도 |
+| --- | --- | --- |
+| `low` | 낮음 | 1280 x 720 |
+| `medium` | 중간 | 1920 x 1080 |
+| `high` | 높음 | 3840 x 2160 |
+
+게임과 적·테마 렌더러는 항상 1280 x 720 논리 좌표를 사용합니다. 라이브러리는 렌더링 전에 컨텍스트 변환을 적용하므로 `fillRect`, `fillText`, 선 두께, 사용자 정의 렌더러의 좌표와 길이도 실제 출력 해상도로 함께 변환됩니다. 고해상도 출력은 메모리와 렌더링 부하를 높일 수 있으므로 저사양 기기에서는 `낮음`을 권장합니다.
+
+외부 코드에서도 현재 출력 크기와 변환 결과를 확인할 수 있습니다.
+
+```js
+const output = WebPuyo.getCanvasOutputSize();
+// { graphicsQuality: 'medium', width: 1920, height: 1080, scaleX: 1.5, scaleY: 1.5 }
+
+WebPuyo.toCanvasCoordinates(640, 360);
+// { x: 960, y: 540 }
+
+WebPuyo.toCanvasLength(38);
+// 57
+```
+
+`WebPuyo.applyCanvasCoordinateTransform()`은 현재 그래픽 설정의 논리 좌표 변환을 2D 컨텍스트에 다시 적용합니다. 외부 렌더링 코드가 `setTransform()`으로 컨텍스트 좌표계를 변경했을 때 호출할 수 있습니다. 보통 게임 렌더링 과정에서 자동 적용되므로 별도로 호출할 필요는 없습니다.
 
 ## 화면 상단 메시지 표시
 

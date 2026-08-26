@@ -93,10 +93,38 @@ test('설정의 AI 서비스 제공자는 OpenAI만 표시하고 기존 Google �
   expect(await page.evaluate(() => window.testCanvasTexts.includes('Google'))).toBe(false);
 
   // Google이 있던 오른쪽 영역을 클릭해도 선택값을 되살릴 수 없어야 한다.
-  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 255 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 460, y: 528 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 305 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 460, y: 578 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('OpenAI');
+});
+
+test('그래픽 설정은 키보드와 마우스로 저장되며 캔버스 출력 해상도와 공개 좌표 변환 API에 반영된다', async ({ page }) => {
+  expect(await page.evaluate(() => ({
+    canvas: [document.querySelector('#webpuyo_canvas').width, document.querySelector('#webpuyo_canvas').height],
+    output: window.WebPuyo.getCanvasOutputSize(),
+  }))).toEqual({
+    canvas: [1280, 720],
+    output: { graphicsQuality: 'low', width: 1280, height: 720, scaleX: 1, scaleY: 1 },
+  });
+
+  await openSettings(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => [document.querySelector('#webpuyo_canvas').width, document.querySelector('#webpuyo_canvas').height])).toEqual([1920, 1080]);
+  expect(await page.evaluate(() => ({
+    settings: JSON.parse(localStorage.getItem('puyow_store')).settings.graphicsQuality,
+    point: window.WebPuyo.toCanvasCoordinates(640, 360),
+    length: window.WebPuyo.toCanvasLength(38),
+  }))).toEqual({ settings: 'medium', point: { x: 960, y: 540 }, length: 57 });
+
+  await page.keyboard.press('Enter');
+  await page.locator('#webpuyo_canvas').click({ position: { x: 895, y: 255 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 460, y: 578 } });
+  await expect.poll(() => page.evaluate(() => [document.querySelector('#webpuyo_canvas').width, document.querySelector('#webpuyo_canvas').height])).toEqual([3840, 2160]);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.graphicsQuality)).toBe('high');
 });
 
 test('빈 사용 모델명은 기본값으로 보정되고 API 테스트 버튼은 API 키 없이는 비활성이다', async ({ page }) => {
@@ -119,7 +147,7 @@ test('빈 사용 모델명은 기본값으로 보정되고 API 테스트 버튼�
     requestCount += 1;
     await route.fulfill({ status: 500 });
   });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 405 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 455 } });
   await page.waitForTimeout(100);
   expect(requestCount).toBe(0);
 });
@@ -144,7 +172,7 @@ test('AI API 테스트는 저장된 OpenAI 설정으로 구조화된 Responses �
     });
   });
   await openSettings(page);
-  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
     'AI API 테스트 성공 (JSON 스키마 검사: 통과)',
@@ -177,7 +205,7 @@ test('저장하지 않은 AI 설정은 API 테스트 요청 대신 저장 안내
   await page.locator('#webpuyo_canvas').click({ position: { x: 600, y: 355 } });
   await page.keyboard.press('x');
   await page.keyboard.press('Enter');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 405 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 455 } });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
     '설정 저장 후 다시 시도해 주세요',
     'Save your settings and try again.',
