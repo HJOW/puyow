@@ -161,6 +161,7 @@
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
+            '뿌요 W': 'Puyo W',
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '시작': 'Start', '이전': 'Back',
@@ -178,6 +179,7 @@
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
+            '뿌요 W': 'Puyo W',
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
             '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '시작': '開始', '이전': '戻る',
@@ -195,6 +197,7 @@
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
+            '뿌요 W': 'Puyo W',
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
             '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
@@ -3267,7 +3270,7 @@
      */
     function drawCenter() {
         game.themeController.drawCenterBackground(context, { x: 450, y: 0, width: 380, height: HEIGHT });
-        context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, 95);
+        context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText(translate('뿌요 W'), WIDTH / 2, 95);
         const left = game.players[0]; const right = game.players[1];
         [
             { player: left, x: 482, color: '#ef8aa0' },
@@ -3558,7 +3561,7 @@
      */
     function drawResultCenter(showExitButton = true) {
         game.themeController.drawCenterBackground(context, { x: 450, y: 0, width: 380, height: HEIGHT });
-        context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, 95);
+        context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText(translate('뿌요 W'), WIDTH / 2, 95);
         const enemy = game.players[1];
         if (enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
         context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
@@ -4445,7 +4448,7 @@
     function drawInitialTitle() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `58px ${TITLE_FONT}`;
-        context.fillText('Puyo W', WIDTH / 2, 115);
+        context.fillText(translate('뿌요 W'), WIDTH / 2, 115);
         if (initialGalleryPreview.loaded && initialGalleryPreview.items.length) {
             const offset = Math.floor(initialGalleryPreview.elapsed / 2000);
             const index = (initialGalleryPreview.startIndex + offset) % initialGalleryPreview.items.length;
@@ -4586,7 +4589,7 @@
             context.scale(OPPONENT_MENU_SCALE, OPPONENT_MENU_SCALE);
             context.translate(-WIDTH / 2, -HEIGHT / 2);
         }
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 90 : 110);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText(translate('뿌요 W'), WIDTH / 2, menuScreen === 'opponent' ? 90 : 110);
         if (menuScreen === 'opponent') {
             DIFFICULTIES.forEach((difficulty, index) => {
                 if (opponentMenuRule === 'fever' && index === 0) return;

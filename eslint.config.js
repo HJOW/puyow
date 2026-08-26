@@ -3,7 +3,11 @@ const globals = require('globals')
 
 module.exports = [
     {
-        ignores: ['**/node_modules/**'],
+        ignores: [
+            '**/node_modules/**',
+            'src/three.core.min.js',
+            'src/three.module.min.js',
+        ],
     },
     {
         files: ['src/**/*.js'],
