@@ -280,6 +280,35 @@ test('피버 룰은 전용 적 선택 화면에서 4색을 골라 보라색 없�
   expect(state.opponent.fever).toMatchObject({ active: false, gauge: 0, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
 });
 
+test('암두시아스는 기본·피버 룰 진행 목록에 출시되고 키마리스는 출시 예정으로 표시된다', async ({ page }) => {
+  await page.evaluate(() => {
+    const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial'];
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      clearListByDifficulty: { easy: cleared, normal: cleared, hard: cleared },
+      feverClearListByDifficulty: { easy: cleared, normal: cleared, hard: cleared },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['암두시아스', 'Amdusias', 'アムドゥシアス', '阿姆杜西亚斯'].includes(text)))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['키마리스', 'Kimaris', 'キマリス', '基马里斯'].includes(text)))).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['암두시아스', 'Amdusias', 'アムドゥシアス', '阿姆杜西亚斯'].includes(text)))).toBe(true);
+});
+
 test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async ({ page }) => {
   await page.evaluate(() => {
     class FeverGalleryEnemy extends window.WebPuyo.Enemy {

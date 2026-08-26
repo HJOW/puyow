@@ -147,7 +147,7 @@
         en: {
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
-            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '시작': 'Start', '이전': 'Back',
+            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
             '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked',
@@ -162,7 +162,7 @@
         ja: {
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
             '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
-            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '시작': '開始', '이전': '戻る',
+            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '시작': '開始', '이전': '戻る',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
             '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中',
@@ -178,6 +178,7 @@
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
             '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
+            '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
             '연습 상대': '练习对手', '추후 출시예정': '即将推出', '잠김': '已锁定',
@@ -1354,7 +1355,7 @@
             // 기본 제공 적에 한해서만 플레이어 연쇄 대응 같은 엔진 공통 특수 규칙을 적용한다.
             // 외부 등록 적은 자신의 chooseTarget·chooseRotate 결정만 사용한다.
             // findBestAttackPlacement가 즉시 패배 후보를 먼저 제외하므로 생존 조건만 이 우선순위보다 앞선다.
-            if (player.controller instanceof BundledEnemy && game?.feverRule && player.fever?.active) {
+            if (player.controller instanceof BundledEnemy && game?.feverRule && player.fever?.active && !(player.controller instanceof Amdusias)) {
                 const feverPlacement = findBestFeverComboPlacement(player) || findBestAttackPlacement(player, player.active.x, null, true);
                 player.aiTarget = feverPlacement.x;
                 player.aiRotation = ((feverPlacement.rotation % 4) + 4) % 4;
@@ -1371,7 +1372,8 @@
             // 포함한 실제 폭발·중력 결과로 재검증한 뒤 위험하면 안전한 후보로 교체한다.
             if (player.controller instanceof BundledEnemy) {
                 const selectedPlacement = player.aiSimulations.find((simulation) => simulation.x === player.aiTarget && simulation.rotation === player.aiRotation);
-                if (selectedPlacement && causesImmediateDefeat(player, selectedPlacement)) {
+                const amdusiasFeverAttack = player.controller instanceof Amdusias && game?.feverRule && player.fever?.active;
+                if (!amdusiasFeverAttack && selectedPlacement && causesImmediateDefeat(player, selectedPlacement)) {
                     const safePlacement = findBestAttackPlacement(player, player.active.x, null, true);
                     if (safePlacement.positions.length) {
                         player.aiTarget = safePlacement.x;
@@ -6034,7 +6036,7 @@
         }
 
         /**
-         * 안드로말리우스 외형 - 갑각형 악마 모습을 그린다.
+         * 뱀을 두른 정의의 백작 안드로말리우스의 일반·위기·우는 표정을 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 2D 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -6059,6 +6061,10 @@
             drawingContext.ellipse(0, size * 0.18, size * 0.56, size * 0.63, 0, 0, Math.PI * 2);
             drawingContext.fill();
             drawingContext.stroke();
+            // 도둑을 찾아주는 정의의 백작답게 한 손의 작은 뱀과 별 배지를 더한다.
+            drawingContext.strokeStyle = '#b7d65b'; drawingContext.lineWidth = 5 * scale;
+            drawingContext.beginPath(); drawingContext.arc(size * 0.58, size * 0.22, size * 0.18, 0, Math.PI * 1.8); drawingContext.stroke();
+            drawingContext.fillStyle = '#f3d46b'; drawingContext.beginPath(); drawingContext.arc(-size * 0.3, size * 0.35, size * 0.1, 0, Math.PI * 2); drawingContext.fill();
             drawingContext.fillStyle = '#9ad9b8';
             drawingContext.beginPath();
             drawingContext.arc(-size * 0.19, -size * 0.06, size * 0.16, 0, Math.PI * 2);
@@ -6182,7 +6188,7 @@
         }
 
         /**
-         * 가상의 인간형 몬스터 단탈리온을 캔버스 도형으로 그린다.
+         * 여러 얼굴과 비밀의 책을 가진 단탈리온의 일반·위기·우는 표정을 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -6228,6 +6234,9 @@
             drawingContext.strokeStyle = '#bd87e8';
             drawingContext.lineWidth = 3 * scale;
             drawingContext.stroke();
+            // '서로 다름'의 공작: 옆에 겹친 작은 얼굴들과 미래를 적은 책을 보인다.
+            drawingContext.fillStyle = '#48506d'; [-size * 0.48, size * 0.48].forEach((faceX) => { drawingContext.beginPath(); drawingContext.arc(faceX, -size * 0.21, size * 0.16, 0, Math.PI * 2); drawingContext.fill(); });
+            drawingContext.fillStyle = '#d8a968'; drawingContext.fillRect(-size * 0.34, size * 0.36, size * 0.68, size * 0.2); drawingContext.strokeStyle = '#563068'; drawingContext.strokeRect(-size * 0.34, size * 0.36, size * 0.68, size * 0.2);
             drawingContext.fillStyle = '#ef5350';
             drawingContext.beginPath();
             drawingContext.moveTo(-size * 0.27, -size * 0.6);
@@ -6630,7 +6639,7 @@
             return this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player);
         }
 
-        /** 세레의 기존 초상화 */
+        /** 은빛 말과 그리폰 날개, 차가운 눈을 귀엽게 표현한 세레의 세 표정 */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
             const size = 72 * scale;
             drawingContext.save();
@@ -6644,6 +6653,8 @@
             drawingContext.strokeStyle = '#83d5df'; drawingContext.lineWidth = 3 * scale; drawingContext.stroke();
             drawingContext.fillStyle = '#d7e8da'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.1, size * 0.48, size * 0.58, 0, 0, Math.PI * 2); drawingContext.fill();
             drawingContext.strokeStyle = '#35556a'; drawingContext.lineWidth = 4 * scale; drawingContext.stroke();
+            drawingContext.fillStyle = '#ecd98b'; drawingContext.beginPath(); drawingContext.moveTo(-size * 0.37, -size * 0.37); drawingContext.quadraticCurveTo(0, -size * 0.75, size * 0.37, -size * 0.37); drawingContext.lineTo(0, -size * 0.48); drawingContext.closePath(); drawingContext.fill();
+            drawingContext.fillStyle = '#c7d0dc'; [-1, 1].forEach((direction) => { drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.42, size * 0.15); drawingContext.lineTo(direction * size * 0.82, -size * 0.25); drawingContext.lineTo(direction * size * 0.58, size * 0.45); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke(); });
             drawingContext.fillStyle = '#77cfd5'; drawingContext.beginPath(); drawingContext.arc(0, size * 0.66, size * 0.23, 0, Math.PI * 2); drawingContext.fill();
             drawingContext.strokeStyle = '#d7ffff'; drawingContext.lineWidth = 2 * scale; drawingContext.stroke();
             const eyeY = -size * 0.16;
@@ -6744,7 +6755,7 @@
         }
 
         /**
-         * 박쥐 날개와 별 장식을 가진 데카라비아의 일반·위기·패배 표정을 그린다.
+         * 오망성과 작은 새 사역마를 가진 데카라비아의 일반·위기·우는 표정을 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -6788,6 +6799,7 @@
             drawingContext.closePath();
             drawingContext.fill();
             drawingContext.stroke();
+            drawingContext.fillStyle = '#b9d7f0'; drawingContext.beginPath(); drawingContext.arc(size * 0.72, -size * 0.42, size * 0.11, 0, Math.PI * 2); drawingContext.fill(); drawingContext.beginPath(); drawingContext.moveTo(size * 0.75, -size * 0.42); drawingContext.lineTo(size * 0.98, -size * 0.52); drawingContext.lineTo(size * 0.78, -size * 0.3); drawingContext.closePath(); drawingContext.fill();
 
             if (expression === 'defeated') {
                 drawingContext.strokeStyle = '#f3edff';
@@ -6901,7 +6913,7 @@
         }
 
         /**
-         * 왕관과 망토를 두른 벨리알의 일반·위기·패배 표정을 그린다.
+         * 깨진 천사 후광과 망토를 두른 벨리알의 일반·위기·우는 표정을 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -6941,6 +6953,7 @@
             drawingContext.closePath();
             drawingContext.fill();
             drawingContext.stroke();
+            drawingContext.strokeStyle = '#f0d88a'; drawingContext.lineWidth = 3 * scale; drawingContext.beginPath(); drawingContext.arc(0, -size * 0.78, size * 0.28, Math.PI * 0.12, Math.PI * 0.88); drawingContext.stroke();
 
             if (expression === 'defeated') {
                 drawingContext.strokeStyle = '#413047';
@@ -6982,13 +6995,14 @@
     }
 
     /**
-     * 암두시아스는 향후 AI를 추가할 출시 예정 적이다.
+     * 암두시아스는 유니콘 작곡가 콘셉트의 기본 제공 적이다. 벨리알의 예고쌍·싹쓸이 평가를
+     * 이어받되 한 단계 높은 5연쇄 목표와 피버 전용 우선순위를 사용한다.
      */
-    class Amdusias extends BundledEnemy {
+    class Amdusias extends Belial {
         constructor() {
             super();
             this.sortPriority = 6;
-            this.notAvail = true;
+            this.notAvail = false;
         }
 
         /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
@@ -7001,23 +7015,31 @@
             return '암두시아스';
         }
 
-        /**
-         * TODO: 암두시아스 전용 AI를 구현한다. 현재는 처음 생성된 위치·회전을 유지한 채 자연 낙하한다.
-         * @param {PlayerState} player 자동 조작할 플레이어
-         * @returns {number} 목표 X 좌표
-         */
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 X 좌표 */
         chooseTarget(player) {
-            return player.active ? player.active.x : 2;
-        }
-
-        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
-        chooseRotate(player) {
-            return 0;
-        }
-
-        /** TODO: 암두시아스 전용 빠른 하강 정책을 구현한다. @returns {boolean} */
-        useFastDown() {
-            return false;
+            const safeSimulations = this.getSafeSimulations(player);
+            const simulations = safeSimulations.length ? safeSimulations : player.aiSimulations;
+            const occupancy = this.getFieldOccupancy(player);
+            const score = (simulation) => simulation.attack + (simulation.previewAttack || 0) + (simulation.previewCombo || 0) * 1000;
+            // 피버 중에는 패배 위치보다 먼저 최고 공격력을 찾는다. enterControl도 이 우선순위를 보존한다.
+            let selected = this.selectSimulation(simulations, (simulation) => simulation.allClear === true, score);
+            if (!selected && game?.feverRule && this.isInFever(player)) {
+                selected = this.selectSimulation(simulations, () => true, score);
+            // 피버 룰에서 피버가 아닐 때 DAMAGE가 있으면 생존 다음 우선순위로 공격력 시뮬레이션을 쓴다.
+            } else if (!selected && game?.feverRule && player.damage > 0) {
+                selected = this.selectSimulation(simulations, () => true, score);
+            } else if (!selected && occupancy >= 0.8) {
+                selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 1, score);
+            } else if (!selected && occupancy >= 0.5) {
+                selected = this.selectSimulation(simulations, (simulation) => simulation.combo === 2, score);
+                if (!selected) selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 2, (simulation) => score(simulation) - Math.abs(simulation.combo - 2) * 10000);
+            } else if (!selected) {
+                // 필드가 30% 이하이거나 중간 높이일 때는 5연쇄 기회까지 터뜨리지 않고 쌓는다.
+                selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 5, score);
+                if (!selected) selected = this.selectBuildSimulation(player, simulations);
+            }
+            this.attackPlacement = selected || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, !this.isInFever(player));
+            return this.attackPlacement.x;
         }
 
         /**
@@ -7034,12 +7056,16 @@
             drawingContext.save();
             drawingContext.translate(centerX, centerY);
             drawingContext.lineJoin = 'round';
+            // 뿔과 음표 리본으로 유니콘 작곡가를 귀엽게 각색한다.
             drawingContext.fillStyle = '#405270'; drawingContext.strokeStyle = '#1a263b'; drawingContext.lineWidth = 4 * scale;
             drawingContext.beginPath();
             drawingContext.moveTo(-size * 0.56, size * 0.72); drawingContext.lineTo(-size * 0.78, -size * 0.12); drawingContext.lineTo(-size * 0.34, size * 0.06);
             drawingContext.lineTo(0, -size * 0.48); drawingContext.lineTo(size * 0.34, size * 0.06); drawingContext.lineTo(size * 0.78, -size * 0.12); drawingContext.lineTo(size * 0.56, size * 0.72);
             drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
             drawingContext.fillStyle = '#c7d7ed'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.06, size * 0.43, size * 0.5, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#f1d77a'; drawingContext.beginPath(); drawingContext.moveTo(0, -size * 0.52); drawingContext.lineTo(size * 0.12, -size * 0.98); drawingContext.lineTo(size * 0.24, -size * 0.46); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.strokeStyle = '#f1d77a'; drawingContext.lineWidth = 3 * scale; drawingContext.beginPath(); drawingContext.arc(-size * 0.62, size * 0.23, size * 0.18, -Math.PI * 0.7, Math.PI * 0.35); drawingContext.stroke();
+            drawingContext.fillStyle = '#f1d77a'; drawingContext.beginPath(); drawingContext.arc(-size * 0.51, size * 0.17, size * 0.05, 0, Math.PI * 2); drawingContext.fill();
             const eyeY = -size * 0.11;
             if (expression === 'defeated') {
                 // 우는 표정
@@ -7053,6 +7079,49 @@
                 if (expression === 'crisis') drawingContext.arc(0, size * 0.28, size * 0.11, Math.PI, Math.PI * 2);
                 else drawingContext.arc(0, size * 0.18, size * 0.12, 0, Math.PI);
                 drawingContext.stroke();
+            }
+            drawingContext.restore();
+        }
+    }
+
+    /**
+     * 키마리스는 검은 말의 용감한 보물 탐험가를 귀엽게 각색한 출시 예정 적이다.
+     * TODO: 전용 AI가 출시될 때까지는 자연 낙하만 유지한다.
+     */
+    class Kimaris extends BundledEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 7;
+            this.notAvail = true;
+        }
+
+        getClassType() { return 'Kimaris'; }
+        getName() { return '키마리스'; }
+
+        /** TODO: 키마리스 전용 탐색·공격 AI를 구현한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 현재 열 */
+        chooseTarget(player) { return player.active ? player.active.x : 2; }
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 회전하지 않는 기본값 */
+        chooseRotate() { return 0; }
+        /** TODO: 키마리스 전용 빠른 하강 정책을 구현한다. @returns {boolean} */
+        useFastDown() { return false; }
+
+        /** 검은 말 갈기·보물 지도·용감한 표정의 일반·위기·우는 초상화를 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            const size = 72 * scale;
+            drawingContext.save(); drawingContext.translate(centerX, centerY); drawingContext.lineJoin = 'round';
+            drawingContext.fillStyle = '#252332'; drawingContext.strokeStyle = '#10101b'; drawingContext.lineWidth = 4 * scale;
+            drawingContext.beginPath(); drawingContext.ellipse(0, size * 0.18, size * 0.61, size * 0.57, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            [-1, 1].forEach((direction) => { drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.28, -size * 0.2); drawingContext.lineTo(direction * size * 0.53, -size * 0.74); drawingContext.lineTo(direction * size * 0.05, -size * 0.45); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke(); });
+            drawingContext.fillStyle = '#5b473d'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.04, size * 0.43, size * 0.46, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#c89043'; drawingContext.fillRect(size * 0.23, size * 0.27, size * 0.29, size * 0.22); drawingContext.strokeRect(size * 0.23, size * 0.27, size * 0.29, size * 0.22);
+            const eyeY = -size * 0.1;
+            if (expression === 'defeated') {
+                drawingContext.fillStyle = '#72cdeb'; [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY + size * 0.16, size * 0.075, size * 0.19, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.strokeStyle = '#231c28'; drawingContext.beginPath(); drawingContext.arc(0, size * 0.26, size * 0.12, Math.PI, Math.PI * 2); drawingContext.stroke();
+            } else {
+                drawingContext.fillStyle = expression === 'crisis' ? '#f3dc75' : '#f5f0dc'; [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.09, expression === 'crisis' ? size * 0.14 : size * 0.1, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.fillStyle = '#161522'; [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.04, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.strokeStyle = '#231c28'; drawingContext.beginPath(); if (expression === 'crisis') drawingContext.arc(0, size * 0.25, size * 0.12, Math.PI, Math.PI * 2); else drawingContext.arc(0, size * 0.14, size * 0.12, 0, Math.PI); drawingContext.stroke();
             }
             drawingContext.restore();
         }
@@ -7090,7 +7159,8 @@
         createOpponentEntry(() => new Seere()),
         createOpponentEntry(() => new Decarabia()),
         createOpponentEntry(() => new Belial()),
-        createOpponentEntry(() => new Amdusias())
+        createOpponentEntry(() => new Amdusias()),
+        createOpponentEntry(() => new Kimaris())
     );
 
     /**
