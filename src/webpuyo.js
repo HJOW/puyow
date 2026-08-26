@@ -2334,6 +2334,7 @@
 
     /** 피버 룰 연쇄의 에너지·싹쓸이·상대 방해뿌요 처리가 끝났는지 확인한다. @param {PlayerState} player 연쇄 플레이어 @param {PlayerState} opponent 상대 플레이어 @returns {boolean} 대기 필요 여부 */
     function isFeverRuleSettlementPending(player, opponent) {
+        const feverExpired = isFeverTimeExpired(player.fever);
         const opponentDroppingGarbage = opponent.phase === 'garbage'
             || (opponent.phase === 'gravity' && opponent.gravityNextPhase === 'check');
         const waitingForOpponentGarbage = player.fever?.opponentGarbageDropBaseline !== null
@@ -2343,22 +2344,22 @@
         return player.allClearEffectElapsed > 0
             || player.pendingAllClearDamage > 0
             || hasPendingEnergyTransfers()
-            || waitingForOpponentGarbage
-            || opponentDroppingGarbage;
+            // 피버 룰의 시간 만료 연쇄는 ATTACK·DAMAGE 정산 후 즉시 끝나며 상대 방해뿌요 낙하는 기다리지 않는다.
+            || (!feverExpired && (waitingForOpponentGarbage || opponentDroppingGarbage));
     }
 
     /** 피버 룰의 한 피버 턴을 정산하고 다음 턴 또는 피버 종료로 전환한다. @param {PlayerState} player 대상 플레이어 @returns {void} */
     function finishFeverRuleResolution(player) {
         const state = player.fever;
         if (!game?.feverRule || !state?.active) return;
-        if (isFeverTimeExpired(state)) {
-            finishPlayerFever(player, 'B');
-            return;
-        }
         const combo = state.pendingCombo;
         state.opponentGarbageDropBaseline = null;
         const previousTarget = state.targetCombo;
         state.targetCombo = calculateContinuousFeverTarget(previousTarget, combo, state.pendingAllClear);
+        if (isFeverTimeExpired(state)) {
+            finishPlayerFever(player, 'B');
+            return;
+        }
         if (state.targetCombo !== previousTarget) state.leftTime += Math.floor(combo / 2) * 1000;
         prepareFeverTurn(player, state);
         enterControl(player);

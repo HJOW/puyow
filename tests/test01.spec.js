@@ -493,6 +493,52 @@ test('피버 중 공격은 피버와 일반 DAMAGE를 모두 상쇄한 뒤 남�
   }), { timeout: 10000 }).toBe(true);
 });
 
+test('피버 룰의 시간 만료 연쇄는 상대 방해뿌요 낙하를 기다리지 않고 종료한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverExpiredComboEnemy extends window.WebPuyo.Enemy {
+      constructor() {
+        super();
+        this.sortPriority = -1;
+        this.prepared = false;
+      }
+
+      getClassType() { return 'FeverExpiredComboEnemy'; }
+      getName() { return '피버 만료 정산 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.prepared) return;
+        this.prepared = true;
+        player.fever.active = true;
+        // 다음 프레임에서 0이 되지만, 연쇄와 에너지 전달은 끝까지 정산한다.
+        player.fever.leftTime = 1;
+        player.attack = 1;
+        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+        player.phase = 'explode';
+        player.phaseTimer = 0;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverExpiredComboEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+
+  // 플레이어는 아직 방해뿌요를 떨어뜨리지 않았지만, 전달된 DAMAGE 뒤 피버는 종료돼야 한다.
+  await expect.poll(() => page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state?.player.damage >= 1 && state.opponent.fever?.active === false;
+  }), { timeout: 10000 }).toBe(true);
+});
+
 test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
