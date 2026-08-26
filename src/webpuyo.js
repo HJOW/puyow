@@ -69,7 +69,7 @@
     const MESSAGE_FONT = buildFontStack(MESSAGE_FONT_NAME);
     /** 4방향 인접 좌표 계산에 사용할 X, Y 변화량이다. @type {number[][]} */
     const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    /** 싹쓸이 성공 시 상대방에게 즉시 보낼 방해뿌요 수다. @type {number} */
+    /** 기본 룰·연습의 싹쓸이 성공 시 상대방에게 보낼 방해뿌요 수다. 피버 룰과 연속 피버에는 적용하지 않는다. @type {number} */
     const ALL_CLEAR_DAMAGE = 12;
     /** 싹쓸이 성공 시 즉시 더할 점수다. @type {number} */
     const ALL_CLEAR_POINT = 100;
@@ -2134,7 +2134,7 @@
     }
 
     /**
-     * 싹쓸이 표시 시간을 진행하고 효과가 끝나면 예약된 공격 에너지를 보낸다.
+     * 싹쓸이 표시 시간을 진행하고 효과가 끝나면 예약된 기본 룰 공격 에너지를 보낸다.
      * 패배 연출 중에도 호출할 수 있도록 일반 플레이어 단계 갱신과 분리한다.
      * @param {PlayerState} player 싹쓸이를 발생시킨 플레이어
      * @param {PlayerState} opponent 공격을 받을 상대
@@ -2387,10 +2387,12 @@
                 startDefeatSequence(player, opponent);
             } else {
                 const isAllClear = player.board.every((row) => row.every((cell) => cell === null));
-                // 뿌요를 놓은 뒤 필드가 비었을 때만 싹쓸이 공격을 보낸다.
+                // 뿌요를 놓은 뒤 필드가 비었을 때만 싹쓸이를 처리한다.
                 const triggeredAllClear = player.allClearEnabled && isAllClear && player.hasPlacedPuyoSinceAllClear;
                 if (triggeredAllClear) {
-                    if (!(game?.feverRule && player.fever && !player.fever.active)) player.pendingAllClearDamage += ALL_CLEAR_DAMAGE;
+                    // 피버 룰·연속 피버의 싹쓸이는 목표 연쇄 보너스와 황금 연출만 제공한다.
+                    // 뿌요 폭발에서 생긴 ATTACK 에너지는 resolveExplosions()의 기존 경로로 그대로 전달된다.
+                    if (!game?.feverRule && !game?.continuousFever) player.pendingAllClearDamage += ALL_CLEAR_DAMAGE;
                     player.point += ALL_CLEAR_POINT;
                     player.allClearEffectElapsed = ALL_CLEAR_EFFECT_DURATION;
                     player.hasPlacedPuyoSinceAllClear = false;

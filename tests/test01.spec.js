@@ -254,6 +254,57 @@ test('피버 전용 필드는 적 테마보다 우선하고 일반 필드는 적
   expect(pixels.feverBezel).toEqual([207, 94, 56, 255]);
 });
 
+test('피버 상태의 싹쓸이는 목표 연쇄만 올리고 별도 ATTACK을 보내지 않는다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverAllClearEnemy extends window.WebPuyo.Enemy {
+      constructor() {
+        super();
+        this.sortPriority = -1;
+        this.hasPreparedAllClear = false;
+      }
+
+      getClassType() { return 'FeverAllClearEnemy'; }
+      getName() { return '피버 싹쓸이 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.hasPreparedAllClear) return;
+        this.hasPreparedAllClear = true;
+        // 4개 연결을 터뜨린 뒤 피버 필드를 비운다. 이 폭발은 40점(ATTACK 1 미만)이라
+        // 자체 공격은 없으며, DAMAGE가 생긴다면 싹쓸이의 기존 추가 12뿐이다.
+        player.fever.active = true;
+        player.fever.leftTime = 10000;
+        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+        player.hasPlacedPuyoSinceAllClear = true;
+        player.phase = 'explode';
+        player.phaseTimer = 0;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverAllClearEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+
+  // 싹쓸이 황금 연출과 모든 에너지 정산이 끝난 뒤에 다음 피버 스테이지가 준비된다.
+  await expect.poll(() => page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state?.opponent.fever?.targetCombo;
+  }), { timeout: 10000 }).toBe(7);
+  const state = await page.evaluate(() => window.WebPuyo.getGameState());
+  expect(state.opponent.point).toBe(140);
+  expect(state.player.damage).toBe(0);
+  expect(state.player.warningPuyos).toEqual([]);
+});
+
 test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
