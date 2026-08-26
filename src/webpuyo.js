@@ -22,6 +22,10 @@
     const OPPONENT_MENU_SCALE = 0.9;
     /** 한 칸의 논리 픽셀 크기다. @type {number} */
     const CELL = 38;
+    /** 메인 메뉴에서 갤러리 대상이 떠다니는 최소 개수다. 이 값을 바꾸면 추첨 범위가 함께 바뀐다. @type {number} */
+    const MAIN_MENU_GALLERY_FLOATER_MIN_COUNT = 3;
+    /** 메인 메뉴에서 갤러리 대상이 떠다니는 최대 개수다. 최소 개수 이상으로 설정한다. @type {number} */
+    const MAIN_MENU_GALLERY_FLOATER_MAX_COUNT = 5;
     /** 필드 표시 영역의 위쪽 논리 좌표다. @type {number} */
     const FIELD_TOP = 102;
     /** 필드 표시 영역의 아래쪽 논리 좌표다. @type {number} */
@@ -267,6 +271,10 @@
     let titleMenuFocus = 0;
     /** 메인 메뉴의 게임 규칙 선택 오버레이가 열려 있는지 여부다. @type {boolean} */
     let ruleSelectionOpen = false;
+    /** 메인 메뉴에서 떠다닐 갤러리 항목의 위치·속도 상태다. @type {{draw:()=>void,x:number,y:number,vx:number,vy:number,radius:number}[]} */
+    let mainMenuGalleryFloaters = [];
+    /** 직전 렌더링 메뉴 화면이다. 메인 메뉴 재진입 시 떠다니는 항목을 다시 추첨하는 데 사용한다. @type {string} */
+    let previousRenderedMenuScreen = 'initialTitle';
     /** 게임 규칙 선택 오버레이에서 포커스된 항목이다. @type {number} */
     let ruleSelectionFocus = 0;
     /** 일시정지 메뉴에서 포커스된 항목이다. @type {number} */
@@ -476,9 +484,88 @@
             } catch (error) {
                 console.error('Puyo W 초기 갤러리 미리보기를 준비하지 못했습니다.', error);
                 galleryUnlocks = createInitialGalleryUnlocks();
-                initialGalleryPreview = { loaded: true, items: getInitialGalleryPreviewItems(), startIndex: 0, elapsed: 0 };
+                try {
+                    initialGalleryPreview = { loaded: true, items: getInitialGalleryPreviewItems(), startIndex: 0, elapsed: 0 };
+                } catch (fallbackError) {
+                    console.error('Puyo W 초기 갤러리 미리보기 복구에 실패했습니다.', fallbackError);
+                    initialGalleryPreview = { loaded: true, items: [], startIndex: 0, elapsed: 0 };
+                }
             }
         }, 1);
+    }
+
+    /** 0 이상 1 미만의 난수로 배열을 섞는다. @param {unknown[]} values 원본 배열 @returns {unknown[]} 섞인 새 배열 */
+    function shuffleGalleryValues(values) {
+        const shuffled = [...values];
+        for (let index = shuffled.length - 1; index > 0; index -= 1) {
+            const swapIndex = Math.floor(randomFloat() * (index + 1));
+            [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+        }
+        return shuffled;
+    }
+
+    /** 메인 메뉴에서 떠다닐 갤러리 일반·방해·예고뿌요를 새로 추첨한다. @returns {void} */
+    function createMainMenuGalleryFloaters() {
+        try {
+            loadGalleryUnlocks();
+            const candidates = [...COLORS, 'garbage'].map((color) => ({
+                radius: CELL * 0.5,
+                draw: () => drawPuyo(-CELL / 2, -CELL / 2, color, 0.82)
+            }));
+            WARNING_PUYO_CLASSES.forEach((WarningPuyoType) => {
+                const unit = new WarningPuyoType();
+                if (galleryUnlocks.warning.includes(unit.type)) candidates.push({
+                    radius: CELL * 0.62,
+                    draw: () => unit.draw(context, -CELL / 2, -CELL / 2, CELL)
+                });
+            });
+            const floaterCount = MAIN_MENU_GALLERY_FLOATER_MIN_COUNT
+                + Math.floor(randomFloat() * (MAIN_MENU_GALLERY_FLOATER_MAX_COUNT - MAIN_MENU_GALLERY_FLOATER_MIN_COUNT + 1));
+            const selected = shuffleGalleryValues(candidates).slice(0, Math.min(candidates.length, floaterCount));
+            mainMenuGalleryFloaters = selected.map((item) => {
+                const radius = item.radius;
+                const speed = 0.012 + randomFloat() * 0.012;
+                return {
+                    ...item,
+                    x: radius + randomFloat() * (WIDTH - radius * 2),
+                    y: radius + randomFloat() * (HEIGHT - radius * 2),
+                    vx: (randomFloat() < 0.5 ? -1 : 1) * speed,
+                    vy: (randomFloat() < 0.5 ? -1 : 1) * speed * (0.75 + randomFloat() * 0.5)
+                };
+            });
+        } catch (error) {
+            // 저장소뿐 아니라 확장 예고뿌요 생성·추첨 오류도 메뉴 렌더링을 중단시키지 않는다.
+            console.error('Puyo W 메인 메뉴 갤러리 항목 준비에 실패했습니다.', error);
+            mainMenuGalleryFloaters = [];
+        }
+    }
+
+    /** 메인 메뉴의 갤러리 항목을 천천히 이동하고 캔버스 경계에서 튕긴다. @param {number} delta 경과 시간(ms) @returns {void} */
+    function updateMainMenuGalleryFloaters(delta) {
+        mainMenuGalleryFloaters.forEach((item) => {
+            item.x += item.vx * delta;
+            item.y += item.vy * delta;
+            if (item.x <= item.radius || item.x >= WIDTH - item.radius) {
+                item.x = Math.max(item.radius, Math.min(WIDTH - item.radius, item.x));
+                item.vx *= -1;
+            }
+            if (item.y <= item.radius || item.y >= HEIGHT - item.radius) {
+                item.y = Math.max(item.radius, Math.min(HEIGHT - item.radius, item.y));
+                item.vy *= -1;
+            }
+        });
+    }
+
+    /** 메인 메뉴의 갤러리 항목을 배경에 그린다. @returns {void} */
+    function drawMainMenuGalleryFloaters() {
+        mainMenuGalleryFloaters.forEach((item) => {
+            try {
+                context.save(); context.translate(item.x, item.y); item.draw(); context.restore();
+            } catch (error) {
+                context.restore();
+                console.error('Puyo W 메인 메뉴 갤러리 항목 렌더링에 실패했습니다.', error);
+            }
+        });
     }
 
     /**
@@ -4322,6 +4409,7 @@
      */
     function drawMenu() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        if (menuScreen === 'title') drawMainMenuGalleryFloaters();
         const opponentMenuScaled = menuScreen === 'opponent';
         if (opponentMenuScaled) {
             context.save();
@@ -4330,7 +4418,6 @@
             context.translate(-WIDTH / 2, -HEIGHT / 2);
         }
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 90 : 110);
-        if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'opponent') {
             DIFFICULTIES.forEach((difficulty, index) => {
                 if (opponentMenuRule === 'fever' && index === 0) return;
@@ -4435,6 +4522,8 @@
                 context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 371);
             });
         }
+        // 공지사항은 부유하는 뿌요와 모든 메인 메뉴 요소 위에 그린다.
+        if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'title' && ruleSelectionOpen) drawRuleSelectionOverlay();
     }
 
@@ -4562,6 +4651,11 @@
         if (!game && menuScreen === 'simulator') { updateSimulator(delta); updateEnergyTransfers(delta); }
         if (!game && menuScreen === 'gallery' && gallery) gallery.portraitElapsed += delta;
         if (!game && menuScreen === 'initialTitle' && initialGalleryPreview.loaded) initialGalleryPreview.elapsed += delta;
+        if (!game && menuScreen === 'title') {
+            if (previousRenderedMenuScreen !== 'title') createMainMenuGalleryFloaters();
+            updateMainMenuGalleryFloaters(delta);
+        }
+        previousRenderedMenuScreen = menuScreen;
         syncBackgroundMusic();
         render();
         animationFrameId = requestAnimationFrame(frame);
