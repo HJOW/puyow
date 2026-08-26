@@ -112,6 +112,9 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
   await expect.poll(() => page.evaluate(() => {
     const state = window.WebPuyo.getGameState();
@@ -142,7 +145,7 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   expect(await page.evaluate(() => window.WebPuyo.getGameState().fever.leftTime)).toBe(pausedTime);
 });
 
-test('피버 룰은 전용 적 선택 화면에서 5색 대전으로 시작한다', async ({ page }) => {
+test('피버 룰은 전용 적 선택 화면에서 4색을 골라 보라색 없이 대전으로 시작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
@@ -152,13 +155,50 @@ test('피버 룰은 전용 적 선택 화면에서 5색 대전으로 시작한�
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
   const state = await page.evaluate(() => window.WebPuyo.getGameState());
   expect(state.feverRule).toBe(true);
   expect(state.continuousFever).toBe(false);
-  expect(state.colorCount).toBe(5);
+  expect(state.colorCount).toBe(4);
+  expect(state.colors).toEqual(['red', 'green', 'yellow', 'blue']);
+  expect(state.player.nextPairs.flat()).not.toContain('purple');
   expect(state.player.fever).toMatchObject({ active: false, gauge: 0, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
   expect(state.opponent.fever).toMatchObject({ active: false, gauge: 0, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
+});
+
+test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverGalleryEnemy extends window.WebPuyo.Enemy {
+      constructor() {
+        super();
+        this.sortPriority = -1;
+      }
+
+      getClassType() { return 'FeverGalleryEnemy'; }
+      getName() { return '피버 갤러리 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        player.board[11][2] = 'red';
+        player.phase = 'check';
+        player.phaseTimer = 150;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverGalleryEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner)).toBe('player');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_gallery')).enemies)).toContain('FeverGalleryEnemy');
 });
 
 test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {
@@ -173,6 +213,22 @@ test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 
   await page.keyboard.press('Enter');
   await page.locator('#webpuyo_canvas').click({ position: { x: 20, y: 20 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});
+
+test('연속 피버 색상 선택은 4색과 5색만 제공하고 선택한 색만 지급한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  const state = await page.evaluate(() => window.WebPuyo.getGameState());
+  expect(state.continuousFever).toBe(true);
+  expect(state.colorCount).toBe(4);
+  expect(state.colors).toEqual(['red', 'green', 'yellow', 'blue']);
 });
 
 test('플레이 방법 시연은 에너지 이동 초기화 오류 없이 시작한다', async ({ page }) => {

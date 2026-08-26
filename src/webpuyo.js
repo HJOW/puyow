@@ -129,7 +129,7 @@
     const stringTable = {
         en: {
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
-            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '난이도 선택': 'Difficulty', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
+            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '색상 수 선택': 'Select Colors', '색상 수': 'Colors', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '시작': 'Start', '이전': 'Back',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -144,7 +144,7 @@
         },
         ja: {
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
-            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '난이도 선택': '難易度', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
+            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '색상 수 선택': '色数選択', '색상 수': '色数', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '시작': '開始', '이전': '戻る',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -159,7 +159,7 @@
         },
         zh: {
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
-            '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '난이도 선택': '难度', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
+            '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '색상 수 선택': '选择颜色数', '색상 수': '颜色数', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -212,6 +212,8 @@
     let recommendedPoint = null;
     /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'initialTitle'|'title'|'opponent'|'practiceDifficulty'|'simulator'|'settings'|'gallery'} */
     let menuScreen = 'initialTitle';
+    /** 색상 수 선택 화면이 시작할 단독 모드다. @type {'practice'|'continuousFever'} */
+    let colorSelectionMode = 'practice';
     /** 갤러리의 현재 선택과 포커스 상태다. @type {{typeIndex:number,itemIndex:number,focus:'type'|'target',portraitElapsed:number}|null} */
     let gallery = null;
     /** 초기 타이틀 중앙에 순환 표시할 갤러리 대상 상태다. @type {{loaded:boolean,items:{draw:()=>void}[],startIndex:number,elapsed:number}} */
@@ -293,7 +295,7 @@
         { label: '기본 룰', activate: () => openOpponentMenu(false) },
         { label: '피버 룰', activate: () => openOpponentMenu(true) },
         { label: '연습', activate: () => openPracticeDifficulty() },
-        { label: '연속 피버', activate: () => startContinuousFeverGame() }
+        { label: '연속 피버', activate: () => openContinuousFeverDifficulty() }
     ];
     /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {object|null} */
     let WebPuyo = null;
@@ -387,7 +389,7 @@
         saveGalleryUnlocks();
     }
 
-    /** 일반 룰 대전에서 이긴 적을 갤러리에 공개한다. @param {string} classType 적 종류 식별자 @returns {void} */
+    /** 기본·피버 룰 대전에서 이긴 적을 갤러리에 공개한다. @param {string} classType 적 종류 식별자 @returns {void} */
     function unlockGalleryEnemy(classType) {
         if (galleryUnlocks.enemies.includes(classType)) return;
         galleryUnlocks.enemies.push(classType);
@@ -1030,7 +1032,8 @@
         resetVirtualControllerInput();
         const opponent = soloMode ? { createController: () => new PracticeEnemy() } : OPPONENTS[selectedOpponent];
         const controller = opponent.createController();
-        const difficulty = continuousFever || feverRule ? DIFFICULTIES.length - 1 : selectedDifficulty;
+        // 피버 룰과 연속 피버는 3색을 지원하지 않는다. 메뉴를 거치지 않는 호출에도 적용한다.
+        const difficulty = (continuousFever || feverRule) ? Math.max(1, selectedDifficulty) : selectedDifficulty;
         const colors = DIFFICULTIES[difficulty].colors;
         const practicePlayer = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
         const players = [new PlayerState('PLAYER 1', FIELD_LEFT, null, colors), practicePlayer];
@@ -1077,7 +1080,7 @@
         syncBackgroundMusic();
     }
 
-    /** 연속 피버 모드를 5색, 목표 5연쇄, 60초 상태로 시작한다. @returns {void} */
+    /** 연속 피버 모드를 선택된 4색 또는 5색, 목표 5연쇄, 60초 상태로 시작한다. @returns {void} */
     function startContinuousFeverGame() {
         startGame(false, true);
     }
@@ -1141,12 +1144,13 @@
         return result;
     }
 
-    /** 목표 연쇄와 다음 뿌요의 동색 여부가 일치하는 피버 스테이지를 무작위로 고른다. @param {number} targetCombo 목표 연쇄 @param {string[]} nextPair 바로 지급할 뿌요 @returns {FeverStageState} 선택된 피버 스테이지 */
-    function selectContinuousFeverStage(targetCombo, nextPair) {
+    /** 사용 가능한 색 수, 목표 연쇄, 다음 뿌요의 동색 여부가 일치하는 피버 스테이지를 무작위로 고른다. 색 수 필터는 목표 연쇄 필터보다 먼저 적용한다. @param {number} targetCombo 목표 연쇄 @param {string[]} nextPair 바로 지급할 뿌요 @param {string[]} availableColors 게임 색상 목록 @returns {FeverStageState} 선택된 피버 스테이지 */
+    function selectContinuousFeverStage(targetCombo, nextPair, availableColors) {
         const nextPairIsSameColor = nextPair[0] === nextPair[1];
-        const candidates = FEVER_STAGES.filter((stage) => stage.targetCombo === targetCombo
+        const colorCandidates = FEVER_STAGES.filter((stage) => stage.usingColors.length <= availableColors.length);
+        const candidates = colorCandidates.filter((stage) => stage.targetCombo === targetCombo
             && (stage.suppliedNextPuyos[0] === stage.suppliedNextPuyos[1]) === nextPairIsSameColor);
-        if (!candidates.length) throw new Error(`목표 ${targetCombo}연쇄와 다음 뿌요 구성에 맞는 피버 스테이지가 없습니다.`);
+        if (!candidates.length) throw new Error(`사용 색상 수와 목표 ${targetCombo}연쇄, 다음 뿌요 구성에 맞는 피버 스테이지가 없습니다.`);
         return candidates[Math.floor(randomFloat() * candidates.length)];
     }
 
@@ -1154,6 +1158,7 @@
     function createContinuousFeverColorMap(stage, nextPair, availableColors) {
         const colorMap = new Map();
         const usedTargets = new Set();
+        const canUseOriginalColors = stage.usingColors.every((color) => availableColors.includes(color));
         const assign = (source, target) => {
             if (source === 'garbage') return;
             if (colorMap.has(source) && colorMap.get(source) !== target) throw new Error('피버 스테이지의 suppliedNextPuyos 색상 구성이 올바르지 않습니다.');
@@ -1161,12 +1166,17 @@
             colorMap.set(source, target);
             usedTargets.add(target);
         };
-        assign(stage.suppliedNextPuyos[0], nextPair[0]);
-        assign(stage.suppliedNextPuyos[1], nextPair[1]);
         const sourceColors = [...new Set([
             ...stage.suppliedNextPuyos,
             ...(stage.stageData.puyos || []).map((puyo) => puyo.color)
         ].filter((color) => color && color !== 'garbage'))];
+        // 스테이지의 색 목록이 현재 모드에 모두 포함되면 원본 패턴을 유지한다.
+        if (canUseOriginalColors) {
+            sourceColors.forEach((color) => assign(color, color));
+            return colorMap;
+        }
+        assign(stage.suppliedNextPuyos[0], nextPair[0]);
+        assign(stage.suppliedNextPuyos[1], nextPair[1]);
         const remainingTargets = shuffledCopy(availableColors.filter((color) => !usedTargets.has(color)));
         sourceColors.filter((color) => !colorMap.has(color)).forEach((source) => {
             const target = remainingTargets.shift();
@@ -1179,7 +1189,7 @@
     /** 다음 뿌요에 맞춰 피버 스테이지를 복사·변환하고 지정 플레이어 필드를 초기화한다. @param {PlayerState} player 대상 플레이어 @param {object} feverState 갱신할 피버 상태 @param {number} targetCombo 스테이지 목표 연쇄 @param {boolean} countTurn 피버 턴 수 증가 여부 @returns {void} */
     function prepareFeverTurn(player, feverState, targetCombo = feverState.targetCombo, countTurn = true) {
         const nextPair = peekNextPair(player);
-        const stage = selectContinuousFeverStage(targetCombo, nextPair);
+        const stage = selectContinuousFeverStage(targetCombo, nextPair, player.colors);
         const colorMap = createContinuousFeverColorMap(stage, nextPair, player.colors);
         const transformedSupplied = stage.suppliedNextPuyos.map((color) => colorMap.get(color));
         game.pairQueue[player.pairQueuePosition] = transformedSupplied;
@@ -2095,7 +2105,7 @@
         if (game.practice || winner !== game.players[0]) return;
         const enemyController = game.players[1].controller;
         const enemyClassName = enemyController.constructor.name;
-        if (!game.feverRule) unlockGalleryEnemy(enemyController.getClassType());
+        unlockGalleryEnemy(enemyController.getClassType());
         const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key || AI_DIFFICULTIES[1].key;
         const progressStore = game.feverRule ? store.feverClearListByDifficulty : store.clearListByDifficulty;
         let changed = false;
@@ -4009,9 +4019,22 @@
         opponentMenuRule = 'standard';
     }
 
+    /** 현재 색상 수 선택 화면에서 고를 수 있는 DIFFICULTIES의 인덱스다. @returns {number[]} */
+    function getSelectableColorDifficultyIndices() {
+        return colorSelectionMode === 'continuousFever' ? [1, 2] : [0, 1, 2];
+    }
+
     /** 게임 규칙 선택지에서 연습을 고른 뒤 색상 수 선택 화면을 연다. @returns {void} */
     function openPracticeDifficulty() {
         selectedDifficulty = 1;
+        colorSelectionMode = 'practice';
+        menuScreen = 'practiceDifficulty';
+    }
+
+    /** 게임 규칙 선택지에서 연속 피버를 고른 뒤 4색 또는 5색 선택 화면을 연다. @returns {void} */
+    function openContinuousFeverDifficulty() {
+        selectedDifficulty = 1;
+        colorSelectionMode = 'continuousFever';
         menuScreen = 'practiceDifficulty';
     }
 
@@ -4074,19 +4097,16 @@
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText('Puyo W', WIDTH / 2, menuScreen === 'opponent' ? 90 : 110);
         if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'opponent') {
-            if (opponentMenuRule !== 'fever') {
-                context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('난이도'), WIDTH / 2, 130);
-                DIFFICULTIES.forEach((difficulty, index) => {
+            context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('색상 수'), WIDTH / 2, 130);
+            DIFFICULTIES.forEach((difficulty, index) => {
+                if (opponentMenuRule === 'fever' && index === 0) return;
                     const x = 465 + index * 120;
                     const selected = index === selectedDifficulty;
                     context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 135, 110, 44);
                     context.strokeStyle = opponentMenuFocus === 0 && selected ? '#f7c843' : '#3b6070'; context.lineWidth = opponentMenuFocus === 0 && selected ? 4 : 2;
                     context.strokeRect(x, 135, 110, 44);
                     context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 163);
-                });
-            } else {
-                context.fillStyle = '#ffd54f'; context.font = `24px ${TITLE_FONT}`; context.fillText(translate('피버 룰'), WIDTH / 2, 157);
-            }
+            });
             AI_DIFFICULTIES.forEach((difficulty, index) => {
                 const x = 465 + index * 120;
                 const selected = index === selectedAiDifficulty;
@@ -4171,8 +4191,9 @@
         context.fillStyle = '#8899a6'; context.font = `14px ${MESSAGE_FONT}`; context.fillText('Copyright (c) HJOW', WIDTH / 2, HEIGHT - 20);
         if (menuScreen === 'practiceDifficulty') {
             context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
-            context.fillStyle = '#d8f2f5'; context.font = `30px ${TITLE_FONT}`; context.fillText(translate('난이도 선택'), WIDTH / 2, 300);
+            context.fillStyle = '#d8f2f5'; context.font = `30px ${TITLE_FONT}`; context.fillText(translate('색상 수 선택'), WIDTH / 2, 300);
             DIFFICULTIES.forEach((difficulty, index) => {
+                if (!getSelectableColorDifficultyIndices().includes(index)) return;
                 const x = 465 + index * 120;
                 const selected = index === selectedDifficulty;
                 context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 335, 110, 58);
@@ -4458,9 +4479,11 @@
                 return;
             }
             if (menuScreen === 'practiceDifficulty') {
-                if (key === 'arrowleft' || key === 'arrowup') selectedDifficulty = (selectedDifficulty + DIFFICULTIES.length - 1) % DIFFICULTIES.length;
-                else if (key === 'arrowright' || key === 'arrowdown') selectedDifficulty = (selectedDifficulty + 1) % DIFFICULTIES.length;
-                else if (key === 'enter' || key === ' ') startGame(true);
+                const choices = getSelectableColorDifficultyIndices();
+                const currentIndex = Math.max(0, choices.indexOf(selectedDifficulty));
+                if (key === 'arrowleft' || key === 'arrowup') selectedDifficulty = choices[(currentIndex + choices.length - 1) % choices.length];
+                else if (key === 'arrowright' || key === 'arrowdown') selectedDifficulty = choices[(currentIndex + 1) % choices.length];
+                else if (key === 'enter' || key === ' ') startGame(colorSelectionMode === 'practice', colorSelectionMode === 'continuousFever');
                 else if (key === 'escape') { menuScreen = 'title'; loadNotice(); }
                 return;
             }
@@ -4469,16 +4492,24 @@
                     ? (titleMenuFocus + 6) % 7
                     : (titleMenuFocus + 1) % 7;
             } else if (menuScreen === 'opponent' && key === 'arrowup') {
-                opponentMenuFocus = Math.max(opponentMenuRule === 'fever' ? 1 : 0, opponentMenuFocus - 1);
+                opponentMenuFocus = Math.max(0, opponentMenuFocus - 1);
             } else if (menuScreen === 'opponent' && key === 'arrowdown') {
                 opponentMenuFocus = Math.min(3, opponentMenuFocus + 1);
             } else if (menuScreen === 'opponent' && key === 'arrowleft') {
-                if (opponentMenuFocus === 0) selectedDifficulty = (selectedDifficulty + DIFFICULTIES.length - 1) % DIFFICULTIES.length;
+                if (opponentMenuFocus === 0) {
+                    const choices = opponentMenuRule === 'fever' ? [1, 2] : [0, 1, 2];
+                    const currentIndex = Math.max(0, choices.indexOf(selectedDifficulty));
+                    selectedDifficulty = choices[(currentIndex + choices.length - 1) % choices.length];
+                }
                 else if (opponentMenuFocus === 1) selectedAiDifficulty = (selectedAiDifficulty + AI_DIFFICULTIES.length - 1) % AI_DIFFICULTIES.length;
                 else if (opponentMenuFocus === 2) selectRelativeOpponent(-1);
                 else selectedOpponentAction = 0;
             } else if (menuScreen === 'opponent' && key === 'arrowright') {
-                if (opponentMenuFocus === 0) selectedDifficulty = (selectedDifficulty + 1) % DIFFICULTIES.length;
+                if (opponentMenuFocus === 0) {
+                    const choices = opponentMenuRule === 'fever' ? [1, 2] : [0, 1, 2];
+                    const currentIndex = Math.max(0, choices.indexOf(selectedDifficulty));
+                    selectedDifficulty = choices[(currentIndex + 1) % choices.length];
+                }
                 else if (opponentMenuFocus === 1) selectedAiDifficulty = (selectedAiDifficulty + 1) % AI_DIFFICULTIES.length;
                 else if (opponentMenuFocus === 2) selectRelativeOpponent(1);
                 else selectedOpponentAction = 1;
@@ -4598,9 +4629,9 @@
      */
     function openOpponentMenu(feverRule = false) {
         opponentMenuRule = feverRule ? 'fever' : 'standard';
-        if (feverRule) selectedDifficulty = DIFFICULTIES.length - 1;
+        if (feverRule && selectedDifficulty < 1) selectedDifficulty = 1;
         ensureSelectedOpponent();
-        opponentMenuFocus = feverRule ? 1 : 0;
+        opponentMenuFocus = 0;
         selectedOpponentAction = 0;
         menuScreen = 'opponent';
     }
@@ -4754,9 +4785,9 @@
         } else {
             if (menuScreen === 'practiceDifficulty') {
                 const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => x >= 465 + index * 120 && x <= 575 + index * 120 && y >= 335 && y <= 393);
-                if (difficultyIndex >= 0) {
+                if (difficultyIndex >= 0 && getSelectableColorDifficultyIndices().includes(difficultyIndex)) {
                     selectedDifficulty = difficultyIndex;
-                    startGame(true);
+                    startGame(colorSelectionMode === 'practice', colorSelectionMode === 'continuousFever');
                 } else {
                     // 난이도 선택지 바깥을 클릭하면 ESC와 같이 메인 화면으로 돌아간다.
                     menuScreen = 'title';
@@ -4768,7 +4799,7 @@
             const opponentX = (x - WIDTH / 2) / OPPONENT_MENU_SCALE + WIDTH / 2;
             const opponentY = (y - HEIGHT / 2) / OPPONENT_MENU_SCALE + HEIGHT / 2;
             const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => opponentX >= 465 + index * 120 && opponentX <= 575 + index * 120 && opponentY >= 135 && opponentY <= 179);
-            if (difficultyIndex >= 0 && opponentMenuRule !== 'fever') {
+            if (difficultyIndex >= 0 && (opponentMenuRule !== 'fever' || difficultyIndex >= 1)) {
                 selectedDifficulty = difficultyIndex;
                 opponentMenuFocus = 0;
                 return;
@@ -5380,11 +5411,23 @@
          */
         usingColors = ['red', 'blue', 'green', 'yellow'];
 
-        constructor(pStageData, pTargetCombo, pSuppliedNextPuyos, difficulty) {
+        /**
+         * @param {Object} pStageData 피버 필드 배치
+         * @param {number} pTargetCombo 목표 연쇄 수
+         * @param {string[]} pSuppliedNextPuyos 지급할 다음 뿌요
+         * @param {number} difficulty 패턴 난이도
+         * @param {string[]} [pUsingColors] 패턴에서 사용하는 일반 뿌요 색상 목록
+         */
+        constructor(pStageData, pTargetCombo, pSuppliedNextPuyos, difficulty, pUsingColors) {
             if(typeof(pStageData) != 'undefined') this.stageData = pStageData;
             if(typeof(pTargetCombo) != 'undefined') this.targetCombo = pTargetCombo;
             if(typeof(pSuppliedNextPuyos) != 'undefined') this.suppliedNextPuyos = pSuppliedNextPuyos;
             if(typeof(difficulty) != 'undefined') this.difficulty = difficulty;
+            const patternColors = [...new Set([
+                ...(this.stageData.puyos || []).map((puyo) => puyo.color),
+                ...this.suppliedNextPuyos
+            ].filter((color) => color && color !== 'garbage'))];
+            this.usingColors = Array.isArray(pUsingColors) ? [...new Set(pUsingColors.filter((color) => color && color !== 'garbage'))] : patternColors;
         }
     }
 

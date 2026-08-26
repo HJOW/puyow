@@ -317,6 +317,8 @@ if (difficulty.key === 'hard') {
 
 `WebPuyo.getSelectedColorCount()`는 게임에 적용할 일반 뿌요 색상 수를 `3`, `4`, `5` 중 하나로 반환합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환하므로 색상 수에 맞춘 AI 후보 생성을 구현할 때 사용할 수 있습니다.
 
+기본 룰 적 선택에서는 3·4·5색을 선택할 수 있습니다. 피버 룰 적 선택도 색상 수와 AI 난이도를 모두 고르지만 4·5색만 선택할 수 있습니다. 메인 메뉴의 `연습`은 3·4·5색 선택 뒤 시작하고, `연속 피버`는 같은 색상 선택 화면에서 4·5색만 고른 뒤 시작합니다. 두 단독 모드의 색상 선택 화면은 방향키·Enter·마우스를 지원하며 ESC 또는 선택지 밖 클릭으로 메인 메뉴에 돌아갑니다.
+
 ```js
 const colorCount = WebPuyo.getSelectedColorCount();
 const difficultyColors = player.colors.slice(0, colorCount);
@@ -487,12 +489,13 @@ WebPuyo.commonSoundPool.backgroundMusic = 'sounds/common-bgm.ogg';
 
 피버 룰의 피버 상황과 연속 피버 모드에서 사용할 피버 패턴을 추가할 수 있습니다. 새 피버 턴에는 필드를 비운 뒤 `FeverStageState`에 정의한 뿌요 배치 패턴을 채우고, 지정된 다음 뿌요 쌍을 제공합니다. 외부 스크립트에서는 `WebPuyo.FeverStageState`를 만들고 `WebPuyo.registerFeverStageState()`로 등록해 목표 연쇄별 패턴을 추가할 수 있습니다. 피버 게임을 시작하기 전에 등록하는 것을 권장합니다.
 
-`FeverStageState` 생성자는 `new WebPuyo.FeverStageState(stageData, targetCombo, suppliedNextPuyos, difficulty)` 형식입니다.
+`FeverStageState` 생성자는 `new WebPuyo.FeverStageState(stageData, targetCombo, suppliedNextPuyos, difficulty, usingColors)` 형식입니다. 마지막 `usingColors`는 생략할 수 있으며, 생략하면 배치와 다음 뿌요에 실제로 쓰인 일반 색상 목록을 자동으로 사용합니다.
 
 - `stageData`: `{ puyos: [{ x, y, color }, ...] }` 형식의 배치 데이터입니다. `x`는 0~5, `y`는 0~16이며 `color`는 일반 색상 문자열 또는 `'garbage'`입니다. 시뮬레이터의 JSON 복사 결과를 그대로 사용할 수 있습니다.
 - `targetCombo`: 이 패턴이 유도해야 하는 연쇄 수입니다. 현재 연속 피버는 5~12만 선택하므로 이 범위의 패턴을 등록해야 합니다.
 - `suppliedNextPuyos`: 배치 직후 제공할 두 색상 문자열입니다. 연속 피버는 실제 다음 쌍이 동색인지 이색인지에 맞는 패턴만 후보로 사용합니다.
 - `difficulty`: 패턴 난이도를 기록하는 숫자 메타데이터입니다.
+- `usingColors`: 이 패턴이 쓰는 일반 색상 목록입니다. 피버는 먼저 이 목록의 색상 수가 현재 4·5색 모드의 색상 수 이하인 패턴만 후보로 남긴 뒤 목표 연쇄와 다음 쌍 구성을 검사합니다.
 
 ### 시뮬레이터로 `stageData` 만들기
 
@@ -510,7 +513,8 @@ const fiveChainStage = new WebPuyo.FeverStageState(
     fiveChainStageData,
     5,
     ['red', 'blue'], // 이색 다음 쌍을 위한 패턴
-    2
+    2,
+    ['red', 'blue', 'green']
 );
 
 WebPuyo.registerFeverStageState(fiveChainStage);
@@ -518,7 +522,7 @@ WebPuyo.registerFeverStageState(fiveChainStage);
 
 JSON복사 결과에는 클릭해서 고정한 필드 뿌요만 들어갑니다. 피버 턴에 줄 다음 뿌요 쌍은 포함되지 않으므로, 등록할 때는 동색·이색 구성에 맞춰 `suppliedNextPuyos`를 별도로 지정합니다.
 
-새 피버 턴에서는 스테이지의 `suppliedNextPuyos`와 배치 안의 일반 색상이 실제 다음 쌍에 맞게 중복 없이 1:1로 다시 매핑됩니다. 따라서 특정 색 이름 자체보다 색의 연결 구조가 중요하며, `'garbage'`는 색상 변환 없이 유지됩니다. 각 목표 연쇄에는 동색 쌍용 패턴과 이색 쌍용 패턴을 모두 하나 이상 등록해야 어느 다음 쌍이 나와도 후보를 고를 수 있습니다.
+현재 색 모드의 색 목록에 `usingColors`의 모든 색이 들어 있으면 스테이지 배치와 지급 뿌요는 원본 색 그대로 사용합니다. 그렇지 않더라도 `usingColors` 수가 현재 모드보다 많지 않으면, 배치와 지급 뿌요의 일반 색상은 현재 모드 색만 쓰도록 중복 없는 1:1 대응으로 변환합니다. `'garbage'`는 변환 없이 유지됩니다. 따라서 특정 색 이름 자체보다 색의 연결 구조가 중요하며, 각 목표 연쇄에는 동색 쌍용 패턴과 이색 쌍용 패턴을 모두 하나 이상 등록해야 어느 다음 쌍이 나와도 후보를 고를 수 있습니다.
 
 `registerFeverStageState()`는 `FeverStageState` 인스턴스만 받으며 다른 값은 `TypeError`를 발생시킵니다. 좌표, 색상, 목표 연쇄가 실제로 올바른지는 등록 시 자동으로 시뮬레이션하지 않으므로, 시뮬레이터 또는 `estimateCombo()`로 실제 착지 가능한 배치와 목표 연쇄 수를 반드시 검증한 뒤 등록해야 합니다.
 
