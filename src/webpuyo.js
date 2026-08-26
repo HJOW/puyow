@@ -2432,7 +2432,8 @@
         }
         // 조작 단계에서는 CPU 이동과 낙하 타이머를 갱신한다.
         if (player.phase === 'control') {
-            if (!player.controller && player === game?.players[0] && horizontalKeyPressed) {
+            const tutorialAutoplay = game?.tutorial?.stage === 1 && player === game.players[0];
+            if (!tutorialAutoplay && !player.controller && player === game?.players[0] && horizontalKeyPressed) {
                 horizontalHoldElapsed += delta;
                 if (horizontalHoldElapsed >= HORIZONTAL_HOLD_DELAY) {
                     horizontalRepeatElapsed += delta;
@@ -2442,7 +2443,7 @@
                     }
                 }
             }
-            if (!player.controller && player === game?.players[0] && (virtualDirectionInput.arrowleft || virtualDirectionInput.arrowright)) {
+            if (!tutorialAutoplay && !player.controller && player === game?.players[0] && (virtualDirectionInput.arrowleft || virtualDirectionInput.arrowright)) {
                 virtualHorizontalHoldElapsed += delta;
                 if (virtualHorizontalHoldElapsed >= VIRTUAL_HORIZONTAL_HOLD_DELAY) {
                     virtualHorizontalRepeatElapsed += delta;
@@ -2467,7 +2468,7 @@
                 }
             }
             // AI 정책 또는 사용자·가상 컨트롤러·튜토리얼 입력으로 빠른 하강을 적용할지 여부다.
-            const fastDown = player.controller ? player.aiFastDown : isDownKeyPressed || virtualDirectionInput.arrowdown || player.tutorialFastDown === true;
+            const fastDown = player.controller ? player.aiFastDown : tutorialAutoplay ? player.tutorialFastDown === true : isDownKeyPressed || virtualDirectionInput.arrowdown || player.tutorialFastDown === true;
             // 경과 시간 1분마다 0.2씩 증가하며 최대 배율을 넘지 않는 사용자 자동 낙하 속도 배율이다.
             const speedMultiplier = Math.min(MAX_PLAYER_FALL_SPEED_MULTIPLIER, 1 + Math.floor(game.elapsed / 60000) * 0.2);
             // 빠른 하강·AI·사용자 자동 낙하 각각에 적용할 한 칸 낙하 간격(ms)이다.
@@ -3536,10 +3537,10 @@
             running: true, paused: false, winner: null, ending: null, countdown: 0, countdownStartsGame: false, elapsed: 0, marginRate: MARGIN_RATE_SCHEDULE[0].rate, practice: true,
             difficulty: selectedDifficulty, aiDifficulty: selectedAiDifficulty, themeController, pairQueueColors: COLORS,
             pairQueue: [...config.pairs, ['blue', 'yellow'], ['red', 'green']], energyTransfers: [], players: [player, opponent],
-            tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, greenExplosionShown: false, stageThreeGarbageDropped: false, message: config.intro, messageElapsed: 0, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1 }
+            tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, greenExplosionShown: false, stageThreeGarbageDropped: false, message: config.intro, messageElapsed: 0, messageDuration: stage === 1 ? 2000 : 4800, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1, stageOneStep: stage === 1 ? 'intro' : null, stageOneElapsed: 0 }
         };
         updateNextPairs(player);
-        showTutorialMessage(config.intro);
+        showTutorialMessage(config.intro, game.tutorial.messageDuration);
         syncBackgroundMusic();
     }
 
@@ -3551,12 +3552,87 @@
         syncBackgroundMusic();
     }
 
-    /** 안내 문구를 번역한 뒤 공통 화면 메시지로 표시한다. @param {string} message 번역 키 @returns {void} */
-    function showTutorialMessage(message) {
+    /** 안내 문구를 번역한 뒤 공통 화면 메시지로 표시한다. @param {string} message 번역 키 @param {number} [duration=2000] 페이드 아웃 전 유지 시간(ms) @returns {void} */
+    function showTutorialMessage(message, duration = 2000) {
         if (!game?.tutorial) return;
         game.tutorial.message = message;
         game.tutorial.messageElapsed = 0;
-        showMessage(translate(message), '#f5fbfc', game.tutorial.mode === 'intro' ? 4800 : 2000);
+        game.tutorial.messageDuration = duration;
+        showMessage(translate(message), '#f5fbfc', duration);
+    }
+
+    /** 1단계에서 플레이어 입력 없이 이동·빠른 하강·회전을 순서대로 시연한다. @param {PlayerState} player 시연할 플레이어 @param {PlayerState} opponent 상대 플레이어 @param {number} delta 경과 시간(ms) @returns {void} */
+    function updateTutorialStageOne(player, opponent, delta) {
+        const tutorial = game.tutorial;
+        const advanceStep = (step) => { tutorial.stageOneStep = step; tutorial.stageOneElapsed = 0; };
+        const startNextPairPrompt = (step, message, duration = 2000) => {
+            advanceStep(step);
+            showTutorialMessage(message, duration);
+        };
+
+        if (tutorial.stageOneStep === 'firstFalling') {
+            tutorial.stageOneElapsed += delta;
+            if (tutorial.stageOneElapsed >= 800) {
+                startNextPairPrompt('firstMoving', '좌우 방향키로 뿌요 이동', 6000);
+                moveActive(player, -1, 0);
+                tutorial.actionFlags.horizontalMoveCount = 1;
+            }
+        } else if (tutorial.stageOneStep === 'firstMoving') {
+            tutorial.stageOneElapsed += delta;
+            const horizontalMoves = [-1, -1, 1, 1];
+            const horizontalMoveCount = tutorial.actionFlags.horizontalMoveCount || 0;
+            if (horizontalMoveCount < horizontalMoves.length && tutorial.stageOneElapsed >= horizontalMoveCount * 2000) {
+                moveActive(player, horizontalMoves[horizontalMoveCount], 0);
+                tutorial.actionFlags.horizontalMoveCount = horizontalMoveCount + 1;
+            }
+            if (tutorial.actionFlags.horizontalMoveCount === horizontalMoves.length && !tutorial.message) startNextPairPrompt('firstFastDownPrompt', '아래 방향키로 빨리 떨어뜨리기');
+        } else if (tutorial.stageOneStep === 'firstFastDownPrompt') {
+            tutorial.stageOneElapsed += delta;
+            if (tutorial.stageOneElapsed >= 1000) {
+                player.tutorialFastDown = true;
+                advanceStep('firstFastDown');
+            }
+        } else if (tutorial.stageOneStep === 'secondRotatePrompt' && !tutorial.message) {
+            rotateActive(player, -1);
+            advanceStep('secondBetweenRotations');
+        } else if (tutorial.stageOneStep === 'secondBetweenRotations') {
+            tutorial.stageOneElapsed += delta;
+            if (tutorial.stageOneElapsed >= 2000) {
+                rotateActive(player, -1);
+                advanceStep('secondFalling');
+            }
+        } else if (tutorial.stageOneStep === 'thirdRotatePrompt' && !tutorial.message) {
+            rotateActive(player, 1);
+            advanceStep('thirdBetweenRotations');
+        } else if (tutorial.stageOneStep === 'thirdBetweenRotations') {
+            tutorial.stageOneElapsed += delta;
+            if (tutorial.stageOneElapsed >= 2000) {
+                rotateActive(player, 1);
+                advanceStep('thirdFalling');
+            }
+        } else if (tutorial.stageOneStep === 'secondFalling' || tutorial.stageOneStep === 'thirdFalling') {
+            tutorial.stageOneElapsed += delta;
+            if (tutorial.stageOneElapsed >= 1000) player.tutorialFastDown = true;
+        }
+
+        updatePlayer(player, opponent, delta);
+
+        if (player.placedPairCount >= 3) {
+            enterTutorialStage(2);
+            return;
+        }
+        if (player.placedPairCount === 1 && !tutorial.stageOneStep.startsWith('awaitSecondPair') && !tutorial.stageOneStep.startsWith('second')) {
+            player.tutorialFastDown = false;
+            advanceStep('awaitSecondPair');
+        } else if (player.placedPairCount === 2 && !tutorial.stageOneStep.startsWith('awaitThirdPair') && !tutorial.stageOneStep.startsWith('third')) {
+            player.tutorialFastDown = false;
+            advanceStep('awaitThirdPair');
+        }
+        if (player.active && tutorial.stageOneStep === 'awaitSecondPair') {
+            startNextPairPrompt('secondRotatePrompt', 'Z 키를 눌러 좌측으로 뿌요 회전');
+        } else if (player.active && tutorial.stageOneStep === 'awaitThirdPair') {
+            startNextPairPrompt('thirdRotatePrompt', 'X 키를 눌러 우측으로 뿌요 회전');
+        }
     }
 
     /** 안내 시연을 시간에 따라 진행한다. @param {number} delta 경과 시간 @returns {void} */
@@ -3565,8 +3641,7 @@
         const [player, opponent] = game.players;
         tutorial.elapsed += delta;
         tutorial.messageElapsed += delta;
-        const messageDuration = tutorial.mode === 'intro' ? 4800 : 2000;
-        if (tutorial.message && tutorial.messageElapsed >= messageDuration) tutorial.message = null;
+        if (tutorial.message && tutorial.messageElapsed >= tutorial.messageDuration + SCREEN_MESSAGE_FADE_DURATION) tutorial.message = null;
         if (tutorial.mode === 'complete') return;
         if (tutorial.mode === 'result') {
             tutorial.resultElapsed += delta;
@@ -3579,8 +3654,9 @@
             return;
         }
         if (tutorial.mode === 'intro') {
-            if (tutorial.elapsed >= 4800) {
+            if (!tutorial.message) {
                 tutorial.mode = 'demo'; tutorial.elapsed = 0; tutorial.message = null;
+                if (tutorial.stage === 1) tutorial.stageOneStep = 'firstFalling';
                 enterControl(player);
             }
             return;
@@ -3592,6 +3668,10 @@
             holdAllClearGarbage = tutorial.allClearPreviewElapsed < 2000;
         }
         if (!holdAllClearGarbage) updatePlayer(opponent, player, delta);
+        if (tutorial.stage === 1) {
+            updateTutorialStageOne(player, opponent, delta);
+            return;
+        }
         // 3단계는 예고 표시만으로 끝내지 않고, 적 필드의 실제 방해뿌요 낙하를 한 번 확인한다.
         if (tutorial.stage === 3 && opponent.phase !== 'idle') tutorial.stageThreeGarbageDropped = true;
         const waitingForGarbage = tutorial.stage >= 2 && opponent.phase !== 'idle' && player.phase === 'control' && player.placedPairCount > 0;
@@ -3606,19 +3686,8 @@
         if (player.active) {
             tutorial.pieceElapsed += delta;
             const target = tutorial.config.targets[currentPiece];
-            if (tutorial.stage !== 1 && tutorial.pieceElapsed >= 250) player.active.x = target;
-            if (tutorial.stage === 1 && currentPiece === 0 && tutorial.pieceElapsed >= 220 && tutorial.pieceElapsed < 700) {
-                player.active.x = tutorial.pieceElapsed < 460 ? Math.max(0, target - 1) : target;
-                if (tutorial.pieceElapsed < 260) showTutorialMessage('좌우 방향키로 뿌요 이동');
-            }
-            if (tutorial.stage === 1 && currentPiece === 1 && tutorial.pieceElapsed >= 500 && !tutorial.actionFlags.leftRotate) { rotateActive(player, -1); tutorial.actionFlags.leftRotate = true; showTutorialMessage('Z 키를 눌러 좌측으로 뿌요 회전'); }
-            if (tutorial.stage === 1 && currentPiece === 2 && tutorial.pieceElapsed >= 500 && !tutorial.actionFlags.rightRotate1) { rotateActive(player, 1); tutorial.actionFlags.rightRotate1 = true; showTutorialMessage('X 키를 눌러 우측으로 뿌요 회전'); }
-            if (tutorial.stage === 1 && currentPiece === 2 && tutorial.pieceElapsed >= 1500 && !tutorial.actionFlags.rightRotate2) { rotateActive(player, 1); tutorial.actionFlags.rightRotate2 = true; }
-            const fastDownStart = tutorial.stage === 1 && currentPiece === 2 ? 2700 : tutorial.stage === 1 && currentPiece === 1 ? 2600 : tutorial.stage === 1 && currentPiece === 0 ? 2300 : 2050;
-            if (tutorial.pieceElapsed >= fastDownStart) {
-                player.tutorialFastDown = true;
-                if (tutorial.stage === 1 && currentPiece === 0 && !tutorial.actionFlags.fastDownMessage) { tutorial.actionFlags.fastDownMessage = true; showTutorialMessage('아래 방향키로 빨리 떨어뜨리기'); }
-            }
+            if (tutorial.pieceElapsed >= 250) player.active.x = target;
+            if (tutorial.pieceElapsed >= 2050) player.tutorialFastDown = true;
         }
         if (player.combo === 0) tutorial.lastCombo = 0;
         if (player.combo > tutorial.lastCombo) {
