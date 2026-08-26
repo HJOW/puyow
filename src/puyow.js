@@ -247,7 +247,7 @@
     let settingsEditing = false;
     /** 현재 편집 중인 문자열의 커서 위치다. @type {number} */
     let settingsCursor = 0;
-    /** 화면 최상단에 표시할 외부 메시지다. @type {{message:string,color:string,elapsed:number,duration:number}|null} */
+    /** 화면 최상단에 표시할 외부 메시지다. @type {{message:string,color:string,backgroundColor:string|null,elapsed:number,duration:number}|null} */
     let screenMessage = null;
     /** 외부 메시지가 유지 시간 뒤 사라지는 데 걸리는 시간(ms)이다. @type {number} */
     const SCREEN_MESSAGE_FADE_DURATION = 500;
@@ -3270,21 +3270,22 @@
      */
     function drawCenter() {
         game.themeController.drawCenterBackground(context, { x: 450, y: 0, width: 380, height: HEIGHT });
-        context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText(translate('뿌요 W'), WIDTH / 2, 95);
+        context.textAlign = 'center';
+        const nextAreaY = 50;
         const left = game.players[0]; const right = game.players[1];
         [
             { player: left, x: 482, color: '#ef8aa0' },
             { player: right, x: 650, color: '#6bbce8' }
         ].forEach(({ player, x, color }, playerIndex) => {
-            context.fillStyle = '#0b202c'; context.fillRect(x, 120, 148, 150);
-            context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, 120, 148, 150);
-            context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(`${player.name} NEXT`, x + 74, 143);
+            context.fillStyle = '#0b202c'; context.fillRect(x, nextAreaY, 148, 150);
+            context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, nextAreaY, 148, 150);
+            context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(`${player.name} NEXT`, x + 74, nextAreaY + 23);
             const displayedPairs = playerIndex === 1 ? [...player.nextPairs].reverse() : player.nextPairs;
             displayedPairs.forEach((pair, pairIndex) => {
                 const pairX = x + 21 + pairIndex * 70;
-                drawPuyo(pairX, 163, pair[1], 0.68);
-                drawPuyo(pairX, 208, pair[0], 0.68);
-                context.fillStyle = 'rgba(216, 242, 245, 0.4)'; context.fillRect(x + 74, 158, 1, 92);
+                drawPuyo(pairX, nextAreaY + 43, pair[1], 0.68);
+                drawPuyo(pairX, nextAreaY + 88, pair[0], 0.68);
+                context.fillStyle = 'rgba(216, 242, 245, 0.4)'; context.fillRect(x + 74, nextAreaY + 38, 1, 92);
             });
         });
         if (game.continuousFever && game.fever) {
@@ -3636,7 +3637,7 @@
         game.tutorial.message = message;
         game.tutorial.messageElapsed = 0;
         game.tutorial.messageDuration = duration;
-        showMessage(translate(message), '#f5fbfc', duration);
+        showMessage(translate(message), '#f5fbfc', duration, '#263238');
     }
 
     /** 1단계에서 플레이어 입력 없이 이동·빠른 하강·회전을 순서대로 시연한다. @param {PlayerState} player 시연할 플레이어 @param {PlayerState} opponent 상대 플레이어 @param {number} delta 경과 시간(ms) @returns {void} */
@@ -4771,8 +4772,20 @@
         context.save();
         context.globalAlpha = 1 - fadeProgress;
         context.textAlign = 'center';
-        context.fillStyle = screenMessage.color;
         context.font = `28px ${MESSAGE_FONT}`;
+        if (screenMessage.backgroundColor !== null) {
+            const metrics = context.measureText(screenMessage.message);
+            const textWidth = metrics.width;
+            const textAscent = Number.isFinite(metrics.actualBoundingBoxAscent) ? metrics.actualBoundingBoxAscent : 28;
+            const textDescent = Number.isFinite(metrics.actualBoundingBoxDescent) ? metrics.actualBoundingBoxDescent : 7;
+            const paddingX = 10;
+            const paddingY = 6;
+            const backgroundWidth = textWidth + paddingX * 2;
+            const backgroundHeight = textAscent + textDescent + paddingY * 2;
+            context.fillStyle = screenMessage.backgroundColor;
+            context.fillRect(WIDTH / 2 - backgroundWidth / 2, 70 - textAscent - paddingY, backgroundWidth, backgroundHeight);
+        }
+        context.fillStyle = screenMessage.color;
         context.fillText(screenMessage.message, WIDTH / 2, 70);
         context.restore();
     }
@@ -5481,14 +5494,16 @@
      * @param {string} message 표시할 메시지
      * @param {string} [color='white'] 글자 색상(CSS 색상 문자열)
      * @param {number} [duration=2000] 페이드 아웃 전 유지 시간(밀리초)
+     * @param {string|null} [backgroundColor=null] 글자 뒤에 표시할 배경 색상(CSS 색상 문자열)
      * @returns {void}
      */
-    function showMessage(message, color = 'white', duration = 2000) {
+    function showMessage(message, color = 'white', duration = 2000, backgroundColor = null) {
         if (!initialized || !context) throw new Error('메시지를 표시하려면 먼저 WebPuyo.initialize()를 호출해야 합니다.');
         if (typeof message !== 'string') throw new TypeError('message는 문자열이어야 합니다.');
         if (typeof color !== 'string') throw new TypeError('color는 문자열이어야 합니다.');
         if (typeof duration !== 'number' || !Number.isFinite(duration) || duration < 0) throw new RangeError('duration은 0 이상의 유한한 숫자여야 합니다.');
-        screenMessage = { message, color, elapsed: 0, duration };
+        if (backgroundColor !== null && typeof backgroundColor !== 'string') throw new TypeError('backgroundColor는 문자열 또는 null이어야 합니다.');
+        screenMessage = { message, color, backgroundColor, elapsed: 0, duration };
     }
 
     /**
@@ -5690,18 +5705,19 @@
             },
             {
                 name: 'show_message',
-                description: 'Display an already-localized message at the top of the current screen. It remains visible for duration milliseconds (default 2000), then fades out. Do not use this tool for translation.',
+                description: 'Display an already-localized message at the top of the current screen. It remains visible for duration milliseconds (default 2000), then fades out. An optional backgroundColor draws a rectangle behind the text. Do not use this tool for translation.',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         message: { type: 'string', description: 'The already-localized text to display.' },
                         color: { type: 'string', default: 'white', description: 'CSS text color.' },
-                        duration: { type: 'number', minimum: 0, default: 2000, description: 'Milliseconds to remain fully visible before fading out.' }
+                        duration: { type: 'number', minimum: 0, default: 2000, description: 'Milliseconds to remain fully visible before fading out.' },
+                        backgroundColor: { type: ['string', 'null'], default: null, description: 'Optional CSS background color behind the message text.' }
                     },
                     required: ['message'],
                     additionalProperties: false
                 },
-                execute: ({ message, color = 'white', duration = 2000 }) => showMessage(message, color, duration)
+                execute: ({ message, color = 'white', duration = 2000, backgroundColor = null }) => showMessage(message, color, duration, backgroundColor)
             }
         ];
         tools.forEach((tool) => {

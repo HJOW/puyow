@@ -83,7 +83,7 @@ WebPuyo.toCanvasLength(38);
 
 ## 화면 상단 메시지 표시
 
-`WebPuyo.showMessage(message, color = 'white', duration = 2000)`는 현재 화면의 최상단에 메시지를 표시합니다. `message`는 필수 문자열이고, `color`는 선택 사항인 CSS 글자 색상 문자열이며, `duration`은 페이드 아웃 전 메시지를 유지할 시간(밀리초)입니다. 기본값은 각각 `'white'`, `2000`입니다. 유지 시간이 지난 뒤 500ms 동안 페이드 아웃되어 사라지며, 새 메시지를 표시하면 이전 메시지를 교체합니다.
+`WebPuyo.showMessage(message, color = 'white', duration = 2000, backgroundColor = null)`는 현재 화면의 최상단에 메시지를 표시합니다. `message`는 필수 문자열이고, `color`는 선택 사항인 CSS 글자 색상 문자열이며, `duration`은 페이드 아웃 전 메시지를 유지할 시간(밀리초), `backgroundColor`는 글자 뒤에 표시할 선택 사항인 CSS 배경 색상 문자열입니다. `backgroundColor`가 `null`이면 배경 사각형 없이 기존처럼 글자만 표시합니다. 기본값은 각각 `'white'`, `2000`, `null`입니다. 유지 시간이 지난 뒤 500ms 동안 페이드 아웃되어 사라지며, 새 메시지를 표시하면 이전 메시지를 교체합니다.
 
 이 함수는 다국어 처리를 하지 않고 받은 문자열을 그대로 표시합니다. 따라서 번역이 필요하다면 호출자가 먼저 번역한 뒤 전달해야 합니다.
 
@@ -91,9 +91,10 @@ WebPuyo.toCanvasLength(38);
 const message = translateForMyApp('Saved');
 WebPuyo.showMessage(message);
 WebPuyo.showMessage(message, '#f7c843', 3000);
+WebPuyo.showMessage(message, '#ffffff', 3000, '#263238');
 ```
 
-WebMCP를 지원하는 브라우저에서는 AI도 `show_message` 도구로 동일한 동작을 호출할 수 있습니다. 도구의 `message`는 이미 현지화된 문자열이어야 하며, `color`와 `duration`의 기본값은 각각 `'white'`, `2000`입니다.
+WebMCP를 지원하는 브라우저에서는 AI도 `show_message` 도구로 동일한 동작을 호출할 수 있습니다. 도구의 `message`는 이미 현지화된 문자열이어야 하며, `color`, `duration`, `backgroundColor`의 기본값은 각각 `'white'`, `2000`, `null`입니다.
 
 ## 공지사항 경로 설정
 
