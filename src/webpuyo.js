@@ -2839,6 +2839,36 @@
         context.fillText(String(player.fever.nextTime).padStart(2, '0'), centerX, topY + FEVER_GAUGE_MAX * 34 + 4);
     }
 
+    /** 피버 전용 플레이 영역의 주황색 뒷배경 색상이다. @type {string} */
+    const FEVER_PLAYER_BACKGROUND_COLOR = '#e89035';
+    /** 피버 전용 플레이 영역의 뒷배경보다 더 붉은 베젤 색상이다. @type {string} */
+    const FEVER_BEZEL_BACKGROUND_COLOR = '#cf5e38';
+
+    /** 지정 필드가 적 테마보다 우선하는 피버 배경을 써야 하는지 판별한다. @param {PlayerState} player 검사할 플레이어 @returns {boolean} 피버 배경 적용 여부 */
+    function usesFeverFieldTheme(player) {
+        return Boolean(game?.continuousFever || (game?.feverRule && player.fever?.active));
+    }
+
+    /** 적 테마 또는 피버 전용 테마로 필드 베젤을 그린다. @param {PlayerState} player 대상 플레이어 @param {{x:number,y:number,width:number,height:number,player?:PlayerState}} area 베젤 영역 @returns {void} */
+    function drawFieldBezelBackground(player, area) {
+        if (usesFeverFieldTheme(player)) {
+            context.fillStyle = FEVER_BEZEL_BACKGROUND_COLOR;
+            context.fillRect(area.x, area.y, area.width, area.height);
+            return;
+        }
+        game.themeController.drawBezelBackground(context, area);
+    }
+
+    /** 적 테마 또는 피버 전용 테마로 필드 뒷배경을 그린다. @param {PlayerState} player 대상 플레이어 @param {{x:number,y:number,width:number,height:number,player?:PlayerState}} area 필드 영역 @returns {void} */
+    function drawFieldPlayerBackground(player, area) {
+        if (usesFeverFieldTheme(player)) {
+            context.fillStyle = FEVER_PLAYER_BACKGROUND_COLOR;
+            context.fillRect(area.x, area.y, area.width, area.height);
+            return;
+        }
+        game.themeController.drawPlayerBackground(context, area);
+    }
+
     /**
      * 한 플레이어의 필드, 예고줄, 낙하와 폭발 효과를 그린다.
      * @param {PlayerState} player 그릴 플레이어
@@ -2847,10 +2877,9 @@
      */
     function drawField(player, opponent) {
         const x = player.fieldX;
-        const theme = game.themeController;
         const isDefeated = game.ending?.loser === player;
-        theme.drawBezelBackground(context, { x: x - CELL, y: FIELD_TOP - CELL, width: CELL * 8, height: CELL * 14, player });
-        theme.drawPlayerBackground(context, { x, y: FIELD_TOP, width: CELL * 6, height: CELL * 12, player });
+        drawFieldBezelBackground(player, { x: x - CELL, y: FIELD_TOP - CELL, width: CELL * 8, height: CELL * 14, player });
+        drawFieldPlayerBackground(player, { x, y: FIELD_TOP, width: CELL * 6, height: CELL * 12, player });
         if (player.allClearEffectElapsed > 0) {
             context.save();
             context.fillStyle = '#ffd54f';
@@ -2924,7 +2953,7 @@
         context.rect(x - CELL, FIELD_TOP, CELL, CELL * VISIBLE_ROWS);
         context.rect(x + CELL * COLUMNS, FIELD_TOP, CELL, CELL * VISIBLE_ROWS);
         context.clip();
-        game.themeController.drawBezelBackground(context, bezel);
+        drawFieldBezelBackground(player, bezel);
         context.restore();
     }
 
@@ -2946,7 +2975,7 @@
             if (y < HEIGHT) drawPuyo(x + puyo.x * CELL, y, puyo.color);
         });
         // 무너지는 베젤은 낙하 중인 숨김 영역 방해뿌요보다 앞에 보인다.
-        game.themeController.drawBezelBackground(context, { x: x - CELL, y: FIELD_BOTTOM + distance, width: CELL * 8, height: CELL, player });
+        drawFieldBezelBackground(player, { x: x - CELL, y: FIELD_BOTTOM + distance, width: CELL * 8, height: CELL, player });
         context.restore();
     }
 

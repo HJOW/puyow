@@ -277,6 +277,8 @@ WebPuyo.registerOpponent({
 - `drawPlayerBackground(drawingContext, area)`: 각 사용자 필드의 뒷배경. `area`에는 `x`, `y`, `width`, `height`, `player`가 있습니다.
 - `drawCenterBackground(drawingContext, area)`: 다음 뿌요, 초상화, 점수 뒤의 중앙 영역. `area`에는 `x`, `y`, `width`, `height`가 있습니다.
 
+피버 룰에서 각 플레이어가 피버 상태가 된 전용 플레이 영역은 적 테마보다 우선해 주황색 뒷배경과 조금 더 붉은 주황색 베젤을 사용합니다. 피버가 아닌 일반 플레이 영역은 적 테마를 그대로 사용합니다. 연속 피버는 플레이 내내 두 필드 모두 이 피버 배경을 사용합니다.
+
 ```js
 class NightEnemy extends WebPuyo.Enemy {
 	drawBezelBackground(drawingContext, area) {

@@ -130,6 +130,7 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   expect(feverState.player.board.puyos.length).toBeGreaterThan(0);
   expect(feverState.player.active.colors).toEqual(feverState.fever.stageSuppliedPair);
   expect(feverState.colors).toEqual(['red', 'green', 'yellow', 'blue', 'purple']);
+  expect(await page.evaluate(() => Array.from(document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(210, 120, 1, 1).data))).toEqual([232, 144, 53, 255]);
   expect(await page.evaluate(() => {
     const texts = window.testCanvasTexts;
     return [
@@ -199,6 +200,58 @@ test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 10000 }).toBe('player');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_gallery')).enemies)).toContain('FeverGalleryEnemy');
+});
+
+test('피버 전용 필드는 적 테마보다 우선하고 일반 필드는 적 테마를 유지한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverPriorityThemeEnemy extends window.WebPuyo.Enemy {
+      constructor() {
+        super();
+        this.sortPriority = -1;
+      }
+
+      getClassType() { return 'FeverPriorityThemeEnemy'; }
+      getName() { return '피버 테마 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        player.fever.active = true;
+      }
+
+      drawBezelBackground(drawingContext, area) {
+        drawingContext.fillStyle = '#010203';
+        drawingContext.fillRect(area.x, area.y, area.width, area.height);
+      }
+
+      drawPlayerBackground(drawingContext, area) {
+        drawingContext.fillStyle = '#040506';
+        drawingContext.fillRect(area.x, area.y, area.width, area.height);
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverPriorityThemeEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.fever?.active)).toBe(true);
+  const pixels = await page.evaluate(() => {
+    const drawingContext = document.querySelector('#webpuyo_canvas').getContext('2d');
+    return {
+      normalField: Array.from(drawingContext.getImageData(210, 120, 1, 1).data),
+      feverField: Array.from(drawingContext.getImageData(886, 120, 1, 1).data),
+      feverBezel: Array.from(drawingContext.getImageData(842, 120, 1, 1).data),
+    };
+  });
+  expect(pixels.normalField).toEqual([4, 5, 6, 255]);
+  expect(pixels.feverField).toEqual([232, 144, 53, 255]);
+  expect(pixels.feverBezel).toEqual([207, 94, 56, 255]);
 });
 
 test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {
