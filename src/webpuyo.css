@@ -1,9 +1,26 @@
+/**
+ * @license Apache-2.0
+ * Copyright 2026 HJOW
+ * Licensed under the Apache License, Version 2.0.
+ * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+/*
+    D2Coding
+        https://help.naver.com/support/contents/contents.nhn?serviceNo=1074&categoryNo=3497
+*/
+
 @font-face {
     font-family: 'D2Coding';
     src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.0/D2Coding.woff') format('woff');
     font-weight: normal;
     font-display: swap;
 }
+
+/*
+    Pretendard 웹폰트
+        https://github.com/orioncactus/pretendard/blob/main/LICENSE
+*/
 
 @font-face {
     font-family: 'Pretendard';
@@ -68,6 +85,10 @@
     font-display: swap;
 }
 
+/*
+    샘플 페이지를 위한 CSS
+*/
+
 :root {
 	color-scheme: dark;
 	background: #071621;
@@ -76,6 +97,10 @@
 * {
 	box-sizing: border-box;
 }
+
+/*
+    Puyo W 공통 CSS
+*/
 
 body.webpuyo {
 	align-items: center;
