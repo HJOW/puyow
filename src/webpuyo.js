@@ -141,10 +141,6 @@
     const AI_SERVICE_PROVIDERS = ['OpenAI'];
     /** 브라우저에서 직접 호출할 OpenAI Responses API 주소다. @type {string} */
     const OPENAI_RESPONSES_API_URL = 'https://api.openai.com/v1/responses';
-    /** 설정 화면 API 테스트 결과를 표시할 전체 시간(ms)이다. 마지막 500ms 동안 사라진다. @type {number} */
-    const AI_API_TEST_MESSAGE_DURATION = 2000;
-    /** 설정 화면 API 테스트 결과가 페이드아웃되는 시간(ms)이다. @type {number} */
-    const AI_API_TEST_MESSAGE_FADE_DURATION = 500;
     /** API 테스트 응답에 요구할 최소 JSON Schema다. @type {object} */
     const AI_API_TEST_JSON_SCHEMA = {
         type: 'object',
@@ -235,8 +231,6 @@
     let settingsEditing = false;
     /** 현재 편집 중인 문자열의 커서 위치다. @type {number} */
     let settingsCursor = 0;
-    /** AI API 테스트 안내문과 표시 경과 시간이다. @type {{message:string, elapsed:number}|null} */
-    let settingsApiTestMessage = null;
     /** 화면 최상단에 표시할 외부 메시지다. @type {{message:string,color:string,elapsed:number,duration:number}|null} */
     let screenMessage = null;
     /** 외부 메시지가 유지 시간 뒤 사라지는 데 걸리는 시간(ms)이다. @type {number} */
@@ -3495,7 +3489,7 @@
 
     /** 시뮬레이터를 빈 그리기 보드와 첫 팔레트 포커스로 연다. @returns {void} */
     function openSimulator() {
-        simulator = { mode: 'draw', player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), target: new PlayerState('', FIELD_RIGHT, null, COLORS), energyTransfers: [], selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0, message: null, messageElapsed: 0 };
+        simulator = { mode: 'draw', player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), target: new PlayerState('', FIELD_RIGHT, null, COLORS), energyTransfers: [], selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0 };
         menuScreen = 'simulator';
         syncBackgroundMusic();
     }
@@ -3539,6 +3533,7 @@
             tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, greenExplosionShown: false, stageThreeGarbageDropped: false, message: config.intro, messageElapsed: 0, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1 }
         };
         updateNextPairs(player);
+        showTutorialMessage(config.intro);
         syncBackgroundMusic();
     }
 
@@ -3550,11 +3545,12 @@
         syncBackgroundMusic();
     }
 
-    /** 안내 문구를 표시한다. @param {string} message 번역 키 @returns {void} */
+    /** 안내 문구를 번역한 뒤 공통 화면 메시지로 표시한다. @param {string} message 번역 키 @returns {void} */
     function showTutorialMessage(message) {
         if (!game?.tutorial) return;
         game.tutorial.message = message;
         game.tutorial.messageElapsed = 0;
+        showMessage(translate(message), '#f5fbfc', game.tutorial.mode === 'intro' ? 4800 : 2000);
     }
 
     /** 안내 시연을 시간에 따라 진행한다. @param {number} delta 경과 시간 @returns {void} */
@@ -3662,14 +3658,6 @@
         }
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `20px ${TITLE_FONT}`;
         context.fillText(`${translate('플레이 방법')} ${tutorial.stage} / 5`, WIDTH / 2, 32);
-        if (tutorial.message) {
-            const duration = tutorial.mode === 'intro' ? 4800 : 2000;
-            const alpha = Math.max(0, Math.min(1, (duration - tutorial.messageElapsed) / 700));
-            context.save(); context.globalAlpha = alpha;
-            context.fillStyle = 'rgba(3, 11, 19, 0.82)'; context.fillRect(160, 42, 960, 52);
-            context.fillStyle = '#f5fbfc'; context.font = `19px ${MESSAGE_FONT}`; context.fillText(translate(tutorial.message), WIDTH / 2, 75);
-            context.restore();
-        }
     }
 
     /** 게임 종료 화면을 유지한 채 안내 완료 선택지를 겹쳐 그린다. @param {object} tutorial 안내 상태 @returns {void} */
@@ -3781,23 +3769,15 @@
         settingsFocus = focuses[nextIndex];
     }
 
-    /** API 테스트 안내문을 2초간 표시한다. @param {string} message 표시할 원문 @returns {void} */
+    /** API 테스트 안내문을 번역한 뒤 공통 화면 메시지로 표시한다. @param {string} message 번역 키 @returns {void} */
     function showSettingsApiTestMessage(message) {
-        settingsApiTestMessage = { message, elapsed: 0 };
+        showMessage(translate(message));
     }
 
     /** 화면을 닫거나 초기화할 때 남은 API 테스트 결과를 무효화한다. @returns {void} */
     function clearSettingsApiTest() {
         settingsApiTestRequestId += 1;
         settingsApiTestPending = false;
-        settingsApiTestMessage = null;
-    }
-
-    /** API 테스트 결과의 표시 시간을 갱신한다. @param {number} delta 지난 시간(ms) @returns {void} */
-    function updateSettingsApiTestMessage(delta) {
-        if (!settingsApiTestMessage) return;
-        settingsApiTestMessage.elapsed += delta;
-        if (settingsApiTestMessage.elapsed >= AI_API_TEST_MESSAGE_DURATION) settingsApiTestMessage = null;
     }
 
     /** Responses API 응답에서 생성된 텍스트를 꺼낸다. @param {object} response API 응답 @returns {string|null} JSON 텍스트 */
@@ -3914,14 +3894,6 @@
         [{ label: '저장', x: 380, focus: 7, color: '#4cc9b0' }, { label: '취소', x: 560, focus: 8, color: '#ef5350' }, { label: '초기화', x: 740, focus: 9, color: '#7e6bc4' }].forEach((button) => {
             context.fillStyle = button.color; context.fillRect(button.x, 505, 160, 46); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 505, 160, 46); context.fillStyle = '#fff'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 80, 535);
         });
-        if (settingsApiTestMessage) {
-            const fadeStart = AI_API_TEST_MESSAGE_DURATION - AI_API_TEST_MESSAGE_FADE_DURATION;
-            const alpha = settingsApiTestMessage.elapsed <= fadeStart ? 1 : Math.max(0, (AI_API_TEST_MESSAGE_DURATION - settingsApiTestMessage.elapsed) / AI_API_TEST_MESSAGE_FADE_DURATION);
-            context.save(); context.globalAlpha = alpha;
-            context.fillStyle = 'rgba(3, 11, 19, 0.82)'; context.fillRect(260, 575, 760, 42);
-            context.fillStyle = '#f5fbfc'; context.font = `15px ${MESSAGE_FONT}`; context.textAlign = 'center'; context.fillText(translate(settingsApiTestMessage.message), WIDTH / 2, 602);
-            context.restore();
-        }
     }
 
     /** 설정 초기화 중 다른 그래픽 없이 진행 문구만 표시한다. @returns {void} */
@@ -4123,10 +4095,9 @@
         return JSON.stringify({ puyos });
     }
 
-    /** 시뮬레이터 화면에 4초 동안 표시할 메시지를 설정한다. @param {string} message 표시할 메시지 @returns {void} */
+    /** 시뮬레이터 메시지를 공통 화면 메시지로 표시한다. @param {string} message 이미 번역된 표시문 @returns {void} */
     function showSimulatorMessage(message) {
-        simulator.message = message;
-        simulator.messageElapsed = 0;
+        showMessage(message, '#f7c843', 3500);
     }
 
     /** 클립보드에 시뮬레이터 배치를 복사한다. @returns {void} */
@@ -4231,10 +4202,6 @@
     /** 시뮬레이터 중력·폭발·복원 시간을 갱신한다. @param {number} delta 경과 시간(ms) @returns {void} */
     function updateSimulator(delta) {
         if (!simulator) return;
-        if (simulator.message) {
-            simulator.messageElapsed += delta;
-            if (simulator.messageElapsed >= 4000) simulator.message = null;
-        }
         const player = simulator.player;
         if (simulator.mode === 'draw') return;
         player.comboPopups = player.comboPopups
@@ -4306,14 +4273,6 @@
                 context.fillText(labels[item.kind], item.x + item.width / 2, item.y + 26);
             }
         });
-        if (simulator.message) {
-            const progress = Math.min(1, simulator.messageElapsed / 4000);
-            context.save();
-            context.globalAlpha = progress < 0.75 ? 1 : (1 - progress) / 0.25;
-            context.fillStyle = '#f7c843'; context.font = `18px ${MESSAGE_FONT}`;
-            context.fillText(simulator.message, WIDTH / 2, 635);
-            context.restore();
-        }
         if (simulator.mode !== 'draw') {
             context.fillStyle = 'rgba(3, 11, 19, 0.62)';
             context.fillRect(FIELD_RIGHT, FIELD_TOP, CELL * COLUMNS, CELL * VISIBLE_ROWS);
@@ -4646,7 +4605,7 @@
         context.textAlign = 'center';
         context.fillStyle = screenMessage.color;
         context.font = `28px ${MESSAGE_FONT}`;
-        context.fillText(screenMessage.message, WIDTH / 2, 54);
+        context.fillText(screenMessage.message, WIDTH / 2, 70);
         context.restore();
     }
 
@@ -4681,7 +4640,6 @@
         lastTime = time;
         updateGamepadInput();
         updateScreenMessage(delta);
-        if (!game && menuScreen === 'settings') updateSettingsApiTestMessage(delta);
         // 플레이 방법은 결과 화면 표시 시간까지 갱신하고, 일반 게임은 실행 중일 때만 갱신한다.
         if (game?.tutorial && !game.paused) {
             if (game.running) {
