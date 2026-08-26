@@ -121,12 +121,14 @@
     const VIRTUAL_DPAD = { x: 118, y: 610, size: 52 };
     /** 가상 컨트롤러 Z, X, ESC 버튼의 중심 좌표와 크기다. @type {{z:{x:number,y:number},x:{x:number,y:number},escape:{x:number,y:number},radius:number}} */
     const VIRTUAL_ACTION_BUTTONS = { z: { x: 1090, y: 590 }, x: { x: 1170, y: 590 }, escape: { x: 1170, y: 500 }, radius: 31 };
-    /** AI 쉬움 난이도에서 빠른 하강을 사용하지 않음을 나타내는 지연 시간이다. @type {null} */
+    /** AI 쉬움 난이도에서 빠른 하강을 사용하지 않음을 나타내는 지연 시간이다. @type {number|null} */
     const AI_FAST_DOWN_DELAY_EASY = null;
-    /** AI 보통 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number} */
+    /** AI 보통 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number|null} */
     const AI_FAST_DOWN_DELAY_NORMAL = 1500;
-    /** AI 어려움 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number} */
+    /** AI 어려움 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number|null} */
     const AI_FAST_DOWN_DELAY_HARD = 300;
+    /** AI 극한 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number|null} */
+    const AI_FAST_DOWN_DELAY_EXTREME = 50;
     /** 적이 공격 위력 시뮬레이션을 우선할 피해량 기준이다. @type {number} */
     const AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD = 12;
     /** 공통 뿌요 쌍 대기열의 초기 길이다. @type {number} */
@@ -154,6 +156,7 @@
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '시작': 'Start', '이전': 'Back',
+            '극한': 'Extreme',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
             '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked',
@@ -170,6 +173,7 @@
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
             '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '시작': '開始', '이전': '戻る',
+            '극한': '極限',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
             '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中',
@@ -187,6 +191,7 @@
             '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯',
+            '극한': '极限',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
             '연습 상대': '练习对手', '추후 출시예정': '即将推出', '잠김': '已锁定',
@@ -307,7 +312,7 @@
     let gamepadActionInput = { z: false, x: false, enter: false, escape: false };
     /** 현재 화면 문구에 적용할 언어 코드다. @type {string} */
     let languageCode = 'ko';
-    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} */
+    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>}} */
     let store = createInitialStore();
     /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 webpuyo.js 기준으로 해석한다. @type {string} */
     let noticeUrl = 'notice.txt';
@@ -319,11 +324,12 @@
         { name: '4색', colors: ['red', 'green', 'yellow', 'blue'] },
         { name: '5색', colors: COLORS }
     ];
-    /** AI 빠른 하강 시점별 난이도다. @type {{key:'easy'|'normal'|'hard', name:string, fastDownDelay:number|null}[]} */
+    /** AI 빠른 하강 시점별 난이도다. @type {{key:'easy'|'normal'|'hard'|'extreme', name:string, fastDownDelay:number|null}[]} */
     const AI_DIFFICULTIES = [
         { key: 'easy', name: '쉬움', fastDownDelay: AI_FAST_DOWN_DELAY_EASY },
         { key: 'normal', name: '보통', fastDownDelay: AI_FAST_DOWN_DELAY_NORMAL },
-        { key: 'hard', name: '어려움', fastDownDelay: AI_FAST_DOWN_DELAY_HARD }
+        { key: 'hard', name: '어려움', fastDownDelay: AI_FAST_DOWN_DELAY_HARD },
+        { key: 'extreme', name: '극한', fastDownDelay: AI_FAST_DOWN_DELAY_EXTREME }
     ];
     /** 등록된 기본 및 외부 적 목록이다. @type {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} */
     const OPPONENTS = [];
@@ -370,13 +376,13 @@
 
     /**
      * 저장 데이터의 기본 구조를 만든다.
-     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard', string[]>}} 초기 저장 데이터
+     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>}} 초기 저장 데이터
      */
     function createInitialStore() {
         return {
             clearList: [],
-            clearListByDifficulty: { easy: [], normal: [], hard: [] },
-            feverClearListByDifficulty: { easy: [], normal: [], hard: [] },
+            clearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
+            feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             settings: { musicVolume: 100, effectsVolume: 100, virtualController: false, aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
@@ -669,7 +675,7 @@
     /**
      * 현재 게임에 적용할 AI 난이도 정보를 반환한다.
      * 게임 중에는 시작할 때 선택한 값이 반환되고, 메뉴에서는 현재 선택 중인 값이 반환된다.
-     * @returns {{key:'easy'|'normal'|'hard', name:string, fastDownDelay:number|null}} AI 난이도 키, 표시명, 빠른 하강 대기 시간(ms)
+     * @returns {{key:'easy'|'normal'|'hard'|'extreme', name:string, fastDownDelay:number|null}} AI 난이도 키, 표시명, 빠른 하강 대기 시간(ms)
      */
     function getSelectedDifficulty() {
         const index = game ? game.aiDifficulty : selectedAiDifficulty;
@@ -4351,6 +4357,14 @@
         return 525 + (difficultyIndex - 1) * 120;
     }
 
+    /** AI 난이도 선택지를 개수와 관계없이 화면 중앙에 수평 정렬한다. @param {number} difficultyIndex AI_DIFFICULTIES 배열 인덱스 @returns {number} 버튼의 왼쪽 좌표 */
+    function getAiDifficultyButtonX(difficultyIndex) {
+        const buttonWidth = 110;
+        const gap = 10;
+        const totalWidth = AI_DIFFICULTIES.length * buttonWidth + (AI_DIFFICULTIES.length - 1) * gap;
+        return (WIDTH - totalWidth) / 2 + difficultyIndex * (buttonWidth + gap);
+    }
+
     /** 게임 규칙 선택지에서 연습을 고른 뒤 색상 수 선택 화면을 연다. @returns {void} */
     function openPracticeDifficulty() {
         selectedDifficulty = 1;
@@ -4434,7 +4448,7 @@
                     context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 163);
             });
             AI_DIFFICULTIES.forEach((difficulty, index) => {
-                const x = 465 + index * 120;
+                const x = getAiDifficultyButtonX(index);
                 const selected = index === selectedAiDifficulty;
                 context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 195, 110, 44);
                 context.strokeStyle = opponentMenuFocus === 1 && selected ? '#f7c843' : '#3b6070'; context.lineWidth = opponentMenuFocus === 1 && selected ? 4 : 2;
@@ -5156,7 +5170,7 @@
                 opponentMenuFocus = 0;
                 return;
             }
-            const aiDifficultyIndex = AI_DIFFICULTIES.findIndex((difficulty, index) => opponentX >= 465 + index * 120 && opponentX <= 575 + index * 120 && opponentY >= 195 && opponentY <= 239);
+            const aiDifficultyIndex = AI_DIFFICULTIES.findIndex((difficulty, index) => opponentX >= getAiDifficultyButtonX(index) && opponentX <= getAiDifficultyButtonX(index) + 110 && opponentY >= 195 && opponentY <= 239);
             if (aiDifficultyIndex >= 0) {
                 selectedAiDifficulty = aiDifficultyIndex;
                 opponentMenuFocus = 1;

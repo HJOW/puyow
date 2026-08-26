@@ -31,7 +31,7 @@ webpuyo.js 는 CDN으로도 사용할 수 있습니다.
 - `hidden`: `true`이면 적 선택 화면에 표시하지 않습니다.
 - `notAvail`: `true`이면 회색의 `추후 출시예정` 카드로만 표시하며, 마우스와 키보드로 선택할 수 없습니다.
 
-일반 대전에서 플레이어가 승리하면 브라우저 `localStorage`의 `puyow_store`에 적 클래스명이 기록됩니다. `hidden` 및 `notAvail`이 아닌 적은 정렬 순서상 바로 이전 적을 한 번 이겨야 선택할 수 있으며, 첫 번째 적은 쉬움·보통·어려움 모두에서 항상 선택할 수 있습니다. 기본 룰은 `clearListByDifficulty`, 피버 룰은 `feverClearListByDifficulty`의 `easy`, `normal`, `hard` 배열을 각각 사용하므로 두 규칙의 적 잠금 해제 진행도는 서로 영향을 주지 않습니다. `clearList`는 기존 기본 룰의 전체 승리 적 목록만 보관합니다.
+일반 대전에서 플레이어가 승리하면 브라우저 `localStorage`의 `puyow_store`에 적 클래스명이 기록됩니다. `hidden` 및 `notAvail`이 아닌 적은 정렬 순서상 바로 이전 적을 한 번 이겨야 선택할 수 있으며, 첫 번째 적은 쉬움·보통·어려움·극한 모두에서 항상 선택할 수 있습니다. 기본 룰은 `clearListByDifficulty`, 피버 룰은 `feverClearListByDifficulty`의 `easy`, `normal`, `hard`, `extreme` 배열을 각각 사용하므로 두 규칙의 적 잠금 해제 진행도는 서로 영향을 주지 않습니다. `clearList`는 기존 기본 룰의 전체 승리 적 목록만 보관합니다.
 
 ## 초기화
 
@@ -320,9 +320,9 @@ CPU 한 차례를 시작할 때 게임은 `prepareTurn(player)`, `chooseTarget(p
 
 `chooseTarget(player)`에서는 현재 CPU 필드를 읽고, 이번 뿌요 쌍을 어느 열에 둘지 결정합니다. `chooseRotate(player)`는 목표 회전값을 반환합니다. 기본값은 세로 상태인 `0`이며, `1`은 오른쪽, `2`는 아래, `3`은 왼쪽입니다. 공격력 시뮬레이션처럼 열과 회전을 함께 골랐다면 `chooseTarget()`에서 선택한 후보를 인스턴스 필드에 보관하고, `chooseRotate()`에서 같은 후보의 `rotation`을 반환해야 합니다.
 
-`useFastDown(player)`은 목표 열과 회전이 결정된 뒤 AI가 아래 방향키를 눌러 이번 뿌요 쌍을 빠르게 내릴지 결정합니다. 기본 `Enemy` 구현은 선택된 AI 난이도에 따라 동작합니다. `쉬움`은 빠른 하강을 사용하지 않고, `보통`은 목표 결정 2,000ms 뒤, `어려움`은 500ms 뒤에도 조작 중일 때 빠르게 하강합니다. 기본 제공되는 안드로말리우스와 단탈리온도 이 정책을 그대로 따릅니다. 사용자 정의 AI가 자체 정책을 사용하려면 이 메서드를 재정의하고, 기본 정책을 일부 유지하려면 `super.useFastDown(player)`를 호출합니다.
+`useFastDown(player)`은 목표 열과 회전이 결정된 뒤 AI가 아래 방향키를 눌러 이번 뿌요 쌍을 빠르게 내릴지 결정합니다. 기본 `Enemy` 구현은 선택된 AI 난이도에 따라 동작합니다. `쉬움`은 빠른 하강을 사용하지 않고, `보통`은 목표 결정 1,500ms 뒤, `어려움`은 300ms 뒤, `극한`은 즉시 빠르게 하강합니다. 기본 제공되는 안드로말리우스와 단탈리온도 이 정책을 그대로 따릅니다. 사용자 정의 AI가 자체 정책을 사용하려면 이 메서드를 재정의하고, 기본 정책을 일부 유지하려면 `super.useFastDown(player)`를 호출합니다.
 
-`WebPuyo.getSelectedDifficulty()`는 현재 선택되어 게임에 적용되는 AI 난이도를 조회합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환합니다. 반환 객체의 `key`는 `'easy'`, `'normal'`, `'hard'` 중 하나이고, `name`은 표시명, `fastDownDelay`는 빠른 하강 대기 시간(ms)이며 쉬움에서는 `null`입니다.
+`WebPuyo.getSelectedDifficulty()`는 현재 선택되어 게임에 적용되는 AI 난이도를 조회합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환합니다. 반환 객체의 `key`는 `'easy'`, `'normal'`, `'hard'`, `'extreme'` 중 하나이고, `name`은 표시명, `fastDownDelay`는 빠른 하강 대기 시간(ms)이며 쉬움에서는 `null`입니다.
 
 ```js
 const difficulty = WebPuyo.getSelectedDifficulty();
@@ -331,7 +331,7 @@ if (difficulty.key === 'hard') {
 }
 ```
 
-빠른 하강 대기 시간은 `AI_FAST_DOWN_DELAY_EASY`(사용하지 않음), `AI_FAST_DOWN_DELAY_NORMAL`(2,000ms), `AI_FAST_DOWN_DELAY_HARD`(500ms)로 난이도별 관리됩니다. 게임 외부에서 이 값을 직접 바꾸는 대신 `getSelectedDifficulty()`의 `fastDownDelay`를 사용해 현재 정책을 확인할 수 있습니다.
+빠른 하강 대기 시간은 `AI_FAST_DOWN_DELAY_EASY`(사용하지 않음), `AI_FAST_DOWN_DELAY_NORMAL`(1,500ms), `AI_FAST_DOWN_DELAY_HARD`(300ms), `AI_FAST_DOWN_DELAY_EXTREME`(0ms)로 난이도별 관리됩니다. 게임 외부에서 이 값을 직접 바꾸는 대신 `getSelectedDifficulty()`의 `fastDownDelay`를 사용해 현재 정책을 확인할 수 있습니다.
 
 `WebPuyo.getSelectedColorCount()`는 게임에 적용할 일반 뿌요 색상 수를 `3`, `4`, `5` 중 하나로 반환합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환하므로 색상 수에 맞춘 AI 후보 생성을 구현할 때 사용할 수 있습니다.
 
