@@ -867,3 +867,54 @@ test('시뮬레이터 점수는 다섯 뿌요 연결 보너스를 적용한다',
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000100'))).toBe(true);
 });
+
+test('시뮬레이터에서 딱딱뿌요 JSON을 복사·배치하고 두 방향 폭발로 파괴한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  const puyos = [
+    { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 1, y: 1, color: 'red' },
+    { x: 2, y: 1, color: 'hardGarbage' },
+  ];
+  await page.evaluate((pastedPuyos) => {
+    window.prompt = () => JSON.stringify({ puyos: pastedPuyos });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: (text) => { window.testClipboardText = text; return Promise.resolve(); } },
+    });
+  }, puyos);
+
+  const canvas = page.locator('#webpuyo_canvas');
+  await canvas.click({ position: { x: 960, y: 440 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.color === 'hardGarbage'))).toBe(true);
+  await canvas.click({ position: { x: 960, y: 395 } });
+  await expect.poll(() => page.evaluate(() => window.testClipboardText)).toContain('hardGarbage');
+
+  await page.evaluate(() => { window.testCanvasTexts = []; });
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.WebPuyo.getSimulatorState().board.puyos.some((puyo) => puyo.color === 'hardGarbage'))).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000240'))).toBe(true);
+});
+
+test('시뮬레이터 딱딱뿌요는 한 방향 폭발에 일반 방해뿌요가 된다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  await page.evaluate(() => {
+    window.prompt = () => JSON.stringify({ puyos: [
+      { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 3, y: 0, color: 'red' },
+      { x: 4, y: 0, color: 'hardGarbage' },
+    ] });
+  });
+
+  const canvas = page.locator('#webpuyo_canvas');
+  await canvas.click({ position: { x: 960, y: 440 } });
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.WebPuyo.getSimulatorState().board.puyos)).toEqual([{ x: 4, y: 0, color: 'garbage' }]);
+});

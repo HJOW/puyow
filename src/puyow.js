@@ -40,10 +40,12 @@
     const FIELD_RIGHT = 864;
     /** 일반 뿌요에 사용할 색상 이름 목록이다. @type {string[]} */
     const COLORS = ['red', 'green', 'yellow', 'blue', 'purple'];
+    /** 시뮬레이터와 갤러리에서만 사용하는 얼음질 방해뿌요 식별자다. @type {string} */
+    const HARD_GARBAGE = 'hardGarbage';
     /** 색상 이름별 캔버스 색상값이다. @type {Record<string, string>} */
     const PALETTE = {
         red: '#ef5350', green: '#66bb6a', yellow: '#f7c843', blue: '#42a5f5', purple: '#ab73e8',
-        garbage: '#d3edf4',
+        garbage: '#d3edf4', hardGarbage: '#9cdef6',
         // 예고뿌요 전용 색상이다. 방해뿌요의 투명도·눈·반사선은 그대로 두고 본체 색만 바꾼다.
         warningInk: '#30363f'
     };
@@ -173,7 +175,7 @@
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
             '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '켜기': 'On', '끄기': 'Off', '그래픽 설정': 'Graphics quality', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
-            '플레이 방법': 'How to Play', '갤러리': 'Gallery', '대상 유형': 'Category', '대상': 'Item', '일반뿌요': 'Puyos', '예고뿌요': 'Warning Puyos', '적': 'Enemies', '빨강뿌요': 'Red Puyo', '초록뿌요': 'Green Puyo', '노랑뿌요': 'Yellow Puyo', '파랑뿌요': 'Blue Puyo', '보라뿌요': 'Purple Puyo', '방해뿌요': 'Garbage Puyo', '작은 예고뿌요': 'Small Warning Puyo', '큰 예고뿌요': 'Large Warning Puyo', '빨간 돌': 'Red Rock', '별': 'Star', '태양': 'Sun', '중성자별': 'Neutron Star', '블랙홀': 'Black Hole', '위기': 'Crisis', '다시보기': 'Replay',
+            '플레이 방법': 'How to Play', '갤러리': 'Gallery', '대상 유형': 'Category', '대상': 'Item', '일반뿌요': 'Puyos', '예고뿌요': 'Warning Puyos', '적': 'Enemies', '빨강뿌요': 'Red Puyo', '초록뿌요': 'Green Puyo', '노랑뿌요': 'Yellow Puyo', '파랑뿌요': 'Blue Puyo', '보라뿌요': 'Purple Puyo', '방해뿌요': 'Garbage Puyo', '딱딱뿌요': 'Hard Puyo', '작은 예고뿌요': 'Small Warning Puyo', '큰 예고뿌요': 'Large Warning Puyo', '빨간 돌': 'Red Rock', '별': 'Star', '태양': 'Sun', '중성자별': 'Neutron Star', '블랙홀': 'Black Hole', '위기': 'Crisis', '다시보기': 'Replay',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': 'An all clear gives you a powerful attack.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
             '은하': 'Galaxy',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
@@ -191,7 +193,7 @@
             'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
             '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
             '설정': '設定', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '켜기': 'オン', '끄기': 'オフ', '그래픽 설정': 'グラフィック設定', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', 'AI API 테스트': 'AI APIテスト', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 관련 기능은 추후 제공 예정': 'サウンド機能は今後のアップデートで提供予定です。', '설정 저장 후 다시 시도해 주세요': '設定を保存してから、もう一度お試しください。', 'AI API 테스트 요청 중...': 'AI APIをテスト中…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI APIテスト成功（JSONスキーマ検証: 合格）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI APIテスト失敗（JSONスキーマ検証: 失敗）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI APIテスト失敗（JSONスキーマ検証: 未実施）',
-            '플레이 방법': '遊び方', '갤러리': 'ギャラリー', '대상 유형': '種類', '대상': '対象', '일반뿌요': 'ぷよ', '예고뿌요': '予告ぷよ', '적': '敵', '빨강뿌요': '赤ぷよ', '초록뿌요': '緑ぷよ', '노랑뿌요': '黄ぷよ', '파랑뿌요': '青ぷよ', '보라뿌요': '紫ぷよ', '방해뿌요': 'おじゃまぷよ', '작은 예고뿌요': '小さい予告ぷよ', '큰 예고뿌요': '大きい予告ぷよ', '빨간 돌': '赤い岩', '별': '星', '태양': '太陽', '중성자별': '中性子星', '블랙홀': 'ブラックホール', '위기': 'ピンチ', '다시보기': 'もう一度見る',
+            '플레이 방법': '遊び方', '갤러리': 'ギャラリー', '대상 유형': '種類', '대상': '対象', '일반뿌요': 'ぷよ', '예고뿌요': '予告ぷよ', '적': '敵', '빨강뿌요': '赤ぷよ', '초록뿌요': '緑ぷよ', '노랑뿌요': '黄ぷよ', '파랑뿌요': '青ぷよ', '보라뿌요': '紫ぷよ', '방해뿌요': 'おじゃまぷよ', '딱딱뿌요': 'かたぷよ', '작은 예고뿌요': '小さい予告ぷよ', '큰 예고뿌요': '大きい予告ぷよ', '빨간 돌': '赤い岩', '별': '星', '태양': '太陽', '중성자별': '中性子星', '블랙홀': 'ブラックホール', '위기': 'ピンチ', '다시보기': 'もう一度見る',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '左右・下キーでぷよを動かし、Z・Xキーで回転できます。', '좌우 방향키로 뿌요 이동': '左右キーでぷよを移動', '아래 방향키로 빨리 떨어뜨리기': '下キーで速く落下', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Zキーで左回転', 'X 키를 눌러 우측으로 뿌요 회전': 'Xキーで右回転', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '同じ色のぷよを4個以上つなげると消して攻撃できます。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '同じ色のぷよ4個がつながり、相手を攻撃できます。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'ぷよが消えると、隣接するおじゃまぷよも消えます。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '連鎖でぷよを消すと、より強く攻撃できます。', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': '全消しをすると強力な攻撃ができます。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '3段目の端にぷよが残ると負けです。',
             '은하': '銀河',
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
@@ -210,7 +212,7 @@
             'JSON복사': '复制 JSON', 'JSON넣기': '粘贴 JSON', '배치가 클립보드에 복사됨': '布局已复制到剪贴板',
             '클립보드 복사 실패': '复制到剪贴板失败', 'JSON 파싱 실패': 'JSON 解析失败', '배치 JSON을 입력하세요.': '请输入布局 JSON。',
             '설정': '设置', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '켜기': '开启', '끄기': '关闭', '그래픽 설정': '图形设置', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', 'AI API 테스트': 'AI API 测试', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 관련 기능은 추후 제공 예정': '声音功能将在未来更新中提供。', '설정 저장 후 다시 시도해 주세요': '请先保存设置后再试。', 'AI API 테스트 요청 중...': '正在测试 AI API…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API 测试成功（JSON 架构检查：通过）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API 测试失败（JSON 架构检查：失败）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API 测试失败（JSON 架构检查：未执行）',
-            '플레이 방법': '玩法说明', '갤러리': '图鉴', '대상 유형': '类别', '대상': '对象', '일반뿌요': '普通噗哟', '예고뿌요': '预告噗哟', '적': '敌人', '빨강뿌요': '红噗哟', '초록뿌요': '绿噗哟', '노랑뿌요': '黄噗哟', '파랑뿌요': '蓝噗哟', '보라뿌요': '紫噗哟', '방해뿌요': '垃圾噗哟', '작은 예고뿌요': '小型预告噗哟', '큰 예고뿌요': '大型预告噗哟', '빨간 돌': '红色岩石', '별': '星星', '태양': '太阳', '중성자별': '中子星', '블랙홀': '黑洞', '위기': '危机', '다시보기': '再次观看',
+            '플레이 방법': '玩法说明', '갤러리': '图鉴', '대상 유형': '类别', '대상': '对象', '일반뿌요': '普通噗哟', '예고뿌요': '预告噗哟', '적': '敌人', '빨강뿌요': '红噗哟', '초록뿌요': '绿噗哟', '노랑뿌요': '黄噗哟', '파랑뿌요': '蓝噗哟', '보라뿌요': '紫噗哟', '방해뿌요': '垃圾噗哟', '딱딱뿌요': '硬噗哟', '작은 예고뿌요': '小型预告噗哟', '큰 예고뿌요': '大型预告噗哟', '빨간 돌': '红色岩石', '별': '星星', '태양': '太阳', '중성자별': '中子星', '블랙홀': '黑洞', '위기': '危机', '다시보기': '再次观看',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '使用左右和下方向键移动噗哟，使用 Z、X 键旋转。', '좌우 방향키로 뿌요 이동': '用左右方向键移动噗哟', '아래 방향키로 빨리 떨어뜨리기': '用下方向键快速落下', 'Z 키를 눌러 좌측으로 뿌요 회전': '按 Z 键向左旋转', 'X 키를 눌러 우측으로 뿌요 회전': '按 X 键向右旋转', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '连接四个或更多相同颜色的噗哟即可消除并攻击对手。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '四个相同颜色的噗哟连接后可以攻击对手。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': '消除噗哟时，相邻的垃圾噗哟也会一起消失。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '连续消除噗哟可以发动更强的攻击。', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': '全消时可以发动强力攻击。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '噗哟停留在第 3 行末端时会失败。',
             '은하': '银河',
             '음소거(꺼짐)' : '静音（关）', '음소거(활성)' : '静音（开）'
@@ -1748,7 +1750,7 @@
             const color = board[y][x];
             const key = `${x},${y}`;
             // 빈칸, 방해뿌요, 이미 조사한 색 뿌요는 탐색 대상에서 제외한다.
-            if (!color || color === 'garbage' || visited.has(key)) continue;
+            if (!COLORS.includes(color) || visited.has(key)) continue;
             const group = [];
             const queue = [[x, y]];
             visited.add(key);
@@ -1790,16 +1792,56 @@
     }
 
     /**
+     * 폭발한 색 뿌요에 인접한 방해뿌요의 제거·약화 결과를 계산한다.
+     * 딱딱뿌요는 인접 폭발이 한 개면 일반 방해뿌요로 약화되고, 두 개 이상이면 즉시 파괴된다.
+     * @param {(string|null)[][]} board 처리 전 보드
+     * @param {number[][]} exploding 이번 단계에 폭발한 색 뿌요 좌표
+     * @returns {{removed:Map<string,{x:number,y:number,color:string}>,degradedHardGarbage:{x:number,y:number}[],brokenHardGarbageCount:number}}
+     */
+    function getExplosionResolution(board, exploding) {
+        const removed = new Map(exploding.map(([x, y]) => [`${x},${y}`, { x, y, color: board[y][x] }]));
+        const hardGarbageHits = new Map();
+        exploding.forEach(([x, y]) => DIRECTIONS.forEach(([deltaX, deltaY]) => {
+            const nextX = x + deltaX;
+            const nextY = y + deltaY;
+            if (nextX < 0 || nextX >= COLUMNS || nextY < 0 || nextY >= ROWS) return;
+            const color = board[nextY][nextX];
+            const key = `${nextX},${nextY}`;
+            if (color === 'garbage') removed.set(key, { x: nextX, y: nextY, color });
+            else if (color === HARD_GARBAGE) hardGarbageHits.set(key, (hardGarbageHits.get(key) || 0) + 1);
+        }));
+        const degradedHardGarbage = [];
+        let brokenHardGarbageCount = 0;
+        hardGarbageHits.forEach((hitCount, key) => {
+            const [x, y] = key.split(',').map(Number);
+            if (hitCount >= 2) {
+                removed.set(key, { x, y, color: HARD_GARBAGE });
+                brokenHardGarbageCount += 1;
+            } else {
+                degradedHardGarbage.push({ x, y });
+            }
+        });
+        return { removed, degradedHardGarbage, brokenHardGarbageCount };
+    }
+
+    /** 폭발 영향 계산 결과를 보드에 반영한다. @param {(string|null)[][]} board 대상 보드 @param {{removed:Map<string,{x:number,y:number,color:string}>,degradedHardGarbage:{x:number,y:number}[]}} resolution 폭발 영향 @returns {void} */
+    function applyExplosionResolution(board, resolution) {
+        resolution.degradedHardGarbage.forEach(({ x, y }) => { board[y][x] = 'garbage'; });
+        resolution.removed.forEach(({ x, y }) => { board[y][x] = null; });
+    }
+
+    /**
      * 한 폭발 단계의 점수 증가량을 계산한다. 인접 방해뿌요는 점수용 뿌요 수에 포함하지 않는다.
      * @param {{color:string, cells:number[][]}[]} explosionGroups 이번 단계에 폭발한 색 뿌요 연결 그룹
      * @param {number} combo 현재 연쇄 수
+     * @param {number} [brokenHardGarbageCount=0] 이번 단계에서 한 번에 파괴한 딱딱뿌요 수
      * @returns {number} 이번 폭발 단계의 점수 증가량
      */
-    function calculateExplosionPoint(explosionGroups, combo) {
+    function calculateExplosionPoint(explosionGroups, combo, brokenHardGarbageCount = 0) {
         const puyoCount = explosionGroups.reduce((total, group) => total + group.cells.length, 0);
         const connectionBonus = explosionGroups.reduce((total, group) => total + getConnectionBonus(group.cells.length), 0);
         const colorBonus = getColorBonus(new Set(explosionGroups.map((group) => group.color)).size);
-        const bonus = Math.max(1, getChainBonus(combo) + connectionBonus + colorBonus);
+        const bonus = Math.max(1, getChainBonus(combo) + connectionBonus + colorBonus) + brokenHardGarbageCount * 5;
         return puyoCount * bonus * 10;
     }
 
@@ -1870,18 +1912,7 @@
         while (true) {
             const exploding = findExplosionsOnBoard(simulatedBoard);
             if (!exploding.length) return isDefeatBoard(simulatedBoard);
-            const removed = new Set(exploding.map(([x, y]) => `${x},${y}`));
-            exploding.forEach(([x, y]) => DIRECTIONS.forEach(([deltaX, deltaY]) => {
-                const nextX = x + deltaX;
-                const nextY = y + deltaY;
-                if (nextX >= 0 && nextX < COLUMNS && nextY >= 0 && nextY < ROWS && simulatedBoard[nextY][nextX] === 'garbage') {
-                    removed.add(`${nextX},${nextY}`);
-                }
-            }));
-            removed.forEach((key) => {
-                const [x, y] = key.split(',').map(Number);
-                simulatedBoard[y][x] = null;
-            });
+            applyExplosionResolution(simulatedBoard, getExplosionResolution(simulatedBoard, exploding));
             simulatedBoard = collapseBoard(simulatedBoard);
         }
     }
@@ -1910,16 +1941,7 @@
         while (true) {
             const exploding = findExplosionsOnBoard(board);
             if (!exploding.length) return board;
-            const removed = new Set(exploding.map(([x, y]) => `${x},${y}`));
-            exploding.forEach(([x, y]) => DIRECTIONS.forEach(([deltaX, deltaY]) => {
-                const nextX = x + deltaX;
-                const nextY = y + deltaY;
-                if (nextX >= 0 && nextX < COLUMNS && nextY >= 0 && nextY < ROWS && board[nextY][nextX] === 'garbage') removed.add(`${nextX},${nextY}`);
-            }));
-            removed.forEach((key) => {
-                const [x, y] = key.split(',').map(Number);
-                board[y][x] = null;
-            });
+            applyExplosionResolution(board, getExplosionResolution(board, exploding));
             board = collapseBoard(board);
         }
     }
@@ -2018,18 +2040,10 @@
             const explosionGroups = findExplosionGroupsOnBoard(board);
             if (!explosionGroups.length) return attack;
             const exploding = explosionGroups.flatMap((group) => group.cells);
+            const resolution = getExplosionResolution(board, exploding);
             combo += 1;
-            attack += calculateExplosionAttack(calculateExplosionPoint(explosionGroups, combo));
-            const removed = new Set(exploding.map(([x, y]) => `${x},${y}`));
-            exploding.forEach(([x, y]) => DIRECTIONS.forEach(([deltaX, deltaY]) => {
-                const nextX = x + deltaX;
-                const nextY = y + deltaY;
-                if (nextX >= 0 && nextX < COLUMNS && nextY >= 0 && nextY < ROWS && board[nextY][nextX] === 'garbage') removed.add(`${nextX},${nextY}`);
-            }));
-            removed.forEach((key) => {
-                const [x, y] = key.split(',').map(Number);
-                board[y][x] = null;
-            });
+            attack += calculateExplosionAttack(calculateExplosionPoint(explosionGroups, combo, resolution.brokenHardGarbageCount));
+            applyExplosionResolution(board, resolution);
             board = collapseBoard(board);
         }
     }
@@ -2058,16 +2072,7 @@
             const exploding = findExplosionsOnBoard(board);
             if (!exploding.length) return combo;
             combo += 1;
-            const removed = new Set(exploding.map(([x, y]) => `${x},${y}`));
-            exploding.forEach(([x, y]) => DIRECTIONS.forEach(([deltaX, deltaY]) => {
-                const nextX = x + deltaX;
-                const nextY = y + deltaY;
-                if (nextX >= 0 && nextX < COLUMNS && nextY >= 0 && nextY < ROWS && board[nextY][nextX] === 'garbage') removed.add(`${nextX},${nextY}`);
-            }));
-            removed.forEach((key) => {
-                const [x, y] = key.split(',').map(Number);
-                board[y][x] = null;
-            });
+            applyExplosionResolution(board, getExplosionResolution(board, exploding));
             board = collapseBoard(board);
         }
     }
@@ -2083,19 +2088,10 @@
         const exploding = explosionGroups.flatMap((group) => group.cells);
         // 이번 단계에 폭발할 색 뿌요가 있으면 점수와 공격을 처리한다.
         if (exploding.length) {
-            const removed = new Map(exploding.map(([x, y]) => [`${x},${y}`, { x, y, color: player.board[y][x] }]));
-            exploding.forEach(([x, y]) => {
-                DIRECTIONS.forEach(([deltaX, deltaY]) => {
-                    const nextX = x + deltaX;
-                    const nextY = y + deltaY;
-                    if (nextX >= 0 && nextX < COLUMNS && nextY >= 0 && nextY < ROWS && player.board[nextY][nextX] === 'garbage') {
-                        removed.set(`${nextX},${nextY}`, { x: nextX, y: nextY, color: 'garbage' });
-                    }
-                });
-            });
+            const resolution = getExplosionResolution(player.board, exploding);
             player.combo += 1;
             playComboSounds(player);
-            const point = calculateExplosionPoint(explosionGroups, player.combo);
+            const point = calculateExplosionPoint(explosionGroups, player.combo, resolution.brokenHardGarbageCount);
             player.point += point;
             player.attack += calculateExplosionAttack(point);
             // 피버 룰에서는 상쇄할 DAMAGE 또는 상대 ATTACK이 있으면 폭발 공격을 최소 1 이상 보장한다.
@@ -2105,8 +2101,8 @@
             const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
             sendAttackEnergy(player, opponent, center.x / exploding.length, center.y / exploding.length);
             player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
-            removed.forEach((puyo) => { player.board[puyo.y][puyo.x] = null; });
-            player.effects = { cells: [...removed.values()], elapsed: 0, duration: 430 };
+            applyExplosionResolution(player.board, resolution);
+            player.effects = { cells: [...resolution.removed.values()], elapsed: 0, duration: 430 };
             player.phase = 'burst';
             player.phaseTimer = 0;
             return;
@@ -2656,7 +2652,7 @@
     }
 
     /**
-     * 눈이 있는 색 뿌요 또는 반투명 방해뿌요를 그린다.
+     * 눈이 있는 색 뿌요, 방해뿌요 또는 딱딱뿌요를 그린다.
      * @param {number} x 셀의 왼쪽 X 좌표
      * @param {number} y 셀의 위쪽 Y 좌표
      * @param {string} color 뿌요 색상 종류
@@ -2667,6 +2663,31 @@
         const radius = CELL * 0.42 * scale;
         context.save();
         context.translate(x + CELL / 2, y + CELL / 2);
+        if (color === HARD_GARBAGE) {
+            const halfWidth = radius * 1.08;
+            const halfHeight = radius * 0.86;
+            const corner = radius * 0.16;
+            const ice = context.createLinearGradient(-halfWidth, -halfHeight, halfWidth, halfHeight);
+            ice.addColorStop(0, '#e9fbff'); ice.addColorStop(0.44, '#9cdef6'); ice.addColorStop(1, '#4fa9d2');
+            context.fillStyle = ice;
+            context.beginPath();
+            context.moveTo(-halfWidth + corner, -halfHeight);
+            context.lineTo(halfWidth - corner, -halfHeight);
+            context.lineTo(halfWidth, -halfHeight + corner);
+            context.lineTo(halfWidth, halfHeight - corner);
+            context.lineTo(halfWidth - corner, halfHeight);
+            context.lineTo(-halfWidth + corner, halfHeight);
+            context.lineTo(-halfWidth, halfHeight - corner);
+            context.lineTo(-halfWidth, -halfHeight + corner);
+            context.closePath();
+            context.fill();
+            context.strokeStyle = '#dff8ff'; context.lineWidth = 2; context.stroke();
+            context.strokeStyle = 'rgba(255, 255, 255, 0.8)'; context.lineWidth = 1.5;
+            context.beginPath(); context.moveTo(-halfWidth + corner * 1.5, -halfHeight + corner * 1.2); context.lineTo(halfWidth * 0.45, -halfHeight + corner * 1.2); context.stroke();
+            drawPuyoEyes(radius * 0.86, radius * 0.08);
+            context.restore();
+            return;
+        }
         context.fillStyle = PALETTE[color];
         const garbageStyle = color === 'garbage' || color === 'warningInk';
         context.globalAlpha = garbageStyle ? 0.75 : 1;
@@ -4104,8 +4125,8 @@
         if (!gallery) return [];
         const type = getGalleryTypes()[gallery.typeIndex]?.key;
         if (type === 'puyo') {
-            const labels = { red: '빨강뿌요', green: '초록뿌요', yellow: '노랑뿌요', blue: '파랑뿌요', purple: '보라뿌요', garbage: '방해뿌요' };
-            return [...COLORS, 'garbage'].map((color) => ({
+            const labels = { red: '빨강뿌요', green: '초록뿌요', yellow: '노랑뿌요', blue: '파랑뿌요', purple: '보라뿌요', garbage: '방해뿌요', [HARD_GARBAGE]: '딱딱뿌요' };
+            return [...COLORS, 'garbage', HARD_GARBAGE].map((color) => ({
                 id: color, label: labels[color], locked: false,
                 draw: () => {
                     context.save(); context.translate(805, 410); context.scale(5.6, 5.6);
@@ -4235,8 +4256,8 @@
 
     /** 시뮬레이터 팔레트와 버튼 영역을 반환한다. @returns {{kind:string,value:string|null,x:number,y:number,width:number,height:number}[]} */
     function getSimulatorPaletteItems() {
-        const items = [...COLORS, 'garbage'].map((color, index) => ({ kind: 'puyo', value: color, x: 906 + (index % 3) * (CELL + 6), y: 184 + Math.floor(index / 3) * (CELL + 6), width: CELL, height: CELL }));
-        items.push({ kind: 'eraser', value: 'eraser', x: 906, y: 272, width: CELL, height: CELL });
+        const items = [...COLORS, 'garbage', HARD_GARBAGE].map((color, index) => ({ kind: 'puyo', value: color, x: 906 + (index % 3) * (CELL + 6), y: 184 + Math.floor(index / 3) * (CELL + 6), width: CELL, height: CELL }));
+        items.push({ kind: 'eraser', value: 'eraser', x: 954, y: 272, width: CELL, height: CELL });
         items.push(
             { kind: 'play', value: null, x: 906, y: 332, width: CELL * 3, height: CELL },
             { kind: 'copyJson', value: null, x: 906, y: 378, width: CELL * 3, height: CELL },
@@ -4285,7 +4306,7 @@
             if (!parsed || !Array.isArray(parsed.puyos)) throw new TypeError('puyos 배열이 필요합니다.');
             const board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
             parsed.puyos.forEach((puyo) => {
-                if (!puyo || !Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= SIMULATOR_EDITABLE_ROWS || ![...COLORS, 'garbage'].includes(puyo.color)) {
+                if (!puyo || !Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= SIMULATOR_EDITABLE_ROWS || ![...COLORS, 'garbage', HARD_GARBAGE].includes(puyo.color)) {
                     throw new TypeError('유효하지 않은 뿌요 좌표 또는 색상입니다.');
                 }
                 if (board[puyo.y][puyo.x]) throw new TypeError('같은 칸에 뿌요가 중복됩니다.');
@@ -4342,20 +4363,16 @@
         const explosionGroups = findExplosionGroupsOnBoard(player.board);
         const exploding = explosionGroups.flatMap((group) => group.cells);
         if (!exploding.length) return false;
-        const removed = new Map(exploding.map(([x, y]) => [`${x},${y}`, { x, y, color: player.board[y][x] }]));
-        exploding.forEach(([x, y]) => DIRECTIONS.forEach(([dx, dy]) => {
-            const nx = x + dx; const ny = y + dy;
-            if (nx >= 0 && nx < COLUMNS && ny >= 0 && ny < ROWS && player.board[ny][nx] === 'garbage') removed.set(`${nx},${ny}`, { x: nx, y: ny, color: 'garbage' });
-        }));
-        removed.forEach(({ x, y }) => { player.board[y][x] = null; });
+        const resolution = getExplosionResolution(player.board, exploding);
+        applyExplosionResolution(player.board, resolution);
         player.combo += 1;
         const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
         player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
-        const point = calculateExplosionPoint(explosionGroups, player.combo);
+        const point = calculateExplosionPoint(explosionGroups, player.combo, resolution.brokenHardGarbageCount);
         player.point += point;
         player.attack += calculateExplosionAttack(point);
         sendAttackEnergy(player, simulator.target, center.x / exploding.length, center.y / exploding.length);
-        player.effects = { cells: [...removed.values()], elapsed: 0, duration: 420 }; player.phase = 'simulatorEffect';
+        player.effects = { cells: [...resolution.removed.values()], elapsed: 0, duration: 420 }; player.phase = 'simulatorEffect';
         return true;
     }
 
