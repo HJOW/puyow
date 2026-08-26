@@ -49,10 +49,24 @@ document.addEventListener("DOMContentLoaded", function() {
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, initialize } = require('./src/webpuyo.js');
+const { Enemy, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, initialize } = require('./src/webpuyo.js');
 ```
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 1280x720 canvas를 만들어 게임을 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 그대로 사용하고 `destroy()`가 요소를 제거하지 않습니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
+
+## 화면 상단 메시지 표시
+
+`WebPuyo.showMessage(message, color = 'white', duration = 2000)`는 현재 화면의 최상단에 메시지를 표시합니다. `message`는 필수 문자열이고, `color`는 선택 사항인 CSS 글자 색상 문자열이며, `duration`은 페이드 아웃 전 메시지를 유지할 시간(밀리초)입니다. 기본값은 각각 `'white'`, `2000`입니다. 유지 시간이 지난 뒤 500ms 동안 페이드 아웃되어 사라지며, 새 메시지를 표시하면 이전 메시지를 교체합니다.
+
+이 함수는 다국어 처리를 하지 않고 받은 문자열을 그대로 표시합니다. 따라서 번역이 필요하다면 호출자가 먼저 번역한 뒤 전달해야 합니다.
+
+```js
+const message = translateForMyApp('Saved');
+WebPuyo.showMessage(message);
+WebPuyo.showMessage(message, '#f7c843', 3000);
+```
+
+WebMCP를 지원하는 브라우저에서는 AI도 `show_message` 도구로 동일한 동작을 호출할 수 있습니다. 도구의 `message`는 이미 현지화된 문자열이어야 하며, `color`와 `duration`의 기본값은 각각 `'white'`, `2000`입니다.
 
 ## 공지사항 경로 설정
 

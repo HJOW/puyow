@@ -237,6 +237,10 @@
     let settingsCursor = 0;
     /** AI API 테스트 안내문과 표시 경과 시간이다. @type {{message:string, elapsed:number}|null} */
     let settingsApiTestMessage = null;
+    /** 화면 최상단에 표시할 외부 메시지다. @type {{message:string,color:string,elapsed:number,duration:number}|null} */
+    let screenMessage = null;
+    /** 외부 메시지가 유지 시간 뒤 사라지는 데 걸리는 시간(ms)이다. @type {number} */
+    const SCREEN_MESSAGE_FADE_DURATION = 500;
     /** AI API 테스트 요청이 진행 중인지 여부다. @type {boolean} */
     let settingsApiTestPending = false;
     /** 종료된 설정 화면의 비동기 응답을 무시하기 위한 요청 식별자다. @type {number} */
@@ -4604,37 +4608,53 @@
         context.clearRect(0, 0, WIDTH, HEIGHT);
         if (settingsResetting) {
             drawSettingsResetting();
-            return;
-        }
-        // 진행 중인 게임이 없으면 현재 메뉴 화면만 렌더링한다.
-        if (!game) {
+        } else if (!game) {
+            // 진행 중인 게임이 없으면 현재 메뉴 화면만 렌더링한다.
             if (menuScreen === 'initialTitle') drawInitialTitle();
             else if (menuScreen === 'simulator' && simulator) drawSimulator();
             else if (menuScreen === 'settings' && settingsDraft) drawSettings();
             else if (menuScreen === 'gallery' && gallery) drawGallery();
             else drawMenu();
-            return;
-        }
-        if (game.tutorial) {
+        } else if (game.tutorial) {
             drawTutorial();
-            return;
-        }
-        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        // 게임이 끝났으면 결과 화면으로 전환한다.
-        if (!game.running) {
+        } else if (!game.running) {
+            context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+            // 게임이 끝났으면 결과 화면으로 전환한다.
             drawResultField(game.players[0]); drawResultField(game.players[1]); drawResultCenter();
-            return;
+        } else {
+            context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+            drawField(game.players[0], game.players[1]); drawField(game.players[1], game.players[0]); drawCenter(); drawEnergyTransfers();
+            if (shouldShowVirtualController()) drawVirtualController();
+            // 시작 또는 재개 카운트다운 중에는 카운트다운 오버레이를 최상단에 표시한다.
+            if (game.countdown > 0) {
+                context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+                context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `76px ${TITLE_FONT}`;
+                context.fillText(String(Math.ceil(game.countdown / 1000)), WIDTH / 2, 390);
+            } else if (game.paused) {
+                drawPauseOverlay();
+            }
         }
-        drawField(game.players[0], game.players[1]); drawField(game.players[1], game.players[0]); drawCenter(); drawEnergyTransfers();
-        if (shouldShowVirtualController()) drawVirtualController();
-        // 시작 또는 재개 카운트다운 중에는 카운트다운 오버레이를 최상단에 표시한다.
-        if (game.countdown > 0) {
-            context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(0, 0, WIDTH, HEIGHT);
-            context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `76px ${TITLE_FONT}`;
-            context.fillText(String(Math.ceil(game.countdown / 1000)), WIDTH / 2, 390);
-        } else if (game.paused) {
-            drawPauseOverlay();
-        }
+        drawScreenMessage();
+    }
+
+    /** 화면 최상단에 표시 중인 외부 메시지를 그린다. @returns {void} */
+    function drawScreenMessage() {
+        if (!screenMessage) return;
+        const fadeProgress = Math.max(0, Math.min(1, (screenMessage.elapsed - screenMessage.duration) / SCREEN_MESSAGE_FADE_DURATION));
+        context.save();
+        context.globalAlpha = 1 - fadeProgress;
+        context.textAlign = 'center';
+        context.fillStyle = screenMessage.color;
+        context.font = `28px ${MESSAGE_FONT}`;
+        context.fillText(screenMessage.message, WIDTH / 2, 54);
+        context.restore();
+    }
+
+    /** 화면 최상단 메시지의 경과 시간을 갱신한다. @param {number} delta 이전 프레임 후 경과한 밀리초 @returns {void} */
+    function updateScreenMessage(delta) {
+        if (!screenMessage) return;
+        screenMessage.elapsed += delta;
+        if (screenMessage.elapsed >= screenMessage.duration + SCREEN_MESSAGE_FADE_DURATION) screenMessage = null;
     }
 
     /** 카운트다운과 일시정지 밖에서 연속 피버 남은 시간을 0까지 감소시킨다. @param {number} delta 이전 프레임 후 경과한 밀리초 @returns {void} */
@@ -4660,6 +4680,7 @@
         const delta = Math.min(50, time - lastTime || 0);
         lastTime = time;
         updateGamepadInput();
+        updateScreenMessage(delta);
         if (!game && menuScreen === 'settings') updateSettingsApiTestMessage(delta);
         // 플레이 방법은 결과 화면 표시 시간까지 갱신하고, 일반 게임은 실행 중일 때만 갱신한다.
         if (game?.tutorial && !game.paused) {
@@ -5324,6 +5345,21 @@
     }
 
     /**
+     * 현재 화면의 최상단에 원문 메시지를 표시한다. 다국어 변환은 호출 전에 처리해야 한다.
+     * @param {string} message 표시할 메시지
+     * @param {string} [color='white'] 글자 색상(CSS 색상 문자열)
+     * @param {number} [duration=2000] 페이드 아웃 전 유지 시간(밀리초)
+     * @returns {void}
+     */
+    function showMessage(message, color = 'white', duration = 2000) {
+        if (!initialized || !context) throw new Error('메시지를 표시하려면 먼저 WebPuyo.initialize()를 호출해야 합니다.');
+        if (typeof message !== 'string') throw new TypeError('message는 문자열이어야 합니다.');
+        if (typeof color !== 'string') throw new TypeError('color는 문자열이어야 합니다.');
+        if (typeof duration !== 'number' || !Number.isFinite(duration) || duration < 0) throw new RangeError('duration은 0 이상의 유한한 숫자여야 합니다.');
+        screenMessage = { message, color, elapsed: 0, duration };
+    }
+
+    /**
      * 현재 시뮬레이터 편집 상태의 읽기 전용 스냅샷을 반환한다.
      * @returns {{mode:'draw'|'simulation'|'settling'|'complete', selected:string, focusArea:'palette'|'board'|'complete', boardFocus:{x:number,y:number}, board:{columns:number,rows:number,visibleRows:number,editableRows:number,puyos:{x:number,y:number,color:string}[]}}|null}
      */
@@ -5488,7 +5524,7 @@
                 name: 'manual',
                 description: 'Return English instructions for playing Puyo W and using the other available game tools.',
                 inputSchema: emptyInput,
-                execute: () => 'Puyo W is a falling-pair puzzle battle. During a match control turn, use left/right to move, Z/X to rotate, and down to fall faster. Match four or more same-color puyos to clear them and send attacks. Fever-rule players have independent gauge, nextTime, targetCombo, leftTime, and fever field state. Use now_screen to identify the exact menu, gallery, simulator, tutorial, or match screen. Use now_game_status while a match is playing or paused, and point_recommend only during a controllable player turn.'
+                execute: () => 'Puyo W is a falling-pair puzzle battle. During a match control turn, use left/right to move, Z/X to rotate, and down to fall faster. Match four or more same-color puyos to clear them and send attacks. Fever-rule players have independent gauge, nextTime, targetCombo, leftTime, and fever field state. Use now_screen to identify the exact menu, gallery, simulator, tutorial, or match screen. Use now_game_status while a match is playing or paused, and point_recommend only during a controllable player turn. Use show_message to display already-localized text at the top of the current screen.'
             },
             {
                 name: 'now_screen',
@@ -5519,6 +5555,21 @@
                     if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COLUMNS || y < 0 || y >= VISIBLE_ROWS) throw new RangeError('x and y must identify a visible board cell.');
                     recommendedPoint = { x, y };
                 }
+            },
+            {
+                name: 'show_message',
+                description: 'Display an already-localized message at the top of the current screen. It remains visible for duration milliseconds (default 2000), then fades out. Do not use this tool for translation.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        message: { type: 'string', description: 'The already-localized text to display.' },
+                        color: { type: 'string', default: 'white', description: 'CSS text color.' },
+                        duration: { type: 'number', minimum: 0, default: 2000, description: 'Milliseconds to remain fully visible before fading out.' }
+                    },
+                    required: ['message'],
+                    additionalProperties: false
+                },
+                execute: ({ message, color = 'white', duration = 2000 }) => showMessage(message, color, duration)
             }
         ];
         tools.forEach((tool) => {
@@ -5540,6 +5591,7 @@
         if (settingsResetTimer !== null) window.clearTimeout(settingsResetTimer);
         settingsResetTimer = null;
         settingsResetting = false;
+        screenMessage = null;
         window.removeEventListener('keydown', handleKeydown);
         window.removeEventListener('keyup', handleKeyup);
         canvas.removeEventListener('click', handleCanvasClick);
@@ -7412,6 +7464,7 @@
         getSimulatorState,
         getGameState,
         getNextPairs,
+        showMessage,
         initialize,
         destroy,
         get commonSoundPool() { return commonSoundPool; }
