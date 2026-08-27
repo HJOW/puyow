@@ -1954,7 +1954,7 @@
 
     /** 현재 규칙의 패배 칸에 뿌요가 있는지 확인한다. 피버 룰과 연속 피버는 (2, 11) 및 (3, 11)을 검사한다. @param {(string|null)[][]} board 검사할 필드 @returns {boolean} 패배 여부 */
     function isDefeatBoard(board) {
-        return board[11][2] !== null || ((game?.feverRule === true || game?.continuousFever === true) && board[11][3] !== null);
+        return board[11][2] !== null || (usesSecondDefeatCell() && board[11][3] !== null);
     }
 
     /**
@@ -3258,6 +3258,25 @@
         game.themeController.drawPlayerBackground(context, area);
     }
 
+    /** 피버 룰 또는 연속 피버가 두 번째 패배 칸을 쓰는지 반환한다. @returns {boolean} 두 번째 패배 칸 사용 여부 */
+    function usesSecondDefeatCell() {
+        return game?.feverRule === true || game?.continuousFever === true;
+    }
+
+    /** 패배 조건 칸에 1칸 크기의 빨간 X 표시를 그린다. 뿌요보다 먼저 그려 점유 시 가려진다. @param {number} fieldX 필드 왼쪽 X 좌표 @param {boolean} [includeSecondCell=false] (3, 11) 칸도 표시할지 여부 @returns {void} */
+    function drawDefeatCellMarkers(fieldX, includeSecondCell = false) {
+        context.save();
+        context.strokeStyle = '#ef5350';
+        context.lineWidth = 5;
+        [2, ...(includeSecondCell ? [3] : [])].forEach((column) => {
+            const x = fieldX + column * CELL;
+            const y = FIELD_BOTTOM - VISIBLE_ROWS * CELL;
+            context.beginPath(); context.moveTo(x + 6, y + 6); context.lineTo(x + CELL - 6, y + CELL - 6); context.stroke();
+            context.beginPath(); context.moveTo(x + CELL - 6, y + 6); context.lineTo(x + 6, y + CELL - 6); context.stroke();
+        });
+        context.restore();
+    }
+
     /**
      * 한 플레이어의 필드, 예고줄, 낙하와 폭발 효과를 그린다.
      * @param {PlayerState} player 그릴 플레이어
@@ -3280,6 +3299,7 @@
         context.lineWidth = 1;
         for (let index = 0; index <= COLUMNS; index += 1) { context.beginPath(); context.moveTo(x + index * CELL, FIELD_TOP); context.lineTo(x + index * CELL, FIELD_BOTTOM); context.stroke(); }
         for (let index = 0; index <= VISIBLE_ROWS; index += 1) { context.beginPath(); context.moveTo(x, FIELD_TOP + index * CELL); context.lineTo(x + CELL * 6, FIELD_TOP + index * CELL); context.stroke(); }
+        drawDefeatCellMarkers(x, usesSecondDefeatCell());
         const fallingTargets = new Set((player.gravityAnimation?.falling || []).map((puyo) => `${puyo.x},${puyo.toY}`));
         // 패배 연출이 아닐 때 보이는 필드의 고정 뿌요를 한 칸씩 그린다.
         for (let y = 0; !isDefeated && y < VISIBLE_ROWS; y += 1) for (let column = 0; column < COLUMNS; column += 1) {
@@ -4531,6 +4551,7 @@
         context.strokeStyle = 'rgba(162,220,235,.14)'; context.lineWidth = 1;
         for (let i = 0; i <= COLUMNS; i += 1) { context.beginPath(); context.moveTo(x + i * CELL, FIELD_TOP); context.lineTo(x + i * CELL, FIELD_BOTTOM); context.stroke(); }
         for (let i = 0; i <= VISIBLE_ROWS; i += 1) { context.beginPath(); context.moveTo(x, FIELD_TOP + i * CELL); context.lineTo(x + COLUMNS * CELL, FIELD_TOP + i * CELL); context.stroke(); }
+        drawDefeatCellMarkers(x);
         const falling = new Set((player.gravityAnimation?.falling || []).map((puyo) => `${puyo.x},${puyo.toY}`));
         // 그리기 중에만 13번째 줄을 베젤 위에 표시한다. 시뮬레이션에서는 기존처럼 베젤 뒤에 숨긴다.
         const renderedRows = simulator.mode === 'draw' ? SIMULATOR_EDITABLE_ROWS : VISIBLE_ROWS;
@@ -4542,6 +4563,7 @@
         if (simulator.mode !== 'draw') drawSimulatorBezelForeground();
         if (simulator.mode === 'draw' && simulator.focusArea === 'board') { const focus = simulator.boardFocus; context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(x + focus.x * CELL + 2, FIELD_BOTTOM - (focus.y + 1) * CELL + 2, CELL - 4, CELL - 4); }
         context.fillStyle = '#071621'; context.fillRect(500, FIELD_TOP - CELL, 350, CELL * 14); context.fillStyle = '#0c2433'; context.fillRect(FIELD_RIGHT - CELL, FIELD_TOP - CELL, CELL * 8, CELL * 14);
+        drawDefeatCellMarkers(FIELD_RIGHT);
         for (let i = 0; i < COLUMNS; i += 1) { context.fillStyle = '#0a1d29'; context.fillRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); context.strokeStyle = 'rgba(176,232,244,.25)'; context.strokeRect(FIELD_RIGHT + i * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6); }
         drawWarningUnits(FIELD_RIGHT, FIELD_TOP - CELL, warningUnits(warningAmount(simulator.target, player)));
         drawEnergyTransfers();
