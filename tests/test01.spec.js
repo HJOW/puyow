@@ -491,6 +491,26 @@ test('피버 룰은 전용 적 선택 화면에서 4색을 골라 보라색 없�
   expect(state.opponent.fever).toMatchObject({ active: false, gauge: 0, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
 });
 
+test('피버 룰은 키보드로 3색을 선택해 초록·노랑·파랑만 사용하는 대전을 시작한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  const state = await page.evaluate(() => window.WebPuyo.getGameState());
+  expect(state.feverRule).toBe(true);
+  expect(state.colorCount).toBe(3);
+  expect(state.colors).toEqual(['green', 'yellow', 'blue']);
+  expect(state.player.nextPairs.flat().every((color) => state.colors.includes(color))).toBe(true);
+});
+
 test('기본·피버 룰 적 선택에서 극한 AI 난이도를 선택해 게임에 적용한다', async ({ page }) => {
   async function selectExtremeAndStart() {
     await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['극한', 'Extreme', '極限', '极限'].includes(text)))).toBe(true);
@@ -727,7 +747,7 @@ test('연속 피버와 피버 상태는 낮은 연쇄 뒤 4연쇄 피버 패턴�
   expect(await page.evaluate(() => window.WebPuyo.getGameState().opponent.fever.targetCombo)).toBe(4);
 });
 
-test('피버 룰의 일반 필드 싹쓸이는 4연쇄 패턴을 배치하고 마지막 전등 싹쓸이는 목표에 2를 더해 피버에 진입한다', async ({ page }) => {
+test('3색 피버 룰의 일반 필드 싹쓸이는 4연쇄 패턴을 배치한다', async ({ page }) => {
   await page.evaluate(() => {
     class NormalFeverAllClearEnemy extends window.WebPuyo.Enemy {
       constructor() { super(); this.sortPriority = -1; this.prepared = false; }
@@ -739,7 +759,7 @@ test('피버 룰의 일반 필드 싹쓸이는 4연쇄 패턴을 배치하고 �
         if (this.prepared) return;
         this.prepared = true;
         player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
-        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'green';
         player.hasPlacedPuyoSinceAllClear = true;
         player.phase = 'explode';
         player.phaseTimer = 0;
@@ -753,6 +773,7 @@ test('피버 룰의 일반 필드 싹쓸이는 4연쇄 패턴을 배치하고 �
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
@@ -910,7 +931,7 @@ test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
-test('연속 피버 색상 선택은 4색과 5색만 제공하고 선택한 색만 지급한다', async ({ page }) => {
+test('연속 피버는 키보드로 3색을 선택하고 피버 패턴도 선택한 색만 사용한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowDown');
@@ -918,15 +939,21 @@ test('연속 피버 색상 선택은 4색과 5색만 제공하고 선택한 색�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
 
+  await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('playing');
   const state = await page.evaluate(() => window.WebPuyo.getGameState());
   expect(state.continuousFever).toBe(true);
-  expect(state.colorCount).toBe(4);
-  expect(state.colors).toEqual(['red', 'green', 'yellow', 'blue']);
+  expect(state.colorCount).toBe(3);
+  expect(state.colors).toEqual(['green', 'yellow', 'blue']);
+  expect(state.player.board.puyos
+    .filter((puyo) => puyo.color !== 'garbage')
+    .every((puyo) => state.colors.includes(puyo.color))).toBe(true);
+  expect(state.player.active.colors.every((color) => state.colors.includes(color))).toBe(true);
 });
 
-test('연속 피버의 중앙 정렬된 5색 버튼은 마우스로 선택할 수 있다', async ({ page }) => {
+test('연속 피버의 중앙 정렬된 3색 버튼은 마우스로 선택할 수 있다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowDown');
@@ -934,9 +961,9 @@ test('연속 피버의 중앙 정렬된 5색 버튼은 마우스로 선택할 �
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
 
-  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 364 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 520, y: 364 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
-  expect(await page.evaluate(() => window.WebPuyo.getGameState().colorCount)).toBe(5);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().colorCount)).toBe(3);
 });
 
 test('플레이 방법 시연은 에너지 이동 초기화 오류 없이 시작한다', async ({ page }) => {
