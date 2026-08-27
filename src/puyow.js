@@ -3,6 +3,13 @@
  * Copyright 2026 HJOW
  * Licensed under the Apache License, Version 2.0.
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * 뿌요 W 2D 버전 스크립트
+ *     의존성
+ *         puyow.css  (캔버스 영역이 화면 100%를 차지하게 만들고, 기본 뒷배경 색 변경)
+ *         notice.txt (선택사항으로 공지사항 존재 시 이 곳에 기재)
+ *     html 예제
+ *         puyow.html
  */
 
 (() => {
@@ -5792,8 +5799,24 @@
     }
 
     /**
+     * 웹폰트를 import 하는 style 태그를 만들어 head 에 삽입한다.
+     */
+    function prepareFontImportStyle() {
+        // 먼저 기존 style 태그 존재여부 확인 (클래스 puyow_font_import)
+        const existingStyle = document.querySelector('style.puyow_font_import');
+        if (existingStyle) return;
+
+        const style = document.createElement('style');
+        style.className = 'puyow_font_import';
+        style.textContent = `
+            @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic+Coding&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans+SC:wght@100..900&family=Share+Tech+Mono&display=swap');
+        `;
+        document.head.appendChild(style);
+    }
+
+    /**
      * 지정한 캔버스에 게임을 연결하고 메뉴 렌더링을 시작한다.
-   * @param {HTMLCanvasElement|string|null} target 캔버스 요소 또는 요소 id. 생략 시 기본 캔버스를 찾거나 만든다.
+     * @param {HTMLCanvasElement|string|null} target 캔버스 요소 또는 요소 id. 생략 시 기본 캔버스를 찾거나 만든다.
      * @returns {void}
      */
     function initialize(target = null) {
@@ -5803,6 +5826,7 @@
         if (typeof document === 'undefined' || typeof window === 'undefined') {
             throw new Error('Web Puyo 초기화에는 브라우저 DOM 환경이 필요합니다.');
         }
+        prepareFontImportStyle();
         languageCode = navigator.language || navigator.userLanguage || 'ko';
         if (languageCode === 'ko-KR') languageCode = 'ko';
         loadStore();

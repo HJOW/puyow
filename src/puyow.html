@@ -8,6 +8,8 @@
         <title>Puyo W</title>
 
         <!--
+        뿌요 W 2D 버전 플레이 샘플
+
             Copyright 2026 HJOW
 
         Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,18 +25,14 @@
         limitations under the License.
         -->
 
-        <!-- Google Fonts (없으면 글꼴 미설치 PC에서 일부 텍스트가 다른 글꼴로 나옴) -->
-        <link rel="preconnect" href="https://fonts.googleapis.com"/>
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-        <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic&family=Nanum+Gothic+Coding&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans+SC:wght@100..900&display=swap" rel="stylesheet"/>
-        <!-- // Google Fonts -->
-
-        <!-- Google Ads 관련 -->
+        <!-- Google Ads 관련 (없어도 게임은 동작함) -->
         <script src="//imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
         <!-- // Google Ads 관련 -->
 
-        <!-- Game 관련 -->
+        <!-- manifest (이 webmanifest 가 있어야 PWA 앱으로도 설치할 수 있음, 없어도 게임 자체는 동작함) -->
         <link rel="manifest" href="manifest.webmanifest"/>
+
+        <!-- Game 관련 (필수) -->
         <link rel="stylesheet" href="puyow.css"/>
         <script defer src="puyow.js"></script>
         <!-- // Game 관련 -->
@@ -43,9 +41,8 @@
         <script>
             document.addEventListener("DOMContentLoaded", function() {
                 const canvas = document.getElementById("webpuyo_canvas");
-                // window.WebPuyo.setNoticeFile('https://hjow.github.io/puyow/src/notice.txt');
-                // Initialize the game here
-                window.WebPuyo.initialize(canvas);
+                // window.WebPuyo.setNoticeFile('https://hjow.github.io/puyow/src/notice.txt'); // 공지사항 URL을 변경
+                window.WebPuyo.initialize(canvas); // 게임 구동
             });
         </script>
     </head>
