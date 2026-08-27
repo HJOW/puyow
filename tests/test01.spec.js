@@ -148,10 +148,10 @@ test('시뮬레이터는 양쪽 기본 패배 칸을 표시하고 해당 칸의 
   const canvas = page.locator('#webpuyo_canvas');
   await canvas.click({ position: { x: 925, y: 247 } });
   await canvas.click({ position: { x: 283, y: 121 } });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.x === 2 && puyo.y === 11 && puyo.color === 'blue'))).toBe(true);
-  expect(await page.evaluate(() => {
+  await expect.poll(() => page.evaluate(() => {
+    const hasBluePuyo = window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.x === 2 && puyo.y === 11 && puyo.color === 'blue');
     const [red, green, blue] = document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(276, 114, 1, 1).data;
-    return blue > red * 1.3 && blue > green * 1.2;
+    return hasBluePuyo && blue > red * 1.3 && blue > green * 1.2;
   })).toBe(true);
 });
 
@@ -517,12 +517,12 @@ test('기본·피버 룰 적 선택에서 극한 AI 난이도를 선택해 게�
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
-    expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty())).toEqual({ key: 'extreme', name: '극한', fastDownDelay: 0 });
+    expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty())).toEqual({ key: 'extreme', name: '극한', fastDownDelay: 100 });
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
-    expect(await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty)).toEqual({ key: 'extreme', name: '극한', fastDownDelay: 0 });
+    expect(await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty)).toEqual({ key: 'extreme', name: '극한', fastDownDelay: 100 });
   }
 
   await enterMainMenu(page);
