@@ -34,9 +34,9 @@
     /** 패배 연출에서 필드 밖으로 더 떨어뜨릴 줄 수다. @type {number} */
     const DEFEAT_EXTRA_FALL_ROWS = 5;
     /** 메인 메뉴에서 갤러리 대상이 떠다니는 최소 개수다. 이 값을 바꾸면 추첨 범위가 함께 바뀐다. @type {number} */
-    const MAIN_MENU_GALLERY_FLOATER_MIN_COUNT = 3;
+    const MAIN_MENU_GALLERY_FLOATER_MIN_COUNT = 7;
     /** 메인 메뉴에서 갤러리 대상이 떠다니는 최대 개수다. 최소 개수 이상으로 설정한다. @type {number} */
-    const MAIN_MENU_GALLERY_FLOATER_MAX_COUNT = 5;
+    const MAIN_MENU_GALLERY_FLOATER_MAX_COUNT = 10;
     /** 필드 표시 영역의 위쪽 논리 좌표다. @type {number} */
     const FIELD_TOP = 102;
     /** 필드 표시 영역의 아래쪽 논리 좌표다. @type {number} */
@@ -593,24 +593,40 @@
         return shuffled;
     }
 
+    /** 메인 메뉴 떠다니는 후보를 추첨한다. 일반 뿌요는 중복하지 않고 방해·예고뿌요는 복원 추첨한다. @param {{allowDuplicate:boolean}[]} candidates 추첨 후보 @param {number} count 떠다닐 개수 @returns {{allowDuplicate:boolean}[]} 선택된 후보 */
+    function selectMainMenuGalleryFloaters(candidates, count) {
+        const uniqueCandidates = shuffleGalleryValues(candidates.filter((candidate) => !candidate.allowDuplicate));
+        const repeatableCandidates = candidates.filter((candidate) => candidate.allowDuplicate);
+        const selected = [];
+        while (selected.length < count && (uniqueCandidates.length || repeatableCandidates.length)) {
+            const pool = [...uniqueCandidates, ...repeatableCandidates];
+            const selectedCandidate = pool[Math.floor(randomFloat() * pool.length)];
+            selected.push(selectedCandidate);
+            if (!selectedCandidate.allowDuplicate) uniqueCandidates.splice(uniqueCandidates.indexOf(selectedCandidate), 1);
+        }
+        return selected;
+    }
+
     /** 메인 메뉴에서 떠다닐 갤러리 일반·방해·예고뿌요를 새로 추첨한다. @returns {void} */
     function createMainMenuGalleryFloaters() {
         try {
             loadGalleryUnlocks();
             const candidates = [...COLORS, 'garbage'].map((color) => ({
                 radius: CELL * 0.5,
+                allowDuplicate: color === 'garbage',
                 draw: () => drawPuyo(-CELL / 2, -CELL / 2, color, 0.82)
             }));
             WARNING_PUYO_CLASSES.forEach((WarningPuyoType) => {
                 const unit = new WarningPuyoType();
                 if (galleryUnlocks.warning.includes(unit.type)) candidates.push({
                     radius: CELL * 0.62,
+                    allowDuplicate: true,
                     draw: () => unit.draw(context, -CELL / 2, -CELL / 2, CELL)
                 });
             });
             const floaterCount = MAIN_MENU_GALLERY_FLOATER_MIN_COUNT
                 + Math.floor(randomFloat() * (MAIN_MENU_GALLERY_FLOATER_MAX_COUNT - MAIN_MENU_GALLERY_FLOATER_MIN_COUNT + 1));
-            const selected = shuffleGalleryValues(candidates).slice(0, Math.min(candidates.length, floaterCount));
+            const selected = selectMainMenuGalleryFloaters(candidates, floaterCount);
             mainMenuGalleryFloaters = selected.map((item) => {
                 const radius = item.radius;
                 const speed = 0.012 + randomFloat() * 0.012;
