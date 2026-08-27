@@ -74,6 +74,40 @@ test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
+test('일반·방해뿌요 클래스는 이름을 제공하고 캔버스에 직접 그린다', async ({ page }) => {
+  const rendered = await page.evaluate(() => {
+    const types = [
+      ['RedPuyo', 'red', '빨강뿌요'],
+      ['GreenPuyo', 'green', '초록뿌요'],
+      ['YellowPuyo', 'yellow', '노랑뿌요'],
+      ['BluePuyo', 'blue', '파랑뿌요'],
+      ['PurplePuyo', 'purple', '보라뿌요'],
+      ['GarbagePuyo', 'garbage', '방해뿌요'],
+      ['HardGarbagePuyo', 'hardGarbage', '딱딱뿌요'],
+    ];
+    return types.map(([className, expectedType, expectedName]) => {
+      const puyo = new window.WebPuyo[className]();
+      const canvas = document.createElement('canvas');
+      canvas.width = 38;
+      canvas.height = 38;
+      const drawingContext = canvas.getContext('2d');
+      puyo.draw(drawingContext, 0, 0, 38);
+      const painted = drawingContext.getImageData(0, 0, 38, 38).data.some((value, index) => index % 4 === 3 && value > 0);
+      return { className, type: puyo.type, name: puyo.getName(), isPuyo: puyo instanceof window.WebPuyo.Puyo, painted, expectedType, expectedName };
+    });
+  });
+
+  expect(rendered).toEqual([
+    { className: 'RedPuyo', type: 'red', name: '빨강뿌요', isPuyo: true, painted: true, expectedType: 'red', expectedName: '빨강뿌요' },
+    { className: 'GreenPuyo', type: 'green', name: '초록뿌요', isPuyo: true, painted: true, expectedType: 'green', expectedName: '초록뿌요' },
+    { className: 'YellowPuyo', type: 'yellow', name: '노랑뿌요', isPuyo: true, painted: true, expectedType: 'yellow', expectedName: '노랑뿌요' },
+    { className: 'BluePuyo', type: 'blue', name: '파랑뿌요', isPuyo: true, painted: true, expectedType: 'blue', expectedName: '파랑뿌요' },
+    { className: 'PurplePuyo', type: 'purple', name: '보라뿌요', isPuyo: true, painted: true, expectedType: 'purple', expectedName: '보라뿌요' },
+    { className: 'GarbagePuyo', type: 'garbage', name: '방해뿌요', isPuyo: true, painted: true, expectedType: 'garbage', expectedName: '방해뿌요' },
+    { className: 'HardGarbagePuyo', type: 'hardGarbage', name: '딱딱뿌요', isPuyo: true, painted: true, expectedType: 'hardGarbage', expectedName: '딱딱뿌요' },
+  ]);
+});
+
 test('메뉴에서 Z 키는 Enter 키처럼 동작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('z');

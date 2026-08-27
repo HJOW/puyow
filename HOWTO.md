@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", function() {
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, initialize } = require('./src/puyow.js');
+const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, initialize } = require('./src/puyow.js');
 ```
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 게임용 canvas를 만들어 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 사용하고 `destroy()`가 요소를 제거하지 않습니다. 다만 게임의 그래픽 설정에 따라 해당 canvas의 실제 `width`와 `height`는 설정됩니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
@@ -188,6 +188,12 @@ WebPuyo.initialize('webpuyo_canvas');
 ```
 
 같은 클래스를 두 번 등록하거나, `WarningPuyo`를 상속하지 않은 클래스, `draw()`를 구현하지 않은 클래스, 잘못된 단위값을 등록하면 오류가 발생합니다. 예고줄에는 기존과 같이 최대 6개 아이콘만 표시됩니다.
+
+## 일반·방해뿌요 렌더링 클래스
+
+일반뿌요와 방해뿌요는 `WebPuyo.Puyo`를 공통 기반으로 하는 내장 클래스 객체가 렌더링합니다. `RedPuyo`, `GreenPuyo`, `YellowPuyo`, `BluePuyo`, `PurplePuyo`, `GarbagePuyo`, `HardGarbagePuyo`는 각각 `getName()`과 `draw(drawingContext, x, y, cellSize, scale)`를 제공합니다. 갤러리도 같은 객체의 `getName()`과 `draw()`를 사용합니다.
+
+보드·저장 데이터·공개 상태의 종류 문자열은 이전과 동일하게 `'red'`, `'green'`, `'yellow'`, `'blue'`, `'purple'`, `'garbage'`, `'hardGarbage'`를 유지합니다. 기존 게임 로직은 이 문자열을 계속 사용하고, 화면에 그릴 때만 해당 클래스 객체의 `draw()`로 위임합니다.
 
 ## 음소거 토글 (끄기/켜기)
 

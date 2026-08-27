@@ -532,13 +532,16 @@
     function getInitialGalleryPreviewItems() {
         const centerX = WIDTH / 2;
         const centerY = 380;
-        const puyos = [...COLORS, 'garbage'].map((color) => ({
-            draw: () => {
-                context.save(); context.translate(centerX, centerY); context.scale(5.6, 5.6);
-                drawPuyo(-CELL / 2, -CELL / 2, color);
-                context.restore();
-            }
-        }));
+        const puyos = [...COLORS, 'garbage'].map((color) => {
+            const puyo = getPuyo(color);
+            return {
+                draw: () => {
+                    context.save(); context.translate(centerX, centerY); context.scale(5.6, 5.6);
+                    puyo.draw(context, -CELL / 2, -CELL / 2, CELL);
+                    context.restore();
+                }
+            };
+        });
         const warnings = [...WARNING_PUYO_CLASSES]
             .sort((left, right) => left.unitCount - right.unitCount)
             .map((WarningPuyoType) => new WarningPuyoType())
@@ -611,11 +614,14 @@
     function createMainMenuGalleryFloaters() {
         try {
             loadGalleryUnlocks();
-            const candidates = [...COLORS, 'garbage'].map((color) => ({
-                radius: CELL * 0.5,
-                allowDuplicate: color === 'garbage',
-                draw: () => drawPuyo(-CELL / 2, -CELL / 2, color, 0.82)
-            }));
+            const candidates = [...COLORS, 'garbage'].map((color) => {
+                const puyo = getPuyo(color);
+                return {
+                    radius: CELL * 0.5,
+                    allowDuplicate: color === 'garbage',
+                    draw: () => puyo.draw(context, -CELL / 2, -CELL / 2, CELL, 0.82)
+                };
+            });
             WARNING_PUYO_CLASSES.forEach((WarningPuyoType) => {
                 const unit = new WarningPuyoType();
                 if (galleryUnlocks.warning.includes(unit.type)) candidates.push({
@@ -2679,62 +2685,132 @@
     }
 
     /**
-     * 눈이 있는 색 뿌요, 방해뿌요 또는 딱딱뿌요를 그린다.
+     * 일반·방해뿌요가 공유하는 종류 식별자, 이름, 렌더링 규약이다.
+     * 하위 클래스는 고유한 모양을 그리거나 공통 슬라임 렌더링을 상속한다.
+     */
+    class Puyo {
+        /** @param {string} type 보드와 외부 상태에 쓰는 종류 식별자 @param {string} name 표시할 이름 */
+        constructor(type, name) {
+            /** 보드와 외부 상태에 유지하는 종류 식별자다. @type {string} */
+            this.type = type;
+            /** 갤러리 등에 표시할 기본 이름이다. @type {string} */
+            this.name = name;
+        }
+
+        /** 뿌요 이름을 반환한다. @returns {string} */
+        getName() { return this.name; }
+
+        /** 뿌요 하나를 그린다. 하위 클래스에서 모양을 구현한다. @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {number} scale 셀 대비 크기 비율 @param {boolean} slimeDetails 반사광과 눈 위치를 기본 슬라임처럼 그릴지 여부 @returns {void} */
+        draw(drawingContext, x, y, cellSize, scale = 1, slimeDetails = true) {}
+    }
+
+    /** 일반 색 뿌요와 둥근 방해뿌요가 공유하는 슬라임 렌더링 클래스다. */
+    class SlimePuyo extends Puyo {
+        /** @param {string} type 종류 식별자 @param {string} name 표시할 이름 @param {string} paletteKey PALETTE 색상 키 @param {boolean} garbageStyle 방해뿌요식 반투명 테두리를 쓸지 여부 */
+        constructor(type, name, paletteKey, garbageStyle = false) {
+            super(type, name);
+            this.paletteKey = paletteKey;
+            this.garbageStyle = garbageStyle;
+        }
+
+        /** 공통 슬라임 모양을 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {number} scale 셀 대비 크기 비율 @param {boolean} slimeDetails 반사광과 눈 위치를 기본 슬라임처럼 그릴지 여부 @returns {void} */
+        draw(drawingContext, x, y, cellSize, scale = 1, slimeDetails = true) {
+            const radius = cellSize * 0.42 * scale;
+            drawingContext.save();
+            drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
+            drawingContext.fillStyle = PALETTE[this.paletteKey];
+            drawingContext.globalAlpha = this.garbageStyle ? 0.75 : 1;
+            drawingContext.beginPath();
+            drawingContext.arc(0, 0, radius, 0, Math.PI * 2);
+            drawingContext.fill();
+            drawingContext.lineWidth = 2;
+            drawingContext.strokeStyle = this.garbageStyle ? '#f4fbff' : 'rgba(255,255,255,0.45)';
+            drawingContext.stroke();
+            // 일반/방해뿌요는 물방울 같은 슬라임이라는 인상을 주는 작은 반사광을 넣는다.
+            // 예고뿌요(태양, 별, 돌 등)는 각 WarningPuyo 하위 클래스에서 별도로 그린다.
+            if (slimeDetails) {
+                drawingContext.fillStyle = 'rgba(255, 255, 255, 0.72)';
+                drawingContext.beginPath();
+                // 긴 축을 기존 방향에서 90도 돌려 표면을 따라 반사되게 한다.
+                drawingContext.ellipse(radius * 0.43, -radius * 0.43, radius * 0.13, radius * 0.22, 0.55 + Math.PI / 2, 0, Math.PI * 2);
+                drawingContext.fill();
+            }
+            drawPuyoEyes(drawingContext, radius, slimeDetails ? radius * 0.08 : 0);
+            drawingContext.restore();
+        }
+    }
+
+    /** 빨강 일반뿌요다. */
+    class RedPuyo extends SlimePuyo { constructor() { super('red', '빨강뿌요', 'red'); } }
+    /** 초록 일반뿌요다. */
+    class GreenPuyo extends SlimePuyo { constructor() { super('green', '초록뿌요', 'green'); } }
+    /** 노랑 일반뿌요다. */
+    class YellowPuyo extends SlimePuyo { constructor() { super('yellow', '노랑뿌요', 'yellow'); } }
+    /** 파랑 일반뿌요다. */
+    class BluePuyo extends SlimePuyo { constructor() { super('blue', '파랑뿌요', 'blue'); } }
+    /** 보라 일반뿌요다. */
+    class PurplePuyo extends SlimePuyo { constructor() { super('purple', '보라뿌요', 'purple'); } }
+    /** 둥근 방해뿌요다. */
+    class GarbagePuyo extends SlimePuyo { constructor() { super('garbage', '방해뿌요', 'garbage', true); } }
+
+    /** 딱딱뿌요의 얼음 결정 모양을 그리는 방해뿌요 클래스다. */
+    class HardGarbagePuyo extends Puyo {
+        /** 딱딱뿌요를 만든다. */
+        constructor() { super(HARD_GARBAGE, '딱딱뿌요'); }
+
+        /** 얼음 결정 모양의 딱딱뿌요를 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {number} scale 셀 대비 크기 비율 @returns {void} */
+        draw(drawingContext, x, y, cellSize, scale = 1) {
+            const radius = cellSize * 0.42 * scale;
+            const halfWidth = radius * 1.08;
+            const halfHeight = radius * 0.86;
+            const corner = radius * 0.16;
+            drawingContext.save();
+            drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
+            const ice = drawingContext.createLinearGradient(-halfWidth, -halfHeight, halfWidth, halfHeight);
+            ice.addColorStop(0, '#e9fbff'); ice.addColorStop(0.44, '#9cdef6'); ice.addColorStop(1, '#4fa9d2');
+            drawingContext.fillStyle = ice;
+            drawingContext.beginPath();
+            drawingContext.moveTo(-halfWidth + corner, -halfHeight);
+            drawingContext.lineTo(halfWidth - corner, -halfHeight);
+            drawingContext.lineTo(halfWidth, -halfHeight + corner);
+            drawingContext.lineTo(halfWidth, halfHeight - corner);
+            drawingContext.lineTo(halfWidth - corner, halfHeight);
+            drawingContext.lineTo(-halfWidth + corner, halfHeight);
+            drawingContext.lineTo(-halfWidth, halfHeight - corner);
+            drawingContext.lineTo(-halfWidth, -halfHeight + corner);
+            drawingContext.closePath();
+            drawingContext.fill();
+            drawingContext.strokeStyle = '#dff8ff'; drawingContext.lineWidth = 2; drawingContext.stroke();
+            drawingContext.strokeStyle = 'rgba(255, 255, 255, 0.8)'; drawingContext.lineWidth = 1.5;
+            drawingContext.beginPath(); drawingContext.moveTo(-halfWidth + corner * 1.5, -halfHeight + corner * 1.2); drawingContext.lineTo(halfWidth * 0.45, -halfHeight + corner * 1.2); drawingContext.stroke();
+            drawPuyoEyes(drawingContext, radius * 0.86, radius * 0.08);
+            drawingContext.restore();
+        }
+    }
+
+    /** 예고뿌요의 작은 낱개·큰 낱개에만 쓰는 내부 잉크색 슬라임이다. */
+    class WarningInkPuyo extends SlimePuyo { constructor() { super('warningInk', '예고뿌요', 'warningInk', true); } }
+
+    /** 내장 일반·방해뿌요 객체 목록이다. 보드의 기존 문자열 식별자와 연결한다. @type {Puyo[]} */
+    const PUYO_TYPES = [new RedPuyo(), new GreenPuyo(), new YellowPuyo(), new BluePuyo(), new PurplePuyo(), new GarbagePuyo(), new HardGarbagePuyo(), new WarningInkPuyo()];
+    /** 보드 문자열에서 뿌요 렌더링 객체를 찾는다. @type {Map<string, Puyo>} */
+    const PUYO_BY_TYPE = new Map(PUYO_TYPES.map((puyo) => [puyo.type, puyo]));
+
+    /** 보드의 종류 문자열에 해당하는 뿌요 객체를 반환한다. @param {string} type 종류 식별자 @returns {Puyo|null} */
+    function getPuyo(type) { return PUYO_BY_TYPE.get(type) || null; }
+
+    /**
+     * 기존 보드 렌더링 호출을 뿌요 객체의 draw 메소드로 연결한다.
      * @param {number} x 셀의 왼쪽 X 좌표
      * @param {number} y 셀의 위쪽 Y 좌표
      * @param {string} color 뿌요 색상 종류
      * @param {number} scale 셀 대비 크기 비율
+     * @param {boolean} slimeDetails 반사광과 눈 위치를 기본 슬라임처럼 그릴지 여부
      * @returns {void}
      */
     function drawPuyo(x, y, color, scale = 1, slimeDetails = true) {
-        const radius = CELL * 0.42 * scale;
-        context.save();
-        context.translate(x + CELL / 2, y + CELL / 2);
-        if (color === HARD_GARBAGE) {
-            const halfWidth = radius * 1.08;
-            const halfHeight = radius * 0.86;
-            const corner = radius * 0.16;
-            const ice = context.createLinearGradient(-halfWidth, -halfHeight, halfWidth, halfHeight);
-            ice.addColorStop(0, '#e9fbff'); ice.addColorStop(0.44, '#9cdef6'); ice.addColorStop(1, '#4fa9d2');
-            context.fillStyle = ice;
-            context.beginPath();
-            context.moveTo(-halfWidth + corner, -halfHeight);
-            context.lineTo(halfWidth - corner, -halfHeight);
-            context.lineTo(halfWidth, -halfHeight + corner);
-            context.lineTo(halfWidth, halfHeight - corner);
-            context.lineTo(halfWidth - corner, halfHeight);
-            context.lineTo(-halfWidth + corner, halfHeight);
-            context.lineTo(-halfWidth, halfHeight - corner);
-            context.lineTo(-halfWidth, -halfHeight + corner);
-            context.closePath();
-            context.fill();
-            context.strokeStyle = '#dff8ff'; context.lineWidth = 2; context.stroke();
-            context.strokeStyle = 'rgba(255, 255, 255, 0.8)'; context.lineWidth = 1.5;
-            context.beginPath(); context.moveTo(-halfWidth + corner * 1.5, -halfHeight + corner * 1.2); context.lineTo(halfWidth * 0.45, -halfHeight + corner * 1.2); context.stroke();
-            drawPuyoEyes(radius * 0.86, radius * 0.08);
-            context.restore();
-            return;
-        }
-        context.fillStyle = PALETTE[color];
-        const garbageStyle = color === 'garbage' || color === 'warningInk';
-        context.globalAlpha = garbageStyle ? 0.75 : 1;
-        context.beginPath();
-        context.arc(0, 0, radius, 0, Math.PI * 2);
-        context.fill();
-        context.lineWidth = 2;
-        context.strokeStyle = garbageStyle ? '#f4fbff' : 'rgba(255,255,255,0.45)';
-        context.stroke();
-        // 일반/방해뿌요는 물방울 같은 슬라임이라는 인상을 주는 작은 반사광을 넣는다.
-        // 예고뿌요(태양, 별, 돌 등)는 각 WarningPuyo 하위 클래스에서 별도로 그린다.
-        if (slimeDetails) {
-            context.fillStyle = 'rgba(255, 255, 255, 0.72)';
-            context.beginPath();
-            // 긴 축을 기존 방향에서 90도 돌려 표면을 따라 반사되게 한다.
-            context.ellipse(radius * 0.43, -radius * 0.43, radius * 0.13, radius * 0.22, 0.55 + Math.PI / 2, 0, Math.PI * 2);
-            context.fill();
-        }
-        drawPuyoEyes(radius, slimeDetails ? radius * 0.08 : 0);
-        context.restore();
+        const puyo = getPuyo(color);
+        if (puyo) puyo.draw(context, x, y, CELL, scale, slimeDetails);
     }
 
     /**
@@ -2807,7 +2883,7 @@
             context.fillStyle = '#e4675a'; context.beginPath(); context.moveTo(-size * 0.52, -size * 0.78); context.lineTo(-size * 0.08, -size * 0.91); context.lineTo(size * 0.05, -size * 0.2); context.lineTo(-size * 0.4, size * 0.02); context.closePath(); context.fill();
             context.fillStyle = '#9d2d31'; context.beginPath(); context.moveTo(size * 0.05, -size * 0.2); context.lineTo(size * 0.38, -size * 0.75); context.lineTo(size * 0.84, -size * 0.26); context.lineTo(size * 0.67, size * 0.48); context.lineTo(size * 0.2, size * 0.84); context.lineTo(size * 0.12, size * 0.12); context.closePath(); context.fill();
             context.strokeStyle = 'rgba(255, 170, 150, 0.65)'; context.lineWidth = 1.5; context.beginPath(); context.moveTo(-size * 0.52, -size * 0.78); context.lineTo(-size * 0.08, -size * 0.91); context.lineTo(size * 0.05, -size * 0.2); context.lineTo(size * 0.38, -size * 0.75); context.stroke();
-            drawPuyoEyes(size, size * 0.08); context.restore();
+            drawPuyoEyes(drawingContext, size, size * 0.08); context.restore();
         }
     }
 
@@ -2827,7 +2903,7 @@
                 const radius = index % 2 ? CELL * 0.18 : CELL * 0.42;
                 context[index ? 'lineTo' : 'moveTo'](Math.cos(angle) * radius, Math.sin(angle) * radius);
             }
-            context.closePath(); context.fill(); drawPuyoEyes(CELL * 0.34); context.restore();
+            context.closePath(); context.fill(); drawPuyoEyes(drawingContext, CELL * 0.34); context.restore();
         }
     }
 
@@ -2845,7 +2921,7 @@
             for (let index = 0; index < 8; index += 1) {
                 context.save(); context.rotate(index * Math.PI / 4); context.beginPath(); context.moveTo(CELL * 0.22, 0); context.lineTo(CELL * 0.48, -CELL * 0.1); context.lineTo(CELL * 0.48, CELL * 0.1); context.closePath(); context.fill(); context.restore();
             }
-            context.fillStyle = '#ff6b35'; context.beginPath(); context.arc(0, 0, CELL * 0.31, 0, Math.PI * 2); context.fill(); context.lineWidth = 2; context.strokeStyle = '#ffe082'; context.stroke(); drawPuyoEyes(CELL * 0.31); context.restore();
+            context.fillStyle = '#ff6b35'; context.beginPath(); context.arc(0, 0, CELL * 0.31, 0, Math.PI * 2); context.fill(); context.lineWidth = 2; context.strokeStyle = '#ffe082'; context.stroke(); drawPuyoEyes(drawingContext, CELL * 0.31); context.restore();
         }
     }
 
@@ -2872,7 +2948,7 @@
             drawingContext.fillStyle = glow; drawingContext.beginPath(); drawingContext.arc(0, 0, radius, 0, Math.PI * 2); drawingContext.fill();
             drawingContext.strokeStyle = '#d9f6ff'; drawingContext.lineWidth = cellSize * 0.045; drawingContext.stroke();
             drawingContext.fillStyle = 'rgba(255, 255, 255, 0.8)'; drawingContext.beginPath(); drawingContext.arc(-radius * 0.31, -radius * 0.38, radius * 0.2, 0, Math.PI * 2); drawingContext.fill();
-            drawPuyoEyes(radius, radius * 0.08); drawingContext.restore();
+            drawPuyoEyes(drawingContext, radius, radius * 0.08); drawingContext.restore();
         }
     }
 
@@ -2906,7 +2982,7 @@
             drawingContext.fillStyle = '#ffffff'; [[-0.78, -0.42, 0.08], [0.94, 0.26, 0.06], [0.56, -0.6, 0.05]].forEach(([starX, starY, starRadius]) => { drawingContext.beginPath(); drawingContext.arc(radius * starX, radius * starY, radius * starRadius, 0, Math.PI * 2); drawingContext.fill(); });
             drawingContext.rotate(0.46);
             // 다른 대형 예고뿌요처럼 눈은 중심에 유지해 게임의 캐릭터성을 보존한다.
-            drawPuyoEyes(radius * 0.74, radius * 0.07);
+            drawPuyoEyes(drawingContext, radius * 0.74, radius * 0.07);
             drawingContext.restore();
         }
     }
@@ -2933,7 +3009,7 @@
             rim.addColorStop(0, '#0a0d1b'); rim.addColorStop(0.64, '#05060d'); rim.addColorStop(0.8, '#30205e'); rim.addColorStop(1, '#9a76e8');
             drawingContext.fillStyle = rim; drawingContext.beginPath(); drawingContext.arc(0, 0, radius, 0, Math.PI * 2); drawingContext.fill();
             drawingContext.strokeStyle = '#c2a7ff'; drawingContext.lineWidth = cellSize * 0.04; drawingContext.stroke();
-            drawPuyoEyes(radius * 0.72, radius * 0.08); drawingContext.restore();
+            drawPuyoEyes(drawingContext, radius * 0.72, radius * 0.08); drawingContext.restore();
         }
     }
 
@@ -2946,21 +3022,22 @@
 
     /**
      * 현재 변환 좌표를 기준으로 뿌요의 귀여운 두 눈을 그린다.
+     * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
      * @param {number} radius 뿌요 본체의 반지름
      * @param {number} offsetY 눈의 세로 보정값
      * @returns {void}
      */
-    function drawPuyoEyes(radius, offsetY = 0) {
-        context.fillStyle = '#fff';
-        context.beginPath();
-        context.arc(-radius * 0.28, -radius * 0.12 + offsetY, radius * 0.19, 0, Math.PI * 2);
-        context.arc(radius * 0.28, -radius * 0.12 + offsetY, radius * 0.19, 0, Math.PI * 2);
-        context.fill();
-        context.fillStyle = '#172031';
-        context.beginPath();
-        context.arc(-radius * 0.25, -radius * 0.08 + offsetY, radius * 0.08, 0, Math.PI * 2);
-        context.arc(radius * 0.31, -radius * 0.08 + offsetY, radius * 0.08, 0, Math.PI * 2);
-        context.fill();
+    function drawPuyoEyes(drawingContext, radius, offsetY = 0) {
+        drawingContext.fillStyle = '#fff';
+        drawingContext.beginPath();
+        drawingContext.arc(-radius * 0.28, -radius * 0.12 + offsetY, radius * 0.19, 0, Math.PI * 2);
+        drawingContext.arc(radius * 0.28, -radius * 0.12 + offsetY, radius * 0.19, 0, Math.PI * 2);
+        drawingContext.fill();
+        drawingContext.fillStyle = '#172031';
+        drawingContext.beginPath();
+        drawingContext.arc(-radius * 0.25, -radius * 0.08 + offsetY, radius * 0.08, 0, Math.PI * 2);
+        drawingContext.arc(radius * 0.31, -radius * 0.08 + offsetY, radius * 0.08, 0, Math.PI * 2);
+        drawingContext.fill();
     }
 
     /**
@@ -4152,15 +4229,17 @@
         if (!gallery) return [];
         const type = getGalleryTypes()[gallery.typeIndex]?.key;
         if (type === 'puyo') {
-            const labels = { red: '빨강뿌요', green: '초록뿌요', yellow: '노랑뿌요', blue: '파랑뿌요', purple: '보라뿌요', garbage: '방해뿌요', [HARD_GARBAGE]: '딱딱뿌요' };
-            return [...COLORS, 'garbage', HARD_GARBAGE].map((color) => ({
-                id: color, label: labels[color], locked: false,
-                draw: () => {
-                    context.save(); context.translate(805, 410); context.scale(5.6, 5.6);
-                    drawPuyo(-CELL / 2, -CELL / 2, color);
-                    context.restore();
-                }
-            }));
+            return [...COLORS, 'garbage', HARD_GARBAGE].map((color) => {
+                const puyo = getPuyo(color);
+                return {
+                    id: color, label: puyo.getName(), locked: false,
+                    draw: () => {
+                        context.save(); context.translate(805, 410); context.scale(5.6, 5.6);
+                        puyo.draw(context, -CELL / 2, -CELL / 2, CELL);
+                        context.restore();
+                    }
+                };
+            });
         }
         if (type === 'warning') {
             return [...WARNING_PUYO_CLASSES].sort((left, right) => left.unitCount - right.unitCount).map((WarningPuyoType) => {
@@ -7655,6 +7734,14 @@
 
     WebPuyo = {
         Enemy,
+        Puyo,
+        RedPuyo,
+        GreenPuyo,
+        YellowPuyo,
+        BluePuyo,
+        PurplePuyo,
+        GarbagePuyo,
+        HardGarbagePuyo,
         WarningPuyo,
         SoundPool,
         CommonSoundPool,
