@@ -681,11 +681,126 @@ test('피버 상태의 싹쓸이는 목표 연쇄만 올리고 별도 ATTACK을 
   await expect.poll(() => page.evaluate(() => {
     const state = window.WebPuyo.getGameState();
     return state?.opponent.fever?.targetCombo;
-  }), { timeout: 10000 }).toBe(7);
+  }), { timeout: 10000 }).toBe(4);
   const state = await page.evaluate(() => window.WebPuyo.getGameState());
   expect(state.opponent.point).toBe(140);
   expect(state.player.damage).toBe(0);
   expect(state.player.warningPuyos).toEqual([]);
+});
+
+test('연속 피버와 피버 상태는 낮은 연쇄 뒤 4연쇄 피버 패턴을 사용한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverLowComboEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -1; this.prepared = false; }
+      getClassType() { return 'FeverLowComboEnemy'; }
+      getName() { return '피버 저연쇄 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.prepared) return;
+        this.prepared = true;
+        player.fever.active = true;
+        player.fever.leftTime = 10000;
+        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+        // 1연쇄 후 남는 뿌요가 있어 싹쓸이 보너스 없이 목표 최솟값만 확인한다.
+        player.board[0][5] = 'blue';
+        player.hasPlacedPuyoSinceAllClear = true;
+        player.phase = 'explode';
+        player.phaseTimer = 0;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverLowComboEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.fever?.selectedStageTarget), { timeout: 10000 }).toBe(4);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().opponent.fever.targetCombo)).toBe(4);
+});
+
+test('피버 룰의 일반 필드 싹쓸이는 4연쇄 패턴을 배치하고 마지막 전등 싹쓸이는 목표에 2를 더해 피버에 진입한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class NormalFeverAllClearEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -1; this.prepared = false; }
+      getClassType() { return 'NormalFeverAllClearEnemy'; }
+      getName() { return '일반 피버 싹쓸이 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.prepared) return;
+        this.prepared = true;
+        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+        player.hasPlacedPuyoSinceAllClear = true;
+        player.phase = 'explode';
+        player.phaseTimer = 0;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new NormalFeverAllClearEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.fever?.selectedStageTarget), { timeout: 10000 }).toBe(4);
+  const state = await page.evaluate(() => window.WebPuyo.getGameState().opponent.fever);
+  expect(state.active).toBe(false);
+  expect(state.targetCombo).toBe(5);
+});
+
+test('마지막 전등이 켜지는 일반 필드 싹쓸이는 5연쇄 패턴 대신 목표 7연쇄 피버에 진입한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class ActivatingFeverAllClearEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -1; this.prepared = false; }
+      getClassType() { return 'ActivatingFeverAllClearEnemy'; }
+      getName() { return '피버 진입 싹쓸이 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.prepared) return;
+        this.prepared = true;
+        player.fever.gauge = 7;
+        player.fever.pendingActivation = true;
+        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+        player.hasPlacedPuyoSinceAllClear = true;
+        player.phase = 'explode';
+        player.phaseTimer = 0;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new ActivatingFeverAllClearEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.fever?.active === true), { timeout: 10000 }).toBe(true);
+  const state = await page.evaluate(() => window.WebPuyo.getGameState().opponent.fever);
+  expect(state.targetCombo).toBe(7);
+  expect(state.selectedStageTarget).toBe(7);
 });
 
 test('피버 중 공격은 피버와 일반 DAMAGE를 모두 상쇄한 뒤 남은 수치를 전달한다', async ({ page }) => {

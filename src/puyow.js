@@ -96,10 +96,14 @@
     const ALL_CLEAR_DAMAGE = 12;
     /** 싹쓸이 성공 시 즉시 더할 점수다. @type {number} */
     const ALL_CLEAR_POINT = 100;
+    /** 싹쓸이 디버깅 시 기본 룰·피버 룰·연습의 첫 두 뿌요 쌍을 같은 색으로 고정할지 여부다. @type {boolean} */
+    const DEBUG_CLEAR_RULE_MODE = false;
     /** 싹쓸이 황금빛 필드 효과의 지속 시간(ms)이다. @type {number} */
     const ALL_CLEAR_EFFECT_DURATION = 1000;
     /** 연속 피버 모드의 시작 목표 연쇄 수다. @type {number} */
     const CONTINUOUS_FEVER_INITIAL_TARGET_COMBO = 5;
+    /** 피버 패턴으로 내려갈 수 있는 목표 연쇄 최솟값이다. 시작 목표는 5연쇄를 유지한다. @type {number} */
+    const FEVER_MIN_TARGET_COMBO = 4;
     /** 연속 피버 모드의 시작 제한 시간(ms)이다. @type {number} */
     const CONTINUOUS_FEVER_INITIAL_TIME = 60000;
     /** 연속 피버 모드의 목표 연쇄 최댓값이다. @type {number} */
@@ -1284,6 +1288,13 @@
         // 피버 룰과 연속 피버는 3색을 지원하지 않는다. 메뉴를 거치지 않는 호출에도 적용한다.
         const difficulty = (continuousFever || feverRule) ? Math.max(1, selectedDifficulty) : selectedDifficulty;
         const colors = DIFFICULTIES[difficulty].colors;
+        const pairQueue = Array.from({ length: INITIAL_PAIR_QUEUE_LENGTH }, () => createRandomPair(colors));
+        // 연속 피버는 전용 스테이지에서 시작하므로 싹쓸이 디버그 고정 지급 대상에서 제외한다.
+        if (DEBUG_CLEAR_RULE_MODE && !continuousFever) {
+            const debugColor = randomColor(colors);
+            pairQueue[0] = [debugColor, debugColor];
+            pairQueue[1] = [debugColor, debugColor];
+        }
         const practicePlayer = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
         const players = [new PlayerState('PLAYER 1', FIELD_LEFT, null, colors), practicePlayer];
         if (feverRule) players.forEach((player) => { player.fever = createFeverRuleState(); });
@@ -1321,7 +1332,7 @@
             aiDifficulty: selectedAiDifficulty,
             themeController: controller,
             pairQueueColors: colors,
-            pairQueue: Array.from({ length: INITIAL_PAIR_QUEUE_LENGTH }, () => createRandomPair(colors)),
+            pairQueue,
             energyTransfers: [],
             players
         };
@@ -2226,6 +2237,12 @@
         }
     }
 
+    /**
+     * 연쇄 및 에너지 연출이 끝난 뒤 남은 정수 공격력을 상대 피해로 확정한다.
+     * @param {PlayerState} player 공격을 보낸 플레이어
+     * @param {PlayerState} opponent 공격을 받을 플레이어
+     * @returns {void}
+     */
     function deliverFinalAttackEnergy(player, opponent) {
         const amount = Math.floor(player.attack);
         if (amount < 1) return;
@@ -2245,17 +2262,41 @@
         player.lastAttackTransfer = null;
     }
 
+    /**
+     * 싹쓸이 보너스 피해를 상대 필드로 전달하는 에너지 연출을 등록한다.
+     * @param {PlayerState} player 싹쓸이를 달성한 플레이어
+     * @param {PlayerState} opponent 보너스를 받을 상대 플레이어
+     * @param {number} amount 전달할 피해량
+     * @returns {void}
+     */
     function sendAllClearEnergy(player, opponent, amount) {
         if (amount < 1) return;
         if (game?.feverRule && player.fever?.active) player.fever.opponentGarbageDropBaseline = opponent.garbageDropCount;
         queueEnergyTransfer(player, opponent, { x: player.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP + VISIBLE_ROWS * CELL / 2 }, 0, 0, amount);
     }
 
+    /**
+     * 현재 게임 또는 시뮬레이터가 관리하는 에너지 전달 목록을 가져온다.
+     * @returns {Array<object>|null} 에너지 전달 목록. 게임과 시뮬레이터가 모두 없으면 null
+     */
     function getEnergyTransfers() {
         if (game?.energyTransfers) return game.energyTransfers;
         return simulator?.energyTransfers || null;
     }
 
+    /**
+     * 공격 상쇄 또는 피해 전달에 사용할 에너지 이동 경로를 생성한다.
+     * @param {PlayerState} player 에너지를 보낸 플레이어
+     * @param {PlayerState} opponent 에너지를 받을 플레이어
+     * @param {{x:number,y:number}} source 에너지 출발 논리 좌표
+     * @param {number} cancelledDamage 상쇄한 내 피해량
+     * @param {number} cancelledAttack 상쇄한 상대 공격력
+     * @param {number} delivered 즉시 전달할 피해량
+     * @param {boolean} [travelToOpponent=false] 피해량이 없어도 상대방까지 이동할지 여부
+     * @param {number|null} [previewAmount=null] 이동 중 표시할 공격 예고량
+     * @param {boolean} [startsAtExplosion=false] 폭발 지점에서 바로 출발하는지 여부
+     * @returns {object|null|undefined} 생성한 에너지 정보. 경로 또는 전달 목록이 없으면 null 또는 undefined
+     */
     function queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledAttack, delivered, travelToOpponent = false, previewAmount = null, startsAtExplosion = false) {
         const energyTransfers = getEnergyTransfers();
         if (!energyTransfers) return;
@@ -2270,10 +2311,21 @@
         return energy;
     }
 
+    /**
+     * 현재 플레이어 필드에 표시할 방해뿌요 예고 총량을 계산한다.
+     * @param {PlayerState} player 예고를 표시할 플레이어
+     * @param {PlayerState} opponent 상대 플레이어
+     * @returns {number} 표시할 예고 총량
+     */
     function warningAmount(player, opponent) {
         return player.damage + opponent.announcedAttack + player.warningReductionDelay;
     }
 
+    /**
+     * 에너지 전달 애니메이션을 진행하고, 도착한 피해·상쇄 효과를 반영한다.
+     * @param {number} delta 이전 프레임 이후 경과 시간(ms)
+     * @returns {void}
+     */
     function updateEnergyTransfers(delta) {
         const energyTransfers = getEnergyTransfers();
         if (!energyTransfers?.length) return;
@@ -2311,6 +2363,10 @@
         else if (simulator?.energyTransfers === energyTransfers) simulator.energyTransfers = remainingTransfers;
     }
 
+    /**
+     * 아직 재생 중이거나 사라지는 중인 에너지 전달이 있는지 확인한다.
+     * @returns {boolean} 대기 중인 에너지 전달 존재 여부
+     */
     function hasPendingEnergyTransfers() {
         return Boolean(getEnergyTransfers()?.length);
     }
@@ -2416,14 +2472,12 @@
         }
     }
 
-    /** 완료한 연쇄와 싹쓸이 여부로 다음 목표 연쇄를 계산한다. @param {number} target 현재 목표 @param {number} combo 완료 연쇄 @param {boolean} allClear 싹쓸이 여부 @returns {number} 5~12 범위의 다음 목표 */
-    function calculateContinuousFeverTarget(target, combo, allClear) {
-        let nextTarget = target;
-        if (combo <= target - 2) nextTarget = Math.max(CONTINUOUS_FEVER_INITIAL_TARGET_COMBO, target - 1);
-        else if (combo === target) nextTarget = target + 1;
-        else if (combo > target) nextTarget = combo + 1;
+    /** 완료한 연쇄와 싹쓸이 여부로 다음 목표 연쇄를 계산한다. @param {number} combo 완료 연쇄 @param {boolean} allClear 싹쓸이 여부 @returns {number} 4~12 범위의 다음 목표 */
+    function calculateContinuousFeverTarget(combo, allClear) {
+        // 연속 피버와 피버 상태의 다음 목표는 항상 완료 연쇄 + 1부터 계산한다.
+        let nextTarget = combo + 1;
         if (allClear) nextTarget += 2;
-        return Math.min(CONTINUOUS_FEVER_MAX_TARGET_COMBO, nextTarget);
+        return Math.max(FEVER_MIN_TARGET_COMBO, Math.min(CONTINUOUS_FEVER_MAX_TARGET_COMBO, nextTarget));
     }
 
     /** 배치 시작 전 또는 배치·연쇄 처리 도중 피버 시간이 만료되었는지 확인한다. @param {object} feverState 피버 상태 @returns {boolean} 종료 처리 필요 여부 */
@@ -2448,7 +2502,7 @@
             return;
         }
         const combo = game.fever.pendingCombo;
-        game.fever.targetCombo = calculateContinuousFeverTarget(game.fever.targetCombo, combo, game.fever.pendingAllClear);
+        game.fever.targetCombo = calculateContinuousFeverTarget(combo, game.fever.pendingAllClear);
         if (game.fever.leftTime > 0) {
             const comboTimeBonus = Math.floor(combo / 2) * 1000;
             const allClearTimeBonus = game.fever.pendingAllClear ? CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS : 0;
@@ -2481,7 +2535,7 @@
         const combo = state.pendingCombo;
         state.opponentGarbageDropBaseline = null;
         const previousTarget = state.targetCombo;
-        state.targetCombo = calculateContinuousFeverTarget(previousTarget, combo, state.pendingAllClear);
+        state.targetCombo = calculateContinuousFeverTarget(combo, state.pendingAllClear);
         if (isFeverTimeExpired(state)) {
             finishPlayerFever(player, 'B');
             return;
@@ -2539,7 +2593,8 @@
         if (player.phase === 'feverAllClearWait') {
             if (player.allClearEffectElapsed > 0 || hasPendingEnergyTransfers()) return;
             player.fever.pendingAllClearStage = false;
-            prepareFeverTurn(player, player.fever, FEVER_INITIAL_TARGET_COMBO, false);
+            // 피버 룰의 일반 필드 싹쓸이는 피버에 진입하지 않았을 때 4연쇄 패턴을 지급한다.
+            prepareFeverTurn(player, player.fever, FEVER_MIN_TARGET_COMBO, false);
             enterControl(player);
             return;
         }
@@ -2689,6 +2744,10 @@
                         }
                     } else {
                         if (state.pendingActivation) {
+                            // 일반 필드 싹쓸이로 마지막 전등이 켜진 경우에는 피버 스테이지를 고르기 전에
+                            // 현재 목표에 2연쇄 보너스를 적용한다. 피버 진입이 새 스테이지를 즉시 준비하므로
+                            // 일반 필드에 별도의 싹쓸이 스테이지를 배치하지 않는다.
+                            if (triggeredAllClear) state.targetCombo = Math.min(CONTINUOUS_FEVER_MAX_TARGET_COMBO, state.targetCombo + 2);
                             activatePlayerFever(player);
                             return;
                         }
@@ -3124,6 +3183,10 @@
         context.restore();
     }
 
+    /**
+     * 현재 진행 중인 에너지 전달 효과를 캔버스에 그린다.
+     * @returns {void}
+     */
     function drawEnergyTransfers() {
         const energyTransfers = getEnergyTransfers();
         if (!energyTransfers) return;
@@ -5638,6 +5701,8 @@
                 leftTime: player.fever.leftTime,
                 damage: player.fever.damage,
                 turn: player.fever.turn,
+                selectedStageTarget: player.fever.selectedStageTarget,
+                stageSuppliedPair: [...player.fever.stageSuppliedPair],
                 field: player.fever.active ? { columns: COLUMNS, rows: ROWS, cells: player.board.map((row) => [...row]) } : null
             } : null,
             active
@@ -5841,7 +5906,7 @@
                 turn: { type: 'integer', minimum: 0 },
                 pendingCombo: { type: 'integer', minimum: 0 },
                 pendingAllClear: { type: 'boolean' },
-                selectedStageTarget: { type: ['integer', 'null'], minimum: CONTINUOUS_FEVER_INITIAL_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO },
+                selectedStageTarget: { type: ['integer', 'null'], minimum: FEVER_MIN_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO },
                 stageSuppliedPair: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 0, maxItems: 2 }
             },
             required: ['targetCombo', 'leftTime', 'turn', 'pendingCombo', 'pendingAllClear', 'selectedStageTarget', 'stageSuppliedPair']
