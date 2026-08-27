@@ -49,12 +49,14 @@
     const COLORS = ['red', 'green', 'yellow', 'blue', 'purple'];
     /** 시뮬레이터와 갤러리에서만 사용하는 얼음질 방해뿌요 식별자다. @type {string} */
     const HARD_GARBAGE = 'hardGarbage';
+    /** 시뮬레이터에서만 사용하는 철구뿌요 식별자다. @type {string} */
+    const IRON_PUYO = 'iron';
     /** 한 번에 파괴한 딱딱뿌요 한 개당 점수용 일반 뿌요 수에 적용할 배율이다. @type {number} */
     const HARD_GARBAGE_SCORE_MULTIPLIER = 2;
     /** 색상 이름별 캔버스 색상값이다. @type {Record<string, string>} */
     const PALETTE = {
         red: '#ef5350', green: '#66bb6a', yellow: '#f7c843', blue: '#42a5f5', purple: '#ab73e8',
-        garbage: '#d3edf4', hardGarbage: '#9cdef6',
+        garbage: '#d3edf4', hardGarbage: '#9cdef6', iron: '#000000',
         // 예고뿌요 전용 색상이다. 방해뿌요의 투명도·눈·반사선은 그대로 두고 본체 색만 바꾼다.
         warningInk: '#30363f'
     };
@@ -2752,6 +2754,8 @@
     class PurplePuyo extends SlimePuyo { constructor() { super('purple', '보라뿌요', 'purple'); } }
     /** 둥근 방해뿌요다. */
     class GarbagePuyo extends SlimePuyo { constructor() { super('garbage', '방해뿌요', 'garbage', true); } }
+    /** 시뮬레이터에서만 사용할 수 있고 폭발하지 않는 철구뿌요다. */
+    class IronPuyo extends SlimePuyo { constructor() { super(IRON_PUYO, '철구뿌요', 'iron'); } }
 
     /** 딱딱뿌요의 얼음 결정 모양을 그리는 방해뿌요 클래스다. */
     class HardGarbagePuyo extends Puyo {
@@ -2792,7 +2796,7 @@
     class WarningInkPuyo extends SlimePuyo { constructor() { super('warningInk', '예고뿌요', 'warningInk', true); } }
 
     /** 내장 일반·방해뿌요 객체 목록이다. 보드의 기존 문자열 식별자와 연결한다. @type {Puyo[]} */
-    const PUYO_TYPES = [new RedPuyo(), new GreenPuyo(), new YellowPuyo(), new BluePuyo(), new PurplePuyo(), new GarbagePuyo(), new HardGarbagePuyo(), new WarningInkPuyo()];
+    const PUYO_TYPES = [new RedPuyo(), new GreenPuyo(), new YellowPuyo(), new BluePuyo(), new PurplePuyo(), new GarbagePuyo(), new HardGarbagePuyo(), new IronPuyo(), new WarningInkPuyo()];
     /** 보드 문자열에서 뿌요 렌더링 객체를 찾는다. @type {Map<string, Puyo>} */
     const PUYO_BY_TYPE = new Map(PUYO_TYPES.map((puyo) => [puyo.type, puyo]));
 
@@ -4229,7 +4233,7 @@
         if (!gallery) return [];
         const type = getGalleryTypes()[gallery.typeIndex]?.key;
         if (type === 'puyo') {
-            return [...COLORS, 'garbage', HARD_GARBAGE].map((color) => {
+            return [...COLORS, 'garbage', HARD_GARBAGE, IRON_PUYO].map((color) => {
                 const puyo = getPuyo(color);
                 return {
                     id: color, label: puyo.getName(), locked: false,
@@ -4362,8 +4366,8 @@
 
     /** 시뮬레이터 팔레트와 버튼 영역을 반환한다. @returns {{kind:string,value:string|null,x:number,y:number,width:number,height:number}[]} */
     function getSimulatorPaletteItems() {
-        const items = [...COLORS, 'garbage', HARD_GARBAGE].map((color, index) => ({ kind: 'puyo', value: color, x: 906 + (index % 3) * (CELL + 6), y: 184 + Math.floor(index / 3) * (CELL + 6), width: CELL, height: CELL }));
-        items.push({ kind: 'eraser', value: 'eraser', x: 954, y: 272, width: CELL, height: CELL });
+        const items = [...COLORS, 'garbage', HARD_GARBAGE, IRON_PUYO].map((color, index) => ({ kind: 'puyo', value: color, x: 906 + (index % 3) * (CELL + 6), y: 184 + Math.floor(index / 3) * (CELL + 6), width: CELL, height: CELL }));
+        items.push({ kind: 'eraser', value: 'eraser', x: 994, y: 272, width: CELL, height: CELL });
         items.push(
             { kind: 'play', value: null, x: 906, y: 332, width: CELL * 3, height: CELL },
             { kind: 'copyJson', value: null, x: 906, y: 378, width: CELL * 3, height: CELL },
@@ -4412,7 +4416,7 @@
             if (!parsed || !Array.isArray(parsed.puyos)) throw new TypeError('puyos 배열이 필요합니다.');
             const board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
             parsed.puyos.forEach((puyo) => {
-                if (!puyo || !Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= SIMULATOR_EDITABLE_ROWS || ![...COLORS, 'garbage', HARD_GARBAGE].includes(puyo.color)) {
+                if (!puyo || !Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= SIMULATOR_EDITABLE_ROWS || ![...COLORS, 'garbage', HARD_GARBAGE, IRON_PUYO].includes(puyo.color)) {
                     throw new TypeError('유효하지 않은 뿌요 좌표 또는 색상입니다.');
                 }
                 if (board[puyo.y][puyo.x]) throw new TypeError('같은 칸에 뿌요가 중복됩니다.');
@@ -7742,6 +7746,7 @@
         PurplePuyo,
         GarbagePuyo,
         HardGarbagePuyo,
+        IronPuyo,
         WarningPuyo,
         SoundPool,
         CommonSoundPool,

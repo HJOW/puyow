@@ -8,10 +8,13 @@
 
 - 일반뿌요: `RedPuyo`, `GreenPuyo`, `YellowPuyo`, `BluePuyo`, `PurplePuyo`
 - 방해뿌요: `GarbagePuyo`, `HardGarbagePuyo`
+- 시뮬레이터 전용 방해뿌요: `IronPuyo`
 
 `draw()`의 `drawingContext`는 2D 캔버스 컨텍스트이고, `x`, `y`, `cellSize`는 논리 좌표계 값입니다. 일반 슬라임 계열은 선택 사항인 `scale`과 `slimeDetails`도 받을 수 있습니다. 렌더링 좌표의 기준은 [Graphics.md](Graphics.md)를 참고하세요.
 
-보드·저장 데이터·공개 상태의 종류 문자열은 이전과 동일하게 `'red'`, `'green'`, `'yellow'`, `'blue'`, `'purple'`, `'garbage'`, `'hardGarbage'`를 유지합니다. 기존 게임 로직은 이 문자열을 계속 사용하고, 화면에 그릴 때만 해당 클래스 객체의 `draw()`로 위임합니다.
+`IronPuyo`는 완전한 검은색 금속 공 모양이며 표면 반사광과 눈을 가집니다. 시뮬레이터에서만 생성할 수 있고, 일반 색 뿌요처럼 폭발 그룹에 포함되지 않으며 다른 폭발의 영향도 받지 않습니다. 따라서 시뮬레이션이 끝날 때까지 남고 점수에도 영향을 주지 않습니다.
+
+일반 게임의 보드·저장 데이터·공개 상태의 종류 문자열은 이전과 동일하게 `'red'`, `'green'`, `'yellow'`, `'blue'`, `'purple'`, `'garbage'`, `'hardGarbage'`를 유지합니다. 시뮬레이터 상태와 JSON에는 시뮬레이터 전용 `'iron'`이 추가로 사용될 수 있습니다. 기존 게임 로직은 이 문자열을 계속 사용하고, 화면에 그릴 때만 해당 클래스 객체의 `draw()`로 위임합니다.
 
 ## 사용자 정의 예고뿌요 클래스
 
