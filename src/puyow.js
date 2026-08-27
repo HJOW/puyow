@@ -1952,9 +1952,9 @@
         }
     }
 
-    /** 현재 규칙의 패배 칸에 뿌요가 있는지 확인한다. @param {(string|null)[][]} board 검사할 필드 @returns {boolean} 패배 여부 */
+    /** 현재 규칙의 패배 칸에 뿌요가 있는지 확인한다. 피버 룰과 연속 피버는 (2, 11) 및 (3, 11)을 검사한다. @param {(string|null)[][]} board 검사할 필드 @returns {boolean} 패배 여부 */
     function isDefeatBoard(board) {
-        return board[11][2] !== null || (game?.feverRule === true && board[11][3] !== null);
+        return board[11][2] !== null || ((game?.feverRule === true || game?.continuousFever === true) && board[11][3] !== null);
     }
 
     /**
@@ -2631,7 +2631,7 @@
                 player.board = player.board.map((row) => row.map((cell) => cell === 'garbage' ? null : cell));
                 player.damage = 0;
             }
-            // 피버 룰은 두 패배 칸을, 다른 규칙은 기존 중앙 패배 칸을 검사한다.
+            // 피버 룰과 연속 피버는 두 패배 칸을, 다른 규칙은 기존 중앙 패배 칸을 검사한다.
             if (isDefeatBoard(player.board)) {
                 startDefeatSequence(player, opponent);
             } else {

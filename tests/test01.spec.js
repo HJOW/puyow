@@ -333,6 +333,34 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   expect(await page.evaluate(() => window.WebPuyo.getGameState().fever.leftTime)).toBe(pausedTime);
 });
 
+test('연속 피버는 두 번째 패배 칸 (3, 11)도 패배로 판정한다', async ({ page }) => {
+  await page.evaluate(() => {
+    Math.random = () => 0.999999;
+    window.WebPuyo.registerFeverStageState(new window.WebPuyo.FeverStageState(
+      { puyos: Array.from({ length: 12 }, (unused, y) => ({ x: 3, y, color: 'garbage' })) },
+      5,
+      ['red', 'red'],
+      1,
+      ['red'],
+    ));
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('playing');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState().player.board.puyos.some((puyo) => puyo.x === 3 && puyo.y === 11))).toBe(true);
+
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(1200);
+  await page.keyboard.up('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 5000 }).toBe('opponent');
+});
+
 test('피버 룰은 전용 적 선택 화면에서 4색을 골라 보라색 없이 대전으로 시작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
@@ -428,7 +456,7 @@ test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async
 
       prepareTurn(player) {
         super.prepareTurn(player);
-        player.board[11][2] = 'red';
+        player.board[11][3] = 'red';
         player.phase = 'check';
         player.phaseTimer = 150;
       }
