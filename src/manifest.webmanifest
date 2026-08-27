@@ -4,7 +4,7 @@
     "short_name" : "Puyo W",
     "start_url" : "puyow.html",
     "display" : "fullscreen",
-    "orientation" : "any",
+    "orientation" : "landscape",
     "categories" : [
         "game"
     ],
