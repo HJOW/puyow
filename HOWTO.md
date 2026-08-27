@@ -1,6 +1,14 @@
 # Puyo W 개발 안내
 
-이 문서는 Puyo W의 페이지 구성, 라이브러리 초기화, 번역 추가, 새 AI 상대 제작을 위한 개발자 안내입니다. 플레이 방법과 게임 규칙은 [README.md](README.md)를 참고하세요.
+이 문서는 Puyo W의 페이지 구성, 라이브러리 초기화, 번역 추가를 위한 공통 개발자 안내입니다. 기능별 API 문서는 하단의 문서 링크를 참고하세요. 플레이 방법과 게임 규칙은 [README.md](README.md)를 참고하세요.
+
+## 문서 길잡이
+
+- [Graphics.md](docs/Graphics.md): 1280 x 720 논리 좌표계, 출력 해상도와 좌표 변환 API
+- [Puyo.md](docs/Puyo.md): 일반·방해뿌요 클래스와 사용자 정의 예고뿌요 등록 API
+- [Enemy.md](docs/Enemy.md): 새 적 등록, 초상화·테마 렌더링, CPU 알고리즘과 상태 조회 API
+- [Simulator.md](docs/Simulator.md): 시뮬레이터 사용법, 점수 확인, 피버 패턴 등록 방법
+- [Sound.md](docs/Sound.md): 공통·적 사운드 풀과 음원 URL 변경 방법
 
 ## 플레이어 안내
 
@@ -12,7 +20,8 @@
 - `src/puyow.html`: 게임 캔버스를 포함한 페이지 구조와 초기화 호출을 정의합니다.
 - `src/puyow.css`: 전체 화면 캔버스 레이아웃과 글꼴 스타일을 정의합니다.
 - `src/puyow.js`: 브라우저/CommonJS 라이브러리, 게임 규칙, 렌더링, 입력, CPU 조작을 구현합니다.
-- `HOWTO.md`: 페이지 구성, 라이브러리 사용법, 번역, 새 AI 상대 제작을 포함한 모든 개발 안내를 제공합니다.
+- `HOWTO.md`: 페이지 구성, 라이브러리 사용법, 번역 및 공통 개발 안내를 제공합니다.
+- `docs/`: 그래픽, 뿌요, 적·AI, 시뮬레이터·피버, 사운드별 개발자 문서를 제공합니다.
 
 ## CDN
 
@@ -33,7 +42,7 @@ puyow.js 는 CDN으로도 사용할 수 있습니다.
 
 일반 대전에서 플레이어가 승리하면 브라우저 `localStorage`의 `puyow_store`에 적 클래스명이 기록됩니다. `hidden` 및 `notAvail`이 아닌 적은 정렬 순서상 바로 이전 적을 한 번 이겨야 선택할 수 있으며, 첫 번째 적은 쉬움·보통·어려움·극한 모두에서 항상 선택할 수 있습니다. 기본 룰은 `clearListByDifficulty`, 피버 룰은 `feverClearListByDifficulty`의 `easy`, `normal`, `hard`, `extreme` 배열을 각각 사용하므로 두 규칙의 적 잠금 해제 진행도는 서로 영향을 주지 않습니다. `clearList`는 기존 기본 룰의 전체 승리 적 목록만 보관합니다.
 
-## 초기화
+## 기본 초기화
 
 라이브러리를 불러오는 것만으로는 게임이 초기화되지 않습니다. 브라우저에서는 모든 적 등록 스크립트를 불러온 뒤 `WebPuyo.initialize()`를 명시적으로 호출해야 메뉴와 입력 처리가 시작됩니다.
 
@@ -54,34 +63,9 @@ const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, Garba
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 게임용 canvas를 만들어 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 사용하고 `destroy()`가 요소를 제거하지 않습니다. 다만 게임의 그래픽 설정에 따라 해당 canvas의 실제 `width`와 `height`는 설정됩니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
 
-## 그래픽 설정과 캔버스 좌표
+## 실행 중 표시와 설정
 
-설정 화면의 `그래픽 설정`은 `puyow_store.settings.graphicsQuality`에 저장됩니다. 기본값은 `low`이며, 기존 저장 데이터에 이 값이 없어도 자동으로 `low`로 보정합니다. 설정을 저장하면 실제 canvas의 `width`와 `height`가 아래 값으로 즉시 바뀝니다. CSS 표시 크기와 게임 내부 논리 좌표계는 변하지 않습니다.
-
-| 값 | 표시 문구 | 실제 canvas 출력 해상도 |
-| --- | --- | --- |
-| `low` | 낮음 | 1280 x 720 |
-| `medium` | 중간 | 1920 x 1080 |
-| `high` | 높음 | 3840 x 2160 |
-
-게임과 적·테마 렌더러는 항상 1280 x 720 논리 좌표를 사용합니다. 라이브러리는 렌더링 전에 컨텍스트 변환을 적용하므로 `fillRect`, `fillText`, 선 두께, 사용자 정의 렌더러의 좌표와 길이도 실제 출력 해상도로 함께 변환됩니다. 고해상도 출력은 메모리와 렌더링 부하를 높일 수 있으므로 저사양 기기에서는 `낮음`을 권장합니다.
-
-외부 코드에서도 현재 출력 크기와 변환 결과를 확인할 수 있습니다.
-
-```js
-const output = WebPuyo.getCanvasOutputSize();
-// { graphicsQuality: 'medium', width: 1920, height: 1080, scaleX: 1.5, scaleY: 1.5 }
-
-WebPuyo.toCanvasCoordinates(640, 360);
-// { x: 960, y: 540 }
-
-WebPuyo.toCanvasLength(38);
-// 57
-```
-
-`WebPuyo.applyCanvasCoordinateTransform()`은 현재 그래픽 설정의 논리 좌표 변환을 2D 컨텍스트에 다시 적용합니다. 외부 렌더링 코드가 `setTransform()`으로 컨텍스트 좌표계를 변경했을 때 호출할 수 있습니다. 보통 게임 렌더링 과정에서 자동 적용되므로 별도로 호출할 필요는 없습니다.
-
-## 화면 상단 메시지 표시
+### 화면 상단 메시지 표시
 
 `WebPuyo.showMessage(message, color = 'white', duration = 2000, backgroundColor = null)`는 현재 화면의 최상단에 메시지를 표시합니다. `message`는 필수 문자열이고, `color`는 선택 사항인 CSS 글자 색상 문자열이며, `duration`은 페이드 아웃 전 메시지를 유지할 시간(밀리초), `backgroundColor`는 글자 뒤에 표시할 선택 사항인 CSS 배경 색상 문자열입니다. `backgroundColor`가 `null`이면 배경 사각형 없이 기존처럼 글자만 표시합니다. 기본값은 각각 `'white'`, `2000`, `null`입니다. 유지 시간이 지난 뒤 500ms 동안 페이드 아웃되어 사라지며, 새 메시지를 표시하면 이전 메시지를 교체합니다.
 
@@ -96,7 +80,7 @@ WebPuyo.showMessage(message, '#ffffff', 3000, '#263238');
 
 WebMCP를 지원하는 브라우저에서는 AI도 `show_message` 도구로 동일한 동작을 호출할 수 있습니다. 도구의 `message`는 이미 현지화된 문자열이어야 하며, `color`, `duration`, `backgroundColor`의 기본값은 각각 `'white'`, `2000`, `null`입니다.
 
-## 공지사항 경로 설정
+### 공지사항 경로 설정
 
 메인 화면 왼쪽에 표시할 공지사항은 기본적으로 `puyow.js`와 같은 경로의 `notice.txt`에서 읽습니다. 초기화하기 전에 `WebPuyo.setNoticeFile(noticeFile)`을 호출하면 파일명, 상대경로 또는 절대 URL을 지정할 수 있습니다. 상대경로는 `puyow.js`가 로드된 URL을 기준으로 해석하고, `https://`와 같은 절대 URL은 지정한 주소 그대로 사용합니다. 공지사항 파일은 다국어 번역을 거치지 않고 UTF-8 텍스트 그대로 표시합니다.
 
@@ -148,280 +132,13 @@ WebPuyo.registerLanguage('ja', {
 WebPuyo.initialize();
 ```
 
-## 사용자 정의 예고뿌요 단위 추가
-
-방해뿌요 예고줄은 단위가 큰 순서로 분해됩니다. `WebPuyo.WarningPuyo`를 상속한 클래스를 만들고 `WebPuyo.registerWarningPuyo()`에 전달하면 새 단위를 등록할 수 있습니다. 등록은 반드시 `initialize()` 전에 해야 하며, 등록된 클래스는 `static unitCount`의 큰 값부터 자동 정렬됩니다.
-
-클래스에는 다음 계약이 필요합니다.
-
-- `static unitCount`: 양의 정수 단위값입니다.
-- 생성자: `super(클래스명.unitCount, '고유한-종류명')`을 호출해야 합니다. 인스턴스의 `unitCount`는 static 값과 같아야 합니다.
-- `draw(drawingContext, x, y, cellSize)`: 예고뿌요 한 개를 그립니다. `x`, `y`, `cellSize`는 게임의 논리 좌표와 셀 크기입니다.
-- 선택 사항인 `getDisplayX(startX, index, sameTypeIndex)`를 재정의하면 같은 종류 예고뿌요의 가로 배치를 바꿀 수 있습니다.
-
-```js
-class CrownWarningPuyo extends WebPuyo.WarningPuyo {
-    static unitCount = 100;
-
-    constructor() {
-        super(CrownWarningPuyo.unitCount, 'crown');
-    }
-
-    draw(drawingContext, x, y, cellSize) {
-        drawingContext.save();
-        drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
-        drawingContext.fillStyle = '#c98b24';
-        drawingContext.beginPath();
-        drawingContext.moveTo(-cellSize * 0.35, cellSize * 0.26);
-        drawingContext.lineTo(-cellSize * 0.35, -cellSize * 0.26);
-        drawingContext.lineTo(0, -cellSize * 0.02);
-        drawingContext.lineTo(cellSize * 0.35, -cellSize * 0.26);
-        drawingContext.lineTo(cellSize * 0.35, cellSize * 0.26);
-        drawingContext.closePath();
-        drawingContext.fill();
-        drawingContext.restore();
-    }
-}
-
-WebPuyo.registerWarningPuyo(CrownWarningPuyo);
-WebPuyo.initialize('webpuyo_canvas');
-```
-
-같은 클래스를 두 번 등록하거나, `WarningPuyo`를 상속하지 않은 클래스, `draw()`를 구현하지 않은 클래스, 잘못된 단위값을 등록하면 오류가 발생합니다. 예고줄에는 기존과 같이 최대 6개 아이콘만 표시됩니다.
-
-## 일반·방해뿌요 렌더링 클래스
-
-일반뿌요와 방해뿌요는 `WebPuyo.Puyo`를 공통 기반으로 하는 내장 클래스 객체가 렌더링합니다. `RedPuyo`, `GreenPuyo`, `YellowPuyo`, `BluePuyo`, `PurplePuyo`, `GarbagePuyo`, `HardGarbagePuyo`는 각각 `getName()`과 `draw(drawingContext, x, y, cellSize, scale)`를 제공합니다. 갤러리도 같은 객체의 `getName()`과 `draw()`를 사용합니다.
-
-보드·저장 데이터·공개 상태의 종류 문자열은 이전과 동일하게 `'red'`, `'green'`, `'yellow'`, `'blue'`, `'purple'`, `'garbage'`, `'hardGarbage'`를 유지합니다. 기존 게임 로직은 이 문자열을 계속 사용하고, 화면에 그릴 때만 해당 클래스 객체의 `draw()`로 위임합니다.
-
-## 음소거 토글 (끄기/켜기)
+### 음소거 토글 (끄기/켜기)
 
 메인 화면의 음소거 버튼은 내부 함수 `toggleMuted()`로 토글됩니다. 설정에 저장됩니다.
 
-## 기본 구조
+## 개발 보조 API
 
-새 상대는 `WebPuyo.Enemy`를 상속하는 클래스로 만듭니다. `getName()`은 비어 있지 않은 화면 표시 이름을 반환해야 합니다. 게임 루프는 적이 결정한 목표 회전값으로 뿌요 쌍을 돌린 뒤, 목표 X 좌표까지 이동시킵니다.
-
-`Enemy`의 생성자는 모든 상대에 공통으로 사용할 기본 상태를 설정합니다. `sortPriority`는 `1`, `hidden`과 `notAvail`은 `false`로 시작하며, `attackSimulationTriggerPosition`은 `{ x: 2, y: 8 }`입니다. 이 좌표에 뿌요가 쌓이면 기본 AI가 일반적인 방향 쌓기보다 공격력 시뮬레이션을 우선하도록 만든 기준점입니다. 상대의 전략에 맞춰 생성자에서 이 좌표를 바꿀 수 있습니다.
-
-### 적 유형 식별자: `getClassType()`
-
-`getClassType()`은 적의 효과음 설정을 식별하는 고유하고 변하지 않는 문자열을 반환합니다. `Enemy`를 상속한 새 적은 반드시 이 메서드를 재정의해야 합니다. 이 클래스의 코드상의 이름을 반환해야 하며, 표시 이름인 `getName()`과 달리 번역하거나 실행 중에 바꾸지 않아야 합니다.
-
-```js
-class CustomEnemy extends WebPuyo.Enemy {
-	constructor() {
-		super();
-		// 중앙이 이 높이에 도달하면 공격 배치를 찾는다.
-		this.attackSimulationTriggerPosition = { x: 2, y: 7 };
-	}
-
-	getClassType() {
-		return 'CustomEnemy';
-	}
-}
-```
-
-`prepareTurn(player)`의 기본 구현은 현재 놓을 수 있는 모든 열·회전 조합을 검사해 `player.aiSimulations`를 만듭니다. 각 후보에는 목표 `x`, `rotation`, 실제 착지할 `positions`, 해당 배치의 예상 `attack`, 전체 예상 연쇄 수인 `combo`가 들어갑니다. 조작 중인 뿌요가 없으면 빈 배열을 저장합니다. 이 목록을 직접 만들거나 재사용하는 AI는 실제로 놓을 수 없는 후보가 포함되지 않는다는 점을 전제로 할 수 있습니다.
-
-```js
-class CenterEnemy extends WebPuyo.Enemy {
-    /** 적 이름을 반환한다. */
-	getName() {
-		return '중앙 수집가';
-	}
-
-	/**
-	 * 조작할 차례가 됐을 때 뿌요를 어느 위치에 둘 지 결정한다. (중력이 작용하므로 X좌표만 지정하면 된다.)
-	 * @param {PlayerState} player 자동 조작할 플레이어
-	 * @returns {number} 목표 X 좌표
-	 */
-	chooseTarget(player) {
-		return 2;
-	}
-
-    /**
-     * 조작할 차례가 됐을 때 뿌요를 회전할 지를 결정한다.
-     * @param {PlayerState} player 자동 조작할 플레이어
-     * @returns {number} 목표 회전값 (0: 위, 1: 오른쪽, 2: 아래, 3: 왼쪽)
-     */
-    chooseRotate(player) {
-    	return 0;
-    }
-
-    /**
-     * 이 적의 초상화를 그린다. 적 선택 화면과 게임 중 중앙 영역에서 사용된다.
-     * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
-     * @param {number} centerX 캐릭터 중심 X 좌표
-     * @param {number} centerY 캐릭터 중심 Y 좌표
-     * @param {number} scale 기본 크기 대비 배율
-     * @returns {void}
-     */
-    drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-        return super.drawPortrait(drawingContext, centerX, centerY, scale, expression);
-    }
-}
-```
-
-## 적 초상화 그리기
-
-`Enemy`의 `drawPortrait(drawingContext, centerX, centerY, scale, expression)` 메서드를 재정의하면 적 선택 화면과 대전 중 중앙 패널에 표시할 적 이미지를 직접 그릴 수 있습니다. `drawingContext`는 캔버스 2D 컨텍스트이며, `centerX`, `centerY`는 초상화의 중심 좌표, `scale`은 기본 크기 대비 배율입니다. `expression`은 `'normal'`, `'crisis'`, `'defeated'` 중 하나이며, 대전 중 중앙 패널에서는 적 필드가 절반 이상 차거나 `DAMAGE + 상대 ATTACK`이 30 이상이면 `'crisis'`, 적 패배 연출 중이면 `'defeated'`가 전달됩니다.
-
-기본 `Enemy`의 메서드는 아무것도 그리지 않습니다. 새 적은 필요할 때만 이 메서드를 재정의하면 됩니다.
-
-```js
-class CenterEnemy extends WebPuyo.Enemy {
-	/**
-	 * 적 선택 화면과 중앙 패널에 초상화를 그린다.
-	 * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
-	 * @param {number} centerX 초상화 중심 X 좌표
-	 * @param {number} centerY 초상화 중심 Y 좌표
-	 * @param {number} scale 기본 크기 대비 배율
-	 * @returns {void}
-	 */
-	drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-		drawingContext.save();
-		drawingContext.translate(centerX, centerY);
-		drawingContext.fillStyle = '#42a5f5';
-		drawingContext.beginPath();
-		drawingContext.arc(0, 0, 42 * scale, 0, Math.PI * 2);
-		drawingContext.fill();
-		drawingContext.restore();
-	}
-}
-```
-
-## 적 등록 방법
-
-새 적은 별도 JavaScript 파일에서 `WebPuyo.registerOpponent()`로 등록합니다. 따라서 새 적을 추가할 때 `puyow.js`를 수정할 필요가 없습니다. 등록 객체에는 `createController` 함수가 반드시 필요하며, 이 함수는 매 호출마다 `Enemy`를 상속한 새 인스턴스를 반환해야 합니다. 적 이름은 별도 `name` 속성이 아니라 `getName()`의 반환값을 사용합니다.
-
-`registerOpponent()`는 등록 시 `createController()`를 한 번 호출해 `sortPriority`, `hidden`, `notAvail`을 읽고 검증합니다. 따라서 이 설정은 생성자에서 설정하고, 등록 뒤에 값을 바꾸지 않아야 합니다. 실제 대전에서도 `createController()`를 다시 호출하므로, 게임별 상태는 컨트롤러 인스턴스 멤버로 유지합니다.
-
-```js
-// my-opponent.js
-class CenterEnemy extends WebPuyo.Enemy {
-	getName() {
-		return '중앙 수집가';
-	}
-
-	chooseTarget(player) {
-		return 2;
-	}
-}
-
-WebPuyo.registerOpponent({
-	createController: () => new CenterEnemy()
-});
-```
-
-`my-opponent.js`는 `puyow.js` 다음, `WebPuyo.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다. 기본 룰 승리 기록은 컨트롤러 클래스명으로 `puyow_store.clearList`와 현재 AI 난이도의 `clearListByDifficulty` 배열에 저장되고, 피버 룰 승리 기록은 별도 `feverClearListByDifficulty` 배열에 저장됩니다. 이미 배포한 적 클래스의 이름을 바꾸면 기존 난이도별 잠금 해제 기록과 호환되지 않습니다.
-
-## 게임 화면 테마
-
-선택된 적의 컨트롤러는 게임 시작 시 세 가지 테마 메서드를 재정의할 수 있습니다. 세 메서드 모두 재정의하지 않으면 기존의 청록색 베젤, 사용자 필드 배경, 중앙 영역 배경이 그대로 그려집니다.
-
-- `drawBezelBackground(drawingContext, area)`: 양쪽 필드를 감싸는 베젤 테두리. `area`에는 `x`, `y`, `width`, `height`, `player`가 있습니다.
-- `drawPlayerBackground(drawingContext, area)`: 각 사용자 필드의 뒷배경. `area`에는 `x`, `y`, `width`, `height`, `player`가 있습니다.
-- `drawCenterBackground(drawingContext, area)`: 다음 뿌요, 초상화, 점수 뒤의 중앙 영역. `area`에는 `x`, `y`, `width`, `height`가 있습니다.
-
-피버 룰에서 각 플레이어가 피버 상태가 된 전용 플레이 영역은 적 테마보다 우선해 주황색 뒷배경과 조금 더 붉은 주황색 베젤을 사용합니다. 피버가 아닌 일반 플레이 영역은 적 테마를 그대로 사용합니다. 연속 피버는 플레이 내내 두 필드 모두 이 피버 배경을 사용합니다.
-
-피버 룰과 연속 피버에서 싹쓸이는 황금색 필드 연출과 다음 `TARGET COMBO`의 +2 보너스를 유지하지만, 싹쓸이 자체로는 `ATTACK`이나 에너지 이동 효과를 만들지 않습니다. 같은 배치에서 뿌요를 터뜨려 생긴 일반 연쇄 공격과 그 에너지 이동은 기존처럼 적용됩니다. 게임 종료가 겹치면 황금 연출과 이미 발생한 연쇄 공격의 예고뿌요·방해뿌요 정산을 마친 뒤 결과 화면으로 전환합니다.
-
-```js
-class NightEnemy extends WebPuyo.Enemy {
-	drawBezelBackground(drawingContext, area) {
-		drawingContext.fillStyle = '#2b193d';
-		drawingContext.fillRect(area.x, area.y, area.width, area.height);
-	}
-
-	drawPlayerBackground(drawingContext, area) {
-		drawingContext.fillStyle = '#171226';
-		drawingContext.fillRect(area.x, area.y, area.width, area.height);
-	}
-
-	drawCenterBackground(drawingContext, area) {
-		drawingContext.fillStyle = '#100d1a';
-		drawingContext.fillRect(area.x, area.y, area.width, area.height);
-	}
-}
-```
-
-## 알고리즘 작성 방법
-
-CPU 한 차례를 시작할 때 게임은 `prepareTurn(player)`, `chooseTarget(player)`, `chooseRotate(player)` 순서로 목표를 결정합니다. 그 뒤 조작 단계 동안 `useFastDown(player)`을 매 프레임 호출해 빠른 하강 시점을 확인합니다. `prepareTurn()`은 위치와 회전별 가상 착지 결과, 예상 공격력, 예상 연쇄 수를 `player.aiSimulations`에 준비합니다. 하위 클래스가 재정의할 때는 `super.prepareTurn(player)`을 먼저 호출해 기본 후보 생성을 유지해야 합니다. 그 다음 선택 메서드는 같은 후보 목록을 읽어 서로 일관된 목표 열과 회전을 반환할 수 있습니다.
-
-`chooseTarget(player)`에서는 현재 CPU 필드를 읽고, 이번 뿌요 쌍을 어느 열에 둘지 결정합니다. `chooseRotate(player)`는 목표 회전값을 반환합니다. 기본값은 세로 상태인 `0`이며, `1`은 오른쪽, `2`는 아래, `3`은 왼쪽입니다. 공격력 시뮬레이션처럼 열과 회전을 함께 골랐다면 `chooseTarget()`에서 선택한 후보를 인스턴스 필드에 보관하고, `chooseRotate()`에서 같은 후보의 `rotation`을 반환해야 합니다.
-
-`useFastDown(player)`은 목표 열과 회전이 결정된 뒤 AI가 아래 방향키를 눌러 이번 뿌요 쌍을 빠르게 내릴지 결정합니다. 기본 `Enemy` 구현은 선택된 AI 난이도에 따라 동작합니다. `쉬움`은 빠른 하강을 사용하지 않고, `보통`은 목표 결정 1,500ms 뒤, `어려움`은 300ms 뒤, `극한`은 즉시 빠르게 하강합니다. 기본 제공되는 안드로말리우스와 단탈리온도 이 정책을 그대로 따릅니다. 사용자 정의 AI가 자체 정책을 사용하려면 이 메서드를 재정의하고, 기본 정책을 일부 유지하려면 `super.useFastDown(player)`를 호출합니다.
-
-`WebPuyo.getSelectedDifficulty()`는 현재 선택되어 게임에 적용되는 AI 난이도를 조회합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환합니다. 반환 객체의 `key`는 `'easy'`, `'normal'`, `'hard'`, `'extreme'` 중 하나이고, `name`은 표시명, `fastDownDelay`는 빠른 하강 대기 시간(ms)이며 쉬움에서는 `null`입니다.
-
-```js
-const difficulty = WebPuyo.getSelectedDifficulty();
-if (difficulty.key === 'hard') {
-	// 어려움 AI에 맞춘 별도 판단
-}
-```
-
-빠른 하강 대기 시간은 `AI_FAST_DOWN_DELAY_EASY`(사용하지 않음), `AI_FAST_DOWN_DELAY_NORMAL`(1,500ms), `AI_FAST_DOWN_DELAY_HARD`(300ms), `AI_FAST_DOWN_DELAY_EXTREME`(0ms)로 난이도별 관리됩니다. 게임 외부에서 이 값을 직접 바꾸는 대신 `getSelectedDifficulty()`의 `fastDownDelay`를 사용해 현재 정책을 확인할 수 있습니다.
-
-`WebPuyo.getSelectedColorCount()`는 게임에 적용할 일반 뿌요 색상 수를 `3`, `4`, `5` 중 하나로 반환합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환하므로 색상 수에 맞춘 AI 후보 생성을 구현할 때 사용할 수 있습니다.
-
-기본 룰 적 선택에서는 3·4·5색을 선택할 수 있습니다. 피버 룰 적 선택도 색상 수와 AI 난이도를 모두 고르지만 4·5색만 선택할 수 있습니다. 메인 메뉴의 `연습`은 3·4·5색 선택 뒤 시작하고, `연속 피버`는 같은 색상 선택 화면에서 4·5색만 고른 뒤 시작합니다. 두 단독 모드의 색상 선택 화면은 방향키·Enter·마우스를 지원하며 ESC 또는 선택지 밖 클릭으로 메인 메뉴에 돌아갑니다.
-
-```js
-const colorCount = WebPuyo.getSelectedColorCount();
-const difficultyColors = player.colors.slice(0, colorCount);
-```
-
-## 다음 뿌요 정보 읽기
-
-`WebPuyo.getNextPairs()`는 중앙 영역에 표시되는 플레이어와 적의 다음 두 뿌요 쌍을 JSON 직렬화 가능한 복사본으로 반환합니다. 각 쌍의 배열은 아래 뿌요, 위 뿌요 순서입니다. 게임이 아직 생성되지 않은 메뉴 상태에서는 `null`을 반환합니다.
-
-```js
-const next = WebPuyo.getNextPairs();
-if (next) {
-	console.log(next.player.name, next.player.nextPairs);
-	console.log(next.opponent.name, next.opponent.nextPairs);
-}
-// 예: { player: { name, nextPairs: [['red', 'blue'], ['green', 'green']] },
-//       opponent: { name, nextPairs: [['red', 'blue'], ['green', 'green']] } }
-```
-
-반환된 `nextPairs`는 내부 대기열의 복사본이므로 값을 변경해도 실제 게임의 다음 뿌요에는 영향을 주지 않습니다.
-
-## 현재 게임 상태 읽기
-
-`WebPuyo.getScreenState()`는 메뉴, 튜토리얼, 대전을 포함해 현재 화면을 `{ screen, playerCanControl }` 형태로 반환합니다. `screen`은 `main_menu`, `opponent_select`, `countdown`, `playing`, `paused`, `ending`, `game_over` 등 현재 표시 화면을 나타내며, `playerCanControl`은 플레이어가 실제로 조작 중인 뿌요 쌍을 움직일 수 있을 때만 `true`입니다. Playwright에서는 화면 전환이나 입력 가능 시점을 기다리는 조건으로 사용할 수 있습니다.
-
-`WebPuyo.getGameState()`는 일반 대전과 연습전의 읽기 전용 상태 스냅샷을 반환합니다. 메뉴, 튜토리얼, 초기화 전에는 `null`을 반환합니다. 카운트다운, 진행 중, 일시정지, 종료 연출, 게임 오버 상태도 조회할 수 있습니다. 반환된 객체와 배열은 내부 상태의 복사본이므로 AI나 테스트 코드에서 바꿔도 실제 게임에는 영향을 주지 않습니다.
-
-```js
-const screen = WebPuyo.getScreenState();
-if (screen.playerCanControl) {
-    const state = WebPuyo.getGameState();
-    console.log(state.player.active);
-    console.log(state.player.board.puyos);
-}
-```
-
-`getGameState()`의 최상위에는 `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, `ending`이 있습니다. `player`와 `opponent`에는 다음 정보가 각각 들어 있습니다.
-
-- `isCpu`, `phase`, `point`, `attack`, `damage`, `combo`, `placedPairCount`
-- `board.columns`, `board.rows`, `board.visibleRows`, `board.puyos` — 고정된 뿌요를 `{ x, y, color }` 목록으로 반환합니다. 좌표의 원점은 왼쪽 아래입니다.
-- `nextPairs`, `warningPuyos`, `active` — `active`는 조작 중인 쌍이 없으면 `null`이며, 있을 때는 `x`, `y`, `rotation`, `colors`, `cells`를 포함합니다.
-
-Playwright에서는 다음처럼 브라우저의 실제 게임 상태를 직접 검증할 수 있습니다.
-
-```js
-const state = await page.evaluate(() => window.WebPuyo.getGameState());
-expect(state).not.toBeNull();
-expect(state.player.board.columns).toBe(6);
-```
-
-## 랜덤 난수 생성
+### 랜덤 난수 생성
 
 `WebPuyo.randomFloat()`는 `0` 이상 `1` 미만의 실수 난수를 반환합니다. 게임 내부에서 색상 선택, 방해뿌요 열 순서 섞기, AI의 무작위 턴 수 결정 등 모든 랜덤 값은 이 함수를 통해 생성됩니다. 게임 내부에 새로운 랜덤 동작을 추가할 때도 `Math.random()`을 직접 호출하지 말고 `randomFloat()`을 사용해야 테스트에서 랜덤 생성 지점을 한 곳으로 관리할 수 있습니다.
 
@@ -441,205 +158,6 @@ await page.addInitScript(() => {
 await page.goto('/puyow.html');
 ```
 
-- `player.board[y][x]`에는 해당 칸의 색상 문자열 또는 빈 칸의 `null`이 있습니다.
-- 좌표는 왼쪽 아래가 `(0, 0)`입니다. `x`는 `0`부터 `5`, `y`는 `0`부터 `16`입니다. `y=0`부터 `11`은 화면에 보이는 12줄이고, `y=12`는 조작 뿌요가 생성되는 기존 숨김 행이며, `y=13`부터 `16`은 방해뿌요 생성 전용의 추가 숨김 행입니다.
-- 현재 떨어지는 쌍은 `player.active`에 있고, 색상은 `player.active.colors` 배열에 있습니다.
-- `player.aiSimulations`의 각 항목에는 `x`, `rotation`, `positions`, `attack`, `combo`가 있습니다. `positions`는 실제 착지 좌표이고 `attack`은 해당 배치의 예상 공격력이며, `combo`는 그 배치에서 최종적으로 일어날 전체 연쇄 수입니다.
-- 기본 `prepareTurn()`은 현재 보드에서 실제로 착지할 수 있는 후보만 목록에 넣습니다. 따라서 AI는 존재하지 않는 후보를 별도로 걸러낼 필요가 없습니다.
-- 반환값은 `0`부터 `5` 사이의 목표 X 좌표여야 합니다.
-- 회전값은 `0`부터 `3` 사이여야 하며, 게임 루프는 회전과 수평 이동을 모두 수행합니다.
+---
 
-예상 공격력이 가장 높은 배치의 열과 회전을 함께 선택하는 예시는 다음과 같습니다.
-
-```js
-class AttackEnemy extends WebPuyo.Enemy {
-	prepareTurn(player) {
-		super.prepareTurn(player);
-		this.bestMove = player.aiSimulations.reduce(
-			(best, candidate) => candidate.attack >= best.attack ? candidate : best,
-			{ x: 5, rotation: 0, attack: -1, combo: 0 }
-		);
-	}
-
-	chooseTarget(player) {
-		return this.bestMove.x;
-	}
-
-	chooseRotate(player) {
-		return this.bestMove.rotation;
-	}
-}
-```
-
-간단한 알고리즘은 각 열의 높이를 구한 뒤, 가장 낮은 열을 선택하는 방식입니다.
-
-```js
-class LowestColumnEnemy extends WebPuyo.Enemy {
-	/**
-	 * 가장 낮은 열을 찾아 뿌요를 쌓는다.
-	 * @param {PlayerState} player 자동 조작할 플레이어
-	 * @returns {number} 목표 X 좌표
-	 */
-	chooseTarget(player) {
-		let bestColumn = 0;
-		let lowestHeight = ROWS;
-
-		for (let x = 0; x < COLUMNS; x += 1) {
-			let height = 0;
-			while (height < ROWS && player.board[height][x]) height += 1;
-			if (height < lowestHeight) {
-				lowestHeight = height;
-				bestColumn = x;
-			}
-		}
-		return bestColumn;
-	}
-}
-```
-
-더 강한 AI를 만들려면 `player.aiSimulations`의 후보마다 예상 공격력, 같은 색의 인접 수, 필드 높이, 방해뿌요 위험을 점수화해 가장 높은 후보를 선택하면 됩니다. 후보에 없는 열·회전 조합은 현재 보드에서 실제로 착지할 수 없는 조합입니다.
-
-## 사운드 풀 설정
-
-`WebPuyo.SoundPool`은 적의 주문 효과음과 적 전용 배경음악 URL을 담는 클래스입니다. `Enemy`를 상속한 클래스의 생성자에서 `super()`를 호출하면 `this.soundPool`이 자동으로 만들어지므로, 필요한 항목에 상대경로 또는 절대경로 URL을 대입하면 됩니다. URL을 `null`(기본값)로 두면 해당 소리는 재생하지 않습니다.
-
-```js
-class MyEnemy extends WebPuyo.Enemy {
-    constructor() {
-        super();
-        this.soundPool.spellCombo1 = 'sounds/my-combo-1.ogg';
-        this.soundPool.spellCombo7 = 'https://example.com/my-combo-7.ogg';
-        this.soundPool.backgroundMusic = 'sounds/my-bgm.ogg';
-    }
-}
-```
-
-이미 등록된 적의 효과음이나 전용 배경음악을 외부 설정 파일에서 바꾸려면 `WebPuyo.createSoundPool(false)`로 적 전용의 빈 사운드 풀을 만든 뒤 `WebPuyo.setEnemySoundPool()`에 전달합니다. `false`는 적 전용 `EnemySoundPool`을 뜻하며, `true`를 넘기면 공통 시스템용 `CommonSoundPool`이 만들어지므로 적 효과음 교체에는 사용하지 않습니다.
-
-`setEnemySoundPool(enemyClassType, soundPoolObject)`은 등록된 적의 `getClassType()` 반환값으로 대상을 찾습니다. 따라서 적을 먼저 `registerOpponent()`로 등록한 다음 호출해야 합니다. 이후 새로 생성되는 해당 적은 지정한 사운드 풀을 사용하며, 이미 대전 중인 같은 적도 다음 연쇄 효과음부터 새 풀을 사용합니다. 존재하지 않는 유형에는 경고를 남기고, 사운드 풀이 아니거나 빈 유형 문자열이면 오류를 발생시킵니다.
-
-```js
-// 기본 적 안드로말리우스의 음원을 프로젝트 설정으로 교체한다.
-const andromaliusSounds = WebPuyo.createSoundPool(false);
-andromaliusSounds.spellCombo1 = 'sounds/andromalius-combo-1.ogg';
-andromaliusSounds.spellCombo7 = 'sounds/andromalius-combo-7.ogg';
-andromaliusSounds.backgroundMusic = 'sounds/andromalius-bgm.ogg';
-WebPuyo.setEnemySoundPool('Andromalius', andromaliusSounds);
-```
-
-`WebPuyo.commonSoundPool`은 플레이어 주문 효과음, 양쪽 공통 뿌요 폭발 효과음, 공통 배경음악을 담는 `CommonSoundPool` 객체입니다. `initialize()` 호출 전이나 후에 URL을 설정할 수 있습니다.
-
-```js
-WebPuyo.commonSoundPool.spellCombo1 = 'sounds/player-combo-1.ogg';
-WebPuyo.commonSoundPool.puyoBurstCombo1 = 'sounds/puyo-burst-1.ogg';
-WebPuyo.commonSoundPool.backgroundMusic = 'sounds/common-bgm.ogg';
-```
-
-연쇄 번호가 7 이상이면 `spellCombo7` 또는 `puyoBurstCombo7`을 사용합니다. 적의 배경음악이 `null`일 때만 공통 배경음악을 대신 사용하며, 게임이 끝나면 배경음악은 자동으로 중지됩니다. 설정 화면의 배경음악·효과음 음량과 메인 화면의 음소거 상태가 모든 재생에 적용되고, 재생 오류는 `console.error`로 기록한 뒤 게임은 계속 진행됩니다.
-
-## 피버 패턴 추가
-
-피버 룰의 피버 상황과 연속 피버 모드에서 사용할 피버 패턴을 추가할 수 있습니다. 새 피버 턴에는 필드를 비운 뒤 `FeverStageState`에 정의한 뿌요 배치 패턴을 채우고, 지정된 다음 뿌요 쌍을 제공합니다. 외부 스크립트에서는 `WebPuyo.FeverStageState`를 만들고 `WebPuyo.registerFeverStageState()`로 등록해 목표 연쇄별 패턴을 추가할 수 있습니다. 피버 게임을 시작하기 전에 등록하는 것을 권장합니다.
-
-`FeverStageState` 생성자는 `new WebPuyo.FeverStageState(stageData, targetCombo, suppliedNextPuyos, difficulty, usingColors)` 형식입니다. 마지막 `usingColors`는 생략할 수 있으며, 생략하면 배치와 다음 뿌요에 실제로 쓰인 일반 색상 목록을 자동으로 사용합니다.
-
-- `stageData`: `{ puyos: [{ x, y, color }, ...] }` 형식의 배치 데이터입니다. `x`는 0~5, `y`는 0~16이며 `color`는 일반 색상 문자열 또는 `'garbage'`입니다. 시뮬레이터의 JSON 복사 결과를 그대로 사용할 수 있습니다.
-- `targetCombo`: 이 패턴이 유도해야 하는 연쇄 수입니다. 현재 연속 피버는 5~12만 선택하므로 이 범위의 패턴을 등록해야 합니다.
-- `suppliedNextPuyos`: 배치 직후 제공할 두 색상 문자열입니다. 연속 피버는 실제 다음 쌍이 동색인지 이색인지에 맞는 패턴만 후보로 사용합니다.
-- `difficulty`: 패턴 난이도를 기록하는 숫자 메타데이터입니다.
-- `usingColors`: 이 패턴이 쓰는 일반 색상 목록입니다. 피버는 먼저 이 목록의 색상 수가 현재 4·5색 모드의 색상 수 이하인 패턴만 후보로 남긴 뒤 목표 연쇄와 다음 쌍 구성을 검사합니다.
-
-### 시뮬레이터로 `stageData` 만들기
-
-직접 좌표와 색상을 작성할 필요는 없습니다. 메인 메뉴의 **시뮬레이터**에서 팔레트를 선택해 필드에 뿌요를 직접 배치하고, **재생**으로 연쇄가 목표 연쇄 수와 일치하는지 시험합니다. 패턴을 완성한 뒤 **JSON복사**를 누르면 클립보드에 `{ "puyos": [...] }` 형식의 JSON 문자열이 복사됩니다. 이 문자열은 `stageData`와 완전히 호환되므로, 아래처럼 그대로 붙여 넣으면 됩니다.
-
-```js
-// 시뮬레이터의 JSON복사 결과를 그대로 붙여 넣는다.
-const fiveChainStageData = {
-    "puyos": [
-        // 시뮬레이터에서 복사한 { "x": 0, "y": 0, "color": "red" } 등의 목록
-    ]
-};
-
-const fiveChainStage = new WebPuyo.FeverStageState(
-    fiveChainStageData,
-    5,
-    ['red', 'blue'], // 이색 다음 쌍을 위한 패턴
-    2,
-    ['red', 'blue', 'green']
-);
-
-WebPuyo.registerFeverStageState(fiveChainStage);
-```
-
-JSON복사 결과에는 클릭해서 고정한 필드 뿌요만 들어갑니다. 피버 턴에 줄 다음 뿌요 쌍은 포함되지 않으므로, 등록할 때는 동색·이색 구성에 맞춰 `suppliedNextPuyos`를 별도로 지정합니다.
-
-현재 색 모드의 색 목록에 `usingColors`의 모든 색이 들어 있으면 스테이지 배치와 지급 뿌요는 원본 색 그대로 사용합니다. 그렇지 않더라도 `usingColors` 수가 현재 모드보다 많지 않으면, 배치와 지급 뿌요의 일반 색상은 현재 모드 색만 쓰도록 중복 없는 1:1 대응으로 변환합니다. `'garbage'`는 변환 없이 유지됩니다. 따라서 특정 색 이름 자체보다 색의 연결 구조가 중요하며, 각 목표 연쇄에는 동색 쌍용 패턴과 이색 쌍용 패턴을 모두 하나 이상 등록해야 어느 다음 쌍이 나와도 후보를 고를 수 있습니다.
-
-`registerFeverStageState()`는 `FeverStageState` 인스턴스만 받으며 다른 값은 `TypeError`를 발생시킵니다. 좌표, 색상, 목표 연쇄가 실제로 올바른지는 등록 시 자동으로 시뮬레이션하지 않으므로, 시뮬레이터 또는 `estimateCombo()`로 실제 착지 가능한 배치와 목표 연쇄 수를 반드시 검증한 뒤 등록해야 합니다.
-
-## 현재 필드 정보 읽기
-
-`getMyFieldInfo(player)`은 CPU 자신의 필드 배치 현황을 새 JSON 객체로 반환합니다. 반환값은 `{ columns, rows, cells }` 형식이며, `cells[y][x]`에는 색상 문자열, 방해뿌요의 `'garbage'`, 또는 빈 칸의 `null`이 들어 있습니다. `y`의 `0`행은 필드 맨 아래입니다. 반환된 `cells`는 복사본이므로 값을 바꾸어도 실제 게임 필드는 바뀌지 않습니다.
-
-피버 룰 대응 AI는 다음 메서드로 자신의 피버 상태를 읽을 수 있습니다.
-
-- `isInFever(player)`: 현재 피버 상황이면 `true`를 반환합니다.
-- `getMyFeverFieldInfo(player)`: 피버 중인 경우 피버 전용 필드를 `{ columns, rows, cells }` 복사본으로 반환하고, 피버 중이 아니면 `null`을 반환합니다.
-- `getMyFeverStatus(player)`: `{ active, gauge, nextTime, targetCombo, leftTime, damage, turn }`을 반환합니다. `leftTime`은 밀리초 단위이고 `damage`는 일반 피해와 분리된 피버 전용 피해이며, 피버 룰이 아닌 게임에서는 `null`입니다.
-
-기본 제공 적인 `BundledEnemy` 하위 클래스는 피버 상황에서 패배 위치를 피한 뒤 예상 연쇄 수가 가장 큰 위치와 회전을 자동으로 선택합니다. 외부에서 `Enemy`를 직접 상속한 적에게는 이 공통 특수 조건이 적용되지 않으므로, 필요하면 위 메서드와 `player.aiSimulations`를 이용해 자체 전략을 구현해야 합니다.
-
-이 메서드는 주로 `chooseTarget()`에서 현재 필드 높이, 색상 연결, 방해뿌요 위치를 판단할 때 사용합니다.
-
-```js
-class FieldAwareEnemy extends WebPuyo.Enemy {
-	chooseTarget(player) {
-		const field = this.getMyFieldInfo(player);
-		return field.cells[0][2] === null ? 2 : 3;
-	}
-}
-```
-
-## 점수 계산
-
-한 폭발 단계의 점수는 동시에 폭발한 일반 색 뿌요 전체를 기준으로 계산합니다. 일반 방해뿌요와 딱딱뿌요는 점수용 뿌요 수에는 포함하지 않습니다.
-(딱딱뿌요는 현재 시뮬레이터 화면에서만 사용 가능하며 추후 별도 룰로 출시 고려 중)
-
-```text
-일반 뿌요 수 = 동시에 폭발한 모든 일반 색 뿌요 수
-보너스 값 = max(1, 연쇄 보너스 + 연결 보너스 + 색수 보너스)
-딱딱뿌요 배율 = (이번에 파괴한 딱딱뿌요 수 * HARD_GARBAGE_SCORE_MULTIPLIER) + 1
-점수 증가량 = 일반 뿌요 수 * 딱딱뿌요 배율 * 보너스 값 * 10
-ATTACK 증가량 = (점수 증가량 / 마진 레이트) * EXPLOSION_REWARD_MULTIPLIER
-```
-
-연결 보너스는 색별 연결 그룹마다 따로 더하지 않고, 같은 폭발 단계에서 사라진 일반 뿌요의 총수로 한 번 계산합니다. 예를 들어 빨강 4개와 파랑 5개가 동시에 폭발하면 일반 뿌요 수는 9개, 색수 보너스는 2색 기준 3, 연결 보너스는 9개 기준 6입니다.
-
-`src/puyow.js`의 `HARD_GARBAGE_SCORE_MULTIPLIER`는 현재 `2`입니다. 따라서 1연쇄에서 보너스 값이 1인 일반 뿌요 4개가 폭발할 때, 딱딱뿌요 1개를 함께 파괴하면 `4 * (1 * 2 + 1) * 1 * 10 = 120`점이고, 2개를 함께 파괴하면 `4 * (2 * 2 + 1) * 1 * 10 = 200`점입니다.
-
-이 상수는 실제 게임, 시뮬레이터, AI의 예상 공격 계산이 공유합니다. 값을 바꾸면 `tests/test01.spec.js`의 딱딱뿌요 1개·2개 동시 파괴 점수 기대값도 같은 식으로 갱신해야 합니다.
-
-## 예상 공격 계산
-
-AI는 `player.estimateAttack(colors, positions)`으로 특정 두 뿌요를 놓았을 때의 예상 공격 수치를 얻을 수 있습니다. 이 메서드는 현재 보드를 변경하지 않고, 중력, 연쇄, 인접 방해뿌요 제거를 가상으로 적용한 뒤 전체 `ATTACK` 값을 숫자로 반환합니다.
-
-`colors`는 아래 뿌요부터의 색상 두 개이고, `positions`는 각각의 `{ x, y }` 좌표입니다. 좌표는 왼쪽 아래가 `(0, 0)`이며 범위를 벗어나거나 이미 찬 칸을 지정하면 `0`을 반환합니다.
-
-```js
-const attack = player.estimateAttack(
-	[player.active.colors[0], player.active.colors[1]],
-	[{ x: 2, y: 4 }, { x: 2, y: 5 }]
-);
-```
-
-## 예상 연쇄 계산
-
-`player.estimateCombo(colors, positions)`은 `estimateAttack()`과 동일한 인수를 받고, 가상 배치에서 발생할 전체 연쇄 수를 숫자로 반환합니다. 현재 보드는 변경하지 않으며, 유효하지 않은 색상이나 좌표를 전달하면 `0`을 반환합니다.
-
-```js
-const combo = player.estimateCombo(
-	[player.active.colors[0], player.active.colors[1]],
-	[{ x: 2, y: 4 }, { x: 2, y: 5 }]
-);
-```
+[그래픽 좌표](docs/Graphics.md) · [뿌요 API](docs/Puyo.md) · [적·AI](docs/Enemy.md) · [시뮬레이터·피버](docs/Simulator.md) · [사운드](docs/Sound.md)
