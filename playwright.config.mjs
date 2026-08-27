@@ -14,6 +14,13 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  /*
+   * Codex의 기본 샌드박스에서는 Chromium 자식 프로세스 생성이 `spawn EPERM`으로
+   * 차단될 수 있다. 이때 `npx.cmd playwright test --list`는 정상이어도 실제
+   * 브라우저 테스트는 멈춘 것처럼 보일 수 있다. 테스트 코드 문제가 아니므로,
+   * Codex에서는 권한 승격 실행을 사용하거나 로컬 터미널에서 아래 명령을 실행한다.
+   *   npx.cmd playwright test --project=chromium
+   */
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
