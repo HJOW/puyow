@@ -27,6 +27,7 @@
 
 puyow.js 는 CDN으로도 사용할 수 있습니다.
 ```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/puyow.css"/>
 <script src='https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/puyow.js'></script>
 ```
 
