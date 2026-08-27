@@ -836,7 +836,7 @@ test('숨김 13번째 줄 뿌요는 중력으로 내려온 뒤 다음 폭발 판
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.color === 'red'))).toBe(false);
 });
 
-test('시뮬레이터 점수는 동시 폭발의 색수 보너스를 합산한다', async ({ page }) => {
+test('시뮬레이터 점수는 동시 폭발의 색수와 총 연결 보너스를 합산한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -851,7 +851,27 @@ test('시뮬레이터 점수는 동시 폭발의 색수 보너스를 합산한�
     await canvas.click({ position: { x, y: 501 } });
   }
   await canvas.click({ position: { x: 960, y: 350 } });
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000240'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000640'))).toBe(true);
+});
+
+test('시뮬레이터 점수는 동시 4·5색 폭발의 총 9개 연결 보너스를 적용한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  await page.evaluate(() => {
+    window.prompt = () => JSON.stringify({ puyos: [
+      { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 3, y: 0, color: 'red' },
+      { x: 4, y: 0, color: 'garbage' },
+      { x: 0, y: 1, color: 'blue' }, { x: 1, y: 1, color: 'blue' }, { x: 2, y: 1, color: 'blue' }, { x: 3, y: 1, color: 'blue' }, { x: 4, y: 1, color: 'blue' },
+    ] });
+  });
+
+  const canvas = page.locator('#webpuyo_canvas');
+  await canvas.click({ position: { x: 960, y: 440 } });
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000810'))).toBe(true);
 });
 
 test('시뮬레이터 점수는 다섯 뿌요 연결 보너스를 적용한다', async ({ page }) => {
@@ -868,7 +888,7 @@ test('시뮬레이터 점수는 다섯 뿌요 연결 보너스를 적용한다',
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000100'))).toBe(true);
 });
 
-test('시뮬레이터에서 딱딱뿌요 JSON을 복사·배치하고 두 방향 폭발로 파괴한다', async ({ page }) => {
+test('시뮬레이터에서 딱딱뿌요 하나의 파괴는 점수에 세 배율로 반영된다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -896,7 +916,28 @@ test('시뮬레이터에서 딱딱뿌요 JSON을 복사·배치하고 두 방향
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState().board.puyos.some((puyo) => puyo.color === 'hardGarbage'))).toBe(false);
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000240'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000120'))).toBe(true);
+});
+
+test('시뮬레이터에서 동시에 파괴한 두 딱딱뿌요는 점수에 다섯 배율로 반영된다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  await page.evaluate(() => {
+    window.prompt = () => JSON.stringify({ puyos: [
+      { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 1, y: 1, color: 'red' },
+      { x: 0, y: 1, color: 'hardGarbage' }, { x: 2, y: 1, color: 'hardGarbage' },
+    ] });
+  });
+
+  const canvas = page.locator('#webpuyo_canvas');
+  await canvas.click({ position: { x: 960, y: 440 } });
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.WebPuyo.getSimulatorState().board.puyos.some((puyo) => puyo.color === 'hardGarbage'))).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000200'))).toBe(true);
 });
 
 test('시뮬레이터 딱딱뿌요는 한 방향 폭발에 일반 방해뿌요가 된다', async ({ page }) => {

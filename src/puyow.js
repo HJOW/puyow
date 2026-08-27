@@ -42,6 +42,8 @@
     const COLORS = ['red', 'green', 'yellow', 'blue', 'purple'];
     /** 시뮬레이터와 갤러리에서만 사용하는 얼음질 방해뿌요 식별자다. @type {string} */
     const HARD_GARBAGE = 'hardGarbage';
+    /** 한 번에 파괴한 딱딱뿌요 한 개당 점수용 일반 뿌요 수에 적용할 배율이다. @type {number} */
+    const HARD_GARBAGE_SCORE_MULTIPLIER = 2;
     /** 색상 이름별 캔버스 색상값이다. @type {Record<string, string>} */
     const PALETTE = {
         red: '#ef5350', green: '#66bb6a', yellow: '#f7c843', blue: '#42a5f5', purple: '#ab73e8',
@@ -1780,9 +1782,9 @@
         return CHAIN_BONUS[CHAIN_BONUS.length - 1] * (combo - 18);
     }
 
-    /** 연결 그룹 크기에 맞는 점수 보너스를 구한다. @param {number} groupSize 연결된 뿌요 수 @returns {number} 연결 보너스 */
-    function getConnectionBonus(groupSize) {
-        return CONNECTION_BONUS[Math.min(Math.max(0, groupSize), CONNECTION_BONUS.length - 1)];
+    /** 한 폭발 단계에서 사라진 일반 뿌요 수에 맞는 점수 보너스를 구한다. @param {number} puyoCount 폭발한 일반 뿌요 수 @returns {number} 연결 보너스 */
+    function getConnectionBonus(puyoCount) {
+        return CONNECTION_BONUS[Math.min(Math.max(0, puyoCount), CONNECTION_BONUS.length - 1)];
     }
 
     /** 동시에 폭발한 색 수에 맞는 점수 보너스를 구한다. @param {number} colorCount 서로 다른 색 수 @returns {number} 색수 보너스 */
@@ -1831,7 +1833,8 @@
     }
 
     /**
-     * 한 폭발 단계의 점수 증가량을 계산한다. 인접 방해뿌요는 점수용 뿌요 수에 포함하지 않는다.
+     * 한 폭발 단계의 점수 증가량을 계산한다. 동시에 폭발한 일반 뿌요 수 전체로 연결 보너스를 계산하고,
+     * 인접 방해뿌요는 점수용 뿌요 수에 포함하지 않는다.
      * @param {{color:string, cells:number[][]}[]} explosionGroups 이번 단계에 폭발한 색 뿌요 연결 그룹
      * @param {number} combo 현재 연쇄 수
      * @param {number} [brokenHardGarbageCount=0] 이번 단계에서 한 번에 파괴한 딱딱뿌요 수
@@ -1839,10 +1842,11 @@
      */
     function calculateExplosionPoint(explosionGroups, combo, brokenHardGarbageCount = 0) {
         const puyoCount = explosionGroups.reduce((total, group) => total + group.cells.length, 0);
-        const connectionBonus = explosionGroups.reduce((total, group) => total + getConnectionBonus(group.cells.length), 0);
+        const connectionBonus = getConnectionBonus(puyoCount);
         const colorBonus = getColorBonus(new Set(explosionGroups.map((group) => group.color)).size);
-        const bonus = Math.max(1, getChainBonus(combo) + connectionBonus + colorBonus) + brokenHardGarbageCount * 5;
-        return puyoCount * bonus * 10;
+        const bonus = Math.max(1, getChainBonus(combo) + connectionBonus + colorBonus);
+        const hardGarbageMultiplier = brokenHardGarbageCount * HARD_GARBAGE_SCORE_MULTIPLIER + 1;
+        return puyoCount * hardGarbageMultiplier * bonus * 10;
     }
 
     /** 게임 경과 시간에 해당하는 마진 레이트를 구한다. @param {number} elapsed 게임 경과 시간(ms) @returns {number} 마진 레이트 */
