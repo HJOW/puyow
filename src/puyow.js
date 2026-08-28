@@ -15,6 +15,8 @@
 (() => {
     'use strict';
 
+    /** 빌드 번호 @type {number} */
+    const BUILDNO = 1;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -8771,6 +8773,16 @@
         if (!(feverStageState instanceof FeverStageState)) throw new TypeError('feverStageState는 FeverStageState 인스턴스여야 합니다.');
         addFeverStageState(feverStageState);
     }
+    
+    /**
+     * 퍼즐 뿌요 스테이지를 추가한다.
+     * 
+     * @param {PuzzlePuyoStage} puzzlePuyoStage 퍼즐 뿌요 스테이지
+     */
+    function registerPuzzleStage(puzzlePuyoStage) {
+        if (!(puzzlePuyoStage instanceof PuzzlePuyoStage)) throw new TypeError('puzzlePuyoStage는 PuzzlePuyoStage 인스턴스여야 합니다.');
+        PUZZLE_STAGES.push(puzzlePuyoStage);
+    }
 
     /**
      * 2D 렌더러에 종속되지 않아 3D 버전도 재사용할 수 있는 공통 함수 모음이다.
@@ -8821,9 +8833,11 @@
         FeverStageState,
         PuzzlePuyoStage,
         PUZZLE_STAGES,
+        BUILDNO,
         createSoundPool,
         setEnemySoundPool,
         registerFeverStageState,
+        registerPuzzleStage,
         registerOpponent,
         registerWarningPuyo,
         registerLanguage,
