@@ -2761,12 +2761,14 @@
         }
     }
 
-    /** 완료한 연쇄와 싹쓸이 여부로 다음 목표 연쇄를 계산한다. @param {number} combo 완료 연쇄 @param {boolean} allClear 싹쓸이 여부 @returns {number} 4~12 범위의 다음 목표 */
-    function calculateContinuousFeverTarget(combo, allClear) {
+    /** 완료한 연쇄·싹쓸이 여부와 직전 목표로 다음 목표 연쇄를 계산한다. @param {number} combo 완료 연쇄 @param {boolean} allClear 싹쓸이 여부 @param {number} previousTarget 직전 목표 연쇄 @returns {number} 4~12 범위의 다음 목표 */
+    function calculateContinuousFeverTarget(combo, allClear, previousTarget) {
         // 연속 피버와 피버 상태의 다음 목표는 항상 완료 연쇄 + 1부터 계산한다.
         let nextTarget = combo + 1;
         if (allClear) nextTarget += 2;
-        return Math.max(FEVER_MIN_TARGET_COMBO, Math.min(CONTINUOUS_FEVER_MAX_TARGET_COMBO, nextTarget));
+        nextTarget = Math.max(FEVER_MIN_TARGET_COMBO, Math.min(CONTINUOUS_FEVER_MAX_TARGET_COMBO, nextTarget));
+        // 급격한 난이도 하락을 막기 위해 직전 목표보다 1을 넘겨 낮아지지 않게 한다.
+        return Math.max(nextTarget, previousTarget - 1);
     }
 
     /** 배치 시작 전 또는 배치·연쇄 처리 도중 피버 시간이 만료되었는지 확인한다. @param {object} feverState 피버 상태 @returns {boolean} 종료 처리 필요 여부 */
@@ -2789,7 +2791,7 @@
             return;
         }
         const combo = game.fever.pendingCombo;
-        game.fever.targetCombo = calculateContinuousFeverTarget(combo, game.fever.pendingAllClear);
+        game.fever.targetCombo = calculateContinuousFeverTarget(combo, game.fever.pendingAllClear, game.fever.targetCombo);
         if (game.fever.leftTime > 0 && combo > 0) {
             const comboTimeBonus = Math.floor(combo / 2) * 1000 + FEVER_CHAIN_TIME_BONUS;
             const allClearTimeBonus = game.fever.pendingAllClear ? CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS : 0;
@@ -2811,7 +2813,7 @@
         if (!game?.feverRule || !state?.active) return;
         const combo = state.pendingCombo;
         const previousTarget = state.targetCombo;
-        state.targetCombo = calculateContinuousFeverTarget(combo, state.pendingAllClear);
+        state.targetCombo = calculateContinuousFeverTarget(combo, state.pendingAllClear, previousTarget);
         if (isFeverTimeExpired(state)) {
             finishPlayerFever(player, 'B');
             return;

@@ -791,6 +791,42 @@ test('연속 피버와 피버 상태는 낮은 연쇄 뒤 4연쇄 피버 패턴�
   expect(await page.evaluate(() => window.WebPuyo.getGameState().opponent.fever.targetCombo)).toBe(4);
 });
 
+test('피버 상태는 낮은 연쇄 싹쓸이 뒤 직전 목표보다 한 단계만 낮은 목표를 사용한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverTargetFloorEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -1; this.prepared = false; }
+      getClassType() { return 'FeverTargetFloorEnemy'; }
+      getName() { return '피버 목표 하한 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.prepared) return;
+        this.prepared = true;
+        player.fever.active = true;
+        player.fever.leftTime = 10000;
+        player.fever.targetCombo = 7;
+        // 1연쇄 싹쓸이의 기존 계산값은 4이지만, 직전 목표 7의 -1인 6을 하한으로 적용해야 한다.
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+        player.hasPlacedPuyoSinceAllClear = true;
+        player.phase = 'explode';
+        player.phaseTimer = 0;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverTargetFloorEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.fever?.targetCombo), { timeout: 10000 }).toBe(6);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().opponent.fever.selectedStageTarget)).toBe(6);
+});
+
 test('3색 피버 룰의 일반 필드 싹쓸이는 4연쇄 패턴을 배치한다', async ({ page }) => {
   await page.evaluate(() => {
     class NormalFeverAllClearEnemy extends window.WebPuyo.Enemy {
