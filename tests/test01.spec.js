@@ -443,7 +443,7 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   expect(await page.evaluate(() => window.WebPuyo.getGameState().fever.leftTime)).toBe(pausedTime);
 });
 
-test('연속 피버는 두 번째 패배 칸 (3, 11)도 패배로 판정한다', async ({ page }) => {
+test('연속 피버는 두 번째 패배 칸 (3, 11)도 패배로 판정하고 적 결과 상세를 숨긴다', async ({ page }) => {
   await page.evaluate(() => {
     Math.random = () => 0.999999;
     window.WebPuyo.registerFeverStageState(new window.WebPuyo.FeverStageState(
@@ -469,6 +469,14 @@ test('연속 피버는 두 번째 패배 칸 (3, 11)도 패배로 판정한다',
   await page.waitForTimeout(1200);
   await page.keyboard.up('ArrowDown');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 5000 }).toBe('opponent');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('game_over');
+  await page.evaluate(() => { window.testCanvasTextCalls = []; });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.length)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.testCanvasTextCalls.some(({ text, x }) => {
+    const finalScorePrefixes = ['최종 점수', 'Final score', '最終スコア', '最终得分'];
+    const soloModeLabels = ['연속 피버', 'Continuous FEVER', '連続FEVER', '连续FEVER'];
+    return x >= 850 && (finalScorePrefixes.some((prefix) => text.startsWith(prefix)) || soloModeLabels.includes(text));
+  }))).toBe(false);
 });
 
 test('피버 룰은 전용 적 선택 화면에서 4색을 골라 보라색 없이 대전으로 시작한다', async ({ page }) => {

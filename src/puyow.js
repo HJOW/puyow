@@ -4164,6 +4164,7 @@
         const x = player.fieldX;
         const won = player === game.winner;
         const puzzleTargetField = isPuzzleTargetField(player);
+        const soloTargetField = usesSoloPlayLayout() && player === game.players[1];
         game.themeController.drawBezelBackground(context, { x: x - CELL, y: FIELD_TOP - CELL, width: CELL * 8, height: CELL * 14, player });
         game.themeController.drawPlayerBackground(context, { x, y: FIELD_TOP, width: CELL * 6, height: CELL * 12, player });
         context.textAlign = 'center';
@@ -4172,7 +4173,7 @@
             context.fillStyle = won ? '#f7c843' : '#d8f2f5';
             context.fillText(translate(won ? '승리' : '패배'), x + CELL * 3, FIELD_TOP + CELL * 6.4);
         }
-        if (!puzzleTargetField) {
+        if (!puzzleTargetField && !soloTargetField) {
             context.fillStyle = '#d8f2f5'; context.font = `16px ${MESSAGE_FONT}`;
             context.fillText(translate('최종 점수 %1', formatIntegerPoint(player.point)), x + CELL * 3, FIELD_TOP + CELL * 7.15);
             if (game.puzzle) {
