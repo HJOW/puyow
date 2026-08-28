@@ -5216,12 +5216,17 @@
         if (key === 'enter' || key === ' ') { activateRuleSelection(); return; }
         if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
         if (ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX) {
-            if (key === 'arrowleft' || key === 'arrowup') ruleSelectionFocus = GAME_RULE_OPTIONS.length - 1;
+            if (key === 'arrowleft') ruleSelectionFocus = GAME_RULE_OPTIONS.length - 1;
+            else if (key === 'arrowup') ruleSelectionFocus = GAME_RULE_OPTIONS.length - 2;
             return;
         }
         if (ruleSelectionFocus === GAME_RULE_OPTIONS.length - 1) {
-            if (key === 'arrowright' || key === 'arrowdown') ruleSelectionFocus = RULE_SELECTION_CANCEL_INDEX;
+            if (key === 'arrowright') ruleSelectionFocus = RULE_SELECTION_CANCEL_INDEX;
             else if (key === 'arrowup') ruleSelectionFocus = 2;
+            return;
+        }
+        if (ruleSelectionFocus === GAME_RULE_OPTIONS.length - 2 && key === 'arrowdown') {
+            ruleSelectionFocus = RULE_SELECTION_CANCEL_INDEX;
             return;
         }
         const columns = 2;

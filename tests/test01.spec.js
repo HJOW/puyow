@@ -1087,7 +1087,7 @@ test('구글 폰트 import URL은 컨텍스트 경로 변환 예외로 기존 �
   expect(fontImport).not.toContain('[LANG]');
 });
 
-test('게임 규칙 선택지의 기본 룰·연습 색상과 하단 취소를 키보드·마우스로 조작한다', async ({ page }) => {
+test('게임 규칙 선택지의 기본 룰·연습 색상과 연속 피버 아래 취소를 키보드·마우스로 조작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
@@ -1101,7 +1101,7 @@ test('게임 규칙 선택지의 기본 룰·연습 색상과 하단 취소를 �
   })).toBe(true);
 
   await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
