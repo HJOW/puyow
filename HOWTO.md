@@ -56,6 +56,20 @@ document.addEventListener("DOMContentLoaded", function() {
 </script>
 ```
 
+### URL 컨텍스트 경로와 예약어 URL
+
+ROOT가 아닌 웹 애플리케이션 경로에 게임을 배포할 때는 초기화 전에 `PuyoW.setURLContextPath()`로 URL 컨텍스트 경로를 지정할 수 있습니다. 기본값은 `'/'`이며, 설정값은 URL의 `[CTX]` 문자열로 그대로 치환되므로 필요한 앞뒤 슬래시를 함께 지정해야 합니다. 3D 버전도 같은 방식으로 `PuyoW3D.setURLContextPath()`와 `PuyoW3D.convertURL()`을 제공합니다.
+
+`convertURL(url)`은 상대경로와 절대 URL 모두에서 `[CTX]`를 컨텍스트 경로로, `[LANG]`를 시스템 언어의 앞 두 글자로 치환합니다. 지원하는 언어는 기본 한국어(`ko`)와 번역표에 등록된 `en`, `ja`, `zh`이며, 그 밖의 언어는 `en`으로 치환합니다.
+
+```js
+PuyoW.setURLContextPath('/my-puyo-app/');
+PuyoW.setNoticeFile('[CTX]notices/notice_[LANG].txt');
+const imageUrl = PuyoW.convertURL('[CTX]assets/logo_[LANG].png');
+
+PuyoW.initialize('webpuyo_canvas');
+```
+
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
@@ -83,14 +97,15 @@ WebMCP를 지원하는 브라우저에서는 AI도 `show_message` 도구로 동�
 
 ### 공지사항 경로 설정
 
-메인 화면 왼쪽에 표시할 공지사항은 기본적으로 `puyow.js`와 같은 경로의 `notice.txt`에서 읽습니다. 초기화하기 전에 `PuyoW.setNoticeFile(noticeFile)`을 호출하면 파일명, 상대경로 또는 절대 URL을 지정할 수 있습니다. 상대경로는 `puyow.js`가 로드된 URL을 기준으로 해석하고, `https://`와 같은 절대 URL은 지정한 주소 그대로 사용합니다. 공지사항 파일은 다국어 번역을 거치지 않고 UTF-8 텍스트 그대로 표시합니다.
+메인 화면 왼쪽에 표시할 공지사항은 기본적으로 `puyow.js`와 같은 경로의 `notice.txt`에서 읽습니다. 초기화하기 전에 `PuyoW.setNoticeFile(noticeFile)`을 호출하면 파일명, 상대경로 또는 절대 URL을 지정할 수 있습니다. 상대경로는 `puyow.js`가 로드된 URL을 기준으로 해석하고, `https://`와 같은 절대 URL은 지정한 주소 그대로 사용합니다. 경로 안의 `[CTX]`, `[LANG]`은 `convertURL()` 규칙으로 치환됩니다. 공지사항 파일은 다국어 번역을 거치지 않고 UTF-8 텍스트 그대로 표시합니다.
 
 ```js
 // 기본값과 같은 파일을 사용한다.
 PuyoW.setNoticeFile('notice.txt');
 
-// puyow.js가 있는 위치의 notices/notice-ko.txt를 사용한다.
-PuyoW.setNoticeFile('notices/notice-ko.txt');
+// puyow.js가 있는 위치의 notices/notice-ko.txt 를 사용한다.
+//     [LANG] 문구는 시스템 언어 코드 (ko, en, ...) 로 치환된다.
+PuyoW.setNoticeFile('notices/notice-[LANG].txt');
 
 // 다른 서버의 공지사항을 사용한다.
 PuyoW.setNoticeFile('https://example.com/puyo/notice.txt');

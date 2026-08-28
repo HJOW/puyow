@@ -1045,6 +1045,38 @@ test('게임 규칙 선택지 밖 클릭과 ESC는 메인 메뉴로 돌아간다
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
+test('2D URL 예약어는 컨텍스트 경로와 지원 시스템 언어로 치환한다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const systemCode = navigator.language.slice(0, 2).toLowerCase();
+    const languageCode = ['ko', 'en', 'ja', 'zh'].includes(systemCode) ? systemCode : 'en';
+    window.PuyoW.setURLContextPath('/tomcat-puyow/');
+    return {
+      contextPath: window.PuyoW.urlContextPath,
+      relative: window.PuyoW.convertURL('[CTX]notice_[LANG].txt'),
+      absolute: window.PuyoW.convertURL('https://example.com/puyo/notice_[LANG].txt'),
+      languageCode,
+    };
+  });
+
+  expect(result.contextPath).toBe('/tomcat-puyow/');
+  expect(result.relative).toBe(`/tomcat-puyow/notice_${result.languageCode}.txt`);
+  expect(result.absolute).toBe(`https://example.com/puyo/notice_${result.languageCode}.txt`);
+});
+
+test('구글 폰트 import URL은 컨텍스트 경로 변환 예외로 기존 주소를 유지한다', async ({ page }) => {
+  const fontImport = await page.evaluate(() => {
+    window.PuyoW.destroy();
+    window.PuyoW.setURLContextPath('/tomcat-puyow/');
+    document.querySelector('style.puyow_font_import')?.remove();
+    window.PuyoW.initialize('webpuyo_canvas');
+    return document.querySelector('style.puyow_font_import')?.textContent;
+  });
+
+  expect(fontImport).toContain("@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans");
+  expect(fontImport).not.toContain('/tomcat-puyow/');
+  expect(fontImport).not.toContain('[LANG]');
+});
+
 test('게임 규칙 선택지의 기본 룰·연습 색상과 하단 취소를 키보드·마우스로 조작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
@@ -1103,18 +1135,21 @@ test('게임 중 왼쪽 아래 스틱은 왼쪽 이동과 빠른 하강을 함�
 });
 
 test('게임 외와 연습 게임 배경음악은 하나만 재생되고 일시정지에 맞춰 멈춘다', async ({ page }) => {
-  await page.evaluate(() => {
-    window.WebPuyo.commonSoundPool.otherBackgroundMusic = 'other.mp3';
-    window.WebPuyo.commonSoundPool.backgroundMusic = 'game.mp3';
+  const languageCode = await page.evaluate(() => {
+    const systemCode = navigator.language.slice(0, 2).toLowerCase();
+    window.WebPuyo.setURLContextPath('/tomcat-puyow/');
+    window.WebPuyo.commonSoundPool.otherBackgroundMusic = '[CTX]other_[LANG].mp3';
+    window.WebPuyo.commonSoundPool.backgroundMusic = '[CTX]game_[LANG].mp3';
+    return ['ko', 'en', 'ja', 'zh'].includes(systemCode) ? systemCode : 'en';
   });
   await enterMainMenu(page);
-  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(['other.mp3']);
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual([`/tomcat-puyow/other_${languageCode}.mp3`]);
 
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(['other.mp3', 'game.mp3']);
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual([`/tomcat-puyow/other_${languageCode}.mp3`, `/tomcat-puyow/game_${languageCode}.mp3`]);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
 
   await page.keyboard.press('Escape');

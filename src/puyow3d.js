@@ -58,8 +58,12 @@
         hardGarbage: 0x4a5260,
         iron: 0x8798a8
     };
+    /** 2D 번역표와 같은 URL 언어 예약어 지원 목록이다. @type {Set<string>} */
+    const URL_LANGUAGE_CODES = new Set(['ko', 'en', 'ja', 'zh']);
     const meshResources = new WeakMap();
     let application = null;
+    /** [CTX] 예약어를 치환할 웹 애플리케이션의 URL 컨텍스트 경로다. @type {string} */
+    let urlContextPath = '/';
 
     /**
      * 3D 버전이 2D 구현에서 읽을 수 있는 공개 공통 API만 모은다.
@@ -67,7 +71,7 @@
      * TODO: [getShared2DApi] 3D 게임에 실제로 필요한 2D 공개 API 목록을 확정하고,
      * 누락·폐기된 API를 명확히 검증한다. 반환 객체는 계속 읽기 전용 어댑터여야 한다.
      *
-     * @returns {{randomFloat:Function,getGameState:Function,getScreenState:Function,getSelectedColorCount:Function,common:Record<string,Function>|null}|null}
+     * @returns {{randomFloat:Function,getGameState:Function,getScreenState:Function,getSelectedColorCount:Function,convertURL:Function,common:Record<string,Function>|null}|null}
      *     이후 게임 규칙 이식 시에는 이 반환값만 사용한다. puyow.js 내부 상태나
      *     비공개 함수에 접근하면 2D/3D 구현이 서로 영향을 주므로 사용하지 않는다.
      */
@@ -79,8 +83,43 @@
             getGameState: source.getGameState,
             getScreenState: source.getScreenState,
             getSelectedColorCount: source.getSelectedColorCount,
+            convertURL: source.convertURL,
             common: source.common || null
         };
+    }
+
+    /**
+     * URL 예약어 치환에 사용할 웹 애플리케이션 컨텍스트 경로를 설정한다.
+     * 값은 [CTX] 예약어에 그대로 들어가므로 필요한 앞뒤 슬래시를 호출자가 포함해야 한다.
+     * @param {string} contextPath [CTX]를 대신할 문자열
+     * @returns {void}
+     */
+    function setURLContextPath(contextPath) {
+        if (typeof contextPath !== 'string') throw new TypeError('URL 컨텍스트 경로는 문자열이어야 합니다.');
+        urlContextPath = contextPath;
+    }
+
+    /**
+     * 시스템 언어에서 URL 예약어에 쓸 두 글자 언어 코드를 구한다.
+     * @returns {string} 지원 언어 코드, 지원하지 않으면 en
+     */
+    function getURLLanguageCode() {
+        const sharedConvertURL = getShared2DApi()?.convertURL;
+        if (typeof sharedConvertURL === 'function') return sharedConvertURL('[LANG]');
+        const systemLanguage = globalObject.navigator?.language || globalObject.navigator?.userLanguage || 'en';
+        const code = typeof systemLanguage === 'string' ? systemLanguage.trim().slice(0, 2).toLowerCase() : '';
+        return URL_LANGUAGE_CODES.has(code) ? code : 'en';
+    }
+
+    /**
+     * URL 안의 [CTX], [LANG] 예약어를 현재 컨텍스트 경로와 시스템 언어 코드로 모두 치환한다.
+     * 상대경로와 절대 URL 모두 전달할 수 있다.
+     * @param {string} url 변환할 URL
+     * @returns {string} 예약어가 치환된 URL
+     */
+    function convertURL(url) {
+        if (typeof url !== 'string') throw new TypeError('URL은 문자열이어야 합니다.');
+        return url.replace(/\[CTX\]/g, urlContextPath).replace(/\[LANG\]/g, getURLLanguageCode());
     }
 
     /**
@@ -1046,9 +1085,12 @@
         PuyoW3DInputController,
         PuyoW3DEffectManager,
         getShared2DApi,
+        setURLContextPath,
+        convertURL,
         toWorldCoordinates,
         initialize,
         getState,
-        destroy
+        destroy,
+        get urlContextPath() { return urlContextPath; }
     };
 });

@@ -362,10 +362,12 @@
     let gamepadActionInput = { z: false, x: false, enter: false, escape: false };
     /** 현재 화면 문구에 적용할 언어 코드다. @type {string} */
     let languageCode = 'ko';
+    /** [CTX] 예약어를 치환할 웹 애플리케이션의 URL 컨텍스트 경로다. @type {string} */
+    let urlContextPath = '/';
     /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>}} */
     let store = createInitialStore();
     /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 puyow.js 기준으로 해석한다. @type {string} */
-    let noticeUrl = 'notice.txt';
+    let noticeUrl = 'notice_[LANG].txt';
     /** 공통 사운드 풀 @type {CommonSoundPool} */
     let commonSoundPool = null;
     /** 난이도별 표시명과 제공 색상 목록이다. @type {{name:string, colors:string[]}[]} */
@@ -824,9 +826,9 @@
         if (typeof fetch !== 'function' || typeof document === 'undefined') return;
         try {
             const script = [...(document.scripts || [])].find((element) => /puyow(?:\.min)?\.js(?:[?#]|$)/.test(element.src));
-            const scriptUrl = script?.src ? new URL(script.src, document.baseURI) : new URL(document.baseURI);
-            const notiUrl = new URL(noticeUrl, scriptUrl);
-            const response = await fetch(notiUrl.href);
+            const scriptUrl = new URL(convertURL(script?.src || document.baseURI));
+            const notiUrl = new URL(convertURL(noticeUrl), scriptUrl);
+            const response = await fetch(convertURL(notiUrl.href));
             if (!response.ok) throw new Error(`${noticeUrl} 요청 실패 (${response.status})`);
             noticeText = await response.text();
         } catch (error) {
@@ -847,6 +849,41 @@
             throw new TypeError('공지사항 경로는 비어 있지 않은 문자열이어야 합니다.');
         }
         noticeUrl = noticeFile;
+    }
+
+    /**
+     * URL 예약어 치환에 사용할 웹 애플리케이션 컨텍스트 경로를 설정한다.
+     * 값은 [CTX] 예약어에 그대로 들어가므로 필요한 앞뒤 슬래시를 호출자가 포함해야 한다.
+     * @param {string} contextPath [CTX]를 대신할 문자열
+     * @returns {void}
+     */
+    function setURLContextPath(contextPath) {
+        if (typeof contextPath !== 'string') throw new TypeError('URL 컨텍스트 경로는 문자열이어야 합니다.');
+        urlContextPath = contextPath;
+    }
+
+    /**
+     * 시스템 언어에서 URL 예약어에 쓸 두 글자 언어 코드를 구한다.
+     * 한국어 원문은 번역표 밖에 있으나 기본 언어이므로 지원 언어로 취급한다.
+     * @returns {string} stringTable에 있는 언어 코드 또는 ko, 그 외에는 en
+     */
+    function getURLLanguageCode() {
+        const systemLanguage = typeof navigator !== 'undefined'
+            ? (navigator.language || navigator.userLanguage || languageCode)
+            : languageCode;
+        const code = typeof systemLanguage === 'string' ? systemLanguage.trim().slice(0, 2).toLowerCase() : '';
+        return code === 'ko' || Object.prototype.hasOwnProperty.call(stringTable, code) ? code : 'en';
+    }
+
+    /**
+     * URL 안의 [CTX], [LANG] 예약어를 현재 컨텍스트 경로와 시스템 언어 코드로 모두 치환한다.
+     * 상대경로와 절대 URL 모두 전달할 수 있다.
+     * @param {string} url 변환할 URL
+     * @returns {string} 예약어가 치환된 URL
+     */
+    function convertURL(url) {
+        if (typeof url !== 'string') throw new TypeError('URL은 문자열이어야 합니다.');
+        return url.replace(/\[CTX\]/g, urlContextPath).replace(/\[LANG\]/g, getURLLanguageCode());
     }
 
     /**
@@ -894,7 +931,7 @@
     function playSound(url, type, label) {
         if (url === null || url === undefined || url === '' || typeof Audio === 'undefined' || getAudioVolume(type) <= 0) return;
         try {
-            const audio = new Audio(url);
+            const audio = new Audio(convertURL(url));
             audio.volume = getAudioVolume(type);
             const result = audio.play();
             if (result && typeof result.catch === 'function') result.catch((error) => console.error(`${label} 재생에 실패했습니다.`, error));
@@ -945,17 +982,18 @@
             stopBackgroundMusic();
             return;
         }
-        if (backgroundMusicAudio && backgroundMusicUrl === url) {
+        const convertedUrl = convertURL(url);
+        if (backgroundMusicAudio && backgroundMusicUrl === convertedUrl) {
             updateBackgroundMusicVolume();
             return;
         }
         stopBackgroundMusic();
         try {
-            const audio = new Audio(url);
+            const audio = new Audio(convertedUrl);
             audio.loop = true;
             audio.volume = getAudioVolume('music');
             backgroundMusicAudio = audio;
-            backgroundMusicUrl = url;
+            backgroundMusicUrl = convertedUrl;
             const result = audio.play();
             if (result && typeof result.catch === 'function') result.catch((error) => console.error('배경음악 재생에 실패했습니다.', error));
         } catch (error) {
@@ -4330,7 +4368,7 @@
         settingsApiTestPending = true;
         showSettingsApiTestMessage('AI API 테스트 요청 중...');
         try {
-            const response = await window.fetch(OPENAI_RESPONSES_API_URL, {
+            const response = await window.fetch(convertURL(OPENAI_RESPONSES_API_URL), {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -5566,7 +5604,7 @@
         else if (titleMenuFocus === 3) openGallery();
         else if (titleMenuFocus === 4) openSettings();
         else if (titleMenuFocus === 5) {
-            const githubWindow = window.open('https://github.com/HJOW/puyow', '_blank');
+            const githubWindow = window.open(convertURL('https://github.com/HJOW/puyow'), '_blank');
             if (githubWindow) githubWindow.opener = null;
         } else {
             toggleMuted();
@@ -8227,6 +8265,8 @@
         registerWarningPuyo,
         registerLanguage,
         setNoticeFile,
+        setURLContextPath,
+        convertURL,
         common: commonFunctions,
         getCommonFunctions: () => commonFunctions,
         randomFloat,
@@ -8266,6 +8306,7 @@
         showMessage,
         initialize,
         destroy,
+        get urlContextPath() { return urlContextPath; },
         get commonSoundPool() { return commonSoundPool; }
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = WebPuyo;

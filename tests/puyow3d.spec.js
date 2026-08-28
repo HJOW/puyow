@@ -32,6 +32,23 @@ test('3D 페이지는 PuyoW3D 전역을 초기화하고 2D 게임을 시작하�
   expect(pageErrors).toEqual([]);
 });
 
+test('3D URL 예약어 API는 2D와 같은 컨텍스트 경로를 지원한다', async ({ page }) => {
+  await page.goto('/puyow3d.html');
+  const result = await page.evaluate(() => {
+    const systemCode = navigator.language.slice(0, 2).toLowerCase();
+    const languageCode = ['ko', 'en', 'ja', 'zh'].includes(systemCode) ? systemCode : 'en';
+    window.PuyoW3D.setURLContextPath('/tomcat-puyow/');
+    return {
+      contextPath: window.PuyoW3D.urlContextPath,
+      url: window.PuyoW3D.convertURL('[CTX]assets/puyo_[LANG].png'),
+      languageCode,
+    };
+  });
+
+  expect(result.contextPath).toBe('/tomcat-puyow/');
+  expect(result.url).toBe(`/tomcat-puyow/assets/puyo_${result.languageCode}.png`);
+});
+
 test('3D 게임은 키보드 조작으로 활성 쌍을 보드에 고정한다', async ({ page }) => {
   await page.goto('/puyow3d.html');
   await expect.poll(() => page.evaluate(() => window.PuyoW3D.getState().game.active)).not.toBeNull();

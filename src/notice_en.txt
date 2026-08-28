@@ -1,0 +1,5 @@
+Sound and AI-related features are not currently available.
+
+Even if you enter AI service information in the settings screen, 
+there is no place to use it within the game yet, 
+so please do not enter the AI ​​service information.
