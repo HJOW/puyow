@@ -8758,7 +8758,7 @@
      */
     function setEnemySoundPool(enemyClassType, soundPoolObject) {
         if (typeof enemyClassType !== 'string' || !enemyClassType) throw new TypeError('enemyClassType은 비어 있지 않은 getClassType() 반환 문자열이어야 합니다.');
-        if (!(soundPoolObject instanceof SoundPool)) throw new TypeError('soundPoolObject는 WebPuyo.createSoundPool(false)로 만든 SoundPool이어야 합니다.');
+        if (!(soundPoolObject instanceof SoundPool)) throw new TypeError('soundPoolObject는 PuyoW.createSoundPool(false)로 만든 SoundPool이어야 합니다.');
         const enemyEntry = OPPONENTS.find((entry) => entry.classType === enemyClassType);
         if (!enemyEntry) {
             console.warn(`setEnemySoundPool: Enemy class type "${enemyClassType}" not found.`);
@@ -8769,6 +8769,16 @@
         game?.players.forEach((player) => {
             if (player.controller?.getClassType?.() === enemyClassType) player.controller.soundPool = soundPoolObject;
         });
+    }
+
+    /**
+     * 공통 사운드 풀을 변경한다.
+     * 
+     * @param {CommonSoundPool} commonSoundPoolObject 
+     */
+    function setCommonSoundPool(commonSoundPoolObject) {
+        if (!(commonSoundPoolObject instanceof CommonSoundPool)) throw new TypeError('commonSoundPoolObject PuyoW.createSoundPool(true)로 만든 SoundPool이어야 합니다.');
+        commonSoundPool = commonSoundPoolObject;
     }
 
     /**
@@ -8846,6 +8856,7 @@
         BUILDNO,
         createSoundPool,
         setEnemySoundPool,
+        setCommonSoundPool,
         registerFeverStageState,
         registerPuzzleStage,
         registerOpponent,
