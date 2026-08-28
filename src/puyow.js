@@ -3709,6 +3709,11 @@
         return Boolean(game && !game.tutorial && (game.practice || game.continuousFever || game.puzzle));
     }
 
+    /** 연습·연속 피버의 중앙 점수 패널을 단독 배치로 사용할지 반환한다. @returns {boolean} 단독 점수 패널 사용 여부 */
+    function usesSoloScoreLayout() {
+        return Boolean(game && !game.tutorial && (game.practice || game.continuousFever));
+    }
+
     /** 퍼즐뿌요의 오른쪽 안내 전용 영역인지 반환한다. @param {PlayerState} player 검사할 플레이어 @returns {boolean} 안내 영역 여부 */
     function isPuzzleTargetField(player) {
         return Boolean(game?.puzzle && player === game.players[1]);
@@ -3940,15 +3945,17 @@
         } else {
             right.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, getEnemyPortraitExpression(right, left));
         }
-        const scores = [
-            { player: left, x: 488, color: '#ef8aa0' },
-            { player: right, x: 646, color: '#6bbce8' }
-        ];
-        scores.forEach(({ player, x, color }) => {
-            context.fillStyle = '#0b202c'; context.fillRect(x, 492, 146, 92);
-            context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, 492, 146, 92);
-            context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(player.name, x + 73, 516);
-            context.fillStyle = '#f5fbfc'; context.font = `22px ${MESSAGE_FONT}`; context.fillText(formatPoint(player.point), x + 73, 557);
+        const scores = usesSoloScoreLayout()
+            ? [{ player: left, x: 488, width: 304, color: '#ef8aa0' }]
+            : [
+                { player: left, x: 488, width: 146, color: '#ef8aa0' },
+                { player: right, x: 646, width: 146, color: '#6bbce8' }
+            ];
+        scores.forEach(({ player, x, width, color }) => {
+            context.fillStyle = '#0b202c'; context.fillRect(x, 492, width, 92);
+            context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, 492, width, 92);
+            context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(player.name, x + width / 2, 516);
+            context.fillStyle = '#f5fbfc'; context.font = `22px ${MESSAGE_FONT}`; context.fillText(formatPoint(player.point), x + width / 2, 557);
         });
     }
 

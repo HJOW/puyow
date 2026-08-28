@@ -1337,6 +1337,16 @@ test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 �
     }))).toBe(false);
   }
 
+  async function expectSoloScoreLayout() {
+    await page.evaluate(() => { window.testCanvasTextCalls = []; });
+    await expect.poll(() => page.evaluate(() => {
+      const practiceNames = ['연습 상대', 'Practice Opponent', '練習相手', '练习对手'];
+      const opponentScoreShown = window.testCanvasTextCalls.some(({ text, y }) => practiceNames.includes(text) && y === 516);
+      const [red, , blue] = document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(700, 492, 1, 1).data;
+      return !opponentScoreShown && red > blue;
+    }), { timeout: 5000 }).toBe(true);
+  }
+
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowDown');
@@ -1344,6 +1354,7 @@ test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
   await expectSoloNextLayout();
+  await expectSoloScoreLayout();
 
   await page.reload();
   await enterMainMenu(page);
@@ -1354,6 +1365,7 @@ test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
   await expectSoloNextLayout();
+  await expectSoloScoreLayout();
 
   await page.reload();
   await enterMainMenu(page);
