@@ -37,6 +37,10 @@
     const MAIN_MENU_GALLERY_FLOATER_MIN_COUNT = 7;
     /** 메인 메뉴에서 갤러리 대상이 떠다니는 최대 개수다. 최소 개수 이상으로 설정한다. @type {number} */
     const MAIN_MENU_GALLERY_FLOATER_MAX_COUNT = 10;
+    /** 메인 메뉴 부유 뿌요의 회전 속도 상한이다(rad/ms). 화면에서 천천히 회전하도록 낮게 제한한다. @type {number} */
+    const MAIN_MENU_GALLERY_FLOATER_MAX_ROTATION_SPEED = 0.00028;
+    /** 메인 메뉴 부유 뿌요가 벽에 비스듬히 부딪힐 때 회전 속도에 더할 충돌 계수다. @type {number} */
+    const MAIN_MENU_GALLERY_FLOATER_ROTATION_IMPULSE = 0.006;
     /** 필드 표시 영역의 위쪽 논리 좌표다. @type {number} */
     const FIELD_TOP = 102;
     /** 필드 표시 영역의 아래쪽 논리 좌표다. @type {number} */
@@ -324,7 +328,7 @@
     let titleMenuFocus = 0;
     /** 메인 메뉴의 게임 규칙 선택 오버레이가 열려 있는지 여부다. @type {boolean} */
     let ruleSelectionOpen = false;
-    /** 메인 메뉴에서 떠다닐 갤러리 항목의 위치·속도 상태다. @type {{draw:()=>void,x:number,y:number,vx:number,vy:number,radius:number}[]} */
+    /** 메인 메뉴에서 떠다닐 갤러리 항목의 위치·속도·회전 상태다. @type {{draw:()=>void,x:number,y:number,vx:number,vy:number,radius:number,rotation:number,rotationVelocity:number}[]} */
     let mainMenuGalleryFloaters = [];
     /** 직전 렌더링 메뉴 화면이다. 메인 메뉴 재진입 시 떠다니는 항목을 다시 추첨하는 데 사용한다. @type {string} */
     let previousRenderedMenuScreen = 'initialTitle';
@@ -671,12 +675,19 @@
             mainMenuGalleryFloaters = selected.map((item) => {
                 const radius = item.radius;
                 const speed = 0.012 + randomFloat() * 0.012;
+                const x = radius + randomFloat() * (WIDTH - radius * 2);
+                const y = radius + randomFloat() * (HEIGHT - radius * 2);
+                const vx = (randomFloat() < 0.5 ? -1 : 1) * speed;
+                const vy = (randomFloat() < 0.5 ? -1 : 1) * speed * (0.75 + randomFloat() * 0.5);
                 return {
                     ...item,
-                    x: radius + randomFloat() * (WIDTH - radius * 2),
-                    y: radius + randomFloat() * (HEIGHT - radius * 2),
-                    vx: (randomFloat() < 0.5 ? -1 : 1) * speed,
-                    vy: (randomFloat() < 0.5 ? -1 : 1) * speed * (0.75 + randomFloat() * 0.5)
+                    x,
+                    y,
+                    vx,
+                    vy,
+                    // 위치와 이동 방향에서 초기 자세를 정해 난수 소비량을 기존과 동일하게 유지한다.
+                    rotation: ((x / WIDTH + y / HEIGHT) % 1) * Math.PI * 2,
+                    rotationVelocity: (vx * vy >= 0 ? 1 : -1) * MAIN_MENU_GALLERY_FLOATER_MAX_ROTATION_SPEED * 0.25
                 };
             });
         } catch (error) {
@@ -689,16 +700,42 @@
     /** 메인 메뉴의 갤러리 항목을 천천히 이동하고 캔버스 경계에서 튕긴다. @param {number} delta 경과 시간(ms) @returns {void} */
     function updateMainMenuGalleryFloaters(delta) {
         mainMenuGalleryFloaters.forEach((item) => {
+            const incomingVx = item.vx;
+            const incomingVy = item.vy;
+            let collisionNormalX = 0;
+            let collisionNormalY = 0;
             item.x += item.vx * delta;
             item.y += item.vy * delta;
             if (item.x <= item.radius || item.x >= WIDTH - item.radius) {
                 item.x = Math.max(item.radius, Math.min(WIDTH - item.radius, item.x));
-                item.vx *= -1;
+                if (item.x === item.radius) {
+                    item.vx = Math.abs(item.vx);
+                    collisionNormalX = 1;
+                } else {
+                    item.vx = -Math.abs(item.vx);
+                    collisionNormalX = -1;
+                }
             }
             if (item.y <= item.radius || item.y >= HEIGHT - item.radius) {
                 item.y = Math.max(item.radius, Math.min(HEIGHT - item.radius, item.y));
-                item.vy *= -1;
+                if (item.y === item.radius) {
+                    item.vy = Math.abs(item.vy);
+                    collisionNormalY = 1;
+                } else {
+                    item.vy = -Math.abs(item.vy);
+                    collisionNormalY = -1;
+                }
             }
+            if (collisionNormalX || collisionNormalY) {
+                // 벽의 접선 방향 속도가 클수록 비스듬한 충돌이므로 회전량도 커진다.
+                const tangentVelocity = incomingVy * collisionNormalX - incomingVx * collisionNormalY;
+                item.rotationVelocity += tangentVelocity * MAIN_MENU_GALLERY_FLOATER_ROTATION_IMPULSE;
+                item.rotationVelocity = Math.max(
+                    -MAIN_MENU_GALLERY_FLOATER_MAX_ROTATION_SPEED,
+                    Math.min(MAIN_MENU_GALLERY_FLOATER_MAX_ROTATION_SPEED, item.rotationVelocity)
+                );
+            }
+            item.rotation = (item.rotation + item.rotationVelocity * delta) % (Math.PI * 2);
         });
     }
 
@@ -706,7 +743,7 @@
     function drawMainMenuGalleryFloaters() {
         mainMenuGalleryFloaters.forEach((item) => {
             try {
-                context.save(); context.translate(item.x, item.y); item.draw(); context.restore();
+                context.save(); context.translate(item.x, item.y); context.rotate(item.rotation); item.draw(); context.restore();
             } catch (error) {
                 context.restore();
                 console.error('Puyo W 메인 메뉴 갤러리 항목 렌더링에 실패했습니다.', error);
