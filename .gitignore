@@ -80,3 +80,6 @@ node_modules/
 .claude/memory/
 .claude/*.local.json
 .claude/*.local.md
+
+# ETC
+puyow_sound_sample.html
