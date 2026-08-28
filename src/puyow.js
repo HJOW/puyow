@@ -7,7 +7,7 @@
  * 뿌요 W 2D 버전 스크립트
  *     의존성
  *         puyow.css  (캔버스 영역이 화면 100%를 차지하게 만들고, 기본 뒷배경 색 변경)
- *         notice.txt (선택사항으로 공지사항 존재 시 이 곳에 기재)
+ *         notice_ko.txt, notice_en.txt (선택사항으로 공지사항 존재 시 이 곳에 기재)
  *     html 예제
  *         puyow.html
  */
