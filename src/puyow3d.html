@@ -33,8 +33,11 @@
 
         <!-- Game 관련 (필수) -->
         <link rel="stylesheet" href="puyow.css"/>
-        <!-- three.core.min.js는 현재 ES 모듈 배포본이다. 3D 골격에는 추후 주입한다. -->
-        <script type="module" src="three.core.min.js"></script>
+        <!-- Three.js 모듈을 브라우저 전역으로 연결하고, puyow3d.js에 의존성을 주입한다. -->
+        <script type="module">
+            import * as THREE from './three.module.min.js';
+            window.THREE = THREE;
+        </script>
         <script defer src="puyow.js"></script>
         <script defer src="puyow3d.js"></script>
         <!-- // Game 관련 -->
