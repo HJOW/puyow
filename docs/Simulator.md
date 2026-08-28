@@ -49,6 +49,38 @@ JSON복사 결과에는 클릭해서 고정한 필드 뿌요만 들어갑니다.
 
 `registerFeverStageState()`는 `FeverStageState` 인스턴스만 받으며 다른 값은 `TypeError`를 발생시킵니다. 좌표, 색상, 목표 연쇄가 실제로 올바른지는 등록 시 자동으로 시뮬레이션하지 않으므로, 시뮬레이터 또는 `estimateCombo()`로 실제 착지 가능한 배치와 목표 연쇄 수를 반드시 검증한 뒤 등록해야 합니다.
 
+## 퍼즐뿌요 스테이지 추가
+
+퍼즐뿌요 모드에 사용할 스테이지는 `PuzzlePuyoStage`를 만든 뒤 `PuyoW.registerPuzzleStage()`로 등록합니다. 게임을 시작하기 전에 등록하는 것을 권장합니다.
+
+`PuzzlePuyoStage` 생성자는 `new PuyoW.PuzzlePuyoStage(options)` 형식이며, `options`에 다음 속성을 지정할 수 있습니다.
+
+- `uid`: 스테이지 고유 ID입니다. 생략하면 `PZ`로 시작하는 ID가 자동으로 생성됩니다. 이미 등록된 스테이지와 같은 ID를 사용하면 `registerPuzzleStage()`가 `Error`를 발생시키며 등록하지 않습니다.
+- `stageData`: `{ puyos: [{ x, y, color }, ...] }` 형식의 초기 배치 데이터입니다. 시뮬레이터의 JSON 복사 결과를 그대로 사용할 수 있습니다.
+- `suppliedNextPuyos`: 초기 배치가 끝난 뒤 차례마다 제공할 다음 뿌요 쌍의 목록입니다(예: `[['red', 'blue'], ['green', 'green']]`).
+- `turnLimit`: 승리 조건을 달성해야 하는 컨트롤 타이밍 수입니다. 0 이하이면 제한이 없습니다.
+- `winConditionType`와 `winConditionValue`: 승리 조건과 목표값입니다. 조건 유형은 `combo`, `clear`, `multiple`, `attack` 중 하나입니다.
+- `hint`: 스테이지 힌트 문구입니다.
+- `hidden`: `true`이면 스테이지 목록에 표시하지 않습니다.
+- `opened`: 스테이지가 처음부터 열려 있는지 지정합니다.
+
+```js
+const puzzleStage = new PuyoW.PuzzlePuyoStage({
+    uid: 'my-puzzle-01',
+    stageData: { "puyos": [{ "x": 2, "y": 0, "color": "red" }] },
+    suppliedNextPuyos: [['red', 'red']],
+    turnLimit: 3,
+    winConditionType: 'combo',
+    winConditionValue: 3,
+    hint: '3연쇄를 만들어 보자!',
+    opened: true
+});
+
+PuyoW.registerPuzzleStage(puzzleStage);
+```
+
+`registerPuzzleStage()`는 `PuzzlePuyoStage` 인스턴스만 받으며, 다른 값을 전달하면 `TypeError`를 발생시킵니다. 또한 기존에 등록된 스테이지와 `uid`가 중복되면 `Error`를 발생시키고 배열에 추가하지 않습니다. 좌표나 승리 조건의 유효성은 자동으로 검증하지 않으므로, 시뮬레이터에서 배치를 시험한 뒤 등록해야 합니다.
+
 ## 점수 계산
 
 한 폭발 단계의 점수는 동시에 폭발한 일반 색 뿌요 전체를 기준으로 계산합니다. 일반 방해뿌요와 딱딱뿌요는 점수용 뿌요 수에는 포함하지 않습니다.

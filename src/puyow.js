@@ -8781,6 +8781,9 @@
      */
     function registerPuzzleStage(puzzlePuyoStage) {
         if (!(puzzlePuyoStage instanceof PuzzlePuyoStage)) throw new TypeError('puzzlePuyoStage는 PuzzlePuyoStage 인스턴스여야 합니다.');
+        if (PUZZLE_STAGES.some((registeredStage) => registeredStage.uid === puzzlePuyoStage.uid)) {
+            throw new Error(`uid가 중복된 PuzzlePuyoStage는 등록할 수 없습니다: ${puzzlePuyoStage.uid}`);
+        }
         PUZZLE_STAGES.push(puzzlePuyoStage);
     }
 

@@ -174,6 +174,25 @@ test('DAMAGE 방해뿌요 30개는 현재 숨김 생성 범위의 다섯 줄(Y 1
   }), { timeout: 5000 }).toEqual([16, 17, 18, 19, 20]);
 });
 
+test('registerPuzzleStage는 기존 PuzzlePuyoStage와 uid가 중복되면 등록하지 않는다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const stages = window.WebPuyo.PUZZLE_STAGES;
+    const initialLength = stages.length;
+    const duplicate = new window.WebPuyo.PuzzlePuyoStage({ uid: stages[0].uid });
+    let error = null;
+    try {
+      window.WebPuyo.registerPuzzleStage(duplicate);
+    } catch (caught) {
+      error = { name: caught.name, message: caught.message };
+    }
+    return { initialLength, finalLength: stages.length, error };
+  });
+
+  expect(result.finalLength).toBe(result.initialLength);
+  expect(result.error?.name).toBe('Error');
+  expect(result.error?.message).toContain('uid가 중복된');
+});
+
 test('시뮬레이터는 양쪽 기본 패배 칸을 표시하고 해당 칸의 뿌요를 앞에 그린다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
