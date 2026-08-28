@@ -6,6 +6,16 @@
 
 `PuyoW.SoundPool`은 주문 효과음과 배경음악 URL을 담는 공통 기반 클래스입니다. `PuyoW.EnemySoundPool`은 적 전용, `PuyoW.CommonSoundPool`은 플레이어와 공통 시스템 전용 풀입니다. `PuyoW.createSoundPool(false)`는 적 전용 풀, `PuyoW.createSoundPool(true)`는 공통 풀을 만듭니다.
 
+공통 사운드 풀 자체를 교체하려면 `PuyoW.setCommonSoundPool(commonSoundPoolObject)`를 호출합니다. 인자는 `PuyoW.CommonSoundPool` 인스턴스여야 하며, `PuyoW.createSoundPool(true)` 또는 `new PuyoW.CommonSoundPool()`으로 만들 수 있습니다. 다른 종류의 사운드 풀이나 일반 객체를 전달하면 `TypeError`가 발생합니다. `initialize()` 호출 전후 언제든 교체할 수 있으며, 교체한 풀의 플레이어 주문 효과음·공통 뿌요 폭발 효과음·공통 배경음악 URL이 이후 재생에 사용됩니다.
+
+```js
+const commonSounds = PuyoW.createSoundPool(true);
+commonSounds.spellCombo1 = 'sounds/player-combo-1.ogg';
+commonSounds.puyoBurstCombo1 = 'sounds/puyo-burst-1.ogg';
+commonSounds.backgroundMusic = 'sounds/common-bgm.ogg';
+PuyoW.setCommonSoundPool(commonSounds);
+```
+
 ## 새 적의 사운드 URL 설정
 
 `Enemy`를 상속한 클래스의 생성자에서 `super()`를 호출하면 `this.soundPool`이 자동으로 만들어집니다. 필요한 항목에 상대경로 또는 절대경로 URL을 대입합니다.
