@@ -86,6 +86,35 @@ test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
+test('WebMCP 도구 스키마는 퍼즐뿌요와 최신 게임 상태 필드를 노출한다', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.registeredWebMcpTools = [];
+    Object.defineProperty(document, 'modelContext', {
+      configurable: true,
+      writable: true,
+      value: { registerTool: (tool) => window.registeredWebMcpTools.push(tool) }
+    });
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.registeredWebMcpTools.length)).toBe(5);
+
+  const schema = await page.evaluate(() => {
+    const tools = Object.fromEntries(window.registeredWebMcpTools.map((tool) => [tool.name, tool]));
+    return {
+      screenEnum: tools.now_screen.outputSchema.properties.screen.enum,
+      statusRequired: tools.now_game_status.outputSchema.required,
+      playerRequired: tools.now_game_status.outputSchema.properties.player.required,
+      feverTargetMinimum: tools.now_game_status.outputSchema.properties.fever.properties.targetCombo.minimum,
+      activeYType: tools.now_game_status.outputSchema.properties.player.properties.active.properties.y.type
+    };
+  });
+  expect(schema.screenEnum).toContain('puzzle_stage_select');
+  expect(schema.statusRequired).toContain('puzzle');
+  expect(schema.playerRequired).toEqual(expect.arrayContaining(['point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount']));
+  expect(schema.feverTargetMinimum).toBe(4);
+  expect(schema.activeYType).toBe('number');
+});
+
 test('기본 룰·연습·플레이 방법의 양쪽 필드는 기본 패배 칸에 빨간 X를 표시한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
