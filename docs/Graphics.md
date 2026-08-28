@@ -37,6 +37,8 @@ PuyoW.toCanvasLength(38);
 
 `PuyoW.applyCanvasCoordinateTransform()`은 현재 그래픽 설정의 논리 좌표 변환을 2D 컨텍스트에 다시 적용합니다. 외부 렌더링 코드가 `setTransform()`으로 컨텍스트 좌표계를 변경했을 때 호출할 수 있습니다. 보통 게임 렌더링 과정에서 자동 적용되므로 별도로 호출할 필요는 없습니다.
 
+3D 버전은 같은 논리 좌표를 사용하되 캔버스 컨텍스트 대신 `PuyoW.common`의 규칙·좌표 함수를 사용하고, 월드 좌표 변환과 직교 카메라 투영은 3D 렌더러에서 담당합니다.
+
 ---
 
 [개발 안내](../HOWTO.md) · [적·AI](Enemy.md) · [뿌요](Puyo.md) · [시뮬레이터·피버](Simulator.md) · [사운드](Sound.md)

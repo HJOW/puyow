@@ -159,6 +159,22 @@ await page.addInitScript(() => {
 await page.goto('/puyow.html');
 ```
 
+### 2D·3D 공통 함수
+
+2D 렌더러에 종속되지 않는 규칙·보드·점수 유틸리티는 `PuyoW.common`으로 공개합니다. 3D 버전은 아래 네임스페이스를 사용해 같은 계산 결과를 재사용할 수 있습니다. `PuyoW.getCommonFunctions()`도 같은 읽기 전용 함수 모음을 반환합니다.
+
+```js
+const common = PuyoW.common;
+const groups = common.findExplosionGroupsOnBoard(board);
+const point = common.calculateExplosionPoint(groups, combo);
+const attack = common.calculateExplosionAttack(point);
+const combo = common.estimateCombo(board, colors, positions);
+```
+
+공통 함수에는 `randomFloat`, `randomColor`, `translate`, `getPuyo`, `activeCells`, `activeRenderCells`, `findLandingPlacement`, `findBestPreviewResult`, `findExplosionsOnBoard`, `findExplosionGroupsOnBoard`, `collapseBoard`, `simulatePlacementBoard`, `isAllClearBoard`, `estimateAttack`, `estimateCombo`, `getChainBonus`, `getConnectionBonus`, `getColorBonus`, `getMarginRate`, `calculateExplosionPoint`, `calculateExplosionAttack`, `formatIntegerPoint`, `formatPoint`, `warningUnits`가 포함됩니다. 보드·배열을 받는 함수는 입력값을 직접 변경하지 않으므로 3D 상태를 별도로 유지하면서 결과만 사용할 수 있습니다.
+
+일부 함수는 2D 게임의 보드 형식(열 6개, 행 17개)과 색상 문자열을 전제로 합니다. 3D에서 독립 규칙을 구현할 때도 이 데이터 계약을 유지하고, 화면 그리기 함수는 3D 메시로 별도 구현해야 합니다.
+
 ---
 
 [그래픽 좌표](docs/Graphics.md) · [뿌요 API](docs/Puyo.md) · [적·AI](docs/Enemy.md) · [시뮬레이터·피버](docs/Simulator.md) · [사운드](docs/Sound.md)

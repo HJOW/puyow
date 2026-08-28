@@ -22,6 +22,8 @@
 
 `PuyoW.registerWarningPuyo()`에 하위 클래스를 전달하면 새 단위를 등록할 수 있습니다. 등록은 반드시 `initialize()` 전에 해야 하며, 등록된 클래스는 `static unitCount`의 큰 값부터 자동 정렬됩니다.
 
+2D·3D 렌더러에서 색상과 뿌요 정보를 공유하려면 `PuyoW.common.randomColor(colors)`와 `PuyoW.common.getPuyo(type)`를 사용합니다. 이 함수들은 뿌요 색상 식별자와 공통 Puyo 객체를 반환하며, 3D 렌더러는 반환된 색상·이름을 이용해 자체 메시를 선택해야 합니다.
+
 클래스에는 다음 계약이 필요합니다.
 
 - `static unitCount`: 양의 정수 단위값입니다.

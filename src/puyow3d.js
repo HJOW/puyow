@@ -52,7 +52,7 @@
      * TODO: [getShared2DApi] 3D 게임에 실제로 필요한 2D 공개 API 목록을 확정하고,
      * 누락·폐기된 API를 명확히 검증한다. 반환 객체는 계속 읽기 전용 어댑터여야 한다.
      *
-     * @returns {{randomFloat:Function,getGameState:Function,getScreenState:Function,getSelectedColorCount:Function}|null}
+     * @returns {{randomFloat:Function,getGameState:Function,getScreenState:Function,getSelectedColorCount:Function,common:Record<string,Function>|null}|null}
      *     이후 게임 규칙 이식 시에는 이 반환값만 사용한다. puyow.js 내부 상태나
      *     비공개 함수에 접근하면 2D/3D 구현이 서로 영향을 주므로 사용하지 않는다.
      */
@@ -63,7 +63,8 @@
             randomFloat: source.randomFloat,
             getGameState: source.getGameState,
             getScreenState: source.getScreenState,
-            getSelectedColorCount: source.getSelectedColorCount
+            getSelectedColorCount: source.getSelectedColorCount,
+            common: source.common || null
         };
     }
 
@@ -110,7 +111,7 @@
         /**
          * TODO: [PuyoW3DGame.constructor] 3D 독립 규칙 엔진 또는 2D 상태 어댑터 중
          * 하나를 선택해 주입하고, 시작 시점의 난수·규칙·색상 정보를 고정한다.
-         * @param {{randomFloat:Function,getGameState:Function,getScreenState:Function,getSelectedColorCount:Function}|null} shared2DApi 2D 공개 API
+         * @param {{randomFloat:Function,getGameState:Function,getScreenState:Function,getSelectedColorCount:Function,common:Record<string,Function>|null}|null} shared2DApi 2D 공개 API
          */
         constructor(shared2DApi) {
             this.shared2DApi = shared2DApi;

@@ -68,6 +68,10 @@ ATTACK 증가량 = (점수 증가량 / 마진 레이트) * EXPLOSION_REWARD_MULT
 
 이 상수는 실제 게임, 시뮬레이터, AI의 예상 공격 계산이 공유합니다. 값을 바꾸면 `tests/test01.spec.js`의 딱딱뿌요 1개·2개 동시 파괴 점수 기대값도 같은 식으로 갱신해야 합니다.
 
+### 3D 버전에서 공통 계산 재사용
+
+3D 규칙·표현을 구현할 때도 `PuyoW.common.findExplosionGroupsOnBoard()`, `collapseBoard()`, `simulatePlacementBoard()`, `estimateCombo()`, `estimateAttack()`을 사용할 수 있습니다. 이 함수들은 2D 논리 보드의 복사본을 계산하므로 3D 메시 상태와 분리해 결과만 반영할 수 있습니다.
+
 ---
 
 [개발 안내](../HOWTO.md) · [그래픽](Graphics.md) · [적·AI](Enemy.md) · [뿌요](Puyo.md) · [사운드](Sound.md)

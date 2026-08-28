@@ -8055,6 +8055,37 @@
         addFeverStageState(feverStageState);
     }
 
+    /**
+     * 2D 렌더러에 종속되지 않아 3D 버전도 재사용할 수 있는 공통 함수 모음이다.
+     * 모든 함수는 입력 보드를 직접 바꾸지 않으며, 3D 규칙 구현에서 PuyoW.common으로 접근한다.
+     */
+    const commonFunctions = Object.freeze({
+        randomFloat,
+        randomColor,
+        translate,
+        getPuyo,
+        activeCells,
+        activeRenderCells,
+        findLandingPlacement,
+        findBestPreviewResult,
+        findExplosionsOnBoard,
+        findExplosionGroupsOnBoard,
+        getChainBonus,
+        getConnectionBonus,
+        getColorBonus,
+        calculateExplosionPoint,
+        getMarginRate,
+        calculateExplosionAttack,
+        formatIntegerPoint,
+        formatPoint,
+        collapseBoard,
+        simulatePlacementBoard,
+        isAllClearBoard,
+        estimateAttack,
+        estimateCombo,
+        warningUnits
+    });
+
     WebPuyo = {
         Enemy,
         Puyo,
@@ -8078,7 +8109,32 @@
         registerWarningPuyo,
         registerLanguage,
         setNoticeFile,
+        common: commonFunctions,
+        getCommonFunctions: () => commonFunctions,
         randomFloat,
+        randomColor,
+        translate,
+        getPuyo,
+        activeCells,
+        activeRenderCells,
+        findLandingPlacement,
+        findBestPreviewResult,
+        findExplosionsOnBoard,
+        findExplosionGroupsOnBoard,
+        getChainBonus,
+        getConnectionBonus,
+        getColorBonus,
+        calculateExplosionPoint,
+        getMarginRate,
+        calculateExplosionAttack,
+        formatIntegerPoint,
+        formatPoint,
+        collapseBoard,
+        simulatePlacementBoard,
+        isAllClearBoard,
+        estimateAttack,
+        estimateCombo,
+        warningUnits,
         getCanvasOutputSize,
         toCanvasCoordinates,
         toCanvasLength,
