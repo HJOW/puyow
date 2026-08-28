@@ -1045,6 +1045,30 @@ test('게임 규칙 선택지 밖 클릭과 ESC는 메인 메뉴로 돌아간다
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
+test('게임 규칙 선택지의 기본 룰·연습 색상과 하단 취소를 키보드·마우스로 조작한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => {
+    const canvas = document.querySelector('#webpuyo_canvas');
+    const context = canvas.getContext('2d');
+    const standard = context.getImageData(360, 285, 1, 1).data;
+    const practice = context.getImageData(360, 387, 1, 1).data;
+    return standard[1] < practice[1] && standard[0] < practice[0]
+      && window.testCanvasTexts.some((text) => ['취소', 'Cancel', 'キャンセル', '取消'].includes(text));
+  })).toBe(true);
+
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 513 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});
+
 test('게임 중 왼쪽 아래 스틱은 왼쪽 이동과 빠른 하강을 함께 처리한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');

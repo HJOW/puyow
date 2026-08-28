@@ -381,9 +381,9 @@
     const enemySoundPools = new Map();
     /** 메인 메뉴 게임 규칙 선택지의 버튼 배경색이다. */
     const RULE_OPTION_BACKGROUND_COLORS = {
-        standard: '#264b5b',
+        standard: '#1b5e20',
         fever: '#b0007a',
-        practice: '#386779',
+        practice: '#388e3c',
         continuousFever: '#cf4bb0'
     };
     /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,activate?:()=>void}[]} */
@@ -393,6 +393,8 @@
         { label: '연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice, activate: () => openPracticeDifficulty() },
         { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() }
     ];
+    /** 게임 규칙 선택 오버레이에서 취소 버튼에 사용할 가상 항목 인덱스다. */
+    const RULE_SELECTION_CANCEL_INDEX = GAME_RULE_OPTIONS.length;
     /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {object|null} */
     let WebPuyo = null;
 
@@ -4806,6 +4808,17 @@
         };
     }
 
+    /** 게임 규칙 선택 오버레이 하단 취소 버튼의 화면 영역을 반환한다. @returns {{x:number,y:number,width:number,height:number}} 취소 버튼 영역 */
+    function getRuleSelectionCancelButtonBounds() {
+        const optionBounds = getRuleSelectionButtonBounds(GAME_RULE_OPTIONS.length - 1);
+        return {
+            x: (WIDTH - optionBounds.width) / 2,
+            y: optionBounds.y + optionBounds.height + 24,
+            width: optionBounds.width,
+            height: optionBounds.height
+        };
+    }
+
     /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 연다. @returns {void} */
     function openRuleSelection() {
         ruleSelectionOpen = true;
@@ -4860,6 +4873,10 @@
 
     /** 포커스된 게임 규칙을 선택한다. @returns {void} */
     function activateRuleSelection() {
+        if (ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX) {
+            closeRuleSelection();
+            return;
+        }
         const option = GAME_RULE_OPTIONS[ruleSelectionFocus];
         if (!option || option.disabled) return;
         closeRuleSelection();
@@ -4871,11 +4888,20 @@
         if (key === 'escape') { closeRuleSelection(); return; }
         if (key === 'enter' || key === ' ') { activateRuleSelection(); return; }
         if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
+        if (ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX) {
+            // 취소는 두 번째 규칙 행 아래 중앙에 있으므로 위로 이동하면 연습 항목으로 돌아간다.
+            if (key === 'arrowup') ruleSelectionFocus = getSelectableRuleOptionIndices().includes(2) ? 2 : 0;
+            return;
+        }
         const columns = 2;
         const row = Math.floor(ruleSelectionFocus / columns);
         const column = ruleSelectionFocus % columns;
         const rowDelta = key === 'arrowup' ? -1 : key === 'arrowdown' ? 1 : 0;
         const columnDelta = key === 'arrowleft' ? -1 : key === 'arrowright' ? 1 : 0;
+        if (key === 'arrowdown' && row === Math.ceil(GAME_RULE_OPTIONS.length / columns) - 1) {
+            ruleSelectionFocus = RULE_SELECTION_CANCEL_INDEX;
+            return;
+        }
         const nextRow = row + rowDelta;
         const nextColumn = column + columnDelta;
         if (nextRow < 0 || nextRow >= Math.ceil(GAME_RULE_OPTIONS.length / columns) || nextColumn < 0 || nextColumn >= columns) return;
@@ -4899,6 +4925,13 @@
                 context.fillText(translate(option.statusLabel), bounds.x + bounds.width / 2, bounds.y + 59);
             }
         });
+        const cancelBounds = getRuleSelectionCancelButtonBounds();
+        const cancelFocused = ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX;
+        context.fillStyle = '#455a64'; context.fillRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
+        context.strokeStyle = cancelFocused ? '#f7c843' : '#607d8b'; context.lineWidth = cancelFocused ? 4 : 2;
+        context.strokeRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
+        context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
+        context.fillText(translate('취소'), cancelBounds.x + cancelBounds.width / 2, cancelBounds.y + 47);
     }
 
     /**
@@ -5558,6 +5591,12 @@
         // 실행 중인 게임 화면의 일반 클릭은 메뉴 동작으로 처리하지 않는다.
         if (game) return;
         if (menuScreen === 'title' && ruleSelectionOpen) {
+            const cancelBounds = getRuleSelectionCancelButtonBounds();
+            if (x >= cancelBounds.x && x <= cancelBounds.x + cancelBounds.width && y >= cancelBounds.y && y <= cancelBounds.y + cancelBounds.height) {
+                ruleSelectionFocus = RULE_SELECTION_CANCEL_INDEX;
+                activateRuleSelection();
+                return;
+            }
             const selectedIndex = GAME_RULE_OPTIONS.findIndex((option, index) => {
                 const bounds = getRuleSelectionButtonBounds(index);
                 return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
