@@ -39,9 +39,11 @@ async function installMockGamepad(page) {
       }
     };
     window.testCanvasTexts = [];
+    window.testCanvasTextCalls = [];
     const originalFillText = CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
       window.testCanvasTexts.push(String(text));
+      window.testCanvasTextCalls.push({ text: String(text), x: Number(args[0]), y: Number(args[1]), fillStyle: String(this.fillStyle) });
       return originalFillText.call(this, text, ...args);
     };
   });
@@ -1145,6 +1147,49 @@ test('퍼즐뿌요는 스테이지 선택, 잠금 해제, 5색 지급과 두 번
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
 });
 
+test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 표시하고 연습 상대 문구를 숨긴다', async ({ page }) => {
+  async function expectSoloNextLayout() {
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.player.nextPairs.length), { timeout: 5000 }).toBe(4);
+    expect(await page.evaluate(() => window.testCanvasTextCalls.some(({ text, x, y }) => {
+      const practiceNames = ['연습 상대', 'Practice Opponent', '練習相手', '练习对手'];
+      return practiceNames.some((name) => text === `${name} NEXT` || (text === name && x >= 850 && y <= 60));
+    }))).toBe(false);
+  }
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await page.keyboard.press('Enter');
+  await expectSoloNextLayout();
+
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await page.keyboard.press('Enter');
+  await expectSoloNextLayout();
+
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expectSoloNextLayout();
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['현재 턴 1 / 2', 'Turn 1 / 2', 'ターン 1 / 2', '第 1 / 2 回合'].includes(text)))).toBe(true);
+  await expect.poll(() => page.evaluate(() => {
+    const [red, green, blue] = document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(952, 114, 1, 1).data;
+    return red >= green * 2 && red >= blue * 1.5;
+  })).toBe(false);
+});
+
 test('퍼즐뿌요 스테이지 선택의 취소는 키보드와 마우스로 규칙 선택 화면에 돌아간다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
@@ -1191,15 +1236,59 @@ test('퍼즐뿌요 스테이지 클리어는 결과 화면 전환 전에 저장�
   await page.keyboard.up('ArrowDown');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 6000 }).toBe('game_over');
   expect(await page.evaluate(() => JSON.parse(window.localStorage.getItem('puyow_store')).puzzleClearStages)).toContain(0);
+  await page.evaluate(() => { window.testCanvasTextCalls = []; });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.some(({ text }) => ['현재 턴 1 / 2', 'Turn 1 / 2', 'ターン 1 / 2', '第 1 / 2 回合'].includes(text)))).toBe(true);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().puzzle.starEarned)).toBe(true);
+  expect(await page.evaluate(() => window.testCanvasTextCalls.some(({ text, x }) => {
+    const finalScorePrefixes = ['최종 점수', 'Final score', '最終スコア', '最终得分'];
+    const puzzleLabels = ['퍼즐뿌요', 'Puzzle Puyo', 'パズルぷよ', '益智魔法气泡'];
+    return x >= 850 && (finalScorePrefixes.some((prefix) => text.startsWith(prefix)) || puzzleLabels.includes(text));
+  }))).toBe(false);
+  await expect.poll(() => page.evaluate(() => {
+    const pixels = document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(950, 370, 56, 60).data;
+    for (let index = 0; index < pixels.length; index += 4) if (pixels[index] > 190 && pixels[index + 1] > 130 && pixels[index + 2] < 130) return true;
+    return false;
+  })).toBe(true);
 
-  await page.keyboard.press('Enter');
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 197 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.PUZZLE_STAGES.map((stage) => stage.opened))).toEqual([true, true, true, false, false]);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.puzzle?.stageIndex)).toBe(1);
+});
+
+test('퍼즐뿌요 패배 결과는 중앙에 다국어 붉은 패배 문구를 표시한다', async ({ page }) => {
+  await page.evaluate(() => {
+    const stage = window.WebPuyo.PUZZLE_STAGES[0];
+    stage.stageData = { puyos: Array.from({ length: 12 }, (_, y) => ({ x: 2, y, color: 'garbage' })) };
+    stage.suppliedNextPuyos = [['red', 'blue']];
+    stage.winConditionType = 'combo';
+    stage.winConditionValue = 99;
+  });
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(1000);
+  await page.keyboard.up('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 6000 }).toBe('game_over');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().winner)).toBe('opponent');
+  await page.evaluate(() => { window.testCanvasTextCalls = []; });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.some(({ text, x, y, fillStyle }) => (
+    ['패배', 'Defeat', '敗北', '失败'].includes(text) && x === 640 && y === 380 && fillStyle === '#ef5350'
+  )))).toBe(true);
+  expect(await page.evaluate(() => window.testCanvasTextCalls.some(({ text, x, y }) => (
+    ['스테이지 클리어', 'Stage Clear', 'ステージクリア', '关卡完成'].includes(text) && x === 640 && y === 380
+  )))).toBe(false);
 });
 
 test('퍼즐뿌요 싹쓸이 조건은 연출 뒤 승리 판정까지 유지한다', async ({ page }) => {
   await page.evaluate(() => {
-    const stage = window.WebPuyo.PUZZLE_STAGES[0];
+    const stage = window.WebPuyo.PUZZLE_STAGES[1];
     stage.stageData = {
       puyos: [
         { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' },
@@ -1215,6 +1304,7 @@ test('퍼즐뿌요 싹쓸이 조건은 연출 뒤 승리 판정까지 유지한�
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
   await page.keyboard.press('ArrowRight');
@@ -1222,7 +1312,11 @@ test('퍼즐뿌요 싹쓸이 조건은 연출 뒤 승리 판정까지 유지한�
   await page.waitForTimeout(1000);
   await page.keyboard.up('ArrowDown');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 6000 }).toBe('game_over');
-  expect(await page.evaluate(() => JSON.parse(window.localStorage.getItem('puyow_store')).puzzleClearStages)).toContain(0);
+  expect(await page.evaluate(() => JSON.parse(window.localStorage.getItem('puyow_store')).puzzleClearStages)).toContain(1);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.puzzle?.stageIndex)).toBe(1);
 });
 
 test('게임 중 왼쪽 아래 스틱은 왼쪽 이동과 빠른 하강을 함께 처리한다', async ({ page }) => {
