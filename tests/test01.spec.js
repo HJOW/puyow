@@ -140,6 +140,40 @@ test('피버 룰과 연속 피버의 양쪽 필드는 두 패배 칸에 빨간 X
   await expectDefeatCellMarkers(page, [2, 3]);
 });
 
+test('DAMAGE 방해뿌요 30개는 현재 숨김 생성 범위의 다섯 줄(Y 16~20)에서 생성된다', async ({ page }) => {
+  await page.evaluate(() => {
+    class GarbageSpawnPositionEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; this.prepared = false; }
+      getClassType() { return 'GarbageSpawnPositionEnemy'; }
+      getName() { return '방해뿌요 생성 위치 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.prepared) return;
+        this.prepared = true;
+        // 모든 열의 Y 0~15를 채워 생성된 방해뿌요가 중력으로 더 내려가지 않게 한다.
+        player.board = Array.from({ length: 25 }, (_, y) => Array.from({ length: 6 }, () => (y <= 15 ? 'red' : null)));
+        player.damage = 30;
+        player.phase = 'garbage';
+        player.phaseTimer = 0;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new GarbageSpawnPositionEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const puyos = window.WebPuyo.getGameState()?.opponent.board.puyos || [];
+    return [...new Set(puyos.filter((puyo) => puyo.color === 'garbage').map((puyo) => puyo.y))].sort((left, right) => left - right);
+  }), { timeout: 5000 }).toEqual([16, 17, 18, 19, 20]);
+});
+
 test('시뮬레이터는 양쪽 기본 패배 칸을 표시하고 해당 칸의 뿌요를 앞에 그린다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');

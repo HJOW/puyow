@@ -22,9 +22,15 @@
     /** 한 필드의 가로 칸 수다. @type {number} */
     const COLUMNS = 6;
     /** 숨김 행을 포함한 한 필드의 전체 세로 칸 수다. @type {number} */
-    const ROWS = 17;
+    const ROWS = 25;
     /** 화면에 보이는 필드의 세로 칸 수다. @type {number} */
     const VISIBLE_ROWS = 12;
+    /** 피버 스테이지 데이터를 숨김 영역에서 떨어뜨리기 위해 더할 Y 좌표다. @type {number} */
+    const FEVER_STAGE_SPAWN_Y_OFFSET = VISIBLE_ROWS;
+    /** DAMAGE 방해뿌요가 생성될 최상단 숨김 행이다. @type {number} */
+    const GARBAGE_SPAWN_MAX_ROW = ROWS - 5;
+    /** DAMAGE 방해뿌요가 생성될 수 있는 가장 낮은 숨김 행이다. @type {number} */
+    const GARBAGE_SPAWN_MIN_ROW = GARBAGE_SPAWN_MAX_ROW - 5;
     /** 시뮬레이터 그리기 모드에서 편집할 수 있는 줄 수다. 13번째 줄은 실행 중 베젤 뒤에 숨겨진다. @type {number} */
     const SIMULATOR_EDITABLE_ROWS = VISIBLE_ROWS + 1;
     /** 적 선택 화면 UI를 축소해 표시할 배율이다. @type {number} */
@@ -114,6 +120,10 @@
     const CONTINUOUS_FEVER_MAX_TARGET_COMBO = 12;
     /** 연속 피버에서 싹쓸이를 완료했을 때 추가하는 시간(ms)이다. @type {number} */
     const CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS = 5000;
+    /** 피버·연속 피버에서 연쇄 성공 시 기본으로 더하는 시간(ms)이다. @type {number} */
+    const FEVER_CHAIN_TIME_BONUS = 2000;
+    /** 피버 전용 필드와 연속 피버 필드의 중력 애니메이션 속도 배율이다. @type {number} */
+    const FEVER_GRAVITY_SPEED_MULTIPLIER = 1.5;
     /** 피버 룰에서 피버를 발동시키는 상쇄 전등 수다. @type {number} */
     const FEVER_GAUGE_MAX = 7;
     /** 피버 룰의 게임 시작 및 피버 종료 직후 켜져 있는 전등 수다. @type {number} */
@@ -1678,7 +1688,7 @@
         return colorMap;
     }
 
-    /** 다음 뿌요에 맞춰 피버 스테이지를 복사·변환하고 지정 플레이어 필드를 초기화한다. @param {PlayerState} player 대상 플레이어 @param {object} feverState 갱신할 피버 상태 @param {number} targetCombo 스테이지 목표 연쇄 @param {boolean} countTurn 피버 턴 수 증가 여부 @returns {void} */
+    /** 다음 뿌요에 맞춰 피버 스테이지를 숨김 영역에 복사·변환하고, 중력 연출 뒤 지정 플레이어의 조작 턴을 준비한다. @param {PlayerState} player 대상 플레이어 @param {object} feverState 갱신할 피버 상태 @param {number} targetCombo 스테이지 목표 연쇄 @param {boolean} countTurn 피버 턴 수 증가 여부 @returns {void} */
     function prepareFeverTurn(player, feverState, targetCombo = feverState.targetCombo, countTurn = true) {
         const nextPair = peekNextPair(player);
         const stage = selectContinuousFeverStage(targetCombo, nextPair, player.colors);
@@ -1687,8 +1697,9 @@
         game.pairQueue[player.pairQueuePosition] = transformedSupplied;
         player.board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
         (stage.stageData.puyos || []).forEach((puyo) => {
-            if (!Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= ROWS) return;
-            player.board[puyo.y][puyo.x] = puyo.color === 'garbage' ? 'garbage' : colorMap.get(puyo.color);
+            const spawnY = puyo.y + FEVER_STAGE_SPAWN_Y_OFFSET;
+            if (!Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || spawnY < 0 || spawnY >= ROWS) return;
+            player.board[spawnY][puyo.x] = puyo.color === 'garbage' ? 'garbage' : colorMap.get(puyo.color);
         });
         player.active = null;
         player.combo = 0;
@@ -1705,6 +1716,8 @@
         feverState.selectedStageTarget = stage.targetCombo;
         feverState.stageSuppliedPair = [...transformedSupplied];
         updateNextPairs(player);
+        // 패턴이 갑자기 완성된 상태로 나타나지 않도록 숨김 영역에서 실제 중력을 적용한다.
+        startGravity(player, 'feverStageControl');
     }
 
     /** 연속 피버의 사용자 필드를 새 피버 턴으로 초기화한다. @returns {void} */
@@ -1719,7 +1732,7 @@
      */
     function beginGame() {
         if (game.continuousFever) prepareContinuousFeverTurn();
-        enterControl(game.players[0]);
+        else enterControl(game.players[0]);
         enterControl(game.players[1]);
     }
 
@@ -1745,7 +1758,6 @@
         state.nextTime = FEVER_INITIAL_TIME;
         state.deferGarbage = false;
         prepareFeverTurn(player, state);
-        enterControl(player);
     }
 
     /** 피버 전용 필드와 피해를 초기화하고 보존된 일반 필드로 돌아가 누적 피해를 합산한다. @param {PlayerState} player 대상 플레이어 @param {'A'|'B'} exitType 종료 유형 @returns {void} */
@@ -1997,6 +2009,13 @@
         startGravity(player, 'explode');
     }
 
+    /** 피버 전용·연속 피버 필드에 적용할 중력 애니메이션 속도 배율을 반환한다. @param {PlayerState} player 대상 플레이어 @returns {number} 속도 배율 */
+    function getGravitySpeedMultiplier(player) {
+        if (game?.continuousFever && player === game.players[0]) return FEVER_GRAVITY_SPEED_MULTIPLIER;
+        if (game?.feverRule && player.fever?.active) return FEVER_GRAVITY_SPEED_MULTIPLIER;
+        return 1;
+    }
+
     /**
      * 모든 보드 뿌요의 낙하 목적지와 가속 애니메이션을 준비한다.
      * @param {PlayerState} player 중력을 적용할 플레이어
@@ -2011,7 +2030,7 @@
             const stack = [];
             // 아래 행부터 기존 뿌요를 수집해 낙하 전 위치를 보관한다.
             for (let y = 0; y < ROWS; y += 1) {
-                if (player.board[y][x]) stack.push({ color: player.board[y][x], fromY: y });
+                if (player.board[y]?.[x]) stack.push({ color: player.board[y][x], fromY: y });
             }
             // 수집한 뿌요를 빈칸 없이 아래쪽부터 다시 배치한다.
             for (let y = 0; y < ROWS; y += 1) {
@@ -2025,7 +2044,12 @@
         player.gravityNextPhase = nextPhase;
         player.phase = 'gravity';
         player.phaseTimer = 0;
-        player.gravityAnimation = falling.length ? { falling, elapsed: 0, duration: Math.max(...falling.map((puyo) => 210 + 790 * Math.sqrt((puyo.fromY - puyo.toY) / VISIBLE_ROWS))) } : null;
+        const gravitySpeedMultiplier = getGravitySpeedMultiplier(player);
+        player.gravityAnimation = falling.length ? {
+            falling,
+            elapsed: 0,
+            duration: Math.max(...falling.map((puyo) => (210 + 790 * Math.sqrt((puyo.fromY - puyo.toY) / VISIBLE_ROWS)) / gravitySpeedMultiplier))
+        } : null;
     }
 
     /**
@@ -2628,8 +2652,10 @@
             const positions = [];
             // 필요한 행 수만큼 열 순서를 섞어 방해뿌요 위치를 만든다.
             for (let y = 0; y < Math.ceil(amount / COLUMNS); y += 1) {
+                const spawnY = GARBAGE_SPAWN_MAX_ROW - y;
+                if (spawnY < GARBAGE_SPAWN_MIN_ROW) break;
                 const columns = [...Array(COLUMNS).keys()].sort(() => randomFloat() - 0.5);
-                columns.forEach((x) => positions.push([x, ROWS - 1 - y]));
+                columns.forEach((x) => positions.push([x, spawnY]));
             }
             positions.slice(0, amount).forEach(([x, y]) => { player.board[y][x] = 'garbage'; });
             player.damage -= amount;
@@ -2747,13 +2773,12 @@
         }
         const combo = game.fever.pendingCombo;
         game.fever.targetCombo = calculateContinuousFeverTarget(combo, game.fever.pendingAllClear);
-        if (game.fever.leftTime > 0) {
-            const comboTimeBonus = Math.floor(combo / 2) * 1000;
+        if (game.fever.leftTime > 0 && combo > 0) {
+            const comboTimeBonus = Math.floor(combo / 2) * 1000 + FEVER_CHAIN_TIME_BONUS;
             const allClearTimeBonus = game.fever.pendingAllClear ? CONTINUOUS_FEVER_ALL_CLEAR_TIME_BONUS : 0;
             game.fever.leftTime += comboTimeBonus + allClearTimeBonus;
         }
         prepareContinuousFeverTurn();
-        enterControl(player);
     }
 
     /** 피버 룰 연쇄의 에너지·싹쓸이·상대 방해뿌요 처리가 끝났는지 확인한다. @param {PlayerState} player 연쇄 플레이어 @param {PlayerState} opponent 상대 플레이어 @returns {boolean} 대기 필요 여부 */
@@ -2784,9 +2809,8 @@
             finishPlayerFever(player, 'B');
             return;
         }
-        if (state.targetCombo !== previousTarget) state.leftTime += Math.floor(combo / 2) * 1000;
+        if (state.targetCombo !== previousTarget) state.leftTime += Math.floor(combo / 2) * 1000 + FEVER_CHAIN_TIME_BONUS;
         prepareFeverTurn(player, state);
-        enterControl(player);
     }
 
     /** 퍼즐뿌요 한 턴의 클리어 조건을 확인한다. @param {PlayerState} player 사용자 @returns {boolean} 조건 달성 여부 */
@@ -2891,6 +2915,10 @@
             player.fever.pendingAllClearStage = false;
             // 피버 룰의 일반 필드 싹쓸이는 피버에 진입하지 않았을 때 4연쇄 패턴을 지급한다.
             prepareFeverTurn(player, player.fever, FEVER_MIN_TARGET_COMBO, false);
+            return;
+        }
+        // 피버 패턴은 숨김 영역에서의 중력 애니메이션이 끝난 뒤에만 조작을 시작한다.
+        if (player.phase === 'feverStageControl') {
             enterControl(player);
             return;
         }
