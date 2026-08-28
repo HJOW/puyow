@@ -310,6 +310,8 @@
     let selectedOpponent = 0;
     /** 선택된 색상 수의 DIFFICULTIES 배열 인덱스다. @type {number} */
     let selectedDifficulty = 1;
+    /** 색상 수 선택 화면에서 포커스된 항목이다. 색상 인덱스 또는 취소 가상 인덱스다. @type {number} */
+    let colorSelectionFocus = selectedDifficulty;
     /** 선택된 AI 빠른 하강 난이도의 AI_DIFFICULTIES 배열 인덱스다. @type {number} */
     let selectedAiDifficulty = 1;
     /** 적 선택 메뉴에서 포커스된 행이다. 0: 색상, 1: AI 난이도, 2: 적, 3: 동작이다. @type {number} */
@@ -368,6 +370,8 @@
         { name: '4색', colors: ['red', 'green', 'yellow', 'blue'] },
         { name: '5색', colors: COLORS }
     ];
+    /** 색상 수 선택 화면에서 취소 버튼에 사용할 가상 항목 인덱스다. */
+    const COLOR_SELECTION_CANCEL_INDEX = DIFFICULTIES.length;
     /** AI 빠른 하강 시점별 난이도다. @type {{key:'easy'|'normal'|'hard'|'extreme', name:string, fastDownDelay:number|null}[]} */
     const AI_DIFFICULTIES = [
         { key: 'easy', name: '쉬움', fastDownDelay: AI_FAST_DOWN_DELAY_EASY },
@@ -4849,6 +4853,17 @@
         return (WIDTH - totalWidth) / 2 + difficultyIndex * (buttonWidth + gap);
     }
 
+    /** 연습·연속 피버 색상 수 선택 화면 하단 취소 버튼의 화면 영역을 반환한다. @returns {{x:number,y:number,width:number,height:number}} 취소 버튼 영역 */
+    function getColorSelectionCancelButtonBounds() {
+        return { x: WIDTH / 2 - 100, y: 445, width: 200, height: 58 };
+    }
+
+    /** 색상 수 선택을 취소하고 게임 규칙 선택 화면으로 돌아간다. @returns {void} */
+    function returnToRuleSelection() {
+        menuScreen = 'title';
+        openRuleSelection();
+    }
+
     /** AI 난이도 선택지를 개수와 관계없이 화면 중앙에 수평 정렬한다. @param {number} difficultyIndex AI_DIFFICULTIES 배열 인덱스 @returns {number} 버튼의 왼쪽 좌표 */
     function getAiDifficultyButtonX(difficultyIndex) {
         const buttonWidth = 110;
@@ -4860,6 +4875,7 @@
     /** 게임 규칙 선택지에서 연습을 고른 뒤 색상 수 선택 화면을 연다. @returns {void} */
     function openPracticeDifficulty() {
         selectedDifficulty = 1;
+        colorSelectionFocus = selectedDifficulty;
         colorSelectionMode = 'practice';
         menuScreen = 'practiceDifficulty';
     }
@@ -4867,6 +4883,7 @@
     /** 게임 규칙 선택지에서 연속 피버를 고른 뒤 3색·4색·5색 선택 화면을 연다. @returns {void} */
     function openContinuousFeverDifficulty() {
         selectedDifficulty = 1;
+        colorSelectionFocus = selectedDifficulty;
         colorSelectionMode = 'continuousFever';
         menuScreen = 'practiceDifficulty';
     }
@@ -5048,9 +5065,16 @@
                 const x = getColorDifficultyButtonX(index);
                 const selected = index === selectedDifficulty;
                 context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, 335, 110, 58);
-                context.strokeStyle = selected ? '#f7c843' : '#3b6070'; context.lineWidth = selected ? 4 : 2; context.strokeRect(x, 335, 110, 58);
+                const focused = colorSelectionFocus === index;
+                context.strokeStyle = focused ? '#f7c843' : '#3b6070'; context.lineWidth = focused ? 4 : 2; context.strokeRect(x, 335, 110, 58);
                 context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 371);
             });
+            const cancelBounds = getColorSelectionCancelButtonBounds();
+            const cancelFocused = colorSelectionFocus === COLOR_SELECTION_CANCEL_INDEX;
+            context.fillStyle = '#455a64'; context.fillRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
+            context.strokeStyle = cancelFocused ? '#f7c843' : '#607d8b'; context.lineWidth = cancelFocused ? 4 : 2;
+            context.strokeRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
+            context.fillStyle = '#f5fbfc'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate('취소'), WIDTH / 2, cancelBounds.y + 37);
         }
         // 공지사항은 부유하는 뿌요와 모든 메인 메뉴 요소 위에 그린다.
         if (menuScreen === 'title') drawNotice();
@@ -5378,11 +5402,22 @@
             }
             if (menuScreen === 'practiceDifficulty') {
                 const choices = getSelectableColorDifficultyIndices();
-                const currentIndex = Math.max(0, choices.indexOf(selectedDifficulty));
-                if (key === 'arrowleft' || key === 'arrowup') selectedDifficulty = choices[(currentIndex + choices.length - 1) % choices.length];
-                else if (key === 'arrowright' || key === 'arrowdown') selectedDifficulty = choices[(currentIndex + 1) % choices.length];
+                if (key === 'escape') { menuScreen = 'title'; loadNotice(); }
+                else if (colorSelectionFocus === COLOR_SELECTION_CANCEL_INDEX) {
+                    if (key === 'arrowup') colorSelectionFocus = selectedDifficulty;
+                    else if (key === 'arrowleft' || key === 'arrowright') {
+                        const currentIndex = Math.max(0, choices.indexOf(selectedDifficulty));
+                        const direction = key === 'arrowleft' ? -1 : 1;
+                        selectedDifficulty = choices[(currentIndex + direction + choices.length) % choices.length];
+                        colorSelectionFocus = selectedDifficulty;
+                    } else if (key === 'enter' || key === ' ') returnToRuleSelection();
+                } else if (key === 'arrowleft' || key === 'arrowright') {
+                    const currentIndex = Math.max(0, choices.indexOf(selectedDifficulty));
+                    const direction = key === 'arrowleft' ? -1 : 1;
+                    selectedDifficulty = choices[(currentIndex + direction + choices.length) % choices.length];
+                    colorSelectionFocus = selectedDifficulty;
+                } else if (key === 'arrowdown') colorSelectionFocus = COLOR_SELECTION_CANCEL_INDEX;
                 else if (key === 'enter' || key === ' ') startGame(colorSelectionMode === 'practice', colorSelectionMode === 'continuousFever');
-                else if (key === 'escape') { menuScreen = 'title'; loadNotice(); }
                 return;
             }
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
@@ -5692,9 +5727,16 @@
             else if (y >= 386 && y <= 424) { settingsFocus = 6; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
         } else {
             if (menuScreen === 'practiceDifficulty') {
+                const cancelBounds = getColorSelectionCancelButtonBounds();
+                if (x >= cancelBounds.x && x <= cancelBounds.x + cancelBounds.width && y >= cancelBounds.y && y <= cancelBounds.y + cancelBounds.height) {
+                    colorSelectionFocus = COLOR_SELECTION_CANCEL_INDEX;
+                    returnToRuleSelection();
+                    return;
+                }
                 const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => x >= getColorDifficultyButtonX(index) && x <= getColorDifficultyButtonX(index) + 110 && y >= 335 && y <= 393);
                 if (difficultyIndex >= 0 && getSelectableColorDifficultyIndices().includes(difficultyIndex)) {
                     selectedDifficulty = difficultyIndex;
+                    colorSelectionFocus = difficultyIndex;
                     startGame(colorSelectionMode === 'practice', colorSelectionMode === 'continuousFever');
                 } else {
                     // 난이도 선택지 바깥을 클릭하면 ESC와 같이 메인 화면으로 돌아간다.
