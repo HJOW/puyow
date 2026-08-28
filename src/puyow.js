@@ -1426,6 +1426,8 @@
             } : null,
             difficulty,
             aiDifficulty: selectedAiDifficulty,
+            /** 결과 화면에서 적 선택 메뉴를 복원할 때 사용할 적 목록 순번이다. 단독 모드에서는 없다. */
+            opponentIndex: soloMode ? null : selectedOpponent,
             themeController: controller,
             pairQueueColors: colors,
             pairQueue,
@@ -5719,20 +5721,37 @@
         syncBackgroundMusic();
     }
 
+    /** 승리한 대전의 적 선택 상태를 복원하고, 새로 열렸으면 다음 적에 포커스를 둔다. @param {{difficulty:number,aiDifficulty:number,opponentIndex:number|null,feverRule:boolean,winner:PlayerState|null,players:PlayerState[]}} finishedGame 종료된 게임 상태 @returns {void} */
+    function restoreOpponentMenuAfterResult(finishedGame) {
+        selectedDifficulty = finishedGame.difficulty;
+        selectedAiDifficulty = finishedGame.aiDifficulty;
+        if (Number.isInteger(finishedGame.opponentIndex) && OPPONENTS[finishedGame.opponentIndex]) selectedOpponent = finishedGame.opponentIndex;
+        opponentMenuRule = finishedGame.feverRule ? 'fever' : 'standard';
+        const playerWon = finishedGame.winner === finishedGame.players[0];
+        if (playerWon) {
+            const selectable = getSelectableOpponents();
+            const completedIndex = selectable.indexOf(OPPONENTS[finishedGame.opponentIndex]);
+            // 마지막 선택 가능 적이면 현재 적을 유지하고, 새 적이 열렸으면 그 적을 선택한다.
+            if (completedIndex >= 0 && completedIndex < selectable.length - 1) selectedOpponent = OPPONENTS.indexOf(selectable[completedIndex + 1]);
+        }
+        openOpponentMenu(finishedGame.feverRule);
+        if (playerWon) opponentMenuFocus = 2;
+    }
+
     /** 결과 화면을 닫고 해당 게임의 이전 메뉴로 돌아간다. 퍼즐뿌요를 클리어했다면 시작 시 결정한 다음 또는 현재 스테이지에 포커스를 둔다. @returns {void} */
     function closeResultScreen() {
         if (!game || game.running) return;
-        const returnToTitle = game.practice;
-        const returnToPuzzleStages = game.puzzle !== undefined && game.puzzle !== null;
-        const returnToFeverOpponent = game.feverRule === true;
-        const puzzleFocusIndex = returnToPuzzleStages && game.winner === game.players[0]
-            ? game.puzzle.returnFocusIndex
+        const finishedGame = game;
+        const returnToTitle = finishedGame.practice;
+        const returnToPuzzleStages = finishedGame.puzzle !== undefined && finishedGame.puzzle !== null;
+        const puzzleFocusIndex = returnToPuzzleStages && finishedGame.winner === finishedGame.players[0]
+            ? finishedGame.puzzle.returnFocusIndex
             : 0;
         stopBackgroundMusic();
         game = null;
         if (returnToPuzzleStages) openPuzzleStageSelection(puzzleFocusIndex);
         else if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
-        else openOpponentMenu(returnToFeverOpponent);
+        else restoreOpponentMenuAfterResult(finishedGame);
     }
 
     /**

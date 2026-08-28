@@ -1319,6 +1319,57 @@ test('퍼즐뿌요 싹쓸이 조건은 연출 뒤 승리 판정까지 유지한�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.puzzle?.stageIndex)).toBe(1);
 });
 
+test('기본·피버 룰 승리 뒤에는 같은 색 수·난이도로 다음 선택 가능 적에 포커스한다', async ({ page }) => {
+  async function verifyVictoryReturn(feverRule, prefix) {
+    const nextName = `${prefix} 다음 적`;
+    await page.evaluate(({ currentName, successorName, classPrefix }) => {
+      class ResultReturnWinner extends window.WebPuyo.Enemy {
+        constructor() { super(); this.sortPriority = -20; }
+        getClassType() { return `${classPrefix}Winner`; }
+        getName() { return currentName; }
+        prepareTurn(player) {
+          super.prepareTurn(player);
+          player.board[11][2] = 'red';
+          player.phase = 'check';
+          player.phaseTimer = 150;
+        }
+      }
+      class ResultReturnSuccessor extends window.WebPuyo.Enemy {
+        constructor() { super(); this.sortPriority = -19; }
+        getClassType() { return `${classPrefix}Successor`; }
+        getName() { return successorName; }
+      }
+      window.WebPuyo.registerOpponent({ createController: () => new ResultReturnWinner() });
+      window.WebPuyo.registerOpponent({ createController: () => new ResultReturnSuccessor() });
+    }, { currentName: `${prefix} 현재 적`, successorName: nextName, classPrefix: prefix.replaceAll(' ', '') });
+
+    await enterMainMenu(page);
+    await page.keyboard.press('Enter');
+    if (feverRule) await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe(feverRule ? 'fever_opponent_select' : 'opponent_select');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 10000 }).toBe('player');
+
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe(feverRule ? 'fever_opponent_select' : 'opponent_select');
+    expect(await page.evaluate(() => window.WebPuyo.getSelectedColorCount())).toBe(5);
+    expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty().key)).toBe('hard');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.name)).toBe(nextName);
+  }
+
+  await verifyVictoryReturn(false, '기본 복귀 테스트');
+  await page.reload();
+  await verifyVictoryReturn(true, '피버 복귀 테스트');
+});
+
 test('게임 중 왼쪽 아래 스틱은 왼쪽 이동과 빠른 하강을 함께 처리한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
