@@ -6502,7 +6502,7 @@
 
         /**
          * 플레이어가 이 횟수만큼의 "컨트롤 타이밍" 동안 클리어를 해야 한다.
-         *     이 횟수를 넘어서도 게임은 계속 가능하지만 "별" (승리로 스테이지 종료 시 별 획득 여부 출력 예정) 을 획득할 수 없다.
+         *     이 횟수를 초과해도 게임은 계속 가능하지만 "별" (승리로 스테이지 종료 시 별 획득 여부 출력 예정) 을 획득할 수 없다.
          *     (이 횟수 이내에 승리 조건 만족 시 "별"을 획득한다.)
          * 
          * 0 이하의 값을 지정하면 제한이 없는 것으로 간주한다.
@@ -6553,6 +6553,30 @@
             if(typeof(plainObject.uid) != 'undefined') this.uid = plainObject.uid;
         }
     }
+
+        /**
+     * 퍼즐뿌요 스테이지들을 순서대로 담을 배열.
+     * 
+     * @type {PuzzlePuyoStage[]}
+     */
+    const PUZZLE_STAGES = [
+        new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"blue"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":3,"y":1,"color":"green"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":4,"y":2,"color":"red"}]},
+            suppliedNextPuyos : [['green', 'blue'], ['green', 'green']],
+            turnLimit : 2,
+            winConditionType : 'combo',
+            winConditionValue : 3,
+            hint : '한 번만 회전해'
+        }),
+        new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":3,"y":1,"color":"garbage"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"blue"},{"x":3,"y":2,"color":"blue"}]},
+            suppliedNextPuyos : [['green', 'green'], ['red', 'blue'], ['green', 'green']],
+            turnLimit : 3,
+            winConditionType : 'clear',
+            winConditionValue : 0,
+            hint : '마지막 폭발은 초록색으로'
+        })
+    ];
 
     /** 
      * 연속 피버 및 피버 룰 에 쓰일, 
@@ -6616,13 +6640,6 @@
             this.usingColors = Array.isArray(pUsingColors) ? [...new Set(pUsingColors.filter((color) => color && color !== 'garbage'))] : patternColors;
         }
     }
-
-    /**
-     * 퍼즐뿌요 스테이지들을 순서대로 담을 배열.
-     * 
-     * @type {PuzzlePuyoStage[]}
-     */
-    const PUZZLE_STAGES = [];
 
     /**
      * "피버 스테이지" 객체들을 담을 배열, 4 ~ 12연쇄 까지만 담을 예정. 
