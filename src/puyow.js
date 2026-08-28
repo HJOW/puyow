@@ -445,6 +445,58 @@
     }
 
     /**
+     * 설정 등을 저장할 때 사용하는 대리 객체
+     */
+    class StorageManager {
+        /**
+         * 스토리지에 저장된 데이터를 읽어 반환, 해당 데이터가 존재하지 않으면 null 반환
+         * 
+         * @param {string} key 데이터의 키
+         * @returns {string|null} 데이터
+         */
+        getItem(key) {
+            return window.localStorage.getItem(key);
+        }
+
+        /**
+         * 스토리지에 데이터 저장 (단, null 입력 시 데이터 삭제)
+         * 
+         * @param {string} key 데이터의 키
+         * @param {string|null} value 저장할 데이터 (삭제 시 null 입력)
+         */
+        setItem(key, value) {
+            if(value == null) window.localStorage.removeItem(key);
+            else window.localStorage.setItem(key, value);
+        }
+
+        /**
+         * 스토리지의 모든 데이터를 삭제
+         */
+        clear() {
+            window.localStorage.clear();
+        }
+    }
+
+    /** 
+     * 스토리지 저장 시 사용하는 공통 객체 
+     *     다른 플랫폼 용으로 사용할 때 해당 플랫폼 제공 저장수단으로 교체하여 사용한다.
+     * 
+     * @type {StorageManager} 
+     * 
+    */
+    let storageManager = new StorageManager();
+
+    /**
+     * 공통 스토리지 매니저 교체
+     * 
+     * @param {StorageManager} storageManagerObject 
+     */
+    function setStorageManager(storageManagerObject) {
+        if(! (storageManagerObject instanceof StorageManager)) throw new TypeError('storageManagerObject는 StorageManager 인스턴스여야 합니다.');
+        storageManager = storageManagerObject;
+    }
+
+    /**
      * 공백이 있어 CSS font 값에서 여러 키워드로 잘못 해석될 수 있는 글꼴 이름에만 쌍따옴표를 붙인다.
      * @param {string} fontName 원본 글꼴 이름
      * @returns {string} font 속성에 안전하게 넣을 수 있는 글꼴 이름
@@ -558,7 +610,7 @@
     function loadGalleryUnlocks() {
         const initial = createInitialGalleryUnlocks();
         try {
-            const serialized = window.localStorage.getItem(GALLERY_STORE_KEY);
+            const serialized = storageManager.getItem(GALLERY_STORE_KEY);
             if (!serialized) {
                 galleryUnlocks = initial;
                 return;
@@ -581,7 +633,7 @@
     function saveGalleryUnlocks() {
         setTimeout(() => {
             try {
-                window.localStorage.setItem(GALLERY_STORE_KEY, JSON.stringify(galleryUnlocks));
+                storageManager.setItem(GALLERY_STORE_KEY, JSON.stringify(galleryUnlocks));
             } catch (error) {
                 console.error('Puyo W 갤러리 저장 데이터 기록에 실패했습니다.', error);
             }
@@ -798,7 +850,7 @@
      */
     function saveStore() {
         try {
-            window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+            storageManager.setItem(STORE_KEY, JSON.stringify(store));
         } catch (error) {
             console.error('Puyo W 저장 데이터 기록에 실패했습니다.', error);
         }
@@ -810,7 +862,7 @@
      */
     function loadStore() {
         try {
-            const serialized = window.localStorage.getItem(STORE_KEY);
+            const serialized = storageManager.getItem(STORE_KEY);
             if (!serialized) {
                 store = createInitialStore();
                 return;
@@ -4568,7 +4620,7 @@
             return;
         }
         try {
-            window.localStorage.clear();
+            storageManager.clear();
         } catch (error) {
             console.error('Puyo W 설정 초기화 중 저장 데이터 삭제에 실패했습니다.', error);
         }
@@ -8897,6 +8949,7 @@
         SoundPool,
         CommonSoundPool,
         EnemySoundPool,
+        StorageManager,
         FeverStageState,
         PuzzlePuyoStage,
         PUZZLE_STAGES,
@@ -8904,6 +8957,7 @@
         createSoundPool,
         setEnemySoundPool,
         setCommonSoundPool,
+        setStorageManager,
         registerFeverStageState,
         registerPuzzleStage,
         registerOpponent,
