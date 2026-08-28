@@ -6474,8 +6474,88 @@
         return new EnemySoundPool();
     }
 
+    /**
+     * 퍼즐 뿌요 모드에서 쓰일 하나의 스테이지
+     */
+    class PuzzlePuyoStage {
+        /**
+         * 이 객체의 고유 ID
+         */
+        uid = 'PZ' + (Math.floor(randomFloat() * 89999999) + 10000000);
+
+        /**
+         * 뿌요 배치 정보, 시뮬레이터 모드의 JSON복사 기능으로 생성된 데이터와 호환된다.
+         *    예: {"puyos":[{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":5,"y":1,"color":"red"}]}
+         * @type {Object}
+         */
+        stageData = {};
+
+        /**
+         * 이 배치가 끝나자마자 그 다음에 플레이어의 컨트롤 차례가 됐을 때 제공되어야 하는 뿌요 색 정보.
+         *     원소로 또 배열이 들어가야 하며, 내부 배열 안에 색상 이름이 2개가 들어가야 한다. (예: [["red","blue"],["green","yellow"]])
+         *     이 횟수만큼 뿌요를 지급 받고도 이후에 계속 플레이어 컨트롤 타이밍이 돌아온다면 그 때는 기본 룰 5색과 동일한 방식으로 뿌요를 지급한다.
+         *     (FeverStageState 와 호환되지 않으니 유의 !)
+         * 
+         * @type {string[][]}
+         */
+        suppliedNextPuyos = [];
+
+        /**
+         * 플레이어가 이 횟수만큼의 "컨트롤 타이밍" 동안 클리어를 해야 한다.
+         *     이 횟수를 넘어서도 게임은 계속 가능하지만 "별" (승리로 스테이지 종료 시 별 획득 여부 출력 예정) 을 획득할 수 없다.
+         *     (이 횟수 이내에 승리 조건 만족 시 "별"을 획득한다.)
+         * 
+         * 0 이하의 값을 지정하면 제한이 없는 것으로 간주한다.
+         * 
+         * @type {number}
+         */
+        turnLimit = 0;
+
+        /**
+         * 이 퍼즐 스테이지의 승리 조건 유형
+         *     연쇄 (combo), 싹쓸이 (clear), 동시 폭발 뿌요 수 (multiple) 중 하나가 들어가야 한다.
+         * 
+         *     combo : 목표 연쇄 수를 달성하면 승리
+         *     clear : 싹쓸이 발생 시 승리
+         *     multiple : 한 번의 연쇄에 동시에 터지는 뿌요 수가 한 번이라도 목표 수 이상으로 넘어갔다면 승리
+         *     attack : 발생시킨 공격 ATTACK + 상대에게 적용한 피해 DAMAGE (즉 예고뿌요가 나타내는 방해뿌요 총 수) 합이 순간적으로 이 목표 수 이상으로 넘어갔다면 승리
+         * 
+         * 목표 연쇄 수나 동시 폭발 뿌요 수 등의 값은 winConditionValue 에 들어가야 한다.
+         * 
+         * @type {string}
+         */
+        winConditionType = 'combo';
+
+        /**
+         * 이 퍼즐 스테이지의 승리 조건 값
+         * 
+         * @type {number}
+         */
+        winConditionValue = 4;
+
+        /**
+         * 이 퍼즐 스테이지의 힌트 문구. (예: "2연쇄를 노려보자!")
+         *     빈 문자열이면 힌트가 없는 것으로 간주한다.
+         * 
+         * 흰트 문구는 한글로 입력한다. (게임 내에서 이 값을 다국어 처리 후 출력한다.)
+         * 
+         * @type {string}
+         */
+        hint = '';
+
+        constructor(plainObject) {
+            if(typeof(plainObject.stageData) != 'undefined') this.stageData = plainObject.stageData;
+            if(typeof(plainObject.suppliedNextPuyos) != 'undefined') this.suppliedNextPuyos = plainObject.suppliedNextPuyos;
+            if(typeof(plainObject.turnLimit) != 'undefined') this.turnLimit = plainObject.turnLimit;
+            if(typeof(plainObject.winConditionType) != 'undefined') this.winConditionType = plainObject.winConditionType;
+            if(typeof(plainObject.winConditionValue) != 'undefined') this.winConditionValue = plainObject.winConditionValue;
+            if(typeof(plainObject.hint) != 'undefined') this.hint = plainObject.hint;
+            if(typeof(plainObject.uid) != 'undefined') this.uid = plainObject.uid;
+        }
+    }
+
     /** 
-     * 퍼즐 및 피버 모드 (추후 구현 예정) 에 쓰일, 
+     * 연속 피버 및 피버 룰 에 쓰일, 
      *    플레이 영역에 사전에 뿌요들을 배치하는 정보와 그 연쇄 수를 담은 객체를 위한 클래스. 
      *    "피버 스테이지" 객체 라고 부를 예정.
      * 
@@ -6498,7 +6578,9 @@
         targetCombo = 1;
 
         /**
-         * 이 배치가 끝나자마자 그 다음에 플레이어의 컨트롤 차례가 됐을 때 제공되어야 하는 뿌요 색 목록, 배열로 안에는 색 이름 (red, blue, ...) 의 문자열이 2개가 들어가야 한다.
+         * 이 배치가 끝나자마자 그 다음에 플레이어의 컨트롤 차례가 됐을 때 제공되어야 하는 뿌요 색 목록
+         *     PuzzlePuyoStage 클래스와는 다르게 1회 치 정보만 탑재한다.
+         *     배열로 안에는 색 이름 (red, blue, ...) 의 문자열이 2개가 들어가야 한다.
          * @type {string[]}
          */
         suppliedNextPuyos = [];
@@ -6534,6 +6616,13 @@
             this.usingColors = Array.isArray(pUsingColors) ? [...new Set(pUsingColors.filter((color) => color && color !== 'garbage'))] : patternColors;
         }
     }
+
+    /**
+     * 퍼즐뿌요 스테이지들을 순서대로 담을 배열.
+     * 
+     * @type {PuzzlePuyoStage[]}
+     */
+    const PUZZLE_STAGES = [];
 
     /**
      * "피버 스테이지" 객체들을 담을 배열, 4 ~ 12연쇄 까지만 담을 예정. 
@@ -8258,6 +8347,7 @@
         CommonSoundPool,
         EnemySoundPool,
         FeverStageState,
+        PuzzlePuyoStage,
         createSoundPool,
         setEnemySoundPool,
         registerFeverStageState,
