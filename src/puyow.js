@@ -194,12 +194,12 @@
         en: {
             '뿌요 W': 'Puyo W',
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
-            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
+            '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '시작': 'Start', '이전': 'Back',
             '극한': 'Extreme',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
-            '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked',
+            '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked', '한 번만 회전해': 'Rotate only once.', '마지막 폭발은 초록색으로': 'Make the last pop green.', '방해뿌요는 터뜨려야 제맛': 'Pop the garbage puyos too.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Where should you pop first? The right side?', '저 위의 빨간 색은 왜 있을까?': 'Why is that red puyo up there?',
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
@@ -212,12 +212,12 @@
         ja: {
             '뿌요 W': 'Puyo W',
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
-            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
+            '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '시작': '開始', '이전': '戻る',
             '극한': '極限',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
-            '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中',
+            '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中', '한 번만 회전해': '一度だけ回転しよう。', '마지막 폭발은 초록색으로': '最後は緑で消そう。', '방해뿌요는 터뜨려야 제맛': 'おじゃまぷよも消そう。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'どこから消そう？右側かな？', '저 위의 빨간 색은 왜 있을까?': '上の赤いぷよはなぜあるのかな？',
             '시뮬레이터': 'シミュレーター', '팔레트': 'パレット', '재생': '再生', '그리기': '描画', '시뮬레이션': 'シミュレーション', '지우개': '消しゴム',
             'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
             '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
@@ -230,13 +230,13 @@
         zh: {
             '뿌요 W': 'Puyo W',
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
-            '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
+            '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '퍼즐뿌요': '益智魔法气泡', '퍼즐뿌요 스테이지': '益智魔法气泡关卡', '스테이지 %1': '关卡 %1', '권장 턴 수 %1': '推荐回合数: %1', '현재 턴 %1': '第 %1 回合', '%1 연쇄 해봐': '试试 %1 连锁！', '싹쓸이 해봐': '试试全消！', '한 번에 %1개 뿌요를 터뜨려봐': '一次消除 %1 个魔法气泡！', '방해뿌요 %1개를 발생 시켜봐': '发送 %1 个垃圾魔法气泡！', '스테이지 클리어': '关卡完成', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯',
             '극한': '极限',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
-            '연습 상대': '练习对手', '추후 출시예정': '即将推出', '잠김': '已锁定',
+            '연습 상대': '练习对手', '추후 출시예정': '即将推出', '잠김': '已锁定', '한 번만 회전해': '只旋转一次。', '마지막 폭발은 초록색으로': '最后用绿色消除。', '방해뿌요는 터뜨려야 제맛': '也消除垃圾噗哟吧。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': '从哪里开始消除？右边？', '저 위의 빨간 색은 왜 있을까?': '上面的红噗哟为什么会在那里？',
             '시뮬레이터': '模拟器', '팔레트': '调色板', '재생': '播放', '그리기': '绘制', '시뮬레이션': '模拟', '지우개': '橡皮擦',
             'JSON복사': '复制 JSON', 'JSON넣기': '粘贴 JSON', '배치가 클립보드에 복사됨': '布局已复制到剪贴板',
             '클립보드 복사 실패': '复制到剪贴板失败', 'JSON 파싱 실패': 'JSON 解析失败', '배치 JSON을 입력하세요.': '请输入布局 JSON。',
@@ -298,10 +298,16 @@
     let settingsResetTimer = null;
     /** AI가 강조 표시하도록 지정한 플레이어 필드 좌표다. @type {{x:number, y:number}|null} */
     let recommendedPoint = null;
-    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'initialTitle'|'title'|'opponent'|'practiceDifficulty'|'simulator'|'settings'|'gallery'} */
+    /** 게임이 없을 때 표시할 메뉴 화면 식별자다. @type {'initialTitle'|'title'|'opponent'|'practiceDifficulty'|'puzzleStage'|'simulator'|'settings'|'gallery'} */
     let menuScreen = 'initialTitle';
     /** 색상 수 선택 화면이 시작할 단독 모드다. @type {'practice'|'continuousFever'} */
     let colorSelectionMode = 'practice';
+    /** 퍼즐뿌요 스테이지 선택 화면에서 포커스된 스테이지 순번이다. @type {number} */
+    let puzzleStageFocus = 0;
+    /** 퍼즐뿌요 스테이지 선택 화면에서 직전에 마우스로 포커스한 스테이지 순번이다. @type {number|null} */
+    let puzzleStageLastClickedIndex = null;
+    /** 퍼즐뿌요 스테이지 선택 화면의 취소 버튼에 사용할 가상 포커스 순번이다. @type {number} */
+    const PUZZLE_STAGE_CANCEL_INDEX = -1;
     /** 갤러리의 현재 선택과 포커스 상태다. @type {{typeIndex:number,itemIndex:number,focus:'type'|'target',portraitElapsed:number}|null} */
     let gallery = null;
     /** 초기 타이틀 중앙에 순환 표시할 갤러리 대상 상태다. @type {{loaded:boolean,items:{draw:()=>void}[],startIndex:number,elapsed:number}} */
@@ -364,7 +370,7 @@
     let languageCode = 'ko';
     /** [CTX] 예약어를 치환할 웹 애플리케이션의 URL 컨텍스트 경로다. @type {string} */
     let urlContextPath = '/';
-    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>}} */
+    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[]}} */
     let store = createInitialStore();
     /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 puyow.js 기준으로 해석한다. @type {string} */
     let noticeUrl = 'notice_[LANG].txt';
@@ -394,14 +400,16 @@
         standard: '#1b5e20',
         fever: '#b0007a',
         practice: '#388e3c',
-        continuousFever: '#cf4bb0'
+        continuousFever: '#cf4bb0',
+        puzzle: '#236a8b'
     };
     /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard, activate: () => openOpponentMenu(false) },
         { label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, activate: () => openOpponentMenu(true) },
         { label: '연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice, activate: () => openPracticeDifficulty() },
-        { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() }
+        { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() },
+        { label: '퍼즐뿌요', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.puzzle, activate: () => openPuzzleStageSelection() }
     ];
     /** 게임 규칙 선택 오버레이에서 취소 버튼에 사용할 가상 항목 인덱스다. */
     const RULE_SELECTION_CANCEL_INDEX = GAME_RULE_OPTIONS.length;
@@ -439,13 +447,14 @@
 
     /**
      * 저장 데이터의 기본 구조를 만든다.
-     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>}} 초기 저장 데이터
+     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[]}} 초기 저장 데이터
      */
     function createInitialStore() {
         return {
             clearList: [],
             clearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
+            puzzleClearStages: [],
             settings: { musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
@@ -800,7 +809,10 @@
                     : []
             ]));
             const settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
-            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, settings: {
+            const puzzleClearStages = Array.isArray(parsed.puzzleClearStages)
+                ? [...new Set(parsed.puzzleClearStages.filter((index) => Number.isInteger(index) && index >= 0))]
+                : [];
+            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, puzzleClearStages, settings: {
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
                 // 이전 켜기/끄기 불리언 저장값도 각각 보통/없음으로 유지한다.
@@ -1224,8 +1236,6 @@
         }
     }
 
-
-
     /**
      * 적 인스턴스의 선택 화면 표시 설정을 등록 항목으로 만든다.
      * @param {()=>Enemy} createController 새 적 인스턴스 생성 함수
@@ -1429,6 +1439,63 @@
     /** 연속 피버 모드를 선택된 3색·4색·5색, 목표 5연쇄, 60초 상태로 시작한다. @returns {void} */
     function startContinuousFeverGame() {
         startGame(false, true);
+    }
+
+    /** 현재 저장된 클리어 정보에 따라 선택할 수 있는 퍼즐뿌요 스테이지 수를 반환한다. @returns {number} 열린 스테이지 수 */
+    function getOpenedPuzzleStageCount() {
+        const furthestClear = store.puzzleClearStages.reduce((maximum, index) => Math.max(maximum, index), -1);
+        const openedCount = Math.min(PUZZLE_STAGES.length, Math.max(2, furthestClear + 3));
+        PUZZLE_STAGES.forEach((stage, index) => { stage.opened = index < openedCount; });
+        return openedCount;
+    }
+
+    /** 퍼즐뿌요 스테이지의 클리어 조건 문구를 현재 언어로 반환한다. @param {PuzzlePuyoStage} stage 대상 스테이지 @returns {string} 조건 문구 */
+    function getPuzzleConditionText(stage) {
+        if (stage.winConditionType === 'clear') return translate('싹쓸이 해봐');
+        if (stage.winConditionType === 'multiple') return translate('한 번에 %1개 뿌요를 터뜨려봐', stage.winConditionValue);
+        if (stage.winConditionType === 'attack') return translate('방해뿌요 %1개를 발생 시켜봐', stage.winConditionValue);
+        return translate('%1 연쇄 해봐', stage.winConditionValue);
+    }
+
+    /** 퍼즐뿌요 스테이지 선택 화면을 열고 첫 번째 스테이지에 포커스를 둔다. @returns {void} */
+    function openPuzzleStageSelection() {
+        loadStore();
+        puzzleStageFocus = 0;
+        puzzleStageLastClickedIndex = null;
+        menuScreen = 'puzzleStage';
+    }
+
+    /** 현재 포커스된 퍼즐뿌요 스테이지를 시작한다. @returns {void} */
+    function startSelectedPuzzleStage() {
+        if (puzzleStageFocus < 0 || puzzleStageFocus >= getOpenedPuzzleStageCount()) return;
+        const stage = PUZZLE_STAGES[puzzleStageFocus];
+        if (!(stage instanceof PuzzlePuyoStage)) return;
+        resetVirtualControllerInput();
+        const colors = [...COLORS];
+        const controller = new PracticeEnemy();
+        const player = new PlayerState('PLAYER 1', FIELD_LEFT, null, colors);
+        const target = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
+        target.receivesPuyos = false;
+        target.allClearEnabled = false;
+        target.clearsGarbage = true;
+        target.nextPairs = [];
+        target.phase = 'idle';
+        (stage.stageData?.puyos || []).forEach((puyo) => {
+            if (Number.isInteger(puyo?.x) && Number.isInteger(puyo?.y) && puyo.x >= 0 && puyo.x < COLUMNS && puyo.y >= 0 && puyo.y < ROWS && (COLORS.includes(puyo.color) || puyo.color === 'garbage')) {
+                player.board[puyo.y][puyo.x] = puyo.color;
+            }
+        });
+        const pairQueue = stage.suppliedNextPuyos.map((pair) => [...pair]);
+        game = {
+            running: true, paused: false, winner: null, ending: null,
+            countdown: 3000, countdownStartsGame: true, elapsed: 0, marginRate: MARGIN_RATE_SCHEDULE[0].rate,
+            practice: true, continuousFever: false, feverRule: false, fever: null,
+            puzzle: { stage, stageIndex: puzzleStageFocus, turn: 1, pendingCombo: 0, pendingMaxExplosion: 0, pendingAllClear: false, pendingWarningAmount: 0 },
+            difficulty: DIFFICULTIES.length - 1, aiDifficulty: selectedAiDifficulty, themeController: controller,
+            pairQueueColors: colors, pairQueue, energyTransfers: [], players: [player, target]
+        };
+        updateNextPairs(player);
+        syncBackgroundMusic();
     }
 
     /**
@@ -1900,6 +1967,12 @@
             player.fever.pendingAllClear = false;
             player.fever.expiredPlacement = player.fever.leftTime <= 0;
         }
+        if (game?.puzzle && player === game.players[0]) {
+            game.puzzle.pendingCombo = 0;
+            game.puzzle.pendingMaxExplosion = 0;
+            game.puzzle.pendingAllClear = false;
+            game.puzzle.pendingWarningAmount = 0;
+        }
         // 숨김 행을 포함해 유효한 필드 좌표에만 뿌요를 고정한다.
         activeCells(player.active).forEach((cell) => {
             if (cell.y >= 0 && cell.y < ROWS) player.board[cell.y][cell.x] = cell.color;
@@ -2307,6 +2380,9 @@
         if (exploding.length) {
             const resolution = getExplosionResolution(player.board, exploding);
             player.combo += 1;
+            if (game?.puzzle && player === game.players[0]) {
+                game.puzzle.pendingMaxExplosion = Math.max(game.puzzle.pendingMaxExplosion, exploding.length);
+            }
             playComboSounds(player);
             const point = calculateExplosionPoint(explosionGroups, player.combo, resolution.brokenHardGarbageCount);
             player.point += point;
@@ -2328,8 +2404,11 @@
         deliverFinalAttackEnergy(player, opponent);
         if (game?.continuousFever && player === game.players[0] && game.fever) game.fever.pendingCombo = completedCombo;
         if (game?.feverRule && player.fever?.active) player.fever.pendingCombo = completedCombo;
+        if (game?.puzzle && player === game.players[0]) game.puzzle.pendingCombo = completedCombo;
         player.combo = 0;
-        if (game?.feverRule && completedCombo > 0) {
+        if (game?.puzzle && player === game.players[0]) {
+            player.phase = 'check';
+        } else if (game?.feverRule && completedCombo > 0) {
             // 현재 DAMAGE의 유무와 관계없이 성공한 배치임을 보존한다. 공격 에너지가 비동기로
             // 도착하더라도 이 배치에서 폭발했다면 일반/피버 필드 모두 방해뿌요를 받지 않는다.
             if (player.fever) player.fever.deferGarbage = true;
@@ -2698,6 +2777,55 @@
         enterControl(player);
     }
 
+    /** 퍼즐뿌요 한 턴의 클리어 조건을 확인한다. @param {PlayerState} player 사용자 @returns {boolean} 조건 달성 여부 */
+    function isPuzzleStageCleared(player) {
+        const puzzle = game?.puzzle;
+        if (!puzzle) return false;
+        const stage = puzzle.stage;
+        if (stage.winConditionType === 'clear') return puzzle.pendingAllClear;
+        if (stage.winConditionType === 'multiple') return puzzle.pendingMaxExplosion >= stage.winConditionValue;
+        if (stage.winConditionType === 'attack') return puzzle.pendingWarningAmount >= stage.winConditionValue;
+        return puzzle.pendingCombo >= stage.winConditionValue;
+    }
+
+    /** 퍼즐뿌요 스테이지의 클리어 정보를 저장하고 즉시 결과 화면으로 전환한다. @param {PlayerState} player 사용자 @returns {void} */
+    function finishPuzzleStage(player) {
+        const stageIndex = game.puzzle.stageIndex;
+        if (!store.puzzleClearStages.includes(stageIndex)) {
+            store.puzzleClearStages.push(stageIndex);
+            saveStore();
+        }
+        game.winner = player;
+        game.running = false;
+        game.ending = null;
+        stopBackgroundMusic();
+    }
+
+    /** 퍼즐뿌요 턴 정산 뒤 클리어 또는 다음 턴으로 전환한다. @param {PlayerState} player 사용자 @param {PlayerState} opponent 연습 상대 @returns {boolean} 정산 완료 여부 */
+    function finishPuzzleTurn(player, opponent) {
+        const puzzle = game?.puzzle;
+        if (!puzzle) return true;
+        puzzle.pendingWarningAmount = Math.max(puzzle.pendingWarningAmount, warningAmount(opponent, player));
+        if (player.allClearEffectElapsed > 0 || player.pendingAllClearDamage > 0 || hasPendingEnergyTransfers()) return false;
+        if (isPuzzleStageCleared(player)) {
+            finishPuzzleStage(player);
+            return true;
+        }
+        // 퍼즐뿌요는 예고만 보여 주며 다음 조작 직전에 모든 공격·피해를 정리한다.
+        player.attack = 0;
+        player.damage = 0;
+        player.normalDamage = 0;
+        player.announcedAttack = 0;
+        opponent.attack = 0;
+        opponent.damage = 0;
+        opponent.normalDamage = 0;
+        opponent.announcedAttack = 0;
+        opponent.warningReductionDelay = 0;
+        puzzle.turn += 1;
+        enterControl(player);
+        return true;
+    }
+
     /**
      * 패배 연출과, 진행 중이던 승리자의 연쇄 처리를 갱신한다.
      * @param {number} delta 이전 프레임 후 경과한 밀리초
@@ -2733,6 +2861,9 @@
             .map((popup) => ({ ...popup, elapsed: popup.elapsed + delta }))
             .filter((popup) => popup.elapsed < 2000);
         updateAllClearEffect(player, opponent, delta);
+        if (game?.puzzle && player === game.players[0]) {
+            game.puzzle.pendingWarningAmount = Math.max(game.puzzle.pendingWarningAmount, warningAmount(opponent, player));
+        }
         // 플레이 방법 시연은 싹쓸이 예고와 방해뿌요 낙하를 보여주는 동안 다음 뿌요의 낙하를 멈춘다.
         if (player.tutorialHold) return;
         if (player.phase === 'feverWait') {
@@ -2753,6 +2884,8 @@
         }
         // 대기 중인 연습 상대도 예약된 피해가 있으면 방해뿌요 처리는 수행한다.
         if (player.phase === 'idle') {
+            // 퍼즐뿌요의 오른쪽 영역은 DAMAGE 예고만 보이고 방해뿌요를 실제로 떨어뜨리지 않는다.
+            if (game?.puzzle) return;
             // 연습·플레이 방법에서는 연쇄와 그에 딸린 모든 에너지 이동이 끝난 뒤에만 방해뿌요를 떨어뜨린다.
             if (game?.practice && (opponent.combo > 0 || isResolutionPhase(opponent.phase) || opponent.allClearEffectElapsed > 0 || opponent.pendingAllClearDamage > 0 || hasPendingEnergyTransfers())) return;
             if (player.damage > 0) dropGarbage(player);
@@ -2910,6 +3043,13 @@
                             return;
                         }
                     }
+                }
+                if (game?.puzzle && player === game.players[0]) {
+                    // 싹쓸이 연출이 끝난 뒤 check 단계가 한 번 더 실행되어도, 이번 턴에
+                    // 한 번이라도 발생한 싹쓸이 기록은 승리 판정까지 유지한다.
+                    game.puzzle.pendingAllClear = game.puzzle.pendingAllClear || triggeredAllClear;
+                    finishPuzzleTurn(player, opponent);
+                    return;
                 }
                 enterControl(player);
             }
@@ -3591,6 +3731,12 @@
         player.comboPopups.forEach((popup) => drawComboPopup(x, popup));
         context.fillStyle = '#e7f8fa'; context.font = `18px ${MESSAGE_FONT}`; context.textAlign = 'left';
         context.fillText(player.name, x, 54);
+        if (game?.puzzle && player === game.players[1]) {
+            context.textAlign = 'center'; context.fillStyle = '#f7c843'; context.font = `17px ${BUTTON_FONT}`;
+            context.fillText(getPuzzleConditionText(game.puzzle.stage), x + COLUMNS * CELL / 2, 82);
+            context.fillStyle = '#d8f2f5'; context.font = `15px ${MESSAGE_FONT}`;
+            context.fillText(translate('현재 턴 %1', game.puzzle.turn), x + COLUMNS * CELL / 2, 106);
+        }
     }
 
     /** 패배 연출 중 움직이는 뿌요보다 앞에 고정 베젤을 다시 그린다. @param {PlayerState} player 대상 플레이어 @returns {void} */
@@ -3945,13 +4091,16 @@
         game.themeController.drawPlayerBackground(context, { x, y: FIELD_TOP, width: CELL * 6, height: CELL * 12, player });
         context.textAlign = 'center';
         context.font = `36px ${TITLE_FONT}`;
-        if (!game.practice || !won) {
+        if (!game.puzzle && (!game.practice || !won)) {
             context.fillStyle = won ? '#f7c843' : '#d8f2f5';
             context.fillText(translate(won ? '승리' : '패배'), x + CELL * 3, FIELD_TOP + CELL * 6.4);
         }
         context.fillStyle = '#d8f2f5'; context.font = `16px ${MESSAGE_FONT}`;
         context.fillText(translate('최종 점수 %1', formatIntegerPoint(player.point)), x + CELL * 3, FIELD_TOP + CELL * 7.15);
-        if (game.practice) {
+        if (game.puzzle) {
+            context.fillStyle = '#f7c843'; context.font = `17px ${MESSAGE_FONT}`;
+            context.fillText(translate('퍼즐뿌요'), x + CELL * 3, FIELD_TOP + CELL * 7.75);
+        } else if (game.practice) {
             context.fillStyle = '#f7c843'; context.font = `15px ${MESSAGE_FONT}`;
             context.fillText(translate(game.continuousFever ? '연속 피버' : DIFFICULTIES[game.difficulty].name), x + CELL * 3, FIELD_TOP + CELL * 7.75);
         }
@@ -3967,9 +4116,13 @@
         game.themeController.drawCenterBackground(context, { x: 450, y: 0, width: 380, height: HEIGHT });
         context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText(translate('뿌요 W'), WIDTH / 2, 95);
         const enemy = game.players[1];
-        if (enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
+        if (!game.puzzle && enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
         context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
         context.fillText(translate('게임 시간 %1초', Math.floor(game.elapsed / 1000)), WIDTH / 2, 145);
+        if (game.puzzle) {
+            context.fillStyle = '#f7c843'; context.font = `30px ${TITLE_FONT}`;
+            context.fillText(translate('스테이지 클리어'), WIDTH / 2, 380);
+        }
         if (showExitButton) {
             context.fillStyle = '#ef5350'; context.fillRect(515, 165, 250, 64);
             context.fillStyle = '#ffffff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('종료'), WIDTH / 2, 207);
@@ -4875,8 +5028,11 @@
         const width = 280;
         const height = 78;
         const gap = 24;
+        if (index === GAME_RULE_OPTIONS.length - 1) {
+            return { x: WIDTH / 2 - width - gap / 2, y: 475, width, height };
+        }
         const columns = 2;
-        const rows = Math.ceil(GAME_RULE_OPTIONS.length / columns);
+        const rows = 2;
         const totalWidth = columns * width + (columns - 1) * gap;
         const totalHeight = rows * height + (rows - 1) * gap;
         return {
@@ -4890,12 +5046,7 @@
     /** 게임 규칙 선택 오버레이 하단 취소 버튼의 화면 영역을 반환한다. @returns {{x:number,y:number,width:number,height:number}} 취소 버튼 영역 */
     function getRuleSelectionCancelButtonBounds() {
         const optionBounds = getRuleSelectionButtonBounds(GAME_RULE_OPTIONS.length - 1);
-        return {
-            x: (WIDTH - optionBounds.width) / 2,
-            y: optionBounds.y + optionBounds.height + 24,
-            width: optionBounds.width,
-            height: optionBounds.height
-        };
+        return { x: WIDTH / 2 + 12, y: optionBounds.y, width: optionBounds.width, height: optionBounds.height };
     }
 
     /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 연다. @returns {void} */
@@ -4981,8 +5132,12 @@
         if (key === 'enter' || key === ' ') { activateRuleSelection(); return; }
         if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
         if (ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX) {
-            // 취소는 두 번째 규칙 행 아래 중앙에 있으므로 위로 이동하면 연습 항목으로 돌아간다.
-            if (key === 'arrowup') ruleSelectionFocus = getSelectableRuleOptionIndices().includes(2) ? 2 : 0;
+            if (key === 'arrowleft' || key === 'arrowup') ruleSelectionFocus = GAME_RULE_OPTIONS.length - 1;
+            return;
+        }
+        if (ruleSelectionFocus === GAME_RULE_OPTIONS.length - 1) {
+            if (key === 'arrowright' || key === 'arrowdown') ruleSelectionFocus = RULE_SELECTION_CANCEL_INDEX;
+            else if (key === 'arrowup') ruleSelectionFocus = 2;
             return;
         }
         const columns = 2;
@@ -5026,6 +5181,51 @@
         context.fillText(translate('취소'), cancelBounds.x + cancelBounds.width / 2, cancelBounds.y + 47);
     }
 
+    /** 퍼즐뿌요 스테이지 또는 취소 카드의 화면 영역을 반환한다. @param {number} index 스테이지 순번 또는 취소 가상 순번(-1) @returns {{x:number,y:number,width:number,height:number}} 카드 영역 */
+    function getPuzzleStageButtonBounds(index) {
+        const width = 190;
+        const height = 110;
+        const gap = 14;
+        const totalWidth = (PUZZLE_STAGES.length + 1) * width + PUZZLE_STAGES.length * gap;
+        const slot = index === PUZZLE_STAGE_CANCEL_INDEX ? 0 : index + 1;
+        return { x: (WIDTH - totalWidth) / 2 + slot * (width + gap), y: 500, width, height };
+    }
+
+    /** 퍼즐뿌요 스테이지 선택 화면을 그린다. @returns {void} */
+    function drawPuzzleStageSelection() {
+        const stage = puzzleStageFocus === PUZZLE_STAGE_CANCEL_INDEX ? null : (PUZZLE_STAGES[puzzleStageFocus] || PUZZLE_STAGES[0]);
+        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `48px ${TITLE_FONT}`;
+        context.fillText(translate('퍼즐뿌요 스테이지'), WIDTH / 2, 105);
+        if (stage) {
+            context.fillStyle = '#f7c843'; context.font = `38px ${TITLE_FONT}`;
+            context.fillText(getPuzzleConditionText(stage), WIDTH / 2, 255);
+            if (stage.hint) {
+                context.fillStyle = '#b8dbe2'; context.font = `20px ${MESSAGE_FONT}`;
+                context.fillText(translate(stage.hint), WIDTH / 2, 300);
+            }
+            context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
+            context.fillText(translate('권장 턴 수 %1', stage.turnLimit), WIDTH / 2, 342);
+        }
+        const openedCount = getOpenedPuzzleStageCount();
+        PUZZLE_STAGES.forEach((item, index) => {
+            const bounds = getPuzzleStageButtonBounds(index);
+            const opened = index < openedCount;
+            const focused = opened && index === puzzleStageFocus;
+            context.fillStyle = opened ? '#236a8b' : '#3c4650'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#f7c843' : opened ? '#65b9d8' : '#7c8791'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = opened ? '#f5fbfc' : '#c4cbd0'; context.font = `24px ${BUTTON_FONT}`;
+            context.fillText(translate('스테이지 %1', index + 1), bounds.x + bounds.width / 2, bounds.y + 43);
+            context.font = `16px ${MESSAGE_FONT}`;
+            context.fillText(opened ? getPuzzleConditionText(item) : translate('잠김'), bounds.x + bounds.width / 2, bounds.y + 78);
+        });
+        const cancelBounds = getPuzzleStageButtonBounds(PUZZLE_STAGE_CANCEL_INDEX);
+        const cancelFocused = puzzleStageFocus === PUZZLE_STAGE_CANCEL_INDEX;
+        context.fillStyle = '#455a64'; context.fillRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
+        context.strokeStyle = cancelFocused ? '#f7c843' : '#607d8b'; context.lineWidth = cancelFocused ? 4 : 2; context.strokeRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
+        context.fillStyle = '#f5fbfc'; context.font = `24px ${BUTTON_FONT}`; context.fillText(translate('취소'), cancelBounds.x + cancelBounds.width / 2, cancelBounds.y + 62);
+    }
+
     /**
      * 클릭 가능한 게임 시작 메뉴를 그린다.
      * @returns {void}
@@ -5041,6 +5241,10 @@
             context.translate(-WIDTH / 2, -HEIGHT / 2);
         }
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `54px ${TITLE_FONT}`; context.fillText(translate('뿌요 W'), WIDTH / 2, menuScreen === 'opponent' ? 90 : 110);
+        if (menuScreen === 'puzzleStage') {
+            drawPuzzleStageSelection();
+            return;
+        }
         if (menuScreen === 'opponent') {
             DIFFICULTIES.forEach((difficulty, index) => {
                 const x = getColorDifficultyButtonX(index);
@@ -5462,10 +5666,12 @@
         // 결과 화면에서는 Enter 또는 ESC로 연습은 메인, 대전은 적 선택 화면으로 돌아간다.
         if (game && !game.running && (key === 'enter' || key === 'escape')) {
             const returnToTitle = game.practice;
+            const returnToPuzzleStages = game.puzzle !== undefined && game.puzzle !== null;
             const returnToFeverOpponent = game.feverRule === true;
             stopBackgroundMusic();
             game = null;
-            if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
+            if (returnToPuzzleStages) openPuzzleStageSelection();
+            else if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
             else openOpponentMenu(returnToFeverOpponent);
             return;
         }
@@ -5493,6 +5699,21 @@
                     colorSelectionFocus = selectedDifficulty;
                 } else if (key === 'arrowdown') colorSelectionFocus = COLOR_SELECTION_CANCEL_INDEX;
                 else if (key === 'enter' || key === ' ') startGame(colorSelectionMode === 'practice', colorSelectionMode === 'continuousFever');
+                return;
+            }
+            if (menuScreen === 'puzzleStage') {
+                const openedCount = getOpenedPuzzleStageCount();
+                const focusChoices = [PUZZLE_STAGE_CANCEL_INDEX, ...Array.from({ length: openedCount }, (unused, index) => index)];
+                if (key === 'escape') returnToRuleSelection();
+                else if (key === 'arrowleft' || key === 'arrowright') {
+                    const currentIndex = Math.max(0, focusChoices.indexOf(puzzleStageFocus));
+                    const direction = key === 'arrowleft' ? -1 : 1;
+                    puzzleStageFocus = focusChoices[Math.max(0, Math.min(focusChoices.length - 1, currentIndex + direction))];
+                    puzzleStageLastClickedIndex = null;
+                } else if (key === 'enter' || key === ' ') {
+                    if (puzzleStageFocus === PUZZLE_STAGE_CANCEL_INDEX) returnToRuleSelection();
+                    else startSelectedPuzzleStage();
+                }
                 return;
             }
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
@@ -5676,10 +5897,12 @@
             const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
             if (x >= 515 && x <= 765 && y >= 165 && y <= 229) {
                 const returnToTitle = game.practice;
+                const returnToPuzzleStages = game.puzzle !== undefined && game.puzzle !== null;
                 const returnToFeverOpponent = game.feverRule === true;
                 stopBackgroundMusic();
                 game = null;
-                if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
+                if (returnToPuzzleStages) openPuzzleStageSelection();
+                else if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
                 else openOpponentMenu(returnToFeverOpponent);
             }
             return;
@@ -5767,6 +5990,27 @@
                 gallery.itemIndex = targetIndex;
                 gallery.focus = 'target';
                 gallery.portraitElapsed = 0;
+            }
+            return;
+        }
+        if (menuScreen === 'puzzleStage') {
+            const cancelBounds = getPuzzleStageButtonBounds(PUZZLE_STAGE_CANCEL_INDEX);
+            if (x >= cancelBounds.x && x <= cancelBounds.x + cancelBounds.width && y >= cancelBounds.y && y <= cancelBounds.y + cancelBounds.height) {
+                puzzleStageFocus = PUZZLE_STAGE_CANCEL_INDEX;
+                puzzleStageLastClickedIndex = null;
+                returnToRuleSelection();
+                return;
+            }
+            const stageIndex = PUZZLE_STAGES.findIndex((stage, index) => {
+                const stageBounds = getPuzzleStageButtonBounds(index);
+                return x >= stageBounds.x && x <= stageBounds.x + stageBounds.width && y >= stageBounds.y && y <= stageBounds.y + stageBounds.height;
+            });
+            if (stageIndex >= 0 && stageIndex < getOpenedPuzzleStageCount()) {
+                if (puzzleStageFocus === stageIndex && puzzleStageLastClickedIndex === stageIndex) startSelectedPuzzleStage();
+                else {
+                    puzzleStageFocus = stageIndex;
+                    puzzleStageLastClickedIndex = stageIndex;
+                }
             }
             return;
         }
@@ -5871,6 +6115,7 @@
             if (menuScreen === 'title' && ruleSelectionOpen) return { screen: 'rule_select', playerCanControl: false };
             if (menuScreen === 'opponent') return { screen: opponentMenuRule === 'fever' ? 'fever_opponent_select' : 'opponent_select', playerCanControl: false };
             if (menuScreen === 'practiceDifficulty') return { screen: 'practice_difficulty', playerCanControl: false };
+            if (menuScreen === 'puzzleStage') return { screen: 'puzzle_stage_select', playerCanControl: false };
             if (menuScreen === 'simulator') {
                 const screen = simulator?.mode === 'draw' ? 'simulator_draw' : simulator?.mode === 'complete' ? 'simulator_complete' : 'simulator_simulation';
                 return { screen, playerCanControl: false };
@@ -5953,6 +6198,14 @@
             playerCanControl: screen.playerCanControl,
             continuousFever: game.continuousFever === true,
             feverRule: game.feverRule === true,
+            puzzle: game.puzzle ? {
+                stageIndex: game.puzzle.stageIndex,
+                turn: game.puzzle.turn,
+                winConditionType: game.puzzle.stage.winConditionType,
+                winConditionValue: game.puzzle.stage.winConditionValue,
+                recommendedTurns: game.puzzle.stage.turnLimit,
+                condition: getPuzzleConditionText(game.puzzle.stage)
+            } : null,
             fever: game.fever ? {
                 targetCombo: game.fever.targetCombo,
                 leftTime: game.fever.leftTime,
@@ -6035,6 +6288,14 @@
             practice: game.practice,
             continuousFever: game.continuousFever === true,
             feverRule: game.feverRule === true,
+            puzzle: game.puzzle ? {
+                stageIndex: game.puzzle.stageIndex,
+                turn: game.puzzle.turn,
+                winConditionType: game.puzzle.stage.winConditionType,
+                winConditionValue: game.puzzle.stage.winConditionValue,
+                recommendedTurns: game.puzzle.stage.turnLimit,
+                condition: getPuzzleConditionText(game.puzzle.stage)
+            } : null,
             fever: game.fever ? {
                 targetCombo: game.fever.targetCombo,
                 leftTime: game.fever.leftTime,
@@ -6608,7 +6869,7 @@
         new PuzzlePuyoStage({
             stageData : {"puyos":[{"x":0,"y":0,"color":"garbage"},{"x":1,"y":0,"color":"garbage"},{"x":2,"y":0,"color":"garbage"},{"x":3,"y":0,"color":"garbage"},{"x":4,"y":0,"color":"garbage"},{"x":5,"y":0,"color":"garbage"},{"x":0,"y":1,"color":"red"},{"x":1,"y":1,"color":"red"},{"x":2,"y":1,"color":"garbage"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"red"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"garbage"},{"x":1,"y":2,"color":"garbage"},{"x":2,"y":2,"color":"red"},{"x":3,"y":2,"color":"garbage"},{"x":4,"y":2,"color":"garbage"},{"x":5,"y":2,"color":"garbage"},{"x":0,"y":3,"color":"red"},{"x":1,"y":3,"color":"garbage"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"garbage"},{"x":4,"y":3,"color":"red"},{"x":5,"y":3,"color":"garbage"},{"x":0,"y":4,"color":"garbage"},{"x":1,"y":4,"color":"red"},{"x":2,"y":4,"color":"garbage"},{"x":3,"y":4,"color":"garbage"},{"x":4,"y":4,"color":"red"},{"x":5,"y":4,"color":"red"},{"x":0,"y":5,"color":"garbage"},{"x":1,"y":5,"color":"red"},{"x":2,"y":5,"color":"red"},{"x":3,"y":5,"color":"garbage"},{"x":4,"y":5,"color":"garbage"},{"x":5,"y":5,"color":"garbage"},{"x":0,"y":6,"color":"red"},{"x":1,"y":6,"color":"garbage"},{"x":2,"y":6,"color":"garbage"},{"x":3,"y":6,"color":"red"},{"x":4,"y":6,"color":"red"},{"x":0,"y":7,"color":"garbage"},{"x":1,"y":7,"color":"red"},{"x":2,"y":7,"color":"red"},{"x":4,"y":7,"color":"garbage"},{"x":0,"y":8,"color":"red"},{"x":0,"y":9,"color":"red"}]},
             suppliedNextPuyos : [['red', 'red'], ['red', 'red'], ['red', 'red'], ['red', 'red'], ['red', 'red'], ['red', 'red']],
-            turnLimit : 4,
+            turnLimit : 3,
             winConditionType : 'clear',
             winConditionValue : 0,
             hint : '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?'
@@ -8410,6 +8671,7 @@
         EnemySoundPool,
         FeverStageState,
         PuzzlePuyoStage,
+        PUZZLE_STAGES,
         createSoundPool,
         setEnemySoundPool,
         registerFeverStageState,
