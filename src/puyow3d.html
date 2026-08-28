@@ -33,8 +33,10 @@
 
         <!-- Game 관련 (필수) -->
         <link rel="stylesheet" href="puyow.css"/>
-        <script defer src="three.core.min.js" async></script>
-        <script defer src="puyow3d.js" async></script>
+        <!-- three.core.min.js는 현재 ES 모듈 배포본이다. 3D 골격에는 추후 주입한다. -->
+        <script type="module" src="three.core.min.js"></script>
+        <script defer src="puyow.js"></script>
+        <script defer src="puyow3d.js"></script>
         <!-- // Game 관련 -->
 
         <!-- 게임 로딩 스크립트 -->
@@ -42,7 +44,7 @@
             document.addEventListener("DOMContentLoaded", function() {
                 const canvas = document.getElementById("webpuyo_canvas");
                 // window.WebPuyo.setNoticeFile('https://hjow.github.io/puyow/src/notice.txt'); // 공지사항 URL을 변경
-                window.WebPuyo.initialize(canvas); // 게임 구동
+                window.PuyoW3D.initialize(canvas); // 3D 버전 골격 구동
             });
         </script>
     </head>

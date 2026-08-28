@@ -11,7 +11,7 @@
 
 ## 기본 구조
 
-새 상대는 `WebPuyo.Enemy`를 상속하는 클래스로 만듭니다. `getName()`은 비어 있지 않은 화면 표시 이름을 반환해야 합니다. 게임 루프는 적이 결정한 목표 회전값으로 뿌요 쌍을 돌린 뒤, 목표 X 좌표까지 이동시킵니다.
+새 상대는 `PuyoW.Enemy`를 상속하는 클래스로 만듭니다. `getName()`은 비어 있지 않은 화면 표시 이름을 반환해야 합니다. 게임 루프는 적이 결정한 목표 회전값으로 뿌요 쌍을 돌린 뒤, 목표 X 좌표까지 이동시킵니다.
 
 `Enemy`의 생성자는 모든 상대에 공통으로 사용할 기본 상태를 설정합니다. `sortPriority`는 `1`, `hidden`과 `notAvail`은 `false`로 시작하며, `attackSimulationTriggerPosition`은 `{ x: 2, y: 8 }`입니다. 이 좌표에 뿌요가 쌓이면 기본 AI가 일반적인 방향 쌓기보다 공격력 시뮬레이션을 우선하도록 만든 기준점입니다. 상대의 전략에 맞춰 생성자에서 이 좌표를 바꿀 수 있습니다.
 
@@ -20,7 +20,7 @@
 `getClassType()`은 적의 효과음 설정을 식별하는 고유하고 변하지 않는 문자열을 반환합니다. `Enemy`를 상속한 새 적은 반드시 이 메서드를 재정의해야 합니다. 이 클래스의 코드상의 이름을 반환해야 하며, 표시 이름인 `getName()`과 달리 번역하거나 실행 중에 바꾸지 않아야 합니다.
 
 ```js
-class CustomEnemy extends WebPuyo.Enemy {
+class CustomEnemy extends PuyoW.Enemy {
     constructor() {
         super();
         // 중앙이 이 높이에 도달하면 공격 배치를 찾는다.
@@ -36,7 +36,7 @@ class CustomEnemy extends WebPuyo.Enemy {
 `prepareTurn(player)`의 기본 구현은 현재 놓을 수 있는 모든 열·회전 조합을 검사해 `player.aiSimulations`를 만듭니다. 각 후보에는 목표 `x`, `rotation`, 실제 착지할 `positions`, 해당 배치의 예상 `attack`, 전체 예상 연쇄 수인 `combo`가 들어갑니다. 조작 중인 뿌요가 없으면 빈 배열을 저장합니다. 이 목록을 활용하는 방법은 [알고리즘 작성 방법](#알고리즘-작성-방법)을 참고하세요.
 
 ```js
-class CenterEnemy extends WebPuyo.Enemy {
+class CenterEnemy extends PuyoW.Enemy {
     /** 적 이름을 반환한다. */
     getName() {
         return '중앙 수집가';
@@ -81,7 +81,7 @@ class CenterEnemy extends WebPuyo.Enemy {
 기본 `Enemy`의 메서드는 아무것도 그리지 않습니다. 새 적은 필요할 때만 이 메서드를 재정의하면 됩니다.
 
 ```js
-class CenterEnemy extends WebPuyo.Enemy {
+class CenterEnemy extends PuyoW.Enemy {
     /**
      * 적 선택 화면과 중앙 패널에 초상화를 그린다.
      * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
@@ -104,13 +104,13 @@ class CenterEnemy extends WebPuyo.Enemy {
 
 ## 적 등록 방법
 
-새 적은 별도 JavaScript 파일에서 `WebPuyo.registerOpponent()`로 등록합니다. 따라서 새 적을 추가할 때 `puyow.js`를 수정할 필요가 없습니다. 등록 객체에는 `createController` 함수가 반드시 필요하며, 이 함수는 매 호출마다 `Enemy`를 상속한 새 인스턴스를 반환해야 합니다. 적 이름은 별도 `name` 속성이 아니라 `getName()`의 반환값을 사용합니다.
+새 적은 별도 JavaScript 파일에서 `PuyoW.registerOpponent()`로 등록합니다. 따라서 새 적을 추가할 때 `puyow.js`를 수정할 필요가 없습니다. 등록 객체에는 `createController` 함수가 반드시 필요하며, 이 함수는 매 호출마다 `Enemy`를 상속한 새 인스턴스를 반환해야 합니다. 적 이름은 별도 `name` 속성이 아니라 `getName()`의 반환값을 사용합니다.
 
 `registerOpponent()`는 등록 시 `createController()`를 한 번 호출해 `sortPriority`, `hidden`, `notAvail`을 읽고 검증합니다. 따라서 이 설정은 생성자에서 설정하고, 등록 뒤에 값을 바꾸지 않아야 합니다. 실제 대전에서도 `createController()`를 다시 호출하므로, 게임별 상태는 컨트롤러 인스턴스 멤버로 유지합니다.
 
 ```js
 // my-opponent.js
-class CenterEnemy extends WebPuyo.Enemy {
+class CenterEnemy extends PuyoW.Enemy {
     getName() {
         return '중앙 수집가';
     }
@@ -120,12 +120,12 @@ class CenterEnemy extends WebPuyo.Enemy {
     }
 }
 
-WebPuyo.registerOpponent({
+PuyoW.registerOpponent({
     createController: () => new CenterEnemy()
 });
 ```
 
-`my-opponent.js`는 `puyow.js` 다음, `WebPuyo.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다. 기본 룰 승리 기록은 컨트롤러 클래스명으로 `puyow_store.clearList`와 현재 AI 난이도의 `clearListByDifficulty` 배열에 저장되고, 피버 룰 승리 기록은 별도 `feverClearListByDifficulty` 배열에 저장됩니다. 이미 배포한 적 클래스의 이름을 바꾸면 기존 난이도별 잠금 해제 기록과 호환되지 않습니다.
+`my-opponent.js`는 `puyow.js` 다음, `PuyoW.initialize()`를 호출하는 스크립트 전의 순서로 불러와야 합니다. 기본 룰 승리 기록은 컨트롤러 클래스명으로 `puyow_store.clearList`와 현재 AI 난이도의 `clearListByDifficulty` 배열에 저장되고, 피버 룰 승리 기록은 별도 `feverClearListByDifficulty` 배열에 저장됩니다. 이미 배포한 적 클래스의 이름을 바꾸면 기존 난이도별 잠금 해제 기록과 호환되지 않습니다.
 
 ## 게임 화면 테마
 
@@ -140,7 +140,7 @@ WebPuyo.registerOpponent({
 피버 룰과 연속 피버에서 싹쓸이는 황금색 필드 연출과 다음 `TARGET COMBO`의 +2 보너스를 유지하지만, 싹쓸이 자체로는 `ATTACK`이나 에너지 이동 효과를 만들지 않습니다. 같은 배치에서 뿌요를 터뜨려 생긴 일반 연쇄 공격과 그 에너지 이동은 기존처럼 적용됩니다. 게임 종료가 겹치면 황금 연출과 이미 발생한 연쇄 공격의 예고뿌요·방해뿌요 정산을 마친 뒤 결과 화면으로 전환합니다.
 
 ```js
-class NightEnemy extends WebPuyo.Enemy {
+class NightEnemy extends PuyoW.Enemy {
     drawBezelBackground(drawingContext, area) {
         drawingContext.fillStyle = '#2b193d';
         drawingContext.fillRect(area.x, area.y, area.width, area.height);
@@ -166,10 +166,10 @@ CPU 한 차례를 시작할 때 게임은 `prepareTurn(player)`, `chooseTarget(p
 
 `useFastDown(player)`은 목표 열과 회전이 결정된 뒤 AI가 아래 방향키를 눌러 이번 뿌요 쌍을 빠르게 내릴지 결정합니다. 기본 `Enemy` 구현은 선택된 AI 난이도에 따라 동작합니다. `쉬움`은 빠른 하강을 사용하지 않고, `보통`은 목표 결정 1,500ms 뒤, `어려움`은 300ms 뒤, `극한`은 즉시 빠르게 하강합니다. 기본 제공되는 안드로말리우스와 단탈리온도 이 정책을 그대로 따릅니다. 사용자 정의 AI가 자체 정책을 사용하려면 이 메서드를 재정의하고, 기본 정책을 일부 유지하려면 `super.useFastDown(player)`를 호출합니다.
 
-`WebPuyo.getSelectedDifficulty()`는 현재 선택되어 게임에 적용되는 AI 난이도를 조회합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환합니다. 반환 객체의 `key`는 `'easy'`, `'normal'`, `'hard'`, `'extreme'` 중 하나이고, `name`은 표시명, `fastDownDelay`는 빠른 하강 대기 시간(ms)이며 쉬움에서는 `null`입니다.
+`PuyoW.getSelectedDifficulty()`는 현재 선택되어 게임에 적용되는 AI 난이도를 조회합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환합니다. 반환 객체의 `key`는 `'easy'`, `'normal'`, `'hard'`, `'extreme'` 중 하나이고, `name`은 표시명, `fastDownDelay`는 빠른 하강 대기 시간(ms)이며 쉬움에서는 `null`입니다.
 
 ```js
-const difficulty = WebPuyo.getSelectedDifficulty();
+const difficulty = PuyoW.getSelectedDifficulty();
 if (difficulty.key === 'hard') {
     // 어려움 AI에 맞춘 별도 판단
 }
@@ -177,12 +177,12 @@ if (difficulty.key === 'hard') {
 
 빠른 하강 대기 시간은 `AI_FAST_DOWN_DELAY_EASY`(사용하지 않음), `AI_FAST_DOWN_DELAY_NORMAL`(1,500ms), `AI_FAST_DOWN_DELAY_HARD`(300ms), `AI_FAST_DOWN_DELAY_EXTREME`(0ms)로 난이도별 관리됩니다. 게임 외부에서 이 값을 직접 바꾸는 대신 `getSelectedDifficulty()`의 `fastDownDelay`를 사용해 현재 정책을 확인할 수 있습니다.
 
-`WebPuyo.getSelectedColorCount()`는 게임에 적용할 일반 뿌요 색상 수를 `3`, `4`, `5` 중 하나로 반환합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환하므로 색상 수에 맞춘 AI 후보 생성을 구현할 때 사용할 수 있습니다.
+`PuyoW.getSelectedColorCount()`는 게임에 적용할 일반 뿌요 색상 수를 `3`, `4`, `5` 중 하나로 반환합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환하므로 색상 수에 맞춘 AI 후보 생성을 구현할 때 사용할 수 있습니다.
 
 기본 룰 적 선택에서는 3·4·5색을 선택할 수 있습니다. 피버 룰 적 선택도 색상 수와 AI 난이도를 모두 고르지만 4·5색만 선택할 수 있습니다. 메인 메뉴의 `연습`은 3·4·5색 선택 뒤 시작하고, `연속 피버`는 같은 색상 선택 화면에서 4·5색만 고른 뒤 시작합니다. 두 단독 모드의 색상 선택 화면은 방향키·Enter·마우스를 지원하며 ESC 또는 선택지 밖 클릭으로 메인 메뉴에 돌아갑니다.
 
 ```js
-const colorCount = WebPuyo.getSelectedColorCount();
+const colorCount = PuyoW.getSelectedColorCount();
 const difficultyColors = player.colors.slice(0, colorCount);
 ```
 
@@ -197,7 +197,7 @@ const difficultyColors = player.colors.slice(0, colorCount);
 예상 공격력이 가장 높은 배치의 열과 회전을 함께 선택하는 예시는 다음과 같습니다.
 
 ```js
-class AttackEnemy extends WebPuyo.Enemy {
+class AttackEnemy extends PuyoW.Enemy {
     prepareTurn(player) {
         super.prepareTurn(player);
         this.bestMove = player.aiSimulations.reduce(
@@ -219,7 +219,7 @@ class AttackEnemy extends WebPuyo.Enemy {
 간단한 알고리즘은 각 열의 높이를 구한 뒤, 가장 낮은 열을 선택하는 방식입니다.
 
 ```js
-class LowestColumnEnemy extends WebPuyo.Enemy {
+class LowestColumnEnemy extends PuyoW.Enemy {
     /**
      * 가장 낮은 열을 찾아 뿌요를 쌓는다.
      * @param {PlayerState} player 자동 조작할 플레이어
@@ -246,10 +246,10 @@ class LowestColumnEnemy extends WebPuyo.Enemy {
 
 ## 다음 뿌요 정보 읽기
 
-`WebPuyo.getNextPairs()`는 중앙 영역에 표시되는 플레이어와 적의 다음 두 뿌요 쌍을 JSON 직렬화 가능한 복사본으로 반환합니다. 각 쌍의 배열은 아래 뿌요, 위 뿌요 순서입니다. 게임이 아직 생성되지 않은 메뉴 상태에서는 `null`을 반환합니다.
+`PuyoW.getNextPairs()`는 중앙 영역에 표시되는 플레이어와 적의 다음 두 뿌요 쌍을 JSON 직렬화 가능한 복사본으로 반환합니다. 각 쌍의 배열은 아래 뿌요, 위 뿌요 순서입니다. 게임이 아직 생성되지 않은 메뉴 상태에서는 `null`을 반환합니다.
 
 ```js
-const next = WebPuyo.getNextPairs();
+const next = PuyoW.getNextPairs();
 if (next) {
     console.log(next.player.name, next.player.nextPairs);
     console.log(next.opponent.name, next.opponent.nextPairs);
@@ -262,14 +262,14 @@ if (next) {
 
 ## 현재 게임 상태 읽기
 
-`WebPuyo.getScreenState()`는 메뉴, 튜토리얼, 대전을 포함해 현재 화면을 `{ screen, playerCanControl }` 형태로 반환합니다. `screen`은 `main_menu`, `opponent_select`, `countdown`, `playing`, `paused`, `ending`, `game_over` 등 현재 표시 화면을 나타내며, `playerCanControl`은 플레이어가 실제로 조작 중인 뿌요 쌍을 움직일 수 있을 때만 `true`입니다. Playwright에서는 화면 전환이나 입력 가능 시점을 기다리는 조건으로 사용할 수 있습니다.
+`PuyoW.getScreenState()`는 메뉴, 튜토리얼, 대전을 포함해 현재 화면을 `{ screen, playerCanControl }` 형태로 반환합니다. `screen`은 `main_menu`, `opponent_select`, `countdown`, `playing`, `paused`, `ending`, `game_over` 등 현재 표시 화면을 나타내며, `playerCanControl`은 플레이어가 실제로 조작 중인 뿌요 쌍을 움직일 수 있을 때만 `true`입니다. Playwright에서는 화면 전환이나 입력 가능 시점을 기다리는 조건으로 사용할 수 있습니다.
 
-`WebPuyo.getGameState()`는 일반 대전과 연습전의 읽기 전용 상태 스냅샷을 반환합니다. 메뉴, 튜토리얼, 초기화 전에는 `null`을 반환합니다. 카운트다운, 진행 중, 일시정지, 종료 연출, 게임 오버 상태도 조회할 수 있습니다. 반환된 객체와 배열은 내부 상태의 복사본이므로 AI나 테스트 코드에서 바꿔도 실제 게임에는 영향을 주지 않습니다.
+`PuyoW.getGameState()`는 일반 대전과 연습전의 읽기 전용 상태 스냅샷을 반환합니다. 메뉴, 튜토리얼, 초기화 전에는 `null`을 반환합니다. 카운트다운, 진행 중, 일시정지, 종료 연출, 게임 오버 상태도 조회할 수 있습니다. 반환된 객체와 배열은 내부 상태의 복사본이므로 AI나 테스트 코드에서 바꿔도 실제 게임에는 영향을 주지 않습니다.
 
 ```js
-const screen = WebPuyo.getScreenState();
+const screen = PuyoW.getScreenState();
 if (screen.playerCanControl) {
-    const state = WebPuyo.getGameState();
+    const state = PuyoW.getGameState();
     console.log(state.player.active);
     console.log(state.player.board.puyos);
 }
@@ -284,7 +284,7 @@ if (screen.playerCanControl) {
 Playwright에서는 다음처럼 브라우저의 실제 게임 상태를 직접 검증할 수 있습니다.
 
 ```js
-const state = await page.evaluate(() => window.WebPuyo.getGameState());
+const state = await page.evaluate(() => window.PuyoW.getGameState());
 expect(state).not.toBeNull();
 expect(state.player.board.columns).toBe(6);
 ```
@@ -304,7 +304,7 @@ expect(state.player.board.columns).toBe(6);
 이 메서드는 주로 `chooseTarget()`에서 현재 필드 높이, 색상 연결, 방해뿌요 위치를 판단할 때 사용합니다.
 
 ```js
-class FieldAwareEnemy extends WebPuyo.Enemy {
+class FieldAwareEnemy extends PuyoW.Enemy {
     chooseTarget(player) {
         const field = this.getMyFieldInfo(player);
         return field.cells[0][2] === null ? 2 : 3;

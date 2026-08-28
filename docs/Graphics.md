@@ -25,17 +25,17 @@
 외부 코드에서 현재 출력 크기와 변환 결과를 확인할 수 있습니다.
 
 ```js
-const output = WebPuyo.getCanvasOutputSize();
+const output = PuyoW.getCanvasOutputSize();
 // { graphicsQuality: 'medium', width: 1920, height: 1080, scaleX: 1.5, scaleY: 1.5 }
 
-WebPuyo.toCanvasCoordinates(640, 360);
+PuyoW.toCanvasCoordinates(640, 360);
 // { x: 960, y: 540 }
 
-WebPuyo.toCanvasLength(38);
+PuyoW.toCanvasLength(38);
 // 57
 ```
 
-`WebPuyo.applyCanvasCoordinateTransform()`은 현재 그래픽 설정의 논리 좌표 변환을 2D 컨텍스트에 다시 적용합니다. 외부 렌더링 코드가 `setTransform()`으로 컨텍스트 좌표계를 변경했을 때 호출할 수 있습니다. 보통 게임 렌더링 과정에서 자동 적용되므로 별도로 호출할 필요는 없습니다.
+`PuyoW.applyCanvasCoordinateTransform()`은 현재 그래픽 설정의 논리 좌표 변환을 2D 컨텍스트에 다시 적용합니다. 외부 렌더링 코드가 `setTransform()`으로 컨텍스트 좌표계를 변경했을 때 호출할 수 있습니다. 보통 게임 렌더링 과정에서 자동 적용되므로 별도로 호출할 필요는 없습니다.
 
 ---
 

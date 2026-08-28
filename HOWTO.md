@@ -45,13 +45,13 @@ puyow.js 는 CDN으로도 사용할 수 있습니다.
 
 ## 기본 초기화
 
-라이브러리를 불러오는 것만으로는 게임이 초기화되지 않습니다. 브라우저에서는 모든 적 등록 스크립트를 불러온 뒤 `WebPuyo.initialize()`를 명시적으로 호출해야 메뉴와 입력 처리가 시작됩니다.
+라이브러리를 불러오는 것만으로는 게임이 초기화되지 않습니다. 브라우저에서는 모든 적 등록 스크립트를 불러온 뒤 `PuyoW.initialize()`를 명시적으로 호출해야 메뉴와 입력 처리가 시작됩니다.
 
 ```html
 <script defer src="puyow.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    window.WebPuyo.initialize('webpuyo_canvas');
+    window.PuyoW.initialize('webpuyo_canvas');
 });
 </script>
 ```
@@ -68,61 +68,61 @@ const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, Garba
 
 ### 화면 상단 메시지 표시
 
-`WebPuyo.showMessage(message, color = 'white', duration = 2000, backgroundColor = null)`는 현재 화면의 최상단에 메시지를 표시합니다. `message`는 필수 문자열이고, `color`는 선택 사항인 CSS 글자 색상 문자열이며, `duration`은 페이드 아웃 전 메시지를 유지할 시간(밀리초), `backgroundColor`는 글자 뒤에 표시할 선택 사항인 CSS 배경 색상 문자열입니다. `backgroundColor`가 `null`이면 배경 사각형 없이 기존처럼 글자만 표시합니다. 기본값은 각각 `'white'`, `2000`, `null`입니다. 유지 시간이 지난 뒤 500ms 동안 페이드 아웃되어 사라지며, 새 메시지를 표시하면 이전 메시지를 교체합니다.
+`PuyoW.showMessage(message, color = 'white', duration = 2000, backgroundColor = null)`는 현재 화면의 최상단에 메시지를 표시합니다. `message`는 필수 문자열이고, `color`는 선택 사항인 CSS 글자 색상 문자열이며, `duration`은 페이드 아웃 전 메시지를 유지할 시간(밀리초), `backgroundColor`는 글자 뒤에 표시할 선택 사항인 CSS 배경 색상 문자열입니다. `backgroundColor`가 `null`이면 배경 사각형 없이 기존처럼 글자만 표시합니다. 기본값은 각각 `'white'`, `2000`, `null`입니다. 유지 시간이 지난 뒤 500ms 동안 페이드 아웃되어 사라지며, 새 메시지를 표시하면 이전 메시지를 교체합니다.
 
 이 함수는 다국어 처리를 하지 않고 받은 문자열을 그대로 표시합니다. 따라서 번역이 필요하다면 호출자가 먼저 번역한 뒤 전달해야 합니다.
 
 ```js
 const message = translateForMyApp('Saved');
-WebPuyo.showMessage(message);
-WebPuyo.showMessage(message, '#f7c843', 3000);
-WebPuyo.showMessage(message, '#ffffff', 3000, '#263238');
+PuyoW.showMessage(message);
+PuyoW.showMessage(message, '#f7c843', 3000);
+PuyoW.showMessage(message, '#ffffff', 3000, '#263238');
 ```
 
 WebMCP를 지원하는 브라우저에서는 AI도 `show_message` 도구로 동일한 동작을 호출할 수 있습니다. 도구의 `message`는 이미 현지화된 문자열이어야 하며, `color`, `duration`, `backgroundColor`의 기본값은 각각 `'white'`, `2000`, `null`입니다.
 
 ### 공지사항 경로 설정
 
-메인 화면 왼쪽에 표시할 공지사항은 기본적으로 `puyow.js`와 같은 경로의 `notice.txt`에서 읽습니다. 초기화하기 전에 `WebPuyo.setNoticeFile(noticeFile)`을 호출하면 파일명, 상대경로 또는 절대 URL을 지정할 수 있습니다. 상대경로는 `puyow.js`가 로드된 URL을 기준으로 해석하고, `https://`와 같은 절대 URL은 지정한 주소 그대로 사용합니다. 공지사항 파일은 다국어 번역을 거치지 않고 UTF-8 텍스트 그대로 표시합니다.
+메인 화면 왼쪽에 표시할 공지사항은 기본적으로 `puyow.js`와 같은 경로의 `notice.txt`에서 읽습니다. 초기화하기 전에 `PuyoW.setNoticeFile(noticeFile)`을 호출하면 파일명, 상대경로 또는 절대 URL을 지정할 수 있습니다. 상대경로는 `puyow.js`가 로드된 URL을 기준으로 해석하고, `https://`와 같은 절대 URL은 지정한 주소 그대로 사용합니다. 공지사항 파일은 다국어 번역을 거치지 않고 UTF-8 텍스트 그대로 표시합니다.
 
 ```js
 // 기본값과 같은 파일을 사용한다.
-WebPuyo.setNoticeFile('notice.txt');
+PuyoW.setNoticeFile('notice.txt');
 
 // puyow.js가 있는 위치의 notices/notice-ko.txt를 사용한다.
-WebPuyo.setNoticeFile('notices/notice-ko.txt');
+PuyoW.setNoticeFile('notices/notice-ko.txt');
 
 // 다른 서버의 공지사항을 사용한다.
-WebPuyo.setNoticeFile('https://example.com/puyo/notice.txt');
+PuyoW.setNoticeFile('https://example.com/puyo/notice.txt');
 
-WebPuyo.initialize('webpuyo_canvas');
+PuyoW.initialize('webpuyo_canvas');
 ```
 
 `setNoticeFile()`은 `initialize()` 호출 전에만 사용할 수 있습니다. 초기화가 끝난 뒤 호출하면 오류가 발생하므로, 경로를 바꾸려면 `destroy()`로 게임을 종료한 뒤 다시 설정하고 `initialize()`를 호출해야 합니다.
 
 ## 종료 및 정리
 
-`WebPuyo.destroy()`는 `initialize()`로 시작한 게임 인스턴스를 종료하고 초기화 전 상태로 되돌립니다. 페이지 전환, 동적 UI 제거, 같은 페이지에서 다른 canvas로 게임을 다시 초기화할 때 호출합니다.
+`PuyoW.destroy()`는 `initialize()`로 시작한 게임 인스턴스를 종료하고 초기화 전 상태로 되돌립니다. 페이지 전환, 동적 UI 제거, 같은 페이지에서 다른 canvas로 게임을 다시 초기화할 때 호출합니다.
 
 이 메서드는 키보드와 canvas 클릭 이벤트를 해제하고, 예약된 애니메이션 프레임을 취소하며, 등록된 WebMCP 도구도 해제합니다. `initialize()`가 기본 canvas를 찾지 못해 직접 생성한 `webpuyo_canvas`는 DOM에서 제거하지만, 개발자가 HTML에 넣었거나 `initialize(target)`으로 전달한 canvas는 제거하지 않습니다.
 
 `destroy()` 뒤에는 다시 `initialize()`를 호출할 수 있습니다. 아직 초기화되지 않은 상태에서 호출해도 아무 작업 없이 안전하게 끝납니다.
 
 ```js
-WebPuyo.initialize('webpuyo_canvas');
+PuyoW.initialize('webpuyo_canvas');
 
 // 페이지의 게임 영역을 없애기 전에 실행한다.
-WebPuyo.destroy();
+PuyoW.destroy();
 ```
 
 ## 화면 언어 추가
 
-초기화 전에 `WebPuyo.registerLanguage(locale, entries)`로 화면 문구 번역을 추가할 수 있습니다. 브라우저 언어가 `ko` 또는 `ko-KR`이면 한국어 원문을 그대로 사용합니다. 다른 언어는 전체 언어 코드(예: `ja-JP`)를 먼저 찾고, 없으면 기본 언어 코드(예: `ja`), 마지막으로 영어(`en`) 번역표를 사용합니다.
+초기화 전에 `PuyoW.registerLanguage(locale, entries)`로 화면 문구 번역을 추가할 수 있습니다. 브라우저 언어가 `ko` 또는 `ko-KR`이면 한국어 원문을 그대로 사용합니다. 다른 언어는 전체 언어 코드(예: `ja-JP`)를 먼저 찾고, 없으면 기본 언어 코드(예: `ja`), 마지막으로 영어(`en`) 번역표를 사용합니다.
 
 번역 키는 게임에 있는 한국어 원문입니다. `%1`, `%2`는 실행 중 전달된 값으로 바뀌는 자리표시자이며, 연쇄 메시지는 `%1연쇄` 키를 사용합니다.
 
 ```js
-WebPuyo.registerLanguage('ja', {
+PuyoW.registerLanguage('ja', {
 	'게임 시작': 'ゲーム開始',
 	'연습': '練習',
 	'승리': '勝利',
@@ -130,7 +130,7 @@ WebPuyo.registerLanguage('ja', {
 	'%1연쇄': '%1連鎖'
 });
 
-WebPuyo.initialize();
+PuyoW.initialize();
 ```
 
 ### 음소거 토글 (끄기/켜기)
@@ -141,10 +141,10 @@ WebPuyo.initialize();
 
 ### 랜덤 난수 생성
 
-`WebPuyo.randomFloat()`는 `0` 이상 `1` 미만의 실수 난수를 반환합니다. 게임 내부에서 색상 선택, 방해뿌요 열 순서 섞기, AI의 무작위 턴 수 결정 등 모든 랜덤 값은 이 함수를 통해 생성됩니다. 게임 내부에 새로운 랜덤 동작을 추가할 때도 `Math.random()`을 직접 호출하지 말고 `randomFloat()`을 사용해야 테스트에서 랜덤 생성 지점을 한 곳으로 관리할 수 있습니다.
+`PuyoW.randomFloat()`는 `0` 이상 `1` 미만의 실수 난수를 반환합니다. 게임 내부에서 색상 선택, 방해뿌요 열 순서 섞기, AI의 무작위 턴 수 결정 등 모든 랜덤 값은 이 함수를 통해 생성됩니다. 게임 내부에 새로운 랜덤 동작을 추가할 때도 `Math.random()`을 직접 호출하지 말고 `randomFloat()`을 사용해야 테스트에서 랜덤 생성 지점을 한 곳으로 관리할 수 있습니다.
 
 ```js
-const value = WebPuyo.randomFloat();
+const value = PuyoW.randomFloat();
 // 0 <= value < 1
 const index = Math.floor(value * items.length);
 const item = items[index];

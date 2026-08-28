@@ -8095,5 +8095,8 @@
         get commonSoundPool() { return commonSoundPool; }
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = WebPuyo;
-    if (typeof window !== 'undefined') window.WebPuyo = WebPuyo;
+    if (typeof window !== 'undefined') {
+        window.WebPuyo = WebPuyo;
+        window.PuyoW   = WebPuyo; // 추후 WebPuyo 대신 PuyoW 이름으로 변경 예정
+    }
 })();

@@ -4,7 +4,7 @@
 
 ## 내장 일반·방해뿌요 클래스
 
-`WebPuyo.Puyo`는 일반·방해뿌요의 공통 기반 클래스입니다. 다음 내장 클래스는 `getName()`과 `draw(drawingContext, x, y, cellSize, scale)`를 제공하며, 갤러리와 게임 렌더러도 같은 객체를 사용합니다.
+`PuyoW.Puyo`는 일반·방해뿌요의 공통 기반 클래스입니다. 다음 내장 클래스는 `getName()`과 `draw(drawingContext, x, y, cellSize, scale)`를 제공하며, 갤러리와 게임 렌더러도 같은 객체를 사용합니다.
 
 - 일반뿌요: `RedPuyo`, `GreenPuyo`, `YellowPuyo`, `BluePuyo`, `PurplePuyo`
 - 방해뿌요: `GarbagePuyo`, `HardGarbagePuyo`
@@ -18,9 +18,9 @@
 
 ## 사용자 정의 예고뿌요 클래스
 
-방해뿌요 예고줄은 `WebPuyo.WarningPuyo` 객체로 구성됩니다. 하위 클래스는 `getName()`으로 표시 이름을 바꾸고 `draw()`로 모양을 그리며, 필요한 경우 `getDisplayX()`로 같은 종류 아이콘의 가로 배치를 조정할 수 있습니다.
+방해뿌요 예고줄은 `PuyoW.WarningPuyo` 객체로 구성됩니다. 하위 클래스는 `getName()`으로 표시 이름을 바꾸고 `draw()`로 모양을 그리며, 필요한 경우 `getDisplayX()`로 같은 종류 아이콘의 가로 배치를 조정할 수 있습니다.
 
-`WebPuyo.registerWarningPuyo()`에 하위 클래스를 전달하면 새 단위를 등록할 수 있습니다. 등록은 반드시 `initialize()` 전에 해야 하며, 등록된 클래스는 `static unitCount`의 큰 값부터 자동 정렬됩니다.
+`PuyoW.registerWarningPuyo()`에 하위 클래스를 전달하면 새 단위를 등록할 수 있습니다. 등록은 반드시 `initialize()` 전에 해야 하며, 등록된 클래스는 `static unitCount`의 큰 값부터 자동 정렬됩니다.
 
 클래스에는 다음 계약이 필요합니다.
 
@@ -30,7 +30,7 @@
 - 선택 사항인 `getDisplayX(startX, index, sameTypeIndex)`를 재정의하면 같은 종류 예고뿌요의 가로 배치를 바꿀 수 있습니다.
 
 ```js
-class CrownWarningPuyo extends WebPuyo.WarningPuyo {
+class CrownWarningPuyo extends PuyoW.WarningPuyo {
     static unitCount = 100;
 
     constructor() {
@@ -53,8 +53,8 @@ class CrownWarningPuyo extends WebPuyo.WarningPuyo {
     }
 }
 
-WebPuyo.registerWarningPuyo(CrownWarningPuyo);
-WebPuyo.initialize('webpuyo_canvas');
+PuyoW.registerWarningPuyo(CrownWarningPuyo);
+PuyoW.initialize('webpuyo_canvas');
 ```
 
 같은 클래스를 두 번 등록하거나, `WarningPuyo`를 상속하지 않은 클래스, `draw()`를 구현하지 않은 클래스, 잘못된 단위값을 등록하면 오류가 발생합니다. 예고줄에는 기존과 같이 최대 6개 아이콘만 표시됩니다.
