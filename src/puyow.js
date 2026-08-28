@@ -186,6 +186,10 @@
     ];
     /** 새 설정 및 잘못된 저장값에 사용할 기본 그래픽 품질이다. @type {'low'} */
     const DEFAULT_GRAPHICS_QUALITY = 'low';
+    /** 플레이어 이름으로 허용할 최대 글자 수다. */
+    const PLAYER_NAME_MAX_LENGTH = 10;
+    /** 새 설정 및 비어 있거나 잘못된 이름에 사용할 기본 플레이어 이름이다. */
+    const DEFAULT_PLAYER_NAME = 'PLAYER 1';
     /** 가상 컨트롤러 표시 크기 선택지다. 기존 true/false 저장값은 normal/none으로 이관한다. @type {{key:'none'|'normal'|'large', label:string}[]} */
     const VIRTUAL_CONTROLLER_OPTIONS = [
         { key: 'none', label: '없음' },
@@ -215,13 +219,14 @@
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
-            '설정': 'Settings', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '없음': 'None', '크게': 'Large', '그래픽 설정': 'Graphics quality', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
+            '설정': 'Settings', '이름': 'Name', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '없음': 'None', '크게': 'Large', '그래픽 설정': 'Graphics quality', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
             '플레이 방법': 'How to Play', '갤러리': 'Gallery', '대상 유형': 'Category', '대상': 'Item', '일반뿌요': 'Puyos', '예고뿌요': 'Warning Puyos', '적': 'Enemies', '빨강뿌요': 'Red Puyo', '초록뿌요': 'Green Puyo', '노랑뿌요': 'Yellow Puyo', '파랑뿌요': 'Blue Puyo', '보라뿌요': 'Purple Puyo', '방해뿌요': 'Garbage Puyo', '딱딱뿌요': 'Hard Puyo', '작은 예고뿌요': 'Small Warning Puyo', '큰 예고뿌요': 'Large Warning Puyo', '빨간 돌': 'Red Rock', '별': 'Star', '태양': 'Sun', '중성자별': 'Neutron Star', '블랙홀': 'Black Hole', '위기': 'Crisis', '다시보기': 'Replay',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': 'An all clear gives you a powerful attack.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
             '은하': 'Galaxy',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
+            '이름': '名前',
             '뿌요 W': 'Puyo W',
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
             '게임 시작': 'ゲーム開始', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '현재 턴 %1 / %2': 'ターン %1 / %2', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
@@ -240,6 +245,7 @@
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
+            '이름': '名称',
             '뿌요 W': 'Puyo W',
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
             '게임 시작': '开始游戏', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '퍼즐뿌요': '益智魔法气泡', '퍼즐뿌요 스테이지': '益智魔法气泡关卡', '스테이지 %1': '关卡 %1', '권장 턴 수 %1': '推荐回合数: %1', '현재 턴 %1': '第 %1 回合', '현재 턴 %1 / %2': '第 %1 / %2 回合', '%1 연쇄 해봐': '试试 %1 连锁！', '싹쓸이 해봐': '试试全消！', '한 번에 %1개 뿌요를 터뜨려봐': '一次消除 %1 个魔法气泡！', '방해뿌요 %1개를 발생 시켜봐': '发送 %1 个垃圾魔法气泡！', '스테이지 클리어': '关卡完成', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
@@ -467,9 +473,21 @@
             clearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             puzzleClearStages: [],
-            settings: { musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
+            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
+    }
+
+    /** 저장된 플레이어 이름을 표시 가능한 기본값과 최대 길이로 정규화한다. @param {unknown} value 저장값 @returns {string} 플레이어 이름 */
+    function normalizePlayerName(value) {
+        if (typeof value !== 'string') return DEFAULT_PLAYER_NAME;
+        const name = Array.from(value).slice(0, PLAYER_NAME_MAX_LENGTH).join('');
+        return name.trim() ? name : DEFAULT_PLAYER_NAME;
+    }
+
+    /** 현재 설정된 플레이어 이름을 반환한다. @returns {string} 플레이어 이름 */
+    function getPlayerName() {
+        return normalizePlayerName(store?.settings?.playerName);
     }
 
     /** 그래픽 품질 키에 맞는 출력 해상도 항목을 반환한다. @param {unknown} quality 그래픽 품질 키 @returns {{key:'low'|'medium'|'high', label:string, width:number, height:number}} */
@@ -825,6 +843,7 @@
                 ? [...new Set(parsed.puzzleClearStages.filter((index) => Number.isInteger(index) && index >= 0))]
                 : [];
             store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, puzzleClearStages, settings: {
+                playerName: normalizePlayerName(settings.playerName),
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
                 // 이전 켜기/끄기 불리언 저장값도 각각 보통/없음으로 유지한다.
@@ -1403,7 +1422,7 @@
             pairQueue[1] = [debugColor, debugColor];
         }
         const practicePlayer = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
-        const players = [new PlayerState('PLAYER 1', FIELD_LEFT, null, colors), practicePlayer];
+        const players = [new PlayerState(getPlayerName(), FIELD_LEFT, null, colors), practicePlayer];
         if (feverRule) players.forEach((player) => { player.fever = createFeverRuleState(); });
         // 연습과 연속 피버의 상대는 공격만 받아 방해뿌요 연출을 보여주고 일반 뿌요는 생성하지 않는다.
         if (soloMode) {
@@ -1488,7 +1507,7 @@
         resetVirtualControllerInput();
         const colors = [...COLORS];
         const controller = new PracticeEnemy();
-        const player = new PlayerState('PLAYER 1', FIELD_LEFT, null, colors);
+        const player = new PlayerState(getPlayerName(), FIELD_LEFT, null, colors);
         const target = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
         target.receivesPuyos = false;
         target.allClearEnabled = false;
@@ -4295,7 +4314,7 @@
     function enterTutorialStage(stage) {
         const config = getTutorialStageConfig(stage);
         const themeController = new PracticeEnemy();
-        const player = new PlayerState('PLAYER 1', FIELD_LEFT, null, COLORS);
+        const player = new PlayerState(getPlayerName(), FIELD_LEFT, null, COLORS);
         const opponent = new PlayerState('', FIELD_RIGHT, themeController, COLORS);
         opponent.receivesPuyos = false;
         opponent.phase = 'idle';
@@ -4524,6 +4543,7 @@
     /** 설정 화면의 변경 사항을 저장한다. @returns {void} */
     function saveSettings() {
         clearSettingsApiTest();
+        settingsDraft.playerName = normalizePlayerName(settingsDraft.playerName);
         store.settings = { ...settingsDraft };
         saveStore();
         applyCanvasOutputResolution();
@@ -4602,7 +4622,7 @@
 
     /** API 테스트 실행 가능 여부를 반영한 설정 화면 포커스 순서를 만든다. @returns {number[]} 포커스 인덱스 목록 */
     function getSelectableSettingsFocuses() {
-        return [0, 1, 2, 3, 4, 5, 6, ...(canRunAiApiTest() ? [7] : []), 8, 9, 10];
+        return [0, 1, 2, 3, 4, 5, 6, 7, ...(canRunAiApiTest() ? [8] : []), 9, 10, 11];
     }
 
     /** 설정 화면에서 다음 또는 이전 포커스로 이동한다. @param {number} direction 이동 방향 @returns {void} */
@@ -4684,17 +4704,17 @@
 
     /** 설정 화면의 포커스 항목을 실행한다. @returns {void} */
     function activateSettingsFocus() {
-        if (settingsFocus === 2) {
+        if (settingsFocus === 3) {
             const currentIndex = VIRTUAL_CONTROLLER_OPTIONS.findIndex((option) => option.key === settingsDraft.virtualController);
             settingsDraft.virtualController = VIRTUAL_CONTROLLER_OPTIONS[(currentIndex + 1) % VIRTUAL_CONTROLLER_OPTIONS.length].key;
         }
-        else if (settingsFocus === 3) {
+        else if (settingsFocus === 4) {
             const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
             settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + 1) % GRAPHICS_QUALITY_OPTIONS.length].key;
-        } else if (settingsFocus === 7 && canRunAiApiTest()) runAiApiTest();
-        else if (settingsFocus === 8) saveSettings();
-        else if (settingsFocus === 9) cancelSettings();
-        else if (settingsFocus === 10) resetAllSettings();
+        } else if (settingsFocus === 8 && canRunAiApiTest()) runAiApiTest();
+        else if (settingsFocus === 9) saveSettings();
+        else if (settingsFocus === 10) cancelSettings();
+        else if (settingsFocus === 11) resetAllSettings();
     }
 
     /** 설정 화면을 그린다. @returns {void} */
@@ -4702,6 +4722,7 @@
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `38px ${TITLE_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 56);
         const rows = [
+            { label: '이름', y: 95, value: settingsDraft.playerName, kind: 'text' },
             { label: '배경음악 볼륨', y: 105, value: settingsDraft.musicVolume, kind: 'slider' },
             { label: '효과음 볼륨', y: 155, value: settingsDraft.effectsVolume, kind: 'slider' },
             { label: '가상 컨트롤러 사용', y: 205, value: settingsDraft.virtualController, kind: 'radio', options: VIRTUAL_CONTROLLER_OPTIONS.map((option, optionIndex) => ({ label: option.label, value: option.key, x: 530 + optionIndex * 150, width: 130 })) },
@@ -4710,6 +4731,7 @@
             { label: 'AI API 키', y: 355, value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
             { label: '사용 모델명', y: 405, value: settingsDraft.aiModel, kind: 'text' }
         ];
+        rows.slice(1).forEach((row) => { row.y += 40; });
         rows.forEach((row, index) => {
             context.textAlign = 'left'; context.fillStyle = '#d8f2f5'; context.font = `15px ${BUTTON_FONT}`; context.fillText(translate(row.label), 270, row.y + 5);
             const focused = settingsFocus === index;
@@ -4737,13 +4759,13 @@
             }
         });
         const apiTestEnabled = canRunAiApiTest();
-        context.fillStyle = apiTestEnabled ? '#264b5b' : '#263640'; context.fillRect(530, 435, 450, 40);
-        context.strokeStyle = settingsFocus === 7 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 7 && apiTestEnabled ? 3 : 2; context.strokeRect(530, 435, 450, 40);
-        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), 755, 461);
-        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 530, 500);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `13px ${MESSAGE_FONT}`; context.fillText(translate('사운드 관련 기능은 추후 제공 예정'), WIDTH / 2, 523);
-        [{ label: '저장', x: 380, focus: 8, color: '#4cc9b0' }, { label: '취소', x: 560, focus: 9, color: '#ef5350' }, { label: '초기화', x: 740, focus: 10, color: '#7e6bc4' }].forEach((button) => {
-            context.fillStyle = button.color; context.fillRect(button.x, 555, 160, 46); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 555, 160, 46); context.fillStyle = '#fff'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 80, 585);
+        context.fillStyle = apiTestEnabled ? '#264b5b' : '#263640'; context.fillRect(530, 475, 450, 40);
+        context.strokeStyle = settingsFocus === 8 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 8 && apiTestEnabled ? 3 : 2; context.strokeRect(530, 475, 450, 40);
+        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), 755, 501);
+        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 530, 540);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `13px ${MESSAGE_FONT}`; context.fillText(translate('사운드 관련 기능은 추후 제공 예정'), WIDTH / 2, 563);
+        [{ label: '저장', x: 380, focus: 9, color: '#4cc9b0' }, { label: '취소', x: 560, focus: 10, color: '#ef5350' }, { label: '초기화', x: 740, focus: 11, color: '#7e6bc4' }].forEach((button) => {
+            context.fillStyle = button.color; context.fillRect(button.x, 595, 160, 46); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 595, 160, 46); context.fillStyle = '#fff'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 80, 625);
         });
     }
 
@@ -5716,33 +5738,36 @@
 
     /** 설정 화면에서 포커스 이동과 문자열 편집을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @param {string} key 소문자 키 @returns {void} */
     function handleSettingsKeydown(event, key) {
-        const textField = settingsFocus === 5 || settingsFocus === 6;
+        const textField = settingsFocus === 0 ? 'playerName' : (settingsFocus === 6 ? 'aiApiKey' : (settingsFocus === 7 ? 'aiModel' : null));
         if (settingsEditing && textField) {
-            const field = settingsFocus === 5 ? 'aiApiKey' : 'aiModel';
+            const field = textField;
             if (key === 'enter' || key === 'escape') { settingsEditing = false; return; }
             if (key === 'arrowleft') { settingsCursor = Math.max(0, settingsCursor - 1); return; }
             if (key === 'arrowright') { settingsCursor = Math.min(settingsDraft[field].length, settingsCursor + 1); return; }
             if (key === 'backspace') { if (settingsCursor > 0) { settingsDraft[field] = settingsDraft[field].slice(0, settingsCursor - 1) + settingsDraft[field].slice(settingsCursor); settingsCursor -= 1; } return; }
-            if (key.length === 1) { settingsDraft[field] = settingsDraft[field].slice(0, settingsCursor) + event.key + settingsDraft[field].slice(settingsCursor); settingsCursor += event.key.length; }
+            if (key.length === 1) {
+                const nextValue = settingsDraft[field].slice(0, settingsCursor) + event.key + settingsDraft[field].slice(settingsCursor);
+                if (field !== 'playerName' || Array.from(nextValue).length <= PLAYER_NAME_MAX_LENGTH) { settingsDraft[field] = nextValue; settingsCursor += event.key.length; }
+            }
             return;
         }
         if (key === 'enter' || key === ' ') {
-            if (textField) { settingsEditing = true; settingsCursor = settingsDraft[settingsFocus === 5 ? 'aiApiKey' : 'aiModel'].length; }
+            if (textField) { settingsEditing = true; settingsCursor = settingsDraft[textField].length; }
             else activateSettingsFocus();
         } else if (key === 'escape') cancelSettings();
         else if (key === 'arrowup' || key === 'arrowdown') moveSettingsFocus(key === 'arrowup' ? -1 : 1);
         else if (key === 'arrowleft' || key === 'arrowright') {
             const direction = key === 'arrowleft' ? -1 : 1;
-            if (settingsFocus === 0) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
-            else if (settingsFocus === 1) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
-            else if (settingsFocus === 2) {
+            if (settingsFocus === 1) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
+            else if (settingsFocus === 2) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
+            else if (settingsFocus === 3) {
                 const currentIndex = VIRTUAL_CONTROLLER_OPTIONS.findIndex((option) => option.key === settingsDraft.virtualController);
                 settingsDraft.virtualController = VIRTUAL_CONTROLLER_OPTIONS[(currentIndex + direction + VIRTUAL_CONTROLLER_OPTIONS.length) % VIRTUAL_CONTROLLER_OPTIONS.length].key;
             }
-            else if (settingsFocus === 3) {
+            else if (settingsFocus === 4) {
                 const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
                 settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + direction + GRAPHICS_QUALITY_OPTIONS.length) % GRAPHICS_QUALITY_OPTIONS.length].key;
-            } else if (settingsFocus >= 8) settingsFocus = 8 + (settingsFocus - 8 + (direction < 0 ? 2 : 1)) % 3;
+            } else if (settingsFocus >= 9) settingsFocus = 9 + (settingsFocus - 9 + (direction < 0 ? 2 : 1)) % 3;
         }
     }
 
@@ -6185,21 +6210,22 @@
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
-            if (y >= 435 && y <= 475 && x >= 530 && x <= 980 && canRunAiApiTest()) { settingsFocus = 7; runAiApiTest(); }
-            else if (y >= 555 && y <= 601 && x >= 380 && x <= 540) { settingsFocus = 8; saveSettings(); }
-            else if (y >= 555 && y <= 601 && x >= 560 && x <= 720) { settingsFocus = 9; cancelSettings(); }
-            else if (y >= 555 && y <= 601 && x >= 740 && x <= 900) { settingsFocus = 10; resetAllSettings(); }
-            else if (y >= 95 && y <= 115) { settingsFocus = 0; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
-            else if (y >= 145 && y <= 165) { settingsFocus = 1; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
-            else if (y >= 186 && y <= 224 && x >= 530 && x <= 660) { settingsFocus = 2; settingsDraft.virtualController = 'none'; }
-            else if (y >= 186 && y <= 224 && x >= 680 && x <= 810) { settingsFocus = 2; settingsDraft.virtualController = 'normal'; }
-            else if (y >= 186 && y <= 224 && x >= 830 && x <= 960) { settingsFocus = 2; settingsDraft.virtualController = 'large'; }
-            else if (y >= 236 && y <= 274 && x >= 530 && x <= 660) { settingsFocus = 3; settingsDraft.graphicsQuality = 'low'; }
-            else if (y >= 236 && y <= 274 && x >= 680 && x <= 810) { settingsFocus = 3; settingsDraft.graphicsQuality = 'medium'; }
-            else if (y >= 236 && y <= 274 && x >= 830 && x <= 960) { settingsFocus = 3; settingsDraft.graphicsQuality = 'high'; }
-            else if (y >= 286 && y <= 324 && x >= 530 && x <= 670) { settingsFocus = 4; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
-            else if (y >= 336 && y <= 374) { settingsFocus = 5; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; }
-            else if (y >= 386 && y <= 424) { settingsFocus = 6; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
+            if (y >= 475 && y <= 515 && x >= 530 && x <= 980 && canRunAiApiTest()) { settingsFocus = 8; runAiApiTest(); }
+            else if (y >= 595 && y <= 641 && x >= 380 && x <= 540) { settingsFocus = 9; saveSettings(); }
+            else if (y >= 595 && y <= 641 && x >= 560 && x <= 720) { settingsFocus = 10; cancelSettings(); }
+            else if (y >= 595 && y <= 641 && x >= 740 && x <= 900) { settingsFocus = 11; resetAllSettings(); }
+            else if (y >= 76 && y <= 114) { settingsFocus = 0; settingsEditing = true; settingsCursor = settingsDraft.playerName.length; }
+            else if (y >= 135 && y <= 155) { settingsFocus = 1; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
+            else if (y >= 185 && y <= 205) { settingsFocus = 2; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
+            else if (y >= 226 && y <= 264 && x >= 530 && x <= 660) { settingsFocus = 3; settingsDraft.virtualController = 'none'; }
+            else if (y >= 226 && y <= 264 && x >= 680 && x <= 810) { settingsFocus = 3; settingsDraft.virtualController = 'normal'; }
+            else if (y >= 226 && y <= 264 && x >= 830 && x <= 960) { settingsFocus = 3; settingsDraft.virtualController = 'large'; }
+            else if (y >= 276 && y <= 314 && x >= 530 && x <= 660) { settingsFocus = 4; settingsDraft.graphicsQuality = 'low'; }
+            else if (y >= 276 && y <= 314 && x >= 680 && x <= 810) { settingsFocus = 4; settingsDraft.graphicsQuality = 'medium'; }
+            else if (y >= 276 && y <= 314 && x >= 830 && x <= 960) { settingsFocus = 4; settingsDraft.graphicsQuality = 'high'; }
+            else if (y >= 326 && y <= 364 && x >= 530 && x <= 670) { settingsFocus = 5; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
+            else if (y >= 376 && y <= 414) { settingsFocus = 6; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; }
+            else if (y >= 426 && y <= 464) { settingsFocus = 7; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
         } else {
             if (menuScreen === 'practiceDifficulty') {
                 const cancelBounds = getColorSelectionCancelButtonBounds();
