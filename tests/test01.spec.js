@@ -961,6 +961,90 @@ test('피버 룰의 시간 만료 연쇄는 상대 방해뿌요 낙하를 기다
   }), { timeout: 10000 }).toBe(true);
 });
 
+test('피버 룰은 DAMAGE 전달 뒤 상대 방해뿌요 낙하를 기다리지 않고 다음 피버 스테이지를 준비한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverNextStageBeforeGarbageEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -1; this.prepared = false; }
+      getClassType() { return 'FeverNextStageBeforeGarbageEnemy'; }
+      getName() { return '피버 즉시 다음 스테이지 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.prepared) return;
+        this.prepared = true;
+        player.fever.active = true;
+        player.fever.leftTime = 10000;
+        // 1연쇄 뒤 남은 ATTACK 1을 상대 DAMAGE로 확정한다.
+        player.attack = 1;
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+        player.phase = 'explode';
+        player.phaseTimer = 0;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverNextStageBeforeGarbageEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state?.player.phase === 'control'
+      && state.player.damage >= 1
+      && state.opponent.fever?.active === true
+      && state.opponent.fever.selectedStageTarget === 4;
+  }), { timeout: 10000 }).toBe(true);
+});
+
+test('연속 피버는 다음 스테이지 배치 때 DAMAGE 예고를 없애고 방해뿌요를 생성하지 않는다', async ({ page }) => {
+  await page.evaluate(() => {
+    Math.random = () => 0.999999;
+    window.WebPuyo.registerFeverStageState(new window.WebPuyo.FeverStageState(
+      { puyos: [
+        { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' },
+        { x: 3, y: 0, color: 'red' }, { x: 4, y: 0, color: 'red' }, { x: 5, y: 0, color: 'red' },
+        { x: 0, y: 1, color: 'red' }, { x: 1, y: 1, color: 'red' },
+      ] },
+      5,
+      ['red', 'red'],
+      1,
+      ['red'],
+    ));
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
+
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(1000);
+  await page.keyboard.up('ArrowDown');
+
+  await expect.poll(() => page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state?.continuousFever === true
+      && state.fever?.selectedStageTarget === 4
+      && state.opponent.phase === 'idle'
+      && state.player.attack === 0
+      && state.player.damage === 0
+      && state.opponent.attack === 0
+      && state.opponent.damage === 0
+      && state.player.warningPuyos.length === 0
+      && state.opponent.warningPuyos.length === 0
+      && state.opponent.board.puyos.length === 0;
+  }), { timeout: 10000 }).toBe(true);
+});
+
 test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');

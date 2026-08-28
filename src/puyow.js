@@ -1374,8 +1374,7 @@
             stageSuppliedPair: [],
             pendingActivation: false,
             deferGarbage: false,
-            pendingAllClearStage: false,
-            opponentGarbageDropBaseline: null
+            pendingAllClearStage: false
         };
     }
 
@@ -1688,6 +1687,21 @@
         return colorMap;
     }
 
+    /** 연속 피버의 다음 스테이지를 배치한 직후 양쪽의 공격·피해 및 예고 상태를 초기화한다. @returns {void} */
+    function resetContinuousFeverCombatState() {
+        if (!game?.continuousFever) return;
+        game.players.forEach((state) => {
+            state.attack = 0;
+            state.damage = 0;
+            state.normalDamage = 0;
+            state.warningReductionDelay = 0;
+            state.outgoingWarningDelay = 0;
+            state.announcedAttack = 0;
+            state.lastAttackTransfer = null;
+            state.lastAttackEnergySource = null;
+        });
+    }
+
     /** 다음 뿌요에 맞춰 피버 스테이지를 숨김 영역에 복사·변환하고, 중력 연출 뒤 지정 플레이어의 조작 턴을 준비한다. @param {PlayerState} player 대상 플레이어 @param {object} feverState 갱신할 피버 상태 @param {number} targetCombo 스테이지 목표 연쇄 @param {boolean} countTurn 피버 턴 수 증가 여부 @returns {void} */
     function prepareFeverTurn(player, feverState, targetCombo = feverState.targetCombo, countTurn = true) {
         const nextPair = peekNextPair(player);
@@ -1701,6 +1715,8 @@
             if (!Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || spawnY < 0 || spawnY >= ROWS) return;
             player.board[spawnY][puyo.x] = puyo.color === 'garbage' ? 'garbage' : colorMap.get(puyo.color);
         });
+        // 연속 피버는 다음 stageData 배치가 새 턴의 경계다. 남아 있던 DAMAGE 예고를 이때 없앤다.
+        resetContinuousFeverCombatState();
         player.active = null;
         player.combo = 0;
         player.phaseTimer = 0;
@@ -1779,7 +1795,6 @@
         state.stageSuppliedPair = [];
         state.pendingActivation = false;
         state.pendingAllClearStage = false;
-        state.opponentGarbageDropBaseline = null;
         // targetCombo와 nextTime은 다음 피버 발동에서 이어서 사용하므로 초기화하지 않는다.
         player.active = null;
         player.combo = 0;
@@ -2514,7 +2529,6 @@
     function deliverFinalAttackEnergy(player, opponent) {
         const amount = Math.floor(player.attack);
         if (amount < 1) return;
-        if (game?.feverRule && player.fever?.active) player.fever.opponentGarbageDropBaseline = opponent.garbageDropCount;
         player.attack -= amount;
         player.outgoingWarningDelay = Math.floor(player.attack);
         const energyTransfers = getEnergyTransfers();
@@ -2539,7 +2553,6 @@
      */
     function sendAllClearEnergy(player, opponent, amount) {
         if (amount < 1) return;
-        if (game?.feverRule && player.fever?.active) player.fever.opponentGarbageDropBaseline = opponent.garbageDropCount;
         queueEnergyTransfer(player, opponent, { x: player.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP + VISIBLE_ROWS * CELL / 2 }, 0, 0, amount);
     }
 
@@ -2645,6 +2658,12 @@
      * @returns {void}
      */
     function dropGarbage(player) {
+        // 연속 피버에서는 DAMAGE를 다음 스테이지 배치 전까지 예고로 보존하며 실제 방해뿌요를 만들지 않는다.
+        if (game?.continuousFever) {
+            player.phase = 'check';
+            player.phaseTimer = 0;
+            return;
+        }
         const amount = Math.min(30, Math.floor(player.damage));
         // 누적 피해가 있으면 한 번에 최대 30개의 방해뿌요를 필드 위에서 떨어뜨린다.
         if (amount) {
@@ -2755,13 +2774,11 @@
         return feverState.expiredPlacement || feverState.leftTime <= 0;
     }
 
-    /** 연쇄 후 상대 방해뿌요 낙하와 모든 에너지·싹쓸이 연출이 끝났는지 확인한다. @param {PlayerState} player 사용자 @param {PlayerState} opponent 연습 상대 @returns {boolean} 아직 기다려야 하는지 여부 */
-    function isContinuousFeverSettlementPending(player, opponent) {
+    /** 연쇄에 따른 ATTACK·DAMAGE 전달과 싹쓸이 연출이 끝났는지 확인한다. 상대 방해뿌요 낙하는 다음 피버 스테이지와 병행한다. @param {PlayerState} player 사용자 @returns {boolean} 아직 기다려야 하는지 여부 */
+    function isContinuousFeverSettlementPending(player) {
         return player.allClearEffectElapsed > 0
             || player.pendingAllClearDamage > 0
-            || hasPendingEnergyTransfers()
-            || opponent.damage > 0
-            || opponent.phase !== 'idle';
+            || hasPendingEnergyTransfers();
     }
 
     /** 피버 연쇄 정산 후 종료하거나 목표·시간을 갱신하고 다음 피버 턴을 시작한다. 시간 만료 뒤에는 연쇄·싹쓸이 보너스로 시간을 되살리지 않는다. @param {PlayerState} player 사용자 @param {PlayerState} opponent 연습 상대 @returns {void} */
@@ -2781,20 +2798,11 @@
         prepareContinuousFeverTurn();
     }
 
-    /** 피버 룰 연쇄의 에너지·싹쓸이·상대 방해뿌요 처리가 끝났는지 확인한다. @param {PlayerState} player 연쇄 플레이어 @param {PlayerState} opponent 상대 플레이어 @returns {boolean} 대기 필요 여부 */
-    function isFeverRuleSettlementPending(player, opponent) {
-        const feverExpired = isFeverTimeExpired(player.fever);
-        const opponentDroppingGarbage = opponent.phase === 'garbage'
-            || (opponent.phase === 'gravity' && opponent.gravityNextPhase === 'check');
-        const waitingForOpponentGarbage = player.fever?.opponentGarbageDropBaseline !== null
-            && opponent.garbageDropCount <= player.fever.opponentGarbageDropBaseline
-            && warningAmount(opponent, player) >= 1
-            && !opponent.fever?.deferGarbage;
+    /** 피버 룰 연쇄의 ATTACK·DAMAGE 전달과 싹쓸이 연출이 끝났는지 확인한다. 상대 방해뿌요 낙하는 다음 피버 스테이지와 병행한다. @param {PlayerState} player 연쇄 플레이어 @returns {boolean} 대기 필요 여부 */
+    function isFeverRuleSettlementPending(player) {
         return player.allClearEffectElapsed > 0
             || player.pendingAllClearDamage > 0
-            || hasPendingEnergyTransfers()
-            // 피버 룰의 시간 만료 연쇄는 ATTACK·DAMAGE 정산 후 즉시 끝나며 상대 방해뿌요 낙하는 기다리지 않는다.
-            || (!feverExpired && (waitingForOpponentGarbage || opponentDroppingGarbage));
+            || hasPendingEnergyTransfers();
     }
 
     /** 피버 룰의 한 피버 턴을 정산하고 다음 턴 또는 피버 종료로 전환한다. @param {PlayerState} player 대상 플레이어 @returns {void} */
@@ -2802,7 +2810,6 @@
         const state = player.fever;
         if (!game?.feverRule || !state?.active) return;
         const combo = state.pendingCombo;
-        state.opponentGarbageDropBaseline = null;
         const previousTarget = state.targetCombo;
         state.targetCombo = calculateContinuousFeverTarget(combo, state.pendingAllClear);
         if (isFeverTimeExpired(state)) {
@@ -2904,8 +2911,8 @@
         if (player.tutorialHold) return;
         if (player.phase === 'feverWait') {
             if (game?.continuousFever) {
-                if (!isContinuousFeverSettlementPending(player, opponent)) finishContinuousFeverResolution(player, opponent);
-            } else if (game?.feverRule && !isFeverRuleSettlementPending(player, opponent)) {
+                if (!isContinuousFeverSettlementPending(player)) finishContinuousFeverResolution(player, opponent);
+            } else if (game?.feverRule && !isFeverRuleSettlementPending(player)) {
                 finishFeverRuleResolution(player);
             }
             return;
@@ -2926,6 +2933,8 @@
         if (player.phase === 'idle') {
             // 퍼즐뿌요의 오른쪽 영역은 DAMAGE 예고만 보이고 방해뿌요를 실제로 떨어뜨리지 않는다.
             if (game?.puzzle) return;
+            // 연속 피버의 DAMAGE는 다음 피버 스테이지가 배치될 때까지 예고로만 남기며 방해뿌요를 생성하지 않는다.
+            if (game?.continuousFever) return;
             // 연습·플레이 방법에서는 연쇄와 그에 딸린 모든 에너지 이동이 끝난 뒤에만 방해뿌요를 떨어뜨린다.
             if (game?.practice && (opponent.combo > 0 || isResolutionPhase(opponent.phase) || opponent.allClearEffectElapsed > 0 || opponent.pendingAllClearDamage > 0 || hasPendingEnergyTransfers())) return;
             if (player.damage > 0) dropGarbage(player);
