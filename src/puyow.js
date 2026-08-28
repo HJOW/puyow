@@ -6543,6 +6543,23 @@
          */
         hint = '';
 
+        /**
+         * 숨김 여부, 숨겨진 스테이지는 화면에 출력되지 않는다.
+         * 
+         * @type {boolean}
+         */
+        hidden = false;
+
+        /**
+         * 이 퍼즐 스테이지 오픈 여부, 게임 중 변경되는 값이다.
+         * true 시 오픈됨, false 시 아직 오픈되지 않음
+         *     처음에는 첫 번째와 두 번째 스테이지만 오픈한다.
+         *     이전 스테이지를 클리어하면 다다음 (앞 2개) 스테이지를 오픈한다.
+         *     (예: 1, 2 스테이지가 오픈되어 있고 1 스테이지를 클리어한 경우, 2, 3 스테이지가 오픈되어야 하나 2 스테이지는 이미 오픈되었으므로 3 스테이지만 오픈한다.)
+         * @type {boolean}
+         */
+        opened = false;
+
         constructor(plainObject) {
             if(typeof(plainObject.stageData) != 'undefined') this.stageData = plainObject.stageData;
             if(typeof(plainObject.suppliedNextPuyos) != 'undefined') this.suppliedNextPuyos = plainObject.suppliedNextPuyos;
@@ -6550,7 +6567,9 @@
             if(typeof(plainObject.winConditionType) != 'undefined') this.winConditionType = plainObject.winConditionType;
             if(typeof(plainObject.winConditionValue) != 'undefined') this.winConditionValue = plainObject.winConditionValue;
             if(typeof(plainObject.hint) != 'undefined') this.hint = plainObject.hint;
+            if(typeof(plainObject.hidden) != 'undefined') this.hidden = plainObject.hidden;
             if(typeof(plainObject.uid) != 'undefined') this.uid = plainObject.uid;
+            if(typeof(plainObject.opened) != 'undefined') this.opened = plainObject.opened;
         }
     }
 
@@ -6566,7 +6585,8 @@
             turnLimit : 2,
             winConditionType : 'combo',
             winConditionValue : 3,
-            hint : '한 번만 회전해'
+            hint : '한 번만 회전해',
+            opened : true
         }),
         new PuzzlePuyoStage({
             stageData : {"puyos":[{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":3,"y":1,"color":"garbage"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"blue"},{"x":3,"y":2,"color":"blue"}]},
@@ -6574,7 +6594,32 @@
             turnLimit : 3,
             winConditionType : 'clear',
             winConditionValue : 0,
-            hint : '마지막 폭발은 초록색으로'
+            hint : '마지막 폭발은 초록색으로',
+            opened : true
+        }),
+        new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"purple"},{"x":5,"y":0,"color":"blue"},{"x":1,"y":1,"color":"garbage"},{"x":2,"y":1,"color":"green"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"purple"},{"x":5,"y":1,"color":"blue"},{"x":2,"y":2,"color":"red"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"blue"},{"x":3,"y":3,"color":"purple"},{"x":3,"y":4,"color":"purple"}]},
+            suppliedNextPuyos : [['blue', 'blue'], ['green', 'green'], ['blue', 'blue']],
+            turnLimit : 3,
+            winConditionType : 'combo',
+            winConditionValue : 5,
+            hint : '방해뿌요는 터뜨려야 제맛'
+        }),
+        new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":0,"y":0,"color":"garbage"},{"x":1,"y":0,"color":"garbage"},{"x":2,"y":0,"color":"garbage"},{"x":3,"y":0,"color":"garbage"},{"x":4,"y":0,"color":"garbage"},{"x":5,"y":0,"color":"garbage"},{"x":0,"y":1,"color":"red"},{"x":1,"y":1,"color":"red"},{"x":2,"y":1,"color":"garbage"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"red"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"garbage"},{"x":1,"y":2,"color":"garbage"},{"x":2,"y":2,"color":"red"},{"x":3,"y":2,"color":"garbage"},{"x":4,"y":2,"color":"garbage"},{"x":5,"y":2,"color":"garbage"},{"x":0,"y":3,"color":"red"},{"x":1,"y":3,"color":"garbage"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"garbage"},{"x":4,"y":3,"color":"red"},{"x":5,"y":3,"color":"garbage"},{"x":0,"y":4,"color":"garbage"},{"x":1,"y":4,"color":"red"},{"x":2,"y":4,"color":"garbage"},{"x":3,"y":4,"color":"garbage"},{"x":4,"y":4,"color":"red"},{"x":5,"y":4,"color":"red"},{"x":0,"y":5,"color":"garbage"},{"x":1,"y":5,"color":"red"},{"x":2,"y":5,"color":"red"},{"x":3,"y":5,"color":"garbage"},{"x":4,"y":5,"color":"garbage"},{"x":5,"y":5,"color":"garbage"},{"x":0,"y":6,"color":"red"},{"x":1,"y":6,"color":"garbage"},{"x":2,"y":6,"color":"garbage"},{"x":3,"y":6,"color":"red"},{"x":4,"y":6,"color":"red"},{"x":0,"y":7,"color":"garbage"},{"x":1,"y":7,"color":"red"},{"x":2,"y":7,"color":"red"},{"x":4,"y":7,"color":"garbage"},{"x":0,"y":8,"color":"red"},{"x":0,"y":9,"color":"red"}]},
+            suppliedNextPuyos : [['red', 'red'], ['red', 'red'], ['red', 'red'], ['red', 'red'], ['red', 'red'], ['red', 'red']],
+            turnLimit : 4,
+            winConditionType : 'clear',
+            winConditionValue : 0,
+            hint : '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?'
+        }),
+        new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"green"},{"x":5,"y":2,"color":"blue"},{"x":3,"y":3,"color":"green"},{"x":4,"y":3,"color":"purple"},{"x":5,"y":3,"color":"blue"},{"x":4,"y":4,"color":"red"},{"x":5,"y":4,"color":"green"},{"x":5,"y":5,"color":"green"},{"x":5,"y":6,"color":"purple"},{"x":5,"y":7,"color":"purple"},{"x":5,"y":8,"color":"purple"},{"x":5,"y":9,"color":"red"}]},
+            suppliedNextPuyos : [['red', 'red'], ['green', 'green']],
+            turnLimit : 2,
+            winConditionType : 'combo',
+            winConditionValue : 6,
+            hint : '저 위의 빨간 색은 왜 있을까?'
         })
     ];
 
