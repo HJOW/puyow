@@ -5063,15 +5063,29 @@
                 });
             } else {
                 context.fillStyle = '#0b202c'; context.fillRect(530, row.y - 19, 450, 38); context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(530, row.y - 19, 450, 38);
+                const characters = Array.from(row.value);
+                const textFieldX = 543;
+                const textFieldWidth = 424;
+                const cursorIndex = settingsEditing && settingsFocus === index ? settingsCursor : 0;
+                let visibleStart = 0;
+                while (visibleStart < cursorIndex && context.measureText(characters.slice(visibleStart, cursorIndex).join('')).width > textFieldWidth - 4) visibleStart += 1;
+                let visibleEnd = visibleStart;
+                while (visibleEnd < characters.length && context.measureText(characters.slice(visibleStart, visibleEnd + 1).join('')).width <= textFieldWidth) visibleEnd += 1;
+                context.save();
+                context.beginPath(); context.rect(textFieldX, row.y - 18, textFieldWidth, 36); context.clip();
                 const selection = settingsEditing && settingsFocus === index ? getSettingsTextSelectionRange() : null;
                 if (selection) {
-                    const characters = Array.from(row.value);
-                    const selectionX = 543 + context.measureText(characters.slice(0, selection[0]).join('')).width;
-                    const selectionWidth = context.measureText(characters.slice(selection[0], selection[1]).join('')).width;
-                    context.fillStyle = '#426f9e'; context.fillRect(selectionX, row.y - 13, selectionWidth, 21);
+                    const selectionStart = Math.max(selection[0], visibleStart);
+                    const selectionEnd = Math.min(selection[1], visibleEnd);
+                    if (selectionStart < selectionEnd) {
+                        const selectionX = textFieldX + context.measureText(characters.slice(visibleStart, selectionStart).join('')).width;
+                        const selectionWidth = context.measureText(characters.slice(selectionStart, selectionEnd).join('')).width;
+                        context.fillStyle = '#426f9e'; context.fillRect(selectionX, row.y - 13, selectionWidth, 21);
+                    }
                 }
-                context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(row.value || ' ', 543, row.y + 5);
-                if (settingsEditing && settingsFocus === index) { const cursorX = 543 + context.measureText(Array.from(row.value).slice(0, settingsCursor).join('')).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 13, 2, 21); }
+                context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(characters.slice(visibleStart, visibleEnd).join('') || ' ', textFieldX, row.y + 5);
+                if (settingsEditing && settingsFocus === index) { const cursorX = textFieldX + context.measureText(characters.slice(visibleStart, settingsCursor).join('')).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 13, 2, 21); }
+                context.restore();
             }
         });
         const apiTestEnabled = canRunAiApiTest();
