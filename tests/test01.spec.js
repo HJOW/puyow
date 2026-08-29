@@ -2236,3 +2236,24 @@ test('시뮬레이터 딱딱뿌요는 한 방향 폭발에 일반 방해뿌요�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState().board.puyos)).toEqual([{ x: 4, y: 0, color: 'garbage' }]);
 });
+
+test('portrait viewport rotates the canvas and converts click coordinates', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await expect.poll(() => page.evaluate(() => document.body.classList.contains('puyow-portrait'))).toBe(true);
+
+  const bounds = await page.locator('#webpuyo_canvas').evaluate((canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+  });
+  expect(bounds.width).toBeCloseTo(375, 1);
+  expect(bounds.height).toBeCloseTo(667, 1);
+
+  await enterMainMenu(page);
+  const logicalX = 640;
+  const logicalY = 525;
+  await page.mouse.click(
+    bounds.left + bounds.width * (1 - logicalY / 720),
+    bounds.top + bounds.height * logicalX / 1280
+  );
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+});

@@ -127,3 +127,15 @@ body.webpuyo {
 	touch-action: none;
 	width: 100%;
 }
+
+/* 세로 화면에서는 가로형 게임 화면을 시계 방향으로 돌려 화면을 채운다. */
+body.webpuyo.puyow-portrait main {
+	height: auto;
+	max-width: none;
+	width: min(100vh, 177.7777777778vw);
+}
+
+body.webpuyo.puyow-portrait canvas {
+	transform: rotate(90deg);
+	transform-origin: center;
+}

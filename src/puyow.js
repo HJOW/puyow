@@ -635,6 +635,31 @@
         return applyCanvasCoordinateTransform();
     }
 
+    /** 현재 뷰포트가 세로 방향인지 반환한다. @returns {boolean} 세로 방향 여부 */
+    function isPortraitViewport() {
+        return window.innerWidth < window.innerHeight;
+    }
+
+    /** 뷰포트 방향에 맞춰 게임 화면 회전 클래스를 갱신한다. @returns {void} */
+    function updateCanvasOrientation() {
+        document.body?.classList.toggle('puyow-portrait', isPortraitViewport());
+    }
+
+    /** 캔버스 입력 이벤트를 게임의 논리 좌표로 변환한다. @param {MouseEvent|PointerEvent} event 입력 이벤트 @returns {{x:number,y:number}} 게임 논리 좌표 */
+    function getCanvasEventCoordinates(event) {
+        const bounds = canvas.getBoundingClientRect();
+        if (isPortraitViewport()) {
+            return {
+                x: (event.clientY - bounds.top) * WIDTH / bounds.height,
+                y: (bounds.right - event.clientX) * HEIGHT / bounds.width
+            };
+        }
+        return {
+            x: (event.clientX - bounds.left) * WIDTH / bounds.width,
+            y: (event.clientY - bounds.top) * HEIGHT / bounds.height
+        };
+    }
+
     /** 갤러리에서 처음부터 공개할 항목을 만든다. @returns {{warning:string[],enemies:string[]}} */
     function createInitialGalleryUnlocks() {
         return { warning: ['tiny'], enemies: ['Andromalius'] };
@@ -4490,9 +4515,7 @@
     /** 포인터 이벤트를 가상 컨트롤러 입력으로 바꾼다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
     function updateVirtualPointer(event) {
         if (!shouldShowVirtualController()) return;
-        const bounds = canvas.getBoundingClientRect();
-        const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
-        const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
+        const { x, y } = getCanvasEventCoordinates(event);
         const pointerId = Number.isFinite(event.pointerId) ? event.pointerId : 0;
         const previous = virtualPointerButtons.get(pointerId) || [];
         const buttons = getVirtualControllerButtonsAt(x, y);
@@ -6528,9 +6551,7 @@
             return;
         }
         if (game?.tutorial) {
-            const bounds = canvas.getBoundingClientRect();
-            const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
-            const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
+            const { x, y } = getCanvasEventCoordinates(event);
             if (game.tutorial.mode === 'complete' && y >= 376 && y <= 440) {
                 if (x >= 470 && x <= 620) { playMenuSelectSound(); enterTutorialStage(1); }
                 else if (x >= 660 && x <= 810) closeTutorial();
@@ -6539,17 +6560,13 @@
         }
         // 결과 화면에서는 종료 버튼 영역 클릭만 메뉴 복귀로 처리한다.
         if (game && !game.running) {
-            const bounds = canvas.getBoundingClientRect();
-            const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
-            const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
+            const { x, y } = getCanvasEventCoordinates(event);
             if (x >= 515 && x <= 765 && y >= 165 && y <= 229) {
                 closeResultScreen();
             }
             return;
         }
-        const bounds = canvas.getBoundingClientRect();
-        const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
-        const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
+        const { x, y } = getCanvasEventCoordinates(event);
         // 일시정지 중에는 재개와 종료 버튼의 클릭만 처리한다.
         if (game && game.paused) {
             if (x >= 470 && x <= 620 && y >= 376 && y <= 440) {
@@ -7168,6 +7185,8 @@
         screenMessage = null;
         window.removeEventListener('keydown', handleKeydown);
         window.removeEventListener('keyup', handleKeyup);
+        window.removeEventListener('resize', updateCanvasOrientation);
+        window.removeEventListener('orientationchange', updateCanvasOrientation);
         canvas.removeEventListener('click', handleCanvasClick);
         canvas.removeEventListener('pointerdown', handleVirtualPointerDown);
         canvas.removeEventListener('pointermove', handleVirtualPointerMove);
@@ -7269,9 +7288,12 @@
         context = canvas.getContext('2d');
         if (!context) throw new Error('2D 캔버스 컨텍스트를 만들 수 없습니다.');
         applyCanvasOutputResolution();
+        updateCanvasOrientation();
         initialized = true;
         window.addEventListener('keydown', handleKeydown);
         window.addEventListener('keyup', handleKeyup);
+        window.addEventListener('resize', updateCanvasOrientation);
+        window.addEventListener('orientationchange', updateCanvasOrientation);
         canvas.addEventListener('click', handleCanvasClick);
         canvas.addEventListener('pointerdown', handleVirtualPointerDown);
         canvas.addEventListener('pointermove', handleVirtualPointerMove);
