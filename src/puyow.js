@@ -7875,12 +7875,12 @@
             hint : '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?'
         }),
         new PuzzlePuyoStage({
-            stageData : {"puyos":[{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"green"},{"x":5,"y":2,"color":"blue"},{"x":3,"y":3,"color":"green"},{"x":4,"y":3,"color":"purple"},{"x":5,"y":3,"color":"blue"},{"x":4,"y":4,"color":"red"},{"x":5,"y":4,"color":"green"},{"x":5,"y":5,"color":"green"},{"x":5,"y":6,"color":"purple"},{"x":5,"y":7,"color":"purple"},{"x":5,"y":8,"color":"purple"},{"x":5,"y":9,"color":"red"}]},
-            suppliedNextPuyos : [['red', 'red'], ['green', 'green']],
-            turnLimit : 2,
-            winConditionType : 'combo',
-            winConditionValue : 6,
-            hint : '저 위의 빨간 색은 왜 있을까?'
+            stageData : {"puyos":[{"x":0,"y":0,"color":"red"},{"x":1,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"red"},{"x":1,"y":1,"color":"red"},{"x":3,"y":1,"color":"blue"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"green"},{"x":1,"y":2,"color":"yellow"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"green"},{"x":5,"y":2,"color":"green"},{"x":0,"y":3,"color":"blue"},{"x":1,"y":3,"color":"blue"},{"x":3,"y":3,"color":"red"},{"x":4,"y":3,"color":"blue"},{"x":5,"y":3,"color":"green"},{"x":0,"y":4,"color":"blue"},{"x":1,"y":4,"color":"green"},{"x":3,"y":4,"color":"yellow"},{"x":4,"y":4,"color":"yellow"},{"x":5,"y":4,"color":"yellow"},{"x":0,"y":5,"color":"purple"},{"x":1,"y":5,"color":"blue"},{"x":3,"y":5,"color":"red"},{"x":4,"y":5,"color":"blue"},{"x":5,"y":5,"color":"green"},{"x":0,"y":6,"color":"red"},{"x":1,"y":6,"color":"purple"},{"x":3,"y":6,"color":"red"},{"x":4,"y":6,"color":"blue"},{"x":5,"y":6,"color":"blue"},{"x":0,"y":7,"color":"red"},{"x":1,"y":7,"color":"yellow"},{"x":3,"y":7,"color":"red"},{"x":4,"y":7,"color":"purple"},{"x":5,"y":7,"color":"green"},{"x":0,"y":8,"color":"red"},{"x":1,"y":8,"color":"blue"},{"x":3,"y":8,"color":"blue"},{"x":4,"y":8,"color":"purple"},{"x":5,"y":8,"color":"purple"},{"x":0,"y":9,"color":"green"},{"x":1,"y":9,"color":"green"},{"x":3,"y":9,"color":"yellow"},{"x":4,"y":9,"color":"green"},{"x":5,"y":9,"color":"green"},{"x":0,"y":10,"color":"purple"},{"x":1,"y":10,"color":"red"},{"x":3,"y":10,"color":"purple"},{"x":4,"y":10,"color":"red"},{"x":5,"y":10,"color":"green"},{"x":5,"y":11,"color":"blue"}]},
+            suppliedNextPuyos : [['green', 'yellow'], ['yellow', 'red'], ['green', 'green'], ['purple', 'green'], ['blue', 'green'], 'green', 'blue'],
+            turnLimit : 6,
+            winConditionType : 'clear',
+            winConditionValue : 0,
+            hint : '그냥 내려 봐'
         })
     ];
 
