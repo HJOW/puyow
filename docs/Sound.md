@@ -56,9 +56,13 @@ PuyoW.commonSoundPool.puyoBurstCombo1 = 'sounds/puyo-burst-1.ogg';
 PuyoW.commonSoundPool.backgroundMusic = 'sounds/common-bgm.ogg';
 ```
 
+추가 공통 효과음은 아래 속성으로 설정합니다. `loose`는 패배 연출 직전, `puyoFall`은 일반 뿌요가 착지할 때마다, `garbageFallLittle`은 한 번에 1~5개 방해뿌요가 착지할 때마다 재생됩니다. `garbageFallLot`은 한 번에 6개 이상이 착지할 때 재생하며, 이전 재생이 끝나기 전에는 중복 재생하지 않습니다.
+
+`combo3SpellEffect`, `combo4SpellEffect`, `combo5SpellEffect`, `combo6SpellEffect`는 각각 3·4·5·6연쇄 이상 공격 에너지가 상쇄 후 상대 필드에 도착했을 때 사용합니다. 적의 `spellCombo1`~`spellCombo7`이 비어 있으면 `commonEnemySpellCombo1`~`commonEnemySpellCombo7`이 같은 연쇄 번호의 대체 주문음으로 사용됩니다.
+
 ## 재생 규칙
 
-연쇄 번호가 7 이상이면 `spellCombo7` 또는 `puyoBurstCombo7`을 사용합니다. 적의 배경음악이 `null`일 때만 공통 배경음악을 대신 사용하며, 게임이 끝나면 배경음악은 자동으로 중지됩니다. 설정 화면의 배경음악·효과음 음량과 메인 화면의 음소거 상태가 모든 재생에 적용되고, 재생 오류는 `console.error`로 기록한 뒤 게임은 계속 진행됩니다.
+연쇄 번호가 7 이상이면 `spellCombo7`, `puyoBurstCombo7`, `commonEnemySpellCombo7`을 사용합니다. 적의 주문음은 전용 항목이 없을 때만 공통 적 주문음으로 대체됩니다. 적의 배경음악이 `null`일 때만 공통 배경음악을 대신 사용하며, 게임이 끝나면 배경음악은 자동으로 중지됩니다. 설정 화면의 배경음악·효과음 음량과 메인 화면의 음소거 상태가 모든 재생에 적용되고, 재생 오류는 `console.error`로 기록한 뒤 게임은 계속 진행됩니다.
 
 ---
 

@@ -1687,6 +1687,30 @@ test('새 게임의 마진 레이트는 70으로 시작한다', async ({ page })
   expect(await page.evaluate(() => window.WebPuyo.getGameState().marginRate)).toBe(70);
 });
 
+test('공통 사운드 풀은 시뮬레이터의 뿌요 착지·폭발·주문 효과음을 재생한다', async ({ page }) => {
+  await page.evaluate(() => {
+    window.WebPuyo.commonSoundPool.puyoFall = 'sounds/test-puyo-fall.ogg';
+    window.WebPuyo.commonSoundPool.puyoBurstCombo1 = 'sounds/test-puyo-burst.ogg';
+    window.WebPuyo.commonSoundPool.spellCombo1 = 'sounds/test-player-spell.ogg';
+  });
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  await page.evaluate(() => {
+    window.prompt = () => JSON.stringify({ puyos: [
+      { x: 0, y: 0, color: 'red' }, { x: 0, y: 1, color: 'red' }, { x: 0, y: 2, color: 'red' }, { x: 0, y: 12, color: 'red' },
+    ] });
+  });
+  const canvas = page.locator('#webpuyo_canvas');
+  await canvas.click({ position: { x: 960, y: 440 } });
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
+    'sounds/test-puyo-fall.ogg', 'sounds/test-puyo-burst.ogg', 'sounds/test-player-spell.ogg',
+  ]));
+});
+
 test('시뮬레이터 연쇄는 새 점수 계산식과 같은 연쇄 문구를 표시한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');

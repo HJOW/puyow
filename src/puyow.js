@@ -292,6 +292,8 @@
     let backgroundMusicAudio = null;
     /** 현재 배경음악 요소가 재생하는 음원 URL이다. @type {string|null} */
     let backgroundMusicUrl = null;
+    /** 대량 방해뿌요 착지음의 중복 재생을 막기 위해 보관하는 오디오다. @type {HTMLAudioElement|null} */
+    let garbageFallLotAudio = null;
     /** 초기 타이틀을 벗어나 브라우저가 재생을 허용하는 사용자 조작이 발생했는지 여부다. @type {boolean} */
     let hasUserStarted = false;
     /** 메인 화면 왼쪽에 표시할 안내문 원문이다. @type {string} */
@@ -1068,6 +1070,37 @@
         }
     }
 
+    /** 대량 방해뿌요 착지음이 아직 재생 중이면 중복 재생하지 않는다. @param {string|null|undefined} url 음원 URL @returns {void} */
+    function playGarbageFallLotSound(url) {
+        if (url === null || url === undefined || url === '' || typeof Audio === 'undefined' || getAudioVolume('effects') <= 0) return;
+        if (garbageFallLotAudio && !garbageFallLotAudio.paused && !garbageFallLotAudio.ended) return;
+        try {
+            const audio = new Audio(convertURL(url));
+            audio.volume = getAudioVolume('effects');
+            garbageFallLotAudio = audio;
+            const clearAudio = () => { if (garbageFallLotAudio === audio) garbageFallLotAudio = null; };
+            if (typeof audio.addEventListener === 'function') audio.addEventListener('ended', clearAudio, { once: true });
+            const result = audio.play();
+            if (result && typeof result.catch === 'function') result.catch((error) => {
+                clearAudio();
+                console.error('대량 방해뿌요 착지 효과음 재생에 실패했습니다.', error);
+            });
+        } catch (error) {
+            garbageFallLotAudio = null;
+            console.error('대량 방해뿌요 착지 효과음 재생에 실패했습니다.', error);
+        }
+    }
+
+    /** 중력 애니메이션으로 떨어진 뿌요들의 착지 효과음을 재생한다. @param {{color:string}[]} falling 착지한 뿌요 목록 @returns {void} */
+    function playGravityLandingSounds(falling) {
+        if (!Array.isArray(falling) || !falling.length) return;
+        const normalPuyoCount = falling.filter((puyo) => COLORS.includes(puyo.color)).length;
+        const garbageCount = falling.filter((puyo) => puyo.color === 'garbage').length;
+        for (let index = 0; index < normalPuyoCount; index += 1) playSound(commonSoundPool?.puyoFall, 'effects', '뿌요 착지 효과음');
+        if (garbageCount >= 6) playGarbageFallLotSound(commonSoundPool?.garbageFallLot);
+        else for (let index = 0; index < garbageCount; index += 1) playSound(commonSoundPool?.garbageFallLittle, 'effects', '방해뿌요 착지 효과음');
+    }
+
     /** 현재 배경음악을 중지하고 재생 위치를 초기화한다. @returns {void} */
     function stopBackgroundMusic() {
         if (!backgroundMusicAudio) return;
@@ -1191,7 +1224,16 @@
         const spellPool = player.controller ? player.controller.soundPool : commonSoundPool;
         const combo = player.combo;
         playSound(getComboSoundUrl(commonSoundPool, 'puyoBurstCombo', combo), 'effects', '뿌요 폭발 효과음');
-        playSound(getComboSoundUrl(spellPool, 'spellCombo', combo), 'effects', '연쇄 주문 효과음');
+        const spellUrl = getComboSoundUrl(spellPool, 'spellCombo', combo)
+            || (player.controller ? getComboSoundUrl(commonSoundPool, 'commonEnemySpellCombo', combo) : null);
+        playSound(spellUrl, 'effects', '연쇄 주문 효과음');
+    }
+
+    /** 3연쇄 이상 공격 에너지가 상대 필드에 도착했을 때의 공통 효과음을 재생한다. @param {number|null|undefined} combo 연쇄 번호 @returns {void} */
+    function playComboSpellEffect(combo) {
+        if (!Number.isFinite(combo) || combo < 3) return;
+        const index = Math.max(3, Math.min(6, Math.floor(combo)));
+        playSound(commonSoundPool?.[`combo${index}SpellEffect`], 'effects', `${index}연쇄 공격 도착 효과음`);
     }
 
     /**
@@ -2119,9 +2161,11 @@
             game.puzzle.pendingWarningAmount = 0;
         }
         // 숨김 행을 포함해 유효한 필드 좌표에만 뿌요를 고정한다.
-        activeCells(player.active).forEach((cell) => {
+        const lockedPuyos = activeCells(player.active).filter((cell) => cell.y >= 0 && cell.y < ROWS);
+        lockedPuyos.forEach((cell) => {
             if (cell.y >= 0 && cell.y < ROWS) player.board[cell.y][cell.x] = cell.color;
         });
+        playGravityLandingSounds(lockedPuyos);
         player.placedPairCount += 1;
         player.hasPlacedPuyoSinceAllClear = true;
         player.active = null;
@@ -2622,7 +2666,10 @@
         // 연쇄 중에는 에너지만 상대 천장까지 보낸다. 도착 시 예고뿌요만 갱신하고 DAMAGE는 정산하지 않는다.
         if (cancelledOpponentAttack || cancelledDamage || cancelledNormalDamage || remaining) {
             const energy = queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledOpponentAttack, 0, remaining > 0, Math.floor(player.attack), true);
-            if (remaining > 0) player.lastAttackTransfer = energy;
+            if (remaining > 0 && energy) {
+                energy.spellEffectCombo = player.combo;
+                player.lastAttackTransfer = energy;
+            }
         }
     }
 
@@ -2693,7 +2740,7 @@
         if (cancelledDamage || cancelledAttack) route.push({ target: ownTarget, kind: 'cancel', amount: cancelledDamage, attackAmount: cancelledAttack, arcDirection: 'up' });
         if (delivered || travelToOpponent) route.push({ target: opponentTarget, kind: 'damage', amount: delivered, previewAmount, arcDirection: (cancelledDamage || cancelledAttack) ? 'down' : startsAtExplosion ? 'up' : 'down' });
         if (!route.length) return null;
-        const energy = { player, opponent, position: source, route, routeIndex: 0, elapsed: 0, fading: false, finalDamageAmount: 0 };
+        const energy = { player, opponent, position: source, route, routeIndex: 0, elapsed: 0, fading: false, finalDamageAmount: 0, spellEffectCombo: null, spellEffectPlayed: false };
         energyTransfers.push(energy);
         return energy;
     }
@@ -2738,6 +2785,10 @@
                 if (segment.amount) {
                     energy.opponent.damage += segment.amount;
                     energy.player.announcedAttack = 0;
+                }
+                if (energy.spellEffectCombo !== null && !energy.spellEffectPlayed) {
+                    playComboSpellEffect(energy.spellEffectCombo);
+                    energy.spellEffectPlayed = true;
                 }
             }
             energy.routeIndex += 1;
@@ -2803,6 +2854,7 @@
         }));
         loser.active = null;
         loser.phase = 'defeated';
+        playSound(commonSoundPool?.loose, 'effects', '패배 효과음');
         game.ending = {
             loser,
             winner,
@@ -3120,7 +3172,9 @@
             }
             player.gravityAnimation.elapsed += delta;
             if (player.gravityAnimation.elapsed >= player.gravityAnimation.duration) {
+                const falling = player.gravityAnimation.falling;
                 player.gravityAnimation = null;
+                playGravityLandingSounds(falling);
                 player.phase = player.gravityNextPhase;
             }
             return;
@@ -5147,6 +5201,7 @@
         const resolution = getExplosionResolution(player.board, exploding);
         applyExplosionResolution(player.board, resolution);
         player.combo += 1;
+        playComboSounds(player);
         const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
         player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
         const point = calculateExplosionPoint(explosionGroups, player.combo, resolution.brokenHardGarbageCount);
@@ -5171,7 +5226,13 @@
             return;
         }
         if (player.phase === 'gravity') {
-            if (player.gravityAnimation) { player.gravityAnimation.elapsed += delta; if (player.gravityAnimation.elapsed < player.gravityAnimation.duration) return; player.gravityAnimation = null; }
+            if (player.gravityAnimation) {
+                player.gravityAnimation.elapsed += delta;
+                if (player.gravityAnimation.elapsed < player.gravityAnimation.duration) return;
+                const falling = player.gravityAnimation.falling;
+                player.gravityAnimation = null;
+                playGravityLandingSounds(falling);
+            }
             if (!explodeSimulatorPuyos()) {
                 deliverFinalAttackEnergy(player, simulator.target);
                 player.combo = 0;
