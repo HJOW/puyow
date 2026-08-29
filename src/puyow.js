@@ -6966,6 +6966,98 @@
         puyoBurstCombo7 = null;
 
         /**  
+         * 패배 조건 발생 시 패배 연출 (베젤 무너지는 효과) 직전 재생
+         * @type {string|null}
+         */
+        loose = null;
+
+        /**  
+         * 뿌요들 (방해뿌요 제외) 낙하가 종료 (땅 혹은 다른 뿌요에 닿아서) 시 재생 - 닿을 때마다 재생 (동시 재생 가능성이 높음에 유의 !)
+         * @type {string|null}
+         */
+        puyoFall = null;
+
+        /**  
+         * 방해뿌요가 낙하가 종료 (땅 혹은 다른 뿌요에 닿아서) 시 재생 (방해뿌요 갯수가 1~5개일 때) - 닿을 때마다 재생 (동시 재생 가능성이 높음에 유의 !)
+         * @type {string|null}
+         */
+        garbageFallLittle = null;
+
+        /**  
+         * 방해뿌요가 낙하가 종료 (땅 혹은 다른 뿌요에 닿아서) 시 재생 (방해뿌요 갯수가 6개 이상일 때) - 닿을 때마다 재생 (단 이 효과음이 이미 재생중인 경우는 건너뛴다.)
+         * @type {string|null}
+         */
+        garbageFallLot = null;
+
+        /**  
+         * 3연쇄 때의 에너지 이동 효과가 최종 목적지에 도착했을 때
+         *     이 연쇄째 공격 ATTACK 수치 차감 계산 시 자신의 피해 DAMAGE 와 상대의 공격 ATTACK 모두를 차감하고도 남았는지 체크하여
+         *     1 이상 남은 경우 재생
+         * @type {string|null}
+         */
+        combo3SpellEffect = null;
+
+        /**  
+         * 4연쇄 때의 에너지 이동 효과가 최종 목적지에 도착했을 때
+         *     이 연쇄째 공격 ATTACK 수치 차감 계산 시 자신의 피해 DAMAGE 와 상대의 공격 ATTACK 모두를 차감하고도 남았는지 체크하여
+         *     1 이상 남은 경우 재생
+         * @type {string|null}
+         */
+        combo4SpellEffect = null;
+
+        /**  
+         * 5연쇄 때의 에너지 이동 효과가 최종 목적지에 도착했을 때
+         *     이 연쇄째 공격 ATTACK 수치 차감 계산 시 자신의 피해 DAMAGE 와 상대의 공격 ATTACK 모두를 차감하고도 남았는지 체크하여
+         *     1 이상 남은 경우 재생
+         * @type {string|null}
+         */
+        combo5SpellEffect = null;
+
+        /**  
+         * 6 이상의 매 연쇄마다, 에너지 이동 효과가 최종 목적지에 도착했을 때
+         *     이 연쇄째 공격 ATTACK 수치 차감 계산 시 자신의 피해 DAMAGE 와 상대의 공격 ATTACK 모두를 차감하고도 남았는지 체크하여
+         *     1 이상 남은 경우 재생
+         * @type {string|null}
+         */
+        combo6SpellEffect = null;
+
+        /**  
+         * 1연쇄 발생 시 적이 말하는 주문 효과음. (해당 적의 SoundPool 의 spellCombo1 이 null일 때 대신 사용, null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        commonEnemySpellCombo1 = null;
+        /**  
+         * 2연쇄 발생 시 적이 말하는 주문 효과음. (해당 적의 SoundPool 의 spellCombo2 이 null일 때 대신 사용, null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        commonEnemySpellCombo2 = null;
+        /**  
+         * 3연쇄 발생 시 적이 말하는 주문 효과음. (해당 적의 SoundPool 의 spellCombo3 이 null일 때 대신 사용, null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        commonEnemySpellCombo3 = null;
+        /**  
+         * 4연쇄 발생 시 적이 말하는 주문 효과음. (해당 적의 SoundPool 의 spellCombo4 이 null일 때 대신 사용, null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        commonEnemySpellCombo4 = null;
+        /**  
+         * 5연쇄 발생 시 적이 말하는 주문 효과음. (해당 적의 SoundPool 의 spellCombo5 이 null일 때 대신 사용, null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        commonEnemySpellCombo5 = null;
+        /**  
+         * 6연쇄 발생 시 적이 말하는 주문 효과음. (해당 적의 SoundPool 의 spellCombo6 이 null일 때 대신 사용, null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        commonEnemySpellCombo6 = null;
+        /**  
+         * 7연쇄 발생 시 적이 말하는 주문 효과음. (해당 적의 SoundPool 의 spellCombo7 이 null일 때 대신 사용, null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * @type {string|null}
+         */
+        commonEnemySpellCombo7 = null;
+
+        /**  
          * 전투 중이 아닌 상황에서 재생되는 배경 음악, null 인 경우 해당 상황에서 소리가 나지 않는다.
          *     배경 음악이므로 반복되어야 한다.
          * @type {string|null}
