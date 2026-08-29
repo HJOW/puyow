@@ -522,7 +522,10 @@ test('setEnemySoundPool은 getClassType에 해당하는 새 적의 사운드 풀
 });
 
 test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 피버 스테이지를 시작한다', async ({ page }) => {
-  await page.evaluate(() => { window.WebPuyo.commonSoundPool.feverEnter = 'sounds/test-fever-enter.ogg'; });
+  await page.evaluate(() => {
+    window.WebPuyo.commonSoundPool.feverEnter = 'sounds/test-fever-enter.ogg';
+    window.WebPuyo.commonSoundPool.feverBackgroundMusic = 'sounds/test-continuous-fever-bgm.ogg';
+  });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
@@ -553,7 +556,7 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
   const feverState = await page.evaluate(() => window.WebPuyo.getGameState());
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
-    'sounds/test-fever-enter.ogg',
+    'sounds/test-fever-enter.ogg', 'sounds/test-continuous-fever-bgm.ogg',
   ]));
   expect(feverState.fever.turn).toBe(1);
   expect(feverState.fever.selectedStageTarget).toBe(5);
@@ -1141,6 +1144,8 @@ test('피버 룰의 시간 만료 연쇄는 상대 방해뿌요 낙하를 기다
 
 test('피버 룰은 DAMAGE 전달 뒤 상대 방해뿌요 낙하를 기다리지 않고 다음 피버 스테이지를 준비한다', async ({ page }) => {
   await page.evaluate(() => {
+    window.WebPuyo.commonSoundPool.backgroundMusic = 'sounds/test-normal-bgm.ogg';
+    window.WebPuyo.commonSoundPool.feverBackgroundMusic = 'sounds/test-fever-bgm.ogg';
     class FeverNextStageBeforeGarbageEnemy extends window.WebPuyo.Enemy {
       constructor() { super(); this.sortPriority = -1; this.prepared = false; }
       getClassType() { return 'FeverNextStageBeforeGarbageEnemy'; }
@@ -1177,6 +1182,9 @@ test('피버 룰은 DAMAGE 전달 뒤 상대 방해뿌요 낙하를 기다리지
       && state.opponent.fever?.active === true
       && state.opponent.fever.selectedStageTarget === 4;
   }), { timeout: 10000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.some((audio) => (
+    audio.src === 'sounds/test-fever-bgm.ogg' && !audio.paused
+  )))).toBe(true);
 });
 
 test('연속 피버는 다음 스테이지 배치 때 DAMAGE 예고를 없애고 방해뿌요를 생성하지 않는다', async ({ page }) => {

@@ -460,7 +460,7 @@
     class StorageManager {
         /**
          * 스토리지에 저장된 데이터를 읽어 반환, 해당 데이터가 존재하지 않으면 null 반환
-         * 
+         *
          * @param {string} key 데이터의 키
          * @returns {string|null} 데이터
          */
@@ -979,6 +979,9 @@
             if(commonObj.puyoBurstCombo5) commonSoundPool.puyoBurstCombo5 = commonObj.puyoBurstCombo5;
             if(commonObj.puyoBurstCombo6) commonSoundPool.puyoBurstCombo6 = commonObj.puyoBurstCombo6;
             if(commonObj.puyoBurstCombo7) commonSoundPool.puyoBurstCombo7 = commonObj.puyoBurstCombo7;
+            if(commonObj.backgroundMusic) commonSoundPool.backgroundMusic = commonObj.backgroundMusic;
+            if(commonObj.otherBackgroundMusic) commonSoundPool.otherBackgroundMusic = commonObj.otherBackgroundMusic;
+            if(commonObj.feverBackgroundMusic) commonSoundPool.feverBackgroundMusic = commonObj.feverBackgroundMusic;
         }
         if(soundDataJson.player) {
             const playerObj = soundDataJson.player;
@@ -1288,7 +1291,10 @@
                 startOtherBackgroundMusic();
                 return;
             }
-            if (game.tutorial) startGameBackgroundMusic(null, true);
+            const feverMusicActive = game.continuousFever
+                || (game.feverRule && game.players.some((player) => player.fever?.active));
+            if (feverMusicActive) startBackgroundMusic(commonSoundPool?.feverBackgroundMusic);
+            else if (game.tutorial) startGameBackgroundMusic(null, true);
             else startGameBackgroundMusic(game.practice ? null : game.themeController, game.practice);
             if (game.paused) pauseBackgroundMusic();
             else resumeBackgroundMusic();
@@ -7367,6 +7373,15 @@
          * @type {string|null}
          */
         otherBackgroundMusic = null;
+
+        /**
+         * 연속 피버 모드, 혹은 피버 룰에서 플레이어 혹은 적 둘 중 하나라도 피버 상태에 있을 때 기존 배경음악 대신 재생되는 배경음악
+         *     배경 음악이므로 반복되어야 한다.
+         *     (피버 상태가 끝나면 바로 이전 배경음악으로 돌아가야 한다.)
+         *
+         * @type {string|null}
+         */
+        feverBackgroundMusic = null;
 
         constructor() { super(); }
     }

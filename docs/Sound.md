@@ -12,6 +12,9 @@
 // 이 예제의 URL들은 실제로 존재하는 URL이 아닙니다. 실제 URL로 바꾸어 사용하세요.
 window.PuyoW.applySoundDataJson({
     common : {
+        clears : 'https://puyowsound.com/common/clears.ogg', // 싹쓸이 효과음
+        feverEnter : 'https://puyowsound.com/common/feverEnter.ogg', // 피버 모드 진입 효과음
+        feverLightOn : 'https://puyowsound.com/common/feverLightOn.ogg', // 피버 등 점등 효과음
         focusMoves : 'https://puyowsound.com/common/focusMoves.ogg', // 게임 내에서 버튼이나 선택지 커서(포커스) 이동 시 재생
         selects : 'https://puyowsound.com/common/selects.ogg', // 게임 내에서 버튼이나 선택지 선택 시 재생
         cancels : 'https://puyowsound.com/common/cancels.ogg', // 게임 내에서 버튼이나 선택지 취소 시 재생
@@ -31,7 +34,10 @@ window.PuyoW.applySoundDataJson({
 		puyoBurstCombo4 : 'https://puyosound.com/common/puyoBurstCombo4.ogg', // 4연쇄째 뿌요 폭발음
 		puyoBurstCombo5 : 'https://puyosound.com/common/puyoBurstCombo5.ogg', // 5연쇄째 뿌요 폭발음
 		puyoBurstCombo6 : 'https://puyosound.com/common/puyoBurstCombo6.ogg', // 6연쇄째 뿌요 폭발음
-		puyoBurstCombo7 : 'https://puyosound.com/common/puyoBurstCombo7.ogg'  // 7연쇄 이상의 뿌요 폭발음
+		puyoBurstCombo7 : 'https://puyosound.com/common/puyoBurstCombo7.ogg', // 7연쇄 이상의 뿌요 폭발음
+        backgroundMusic : 'https://puyosound.com/common/backgroundMusic.mp3', // 게임 중 기본 배경음악 (기본값으로만 사용되며, 개별 적마다 따로 지정되면 이 값은 우선순위 떨어짐)
+        feverBackgroundMusic : 'https://puyosound.com/common/feverBackgroundMusic.mp3', // 피버 진입 상태에서의 배경음악
+        otherBackgroundMusic : 'https://puyosound.com/common/otherBackgroundMusic.mp3'  // 게임 중이 아닐 때 (메인 메뉴, 적 선택 중과 같이...)의 배경음악
 	},
 	player : {
 		spellCombo1 : 'https://puyosound.com/player/spellCombo1.ogg', // 플레이어의 1연쇄 주문음
