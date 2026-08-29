@@ -420,7 +420,7 @@ test('그래픽 설정은 키보드와 마우스로 저장되며 캔버스 출�
   await openSettings(page);
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
-  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => [document.querySelector('#webpuyo_canvas').width, document.querySelector('#webpuyo_canvas').height])).toEqual([1920, 1080]);
   expect(await page.evaluate(() => ({
@@ -451,7 +451,7 @@ test('가상 컨트롤러 크기는 이전 저장값을 호환하고 키보드�
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.virtualController)).toBe('large');
 
@@ -459,7 +459,7 @@ test('가상 컨트롤러 크기는 이전 저장값을 호환하고 키보드�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await page.locator('#webpuyo_canvas').click({ position: { x: 595, y: 245 } });
-  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.virtualController)).toBe('none');
 });
@@ -2237,7 +2237,7 @@ test('시뮬레이터 딱딱뿌요는 한 방향 폭발에 일반 방해뿌요�
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState().board.puyos)).toEqual([{ x: 4, y: 0, color: 'garbage' }]);
 });
 
-test('portrait viewport rotates the canvas and converts click coordinates', async ({ page }) => {
+test('세로 화면에서는 캔버스를 회전하고 클릭 좌표를 변환한다', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await expect.poll(() => page.evaluate(() => document.body.classList.contains('puyow-portrait'))).toBe(true);
 
@@ -2256,4 +2256,43 @@ test('portrait viewport rotates the canvas and converts click coordinates', asyn
     bounds.top + bounds.height * logicalX / 1280
   );
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+});
+
+test('화면 가로방향 고정은 저장되며 세로 화면 입력도 회전하지 않는다', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await openSettings(page);
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.landscapeOrientationLocked)).toBe(true);
+  expect(await page.evaluate(() => document.body.classList.contains('puyow-portrait'))).toBe(false);
+
+  const bounds = await page.locator('#webpuyo_canvas').evaluate((canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+  });
+  expect(bounds.width).toBeCloseTo(375, 1);
+  expect(bounds.height).toBeCloseTo(375 * 9 / 16, 1);
+
+  await page.mouse.click(bounds.left + bounds.width / 2, bounds.top + bounds.height * 525 / 720);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+});
+
+test('변경된 사운드 데이터 URL을 저장하면 즉시 사운드 데이터를 다시 불러온다', async ({ page }) => {
+  let requestedUrl = null;
+  await page.route('https://sound.example/**', async (route) => {
+    requestedUrl = route.request().url();
+    await route.fulfill({ status: 200, contentType: 'application/javascript', body: '' });
+  });
+
+  await openSettings(page);
+  await page.locator('#webpuyo_canvas').click({ position: { x: 600, y: 345 } });
+  await page.keyboard.type('https://sound.example/sounds_[LANG].json');
+  await page.keyboard.press('Enter');
+  await page.locator('#webpuyo_canvas').click({ position: { x: 460, y: 648 } });
+
+  await expect.poll(() => requestedUrl).toBe('https://sound.example/sounds_en.json');
 });

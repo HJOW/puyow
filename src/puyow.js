@@ -554,7 +554,7 @@
             clearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             puzzleClearStages: [],
-            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, soundDataURL: '', aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
+            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, soundDataURL: '', aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
     }
@@ -587,6 +587,11 @@
         if (value === true) return 'normal';
         if (value === false) return 'none';
         return VIRTUAL_CONTROLLER_OPTIONS.some((option) => option.key === value) ? value : 'none';
+    }
+
+    /** 가로 방향 고정 저장값을 불리언으로 정규화한다. @param {unknown} value 저장값 @returns {boolean} 가로 방향 고정 여부 */
+    function normalizeLandscapeOrientationLocked(value) {
+        return value === true;
     }
 
     /**
@@ -635,20 +640,20 @@
         return applyCanvasCoordinateTransform();
     }
 
-    /** 현재 뷰포트가 세로 방향인지 반환한다. @returns {boolean} 세로 방향 여부 */
-    function isPortraitViewport() {
-        return window.innerWidth < window.innerHeight;
+    /** 현재 뷰포트에서 게임 화면을 회전해야 하는지 반환한다. @returns {boolean} 화면 회전 여부 */
+    function shouldRotateCanvasForViewport() {
+        return window.innerWidth < window.innerHeight && !store?.settings?.landscapeOrientationLocked;
     }
 
     /** 뷰포트 방향에 맞춰 게임 화면 회전 클래스를 갱신한다. @returns {void} */
     function updateCanvasOrientation() {
-        document.body?.classList.toggle('puyow-portrait', isPortraitViewport());
+        document.body?.classList.toggle('puyow-portrait', shouldRotateCanvasForViewport());
     }
 
     /** 캔버스 입력 이벤트를 게임의 논리 좌표로 변환한다. @param {MouseEvent|PointerEvent} event 입력 이벤트 @returns {{x:number,y:number}} 게임 논리 좌표 */
     function getCanvasEventCoordinates(event) {
         const bounds = canvas.getBoundingClientRect();
-        if (isPortraitViewport()) {
+        if (shouldRotateCanvasForViewport()) {
             return {
                 x: (event.clientY - bounds.top) * WIDTH / bounds.height,
                 y: (bounds.right - event.clientX) * HEIGHT / bounds.width
@@ -960,6 +965,7 @@
                 // 이전 켜기/끄기 불리언 저장값도 각각 보통/없음으로 유지한다.
                 virtualController: getVirtualControllerOption(settings.virtualController),
                 graphicsQuality: getGraphicsQualityOption(settings.graphicsQuality).key,
+                landscapeOrientationLocked: normalizeLandscapeOrientationLocked(settings.landscapeOrientationLocked),
                 soundDataURL: normalizeSoundDataURL(settings.soundDataURL),
                 // 이전 Google 설정값은 더 이상 선택할 수 없으므로 기본 제공자인 OpenAI로 정규화한다.
                 aiProvider: AI_SERVICE_PROVIDERS.includes(settings.aiProvider) ? settings.aiProvider : initial.settings.aiProvider,
@@ -4866,10 +4872,16 @@
         clearSettingsApiTest();
         settingsDraft.playerName = normalizePlayerName(settingsDraft.playerName);
         settingsDraft.soundDataURL = normalizeSoundDataURL(settingsDraft.soundDataURL);
+        const soundDataURLChanged = soundDataURL !== settingsDraft.soundDataURL;
         store.settings = { ...settingsDraft };
         saveStore();
         applyCanvasOutputResolution();
+        updateCanvasOrientation();
         updateBackgroundMusicVolume();
+        if (soundDataURLChanged) {
+            soundDataURL = settingsDraft.soundDataURL;
+            void loadSoundDataURL();
+        }
         settingsDraft = null; settingsEditing = false; clearSettingsTextSelection();
         menuScreen = 'title'; loadNotice();
     }
@@ -4904,6 +4916,7 @@
         settingsResetting = true;
         store = createInitialStore();
         applyCanvasOutputResolution();
+        updateCanvasOrientation();
         galleryUnlocks = createInitialGalleryUnlocks();
         initialGalleryPreview = { loaded: false, items: [], startIndex: 0, elapsed: 0 };
         game = null;
@@ -4947,7 +4960,7 @@
 
     /** API 테스트 실행 가능 여부를 반영한 설정 화면 포커스 순서를 만든다. @returns {number[]} 포커스 인덱스 목록 */
     function getSelectableSettingsFocuses() {
-        return [0, 1, 2, 3, 4, 5, 6, 7, 8, ...(canRunAiApiTest() ? [9] : []), 10, 11, 12];
+        return [0, 1, 2, 3, 4, 5, 6, 7, 8, ...(canRunAiApiTest() ? [9] : []), 10, 11, 12, 13];
     }
 
     /** 설정 화면에서 다음 또는 이전 포커스로 이동한다. @param {number} direction 이동 방향 @returns {void} */
@@ -5042,60 +5055,60 @@
             const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
             settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + 1) % GRAPHICS_QUALITY_OPTIONS.length].key;
         } else if (settingsFocus === 9 && canRunAiApiTest()) { playMenuSelectSound(); runAiApiTest(); }
-        else if (settingsFocus === 10) saveSettings();
-        else if (settingsFocus === 11) cancelSettings();
-        else if (settingsFocus === 12) resetAllSettings();
+        else if (settingsFocus === 10) { playMenuSelectSound(); settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
+        else if (settingsFocus === 11) saveSettings();
+        else if (settingsFocus === 12) cancelSettings();
+        else if (settingsFocus === 13) resetAllSettings();
     }
 
     /** 설정 화면을 그린다. @returns {void} */
     function drawSettings() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `38px ${TITLE_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 56);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `34px ${TITLE_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 52);
         const rows = [
             { label: '이름', y: 95, value: settingsDraft.playerName, kind: 'text' },
-            { label: '배경음악 볼륨', y: 105, value: settingsDraft.musicVolume, kind: 'slider' },
-            { label: '효과음 볼륨', y: 155, value: settingsDraft.effectsVolume, kind: 'slider' },
-            { label: '가상 컨트롤러 사용', y: 205, value: settingsDraft.virtualController, kind: 'radio', options: VIRTUAL_CONTROLLER_OPTIONS.map((option, optionIndex) => ({ label: option.label, value: option.key, x: 530 + optionIndex * 150, width: 130 })) },
-            { label: '그래픽 설정', y: 255, value: settingsDraft.graphicsQuality, kind: 'radio', options: GRAPHICS_QUALITY_OPTIONS.map((option, optionIndex) => ({ label: option.label, value: option.key, x: 530 + optionIndex * 150, width: 130 })) },
-            { label: '사운드 데이터 URL', y: 305, value: settingsDraft.soundDataURL, kind: 'text' },
-            { label: 'AI 서비스 제공자', y: 355, value: settingsDraft.aiProvider, kind: 'provider' },
-            { label: 'AI API 키', y: 405, value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
-            { label: '사용 모델명', y: 455, value: settingsDraft.aiModel, kind: 'text' }
+            { label: '배경음악 볼륨', y: 145, value: settingsDraft.musicVolume, kind: 'slider' },
+            { label: '효과음 볼륨', y: 195, value: settingsDraft.effectsVolume, kind: 'slider' },
+            { label: '가상 컨트롤러 사용', y: 245, value: settingsDraft.virtualController, kind: 'radio', options: VIRTUAL_CONTROLLER_OPTIONS.map((option, optionIndex) => ({ label: option.label, value: option.key, x: 530 + optionIndex * 145, width: 125 })) },
+            { label: '그래픽 설정', y: 295, value: settingsDraft.graphicsQuality, kind: 'radio', options: GRAPHICS_QUALITY_OPTIONS.map((option, optionIndex) => ({ label: option.label, value: option.key, x: 530 + optionIndex * 145, width: 125 })) },
+            { label: '사운드 데이터 URL', y: 345, value: settingsDraft.soundDataURL, kind: 'text' },
+            { label: 'AI 서비스 제공자', y: 395, value: settingsDraft.aiProvider, kind: 'provider' },
+            { label: 'AI API 키', y: 445, value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
+            { label: '사용 모델명', y: 495, value: settingsDraft.aiModel, kind: 'text' }
         ];
-        rows.slice(1).forEach((row) => { row.y += 40; });
         rows.forEach((row, index) => {
-            context.textAlign = 'left'; context.fillStyle = '#d8f2f5'; context.font = `15px ${BUTTON_FONT}`; context.fillText(translate(row.label), 270, row.y + 5);
+            context.textAlign = 'left'; context.fillStyle = '#d8f2f5'; context.font = `13px ${BUTTON_FONT}`; context.fillText(translate(row.label), 280, row.y + 4);
             const focused = settingsFocus === index;
             if (row.kind === 'slider') {
-                context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(530, row.y - 10, 390, 20);
-                context.fillStyle = '#4cc9b0'; context.fillRect(532, row.y - 8, 386 * row.value / 100, 16);
-                context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 958, row.y + 5);
+                context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(540, row.y - 8, 360, 16);
+                context.fillStyle = '#4cc9b0'; context.fillRect(542, row.y - 6, 356 * row.value / 100, 12);
+                context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 915, row.y + 4);
             } else if (row.kind === 'radio') {
                 row.options.forEach((option) => {
                     const selected = row.value === option.value;
-                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(option.x, row.y - 19, option.width, 38);
-                    context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(option.x, row.y - 19, option.width, 38);
-                    context.beginPath(); context.arc(option.x + 20, row.y, 7, 0, Math.PI * 2); context.fillStyle = '#d8f2f5'; context.strokeStyle = '#d8f2f5'; context.lineWidth = 2; context.stroke();
-                    if (selected) { context.beginPath(); context.arc(option.x + 20, row.y, 4, 0, Math.PI * 2); context.fill(); }
-                    context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(translate(option.label), option.x + (option.width + 20) / 2, row.y + 5);
+                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(option.x, row.y - 16, option.width, 32);
+                    context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(option.x, row.y - 16, option.width, 32);
+                    context.beginPath(); context.arc(option.x + 16, row.y, 6, 0, Math.PI * 2); context.fillStyle = '#d8f2f5'; context.strokeStyle = '#d8f2f5'; context.lineWidth = 2; context.stroke();
+                    if (selected) { context.beginPath(); context.arc(option.x + 16, row.y, 3, 0, Math.PI * 2); context.fill(); }
+                    context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(translate(option.label), option.x + (option.width + 16) / 2, row.y + 4);
                 });
             } else if (row.kind === 'provider') {
                 AI_SERVICE_PROVIDERS.forEach((provider, providerIndex) => {
-                    const x = 530 + providerIndex * 160; const selected = row.value === provider;
-                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, row.y - 19, 140, 38); context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(x, row.y - 19, 140, 38); context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(provider, x + 70, row.y + 5);
+                    const x = 540 + providerIndex * 145; const selected = row.value === provider;
+                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, row.y - 16, 125, 32); context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(x, row.y - 16, 125, 32); context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(provider, x + 62.5, row.y + 4);
                 });
             } else {
-                context.fillStyle = '#0b202c'; context.fillRect(530, row.y - 19, 450, 38); context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(530, row.y - 19, 450, 38);
+                context.fillStyle = '#0b202c'; context.fillRect(540, row.y - 16, 420, 32); context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(540, row.y - 16, 420, 32);
                 const characters = Array.from(row.value);
-                const textFieldX = 543;
-                const textFieldWidth = 424;
+                const textFieldX = 551;
+                const textFieldWidth = 398;
                 const cursorIndex = settingsEditing && settingsFocus === index ? settingsCursor : 0;
                 let visibleStart = 0;
                 while (visibleStart < cursorIndex && context.measureText(characters.slice(visibleStart, cursorIndex).join('')).width > textFieldWidth - 4) visibleStart += 1;
                 let visibleEnd = visibleStart;
                 while (visibleEnd < characters.length && context.measureText(characters.slice(visibleStart, visibleEnd + 1).join('')).width <= textFieldWidth) visibleEnd += 1;
                 context.save();
-                context.beginPath(); context.rect(textFieldX, row.y - 18, textFieldWidth, 36); context.clip();
+                context.beginPath(); context.rect(textFieldX, row.y - 15, textFieldWidth, 30); context.clip();
                 const selection = settingsEditing && settingsFocus === index ? getSettingsTextSelectionRange() : null;
                 if (selection) {
                     const selectionStart = Math.max(selection[0], visibleStart);
@@ -5103,21 +5116,29 @@
                     if (selectionStart < selectionEnd) {
                         const selectionX = textFieldX + context.measureText(characters.slice(visibleStart, selectionStart).join('')).width;
                         const selectionWidth = context.measureText(characters.slice(selectionStart, selectionEnd).join('')).width;
-                        context.fillStyle = '#426f9e'; context.fillRect(selectionX, row.y - 13, selectionWidth, 21);
+                        context.fillStyle = '#426f9e'; context.fillRect(selectionX, row.y - 11, selectionWidth, 18);
                     }
                 }
-                context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(characters.slice(visibleStart, visibleEnd).join('') || ' ', textFieldX, row.y + 5);
-                if (settingsEditing && settingsFocus === index) { const cursorX = textFieldX + context.measureText(characters.slice(visibleStart, settingsCursor).join('')).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 13, 2, 21); }
+                context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(characters.slice(visibleStart, visibleEnd).join('') || ' ', textFieldX, row.y + 4);
+                if (settingsEditing && settingsFocus === index) { const cursorX = textFieldX + context.measureText(characters.slice(visibleStart, settingsCursor).join('')).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 11, 2, 18); }
                 context.restore();
             }
         });
         const apiTestEnabled = canRunAiApiTest();
-        context.fillStyle = apiTestEnabled ? '#264b5b' : '#263640'; context.fillRect(530, 525, 450, 40);
-        context.strokeStyle = settingsFocus === 9 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 9 && apiTestEnabled ? 3 : 2; context.strokeRect(530, 525, 450, 40);
-        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), 755, 551);
-        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 530, 585);
-        [{ label: '저장', x: 380, focus: 10, color: '#4cc9b0' }, { label: '취소', x: 560, focus: 11, color: '#ef5350' }, { label: '초기화', x: 740, focus: 12, color: '#7e6bc4' }].forEach((button) => {
-            context.fillStyle = button.color; context.fillRect(button.x, 625, 160, 46); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 625, 160, 46); context.fillStyle = '#fff'; context.font = `16px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 80, 655);
+        context.fillStyle = apiTestEnabled ? '#264b5b' : '#263640'; context.fillRect(540, 525, 420, 36);
+        context.strokeStyle = settingsFocus === 9 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 9 && apiTestEnabled ? 3 : 2; context.strokeRect(540, 525, 420, 36);
+        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `14px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), 750, 549);
+        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `11px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 540, 580);
+        const checkboxX = 540;
+        const checkboxY = 600;
+        context.fillStyle = '#0b202c'; context.fillRect(checkboxX, checkboxY, 20, 20);
+        context.strokeStyle = settingsFocus === 10 ? '#ffd54f' : '#426474'; context.lineWidth = settingsFocus === 10 ? 3 : 2; context.strokeRect(checkboxX, checkboxY, 20, 20);
+        if (settingsDraft.landscapeOrientationLocked) {
+            context.strokeStyle = '#4cc9b0'; context.lineWidth = 3; context.beginPath(); context.moveTo(checkboxX + 4, checkboxY + 10); context.lineTo(checkboxX + 8, checkboxY + 15); context.lineTo(checkboxX + 17, checkboxY + 5); context.stroke();
+        }
+        context.fillStyle = '#f5fbfc'; context.font = `14px ${BUTTON_FONT}`; context.textAlign = 'left'; context.fillText(translate('화면 가로방향 고정'), checkboxX + 30, checkboxY + 16);
+        [{ label: '저장', x: 390, focus: 11, color: '#4cc9b0' }, { label: '취소', x: 565, focus: 12, color: '#ef5350' }, { label: '초기화', x: 740, focus: 13, color: '#7e6bc4' }].forEach((button) => {
+            context.fillStyle = button.color; context.fillRect(button.x, 640, 150, 42); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 640, 150, 42); context.fillStyle = '#fff'; context.font = `14px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 75, 666);
         });
     }
 
@@ -6228,7 +6249,8 @@
             else if (settingsFocus === 4) {
                 const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
                 settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + direction + GRAPHICS_QUALITY_OPTIONS.length) % GRAPHICS_QUALITY_OPTIONS.length].key;
-            } else if (settingsFocus >= 10) settingsFocus = 10 + (settingsFocus - 10 + (direction < 0 ? 2 : 1)) % 3;
+            } else if (settingsFocus === 10) settingsDraft.landscapeOrientationLocked = direction > 0;
+            else if (settingsFocus >= 11) settingsFocus = 11 + (settingsFocus - 11 + (direction < 0 ? 2 : 1)) % 3;
         }
     }
 
@@ -6691,23 +6713,24 @@
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
-            if (y >= 525 && y <= 565 && x >= 530 && x <= 980 && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 9; runAiApiTest(); }
-            else if (y >= 625 && y <= 671 && x >= 380 && x <= 540) { settingsFocus = 10; saveSettings(); }
-            else if (y >= 625 && y <= 671 && x >= 560 && x <= 720) { settingsFocus = 11; cancelSettings(); }
-            else if (y >= 625 && y <= 671 && x >= 740 && x <= 900) { settingsFocus = 12; resetAllSettings(); }
-            else if (y >= 76 && y <= 114) { settingsFocus = 0; settingsEditing = true; settingsCursor = Array.from(settingsDraft.playerName).length; clearSettingsTextSelection(); }
-            else if (y >= 135 && y <= 155) { settingsFocus = 1; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
-            else if (y >= 185 && y <= 205) { settingsFocus = 2; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
-            else if (y >= 226 && y <= 264 && x >= 530 && x <= 660) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'none'; }
-            else if (y >= 226 && y <= 264 && x >= 680 && x <= 810) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'normal'; }
-            else if (y >= 226 && y <= 264 && x >= 830 && x <= 960) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'large'; }
-            else if (y >= 276 && y <= 314 && x >= 530 && x <= 660) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'low'; }
-            else if (y >= 276 && y <= 314 && x >= 680 && x <= 810) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'medium'; }
-            else if (y >= 276 && y <= 314 && x >= 830 && x <= 960) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'high'; }
-            else if (y >= 326 && y <= 364) { settingsFocus = 5; settingsEditing = true; settingsCursor = Array.from(settingsDraft.soundDataURL).length; clearSettingsTextSelection(); }
-            else if (y >= 376 && y <= 414 && x >= 530 && x <= 670) { playMenuSelectSound(); settingsFocus = 6; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
-            else if (y >= 426 && y <= 464) { settingsFocus = 7; settingsEditing = true; settingsCursor = Array.from(settingsDraft.aiApiKey).length; clearSettingsTextSelection(); }
-            else if (y >= 476 && y <= 514) { settingsFocus = 8; settingsEditing = true; settingsCursor = Array.from(settingsDraft.aiModel).length; clearSettingsTextSelection(); }
+            if (y >= 525 && y <= 561 && x >= 540 && x <= 960 && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 9; runAiApiTest(); }
+            else if (y >= 600 && y <= 620 && x >= 540 && x <= 960) { playMenuSelectSound(); settingsFocus = 10; settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
+            else if (y >= 640 && y <= 682 && x >= 390 && x <= 540) { settingsFocus = 11; saveSettings(); }
+            else if (y >= 640 && y <= 682 && x >= 565 && x <= 715) { settingsFocus = 12; cancelSettings(); }
+            else if (y >= 640 && y <= 682 && x >= 740 && x <= 890) { settingsFocus = 13; resetAllSettings(); }
+            else if (y >= 79 && y <= 111) { settingsFocus = 0; settingsEditing = true; settingsCursor = Array.from(settingsDraft.playerName).length; clearSettingsTextSelection(); }
+            else if (y >= 137 && y <= 153) { settingsFocus = 1; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 540) / 360 * 100))); }
+            else if (y >= 187 && y <= 203) { settingsFocus = 2; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 540) / 360 * 100))); }
+            else if (y >= 229 && y <= 261 && x >= 530 && x <= 655) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'none'; }
+            else if (y >= 229 && y <= 261 && x >= 675 && x <= 800) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'normal'; }
+            else if (y >= 229 && y <= 261 && x >= 820 && x <= 945) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'large'; }
+            else if (y >= 279 && y <= 311 && x >= 530 && x <= 655) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'low'; }
+            else if (y >= 279 && y <= 311 && x >= 675 && x <= 800) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'medium'; }
+            else if (y >= 279 && y <= 311 && x >= 820 && x <= 945) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'high'; }
+            else if (y >= 329 && y <= 361 && x >= 540 && x <= 960) { settingsFocus = 5; settingsEditing = true; settingsCursor = Array.from(settingsDraft.soundDataURL).length; clearSettingsTextSelection(); }
+            else if (y >= 379 && y <= 411 && x >= 540 && x <= 665) { playMenuSelectSound(); settingsFocus = 6; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
+            else if (y >= 429 && y <= 461 && x >= 540 && x <= 960) { settingsFocus = 7; settingsEditing = true; settingsCursor = Array.from(settingsDraft.aiApiKey).length; clearSettingsTextSelection(); }
+            else if (y >= 479 && y <= 511 && x >= 540 && x <= 960) { settingsFocus = 8; settingsEditing = true; settingsCursor = Array.from(settingsDraft.aiModel).length; clearSettingsTextSelection(); }
         } else {
             if (menuScreen === 'practiceDifficulty') {
                 const cancelBounds = getColorSelectionCancelButtonBounds();
@@ -7229,6 +7252,17 @@
         style.className = 'puyow_font_import';
         style.textContent = `
             @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic&family=Nanum+Gothic+Coding&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans+Mono:wght@100..900&family=Noto+Sans+SC:wght@100..900&display=swap');
+            
+            body.puyow-portrait main {
+                height: auto;
+                max-width: none;
+                width: min(100vh, 177.7777777778vw);
+            }
+
+            body.puyow-portrait canvas {
+                transform: rotate(90deg);
+                transform-origin: center;
+            }
         `;
         document.head.appendChild(style);
     }
