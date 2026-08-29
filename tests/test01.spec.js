@@ -1718,6 +1718,7 @@ test('common sound pool plays menu and game-start sounds', async ({ page }) => {
     window.WebPuyo.commonSoundPool.cancels = 'sounds/test-menu-cancel.ogg';
     window.WebPuyo.commonSoundPool.focusMoves = 'sounds/test-menu-focus.ogg';
     window.WebPuyo.commonSoundPool.gameStarts = 'sounds/test-game-start.ogg';
+    window.WebPuyo.commonSoundPool.puyoRotate = 'sounds/test-puyo-rotate.ogg';
   });
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
@@ -1740,6 +1741,11 @@ test('common sound pool plays menu and game-start sounds', async ({ page }) => {
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
     'sounds/test-game-start.ogg',
+  ]));
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
+  await page.keyboard.press('X');
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
+    'sounds/test-puyo-rotate.ogg',
   ]));
 });
 

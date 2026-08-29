@@ -16,6 +16,7 @@ window.PuyoW.applySoundDataJson({
         cancels : 'https://puyowsound.com/common/cancels.ogg', // 게임 내에서 버튼이나 선택지 취소 시 재생
         gameStarts : 'https://puyowsound.com/common/gameStarts.ogg', // 게임 시작 시 재생
 		loose : 'https://puyowsound.com/common/loose.ogg', // 플레이어나 적이 패배 시 재생
+        puyoRotate : 'https://puyowsound.com/common/puyoRotate.ogg', // 플레이어나 적이 뿌요를 회전시킬 때 발생
 		puyoFall : 'https://puyosound.com/common/puyoFall.ogg', // 뿌요가 다 떨어졌을 때 (바닥 혹은 다른 뿌요에 닿았을 때) 재생
 		garbageFallLittle : 'https://puyosound.com/common/garbageFallLittle.ogg', // 방해뿌요가 소량 (1~5개) 떨어졌을 때 재생
 		garbageFallLot : 'https://puyosound.com/common/garbageFallLot.ogg',       // 방해뿌요가 대량 (6개 이상) 떨어졌을 때 재생

@@ -964,6 +964,7 @@
             if(commonObj.puyoFall) commonSoundPool.puyoFall = commonObj.puyoFall;
             if(commonObj.garbageFallLittle) commonSoundPool.garbageFallLittle = commonObj.garbageFallLittle;
             if(commonObj.garbageFallLot) commonSoundPool.garbageFallLot = commonObj.garbageFallLot;
+            if(commonObj.puyoRotate) commonSoundPool.puyoRotate = commonObj.puyoRotate;
             if(commonObj.combo3SpellEffect) commonSoundPool.combo3SpellEffect = commonObj.combo3SpellEffect;
             if(commonObj.combo4SpellEffect) commonSoundPool.combo4SpellEffect = commonObj.combo4SpellEffect;
             if(commonObj.combo5SpellEffect) commonSoundPool.combo5SpellEffect = commonObj.combo5SpellEffect;
@@ -2211,6 +2212,7 @@
         // 기본 회전 위치가 비어 있으면 그대로 회전한다.
         if (canPlace(player, candidate)) {
             player.active = candidate;
+            playSound(commonSoundPool?.puyoRotate, 'effects', '뿌요 회전 효과음');
             return true;
         }
         const horizontalKick = candidate.rotation === 1 ? -1 : candidate.rotation === 3 ? 1 : 0;
@@ -2218,12 +2220,14 @@
         // 벽에 막힌 회전은 수평 밀어넣기로 가능한지 검사한다.
         if (horizontalKick && canPlace(player, kicked)) {
             player.active = kicked;
+            playSound(commonSoundPool?.puyoRotate, 'effects', '뿌요 회전 효과음');
             return true;
         }
         const flipped = { ...player.active, rotation: (player.active.rotation + direction * 2 + 4) % 4 };
         // 마지막으로 반대편 회전 위치를 시도한다.
         if (canPlace(player, flipped)) {
             player.active = flipped;
+            playSound(commonSoundPool?.puyoRotate, 'effects', '뿌요 회전 효과음');
             return true;
         }
         return false;
@@ -7322,6 +7326,12 @@
          * @type {string|null}
          */
         focusMoves = null;
+
+        /**
+         * 모든 게임 모드에서, 뿌요를 사용자 혹은 적이 회전시킬 때 재생되는 효과
+         * @type {string|null}
+         */
+        puyoRotate = null;
 
         /**  
          * 전투 중이 아닌 상황에서 재생되는 배경 음악, null 인 경우 해당 상황에서 소리가 나지 않는다.
