@@ -9724,6 +9724,7 @@
         getSimulatorState,
         getGameState,
         getNextPairs,
+        playSound,
         showMessage,
         initialize,
         destroy,
