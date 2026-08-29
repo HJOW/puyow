@@ -2313,3 +2313,45 @@ test('화면 가로방향 고정 문구는 지원 언어별로 번역된다', as
     await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), translation)).toBe(true);
   }
 });
+
+test('기본 룰과 피버 룰의 적 초상화 화살표는 선택 가능한 이전·다음 적만 이동한다', async ({ page }) => {
+  await page.evaluate(() => {
+    const cleared = ['Andromalius'];
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      clearListByDifficulty: { easy: cleared, normal: cleared, hard: cleared, extreme: cleared },
+      feverClearListByDifficulty: { easy: cleared, normal: cleared, hard: cleared, extreme: cleared },
+    }));
+  });
+  await page.reload();
+
+  const arrowColorAt = (x, y, color) => page.evaluate(({ x: pixelX, y: pixelY, expected }) => {
+    const pixel = Array.from(document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(pixelX, pixelY, 1, 1).data);
+    return pixel[0] === expected[0] && pixel[1] === expected[1] && pixel[2] === expected[2];
+  }, { x, y, expected: color });
+  const openOpponentMenu = async (feverRule) => {
+    await enterMainMenu(page);
+    await page.keyboard.press('Enter');
+    if (feverRule) await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe(feverRule ? 'fever_opponent_select' : 'opponent_select');
+  };
+
+  for (const feverRule of [false, true]) {
+    await openOpponentMenu(feverRule);
+    await expect.poll(() => arrowColorAt(805, 383, [107, 188, 232])).toBe(true);
+    expect(await arrowColorAt(475, 383, [107, 188, 232])).toBe(false);
+
+    await page.locator('#webpuyo_canvas').click({ position: { x: 805, y: 383 } });
+    await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.some(({ text, x, y }) => text === 'Dantalion' && x === 640 && y === 450))).toBe(true);
+    await expect.poll(() => arrowColorAt(475, 383, [247, 200, 67])).toBe(true);
+    expect(await arrowColorAt(805, 383, [247, 200, 67])).toBe(false);
+
+    await page.locator('#webpuyo_canvas').click({ position: { x: 475, y: 383 } });
+    await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.some(({ text, x, y }) => text === 'Andromalius' && x === 640 && y === 450))).toBe(true);
+    if (!feverRule) {
+      await page.keyboard.press('Escape');
+      await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+    }
+  }
+});

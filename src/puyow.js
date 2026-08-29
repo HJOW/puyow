@@ -1632,16 +1632,27 @@
     }
 
     /**
+     * 선택 가능한 적 중 현재 적의 이전 또는 다음 적을 반환한다.
+     * @param {number} direction 이전 -1 또는 다음 1
+     * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean}|null} 이동 대상 적
+     */
+    function getRelativeSelectableOpponent(direction) {
+        const selectable = getSelectableOpponents();
+        const currentIndex = selectable.indexOf(OPPONENTS[selectedOpponent]);
+        if (currentIndex < 0) return null;
+        return selectable[currentIndex + (direction < 0 ? -1 : 1)] || null;
+    }
+
+    /**
      * 선택 불가 적을 건너뛰어 다음 또는 이전 적을 선택한다.
      * @param {number} direction 이전 -1 또는 다음 1
-     * @returns {void}
+     * @returns {boolean} 적 이동 여부
      */
     function selectRelativeOpponent(direction) {
-        const selectable = getSelectableOpponents();
-        if (!selectable.length) return;
-        const currentIndex = Math.max(0, selectable.indexOf(OPPONENTS[selectedOpponent]));
-        const nextIndex = (currentIndex + direction + selectable.length) % selectable.length;
-        selectedOpponent = OPPONENTS.indexOf(selectable[nextIndex]);
+        const target = getRelativeSelectableOpponent(direction);
+        if (!target) return false;
+        selectedOpponent = OPPONENTS.indexOf(target);
+        return true;
     }
 
     /**
@@ -5819,14 +5830,18 @@
                 opponent.createController().drawPortrait(context, WIDTH / 2, 375, 0.62);
                 context.fillStyle = '#f5fbfc'; context.font = `28px ${BUTTON_FONT}`; context.fillText(translate(opponent.createController().getName()), WIDTH / 2, 450);
             }
-            if (opponentMenuFocus === 2) {
-                context.fillStyle = '#f7c843';
+            const previousOpponent = getRelativeSelectableOpponent(-1);
+            const nextOpponent = getRelativeSelectableOpponent(1);
+            context.fillStyle = opponentMenuFocus === 2 ? '#f7c843' : '#6bbce8';
+            if (previousOpponent) {
                 context.beginPath();
                 context.moveTo(WIDTH / 2 - 205, 385);
                 context.lineTo(WIDTH / 2 - 175, 360);
                 context.lineTo(WIDTH / 2 - 175, 410);
                 context.closePath();
                 context.fill();
+            }
+            if (nextOpponent) {
                 context.beginPath();
                 context.moveTo(WIDTH / 2 + 205, 385);
                 context.lineTo(WIDTH / 2 + 175, 360);
@@ -6770,6 +6785,16 @@
                 playMenuSelectSound();
                 selectedAiDifficulty = aiDifficultyIndex;
                 opponentMenuFocus = 1;
+                return;
+            }
+            if (opponentX >= 425 && opponentX <= 470 && opponentY >= 350 && opponentY <= 420 && selectRelativeOpponent(-1)) {
+                playMenuSelectSound();
+                opponentMenuFocus = 2;
+                return;
+            }
+            if (opponentX >= 810 && opponentX <= 855 && opponentY >= 350 && opponentY <= 420 && selectRelativeOpponent(1)) {
+                playMenuSelectSound();
+                opponentMenuFocus = 2;
                 return;
             }
             const visibleOpponents = getVisibleOpponents();
