@@ -357,6 +357,57 @@ test('사운드 데이터 URL은 최대 200자로 저장되고 초기화 시 변
   await expect.poll(() => requestedUrl).toBe('https://sound.example/sounds_en.json');
 });
 
+test('설정 텍스트 입력은 선택, 복사, 붙여넣기와 클립보드 실패 시 선택 삭제를 지원한다', async ({ page }) => {
+  await page.evaluate(() => {
+    window.testClipboardText = '';
+    window.testClipboardShouldFail = false;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        readText: async () => {
+          if (window.testClipboardShouldFail) throw new Error('clipboard read failed');
+          return window.testClipboardText;
+        },
+        writeText: async (text) => { window.testClipboardText = text; },
+      },
+    });
+  });
+  await openSettings(page);
+  await page.locator('#webpuyo_canvas').click({ position: { x: 600, y: 345 } });
+  await page.keyboard.type('before');
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('abcdef');
+
+  await page.keyboard.down('Shift');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowLeft');
+  await page.keyboard.up('Shift');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('X');
+  await page.keyboard.down('Shift');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.up('Shift');
+  await page.keyboard.press('Control+C');
+  expect(await page.evaluate(() => window.testClipboardText)).toBe('def');
+
+  await page.keyboard.press('Backspace');
+  await page.evaluate(() => { window.testClipboardText = 'YZ'; });
+  await page.keyboard.press('Control+V');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('abcXYZ'))).toBe(true);
+  await page.keyboard.down('Shift');
+  for (let index = 0; index < 2; index += 1) await page.keyboard.press('ArrowLeft');
+  await page.keyboard.up('Shift');
+  await page.evaluate(() => { window.testClipboardText = '123'; });
+  await page.keyboard.press('Control+V');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('abcX123'))).toBe(true);
+
+  await page.keyboard.down('Shift');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowLeft');
+  await page.keyboard.up('Shift');
+  await page.evaluate(() => { window.testClipboardShouldFail = true; window.testCanvasTexts = []; });
+  await page.keyboard.press('Control+V');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('abcX'))).toBe(true);
+});
+
 test('그래픽 설정은 키보드와 마우스로 저장되며 캔버스 출력 해상도와 공개 좌표 변환 API에 반영된다', async ({ page }) => {
   expect(await page.evaluate(() => ({
     canvas: [document.querySelector('#webpuyo_canvas').width, document.querySelector('#webpuyo_canvas').height],

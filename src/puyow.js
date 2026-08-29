@@ -327,6 +327,8 @@
     let settingsEditing = false;
     /** 현재 편집 중인 문자열의 커서 위치다. @type {number} */
     let settingsCursor = 0;
+    /** 설정 텍스트 입력의 선택 시작 위치다. 선택이 없으면 null이다. @type {number|null} */
+    let settingsSelectionAnchor = null;
     /** 화면 최상단에 표시할 외부 메시지다. @type {{message:string,color:string,backgroundColor:string|null,elapsed:number,duration:number}|null} */
     let screenMessage = null;
     /** 외부 메시지가 유지 시간 뒤 사라지는 데 걸리는 시간(ms)이다. @type {number} */
@@ -4831,7 +4833,7 @@
     function openSettings() {
         clearSettingsApiTest();
         settingsDraft = { ...store.settings };
-        settingsFocus = 0; settingsEditing = false; settingsCursor = 0;
+        settingsFocus = 0; settingsEditing = false; settingsCursor = 0; settingsSelectionAnchor = null;
         menuScreen = 'settings';
     }
 
@@ -4845,7 +4847,7 @@
         saveStore();
         applyCanvasOutputResolution();
         updateBackgroundMusicVolume();
-        settingsDraft = null; settingsEditing = false;
+        settingsDraft = null; settingsEditing = false; clearSettingsTextSelection();
         menuScreen = 'title'; loadNotice();
     }
 
@@ -4853,7 +4855,7 @@
     function cancelSettings() {
         playMenuCancelSound();
         clearSettingsApiTest();
-        settingsDraft = null; settingsEditing = false;
+        settingsDraft = null; settingsEditing = false; clearSettingsTextSelection();
         menuScreen = 'title'; loadNotice();
     }
 
@@ -4875,6 +4877,7 @@
         clearSettingsApiTest();
         settingsDraft = null;
         settingsEditing = false;
+        clearSettingsTextSelection();
         settingsResetting = true;
         store = createInitialStore();
         applyCanvasOutputResolution();
@@ -5059,7 +5062,14 @@
                     context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, row.y - 19, 140, 38); context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(x, row.y - 19, 140, 38); context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(provider, x + 70, row.y + 5);
                 });
             } else {
-                context.fillStyle = '#0b202c'; context.fillRect(530, row.y - 19, 450, 38); context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(530, row.y - 19, 450, 38); context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(row.value || ' ', 543, row.y + 5);
+                context.fillStyle = '#0b202c'; context.fillRect(530, row.y - 19, 450, 38); context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(530, row.y - 19, 450, 38);
+                const selection = settingsEditing && settingsFocus === index ? getSettingsTextSelectionRange() : null;
+                if (selection) {
+                    const selectionX = 543 + context.measureText(row.value.slice(0, selection[0])).width;
+                    const selectionWidth = context.measureText(row.value.slice(selection[0], selection[1])).width;
+                    context.fillStyle = '#426f9e'; context.fillRect(selectionX, row.y - 13, selectionWidth, 21);
+                }
+                context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(row.value || ' ', 543, row.y + 5);
                 if (settingsEditing && settingsFocus === index) { const cursorX = 543 + context.measureText(row.value.slice(0, settingsCursor)).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 13, 2, 21); }
             }
         });
@@ -6058,24 +6068,111 @@
         } else if (key === 'arrowdown') selectRelativeGalleryItem(1);
     }
 
+    /** 설정 화면에서 편집 가능한 텍스트 입력 필드 이름을 반환한다. @returns {'playerName'|'soundDataURL'|'aiApiKey'|'aiModel'|null} 설정 입력 필드 */
+    function getSettingsTextField() {
+        return settingsFocus === 0 ? 'playerName' : (settingsFocus === 5 ? 'soundDataURL' : (settingsFocus === 7 ? 'aiApiKey' : (settingsFocus === 8 ? 'aiModel' : null)));
+    }
+
+    /** 설정 텍스트 입력의 선택 범위를 반환한다. @returns {[number,number]|null} 선택 시작·끝 위치 */
+    function getSettingsTextSelectionRange() {
+        if (settingsSelectionAnchor === null || settingsSelectionAnchor === settingsCursor) return null;
+        return [Math.min(settingsSelectionAnchor, settingsCursor), Math.max(settingsSelectionAnchor, settingsCursor)];
+    }
+
+    /** 설정 텍스트 입력의 선택 상태를 해제한다. @returns {void} */
+    function clearSettingsTextSelection() {
+        settingsSelectionAnchor = null;
+    }
+
+    /** 현재 선택한 설정 텍스트를 삭제한다. @param {string} field 설정 필드 이름 @returns {boolean} 선택 영역 삭제 여부 */
+    function deleteSettingsTextSelection(field) {
+        const selection = getSettingsTextSelectionRange();
+        if (!selection) return false;
+        const [start, end] = selection;
+        settingsDraft[field] = settingsDraft[field].slice(0, start) + settingsDraft[field].slice(end);
+        settingsCursor = start;
+        clearSettingsTextSelection();
+        return true;
+    }
+
+    /** 설정 텍스트 입력에 문자열을 현재 커서 위치로 삽입한다. @param {string} field 설정 필드 이름 @param {string} text 삽입할 문자열 @returns {void} */
+    function insertSettingsText(field, text) {
+        const before = settingsDraft[field].slice(0, settingsCursor);
+        const after = settingsDraft[field].slice(settingsCursor);
+        const maxLength = field === 'playerName' ? PLAYER_NAME_MAX_LENGTH : (field === 'soundDataURL' ? SOUND_DATA_URL_MAX_LENGTH : Infinity);
+        const availableLength = Number.isFinite(maxLength) ? Math.max(0, maxLength - Array.from(before + after).length) : Infinity;
+        const inserted = Number.isFinite(availableLength) ? Array.from(text).slice(0, availableLength).join('') : text;
+        settingsDraft[field] = before + inserted + after;
+        settingsCursor += inserted.length;
+    }
+
+    /** 설정 텍스트 입력에 클립보드 내용을 붙여 넣는다. 선택된 텍스트는 읽기 실패 전에도 먼저 삭제한다. @param {string} field 설정 필드 이름 @returns {Promise<void>} 붙여 넣기 완료 시점 */
+    async function pasteSettingsText(field) {
+        deleteSettingsTextSelection(field);
+        try {
+            const text = await navigator.clipboard.readText();
+            insertSettingsText(field, text);
+        } catch (error) {
+            console.error('설정 텍스트를 클립보드에서 붙여 넣지 못했습니다.', error);
+        }
+    }
+
+    /** 설정 텍스트 입력의 선택 영역을 클립보드에 복사한다. @param {string} field 설정 필드 이름 @returns {Promise<void>} 복사 완료 시점 */
+    async function copySettingsText(field) {
+        const selection = getSettingsTextSelectionRange();
+        if (!selection) return;
+        try {
+            await navigator.clipboard.writeText(settingsDraft[field].slice(selection[0], selection[1]));
+        } catch (error) {
+            console.error('설정 텍스트를 클립보드에 복사하지 못했습니다.', error);
+        }
+    }
+
     /** 설정 화면에서 포커스 이동과 문자열 편집을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @param {string} key 소문자 키 @returns {void} */
     function handleSettingsKeydown(event, key) {
-        const textField = settingsFocus === 0 ? 'playerName' : (settingsFocus === 5 ? 'soundDataURL' : (settingsFocus === 7 ? 'aiApiKey' : (settingsFocus === 8 ? 'aiModel' : null)));
+        const textField = getSettingsTextField();
         if (settingsEditing && textField) {
             const field = textField;
-            if (key === 'enter' || key === 'escape') { settingsEditing = false; return; }
-            if (key === 'arrowleft') { settingsCursor = Math.max(0, settingsCursor - 1); return; }
-            if (key === 'arrowright') { settingsCursor = Math.min(settingsDraft[field].length, settingsCursor + 1); return; }
-            if (key === 'backspace') { if (settingsCursor > 0) { settingsDraft[field] = settingsDraft[field].slice(0, settingsCursor - 1) + settingsDraft[field].slice(settingsCursor); settingsCursor -= 1; } return; }
+            if (event.ctrlKey && key === 'a') {
+                event.preventDefault();
+                settingsSelectionAnchor = 0;
+                settingsCursor = settingsDraft[field].length;
+                return;
+            }
+            if (event.ctrlKey && key === 'v') { event.preventDefault(); void pasteSettingsText(field); return; }
+            if (event.ctrlKey && key === 'c') { event.preventDefault(); void copySettingsText(field); return; }
+            if (key === 'enter' || key === 'escape') { settingsEditing = false; clearSettingsTextSelection(); return; }
+            if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
+                const selection = getSettingsTextSelectionRange();
+                if (event.shiftKey) {
+                    if (settingsSelectionAnchor === null) settingsSelectionAnchor = settingsCursor;
+                    if (key === 'arrowleft') settingsCursor = Math.max(0, settingsCursor - 1);
+                    else if (key === 'arrowright') settingsCursor = Math.min(settingsDraft[field].length, settingsCursor + 1);
+                    else if (key === 'arrowup') settingsCursor = 0;
+                    else settingsCursor = settingsDraft[field].length;
+                    if (settingsSelectionAnchor === settingsCursor) clearSettingsTextSelection();
+                } else if (selection) {
+                    settingsCursor = key === 'arrowleft' || key === 'arrowup' ? selection[0] : selection[1];
+                    clearSettingsTextSelection();
+                } else if (key === 'arrowleft') settingsCursor = Math.max(0, settingsCursor - 1);
+                else if (key === 'arrowright') settingsCursor = Math.min(settingsDraft[field].length, settingsCursor + 1);
+                return;
+            }
+            if (key === 'backspace') {
+                if (!deleteSettingsTextSelection(field) && settingsCursor > 0) {
+                    settingsDraft[field] = settingsDraft[field].slice(0, settingsCursor - 1) + settingsDraft[field].slice(settingsCursor);
+                    settingsCursor -= 1;
+                }
+                return;
+            }
             if (key.length === 1) {
-                const nextValue = settingsDraft[field].slice(0, settingsCursor) + event.key + settingsDraft[field].slice(settingsCursor);
-                const maxLength = field === 'playerName' ? PLAYER_NAME_MAX_LENGTH : (field === 'soundDataURL' ? SOUND_DATA_URL_MAX_LENGTH : Infinity);
-                if (Array.from(nextValue).length <= maxLength) { settingsDraft[field] = nextValue; settingsCursor += event.key.length; }
+                deleteSettingsTextSelection(field);
+                insertSettingsText(field, event.key);
             }
             return;
         }
         if (key === 'enter' || key === ' ') {
-            if (textField) { settingsEditing = true; settingsCursor = settingsDraft[textField].length; }
+            if (textField) { settingsEditing = true; settingsCursor = settingsDraft[textField].length; clearSettingsTextSelection(); }
             else activateSettingsFocus();
         } else if (key === 'escape') cancelSettings();
         else if (key === 'arrowup' || key === 'arrowdown') moveSettingsFocus(key === 'arrowup' ? -1 : 1);
@@ -6563,7 +6660,7 @@
             else if (y >= 625 && y <= 671 && x >= 380 && x <= 540) { settingsFocus = 10; saveSettings(); }
             else if (y >= 625 && y <= 671 && x >= 560 && x <= 720) { settingsFocus = 11; cancelSettings(); }
             else if (y >= 625 && y <= 671 && x >= 740 && x <= 900) { settingsFocus = 12; resetAllSettings(); }
-            else if (y >= 76 && y <= 114) { settingsFocus = 0; settingsEditing = true; settingsCursor = settingsDraft.playerName.length; }
+            else if (y >= 76 && y <= 114) { settingsFocus = 0; settingsEditing = true; settingsCursor = settingsDraft.playerName.length; clearSettingsTextSelection(); }
             else if (y >= 135 && y <= 155) { settingsFocus = 1; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 185 && y <= 205) { settingsFocus = 2; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 226 && y <= 264 && x >= 530 && x <= 660) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'none'; }
@@ -6572,10 +6669,10 @@
             else if (y >= 276 && y <= 314 && x >= 530 && x <= 660) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'low'; }
             else if (y >= 276 && y <= 314 && x >= 680 && x <= 810) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'medium'; }
             else if (y >= 276 && y <= 314 && x >= 830 && x <= 960) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'high'; }
-            else if (y >= 326 && y <= 364) { settingsFocus = 5; settingsEditing = true; settingsCursor = settingsDraft.soundDataURL.length; }
+            else if (y >= 326 && y <= 364) { settingsFocus = 5; settingsEditing = true; settingsCursor = settingsDraft.soundDataURL.length; clearSettingsTextSelection(); }
             else if (y >= 376 && y <= 414 && x >= 530 && x <= 670) { playMenuSelectSound(); settingsFocus = 6; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
-            else if (y >= 426 && y <= 464) { settingsFocus = 7; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; }
-            else if (y >= 476 && y <= 514) { settingsFocus = 8; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
+            else if (y >= 426 && y <= 464) { settingsFocus = 7; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; clearSettingsTextSelection(); }
+            else if (y >= 476 && y <= 514) { settingsFocus = 8; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; clearSettingsTextSelection(); }
         } else {
             if (menuScreen === 'practiceDifficulty') {
                 const cancelBounds = getColorSelectionCancelButtonBounds();
