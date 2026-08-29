@@ -952,6 +952,10 @@
         if(typeof(soundDataJson) == 'string') soundDataJson = JSON.parse(soundDataJson);
         if(soundDataJson.common) {
             const commonObj = soundDataJson.common;
+            if(commonObj.gameStarts) commonSoundPool.gameStarts = commonObj.gameStarts;
+            if(commonObj.selects) commonSoundPool.selects = commonObj.selects;
+            if(commonObj.cancels) commonSoundPool.cancels = commonObj.cancels;
+            if(commonObj.focusMoves) commonSoundPool.focusMoves = commonObj.focusMoves;
             if(commonObj.loose) commonSoundPool.loose = commonObj.loose;
             if(commonObj.puyoFall) commonSoundPool.puyoFall = commonObj.puyoFall;
             if(commonObj.garbageFallLittle) commonSoundPool.garbageFallLittle = commonObj.garbageFallLittle;
@@ -1107,6 +1111,42 @@
         } catch (error) {
             console.error(`${label} 재생에 실패했습니다.`, error);
         }
+    }
+
+    /** 메뉴 선택·취소 효과음이 재생된 횟수다. 포커스 이동음과 한 입력에서 겹치지 않게 한다. @type {number} */
+    let menuActionSoundCount = 0;
+
+    /** 일반 메뉴 버튼 또는 선택지를 실행한 효과음을 재생한다. @returns {void} */
+    function playMenuSelectSound() {
+        menuActionSoundCount += 1;
+        playSound(commonSoundPool?.selects, 'effects', '메뉴 선택 효과음');
+    }
+
+    /** 메뉴의 취소 또는 종료 동작 효과음을 재생한다. @returns {void} */
+    function playMenuCancelSound() {
+        menuActionSoundCount += 1;
+        playSound(commonSoundPool?.cancels, 'effects', '메뉴 취소 효과음');
+    }
+
+    /** 메뉴 버튼이나 선택지의 포커스가 옮겨졌을 때 효과음을 재생한다. @returns {void} */
+    function playMenuFocusMoveSound() {
+        playSound(commonSoundPool?.focusMoves, 'effects', '메뉴 포커스 이동 효과음');
+    }
+
+    /** 현재 입력 가능한 메뉴 포커스를 비교하기 위한 식별자를 만든다. @returns {string|null} */
+    function getMenuFocusToken() {
+        if (game?.tutorial?.mode === 'complete') return `tutorial:${game.tutorial.finalFocus}`;
+        if (game?.paused) return `pause:${pauseMenuFocus}`;
+        if (game) return null;
+        if (menuScreen === 'title' && ruleSelectionOpen) return `rule:${ruleSelectionFocus}`;
+        if (menuScreen === 'title') return `title:${titleMenuFocus}`;
+        if (menuScreen === 'opponent') return `opponent:${opponentMenuFocus}:${selectedDifficulty}:${selectedAiDifficulty}:${selectedOpponent}:${selectedOpponentAction}`;
+        if (menuScreen === 'practiceDifficulty') return `difficulty:${colorSelectionFocus}:${selectedDifficulty}`;
+        if (menuScreen === 'puzzleStage') return `puzzle:${puzzleStageFocus}`;
+        if (menuScreen === 'settings') return `settings:${settingsFocus}`;
+        if (menuScreen === 'gallery' && gallery) return `gallery:${gallery.focus}:${gallery.typeIndex}:${gallery.itemIndex}`;
+        if (menuScreen === 'simulator' && simulator) return `simulator:${simulator.mode}:${simulator.focusArea}:${simulator.paletteFocus}`;
+        return null;
     }
 
     /** 대량 방해뿌요 착지음이 아직 재생 중이면 중복 재생하지 않는다. @param {string|null|undefined} url 음원 URL @returns {void} */
@@ -1575,6 +1615,7 @@
     function startGame(practice = false, continuousFever = false, feverRule = false) {
         const soloMode = practice || continuousFever;
         if (!soloMode && !ensureSelectedOpponent()) return;
+        playMenuSelectSound();
         resetVirtualControllerInput();
         const opponent = soloMode ? { createController: () => new PracticeEnemy() } : OPPONENTS[selectedOpponent];
         const controller = opponent.createController();
@@ -1670,6 +1711,7 @@
         if (puzzleStageFocus < 0 || puzzleStageFocus >= openedCount) return;
         const stage = PUZZLE_STAGES[puzzleStageFocus];
         if (!(stage instanceof PuzzlePuyoStage)) return;
+        playMenuSelectSound();
         resetVirtualControllerInput();
         const colors = [...COLORS];
         const controller = new PracticeEnemy();
@@ -4510,6 +4552,7 @@
 
     /** 플레이 방법 안내를 끝내고 메인 화면으로 돌아간다. @returns {void} */
     function closeTutorial() {
+        playMenuCancelSound();
         game = null;
         menuScreen = 'title';
         loadNotice();
@@ -4720,6 +4763,7 @@
 
     /** 설정 화면의 변경 사항을 저장한다. @returns {void} */
     function saveSettings() {
+        playMenuSelectSound();
         clearSettingsApiTest();
         settingsDraft.playerName = normalizePlayerName(settingsDraft.playerName);
         settingsDraft.soundDataURL = normalizeSoundDataURL(settingsDraft.soundDataURL);
@@ -4733,6 +4777,7 @@
 
     /** 설정 화면을 저장하지 않고 닫는다. @returns {void} */
     function cancelSettings() {
+        playMenuCancelSound();
         clearSettingsApiTest();
         settingsDraft = null; settingsEditing = false;
         menuScreen = 'title'; loadNotice();
@@ -4746,6 +4791,7 @@
             console.error('Puyo W 설정 초기화 확인 창을 표시하지 못했습니다.', error);
             return;
         }
+        playMenuSelectSound();
         try {
             storageManager.clear();
         } catch (error) {
@@ -4884,13 +4930,15 @@
     /** 설정 화면의 포커스 항목을 실행한다. @returns {void} */
     function activateSettingsFocus() {
         if (settingsFocus === 3) {
+            playMenuSelectSound();
             const currentIndex = VIRTUAL_CONTROLLER_OPTIONS.findIndex((option) => option.key === settingsDraft.virtualController);
             settingsDraft.virtualController = VIRTUAL_CONTROLLER_OPTIONS[(currentIndex + 1) % VIRTUAL_CONTROLLER_OPTIONS.length].key;
         }
         else if (settingsFocus === 4) {
+            playMenuSelectSound();
             const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
             settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + 1) % GRAPHICS_QUALITY_OPTIONS.length].key;
-        } else if (settingsFocus === 9 && canRunAiApiTest()) runAiApiTest();
+        } else if (settingsFocus === 9 && canRunAiApiTest()) { playMenuSelectSound(); runAiApiTest(); }
         else if (settingsFocus === 10) saveSettings();
         else if (settingsFocus === 11) cancelSettings();
         else if (settingsFocus === 12) resetAllSettings();
@@ -5051,6 +5099,7 @@
 
     /** 갤러리를 닫고 메인 메뉴로 돌아간다. @returns {void} */
     function closeGallery() {
+        playMenuCancelSound();
         gallery = null;
         menuScreen = 'title';
         loadNotice();
@@ -5202,6 +5251,8 @@
     function activateSimulatorPaletteItem(index) {
         const item = getSimulatorPaletteItems()[index];
         if (!simulator || !item) return;
+        if (item.kind === 'exit') playMenuCancelSound();
+        else playMenuSelectSound();
         simulator.paletteFocus = index;
         if (item.kind === 'puyo' || item.kind === 'eraser') { simulator.selected = item.value; simulator.focusArea = 'board'; }
         else if (item.kind === 'play') startSimulatorPlayback();
@@ -5427,6 +5478,7 @@
 
     /** 색상 수 선택을 취소하고 게임 규칙 선택 화면으로 돌아간다. @returns {void} */
     function returnToRuleSelection() {
+        playMenuCancelSound();
         menuScreen = 'title';
         openRuleSelection();
     }
@@ -5458,18 +5510,20 @@
     /** 포커스된 게임 규칙을 선택한다. @returns {void} */
     function activateRuleSelection() {
         if (ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX) {
+            playMenuCancelSound();
             closeRuleSelection();
             return;
         }
         const option = GAME_RULE_OPTIONS[ruleSelectionFocus];
         if (!option || option.disabled) return;
+        playMenuSelectSound();
         closeRuleSelection();
         option.activate();
     }
 
     /** 게임 규칙 선택 오버레이의 키보드·게임패드 키 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
     function handleRuleSelectionKey(key) {
-        if (key === 'escape') { closeRuleSelection(); return; }
+        if (key === 'escape') { playMenuCancelSound(); closeRuleSelection(); return; }
         if (key === 'enter' || key === ' ') { activateRuleSelection(); return; }
         if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
         if (ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX) {
@@ -5840,6 +5894,7 @@
                 game.countdown = Math.max(0, game.countdown - delta);
                 if (!game.countdown && game.countdownStartsGame) {
                     game.countdownStartsGame = false;
+                    playSound(commonSoundPool?.gameStarts, 'effects', '게임 시작 효과음');
                     beginGame();
                 }
             } else if (game.ending) {
@@ -5873,10 +5928,14 @@
     function handleSimulatorKeydown(key) {
         if (!simulator) return;
         if (simulator.mode === 'complete') {
-            if (key === 'escape' || key === 'enter' || key === ' ') restoreSimulatorDrawing();
+            if (key === 'escape' || key === 'enter' || key === ' ') {
+                if (key === 'escape') playMenuCancelSound();
+                else playMenuSelectSound();
+                restoreSimulatorDrawing();
+            }
             return;
         }
-        if (simulator.mode !== 'draw') { if (key === 'escape') restoreSimulatorDrawing(); return; }
+        if (simulator.mode !== 'draw') { if (key === 'escape') { playMenuCancelSound(); restoreSimulatorDrawing(); } return; }
         if (simulator.focusArea === 'board') {
             if (key === 'escape') { simulator.focusArea = 'palette'; simulator.paletteFocus = 0; return; }
             if (key === 'arrowleft') simulator.boardFocus.x = Math.max(0, simulator.boardFocus.x - 1);
@@ -5982,6 +6041,7 @@
             return;
         }
         pendingInitialTitleEntry = false;
+        playMenuSelectSound();
         hasUserStarted = true;
         menuScreen = 'title';
         loadNotice();
@@ -6008,6 +6068,7 @@
     /** 결과 화면을 닫고 해당 게임의 이전 메뉴로 돌아간다. 퍼즐뿌요를 클리어했다면 시작 시 결정한 다음 또는 현재 스테이지에 포커스를 둔다. @returns {void} */
     function closeResultScreen() {
         if (!game || game.running) return;
+        playMenuCancelSound();
         const finishedGame = game;
         const returnToTitle = finishedGame.practice;
         const returnToPuzzleStages = finishedGame.puzzle !== undefined && finishedGame.puzzle !== null;
@@ -6027,6 +6088,14 @@
      * @returns {void}
      */
     function handleKeydown(event) {
+        const focusBefore = getMenuFocusToken();
+        const actionSoundCountBefore = menuActionSoundCount;
+        handleKeydownCore(event);
+        if (actionSoundCountBefore === menuActionSoundCount && focusBefore !== getMenuFocusToken()) playMenuFocusMoveSound();
+    }
+
+    /** 키 입력의 실제 화면 동작을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @returns {void} */
+    function handleKeydownCore(event) {
         let key = event.key.toLowerCase();
         if (key === 'z' && shouldTreatZAsEnter(event)) key = 'enter';
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
@@ -6042,7 +6111,7 @@
             if (key === 'escape') { closeTutorial(); return; }
             if (tutorial.mode === 'complete') {
                 if (key === 'arrowleft' || key === 'arrowright') tutorial.finalFocus = tutorial.finalFocus === 0 ? 1 : 0;
-                else if (key === 'enter' || key === ' ') { if (tutorial.finalFocus === 0) enterTutorialStage(1); else closeTutorial(); }
+                else if (key === 'enter' || key === ' ') { if (tutorial.finalFocus === 0) { playMenuSelectSound(); enterTutorialStage(1); } else closeTutorial(); }
             }
             return;
         }
@@ -6059,7 +6128,7 @@
             }
             if (menuScreen === 'practiceDifficulty') {
                 const choices = getSelectableColorDifficultyIndices();
-                if (key === 'escape') { menuScreen = 'title'; loadNotice(); }
+                if (key === 'escape') { playMenuCancelSound(); menuScreen = 'title'; loadNotice(); }
                 else if (colorSelectionFocus === COLOR_SELECTION_CANCEL_INDEX) {
                     if (key === 'arrowup') colorSelectionFocus = selectedDifficulty;
                     else if (key === 'arrowleft' || key === 'arrowright') {
@@ -6129,8 +6198,8 @@
                     opponentMenuFocus = 3;
                     selectedOpponentAction = 0;
                 } else if (selectedOpponentAction === 0) startGame(false, false, opponentMenuRule === 'fever');
-                else { menuScreen = 'title'; loadNotice(); }
-            } else if (key === 'escape' && menuScreen === 'opponent') { menuScreen = 'title'; loadNotice(); }
+                else { playMenuCancelSound(); menuScreen = 'title'; loadNotice(); }
+            } else if (key === 'escape' && menuScreen === 'opponent') { playMenuCancelSound(); menuScreen = 'title'; loadNotice(); }
             return;
         }
         // 결과 화면에서는 위에서 처리한 메뉴 복귀 외 입력을 무시한다.
@@ -6195,6 +6264,7 @@
      * @returns {void}
      */
     function activateTitleMenu() {
+        playMenuSelectSound();
         if (titleMenuFocus === 0) openRuleSelection();
         else if (titleMenuFocus === 1) openSimulator();
         else if (titleMenuFocus === 2) openTutorial();
@@ -6214,12 +6284,14 @@
      */
     function activatePauseMenu() {
         if (pauseMenuFocus === 0) {
+            playMenuSelectSound();
             resetVirtualControllerInput();
             game.paused = false;
             game.countdown = 3000;
             game.countdownStartsGame = false;
             resumeBackgroundMusic();
         } else {
+            playMenuCancelSound();
             resetVirtualControllerInput();
             stopBackgroundMusic();
             game = null;
@@ -6251,6 +6323,14 @@
      * @returns {void}
      */
     function handleCanvasClick(event) {
+        const focusBefore = getMenuFocusToken();
+        const actionSoundCountBefore = menuActionSoundCount;
+        handleCanvasClickCore(event);
+        if (actionSoundCountBefore === menuActionSoundCount && focusBefore !== getMenuFocusToken()) playMenuFocusMoveSound();
+    }
+
+    /** 캔버스 클릭의 실제 화면 동작을 처리한다. @param {MouseEvent} event 마우스 이벤트 @returns {void} */
+    function handleCanvasClickCore(event) {
         if (settingsResetting) return;
         if (!game && menuScreen === 'initialTitle') {
             enterMainMenu();
@@ -6261,7 +6341,7 @@
             const x = (event.clientX - bounds.left) * WIDTH / bounds.width;
             const y = (event.clientY - bounds.top) * HEIGHT / bounds.height;
             if (game.tutorial.mode === 'complete' && y >= 376 && y <= 440) {
-                if (x >= 470 && x <= 620) enterTutorialStage(1);
+                if (x >= 470 && x <= 620) { playMenuSelectSound(); enterTutorialStage(1); }
                 else if (x >= 660 && x <= 810) closeTutorial();
             }
             return;
@@ -6309,13 +6389,14 @@
                     activateRuleSelection();
                 }
             } else {
+                playMenuCancelSound();
                 closeRuleSelection();
             }
             return;
         }
         if (menuScreen === 'simulator' && simulator) {
             if (simulator.mode === 'complete') {
-                if (x >= 600 && x <= 750 && y >= 145 && y <= 203) restoreSimulatorDrawing();
+                if (x >= 600 && x <= 750 && y >= 145 && y <= 203) { playMenuSelectSound(); restoreSimulatorDrawing(); }
                 return;
             }
             if (simulator.mode !== 'draw') return;
@@ -6344,6 +6425,7 @@
                 return x >= typeX && x <= typeX + typeWidth && y >= typeY && y <= typeY + 54;
             });
             if (typeIndex >= 0) {
+                playMenuSelectSound();
                 gallery.typeIndex = typeIndex;
                 gallery.itemIndex = Math.max(0, getGalleryItems().findIndex((item) => !item.locked));
                 gallery.focus = 'type';
@@ -6356,6 +6438,7 @@
                 return x >= targetBounds.x && x <= targetBounds.x + targetBounds.width && y >= targetBounds.y && y <= targetBounds.y + targetBounds.height;
             });
             if (targetIndex >= 0 && !items[targetIndex].locked) {
+                playMenuSelectSound();
                 gallery.itemIndex = targetIndex;
                 gallery.focus = 'target';
                 gallery.portraitElapsed = 0;
@@ -6377,6 +6460,7 @@
             if (stageIndex >= 0 && stageIndex < getOpenedPuzzleStageCount()) {
                 if (puzzleStageFocus === stageIndex && puzzleStageLastClickedIndex === stageIndex) startSelectedPuzzleStage();
                 else {
+                    playMenuSelectSound();
                     puzzleStageFocus = stageIndex;
                     puzzleStageLastClickedIndex = stageIndex;
                 }
@@ -6392,27 +6476,28 @@
                 titleMenuFocus = titleItemIndex;
                 activateTitleMenu();
             } else if (x >= WIDTH - 117 && x <= WIDTH - 32 && y >= 665 && y <= 688) {
+                playMenuSelectSound();
                 toggleMuted();
             } else if (x >= 32 && x <= 117 && y >= 665 && y <= 688) {
                 titleMenuFocus = 5;
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
-            if (y >= 525 && y <= 565 && x >= 530 && x <= 980 && canRunAiApiTest()) { settingsFocus = 9; runAiApiTest(); }
+            if (y >= 525 && y <= 565 && x >= 530 && x <= 980 && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 9; runAiApiTest(); }
             else if (y >= 625 && y <= 671 && x >= 380 && x <= 540) { settingsFocus = 10; saveSettings(); }
             else if (y >= 625 && y <= 671 && x >= 560 && x <= 720) { settingsFocus = 11; cancelSettings(); }
             else if (y >= 625 && y <= 671 && x >= 740 && x <= 900) { settingsFocus = 12; resetAllSettings(); }
             else if (y >= 76 && y <= 114) { settingsFocus = 0; settingsEditing = true; settingsCursor = settingsDraft.playerName.length; }
             else if (y >= 135 && y <= 155) { settingsFocus = 1; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 185 && y <= 205) { settingsFocus = 2; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
-            else if (y >= 226 && y <= 264 && x >= 530 && x <= 660) { settingsFocus = 3; settingsDraft.virtualController = 'none'; }
-            else if (y >= 226 && y <= 264 && x >= 680 && x <= 810) { settingsFocus = 3; settingsDraft.virtualController = 'normal'; }
-            else if (y >= 226 && y <= 264 && x >= 830 && x <= 960) { settingsFocus = 3; settingsDraft.virtualController = 'large'; }
-            else if (y >= 276 && y <= 314 && x >= 530 && x <= 660) { settingsFocus = 4; settingsDraft.graphicsQuality = 'low'; }
-            else if (y >= 276 && y <= 314 && x >= 680 && x <= 810) { settingsFocus = 4; settingsDraft.graphicsQuality = 'medium'; }
-            else if (y >= 276 && y <= 314 && x >= 830 && x <= 960) { settingsFocus = 4; settingsDraft.graphicsQuality = 'high'; }
+            else if (y >= 226 && y <= 264 && x >= 530 && x <= 660) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'none'; }
+            else if (y >= 226 && y <= 264 && x >= 680 && x <= 810) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'normal'; }
+            else if (y >= 226 && y <= 264 && x >= 830 && x <= 960) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'large'; }
+            else if (y >= 276 && y <= 314 && x >= 530 && x <= 660) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'low'; }
+            else if (y >= 276 && y <= 314 && x >= 680 && x <= 810) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'medium'; }
+            else if (y >= 276 && y <= 314 && x >= 830 && x <= 960) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'high'; }
             else if (y >= 326 && y <= 364) { settingsFocus = 5; settingsEditing = true; settingsCursor = settingsDraft.soundDataURL.length; }
-            else if (y >= 376 && y <= 414 && x >= 530 && x <= 670) { settingsFocus = 6; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
+            else if (y >= 376 && y <= 414 && x >= 530 && x <= 670) { playMenuSelectSound(); settingsFocus = 6; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
             else if (y >= 426 && y <= 464) { settingsFocus = 7; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; }
             else if (y >= 476 && y <= 514) { settingsFocus = 8; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; }
         } else {
@@ -6430,6 +6515,7 @@
                     startGame(colorSelectionMode === 'practice', colorSelectionMode === 'continuousFever');
                 } else {
                     // 난이도 선택지 바깥을 클릭하면 ESC와 같이 메인 화면으로 돌아간다.
+                    playMenuCancelSound();
                     menuScreen = 'title';
                     loadNotice();
                 }
@@ -6440,12 +6526,14 @@
             const opponentY = (y - HEIGHT / 2) / OPPONENT_MENU_SCALE + HEIGHT / 2;
             const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => opponentX >= getColorDifficultyButtonX(index) && opponentX <= getColorDifficultyButtonX(index) + 110 && opponentY >= 135 && opponentY <= 179);
             if (difficultyIndex >= 0) {
+                playMenuSelectSound();
                 selectedDifficulty = difficultyIndex;
                 opponentMenuFocus = 0;
                 return;
             }
             const aiDifficultyIndex = AI_DIFFICULTIES.findIndex((difficulty, index) => opponentX >= getAiDifficultyButtonX(index) && opponentX <= getAiDifficultyButtonX(index) + 110 && opponentY >= 195 && opponentY <= 239);
             if (aiDifficultyIndex >= 0) {
+                playMenuSelectSound();
                 selectedAiDifficulty = aiDifficultyIndex;
                 opponentMenuFocus = 1;
                 return;
@@ -6460,6 +6548,7 @@
             if (cardIndex >= 0) {
                 const clickedOpponent = visibleOpponents[cardIndex];
                 if (!clickedOpponent.notAvail && isOpponentUnlocked(clickedOpponent)) {
+                    playMenuSelectSound();
                     selectedOpponent = OPPONENTS.indexOf(clickedOpponent);
                     opponentMenuFocus = 2;
                 }
@@ -6468,6 +6557,7 @@
                 opponentMenuFocus = 3;
                 startGame(false, false, opponentMenuRule === 'fever');
             } else if (opponentX >= 710 && opponentX <= 840 && opponentY >= 600 && opponentY <= 658) {
+                playMenuCancelSound();
                 selectedOpponentAction = 1;
                 opponentMenuFocus = 3;
                 menuScreen = 'title'; loadNotice();
@@ -7195,6 +7285,30 @@
          * @type {string|null}
          */
         commonEnemySpellCombo7 = null;
+
+        /**
+         * 카운트 다운이 끝나고 게임이 시작될 때 재생되는 효과음
+         * @type {string|null}
+         */
+        gameStarts = null;
+
+        /**
+         * 모든 화면에서, 버튼이나 선택지를 클릭 (엔터 키로 선택해도 마찬가지) 했을 때 재생되는 효과음 (단, 취소나 종료 선택지/버튼은 제외)
+         * @type {string|null}
+         */
+        selects = null;
+
+        /**
+         * 모든 화면에서, 취소/종료 버튼이나 선택지를 클릭 (엔터 키로 선택해도 마찬가지) 했을 때 재생되는 효과음
+         * @type {string|null}
+         */
+        cancels = null;
+
+        /**
+         * 모든 화면에서, 버튼이나 선택지 포커스가 이동할 때 재생되는 효과음
+         * @type {string|null}
+         */
+        focusMoves = null;
 
         /**  
          * 전투 중이 아닌 상황에서 재생되는 배경 음악, null 인 경우 해당 상황에서 소리가 나지 않는다.

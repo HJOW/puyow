@@ -1711,6 +1711,37 @@ test('공통 사운드 풀은 시뮬레이터의 뿌요 착지·폭발·주문 �
   ]));
 });
 
+test('common sound pool plays menu and game-start sounds', async ({ page }) => {
+  await page.evaluate(() => {
+    window.WebPuyo.commonSoundPool.selects = 'sounds/test-menu-select.ogg';
+    window.WebPuyo.commonSoundPool.cancels = 'sounds/test-menu-cancel.ogg';
+    window.WebPuyo.commonSoundPool.focusMoves = 'sounds/test-menu-focus.ogg';
+    window.WebPuyo.commonSoundPool.gameStarts = 'sounds/test-game-start.ogg';
+  });
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual([
+    'sounds/test-menu-select.ogg',
+    'sounds/test-menu-focus.ogg',
+    'sounds/test-menu-focus.ogg',
+    'sounds/test-menu-select.ogg',
+    'sounds/test-menu-cancel.ogg',
+  ]);
+
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
+    'sounds/test-game-start.ogg',
+  ]));
+});
+
 test('시뮬레이터 연쇄는 새 점수 계산식과 같은 연쇄 문구를 표시한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
