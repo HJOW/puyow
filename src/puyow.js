@@ -366,6 +366,10 @@
     let puzzleStageLastClickedIndex = null;
     /** 퍼즐뿌요 스테이지 선택 화면의 취소 버튼에 사용할 가상 포커스 순번이다. @type {number} */
     const PUZZLE_STAGE_CANCEL_INDEX = -1;
+    /** 퍼즐뿌요 선택 줄에서 동시에 보여 줄 카드 수다. 취소와 스테이지 다섯 개가 기본 배치다. @type {number} */
+    const PUZZLE_STAGE_VISIBLE_CARD_COUNT = 6;
+    /** 퍼즐뿌요 선택 줄의 첫 번째로 보이는 카드 슬롯이다. @type {number} */
+    let puzzleStageScrollOffset = 0;
     /** 갤러리의 현재 선택과 포커스 상태다. @type {{typeIndex:number,itemIndex:number,focus:'type'|'target',portraitElapsed:number}|null} */
     let gallery = null;
     /** 초기 타이틀 중앙에 순환 표시할 갤러리 대상 상태다. @type {{loaded:boolean,items:{draw:()=>void}[],startIndex:number,elapsed:number}} */
@@ -1214,7 +1218,7 @@
         if (menuScreen === 'title') return `title:${titleMenuFocus}`;
         if (menuScreen === 'opponent') return `opponent:${opponentMenuFocus}:${selectedDifficulty}:${selectedAiDifficulty}:${selectedOpponent}:${selectedOpponentAction}`;
         if (menuScreen === 'practiceDifficulty') return `difficulty:${colorSelectionFocus}:${selectedDifficulty}`;
-        if (menuScreen === 'puzzleStage') return `puzzle:${puzzleStageFocus}`;
+        if (menuScreen === 'puzzleStage') return `puzzle:${puzzleStageFocus}:${puzzleStageScrollOffset}`;
         if (menuScreen === 'settings') return `settings:${settingsFocus}`;
         if (menuScreen === 'gallery' && gallery) return `gallery:${gallery.focus}:${gallery.typeIndex}:${gallery.itemIndex}`;
         if (menuScreen === 'simulator' && simulator) return `simulator:${simulator.mode}:${simulator.focusArea}:${simulator.paletteFocus}`;
@@ -1806,6 +1810,8 @@
         const openedCount = getOpenedPuzzleStageCount();
         puzzleStageFocus = Math.max(0, Math.min(openedCount - 1, preferredFocusIndex));
         puzzleStageLastClickedIndex = null;
+        puzzleStageScrollOffset = 0;
+        scrollPuzzleStageFocusIntoView();
         menuScreen = 'puzzleStage';
     }
 
@@ -5748,14 +5754,87 @@
         context.fillText(translate('취소'), cancelBounds.x + cancelBounds.width / 2, cancelBounds.y + 47);
     }
 
+    /** 퍼즐뿌요 취소 카드와 스테이지 카드 전체 수를 반환한다. @returns {number} 카드 수 */
+    function getPuzzleStageCardCount() {
+        return PUZZLE_STAGES.length + 1;
+    }
+
+    /** 현재 화면에 표시할 퍼즐뿌요 카드 수를 반환한다. @returns {number} 표시 카드 수 */
+    function getVisiblePuzzleStageCardCount() {
+        return Math.min(PUZZLE_STAGE_VISIBLE_CARD_COUNT, getPuzzleStageCardCount());
+    }
+
+    /** 퍼즐뿌요 스테이지 또는 취소 가상 순번을 카드 슬롯으로 바꾼다. @param {number} index 스테이지 순번 또는 취소 가상 순번(-1) @returns {number} 카드 슬롯 */
+    function getPuzzleStageCardSlot(index) {
+        return index === PUZZLE_STAGE_CANCEL_INDEX ? 0 : index + 1;
+    }
+
+    /** 카드 슬롯을 퍼즐뿌요 스테이지 또는 취소 가상 순번으로 바꾼다. @param {number} slot 카드 슬롯 @returns {number} 스테이지 순번 또는 취소 가상 순번 */
+    function getPuzzleStageIndexFromSlot(slot) {
+        return slot === 0 ? PUZZLE_STAGE_CANCEL_INDEX : slot - 1;
+    }
+
+    /** 현재 가능한 퍼즐뿌요 선택 줄의 최대 스크롤 오프셋을 반환한다. @returns {number} 최대 오프셋 */
+    function getPuzzleStageScrollLimit() {
+        return Math.max(0, getPuzzleStageCardCount() - getVisiblePuzzleStageCardCount());
+    }
+
+    /** 퍼즐뿌요 선택 줄의 스크롤 값을 유효 범위로 보정한다. @returns {void} */
+    function normalizePuzzleStageScrollOffset() {
+        puzzleStageScrollOffset = Math.max(0, Math.min(getPuzzleStageScrollLimit(), puzzleStageScrollOffset));
+    }
+
+    /** 지정한 카드가 현재 퍼즐뿌요 선택 줄에 보이는지 반환한다. @param {number} index 스테이지 순번 또는 취소 가상 순번 @returns {boolean} 표시 여부 */
+    function isPuzzleStageCardVisible(index) {
+        normalizePuzzleStageScrollOffset();
+        const slot = getPuzzleStageCardSlot(index);
+        return slot >= puzzleStageScrollOffset && slot < puzzleStageScrollOffset + getVisiblePuzzleStageCardCount();
+    }
+
+    /** 포커스된 퍼즐뿌요 카드가 화면 안에 들어오도록 선택 줄을 스크롤한다. @returns {void} */
+    function scrollPuzzleStageFocusIntoView() {
+        normalizePuzzleStageScrollOffset();
+        const slot = getPuzzleStageCardSlot(puzzleStageFocus);
+        const visibleCount = getVisiblePuzzleStageCardCount();
+        if (slot < puzzleStageScrollOffset) puzzleStageScrollOffset = slot;
+        else if (slot >= puzzleStageScrollOffset + visibleCount) puzzleStageScrollOffset = slot - visibleCount + 1;
+        normalizePuzzleStageScrollOffset();
+    }
+
+    /** 퍼즐뿌요 선택 줄을 한 카드만큼 스크롤한다. @param {number} direction 왼쪽 -1 또는 오른쪽 1 @returns {boolean} 스크롤 여부 */
+    function scrollPuzzleStageSelection(direction) {
+        normalizePuzzleStageScrollOffset();
+        const nextOffset = Math.max(0, Math.min(getPuzzleStageScrollLimit(), puzzleStageScrollOffset + (direction < 0 ? -1 : 1)));
+        if (nextOffset === puzzleStageScrollOffset) return false;
+        puzzleStageScrollOffset = nextOffset;
+        return true;
+    }
+
+    /** 퍼즐뿌요 선택 줄을 지정한 방향으로 스크롤할 수 있는지 반환한다. @param {number} direction 왼쪽 -1 또는 오른쪽 1 @returns {boolean} 스크롤 가능 여부 */
+    function canScrollPuzzleStageSelection(direction) {
+        normalizePuzzleStageScrollOffset();
+        return direction < 0 ? puzzleStageScrollOffset > 0 : puzzleStageScrollOffset < getPuzzleStageScrollLimit();
+    }
+
+    /** 퍼즐뿌요 선택 줄 스크롤 화살표의 화면 영역을 반환한다. @param {number} direction 왼쪽 -1 또는 오른쪽 1 @returns {{x:number,y:number,width:number,height:number}|null} 화살표 영역 */
+    function getPuzzleStageScrollButtonBounds(direction) {
+        if (!canScrollPuzzleStageSelection(direction)) return null;
+        const visibleCount = getVisiblePuzzleStageCardCount();
+        const slot = direction < 0 ? puzzleStageScrollOffset : puzzleStageScrollOffset + visibleCount - 1;
+        const cardBounds = getPuzzleStageButtonBounds(getPuzzleStageIndexFromSlot(slot));
+        return { x: cardBounds.x + cardBounds.width / 2 - 32, y: cardBounds.y + cardBounds.height + 13, width: 64, height: 34 };
+    }
+
     /** 퍼즐뿌요 스테이지 또는 취소 카드의 화면 영역을 반환한다. @param {number} index 스테이지 순번 또는 취소 가상 순번(-1) @returns {{x:number,y:number,width:number,height:number}} 카드 영역 */
     function getPuzzleStageButtonBounds(index) {
+        normalizePuzzleStageScrollOffset();
         const width = 190;
         const height = 110;
         const gap = 14;
-        const totalWidth = (PUZZLE_STAGES.length + 1) * width + PUZZLE_STAGES.length * gap;
-        const slot = index === PUZZLE_STAGE_CANCEL_INDEX ? 0 : index + 1;
-        return { x: (WIDTH - totalWidth) / 2 + slot * (width + gap), y: 500, width, height };
+        const visibleCount = getVisiblePuzzleStageCardCount();
+        const totalWidth = visibleCount * width + Math.max(0, visibleCount - 1) * gap;
+        const slot = getPuzzleStageCardSlot(index);
+        return { x: (WIDTH - totalWidth) / 2 + (slot - puzzleStageScrollOffset) * (width + gap), y: 500, width, height };
     }
 
     /** 퍼즐뿌요 스테이지 선택 화면을 그린다. @returns {void} */
@@ -5776,6 +5855,7 @@
         }
         const openedCount = getOpenedPuzzleStageCount();
         PUZZLE_STAGES.forEach((item, index) => {
+            if (!isPuzzleStageCardVisible(index)) return;
             const bounds = getPuzzleStageButtonBounds(index);
             const opened = index < openedCount;
             const focused = opened && index === puzzleStageFocus;
@@ -5786,11 +5866,27 @@
             context.font = `16px ${MESSAGE_FONT}`;
             context.fillText(opened ? getPuzzleConditionText(item) : translate('잠김'), bounds.x + bounds.width / 2, bounds.y + 78);
         });
-        const cancelBounds = getPuzzleStageButtonBounds(PUZZLE_STAGE_CANCEL_INDEX);
-        const cancelFocused = puzzleStageFocus === PUZZLE_STAGE_CANCEL_INDEX;
-        context.fillStyle = '#455a64'; context.fillRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
-        context.strokeStyle = cancelFocused ? '#f7c843' : '#607d8b'; context.lineWidth = cancelFocused ? 4 : 2; context.strokeRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
-        context.fillStyle = '#f5fbfc'; context.font = `24px ${BUTTON_FONT}`; context.fillText(translate('취소'), cancelBounds.x + cancelBounds.width / 2, cancelBounds.y + 62);
+        if (isPuzzleStageCardVisible(PUZZLE_STAGE_CANCEL_INDEX)) {
+            const cancelBounds = getPuzzleStageButtonBounds(PUZZLE_STAGE_CANCEL_INDEX);
+            const cancelFocused = puzzleStageFocus === PUZZLE_STAGE_CANCEL_INDEX;
+            context.fillStyle = '#455a64'; context.fillRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
+            context.strokeStyle = cancelFocused ? '#f7c843' : '#607d8b'; context.lineWidth = cancelFocused ? 4 : 2; context.strokeRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
+            context.fillStyle = '#f5fbfc'; context.font = `24px ${BUTTON_FONT}`; context.fillText(translate('취소'), cancelBounds.x + cancelBounds.width / 2, cancelBounds.y + 62);
+        }
+        [-1, 1].forEach((direction) => {
+            const bounds = getPuzzleStageScrollButtonBounds(direction);
+            if (!bounds) return;
+            context.fillStyle = '#264b5b'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = '#6bbce8'; context.lineWidth = 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = '#d8f2f5'; context.beginPath();
+            const centerX = bounds.x + bounds.width / 2;
+            const centerY = bounds.y + bounds.height / 2;
+            context.moveTo(centerX + (direction < 0 ? -10 : 10), centerY);
+            context.lineTo(centerX + (direction < 0 ? 7 : -7), centerY - 9);
+            context.lineTo(centerX + (direction < 0 ? 7 : -7), centerY + 9);
+            context.closePath();
+            context.fill();
+        });
     }
 
     /**
@@ -6496,7 +6592,11 @@
                 else if (key === 'arrowleft' || key === 'arrowright') {
                     const currentIndex = Math.max(0, focusChoices.indexOf(puzzleStageFocus));
                     const direction = key === 'arrowleft' ? -1 : 1;
-                    puzzleStageFocus = focusChoices[Math.max(0, Math.min(focusChoices.length - 1, currentIndex + direction))];
+                    const nextFocus = focusChoices[Math.max(0, Math.min(focusChoices.length - 1, currentIndex + direction))];
+                    if (nextFocus !== puzzleStageFocus) {
+                        puzzleStageFocus = nextFocus;
+                        scrollPuzzleStageFocusIntoView();
+                    } else scrollPuzzleStageSelection(direction);
                     puzzleStageLastClickedIndex = null;
                 } else if (key === 'enter' || key === ' ') {
                     if (puzzleStageFocus === PUZZLE_STAGE_CANCEL_INDEX) returnToRuleSelection();
@@ -6783,14 +6883,26 @@
             return;
         }
         if (menuScreen === 'puzzleStage') {
+            const scrollDirection = [-1, 1].find((direction) => {
+                const bounds = getPuzzleStageScrollButtonBounds(direction);
+                return bounds && x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+            });
+            if (scrollDirection !== undefined) {
+                if (scrollPuzzleStageSelection(scrollDirection)) {
+                    playMenuFocusMoveSound();
+                    puzzleStageLastClickedIndex = null;
+                }
+                return;
+            }
             const cancelBounds = getPuzzleStageButtonBounds(PUZZLE_STAGE_CANCEL_INDEX);
-            if (x >= cancelBounds.x && x <= cancelBounds.x + cancelBounds.width && y >= cancelBounds.y && y <= cancelBounds.y + cancelBounds.height) {
+            if (isPuzzleStageCardVisible(PUZZLE_STAGE_CANCEL_INDEX) && x >= cancelBounds.x && x <= cancelBounds.x + cancelBounds.width && y >= cancelBounds.y && y <= cancelBounds.y + cancelBounds.height) {
                 puzzleStageFocus = PUZZLE_STAGE_CANCEL_INDEX;
                 puzzleStageLastClickedIndex = null;
                 returnToRuleSelection();
                 return;
             }
             const stageIndex = PUZZLE_STAGES.findIndex((stage, index) => {
+                if (!isPuzzleStageCardVisible(index)) return false;
                 const stageBounds = getPuzzleStageButtonBounds(index);
                 return x >= stageBounds.x && x <= stageBounds.x + stageBounds.width && y >= stageBounds.y && y <= stageBounds.y + stageBounds.height;
             });
@@ -7372,6 +7484,7 @@
             @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic&family=Nanum+Gothic+Coding&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans+Mono:wght@100..900&family=Noto+Sans+SC:wght@100..900&display=swap');
             
             body.puyow-portrait main {
+                flex-shrink: 0;
                 height: auto;
                 max-width: none;
                 width: min(100vh, 177.7777777778vw);
@@ -7875,8 +7988,16 @@
             hint : '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?'
         }),
         new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"green"},{"x":5,"y":2,"color":"blue"},{"x":3,"y":3,"color":"green"},{"x":4,"y":3,"color":"purple"},{"x":5,"y":3,"color":"blue"},{"x":4,"y":4,"color":"red"},{"x":5,"y":4,"color":"green"},{"x":5,"y":5,"color":"green"},{"x":5,"y":6,"color":"purple"},{"x":5,"y":7,"color":"purple"},{"x":5,"y":8,"color":"purple"},{"x":5,"y":9,"color":"red"}]},
+            suppliedNextPuyos : [['red', 'red'], ['green', 'green']],
+            turnLimit : 2,
+            winConditionType : 'combo',
+            winConditionValue : 6,
+            hint : '저 위의 빨간 색은 왜 있을까?'
+        }),
+        new PuzzlePuyoStage({
             stageData : {"puyos":[{"x":0,"y":0,"color":"red"},{"x":1,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"red"},{"x":1,"y":1,"color":"red"},{"x":3,"y":1,"color":"blue"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"green"},{"x":1,"y":2,"color":"yellow"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"green"},{"x":5,"y":2,"color":"green"},{"x":0,"y":3,"color":"blue"},{"x":1,"y":3,"color":"blue"},{"x":3,"y":3,"color":"red"},{"x":4,"y":3,"color":"blue"},{"x":5,"y":3,"color":"green"},{"x":0,"y":4,"color":"blue"},{"x":1,"y":4,"color":"green"},{"x":3,"y":4,"color":"yellow"},{"x":4,"y":4,"color":"yellow"},{"x":5,"y":4,"color":"yellow"},{"x":0,"y":5,"color":"purple"},{"x":1,"y":5,"color":"blue"},{"x":3,"y":5,"color":"red"},{"x":4,"y":5,"color":"blue"},{"x":5,"y":5,"color":"green"},{"x":0,"y":6,"color":"red"},{"x":1,"y":6,"color":"purple"},{"x":3,"y":6,"color":"red"},{"x":4,"y":6,"color":"blue"},{"x":5,"y":6,"color":"blue"},{"x":0,"y":7,"color":"red"},{"x":1,"y":7,"color":"yellow"},{"x":3,"y":7,"color":"red"},{"x":4,"y":7,"color":"purple"},{"x":5,"y":7,"color":"green"},{"x":0,"y":8,"color":"red"},{"x":1,"y":8,"color":"blue"},{"x":3,"y":8,"color":"blue"},{"x":4,"y":8,"color":"purple"},{"x":5,"y":8,"color":"purple"},{"x":0,"y":9,"color":"green"},{"x":1,"y":9,"color":"green"},{"x":3,"y":9,"color":"yellow"},{"x":4,"y":9,"color":"green"},{"x":5,"y":9,"color":"green"},{"x":0,"y":10,"color":"purple"},{"x":1,"y":10,"color":"red"},{"x":3,"y":10,"color":"purple"},{"x":4,"y":10,"color":"red"},{"x":5,"y":10,"color":"green"},{"x":5,"y":11,"color":"blue"}]},
-            suppliedNextPuyos : [['green', 'yellow'], ['yellow', 'red'], ['green', 'green'], ['purple', 'green'], ['blue', 'green'], 'green', 'blue'],
+            suppliedNextPuyos : [['green', 'yellow'], ['yellow', 'red'], ['green', 'green'], ['purple', 'green'], ['blue', 'green'], ['green', 'blue']],
             turnLimit : 6,
             winConditionType : 'clear',
             winConditionValue : 0,

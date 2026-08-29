@@ -1655,7 +1655,8 @@ test('퍼즐뿌요는 스테이지 선택, 잠금 해제, 5색 지급과 두 번
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
 
-  expect(await page.evaluate(() => window.WebPuyo.PUZZLE_STAGES.map((stage) => stage.opened))).toEqual([true, true, false, false, false]);
+  const initiallyOpenedStages = await page.evaluate(() => window.WebPuyo.PUZZLE_STAGES.map((stage) => stage.opened));
+  expect(initiallyOpenedStages).toEqual([true, true, ...Array(initiallyOpenedStages.length - 2).fill(false)]);
   await page.locator('#webpuyo_canvas').click({ position: { x: 334, y: 550 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
   await page.locator('#webpuyo_canvas').click({ position: { x: 334, y: 550 } });
@@ -1751,6 +1752,37 @@ test('퍼즐뿌요 스테이지 선택의 취소는 키보드와 마우스로 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
 });
 
+test('퍼즐뿌요 스테이지 선택은 여섯 번째 스테이지에서 키보드와 화살표 클릭으로 수평 스크롤한다', async ({ page }) => {
+  await page.evaluate(() => {
+    const store = JSON.parse(window.localStorage.getItem('puyow_store') || '{"clearList":[]}');
+    store.puzzleClearStages = [3];
+    window.localStorage.setItem('puyow_store', JSON.stringify(store));
+  });
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
+
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.puzzle?.stageIndex), { timeout: 5000 }).toBe(5);
+
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  const canvas = page.locator('#webpuyo_canvas');
+  await canvas.click({ position: { x: 1150, y: 640 } });
+  await canvas.click({ position: { x: 1150, y: 550 } });
+  await canvas.click({ position: { x: 1150, y: 550 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.puzzle?.stageIndex), { timeout: 5000 }).toBe(5);
+});
+
 test('퍼즐뿌요 스테이지 클리어는 결과 화면 전환 전에 저장되고 다음 두 스테이지를 연다', async ({ page }) => {
   await page.evaluate(() => {
     const stage = window.WebPuyo.PUZZLE_STAGES[0];
@@ -1788,7 +1820,10 @@ test('퍼즐뿌요 스테이지 클리어는 결과 화면 전환 전에 저장�
 
   await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 197 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.PUZZLE_STAGES.map((stage) => stage.opened))).toEqual([true, true, true, false, false]);
+  await expect.poll(() => page.evaluate(() => {
+    const openedStages = window.WebPuyo.PUZZLE_STAGES.map((stage) => stage.opened);
+    return openedStages.slice(0, 3).every(Boolean) && openedStages.slice(3).every((opened) => !opened);
+  })).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.puzzle?.stageIndex)).toBe(1);
 });
@@ -2246,7 +2281,7 @@ test('세로 화면에서는 캔버스를 회전하고 클릭 좌표를 변환�
     return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
   });
   expect(bounds.width).toBeCloseTo(375, 1);
-  expect(bounds.height).toBeCloseTo(667, 1);
+  expect(bounds.height).toBeCloseTo(bounds.width * 16 / 9, 1);
 
   await enterMainMenu(page);
   const logicalX = 640;
@@ -2330,7 +2365,7 @@ test('기본 룰과 피버 룰의 적 초상화 화살표는 선택 가능한 �
     return pixel[0] === expected[0] && pixel[1] === expected[1] && pixel[2] === expected[2];
   }, { x, y, expected: color });
   const openOpponentMenu = async (feverRule) => {
-    await enterMainMenu(page);
+    if (await page.evaluate(() => window.WebPuyo.getScreenState().screen) !== 'main_menu') await enterMainMenu(page);
     await page.keyboard.press('Enter');
     if (feverRule) await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Enter');
