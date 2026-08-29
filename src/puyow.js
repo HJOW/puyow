@@ -5065,12 +5065,13 @@
                 context.fillStyle = '#0b202c'; context.fillRect(530, row.y - 19, 450, 38); context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(530, row.y - 19, 450, 38);
                 const selection = settingsEditing && settingsFocus === index ? getSettingsTextSelectionRange() : null;
                 if (selection) {
-                    const selectionX = 543 + context.measureText(row.value.slice(0, selection[0])).width;
-                    const selectionWidth = context.measureText(row.value.slice(selection[0], selection[1])).width;
+                    const characters = Array.from(row.value);
+                    const selectionX = 543 + context.measureText(characters.slice(0, selection[0]).join('')).width;
+                    const selectionWidth = context.measureText(characters.slice(selection[0], selection[1]).join('')).width;
                     context.fillStyle = '#426f9e'; context.fillRect(selectionX, row.y - 13, selectionWidth, 21);
                 }
                 context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(row.value || ' ', 543, row.y + 5);
-                if (settingsEditing && settingsFocus === index) { const cursorX = 543 + context.measureText(row.value.slice(0, settingsCursor)).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 13, 2, 21); }
+                if (settingsEditing && settingsFocus === index) { const cursorX = 543 + context.measureText(Array.from(row.value).slice(0, settingsCursor).join('')).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 13, 2, 21); }
             }
         });
         const apiTestEnabled = canRunAiApiTest();
@@ -6089,7 +6090,8 @@
         const selection = getSettingsTextSelectionRange();
         if (!selection) return false;
         const [start, end] = selection;
-        settingsDraft[field] = settingsDraft[field].slice(0, start) + settingsDraft[field].slice(end);
+        const characters = Array.from(settingsDraft[field]);
+        settingsDraft[field] = characters.slice(0, start).concat(characters.slice(end)).join('');
         settingsCursor = start;
         clearSettingsTextSelection();
         return true;
@@ -6097,13 +6099,14 @@
 
     /** 설정 텍스트 입력에 문자열을 현재 커서 위치로 삽입한다. @param {string} field 설정 필드 이름 @param {string} text 삽입할 문자열 @returns {void} */
     function insertSettingsText(field, text) {
-        const before = settingsDraft[field].slice(0, settingsCursor);
-        const after = settingsDraft[field].slice(settingsCursor);
+        const characters = Array.from(settingsDraft[field]);
+        const before = characters.slice(0, settingsCursor);
+        const after = characters.slice(settingsCursor);
         const maxLength = field === 'playerName' ? PLAYER_NAME_MAX_LENGTH : (field === 'soundDataURL' ? SOUND_DATA_URL_MAX_LENGTH : Infinity);
-        const availableLength = Number.isFinite(maxLength) ? Math.max(0, maxLength - Array.from(before + after).length) : Infinity;
+        const availableLength = Number.isFinite(maxLength) ? Math.max(0, maxLength - before.length - after.length) : Infinity;
         const inserted = Number.isFinite(availableLength) ? Array.from(text).slice(0, availableLength).join('') : text;
-        settingsDraft[field] = before + inserted + after;
-        settingsCursor += inserted.length;
+        settingsDraft[field] = before.concat(Array.from(inserted), after).join('');
+        settingsCursor += Array.from(inserted).length;
     }
 
     /** 설정 텍스트 입력에 클립보드 내용을 붙여 넣는다. 선택된 텍스트는 읽기 실패 전에도 먼저 삭제한다. @param {string} field 설정 필드 이름 @returns {Promise<void>} 붙여 넣기 완료 시점 */
@@ -6122,7 +6125,7 @@
         const selection = getSettingsTextSelectionRange();
         if (!selection) return;
         try {
-            await navigator.clipboard.writeText(settingsDraft[field].slice(selection[0], selection[1]));
+            await navigator.clipboard.writeText(Array.from(settingsDraft[field]).slice(selection[0], selection[1]).join(''));
         } catch (error) {
             console.error('설정 텍스트를 클립보드에 복사하지 못했습니다.', error);
         }
@@ -6136,7 +6139,7 @@
             if (event.ctrlKey && key === 'a') {
                 event.preventDefault();
                 settingsSelectionAnchor = 0;
-                settingsCursor = settingsDraft[field].length;
+                settingsCursor = Array.from(settingsDraft[field]).length;
                 return;
             }
             if (event.ctrlKey && key === 'v') { event.preventDefault(); void pasteSettingsText(field); return; }
@@ -6147,20 +6150,21 @@
                 if (event.shiftKey) {
                     if (settingsSelectionAnchor === null) settingsSelectionAnchor = settingsCursor;
                     if (key === 'arrowleft') settingsCursor = Math.max(0, settingsCursor - 1);
-                    else if (key === 'arrowright') settingsCursor = Math.min(settingsDraft[field].length, settingsCursor + 1);
+                    else if (key === 'arrowright') settingsCursor = Math.min(Array.from(settingsDraft[field]).length, settingsCursor + 1);
                     else if (key === 'arrowup') settingsCursor = 0;
-                    else settingsCursor = settingsDraft[field].length;
+                    else settingsCursor = Array.from(settingsDraft[field]).length;
                     if (settingsSelectionAnchor === settingsCursor) clearSettingsTextSelection();
                 } else if (selection) {
                     settingsCursor = key === 'arrowleft' || key === 'arrowup' ? selection[0] : selection[1];
                     clearSettingsTextSelection();
                 } else if (key === 'arrowleft') settingsCursor = Math.max(0, settingsCursor - 1);
-                else if (key === 'arrowright') settingsCursor = Math.min(settingsDraft[field].length, settingsCursor + 1);
+                else if (key === 'arrowright') settingsCursor = Math.min(Array.from(settingsDraft[field]).length, settingsCursor + 1);
                 return;
             }
             if (key === 'backspace') {
                 if (!deleteSettingsTextSelection(field) && settingsCursor > 0) {
-                    settingsDraft[field] = settingsDraft[field].slice(0, settingsCursor - 1) + settingsDraft[field].slice(settingsCursor);
+                    const characters = Array.from(settingsDraft[field]);
+                    settingsDraft[field] = characters.slice(0, settingsCursor - 1).concat(characters.slice(settingsCursor)).join('');
                     settingsCursor -= 1;
                 }
                 return;
@@ -6172,7 +6176,7 @@
             return;
         }
         if (key === 'enter' || key === ' ') {
-            if (textField) { settingsEditing = true; settingsCursor = settingsDraft[textField].length; clearSettingsTextSelection(); }
+            if (textField) { settingsEditing = true; settingsCursor = Array.from(settingsDraft[textField]).length; clearSettingsTextSelection(); }
             else activateSettingsFocus();
         } else if (key === 'escape') cancelSettings();
         else if (key === 'arrowup' || key === 'arrowdown') moveSettingsFocus(key === 'arrowup' ? -1 : 1);
@@ -6660,7 +6664,7 @@
             else if (y >= 625 && y <= 671 && x >= 380 && x <= 540) { settingsFocus = 10; saveSettings(); }
             else if (y >= 625 && y <= 671 && x >= 560 && x <= 720) { settingsFocus = 11; cancelSettings(); }
             else if (y >= 625 && y <= 671 && x >= 740 && x <= 900) { settingsFocus = 12; resetAllSettings(); }
-            else if (y >= 76 && y <= 114) { settingsFocus = 0; settingsEditing = true; settingsCursor = settingsDraft.playerName.length; clearSettingsTextSelection(); }
+            else if (y >= 76 && y <= 114) { settingsFocus = 0; settingsEditing = true; settingsCursor = Array.from(settingsDraft.playerName).length; clearSettingsTextSelection(); }
             else if (y >= 135 && y <= 155) { settingsFocus = 1; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 185 && y <= 205) { settingsFocus = 2; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 530) / 390 * 100))); }
             else if (y >= 226 && y <= 264 && x >= 530 && x <= 660) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'none'; }
@@ -6669,10 +6673,10 @@
             else if (y >= 276 && y <= 314 && x >= 530 && x <= 660) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'low'; }
             else if (y >= 276 && y <= 314 && x >= 680 && x <= 810) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'medium'; }
             else if (y >= 276 && y <= 314 && x >= 830 && x <= 960) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'high'; }
-            else if (y >= 326 && y <= 364) { settingsFocus = 5; settingsEditing = true; settingsCursor = settingsDraft.soundDataURL.length; clearSettingsTextSelection(); }
+            else if (y >= 326 && y <= 364) { settingsFocus = 5; settingsEditing = true; settingsCursor = Array.from(settingsDraft.soundDataURL).length; clearSettingsTextSelection(); }
             else if (y >= 376 && y <= 414 && x >= 530 && x <= 670) { playMenuSelectSound(); settingsFocus = 6; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
-            else if (y >= 426 && y <= 464) { settingsFocus = 7; settingsEditing = true; settingsCursor = settingsDraft.aiApiKey.length; clearSettingsTextSelection(); }
-            else if (y >= 476 && y <= 514) { settingsFocus = 8; settingsEditing = true; settingsCursor = settingsDraft.aiModel.length; clearSettingsTextSelection(); }
+            else if (y >= 426 && y <= 464) { settingsFocus = 7; settingsEditing = true; settingsCursor = Array.from(settingsDraft.aiApiKey).length; clearSettingsTextSelection(); }
+            else if (y >= 476 && y <= 514) { settingsFocus = 8; settingsEditing = true; settingsCursor = Array.from(settingsDraft.aiModel).length; clearSettingsTextSelection(); }
         } else {
             if (menuScreen === 'practiceDifficulty') {
                 const cancelBounds = getColorSelectionCancelButtonBounds();
