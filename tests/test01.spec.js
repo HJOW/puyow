@@ -473,6 +473,166 @@ test('AI API 테스트는 저장된 OpenAI 설정으로 구조화된 Responses �
   });
 });
 
+test('솔로몬은 성공한 AI API 테스트 뒤 현재 접속에서만 안드로말리우스보다 앞에 표시된다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'OpenAI', aiApiKey: 'test-key', aiModel: 'gpt-5.6-luna' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: '{"success":true}' }) });
+  });
+
+  await openSettings(page);
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('AI API test succeeded (JSON schema: passed).'))).toBe(true);
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 648 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 300 } });
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => {
+    const names = window.testCanvasTextCalls.filter(({ text }) => text === 'Solomon' || text === 'Andromalius');
+    const solomonX = Math.min(...names.filter(({ text }) => text === 'Solomon').map(({ x }) => x));
+    const andromaliusX = Math.min(...names.filter(({ text }) => text === 'Andromalius').map(({ x }) => x));
+    return Number.isFinite(solomonX) && Number.isFinite(andromaliusX) && solomonX < andromaliusX;
+  })).toBe(true);
+
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(false);
+});
+
+test('솔로몬은 매 턴 구조화된 배치를 요청하고 X 이동 후 회전과 난이도 지연을 적용한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'OpenAI', aiApiKey: 'solomon-key', aiModel: 'gpt-5.6-luna' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  const requestBodies = [];
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    const body = route.request().postDataJSON();
+    requestBodies.push(body);
+    const outputText = requestBodies.length === 1 ? '{"success":true}' : '{"x":4,"rotation":1}';
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: outputText }) });
+  });
+
+  await openSettings(page);
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => requestBodies.length).toBe(1);
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 648 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 300 } });
+  await page.keyboard.press('Enter');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => requestBodies.length, { timeout: 5000 }).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => page.evaluate(() => {
+    const active = window.WebPuyo.getGameState()?.opponent.active;
+    return active ? { x: active.x, rotation: active.rotation } : null;
+  }), { timeout: 3000 }).toEqual({ x: 4, rotation: 1 });
+
+  expect(requestBodies[1]).toMatchObject({
+    model: 'gpt-5.6-luna',
+    reasoning: { effort: 'low' },
+    text: { format: { type: 'json_schema', name: 'solomon_puyo_placement', strict: true, schema: { required: ['x', 'rotation'] } } },
+  });
+  const prompt = JSON.parse(requestBodies[1].input[0].content);
+  expect(prompt.rules.mode).toBe('standard rules');
+  expect(prompt.currentField).toMatchObject({ columns: 6, visibleRows: 12 });
+  expect(prompt.suppliedPuyos.length).toBe(3);
+  expect(prompt.fallbackSafetyCondition.dangerousCells).toEqual([{ x: 2, y: 5 }]);
+  expect(prompt.responseSchema.required).toEqual(['x', 'rotation']);
+});
+
+test('솔로몬의 잘못된 API 배치는 게임을 일시정지하고 현재 턴을 대체 AI로 전환한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'OpenAI', aiApiKey: 'solomon-key', aiModel: 'gpt-5.6-luna' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  let requestCount = 0;
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    requestCount += 1;
+    const outputText = requestCount === 1 ? '{"success":true}' : '{"x":99,"rotation":0}';
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: outputText }) });
+  });
+
+  await openSettings(page);
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => requestCount).toBe(1);
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 648 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 300 } });
+  await page.keyboard.press('Enter');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('paused');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
+    '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.',
+    'Solomon AI response error: continuing with the fallback AI.',
+    'ソロモンAIの応答エラー：代替AIで続行します。',
+    '所罗门 AI 响应错误：将使用备用 AI 继续。',
+  ].includes(text)))).toBe(true);
+});
+
+test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취소하고 다음 턴에 다시 요청한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'OpenAI', aiApiKey: 'solomon-key', aiModel: 'gpt-5.6-luna' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await page.route('https://api.openai.com/v1/responses', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ output_text: '{"success":true}' }) });
+  });
+  await openSettings(page);
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('AI API test succeeded (JSON schema: passed).'))).toBe(true);
+  await page.unroute('https://api.openai.com/v1/responses');
+  await page.evaluate(() => {
+    window.testSolomonRequestCount = 0;
+    window.testSolomonAbortCount = 0;
+    window.fetch = (_url, options = {}) => {
+      window.testSolomonRequestCount += 1;
+      return new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => {
+          window.testSolomonAbortCount += 1;
+          reject(new DOMException('Aborted', 'AbortError'));
+        }, { once: true });
+      });
+    };
+  });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 648 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 300 } });
+  await page.keyboard.press('Enter');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.testSolomonAbortCount), { timeout: 8000 }).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.placedPairCount), { timeout: 3000 }).toBeGreaterThanOrEqual(1);
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).not.toBe('paused');
+  await expect.poll(() => page.evaluate(() => window.testSolomonRequestCount), { timeout: 5000 }).toBeGreaterThanOrEqual(2);
+});
+
 test('저장하지 않은 AI 설정은 API 테스트 요청 대신 저장 안내를 표시한다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({

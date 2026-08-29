@@ -207,9 +207,22 @@
         required: ['success'],
         additionalProperties: false
     };
+    /** 솔로몬이 OpenAI Responses API 응답을 기다리는 최대 시간(ms)이다. @type {number} */
+    const SOLOMON_API_TIMEOUT = 6000;
+    /** 솔로몬의 배치 결정에 요구할 구조화 출력 JSON Schema다. @type {object} */
+    const SOLOMON_PLACEMENT_JSON_SCHEMA = {
+        type: 'object',
+        properties: {
+            x: { type: 'integer', minimum: 0, maximum: COLUMNS - 1, description: 'Rotation-axis column.' },
+            rotation: { type: 'integer', minimum: 0, maximum: 3, description: '0=up, 1=right, 2=down, 3=left.' }
+        },
+        required: ['x', 'rotation'],
+        additionalProperties: false
+    };
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
+            '솔로몬': 'Solomon', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'Solomon AI response error: continuing with the fallback AI.',
             '뿌요 W': 'Puyo W',
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
@@ -228,6 +241,7 @@
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)'
         },
         ja: {
+            '솔로몬': 'ソロモン', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'ソロモンAIの応答エラー：代替AIで続行します。',
             '이름': '名前',
             '뿌요 W': 'Puyo W',
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
@@ -247,6 +261,7 @@
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）'
         },
         zh: {
+            '솔로몬': '所罗门', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': '所罗门 AI 响应错误：将使用备用 AI 继续。',
             '이름': '名称',
             '뿌요 W': 'Puyo W',
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
@@ -318,6 +333,8 @@
     const SCREEN_MESSAGE_FADE_DURATION = 500;
     /** AI API 테스트 요청이 진행 중인지 여부다. @type {boolean} */
     let settingsApiTestPending = false;
+    /** 현재 페이지 접속 중 AI API 테스트를 통과해 솔로몬을 사용할 수 있는지 여부다. 저장하지 않는다. @type {boolean} */
+    let solomonSessionUnlocked = false;
     /** 종료된 설정 화면의 비동기 응답을 무시하기 위한 요청 식별자다. @type {number} */
     let settingsApiTestRequestId = 0;
     /** 설정 전체 초기화 확인 후 표시하는 초기화 진행 화면 여부다. @type {boolean} */
@@ -1535,13 +1552,22 @@
         return OPPONENTS.filter((opponent) => !opponent.hidden);
     }
 
+    /** 성공한 AI API 테스트 뒤 현재 접속에 한해 솔로몬을 적 목록에 표시한다. @returns {void} */
+    function unlockSolomonForSession() {
+        solomonSessionUnlocked = true;
+        const solomon = OPPONENTS.find((opponent) => opponent.classType === 'Solomon');
+        if (solomon) solomon.hidden = false;
+    }
+
     /**
      * 이전 유효 적을 클리어해 현재 잠금이 해제된 적인지 판별한다.
      * @param {{className:string, hidden:boolean, notAvail:boolean}} opponent 판별할 적
      * @returns {boolean} 선택 가능 여부
      */
     function isOpponentUnlocked(opponent) {
-        const progressionOpponents = OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail);
+        // 솔로몬은 저장 진행도와 무관한 세션 전용 적이므로 기존 적의 순차 해금 조건에 끼워 넣지 않는다.
+        if (opponent.classType === 'Solomon') return solomonSessionUnlocked;
+        const progressionOpponents = OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail && entry.classType !== 'Solomon');
         const index = progressionOpponents.indexOf(opponent);
         if (index <= 0) return index === 0;
         const difficultyKey = getSelectedDifficulty().key;
@@ -2081,6 +2107,39 @@
     }
 
     /**
+     * prepareTurn을 마친 컨트롤러의 개별 전략과 기본 제공 적 공통 우선순위를 적용한다.
+     * 솔로몬의 대체 인공지능도 이 함수를 벨리알 인스턴스와 함께 호출해 실제 벨리알과 같은 결정을 얻는다.
+     * @param {PlayerState} player CPU 플레이어
+     * @param {Enemy} controller 결정에 사용할 컨트롤러
+     * @param {boolean} appliesBundledEngineStrategy 기본 제공 적 공통 전략 적용 여부
+     * @returns {void}
+     */
+    function applyPreparedControllerDecision(player, controller, appliesBundledEngineStrategy) {
+        if (appliesBundledEngineStrategy && game?.feverRule && player.fever?.active && !(controller instanceof Amdusias)) {
+            const feverPlacement = findBestFeverComboPlacement(player) || findBestAttackPlacement(player, player.active.x, null, true);
+            player.aiTarget = feverPlacement.x;
+            player.aiRotation = ((feverPlacement.rotation % 4) + 4) % 4;
+        } else if (appliesBundledEngineStrategy && shouldCounterPlayerChain(player)) {
+            const attackPlacement = findBestAttackPlacement(player, player.active.x, null, true);
+            player.aiTarget = attackPlacement.x;
+            player.aiRotation = ((attackPlacement.rotation % 4) + 4) % 4;
+        } else {
+            player.aiTarget = controller.chooseTarget(player);
+            player.aiRotation = ((controller.chooseRotate(player) % 4) + 4) % 4;
+        }
+        if (!appliesBundledEngineStrategy) return;
+        const selectedPlacement = player.aiSimulations.find((simulation) => simulation.x === player.aiTarget && simulation.rotation === player.aiRotation);
+        const amdusiasFeverAttack = controller instanceof Amdusias && game?.feverRule && player.fever?.active;
+        if (!amdusiasFeverAttack && selectedPlacement && causesImmediateDefeat(player, selectedPlacement)) {
+            const safePlacement = findBestAttackPlacement(player, player.active.x, null, true);
+            if (safePlacement.positions.length) {
+                player.aiTarget = safePlacement.x;
+                player.aiRotation = safePlacement.rotation;
+            }
+        }
+    }
+
+    /**
      * 조작 단계로 전환하고 다음 뿌요 한 쌍을 꺼낸다.
      * @param {PlayerState} player 전환할 플레이어
      * @returns {void}
@@ -2107,32 +2166,11 @@
             // 기본 제공 적에 한해서만 플레이어 연쇄 대응 같은 엔진 공통 특수 규칙을 적용한다.
             // 외부 등록 적은 자신의 chooseTarget·chooseRotate 결정만 사용한다.
             // findBestAttackPlacement가 즉시 패배 후보를 먼저 제외하므로 생존 조건만 이 우선순위보다 앞선다.
-            if (player.controller instanceof BundledEnemy && game?.feverRule && player.fever?.active && !(player.controller instanceof Amdusias)) {
-                const feverPlacement = findBestFeverComboPlacement(player) || findBestAttackPlacement(player, player.active.x, null, true);
-                player.aiTarget = feverPlacement.x;
-                player.aiRotation = ((feverPlacement.rotation % 4) + 4) % 4;
-            } else if (player.controller instanceof BundledEnemy && shouldCounterPlayerChain(player)) {
-                const attackPlacement = findBestAttackPlacement(player, player.active.x, null, true);
-                player.aiTarget = attackPlacement.x;
-                player.aiRotation = ((attackPlacement.rotation % 4) + 4) % 4;
-            } else {
-                player.aiTarget = player.controller.chooseTarget(player);
-                player.aiRotation = ((player.controller.chooseRotate(player) % 4) + 4) % 4;
-            }
+            const appliesBundledEngineStrategy = player.controller instanceof BundledEnemy && !(player.controller instanceof Solomon);
+            applyPreparedControllerDecision(player, player.controller, appliesBundledEngineStrategy);
             // 기본 제공 적의 개별 쌓기 전략보다 즉시 패배 회피를 항상 우선한다. 피버 룰에서는
             // isDefeatBoard가 (2,11)과 (3,11)을 모두 검사하므로, 최종 x·회전 조합도 두 칸을
             // 포함한 실제 폭발·중력 결과로 재검증한 뒤 위험하면 안전한 후보로 교체한다.
-            if (player.controller instanceof BundledEnemy) {
-                const selectedPlacement = player.aiSimulations.find((simulation) => simulation.x === player.aiTarget && simulation.rotation === player.aiRotation);
-                const amdusiasFeverAttack = player.controller instanceof Amdusias && game?.feverRule && player.fever?.active;
-                if (!amdusiasFeverAttack && selectedPlacement && causesImmediateDefeat(player, selectedPlacement)) {
-                    const safePlacement = findBestAttackPlacement(player, player.active.x, null, true);
-                    if (safePlacement.positions.length) {
-                        player.aiTarget = safePlacement.x;
-                        player.aiRotation = safePlacement.rotation;
-                    }
-                }
-            }
             player.aiFastDown = false;
             player.aiDecisionElapsed = 0;
         }
@@ -2254,6 +2292,8 @@
      * @returns {void}
      */
     function lockActive(player) {
+        // 비동기 판단을 기다리는 적은 뿌요가 실제 바닥이나 다른 뿌요에 닿는 즉시 요청을 취소한다.
+        player.controller?.cancelPendingRequest?.(player, 'contact');
         // 피버 룰의 방해뿌요 지연은 배치마다 새로 판정한다. 이번 배치가 폭발에 성공하면
         // resolveExplosions에서 다시 true가 되어 다음 컨트롤까지 DAMAGE 낙하를 미룬다.
         if (game?.feverRule && player.fever) player.fever.deferGarbage = false;
@@ -3239,16 +3279,19 @@
             }
             if (player.controller) {
                 player.aiDecisionElapsed += delta;
-                player.aiFastDown = player.controller.useFastDown(player) === true;
-                const rotationDelta = (player.aiRotation - player.active.rotation + 4) % 4;
-                if (rotationDelta) {
-                    const direction = rotationDelta === 3 ? -1 : 1;
-                    if (!rotateActive(player, direction) && player.active.x !== player.aiTarget) {
+                const controllerHandledMovement = player.controller.updateControl?.(player, delta) === true;
+                if (!controllerHandledMovement) {
+                    const rotationDelta = (player.aiRotation - player.active.rotation + 4) % 4;
+                    if (rotationDelta) {
+                        const direction = rotationDelta === 3 ? -1 : 1;
+                        if (!rotateActive(player, direction) && player.active.x !== player.aiTarget) {
+                            moveActive(player, player.active.x < player.aiTarget ? 1 : -1, 0);
+                        }
+                    } else if (player.active.x !== player.aiTarget) {
                         moveActive(player, player.active.x < player.aiTarget ? 1 : -1, 0);
                     }
-                } else if (player.active.x !== player.aiTarget) {
-                    moveActive(player, player.active.x < player.aiTarget ? 1 : -1, 0);
                 }
+                player.aiFastDown = player.controller.useFastDown(player) === true;
             }
             // AI 정책 또는 사용자·가상 컨트롤러·튜토리얼 입력으로 빠른 하강을 적용할지 여부다.
             const fastDown = player.controller ? player.aiFastDown : tutorialAutoplay ? player.tutorialFastDown === true : isDownKeyPressed || virtualDirectionInput.arrowdown || player.tutorialFastDown === true;
@@ -4947,9 +4990,12 @@
                 return;
             }
             const outputText = getResponsesOutputText(await response.json());
+            if (requestId !== settingsApiTestRequestId) return;
             let result;
             try { result = outputText ? JSON.parse(outputText) : null; } catch (error) { result = null; }
-            showSettingsApiTestMessage(isAiApiTestResult(result)
+            const testSucceeded = isAiApiTestResult(result);
+            if (testSucceeded) unlockSolomonForSession();
+            showSettingsApiTestMessage(testSucceeded
                 ? 'AI API 테스트 성공 (JSON 스키마 검사: 통과)'
                 : 'AI API 테스트 실패 (JSON 스키마 검사: 실패)');
         } catch (error) {
@@ -8077,6 +8123,269 @@
     }
 
     /**
+     * 솔로몬은 매 조작 턴마다 현재 필드와 제공된 모든 NEXT를 OpenAI Responses API에 보내
+     * 구조화된 최적 배치를 받아 조작하는 세션 전용 기본 적이다.
+     */
+    class Solomon extends BundledEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 0;
+            this.hidden = true;
+            /** API가 늦거나 실패했을 때 사용할 교체 가능한 대체 인공지능이다. @type {Enemy} */
+            this.fallbackEnemy = new Belial();
+            /** @type {'idle'|'pending'|'ready'|'fallback'|'cancelled'} */
+            this.decisionState = 'idle';
+            /** @type {AbortController|null} */
+            this.requestController = null;
+            /** @type {number|null} */
+            this.requestTimeoutId = null;
+            /** @type {PlayerState|null} */
+            this.turnPlayer = null;
+            /** @type {object|null} */
+            this.turnActive = null;
+            this.targetX = 2;
+            this.targetRotation = 0;
+            this.fastDownElapsed = 0;
+        }
+
+        getClassType() { return 'Solomon'; }
+        getName() { return '솔로몬'; }
+
+        /** 위험 높이에서는 API를 기다리지 않고 대체 인공지능을 사용할지 판별한다. @param {PlayerState} player CPU 플레이어 @returns {boolean} */
+        shouldUseFallbackImmediately(player) {
+            if (game?.feverRule) return Boolean(player.board[5]?.[2] || player.board[5]?.[3]);
+            return Boolean(player.board[5]?.[2]);
+        }
+
+        /** 현재 턴을 벨리알과 같은 판단 결과로 전환한다. @param {PlayerState} player CPU 플레이어 @returns {void} */
+        applyFallback(player) {
+            if (!player.active) return;
+            this.fallbackEnemy.prepareTurn(player);
+            applyPreparedControllerDecision(player, this.fallbackEnemy, this.fallbackEnemy instanceof BundledEnemy);
+            this.targetX = player.aiTarget;
+            this.targetRotation = player.aiRotation;
+            player.aiDecisionElapsed = 0;
+            this.decisionState = 'fallback';
+        }
+
+        /** API 프롬프트에 넣을 현재 규칙·필드·제공 뿌요 정보를 만든다. @param {PlayerState} player CPU 플레이어 @returns {string} */
+        buildPlacementPrompt(player) {
+            const occupiedCells = [];
+            player.board.forEach((row, y) => row.forEach((color, x) => {
+                if (color) occupiedCells.push({ x, y, color });
+            }));
+            const feverRule = game?.feverRule === true;
+            const dangerCells = feverRule ? [{ x: 2, y: 5 }, { x: 3, y: 5 }] : [{ x: 2, y: 5 }];
+            return JSON.stringify({
+                task: 'Choose one legal and strategically optimal landing for the current falling puyo pair.',
+                rules: {
+                    mode: feverRule ? 'FEVER rules' : 'standard rules',
+                    field: `The field has ${COLUMNS} columns (x=0..${COLUMNS - 1}) and ${VISIBLE_ROWS} visible rows (y=0..${VISIBLE_ROWS - 1}); y=0 is the bottom and y increases upward.`,
+                    pair: 'Two puyos fall as one pair. Four or more orthogonally connected puyos of the same color pop; gravity then applies and may create chains. Larger chains attack the opponent.',
+                    garbage: 'Attack first offsets incoming DAMAGE. Remaining attack sends garbage puyos to the opponent; adjacent garbage disappears when colored puyos pop.',
+                    defeat: feverRule ? 'After resolution, occupied defeat cells x=2,y=11 or x=3,y=11 lose the game.' : 'After resolution, an occupied defeat cell x=2,y=11 loses the game.',
+                    fever: feverRule ? 'Offsets fill a seven-light gauge. A full gauge enters a timed FEVER field whose prepared pattern should be cleared at or above targetCombo; the normal field returns when FEVER ends.' : null,
+                    rotations: { 0: 'second puyo above the rotation-axis puyo', 1: 'second puyo right', 2: 'second puyo below', 3: 'second puyo left' },
+                    outputCoordinates: 'x is the final column of the first (rotation-axis) puyo. rotation is one of 0,1,2,3 as defined above.'
+                },
+                currentField: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, occupiedCells },
+                currentState: { incomingDamage: player.damage, fever: this.getMyFeverStatus(player) },
+                suppliedPuyos: [
+                    { order: 'current', colors: [...player.active.colors] },
+                    ...player.nextPairs.map((colors, index) => ({ order: `next_${index + 1}`, colors: [...colors] }))
+                ],
+                fallbackSafetyCondition: {
+                    dangerousCells: dangerCells,
+                    instruction: 'Avoid placements that occupy or further endanger these cells. If any dangerous cell is already occupied, the local fallback AI is used instead of this request.'
+                },
+                responseSchema: SOLOMON_PLACEMENT_JSON_SCHEMA
+            });
+        }
+
+        /** 실제 뿌요가 API 결과의 X까지 먼저 이동한 뒤 회전할 수 있는지 검사한다. @param {PlayerState} player CPU 플레이어 @param {{x:number,rotation:number}} result API 결과 @returns {boolean} */
+        canUsePlacement(player, result) {
+            if (!result || !Number.isInteger(result.x) || !Number.isInteger(result.rotation)
+                || result.x < 0 || result.x >= COLUMNS || result.rotation < 0 || result.rotation > 3) return false;
+            if (!player.aiSimulations.some((simulation) => simulation.x === result.x && simulation.rotation === result.rotation)) return false;
+            let simulated = { ...player.active };
+            while (simulated.x !== result.x) {
+                const candidate = { ...simulated, x: simulated.x + (simulated.x < result.x ? 1 : -1) };
+                if (!canPlace(player, candidate)) return false;
+                simulated = candidate;
+            }
+            while (simulated.rotation !== result.rotation) {
+                const rotationDelta = (result.rotation - simulated.rotation + 4) % 4;
+                const direction = rotationDelta === 3 ? -1 : 1;
+                const candidate = { ...simulated, rotation: (simulated.rotation + direction + 4) % 4 };
+                if (canPlace(player, candidate)) {
+                    simulated = candidate;
+                    continue;
+                }
+                const horizontalKick = candidate.rotation === 1 ? -1 : candidate.rotation === 3 ? 1 : 0;
+                const kicked = { ...candidate, x: candidate.x + horizontalKick };
+                if (horizontalKick && canPlace(player, kicked)) {
+                    simulated = kicked;
+                    continue;
+                }
+                const flipped = { ...simulated, rotation: (simulated.rotation + direction * 2 + 4) % 4 };
+                if (!canPlace(player, flipped)) return false;
+                simulated = flipped;
+            }
+            return simulated.x === result.x;
+        }
+
+        /** 응답·파싱·배치 검증 오류를 알리고 게임을 멈춘 뒤 현재 턴을 대체 AI로 준비한다. @param {PlayerState} player CPU 플레이어 @param {unknown} error 오류 @returns {void} */
+        handleRequestFailure(player, error) {
+            if (!this.isCurrentTurn(player)) return;
+            console.error('솔로몬 AI 배치 요청에 실패했습니다.', error);
+            this.applyFallback(player);
+            game.paused = true;
+            pauseMenuFocus = 0;
+            pauseBackgroundMusic();
+            showMessage(translate('솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.'), '#f5fbfc', 2000, '#7b2636');
+        }
+
+        /** 캡처한 뿌요가 아직 이 컨트롤러의 현재 조작 턴인지 확인한다. @param {PlayerState} player CPU 플레이어 @returns {boolean} */
+        isCurrentTurn(player) {
+            return Boolean(game?.running && player === this.turnPlayer && player.controller === this
+                && player.phase === 'control' && player.active === this.turnActive);
+        }
+
+        /** 저장된 OpenAI 설정으로 이번 턴의 배치를 요청한다. @param {PlayerState} player CPU 플레이어 @returns {Promise<void>} */
+        async requestPlacement(player) {
+            const abortController = new AbortController();
+            this.requestController = abortController;
+            this.requestTimeoutId = setTimeout(() => {
+                if (this.requestController !== abortController || !this.isCurrentTurn(player)) return;
+                abortController.puyowCancelReason = 'timeout';
+                this.applyFallback(player);
+                abortController.abort();
+            }, SOLOMON_API_TIMEOUT);
+            try {
+                const response = await window.fetch(convertURL(OPENAI_RESPONSES_API_URL), {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${store.settings.aiApiKey}`, 'Content-Type': 'application/json' },
+                    signal: abortController.signal,
+                    body: JSON.stringify({
+                        model: store.settings.aiModel,
+                        reasoning: { effort: 'low' },
+                        input: [{ role: 'user', content: this.buildPlacementPrompt(player) }],
+                        text: { format: { type: 'json_schema', name: 'solomon_puyo_placement', strict: true, schema: SOLOMON_PLACEMENT_JSON_SCHEMA } },
+                        max_output_tokens: 128
+                    })
+                });
+                if (!response.ok) throw new Error(`OpenAI Responses API HTTP ${response.status}`);
+                const outputText = getResponsesOutputText(await response.json());
+                if (!outputText) throw new Error('Responses API 응답에 output_text가 없습니다.');
+                let result;
+                try { result = JSON.parse(outputText); } catch (error) { throw new Error('솔로몬 배치 JSON을 파싱할 수 없습니다.', { cause: error }); }
+                if (!this.isCurrentTurn(player)) return;
+                if (!this.canUsePlacement(player, result)) throw new Error('응답받은 솔로몬 배치를 현재 뿌요에 사용할 수 없습니다.');
+                this.targetX = result.x;
+                this.targetRotation = result.rotation;
+                player.aiTarget = result.x;
+                player.aiRotation = result.rotation;
+                player.aiDecisionElapsed = 0;
+                this.fastDownElapsed = 0;
+                this.decisionState = 'ready';
+            } catch (error) {
+                if (abortController.puyowCancelReason) return;
+                this.handleRequestFailure(player, error);
+            } finally {
+                if (this.requestController === abortController) {
+                    if (this.requestTimeoutId !== null) clearTimeout(this.requestTimeoutId);
+                    this.requestTimeoutId = null;
+                    this.requestController = null;
+                }
+            }
+        }
+
+        /** @param {PlayerState} player CPU 플레이어 @returns {void} */
+        prepareTurn(player) {
+            this.cancelPendingRequest(null, 'replaced');
+            super.prepareTurn(player);
+            this.turnPlayer = player;
+            this.turnActive = player.active;
+            this.targetX = player.active?.x ?? 2;
+            this.targetRotation = player.active?.rotation ?? 0;
+            this.fastDownElapsed = 0;
+            if (this.shouldUseFallbackImmediately(player)) {
+                this.applyFallback(player);
+                return;
+            }
+            this.decisionState = 'pending';
+            void this.requestPlacement(player);
+        }
+
+        chooseTarget() { return this.targetX; }
+        chooseRotate() { return this.targetRotation; }
+
+        /** API 성공 배치는 수평 이동을 모두 마친 다음 회전한다. 대체 AI는 기존 엔진 조작을 그대로 쓴다. @param {PlayerState} player CPU 플레이어 @param {number} delta 경과 시간 @returns {boolean} 엔진 기본 이동을 대체했는지 */
+        updateControl(player, delta) {
+            if (this.decisionState === 'fallback') return false;
+            if (this.decisionState !== 'ready') return true;
+            if (player.active.x !== player.aiTarget) {
+                this.fastDownElapsed = 0;
+                moveActive(player, player.active.x < player.aiTarget ? 1 : -1, 0);
+                return true;
+            }
+            const rotationDelta = (player.aiRotation - player.active.rotation + 4) % 4;
+            if (rotationDelta) {
+                this.fastDownElapsed = 0;
+                rotateActive(player, rotationDelta === 3 ? -1 : 1);
+                return true;
+            }
+            this.fastDownElapsed += delta;
+            return true;
+        }
+
+        /** @param {PlayerState} player CPU 플레이어 @returns {boolean} */
+        useFastDown(player) {
+            if (this.decisionState === 'fallback') return this.fallbackEnemy.useFastDown(player);
+            if (this.decisionState !== 'ready') return false;
+            const delay = getSelectedDifficulty().fastDownDelay;
+            return delay !== null && this.fastDownElapsed >= delay;
+        }
+
+        /** 착지 또는 턴 교체 시 남아 있는 Responses API 요청을 취소한다. @param {PlayerState|null} player CPU 플레이어 @param {string} reason 취소 사유 @returns {void} */
+        cancelPendingRequest(player, reason = 'cancelled') {
+            if (!this.requestController || (player && player !== this.turnPlayer)) return;
+            this.requestController.puyowCancelReason = reason;
+            if (this.requestTimeoutId !== null) clearTimeout(this.requestTimeoutId);
+            this.requestTimeoutId = null;
+            this.requestController.abort();
+            this.requestController = null;
+            if (reason === 'contact') this.decisionState = 'cancelled';
+        }
+
+        /** 인간 왕의 왕관·망토를 바탕으로 솔로몬의 일반·위기·우는 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            const size = 72 * scale;
+            drawingContext.save();
+            drawingContext.translate(centerX, centerY);
+            drawingContext.lineJoin = 'round';
+            drawingContext.fillStyle = '#38275f'; drawingContext.strokeStyle = '#201536'; drawingContext.lineWidth = 4 * scale;
+            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.62, size * 0.72); drawingContext.lineTo(-size * 0.47, -size * 0.05); drawingContext.lineTo(0, size * 0.13); drawingContext.lineTo(size * 0.47, -size * 0.05); drawingContext.lineTo(size * 0.62, size * 0.72); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#e7b58f'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.07, size * 0.4, size * 0.49, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#352334'; drawingContext.beginPath(); drawingContext.arc(0, -size * 0.2, size * 0.43, Math.PI, Math.PI * 2); drawingContext.fill();
+            drawingContext.fillStyle = '#e9c95f'; drawingContext.beginPath(); drawingContext.moveTo(-size * 0.38, -size * 0.46); drawingContext.lineTo(-size * 0.3, -size * 0.9); drawingContext.lineTo(-size * 0.08, -size * 0.59); drawingContext.lineTo(0, -size * 0.96); drawingContext.lineTo(size * 0.12, -size * 0.59); drawingContext.lineTo(size * 0.36, -size * 0.88); drawingContext.lineTo(size * 0.38, -size * 0.46); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            const eyeY = -size * 0.08;
+            if (expression === 'defeated') {
+                drawingContext.strokeStyle = '#38233d'; drawingContext.lineWidth = 3 * scale;
+                [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.moveTo(eyeX - size * 0.07, eyeY - size * 0.05); drawingContext.lineTo(eyeX + size * 0.07, eyeY + size * 0.05); drawingContext.moveTo(eyeX + size * 0.07, eyeY - size * 0.05); drawingContext.lineTo(eyeX - size * 0.07, eyeY + size * 0.05); drawingContext.stroke(); });
+                drawingContext.fillStyle = '#78d5f4'; [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY + size * 0.2, size * 0.055, size * 0.14, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.beginPath(); drawingContext.arc(0, size * 0.29, size * 0.11, Math.PI, Math.PI * 2); drawingContext.stroke();
+            } else {
+                drawingContext.fillStyle = expression === 'crisis' ? '#7b2636' : '#38233d';
+                [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.065, expression === 'crisis' ? size * 0.12 : size * 0.075, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.strokeStyle = '#7b2636'; drawingContext.lineWidth = 3 * scale; drawingContext.beginPath();
+                if (expression === 'crisis') drawingContext.arc(0, size * 0.3, size * 0.11, Math.PI, Math.PI * 2); else drawingContext.arc(0, size * 0.15, size * 0.12, 0, Math.PI); drawingContext.stroke();
+            }
+            drawingContext.restore();
+        }
+    }
+
+    /**
      * 안드로말리우스 적 정의
      */
     class Andromalius extends BundledEnemy {
@@ -9251,6 +9560,7 @@
 
     // 기본 적은 모든 함수 선언이 준비된 뒤 등록해 초기화 순서를 명확히 한다.
     OPPONENTS.push(
+        createOpponentEntry(() => new Solomon()),
         createOpponentEntry(() => new Andromalius()),
         createOpponentEntry(() => new Dantalion()),
         createOpponentEntry(() => new Seere()),
