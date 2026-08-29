@@ -128,7 +128,7 @@ PuyoW.commonSoundPool.puyoBurstCombo1 = 'sounds/puyo-burst-1.ogg';
 PuyoW.commonSoundPool.backgroundMusic = 'sounds/common-bgm.ogg';
 ```
 
-추가 공통 효과음은 아래 속성으로 설정합니다. `gameStarts`는 카운트다운이 끝나 실제 게임이 시작될 때, `selects`는 일반 버튼·선택지를 클릭하거나 Enter로 실행할 때, `cancels`는 취소·종료를 실행할 때, `focusMoves`는 버튼·선택지 포커스가 이동할 때 재생됩니다. 한 번의 선택 또는 취소 동작에서는 포커스 이동음이 함께 재생되지 않습니다. `loose`는 패배 연출 직전, `puyoFall`은 일반 뿌요가 착지할 때마다, `garbageFallLittle`은 한 번에 1~5개 방해뿌요가 착지할 때마다 재생됩니다. `garbageFallLot`은 한 번에 6개 이상이 착지할 때 재생하며, 이전 재생이 끝나기 전에는 중복 재생하지 않습니다.
+추가 공통 효과음은 아래 속성으로 설정합니다. `gameStarts`는 카운트다운이 끝나 실제 게임이 시작될 때, `selects`는 일반 버튼·선택지를 클릭하거나 Enter로 실행할 때, `cancels`는 취소·종료를 실행할 때, `focusMoves`는 버튼·선택지 포커스가 이동할 때 재생됩니다. 한 번의 선택 또는 취소 동작에서는 포커스 이동음이 함께 재생되지 않습니다. `loose`는 패배 연출 직전, `puyoFall`은 일반 뿌요가 착지할 때마다 재생하되 마지막 재생 후 0.5초 동안의 요청은 무시합니다. `garbageFallLittle`은 한 번에 1~5개 방해뿌요가 착지할 때마다 재생됩니다. `garbageFallLot`은 한 번에 6개 이상이 착지할 때 재생하며, 이전 재생이 끝나기 전에는 중복 재생하지 않습니다.
 
 `combo3SpellEffect`, `combo4SpellEffect`, `combo5SpellEffect`, `combo6SpellEffect`는 각각 3·4·5·6연쇄 이상 공격 에너지가 상쇄 후 상대 필드에 도착했을 때 사용합니다. 적의 `spellCombo1`~`spellCombo7`이 비어 있으면 `commonEnemySpellCombo1`~`commonEnemySpellCombo7`이 같은 연쇄 번호의 대체 주문음으로 사용됩니다.
 

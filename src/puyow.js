@@ -294,6 +294,10 @@
     let backgroundMusicUrl = null;
     /** 대량 방해뿌요 착지음의 중복 재생을 막기 위해 보관하는 오디오다. @type {HTMLAudioElement|null} */
     let garbageFallLotAudio = null;
+    /** 마지막 일반 뿌요 착지음 재생 시각(ms) @type {number} */
+    let puyoFallLastPlayedAt = -Infinity;
+    /** 일반 뿌요 착지음의 최소 재생 간격(ms) */
+    const PUYO_FALL_SOUND_COOLDOWN = 250;
     /** 초기 타이틀을 벗어나 브라우저가 재생을 허용하는 사용자 조작이 발생했는지 여부다. @type {boolean} */
     let hasUserStarted = false;
     /** 메인 화면 왼쪽에 표시할 안내문 원문이다. @type {string} */
@@ -1170,12 +1174,21 @@
         }
     }
 
+    /** 일반 뿌요 착지음은 너무 짧은 간격으로 반복되지 않게 재생한다. @param {string|null|undefined} url 음원 URL @returns {void} */
+    function playPuyoFallSound(url) {
+        if (url === null || url === undefined || url === '' || typeof Audio === 'undefined' || getAudioVolume('effects') <= 0) return;
+        const now = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+        if (now - puyoFallLastPlayedAt < PUYO_FALL_SOUND_COOLDOWN) return;
+        puyoFallLastPlayedAt = now;
+        playSound(url, 'effects', '뿌요 착지 효과음');
+    }
+
     /** 중력 애니메이션으로 떨어진 뿌요들의 착지 효과음을 재생한다. @param {{color:string}[]} falling 착지한 뿌요 목록 @returns {void} */
     function playGravityLandingSounds(falling) {
         if (!Array.isArray(falling) || !falling.length) return;
         const normalPuyoCount = falling.filter((puyo) => COLORS.includes(puyo.color)).length;
         const garbageCount = falling.filter((puyo) => puyo.color === 'garbage').length;
-        for (let index = 0; index < normalPuyoCount; index += 1) playSound(commonSoundPool?.puyoFall, 'effects', '뿌요 착지 효과음');
+        for (let index = 0; index < normalPuyoCount; index += 1) playPuyoFallSound(commonSoundPool?.puyoFall);
         if (garbageCount >= 6) playGarbageFallLotSound(commonSoundPool?.garbageFallLot);
         else for (let index = 0; index < garbageCount; index += 1) playSound(commonSoundPool?.garbageFallLittle, 'effects', '방해뿌요 착지 효과음');
     }

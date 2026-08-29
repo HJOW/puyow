@@ -1709,6 +1709,7 @@ test('공통 사운드 풀은 시뮬레이터의 뿌요 착지·폭발·주문 �
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
     'sounds/test-puyo-fall.ogg', 'sounds/test-puyo-burst.ogg', 'sounds/test-player-spell.ogg',
   ]));
+  expect(await page.evaluate(() => window.testAudioInstances.filter((audio) => audio.src === 'sounds/test-puyo-fall.ogg'))).toHaveLength(1);
 });
 
 test('common sound pool plays menu and game-start sounds', async ({ page }) => {
