@@ -129,7 +129,7 @@
     /** 피버 룰에서 피버를 발동시키는 상쇄 전등 수다. @type {number} */
     const FEVER_GAUGE_MAX = 7;
     /** 피버 룰의 게임 시작 및 피버 종료 직후 켜져 있는 전등 수다. @type {number} */
-    const FEVER_LIGHT_STARTS = 5;
+    const FEVER_LIGHT_STARTS = 0;
     /** 피버 룰의 시작 목표 연쇄 수다. @type {number} */
     const FEVER_INITIAL_TARGET_COMBO = 5;
     /** 피버 룰의 시작 다음 피버 시간(초)이다. @type {number} */
