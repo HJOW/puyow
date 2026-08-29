@@ -95,7 +95,7 @@
     /** 메시지용 기본 글꼴 이름이다. @type {string} */
     const MESSAGE_FONT_NAME = 'D2Coding';
     /** 글꼴 지정 시 기본 글꼴 뒤에 대체 글꼴로 붙일 글꼴 이름 목록이다. 배열 내부와 세 글꼴 이름 모두와 중복되지 않도록 자동으로 걸러진다. @type {string[]} */
-    const FALLBACK_FONTS = ['Nanum Gothic Coding', 'Nanum Gothic', 'Noto Sans SC', 'Noto Sans JP', 'Black Han Sans', 'monospace', 'sans-serif'];
+    const FALLBACK_FONTS = ['Nanum Gothic Coding', 'Nanum Gothic', 'Noto Sans Mono', 'Noto Sans SC', 'Noto Sans JP', 'Black Han Sans', 'monospace', 'sans-serif'];
     /** 화면 제목이나 절 제목처럼 강조가 필요한 큰 헤더에 사용할 글꼴 목록이다. @type {string} */
     const TITLE_FONT = buildFontStack(TITLE_FONT_NAME);
     /** 버튼, 선택 카드 등 클릭 가능한 항목의 라벨에 사용할 글꼴 목록이다. @type {string} */
@@ -6828,7 +6828,7 @@
         const style = document.createElement('style');
         style.className = 'puyow_font_import';
         style.textContent = `
-            @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic+Coding&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans+SC:wght@100..900&family=Share+Tech+Mono&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic&family=Nanum+Gothic+Coding&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans+Mono:wght@100..900&family=Noto+Sans+SC:wght@100..900&display=swap');
         `;
         document.head.appendChild(style);
     }
