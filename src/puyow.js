@@ -948,7 +948,46 @@
      * 사운드 정보가 담겨 있는 JSON 을 실제 사운드로 적용한다.
      */
     function applySoundDataJson(soundDataJson) {
-        console.log(soundDataJson);
+        if(soundDataJson == null) return;
+        if(typeof(soundDataJson) == 'string') soundDataJson = JSON.parse(soundDataJson);
+        if(soundDataJson.common) {
+            const commonObj = soundDataJson.common;
+            if(commonObj.loose) commonSoundPool.loose = commonObj.loose;
+            if(commonObj.puyoFall) commonSoundPool.puyoFall = commonObj.puyoFall;
+            if(commonObj.garbageFallLittle) commonSoundPool.garbageFallLittle = commonObj.garbageFallLittle;
+            if(commonObj.garbageFallLot) commonSoundPool.garbageFallLot = commonObj.garbageFallLot;
+            if(commonObj.combo3SpellEffect) commonSoundPool.combo3SpellEffect = commonObj.combo3SpellEffect;
+            if(commonObj.combo4SpellEffect) commonSoundPool.combo4SpellEffect = commonObj.combo4SpellEffect;
+            if(commonObj.combo5SpellEffect) commonSoundPool.combo5SpellEffect = commonObj.combo5SpellEffect;
+            if(commonObj.combo6SpellEffect) commonSoundPool.combo6SpellEffect = commonObj.combo6SpellEffect;
+            if(commonObj.puyoBurstCombo1) commonSoundPool.puyoBurstCombo1 = commonObj.puyoBurstCombo1;
+            if(commonObj.puyoBurstCombo2) commonSoundPool.puyoBurstCombo2 = commonObj.puyoBurstCombo2;
+            if(commonObj.puyoBurstCombo3) commonSoundPool.puyoBurstCombo3 = commonObj.puyoBurstCombo3;
+            if(commonObj.puyoBurstCombo4) commonSoundPool.puyoBurstCombo4 = commonObj.puyoBurstCombo4;
+            if(commonObj.puyoBurstCombo5) commonSoundPool.puyoBurstCombo5 = commonObj.puyoBurstCombo5;
+            if(commonObj.puyoBurstCombo6) commonSoundPool.puyoBurstCombo6 = commonObj.puyoBurstCombo6;
+            if(commonObj.puyoBurstCombo7) commonSoundPool.puyoBurstCombo7 = commonObj.puyoBurstCombo7;
+        }
+        if(soundDataJson.player) {
+            const playerObj = soundDataJson.player;
+            if(playerObj.spellCombo1) commonSoundPool.spellCombo1 = playerObj.spellCombo1;
+            if(playerObj.spellCombo2) commonSoundPool.spellCombo2 = playerObj.spellCombo2;
+            if(playerObj.spellCombo3) commonSoundPool.spellCombo3 = playerObj.spellCombo3;
+            if(playerObj.spellCombo4) commonSoundPool.spellCombo4 = playerObj.spellCombo4;
+            if(playerObj.spellCombo5) commonSoundPool.spellCombo5 = playerObj.spellCombo5;
+            if(playerObj.spellCombo6) commonSoundPool.spellCombo6 = playerObj.spellCombo6;
+            if(playerObj.spellCombo7) commonSoundPool.spellCombo7 = playerObj.spellCombo7;
+        }
+        if(soundDataJson.enemy) {
+            const enemyObj = soundDataJson.enemy;
+            if(enemyObj.spellCombo1) commonSoundPool.commonEnemySpellCombo1 = enemyObj.spellCombo1;
+            if(enemyObj.spellCombo2) commonSoundPool.commonEnemySpellCombo2 = enemyObj.spellCombo2;
+            if(enemyObj.spellCombo3) commonSoundPool.commonEnemySpellCombo3 = enemyObj.spellCombo3;
+            if(enemyObj.spellCombo4) commonSoundPool.commonEnemySpellCombo4 = enemyObj.spellCombo4;
+            if(enemyObj.spellCombo5) commonSoundPool.commonEnemySpellCombo5 = enemyObj.spellCombo5;
+            if(enemyObj.spellCombo6) commonSoundPool.commonEnemySpellCombo6 = enemyObj.spellCombo6;
+            if(enemyObj.spellCombo7) commonSoundPool.commonEnemySpellCombo7 = enemyObj.spellCombo7;
+        }
     }
 
     /** 설정한 사운드 데이터 URL에서 JSON을 비동기로 불러온다. @returns {Promise<void>} 완료 시점 */
