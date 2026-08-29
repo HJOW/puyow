@@ -945,11 +945,9 @@
     }
 
     /**
-     * 사운드 데이터 JSON을 모두 읽은 뒤 실행한다. 실제 사운드 데이터 반영은 추후 구현한다.
-     * @param {unknown} soundDataJson 사운드 데이터 JSON
-     * @returns {void}
+     * 사운드 정보가 담겨 있는 JSON 을 실제 사운드로 적용한다.
      */
-    function onSoundDataURLLoad(soundDataJson) {
+    function applySoundDataJson(soundDataJson) {
         console.log(soundDataJson);
     }
 
@@ -958,10 +956,12 @@
         if (soundDataURL === null || soundDataURL === '') return;
         try {
             const convertedURL = convertURL(soundDataURL);
-            const response = await fetch(convertedURL);
-            if (!response.ok) throw new Error(`${soundDataURL} 요청 실패 (${response.status})`);
-            const soundDataJson = await response.json();
-            onSoundDataURLLoad(soundDataJson);
+
+            // JSONP 로 convertedURL 호출
+            const scriptObj = document.createElement('script');
+            scriptObj.src = convertedURL;
+            scriptObj.classList.add('script_jsonp');
+            document.body.appendChild(scriptObj);
         } catch (error) {
             console.error('사운드 데이터 URL을 불러오지 못했습니다.', error);
         }
@@ -9149,6 +9149,7 @@
         createSoundPool,
         setEnemySoundPool,
         setCommonSoundPool,
+        applySoundDataJson,
         setStorageManager,
         registerFeverStageState,
         registerPuzzleStage,

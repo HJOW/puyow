@@ -15,8 +15,7 @@
    이 "사운드 데이터 URL" 이 null이나 빈 문자열이 아니면, 
    convertURL 로 변환 후 나온 주소로 fetch 요청 날려서 JSON 데이터를 받아 와.
    (이 fetch 요청 자체를 try-catch 로 감싸 오류가 발생하더라도 중단되지 않게 만들고, catch 절에 console.error 로 오류 출력해줘.)
-   함수 onSoundDataURLLoad(soundDataJson) 이라는 함수를 만들어 주고, 위 JSON 데이터를 받아오는 데 성공한 경우 이 함수를 호출하면서 매개변수로 JSON 데이터를 넣어줘.
-   이 함수 구현은 나중에 할 예정.
+   
 
 
 아래 내용은 66차 수정요청한 내용이야. 참고만 해줘.
