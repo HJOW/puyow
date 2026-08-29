@@ -112,6 +112,12 @@
     const DEBUG_CLEAR_RULE_MODE = false;
     /** 싹쓸이 황금빛 필드 효과의 지속 시간(ms)이다. @type {number} */
     const ALL_CLEAR_EFFECT_DURATION = 1000;
+    /** Game start firework effect duration (ms). */
+    const GAME_START_FIREWORK_DURATION = 1000;
+    /** Game start firework begins fading after this elapsed time (ms). */
+    const GAME_START_FIREWORK_FADE_START = 500;
+    /** Colors used by the game start firework sparks. */
+    const GAME_START_FIREWORK_COLORS = ['#f7c843', '#ef5350', '#66bb6a', '#42a5f5', '#ab73e8', '#f5fbfc'];
     /** 연속 피버 모드의 시작 목표 연쇄 수다. @type {number} */
     const CONTINUOUS_FEVER_INITIAL_TARGET_COMBO = 5;
     /** 피버 패턴으로 내려갈 수 있는 목표 연쇄 최솟값이다. 시작 목표는 5연쇄를 유지한다. @type {number} */
@@ -334,6 +340,8 @@
     let settingsSelectionAnchor = null;
     /** 화면 최상단에 표시할 외부 메시지다. @type {{message:string,color:string,backgroundColor:string|null,elapsed:number,duration:number}|null} */
     let screenMessage = null;
+    /** Game start firework animation state. @type {{elapsed:number,particles:{angle:number,speed:number,delay:number,size:number,color:string}[]}|null} */
+    let gameStartFirework = null;
     /** 외부 메시지가 유지 시간 뒤 사라지는 데 걸리는 시간(ms)이다. @type {number} */
     const SCREEN_MESSAGE_FADE_DURATION = 500;
     /** AI API 테스트 요청이 진행 중인지 여부다. @type {boolean} */
@@ -5986,6 +5994,7 @@
             }
         }
         drawScreenMessage();
+        drawGameStartFirework();
     }
 
     /** 화면 최상단에 표시 중인 외부 메시지를 그린다. @returns {void} */
@@ -6020,6 +6029,84 @@
         if (screenMessage.elapsed >= screenMessage.duration + SCREEN_MESSAGE_FADE_DURATION) screenMessage = null;
     }
 
+    /** Start the centered firework shown when a game begins. @returns {void} */
+    function startGameStartFirework() {
+        const particleCount = 72;
+        gameStartFirework = {
+            elapsed: 0,
+            particles: Array.from({ length: particleCount }, (unused, index) => ({
+                angle: (index / particleCount) * Math.PI * 2 + (randomFloat() - 0.5) * 0.12,
+                speed: 0.2 + randomFloat() * 0.25,
+                delay: randomFloat() * 55,
+                size: 1.5 + randomFloat() * 2.5,
+                color: GAME_START_FIREWORK_COLORS[Math.floor(randomFloat() * GAME_START_FIREWORK_COLORS.length)]
+            }))
+        };
+    }
+
+    /** Advance and expire the game-start firework. @param {number} delta Elapsed milliseconds @returns {void} */
+    function updateGameStartFirework(delta) {
+        if (!gameStartFirework) return;
+        gameStartFirework.elapsed += delta;
+        if (gameStartFirework.elapsed >= GAME_START_FIREWORK_DURATION) gameStartFirework = null;
+    }
+
+    /** Draw the game-start firework above every other canvas element. @returns {void} */
+    function drawGameStartFirework() {
+        if (!gameStartFirework) return;
+        const elapsed = gameStartFirework.elapsed;
+        const fadeAlpha = elapsed <= GAME_START_FIREWORK_FADE_START
+            ? 1
+            : Math.max(0, 1 - (elapsed - GAME_START_FIREWORK_FADE_START) / (GAME_START_FIREWORK_DURATION - GAME_START_FIREWORK_FADE_START));
+        const centerX = WIDTH / 2;
+        const centerY = HEIGHT / 2;
+
+        context.save();
+        context.globalCompositeOperation = 'lighter';
+        context.globalAlpha = fadeAlpha;
+
+        const flashProgress = Math.min(1, elapsed / 220);
+        context.fillStyle = '#ffffff';
+        context.globalAlpha = fadeAlpha * (1 - flashProgress) * 0.8;
+        context.beginPath();
+        context.arc(centerX, centerY, 7 + flashProgress * 16, 0, Math.PI * 2);
+        context.fill();
+
+        context.strokeStyle = '#f7c843';
+        context.lineWidth = 3;
+        context.globalAlpha = fadeAlpha * Math.max(0, 1 - elapsed / 850) * 0.8;
+        context.beginPath();
+        context.arc(centerX, centerY, 16 + elapsed * 0.34, 0, Math.PI * 2);
+        context.stroke();
+
+        gameStartFirework.particles.forEach((particle) => {
+            const particleElapsed = Math.max(0, elapsed - particle.delay);
+            if (!particleElapsed) return;
+            const distance = particle.speed * particleElapsed;
+            const gravity = 0.00016 * particleElapsed * particleElapsed;
+            const x = centerX + Math.cos(particle.angle) * distance;
+            const y = centerY + Math.sin(particle.angle) * distance + gravity;
+            const trailElapsed = Math.max(0, particleElapsed - 85);
+            const trailDistance = particle.speed * trailElapsed;
+            const trailGravity = 0.00016 * trailElapsed * trailElapsed;
+            const trailX = centerX + Math.cos(particle.angle) * trailDistance;
+            const trailY = centerY + Math.sin(particle.angle) * trailDistance + trailGravity;
+
+            context.strokeStyle = particle.color;
+            context.lineWidth = particle.size;
+            context.globalAlpha = fadeAlpha * Math.max(0.25, 1 - particleElapsed / GAME_START_FIREWORK_DURATION);
+            context.beginPath();
+            context.moveTo(trailX, trailY);
+            context.lineTo(x, y);
+            context.stroke();
+            context.fillStyle = particle.color;
+            context.beginPath();
+            context.arc(x, y, particle.size * 0.9, 0, Math.PI * 2);
+            context.fill();
+        });
+        context.restore();
+    }
+
     /** 카운트다운과 일시정지 밖에서 연속 피버 남은 시간을 0까지 감소시킨다. @param {number} delta 이전 프레임 후 경과한 밀리초 @returns {void} */
     function updateContinuousFeverTime(delta) {
         if (!game?.continuousFever || !game.fever || game.countdown > 0 || game.ending) return;
@@ -6044,6 +6131,7 @@
         lastTime = time;
         updateGamepadInput();
         updateScreenMessage(delta);
+        updateGameStartFirework(delta);
         // 플레이 방법은 결과 화면 표시 시간까지 갱신하고, 일반 게임은 실행 중일 때만 갱신한다.
         if (game?.tutorial && !game.paused) {
             if (game.running) {
@@ -6058,6 +6146,7 @@
                 if (!game.countdown && game.countdownStartsGame) {
                     game.countdownStartsGame = false;
                     playSound(commonSoundPool?.gameStarts, 'effects', '게임 시작 효과음');
+                    startGameStartFirework();
                     beginGame();
                 }
             } else if (game.ending) {
@@ -7234,6 +7323,7 @@
         feverStageValidationTimer = null;
         settingsResetting = false;
         screenMessage = null;
+        gameStartFirework = null;
         window.removeEventListener('keydown', handleKeydown);
         window.removeEventListener('keyup', handleKeyup);
         window.removeEventListener('resize', updateCanvasOrientation);
