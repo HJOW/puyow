@@ -1371,6 +1371,7 @@ test('연속 피버는 다음 스테이지 배치 때 DAMAGE 예고를 없애고
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().fever.stageSuppliedPair)).toEqual(['blue', 'blue']);
 
   await page.keyboard.down('ArrowDown');
   await page.waitForTimeout(1000);

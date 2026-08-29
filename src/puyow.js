@@ -16,7 +16,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 1;
+    const BUILDNO = 2;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -129,7 +129,7 @@
     /** 피버 룰에서 피버를 발동시키는 상쇄 전등 수다. @type {number} */
     const FEVER_GAUGE_MAX = 7;
     /** 피버 룰의 게임 시작 및 피버 종료 직후 켜져 있는 전등 수다. @type {number} */
-    const FEVER_LIGHT_STARTS = 0;
+    const FEVER_LIGHT_STARTS = 5;
     /** 피버 룰의 시작 목표 연쇄 수다. @type {number} */
     const FEVER_INITIAL_TARGET_COMBO = 5;
     /** 피버 룰의 시작 다음 피버 시간(초)이다. @type {number} */
@@ -1937,7 +1937,6 @@
     function createContinuousFeverColorMap(stage, nextPair, availableColors) {
         const colorMap = new Map();
         const usedTargets = new Set();
-        const canUseOriginalColors = stage.usingColors.every((color) => availableColors.includes(color));
         const assign = (source, target) => {
             if (source === 'garbage') return;
             if (colorMap.has(source) && colorMap.get(source) !== target) throw new Error('피버 스테이지의 suppliedNextPuyos 색상 구성이 올바르지 않습니다.');
@@ -1949,15 +1948,14 @@
             ...stage.suppliedNextPuyos,
             ...(stage.stageData.puyos || []).map((puyo) => puyo.color)
         ].filter((color) => color && color !== 'garbage'))];
-        // 스테이지의 색 목록이 현재 모드에 모두 포함되면 원본 패턴을 유지한다.
-        if (canUseOriginalColors) {
-            sourceColors.forEach((color) => assign(color, color));
-            return colorMap;
-        }
+        // 바로 지급할 뿌요는 원본 스테이지의 색상과 무관하게 현재 대기열의 뿌요와 같아야 한다.
         assign(stage.suppliedNextPuyos[0], nextPair[0]);
         assign(stage.suppliedNextPuyos[1], nextPair[1]);
+        // 지급쌍에 사용되지 않은 색은 가능한 한 원본 패턴 색을 유지하고, 충돌하는 색만 남은 색상으로 1:1 치환한다.
+        const remainingSources = sourceColors.filter((color) => !colorMap.has(color));
+        remainingSources.filter((source) => availableColors.includes(source) && !usedTargets.has(source)).forEach((source) => assign(source, source));
         const remainingTargets = shuffledCopy(availableColors.filter((color) => !usedTargets.has(color)));
-        sourceColors.filter((color) => !colorMap.has(color)).forEach((source) => {
+        remainingSources.filter((source) => !colorMap.has(source)).forEach((source) => {
             const target = remainingTargets.shift();
             if (!target) throw new Error('피버 스테이지의 색상을 변환할 게임 색상이 부족합니다.');
             assign(source, target);
