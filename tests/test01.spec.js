@@ -522,6 +522,7 @@ test('setEnemySoundPool은 getClassType에 해당하는 새 적의 사운드 풀
 });
 
 test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 피버 스테이지를 시작한다', async ({ page }) => {
+  await page.evaluate(() => { window.WebPuyo.commonSoundPool.feverEnter = 'sounds/test-fever-enter.ogg'; });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
@@ -549,8 +550,11 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
 
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('playing');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
   const feverState = await page.evaluate(() => window.WebPuyo.getGameState());
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
+    'sounds/test-fever-enter.ogg',
+  ]));
   expect(feverState.fever.turn).toBe(1);
   expect(feverState.fever.selectedStageTarget).toBe(5);
   expect(feverState.player.board.puyos.length).toBeGreaterThan(0);
@@ -962,6 +966,8 @@ test('3색 피버 룰의 일반 필드 싹쓸이는 4연쇄 패턴을 배치한�
 
 test('마지막 전등이 켜지는 일반 필드 싹쓸이는 5연쇄 패턴 대신 목표 7연쇄 피버에 진입한다', async ({ page }) => {
   await page.evaluate(() => {
+    window.WebPuyo.commonSoundPool.clears = 'sounds/test-clear.ogg';
+    window.WebPuyo.commonSoundPool.feverEnter = 'sounds/test-fever-enter.ogg';
     class ActivatingFeverAllClearEnemy extends window.WebPuyo.Enemy {
       constructor() { super(); this.sortPriority = -1; this.prepared = false; }
       getClassType() { return 'ActivatingFeverAllClearEnemy'; }
@@ -994,9 +1000,50 @@ test('마지막 전등이 켜지는 일반 필드 싹쓸이는 5연쇄 패턴 �
   await page.keyboard.press('Enter');
 
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.fever?.active === true), { timeout: 10000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
+    'sounds/test-clear.ogg', 'sounds/test-fever-enter.ogg',
+  ]));
   const state = await page.evaluate(() => window.WebPuyo.getGameState().opponent.fever);
   expect(state.targetCombo).toBe(7);
   expect(state.selectedStageTarget).toBe(7);
+});
+
+test('common sound pool plays the Fever gauge light sound after an offset', async ({ page }) => {
+  await page.evaluate(() => {
+    window.WebPuyo.commonSoundPool.feverLightOn = 'sounds/test-fever-light.ogg';
+    class FeverLightEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -1; this.prepared = false; }
+      getClassType() { return 'FeverLightEnemy'; }
+      getName() { return 'Fever light sound test'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.prepared) return;
+        this.prepared = true;
+        player.damage = 1;
+        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+        player.phase = 'explode';
+        player.phaseTimer = 0;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverLightEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.fever?.gauge), { timeout: 10000 }).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
+    'sounds/test-fever-light.ogg',
+  ]));
 });
 
 test('피버 중 공격은 피버와 일반 DAMAGE를 모두 상쇄한 뒤 남은 수치를 전달한다', async ({ page }) => {

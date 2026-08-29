@@ -965,6 +965,9 @@
             if(commonObj.garbageFallLittle) commonSoundPool.garbageFallLittle = commonObj.garbageFallLittle;
             if(commonObj.garbageFallLot) commonSoundPool.garbageFallLot = commonObj.garbageFallLot;
             if(commonObj.puyoRotate) commonSoundPool.puyoRotate = commonObj.puyoRotate;
+            if(commonObj.clears) commonSoundPool.clears = commonObj.clears;
+            if(commonObj.feverEnter) commonSoundPool.feverEnter = commonObj.feverEnter;
+            if(commonObj.feverLightOn) commonSoundPool.feverLightOn = commonObj.feverLightOn;
             if(commonObj.combo3SpellEffect) commonSoundPool.combo3SpellEffect = commonObj.combo3SpellEffect;
             if(commonObj.combo4SpellEffect) commonSoundPool.combo4SpellEffect = commonObj.combo4SpellEffect;
             if(commonObj.combo5SpellEffect) commonSoundPool.combo5SpellEffect = commonObj.combo5SpellEffect;
@@ -1990,7 +1993,10 @@
      * @returns {void}
      */
     function beginGame() {
-        if (game.continuousFever) prepareContinuousFeverTurn();
+        if (game.continuousFever) {
+            playSound(commonSoundPool?.feverEnter, 'effects', '연속 피버 진입 효과음');
+            prepareContinuousFeverTurn();
+        }
         else enterControl(game.players[0]);
         enterControl(game.players[1]);
     }
@@ -1998,7 +2004,9 @@
     /** 피버 룰의 상쇄가 발생했을 때 전등과 상대의 다음 피버 시간을 갱신한다. @param {PlayerState} player 상쇄한 플레이어 @param {PlayerState} opponent 상대 플레이어 @returns {void} */
     function registerFeverOffset(player, opponent) {
         if (!game?.feverRule || !player.fever || player.fever.active) return;
+        const previousGauge = player.fever.gauge;
         player.fever.gauge = Math.min(FEVER_GAUGE_MAX, player.fever.gauge + 1);
+        if (player.fever.gauge > previousGauge) playSound(commonSoundPool?.feverLightOn, 'effects', '피버 전등 점등 효과음');
         if (opponent.fever) opponent.fever.nextTime = Math.min(FEVER_MAX_TIME, opponent.fever.nextTime + 1);
         if (player.fever.gauge >= FEVER_GAUGE_MAX) player.fever.pendingActivation = true;
     }
@@ -2011,6 +2019,7 @@
         state.field = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
         state.damage = 0;
         state.active = true;
+        playSound(commonSoundPool?.feverEnter, 'effects', '피버 진입 효과음');
         state.gauge = FEVER_LIGHT_STARTS;
         state.pendingActivation = false;
         state.leftTime = state.nextTime * 1000;
@@ -3307,6 +3316,7 @@
                 // 뿌요를 놓은 뒤 필드가 비었을 때만 싹쓸이를 처리한다.
                 const triggeredAllClear = player.allClearEnabled && isAllClear && player.hasPlacedPuyoSinceAllClear;
                 if (triggeredAllClear) {
+                    playSound(commonSoundPool?.clears, 'effects', '싹쓸이 효과음');
                     // 피버 룰·연속 피버의 싹쓸이는 목표 연쇄 보너스와 황금 연출만 제공한다.
                     // 뿌요 폭발에서 생긴 ATTACK 에너지는 resolveExplosions()의 기존 경로로 그대로 전달된다.
                     if (!game?.feverRule && !game?.continuousFever) player.pendingAllClearDamage += ALL_CLEAR_DAMAGE;
@@ -7328,10 +7338,28 @@
         focusMoves = null;
 
         /**
-         * 모든 게임 모드에서, 뿌요를 사용자 혹은 적이 회전시킬 때 재생되는 효과
+         * 모든 게임 모드에서, 뿌요를 사용자 혹은 적이 회전시킬 때 재생되는 효과음
          * @type {string|null}
          */
         puyoRotate = null;
+
+        /**
+         * 모든 게임 모드에서, 싹쓸이 발동으로 인한 연출 시작 전 재생되는 효과음
+         * @type {string|null}
+         */
+        clears = null;
+
+        /**
+         * 연속 피버 게임 시작 또는 피버 룰에서 피버 상태에 진입 시 재생되는 효과음
+         * @type {string|null}
+         */
+        feverEnter = null;
+
+        /**
+         * 피버 룰에서, 중앙의 전등이 들어올 때마다 재생되는 효과음
+         * @type {string|null}
+         */
+        feverLightOn = null;
 
         /**  
          * 전투 중이 아닌 상황에서 재생되는 배경 음악, null 인 경우 해당 상황에서 소리가 나지 않는다.
