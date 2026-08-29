@@ -2296,3 +2296,20 @@ test('변경된 사운드 데이터 URL을 저장하면 즉시 사운드 데이�
 
   await expect.poll(() => requestedUrl).toBe('https://sound.example/sounds_en.json');
 });
+
+test('화면 가로방향 고정 문구는 지원 언어별로 번역된다', async ({ page }) => {
+  const translations = [
+    ['en-US', 'Lock landscape orientation'],
+    ['ja-JP', '画面を横向きに固定'],
+    ['zh-CN', '锁定横屏'],
+  ];
+
+  for (const [language, translation] of translations) {
+    await page.addInitScript((locale) => {
+      Object.defineProperty(navigator, 'language', { configurable: true, value: locale });
+    }, language);
+    await page.reload();
+    await openSettings(page);
+    await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), translation)).toBe(true);
+  }
+});
