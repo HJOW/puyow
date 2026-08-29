@@ -4,11 +4,12 @@
 
 ## 설정 화면의 "사운드 데이터 URL" 로 사운드 적용
 
-해당 URL은 js (JavaScript) 파일을 가리키는 URL이어야 합니다. 이 스크립트에서 window.PuyoW.applySoundDataJson 함수를 호출하여 각각의 사운드 파일 URL을 입력합니다.
+해당 URL은 js (JavaScript) 파일을 가리키는 URL이어야 합니다. 
+이 JavaScript 코드에서 window.PuyoW.applySoundDataJson 함수를 호출하도록 코딩합니다.
 
-예:
+
 ```javascript
-// 이 예제의 URL들은 실제로 존재하는 URL이 아닙니다.
+// 이 예제의 URL들은 실제로 존재하는 URL이 아닙니다. 실제 URL로 바꾸어 사용하세요.
 window.PuyoW.applySoundDataJson({
     common : {
         focusMoves : 'https://puyowsound.com/common/focusMoves.ogg', // 게임 내에서 버튼이나 선택지 커서(포커스) 이동 시 재생
