@@ -432,7 +432,7 @@
     let languageCode = 'ko';
     /** [CTX] 예약어를 치환할 웹 애플리케이션의 URL 컨텍스트 경로다. @type {string} */
     let urlContextPath = '/';
-    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[]}} */
+    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} */
     let store = createInitialStore();
     /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 puyow.js 기준으로 해석한다. @type {string} */
     let noticeUrl = 'notice_[LANG].txt';
@@ -561,7 +561,7 @@
 
     /**
      * 저장 데이터의 기본 구조를 만든다.
-     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[]}} 초기 저장 데이터
+     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} 초기 저장 데이터
      */
     function createInitialStore() {
         return {
@@ -569,6 +569,7 @@
             clearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             puzzleClearStages: [],
+            puzzleStarStages: [],
             settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, soundDataURL: '', aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
@@ -973,7 +974,10 @@
             const puzzleClearStages = Array.isArray(parsed.puzzleClearStages)
                 ? [...new Set(parsed.puzzleClearStages.filter((index) => Number.isInteger(index) && index >= 0))]
                 : [];
-            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, puzzleClearStages, settings: {
+            const puzzleStarStages = Array.isArray(parsed.puzzleStarStages)
+                ? [...new Set(parsed.puzzleStarStages.filter((index) => Number.isInteger(index) && index >= 0))]
+                : [];
+            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, puzzleClearStages, puzzleStarStages, settings: {
                 playerName: normalizePlayerName(settings.playerName),
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
@@ -3206,10 +3210,17 @@
     /** 퍼즐뿌요 스테이지의 클리어 정보를 저장하고 즉시 결과 화면으로 전환한다. @param {PlayerState} player 사용자 @returns {void} */
     function finishPuzzleStage(player) {
         const stageIndex = game.puzzle.stageIndex;
+        const earnedStar = player === game.players[0] && game.puzzle.turn <= game.puzzle.stage.turnLimit;
+        let progressChanged = false;
         if (!store.puzzleClearStages.includes(stageIndex)) {
             store.puzzleClearStages.push(stageIndex);
-            saveStore();
+            progressChanged = true;
         }
+        if (earnedStar && !store.puzzleStarStages.includes(stageIndex)) {
+            store.puzzleStarStages.push(stageIndex);
+            progressChanged = true;
+        }
+        if (progressChanged) saveStore();
         game.winner = player;
         game.running = false;
         game.ending = null;
@@ -5837,6 +5848,31 @@
         return { x: (WIDTH - totalWidth) / 2 + (slot - puzzleStageScrollOffset) * (width + gap), y: 500, width, height };
     }
 
+    /** 퍼즐뿌요 스테이지 카드의 클리어 또는 별 달성 표식을 글자보다 먼저 그린다. @param {{x:number,y:number,width:number,height:number}} bounds 카드 영역 @param {number} stageIndex 스테이지 순번 @returns {void} */
+    function drawPuzzleStageCompletionMarker(bounds, stageIndex) {
+        const earnedStar = store.puzzleStarStages.includes(stageIndex);
+        if (!earnedStar && !store.puzzleClearStages.includes(stageIndex)) return;
+        const centerX = bounds.x + bounds.width / 2;
+        const centerY = bounds.y + bounds.height / 2;
+        context.save();
+        context.globalAlpha = 0.72;
+        context.fillStyle = '#f7c843';
+        context.beginPath();
+        if (earnedStar) {
+            for (let point = 0; point < 10; point += 1) {
+                const angle = -Math.PI / 2 + point * Math.PI / 5;
+                const radius = point % 2 === 0 ? 34 : 15;
+                const x = centerX + Math.cos(angle) * radius;
+                const y = centerY + Math.sin(angle) * radius;
+                if (point === 0) context.moveTo(x, y);
+                else context.lineTo(x, y);
+            }
+            context.closePath();
+        } else context.arc(centerX, centerY, 30, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
+    }
+
     /** 퍼즐뿌요 스테이지 선택 화면을 그린다. @returns {void} */
     function drawPuzzleStageSelection() {
         const stage = puzzleStageFocus === PUZZLE_STAGE_CANCEL_INDEX ? null : (PUZZLE_STAGES[puzzleStageFocus] || PUZZLE_STAGES[0]);
@@ -5861,6 +5897,7 @@
             const focused = opened && index === puzzleStageFocus;
             context.fillStyle = opened ? '#236a8b' : '#3c4650'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.strokeStyle = focused ? '#f7c843' : opened ? '#65b9d8' : '#7c8791'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            drawPuzzleStageCompletionMarker(bounds, index);
             context.fillStyle = opened ? '#f5fbfc' : '#c4cbd0'; context.font = `24px ${BUTTON_FONT}`;
             context.fillText(translate('스테이지 %1', index + 1), bounds.x + bounds.width / 2, bounds.y + 43);
             context.font = `16px ${MESSAGE_FONT}`;

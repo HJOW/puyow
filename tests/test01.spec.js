@@ -1804,6 +1804,7 @@ test('퍼즐뿌요 스테이지 클리어는 결과 화면 전환 전에 저장�
   await page.keyboard.up('ArrowDown');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 6000 }).toBe('game_over');
   expect(await page.evaluate(() => JSON.parse(window.localStorage.getItem('puyow_store')).puzzleClearStages)).toContain(0);
+  expect(await page.evaluate(() => JSON.parse(window.localStorage.getItem('puyow_store')).puzzleStarStages)).toContain(0);
   await page.evaluate(() => { window.testCanvasTextCalls = []; });
   await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.some(({ text }) => ['현재 턴 1 / 2', 'Turn 1 / 2', 'ターン 1 / 2', '第 1 / 2 回合'].includes(text)))).toBe(true);
   expect(await page.evaluate(() => window.WebPuyo.getGameState().puzzle.starEarned)).toBe(true);
@@ -1826,6 +1827,33 @@ test('퍼즐뿌요 스테이지 클리어는 결과 화면 전환 전에 저장�
   })).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.puzzle?.stageIndex)).toBe(1);
+});
+
+test('퍼즐뿌요 스테이지 선택 카드는 저장된 클리어와 별 달성 표식을 표시한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      puzzleClearStages: [0, 1],
+      puzzleStarStages: [1],
+    }));
+  });
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => {
+    const context = document.querySelector('#webpuyo_canvas').getContext('2d');
+    const hasGoldMarker = (x, y, width, height) => {
+      const pixels = context.getImageData(x, y, width, height).data;
+      for (let index = 0; index < pixels.length; index += 4) {
+        if (pixels[index] > 180 && pixels[index + 1] > 100 && pixels[index + 2] < 100) return true;
+      }
+      return false;
+    };
+    return hasGoldMarker(304, 525, 60, 60) && hasGoldMarker(504, 515, 68, 70);
+  })).toBe(true);
 });
 
 test('퍼즐뿌요 패배 결과는 중앙에 다국어 붉은 패배 문구를 표시한다', async ({ page }) => {
