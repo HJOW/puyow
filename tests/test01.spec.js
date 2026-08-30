@@ -2110,10 +2110,12 @@ test('퍼즐뿌요 스테이지 카드의 9글자 초과 클리어 조건은 말
 
 test('준비된 퍼즐뿌요 스테이지의 모든 힌트는 지원 언어로 번역된다', async ({ page }) => {
   const expectedHints = {
-    'ko-KR': ['한 번만 회전해', '마지막 폭발은 초록색으로', '마지막 파란색 폭발 후를 생각해', '방해뿌요는 터뜨려야 제맛', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?', '저 위의 빨간 색은 왜 있을까?', '그냥 내려 봐'],
-    'en-US': ['Rotate only once.', 'Make the last pop green.', 'Think about what comes after the final blue pop.', 'Pop the garbage puyos too.', 'Where should you pop first? The right side?', 'Why is there red up there?', 'Just drop it.'],
-    'ja-JP': ['一度だけ回転しよう。', '最後は緑で消そう。', '最後の青ぷよ消去の後を考えよう。', 'おじゃまぷよも消そう。', 'どこから消そう？右側かな？', '上の赤いぷよはなぜあるのかな？', 'そのまま落としてみよう。'],
-    'zh-CN': ['只旋转一次。', '最后用绿色消除。', '想想最后一次蓝色魔法气泡消除之后。', '也消除垃圾噗哟吧。', '从哪里开始消除？右边？', '上面的红噗哟为什么会在那里？', '直接落下试试。']
+    'ko-KR': ['두 번째에 터뜨려', '한 번만 회전해', '마지막 폭발은 초록색으로', '마지막 파란색 폭발 후를 생각해', '3, 4연쇄째에 보충이 필요해', '방해뿌요는 터뜨려야 제맛', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?', '저 위의 빨간 색은 왜 있을까?', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해', '그냥 내려 봐'],
+    'en-US': ['Pop on the second turn.', 'Rotate only once.', 'Make the last pop green.', 'Think about what comes after the final blue pop.', 'You need a refill on the 3rd or 4th chain.', 'Pop the garbage puyos too.', 'Where should you pop first? The right side?', 'Why is there red up there?', 'Place four green puyos somewhere in the right three columns.', 'Just drop it.'],
+    'ja-JP': ['2回目で消そう。', '一度だけ回転しよう。', '最後は緑で消そう。', '最後の青ぷよ消去の後を考えよう。', '3・4連鎖目に補充が必要です。', 'おじゃまぷよも消そう。', 'どこから消そう？右側かな？', '上の赤いぷよはなぜあるのかな？', '右3列のどこかに緑ぷよ4個を置こう。', 'そのまま落としてみよう。'],
+    'zh-CN': ['在第二次消除。', '只旋转一次。', '最后用绿色消除。', '想想最后一次蓝色魔法气泡消除之后。', '第3或第4连锁需要补充。', '也消除垃圾噗哟吧。', '从哪里开始消除？右边？', '上面的红噗哟为什么会在那里？', '需要把4个绿色魔法气泡放在右侧三列的某处。', '直接落下试试。'],
+    'de-DE': ['Lass sie beim zweiten Zug platzen.', 'Drehe nur einmal.', 'Die letzte Explosion muss grün sein.', 'Denke an das Ende nach der letzten blauen Explosion.', 'Bei der 3. oder 4. Kette ist Nachschub nötig.', 'Lass auch die Müll-Puyos platzen.', 'Wo solltest du anfangen? Rechts?', 'Warum ist dort oben ein roter Puyo?', 'Platziere vier grüne Puyos irgendwo in den drei rechten Spalten.', 'Lass sie einfach fallen.'],
+    'fr-FR': ['Fais-les éclater au deuxième tour.', 'Ne tourne qu’une fois.', 'Fais éclater le dernier en vert.', 'Pense à ce qui suit la dernière explosion bleue.', 'Un ravitaillement est nécessaire à la 3e ou 4e chaîne.', 'Fais aussi éclater les Puyos-ordures.', 'Par où commencer ? À droite ?', 'Pourquoi ce Puyo rouge est-il là-haut ?', 'Place quatre Puyos verts quelque part dans les trois colonnes de droite.', 'Laisse-les simplement tomber.']
   };
   for (const [language, expected] of Object.entries(expectedHints)) {
     await page.addInitScript((locale) => {

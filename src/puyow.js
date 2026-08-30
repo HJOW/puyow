@@ -236,7 +236,7 @@
             '극한': 'Extreme',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
-            '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked', '한 번만 회전해': 'Rotate only once.', '마지막 폭발은 초록색으로': 'Make the last pop green.', '마지막 파란색 폭발 후를 생각해': 'Think about what comes after the final blue pop.', '방해뿌요는 터뜨려야 제맛': 'Pop the garbage puyos too.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Where should you pop first? The right side?', '저 위의 빨간 색은 왜 있을까?': 'Why is there red up there?', '그냥 내려 봐': 'Just drop it.',
+            '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked', '두 번째에 터뜨려': 'Pop on the second turn.', '한 번만 회전해': 'Rotate only once.', '마지막 폭발은 초록색으로': 'Make the last pop green.', '마지막 파란색 폭발 후를 생각해': 'Think about what comes after the final blue pop.', '3, 4연쇄째에 보충이 필요해': 'You need a refill on the 3rd or 4th chain.', '방해뿌요는 터뜨려야 제맛': 'Pop the garbage puyos too.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Where should you pop first? The right side?', '저 위의 빨간 색은 왜 있을까?': 'Why is there red up there?', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Place four green puyos somewhere in the right three columns.', '그냥 내려 봐': 'Just drop it.',
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
@@ -257,7 +257,7 @@
             '극한': '極限',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
-            '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中', '한 번만 회전해': '一度だけ回転しよう。', '마지막 폭발은 초록색으로': '最後は緑で消そう。', '마지막 파란색 폭발 후를 생각해': '最後の青ぷよ消去の後を考えよう。', '방해뿌요는 터뜨려야 제맛': 'おじゃまぷよも消そう。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'どこから消そう？右側かな？', '저 위의 빨간 색은 왜 있을까?': '上の赤いぷよはなぜあるのかな？', '그냥 내려 봐': 'そのまま落としてみよう。',
+            '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中', '두 번째에 터뜨려': '2回目で消そう。', '한 번만 회전해': '一度だけ回転しよう。', '마지막 폭발은 초록색으로': '最後は緑で消そう。', '마지막 파란색 폭발 후를 생각해': '最後の青ぷよ消去の後を考えよう。', '3, 4연쇄째에 보충이 필요해': '3・4連鎖目に補充が必要です。', '방해뿌요는 터뜨려야 제맛': 'おじゃまぷよも消そう。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'どこから消そう？右側かな？', '저 위의 빨간 색은 왜 있을까?': '上の赤いぷよはなぜあるのかな？', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': '右3列のどこかに緑ぷよ4個を置こう。', '그냥 내려 봐': 'そのまま落としてみよう。',
             '시뮬레이터': 'シミュレーター', '팔레트': 'パレット', '재생': '再生', '그리기': '描画', '시뮬레이션': 'シミュレーション', '지우개': '消しゴム',
             'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
             '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
@@ -279,7 +279,7 @@
             '극한': '极限',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
-            '연습 상대': '练习对手', '추후 출시예정': '即将推出', '잠김': '已锁定', '한 번만 회전해': '只旋转一次。', '마지막 폭발은 초록색으로': '最后用绿色消除。', '마지막 파란색 폭발 후를 생각해': '想想最后一次蓝色魔法气泡消除之后。', '방해뿌요는 터뜨려야 제맛': '也消除垃圾噗哟吧。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': '从哪里开始消除？右边？', '저 위의 빨간 색은 왜 있을까?': '上面的红噗哟为什么会在那里？', '그냥 내려 봐': '直接落下试试。',
+            '연습 상대': '练习对手', '추후 출시예정': '即将推出', '잠김': '已锁定', '두 번째에 터뜨려': '在第二次消除。', '한 번만 회전해': '只旋转一次。', '마지막 폭발은 초록색으로': '最后用绿色消除。', '마지막 파란색 폭발 후를 생각해': '想想最后一次蓝色魔法气泡消除之后。', '3, 4연쇄째에 보충이 필요해': '第3或第4连锁需要补充。', '방해뿌요는 터뜨려야 제맛': '也消除垃圾噗哟吧。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': '从哪里开始消除？右边？', '저 위의 빨간 색은 왜 있을까?': '上面的红噗哟为什么会在那里？', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': '需要把4个绿色魔法气泡放在右侧三列的某处。', '그냥 내려 봐': '直接落下试试。',
             '시뮬레이터': '模拟器', '팔레트': '调色板', '재생': '播放', '그리기': '绘制', '시뮬레이션': '模拟', '지우개': '橡皮擦',
             'JSON복사': '复制 JSON', 'JSON넣기': '粘贴 JSON', '배치가 클립보드에 복사됨': '布局已复制到剪贴板',
             '클립보드 복사 실패': '复制到剪贴板失败', 'JSON 파싱 실패': 'JSON 解析失败', '배치 JSON을 입력하세요.': '请输入布局 JSON。',
@@ -301,7 +301,7 @@
         '게임 시작': 'Spiel starten', '기본 룰': 'Standardregeln', '피버 룰': 'FEVER-Regeln', '연속 피버': 'Dauer-FEVER', '퍼즐뿌요': 'Puzzle-Puyo', '퍼즐뿌요 스테이지': 'Puzzle-Puyo-Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Empfohlene Züge: %1', '현재 턴 %1': 'Zug %1', '현재 턴 %1 / %2': 'Zug %1 / %2', '%1 연쇄 해봐': 'Mache eine %1er-Kette!', '싹쓸이 해봐': 'Schaffe einen All Clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Lass %1 Puyos auf einmal platzen!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Lass %1 Farben auf einmal platzen!', '방해뿌요 %1개를 발생 시켜봐': 'Sende %1 Müll-Puyos!', '스테이지 클리어': 'Stage geschafft', '(출시 예정)': '(Bald verfügbar)', '목표 연쇄': 'ZIELKETTE', '남은 시간': 'RESTZEIT', '연습': 'Übung', '선택': 'Auswählen', '난이도': 'Schwierigkeit', '적 선택': 'Gegner', 'ENTER 혹은 클릭하여 시작': 'Zum Start ENTER drücken oder klicken',
         '3색': '3 Farben', '4색': '4 Farben', '5색': '5 Farben', '쉬움': 'Leicht', '보통': 'Normal', '어려움': 'Schwer', '시작': 'Start', '이전': 'Zurück', '극한': 'Extrem',
         '일시정지': 'Pausiert', '재개': 'Fortsetzen', '종료': 'Beenden', '승리': 'Sieg', '패배': 'Niederlage', '최종 점수 %1': 'Endpunktzahl: %1', '게임 시간 %1초': 'Spielzeit: %1 Sek.', '%1연쇄': '%1-Kette',
-        '연습 상대': 'Übungsgegner', '추후 출시예정': 'Bald verfügbar', '잠김': 'Gesperrt', '한 번만 회전해': 'Drehe nur einmal.', '마지막 폭발은 초록색으로': 'Die letzte Explosion muss grün sein.', '마지막 파란색 폭발 후를 생각해': 'Denke an das Ende nach der letzten blauen Explosion.', '방해뿌요는 터뜨려야 제맛': 'Lass auch die Müll-Puyos platzen.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Wo solltest du anfangen? Rechts?', '저 위의 빨간 색은 왜 있을까?': 'Warum ist dort oben ein roter Puyo?', '그냥 내려 봐': 'Lass sie einfach fallen.',
+        '연습 상대': 'Übungsgegner', '추후 출시예정': 'Bald verfügbar', '잠김': 'Gesperrt', '두 번째에 터뜨려': 'Lass sie beim zweiten Zug platzen.', '한 번만 회전해': 'Drehe nur einmal.', '마지막 폭발은 초록색으로': 'Die letzte Explosion muss grün sein.', '마지막 파란색 폭발 후를 생각해': 'Denke an das Ende nach der letzten blauen Explosion.', '3, 4연쇄째에 보충이 필요해': 'Bei der 3. oder 4. Kette ist Nachschub nötig.', '방해뿌요는 터뜨려야 제맛': 'Lass auch die Müll-Puyos platzen.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Wo solltest du anfangen? Rechts?', '저 위의 빨간 색은 왜 있을까?': 'Warum ist dort oben ein roter Puyo?', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Platziere vier grüne Puyos irgendwo in den drei rechten Spalten.', '그냥 내려 봐': 'Lass sie einfach fallen.',
         '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Abspielen', '그리기': 'Zeichnen', '시뮬레이션': 'Simulation', '지우개': 'Radierer', 'JSON복사': 'JSON kopieren', 'JSON넣기': 'JSON einfügen', '배치가 클립보드에 복사됨': 'Anordnung in die Zwischenablage kopiert', '클립보드 복사 실패': 'Kopieren in die Zwischenablage fehlgeschlagen', 'JSON 파싱 실패': 'JSON-Analyse fehlgeschlagen', '배치 JSON을 입력하세요.': 'Anordnungs-JSON eingeben',
         '설정': 'Einstellungen', '이름': 'Name', '배경음악 볼륨': 'Musiklautstärke', '효과음 볼륨': 'Effektlautstärke', '가상 컨트롤러 사용': 'Virtuellen Controller verwenden', '없음': 'Keine', '크게': 'Groß', '그래픽 설정': 'Grafikeinstellungen', '사운드 데이터 URL': 'Audiodaten-URL', '낮음': 'Niedrig', '중간': 'Mittel', '높음': 'Hoch', 'AI 서비스 제공자': 'KI-Anbieter', 'AI API 키': 'KI-API-Schlüssel', '사용 모델명': 'Modellname', 'AI API 테스트': 'KI-API testen', '저장': 'Speichern', '취소': 'Abbrechen', '사운드 관련 기능은 추후 제공 예정': 'Audiofunktionen folgen später.', '설정 저장 후 다시 시도해 주세요': 'Speichere die Einstellungen und versuche es erneut.', 'AI API 테스트 요청 중...': 'KI-API wird getestet…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'KI-API-Test erfolgreich (JSON-Schema: bestanden)', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'KI-API-Test fehlgeschlagen (JSON-Schema: fehlgeschlagen)', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'KI-API-Test fehlgeschlagen (JSON-Schema: nicht geprüft)',
         '플레이 방법': 'Spielanleitung', '갤러리': 'Galerie', '대상 유형': 'Kategorie', '대상': 'Objekt', '일반뿌요': 'Puyos', '예고뿌요': 'Warn-Puyos', '적': 'Gegner', '빨강뿌요': 'Roter Puyo', '초록뿌요': 'Grüner Puyo', '노랑뿌요': 'Gelber Puyo', '파랑뿌요': 'Blauer Puyo', '보라뿌요': 'Violetter Puyo', '방해뿌요': 'Müll-Puyo', '딱딱뿌요': 'Harter Puyo', '작은 예고뿌요': 'Kleine Warn-Puyo', '큰 예고뿌요': 'Große Warn-Puyo', '빨간 돌': 'Roter Stein', '별': 'Stern', '태양': 'Sonne', '중성자별': 'Neutronenstern', '블랙홀': 'Schwarzes Loch', '위기': 'Krise', '다시보기': 'Wiederholung',
@@ -315,7 +315,7 @@
         '게임 시작': 'Commencer', '기본 룰': 'Règles standard', '피버 룰': 'Règles FEVER', '연속 피버': 'FEVER continu', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Stage Puzzle Puyo', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Tours recommandés : %1', '현재 턴 %1': 'Tour %1', '현재 턴 %1 / %2': 'Tour %1 / %2', '%1 연쇄 해봐': 'Fais une chaîne de %1 !', '싹쓸이 해봐': 'Fais un Tout Effacé !', '한 번에 %1개 뿌요를 터뜨려봐': 'Fais éclater %1 Puyos à la fois !', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Fais éclater %1 couleurs à la fois !', '방해뿌요 %1개를 발생 시켜봐': 'Envoie %1 Puyos-ordures !', '스테이지 클리어': 'Stage réussi', '(출시 예정)': '(Bientôt disponible)', '목표 연쇄': 'CHAÎNE CIBLE', '남은 시간': 'TEMPS RESTANT', '연습': 'Entraînement', '선택': 'Sélectionner', '난이도': 'Difficulté', '적 선택': 'Adversaire', 'ENTER 혹은 클릭하여 시작': 'Appuie sur ENTRÉE ou clique pour commencer',
         '3색': '3 couleurs', '4색': '4 couleurs', '5색': '5 couleurs', '쉬움': 'Facile', '보통': 'Normal', '어려움': 'Difficile', '시작': 'Commencer', '이전': 'Retour', '극한': 'Extrême',
         '일시정지': 'En pause', '재개': 'Reprendre', '종료': 'Quitter', '승리': 'Victoire', '패배': 'Défaite', '최종 점수 %1': 'Score final : %1', '게임 시간 %1초': 'Durée : %1 s', '%1연쇄': 'Chaîne de %1',
-        '연습 상대': 'Adversaire d’entraînement', '추후 출시예정': 'Bientôt disponible', '잠김': 'Verrouillé', '한 번만 회전해': 'Ne tourne qu’une fois.', '마지막 폭발은 초록색으로': 'Fais éclater le dernier en vert.', '마지막 파란색 폭발 후를 생각해': 'Pense à ce qui suit la dernière explosion bleue.', '방해뿌요는 터뜨려야 제맛': 'Fais aussi éclater les Puyos-ordures.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Par où commencer ? À droite ?', '저 위의 빨간 색은 왜 있을까?': 'Pourquoi ce Puyo rouge est-il là-haut ?', '그냥 내려 봐': 'Laisse-les simplement tomber.',
+        '연습 상대': 'Adversaire d’entraînement', '추후 출시예정': 'Bientôt disponible', '잠김': 'Verrouillé', '두 번째에 터뜨려': 'Fais-les éclater au deuxième tour.', '한 번만 회전해': 'Ne tourne qu’une fois.', '마지막 폭발은 초록색으로': 'Fais éclater le dernier en vert.', '마지막 파란색 폭발 후를 생각해': 'Pense à ce qui suit la dernière explosion bleue.', '3, 4연쇄째에 보충이 필요해': 'Un ravitaillement est nécessaire à la 3e ou 4e chaîne.', '방해뿌요는 터뜨려야 제맛': 'Fais aussi éclater les Puyos-ordures.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Par où commencer ? À droite ?', '저 위의 빨간 색은 왜 있을까?': 'Pourquoi ce Puyo rouge est-il là-haut ?', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Place quatre Puyos verts quelque part dans les trois colonnes de droite.', '그냥 내려 봐': 'Laisse-les simplement tomber.',
         '시뮬레이터': 'Simulateur', '팔레트': 'Palette', '재생': 'Lire', '그리기': 'Dessiner', '시뮬레이션': 'Simulation', '지우개': 'Gomme', 'JSON복사': 'Copier le JSON', 'JSON넣기': 'Coller le JSON', '배치가 클립보드에 복사됨': 'Disposition copiée dans le presse-papiers', '클립보드 복사 실패': 'Échec de la copie', 'JSON 파싱 실패': 'Échec de l’analyse JSON', '배치 JSON을 입력하세요.': 'Saisis le JSON de disposition',
         '설정': 'Réglages', '이름': 'Nom', '배경음악 볼륨': 'Volume de la musique', '효과음 볼륨': 'Volume des effets', '가상 컨트롤러 사용': 'Utiliser une manette virtuelle', '없음': 'Aucun', '크게': 'Grand', '그래픽 설정': 'Réglages graphiques', '사운드 데이터 URL': 'URL des données audio', '낮음': 'Bas', '중간': 'Moyen', '높음': 'Élevé', 'AI 서비스 제공자': 'Fournisseur d’IA', 'AI API 키': 'Clé API IA', '사용 모델명': 'Nom du modèle', 'AI API 테스트': 'Tester l’API IA', '저장': 'Enregistrer', '취소': 'Annuler', '사운드 관련 기능은 추후 제공 예정': 'Les fonctions audio seront disponibles plus tard.', '설정 저장 후 다시 시도해 주세요': 'Enregistre les réglages puis réessaie.', 'AI API 테스트 요청 중...': 'Test de l’API IA en cours…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'Test de l’API IA réussi (schéma JSON valide)', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'Échec du test de l’API IA (schéma JSON invalide)', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'Échec du test de l’API IA (schéma JSON non vérifié)',
         '플레이 방법': 'Comment jouer', '갤러리': 'Galerie', '대상 유형': 'Catégorie', '대상': 'Élément', '일반뿌요': 'Puyos', '예고뿌요': 'Puyos d’avertissement', '적': 'Ennemis', '빨강뿌요': 'Puyo rouge', '초록뿌요': 'Puyo vert', '노랑뿌요': 'Puyo jaune', '파랑뿌요': 'Puyo bleu', '보라뿌요': 'Puyo violet', '방해뿌요': 'Puyo-ordure', '딱딱뿌요': 'Puyo dur', '작은 예고뿌요': 'Petit Puyo d’avertissement', '큰 예고뿌요': 'Grand Puyo d’avertissement', '빨간 돌': 'Pierre rouge', '별': 'Étoile', '태양': 'Soleil', '중성자별': 'Étoile à neutrons', '블랙홀': 'Trou noir', '위기': 'Crise', '다시보기': 'Rejouer',
@@ -8120,6 +8120,15 @@
      */
     const PUZZLE_STAGES = [
         new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":3,"y":0,"color":"blue"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":4,"y":1,"color":"blue"}]},
+            suppliedNextPuyos : [['red', 'red'], ['blue', 'blue']],
+            turnLimit : 2,
+            winConditionType : 'combo',
+            winConditionValue : 2,
+            hint : '두 번째에 터뜨려',
+            opened : true
+        }),
+        new PuzzlePuyoStage({
             stageData : {"puyos":[{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"blue"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":3,"y":1,"color":"green"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":4,"y":2,"color":"red"}]},
             suppliedNextPuyos : [['green', 'blue'], ['green', 'green']],
             turnLimit : 2,
@@ -8146,6 +8155,14 @@
             hint : '마지막 파란색 폭발 후를 생각해'
         }),
         new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":0,"y":0,"color":"yellow"},{"x":1,"y":0,"color":"green"},{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"blue"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"yellow"},{"x":1,"y":1,"color":"yellow"},{"x":2,"y":1,"color":"green"},{"x":3,"y":1,"color":"green"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"}]},
+            suppliedNextPuyos : [['red', 'blue'], ['green', 'yellow']],
+            turnLimit : 2,
+            winConditionType : 'combo',
+            winConditionValue : 4,
+            hint : '3, 4연쇄째에 보충이 필요해'
+        }),
+        new PuzzlePuyoStage({
             stageData : {"puyos":[{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"purple"},{"x":5,"y":0,"color":"blue"},{"x":1,"y":1,"color":"garbage"},{"x":2,"y":1,"color":"green"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"purple"},{"x":5,"y":1,"color":"blue"},{"x":2,"y":2,"color":"red"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"blue"},{"x":3,"y":3,"color":"purple"},{"x":3,"y":4,"color":"purple"}]},
             suppliedNextPuyos : [['blue', 'blue'], ['green', 'green'], ['blue', 'blue']],
             turnLimit : 3,
@@ -8168,6 +8185,14 @@
             winConditionType : 'combo',
             winConditionValue : 6,
             hint : '저 위의 빨간 색은 왜 있을까?'
+        }),
+        new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":0,"y":0,"color":"red"},{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"yellow"},{"x":1,"y":1,"color":"yellow"},{"x":2,"y":1,"color":"red"},{"x":3,"y":1,"color":"blue"},{"x":4,"y":1,"color":"green"},{"x":5,"y":1,"color":"green"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"blue"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"red"},{"x":5,"y":2,"color":"yellow"},{"x":3,"y":3,"color":"green"},{"x":4,"y":3,"color":"red"},{"x":5,"y":3,"color":"yellow"},{"x":3,"y":4,"color":"yellow"},{"x":4,"y":4,"color":"yellow"},{"x":5,"y":4,"color":"blue"},{"x":3,"y":5,"color":"blue"},{"x":4,"y":5,"color":"blue"},{"x":3,"y":6,"color":"blue"}]},
+            suppliedNextPuyos : [['green', 'green'], ['green', 'green'], ['yellow', 'yellow']],
+            turnLimit : 3,
+            winConditionType : 'combo',
+            winConditionValue : 8,
+            hint : '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해'
         }),
         new PuzzlePuyoStage({
             stageData : {"puyos":[{"x":0,"y":0,"color":"red"},{"x":1,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"red"},{"x":1,"y":1,"color":"red"},{"x":3,"y":1,"color":"blue"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"green"},{"x":1,"y":2,"color":"yellow"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"green"},{"x":5,"y":2,"color":"green"},{"x":0,"y":3,"color":"blue"},{"x":1,"y":3,"color":"blue"},{"x":3,"y":3,"color":"red"},{"x":4,"y":3,"color":"blue"},{"x":5,"y":3,"color":"green"},{"x":0,"y":4,"color":"blue"},{"x":1,"y":4,"color":"green"},{"x":3,"y":4,"color":"yellow"},{"x":4,"y":4,"color":"yellow"},{"x":5,"y":4,"color":"yellow"},{"x":0,"y":5,"color":"purple"},{"x":1,"y":5,"color":"blue"},{"x":3,"y":5,"color":"red"},{"x":4,"y":5,"color":"blue"},{"x":5,"y":5,"color":"green"},{"x":0,"y":6,"color":"red"},{"x":1,"y":6,"color":"purple"},{"x":3,"y":6,"color":"red"},{"x":4,"y":6,"color":"blue"},{"x":5,"y":6,"color":"blue"},{"x":0,"y":7,"color":"red"},{"x":1,"y":7,"color":"yellow"},{"x":3,"y":7,"color":"red"},{"x":4,"y":7,"color":"purple"},{"x":5,"y":7,"color":"green"},{"x":0,"y":8,"color":"red"},{"x":1,"y":8,"color":"blue"},{"x":3,"y":8,"color":"blue"},{"x":4,"y":8,"color":"purple"},{"x":5,"y":8,"color":"purple"},{"x":0,"y":9,"color":"green"},{"x":1,"y":9,"color":"green"},{"x":3,"y":9,"color":"yellow"},{"x":4,"y":9,"color":"green"},{"x":5,"y":9,"color":"green"},{"x":0,"y":10,"color":"purple"},{"x":1,"y":10,"color":"red"},{"x":3,"y":10,"color":"purple"},{"x":4,"y":10,"color":"red"},{"x":5,"y":10,"color":"green"},{"x":5,"y":11,"color":"blue"}]},
