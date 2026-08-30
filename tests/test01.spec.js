@@ -1760,6 +1760,29 @@ test('2D URL 예약어는 컨텍스트 경로와 지원 시스템 언어로 치�
   expect(result.absolute).toBe(`https://example.com/puyo/notice_${result.languageCode}.txt`);
 });
 
+test('독일어와 프랑스어 stringTable은 FEVER 표기와 주요 화면 문구를 제공한다', async ({ page }) => {
+  const expected = {
+    'de-DE': { fever: 'FEVER-Regeln', puzzle: 'Puzzle-Puyo', start: 'Spiel starten', language: 'de' },
+    'fr-FR': { fever: 'Règles FEVER', puzzle: 'Puzzle Puyo', start: 'Commencer', language: 'fr' }
+  };
+  for (const [locale, values] of Object.entries(expected)) {
+    await page.addInitScript((language) => {
+      Object.defineProperty(navigator, 'language', { configurable: true, value: language });
+    }, locale);
+    await page.reload();
+    const result = await page.evaluate(() => {
+      window.WebPuyo.setURLContextPath('/puyow/');
+      return {
+        fever: window.WebPuyo.translate('피버 룰'),
+        puzzle: window.WebPuyo.translate('퍼즐뿌요'),
+        start: window.WebPuyo.translate('게임 시작'),
+        language: window.WebPuyo.convertURL('[LANG]')
+      };
+    });
+    expect(result).toEqual({ ...values, language: `${values.language}` });
+  }
+});
+
 test('구글 폰트 import URL은 컨텍스트 경로 변환 예외로 기존 주소를 유지한다', async ({ page }) => {
   const fontImport = await page.evaluate(() => {
     window.PuyoW.destroy();
