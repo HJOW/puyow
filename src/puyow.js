@@ -248,6 +248,7 @@
             '은하': 'Galaxy',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)',
             '화면 가로방향 고정': 'Lock landscape orientation',
+            '피버 (완화)': 'FEVER (Relaxed)',
         },
         ja: {
             '솔로몬': 'ソロモン', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'ソロモンAIの応答エラー：代替AIで続行します。',
@@ -269,6 +270,7 @@
             '은하': '銀河',
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）',
             '화면 가로방향 고정': '画面を横向きに固定',
+            '피버 (완화)': 'FEVER（緩和）',
         },
         zh: {
             '솔로몬': '所罗门', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': '所罗门 AI 响应错误：将使用备用 AI 继续。',
@@ -291,6 +293,7 @@
             '은하': '银河',
             '음소거(꺼짐)' : '静音（关）', '음소거(활성)' : '静音（开）',
             '화면 가로방향 고정': '锁定横屏',
+            '피버 (완화)': 'FEVER（缓和）',
         },
         // 독일어·프랑스어는 아래 초기화 구문에서 영어 표를 기본값으로 복사한 뒤 현지화한다. (영어 번역 데이터 일부를 같이 사용하기 위함)
         de: {},
@@ -308,7 +311,7 @@
         '설정': 'Einstellungen', '이름': 'Name', '배경음악 볼륨': 'Musiklautstärke', '효과음 볼륨': 'Effektlautstärke', '가상 컨트롤러 사용': 'Virtuellen Controller verwenden', '없음': 'Keine', '크게': 'Groß', '그래픽 설정': 'Grafikeinstellungen', '사운드 데이터 URL': 'Audiodaten-URL', '낮음': 'Niedrig', '중간': 'Mittel', '높음': 'Hoch', 'AI 서비스 제공자': 'KI-Anbieter', 'AI API 키': 'KI-API-Schlüssel', '사용 모델명': 'Modellname', 'AI API 테스트': 'KI-API testen', '저장': 'Speichern', '취소': 'Abbrechen', '사운드 관련 기능은 추후 제공 예정': 'Audiofunktionen folgen später.', '설정 저장 후 다시 시도해 주세요': 'Speichere die Einstellungen und versuche es erneut.', 'AI API 테스트 요청 중...': 'KI-API wird getestet…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'KI-API-Test erfolgreich (JSON-Schema: bestanden)', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'KI-API-Test fehlgeschlagen (JSON-Schema: fehlgeschlagen)', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'KI-API-Test fehlgeschlagen (JSON-Schema: nicht geprüft)',
         '플레이 방법': 'Spielanleitung', '갤러리': 'Galerie', '대상 유형': 'Kategorie', '대상': 'Objekt', '일반뿌요': 'Puyos', '예고뿌요': 'Warn-Puyos', '적': 'Gegner', '빨강뿌요': 'Roter Puyo', '초록뿌요': 'Grüner Puyo', '노랑뿌요': 'Gelber Puyo', '파랑뿌요': 'Blauer Puyo', '보라뿌요': 'Violetter Puyo', '방해뿌요': 'Müll-Puyo', '딱딱뿌요': 'Harter Puyo', '작은 예고뿌요': 'Kleine Warn-Puyo', '큰 예고뿌요': 'Große Warn-Puyo', '빨간 돌': 'Roter Stein', '별': 'Stern', '태양': 'Sonne', '중성자별': 'Neutronenstern', '블랙홀': 'Schwarzes Loch', '위기': 'Krise', '다시보기': 'Wiederholung',
         '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Bewege Puyos mit Links, Rechts und Unten. Drehe sie mit Z und X.', '좌우 방향키로 뿌요 이동': 'Mit Links und Rechts bewegen.', '아래 방향키로 빨리 떨어뜨리기': 'Mit Unten schneller fallen.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Mit Z nach links drehen.', 'X 키를 눌러 우측으로 뿌요 회전': 'Mit X nach rechts drehen.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Verbinde mindestens vier Puyos derselben Farbe, um sie platzen zu lassen und anzugreifen.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Vier Puyos derselben Farbe greifen den Gegner an.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Angrenzende Müll-Puyos platzen ebenfalls.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Kettenexplosionen verursachen stärkere Angriffe.', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': 'Ein All Clear verursacht einen starken Angriff.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'Du verlierst, wenn Puyos am Ende der dritten Reihe bleiben.',
-        '은하': 'Galaxie', '음소거(꺼짐)': 'Stumm (Aus)', '음소거(활성)': 'Stumm (Ein)', '화면 가로방향 고정': 'Querformat sperren'
+        '은하': 'Galaxie', '음소거(꺼짐)': 'Stumm (Aus)', '음소거(활성)': 'Stumm (Ein)', '화면 가로방향 고정': 'Querformat sperren', '피버 (완화)': 'FEVER (Entspannt)'
     });
 
     Object.assign(stringTable.fr, stringTable.en, {
@@ -322,7 +325,7 @@
         '설정': 'Réglages', '이름': 'Nom', '배경음악 볼륨': 'Volume de la musique', '효과음 볼륨': 'Volume des effets', '가상 컨트롤러 사용': 'Utiliser une manette virtuelle', '없음': 'Aucun', '크게': 'Grand', '그래픽 설정': 'Réglages graphiques', '사운드 데이터 URL': 'URL des données audio', '낮음': 'Bas', '중간': 'Moyen', '높음': 'Élevé', 'AI 서비스 제공자': 'Fournisseur d’IA', 'AI API 키': 'Clé API IA', '사용 모델명': 'Nom du modèle', 'AI API 테스트': 'Tester l’API IA', '저장': 'Enregistrer', '취소': 'Annuler', '사운드 관련 기능은 추후 제공 예정': 'Les fonctions audio seront disponibles plus tard.', '설정 저장 후 다시 시도해 주세요': 'Enregistre les réglages puis réessaie.', 'AI API 테스트 요청 중...': 'Test de l’API IA en cours…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'Test de l’API IA réussi (schéma JSON valide)', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'Échec du test de l’API IA (schéma JSON invalide)', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'Échec du test de l’API IA (schéma JSON non vérifié)',
         '플레이 방법': 'Comment jouer', '갤러리': 'Galerie', '대상 유형': 'Catégorie', '대상': 'Élément', '일반뿌요': 'Puyos', '예고뿌요': 'Puyos d’avertissement', '적': 'Ennemis', '빨강뿌요': 'Puyo rouge', '초록뿌요': 'Puyo vert', '노랑뿌요': 'Puyo jaune', '파랑뿌요': 'Puyo bleu', '보라뿌요': 'Puyo violet', '방해뿌요': 'Puyo-ordure', '딱딱뿌요': 'Puyo dur', '작은 예고뿌요': 'Petit Puyo d’avertissement', '큰 예고뿌요': 'Grand Puyo d’avertissement', '빨간 돌': 'Pierre rouge', '별': 'Étoile', '태양': 'Soleil', '중성자별': 'Étoile à neutrons', '블랙홀': 'Trou noir', '위기': 'Crise', '다시보기': 'Rejouer',
         '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Déplace les Puyos avec Gauche, Droite et Bas. Tourne-les avec Z et X.', '좌우 방향키로 뿌요 이동': 'Déplace avec Gauche et Droite.', '아래 방향키로 빨리 떨어뜨리기': 'Fais tomber plus vite avec Bas.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Tourne à gauche avec Z.', 'X 키를 눌러 우측으로 뿌요 회전': 'Tourne à droite avec X.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Relie au moins quatre Puyos de même couleur pour les faire éclater et attaquer.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Quatre Puyos de même couleur attaquent l’adversaire.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Les Puyos-ordures adjacents éclatent aussi.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Les chaînes permettent des attaques plus puissantes.', '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.': 'Un Tout Effacé lance une attaque puissante.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'Tu perds si des Puyos restent au bout de la troisième ligne.',
-        '은하': 'Galaxie', '음소거(꺼짐)': 'Muet (désactivé)', '음소거(활성)': 'Muet (activé)', '화면 가로방향 고정': 'Verrouiller le mode paysage'
+        '은하': 'Galaxie', '음소거(꺼짐)': 'Muet (désactivé)', '음소거(활성)': 'Muet (activé)', '화면 가로방향 고정': 'Verrouiller le mode paysage', '피버 (완화)': 'FEVER (adouci)'
     });
 
     /** 현재 연결된 캔버스 요소다. @type {HTMLCanvasElement|null} */
@@ -433,7 +436,7 @@
     let watchSelectionOpen = false;
     /** 구경 설정에서 선택한 색상 수의 DIFFICULTIES 배열 인덱스다. @type {number} */
     let watchDifficulty = 1;
-    /** 구경 설정에서 선택한 대전 규칙이다. @type {'standard'|'fever'} */
+    /** 구경 설정에서 선택한 대전 규칙이다. @type {'standard'|'fever'|'relaxedFever'} */
     let watchRule = 'standard';
     /** 구경 설정에서 포커스된 행이다. 0: 색상 수, 1: 모드, 2: 동작. @type {number} */
     let watchSelectionFocus = 0;
@@ -502,6 +505,10 @@
     const OPPONENTS = [];
     /** 구경 모드의 무작위 대전 후보에서 제외할 적 종류다. @type {Set<string>} */
     const WATCH_EXCLUDED_OPPONENT_TYPES = new Set(['Solomon', 'Andromalius', 'Dantalion']);
+    /** 구경 대전에 출전할 수 있는 승리를 확인할 난이도 키다. @type {('hard'|'extreme')[]} */
+    const WATCH_ELIGIBLE_DIFFICULTY_KEYS = ['hard', 'extreme'];
+    /** 빈 필드에서 첫 배치를 무작위로 정할 기본 제공 적 종류다. @type {Set<string>} */
+    const RANDOM_EMPTY_FIELD_ENEMY_TYPES = new Set(['Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus']);
     /** getClassType()별로 외부에서 지정한 적 사운드 풀이다. @type {Map<string, SoundPool>} */
     const enemySoundPools = new Map();
     /** 메인 메뉴 게임 규칙 선택지의 버튼 배경색이다. */
@@ -512,6 +519,12 @@
         continuousFever: '#cf4bb0',
         puzzle: '#236a8b'
     };
+    /** 구경 설정에서 선택 가능한 규칙 목록이다. @type {{key:'standard'|'fever'|'relaxedFever',label:string,backgroundColor:string}[]} */
+    const WATCH_RULE_OPTIONS = [
+        { key: 'standard', label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard },
+        { key: 'fever', label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever },
+        { key: 'relaxedFever', label: '피버 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever }
+    ];
     /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard, activate: () => openOpponentMenu(false) },
@@ -1444,7 +1457,9 @@
         const combo = player.combo;
         playSound(getComboSoundUrl(commonSoundPool, 'puyoBurstCombo', combo), 'effects', '뿌요 폭발 효과음');
         const spellUrl = getComboSoundUrl(spellPool, 'spellCombo', combo)
-            || (player.controller ? getComboSoundUrl(commonSoundPool, 'commonEnemySpellCombo', combo) : null);
+            || (player.controller
+                ? getComboSoundUrl(commonSoundPool, game?.watch && player === game.players[0] ? 'spellCombo' : 'commonEnemySpellCombo', combo)
+                : null);
         playSound(spellUrl, 'effects', '연쇄 주문 효과음');
     }
 
@@ -1745,11 +1760,12 @@
         ensureSelectedOpponent();
     }
 
-    /** 플레이어 한 명의 피버 룰 상태를 만든다. @returns {object} 초기 피버 상태 */
-    function createFeverRuleState() {
+    /** 플레이어 한 명의 피버 룰 상태를 만든다. @param {number} [lightStart=FEVER_LIGHT_STARTS] 게임 시작·피버 종료 뒤 적용할 전등 수 @returns {object} 초기 피버 상태 */
+    function createFeverRuleState(lightStart = FEVER_LIGHT_STARTS) {
         return {
             active: false,
-            gauge: FEVER_LIGHT_STARTS,
+            lightStart: Math.max(0, Math.min(6, lightStart)),
+            gauge: Math.max(0, Math.min(6, lightStart)),
             nextTime: FEVER_INITIAL_TIME,
             targetCombo: FEVER_INITIAL_TARGET_COMBO,
             leftTime: 0,
@@ -1837,9 +1853,25 @@
         syncBackgroundMusic();
     }
 
-    /** 구경 모드에 사용할 수 있는 출시된 적 목록을 반환한다. 솔로몬·안드로말리우스·단탈리온은 항상 제외한다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean}[]} 후보 적 목록 */
+    /** 데카라비아를 기본 룰 또는 피버 룰에서 한 번이라도 이겼는지 확인한다. @returns {boolean} 구경 메뉴 해금 여부 */
+    function isWatchModeUnlocked() {
+        if (store.clearList.includes('Decarabia')) return true;
+        return [...Object.values(store.clearListByDifficulty), ...Object.values(store.feverClearListByDifficulty)]
+            .some((clears) => clears.includes('Decarabia'));
+    }
+
+    /** 지정한 적을 기본·피버 룰의 어려움 또는 극한에서 한 번이라도 이겼는지 확인한다. @param {string} className 적 클래스 이름 @returns {boolean} 구경 대전 출전 가능 여부 */
+    function hasWatchEligibleClear(className) {
+        return WATCH_ELIGIBLE_DIFFICULTY_KEYS.some((difficultyKey) => (
+            store.clearListByDifficulty[difficultyKey].includes(className)
+            || store.feverClearListByDifficulty[difficultyKey].includes(className)
+        ));
+    }
+
+    /** 구경 모드에 사용할 수 있는 출시된 적 목록을 반환한다. 어려움·극한에서 이긴 적 중 솔로몬·안드로말리우스·단탈리온은 항상 제외한다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean}[]} 후보 적 목록 */
     function getWatchOpponentCandidates() {
-        return OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType));
+        return OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail
+            && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType) && hasWatchEligibleClear(entry.className));
     }
 
     /** 구경 모드 후보 중 종류가 서로 다른 적 두 명을 무작위로 선정한다. @returns {object[]|null} 선정된 두 적 등록 항목 */
@@ -1863,7 +1895,9 @@
         watchSelectionOpen = false;
         const controllers = selectedEntries.map((entry) => entry.createController());
         const difficulty = watchDifficulty;
-        const feverRule = watchRule === 'fever';
+        const feverRule = watchRule !== 'standard';
+        const relaxedFever = watchRule === 'relaxedFever';
+        const feverLightStart = relaxedFever ? Math.min(6, FEVER_LIGHT_STARTS + 3) : FEVER_LIGHT_STARTS;
         const colors = DIFFICULTIES[difficulty].colors;
         const pairQueue = Array.from({ length: INITIAL_PAIR_QUEUE_LENGTH }, () => createRandomPair(colors));
         if (DEBUG_CLEAR_RULE_MODE) {
@@ -1875,7 +1909,7 @@
             new PlayerState(controllers[0].getName(), FIELD_LEFT, controllers[0], colors),
             new PlayerState(controllers[1].getName(), FIELD_RIGHT, controllers[1], colors)
         ];
-        if (feverRule) players.forEach((player) => { player.fever = createFeverRuleState(); });
+        if (feverRule) players.forEach((player) => { player.fever = createFeverRuleState(feverLightStart); });
         game = {
             running: true,
             paused: false,
@@ -1892,8 +1926,11 @@
             watch: {
                 difficulty,
                 feverRule,
+                rule: watchRule,
+                relaxedFever,
                 resultElapsed: 0,
-                opponentTypes: selectedEntries.map((entry) => entry.classType)
+                opponentTypes: selectedEntries.map((entry) => entry.classType),
+                openingPlacementColumns: []
             },
             difficulty,
             aiDifficulty: WATCH_AI_DIFFICULTY_INDEX,
@@ -1915,7 +1952,7 @@
         game.watch.resultElapsed += delta;
         if (game.watch.resultElapsed < WATCH_AUTO_RESTART_DELAY) return;
         watchDifficulty = game.watch.difficulty;
-        watchRule = game.watch.feverRule ? 'fever' : 'standard';
+        watchRule = game.watch.rule || (game.watch.feverRule ? 'fever' : 'standard');
         startWatchGame(false);
     }
 
@@ -2262,7 +2299,7 @@
         state.damage = 0;
         state.active = true;
         playSound(commonSoundPool?.feverEnter, 'effects', '피버 진입 효과음');
-        state.gauge = FEVER_LIGHT_STARTS;
+        state.gauge = state.lightStart;
         state.pendingActivation = false;
         state.leftTime = state.nextTime * 1000;
         state.nextTime = FEVER_INITIAL_TIME;
@@ -2280,7 +2317,7 @@
         player.damage += feverDamage;
         state.field = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
         state.damage = 0;
-        state.gauge = FEVER_LIGHT_STARTS;
+        state.gauge = state.lightStart;
         state.leftTime = 0;
         state.pendingCombo = 0;
         state.pendingAllClear = false;
@@ -2345,6 +2382,33 @@
         return Boolean(opponent && opponent.combo >= 2 && isResolutionPhase(opponent.phase));
     }
 
+    /** 해당 적이 빈 필드에서 무작위 배치를 사용해야 하는지 확인한다. @param {Enemy} controller CPU 컨트롤러 @returns {boolean} 무작위 배치 대상 여부 */
+    function usesRandomEmptyFieldPlacement(controller) {
+        return controller instanceof BundledEnemy && RANDOM_EMPTY_FIELD_ENEMY_TYPES.has(controller.getClassType());
+    }
+
+    /** 필드에 뿌요가 하나도 없는지 확인한다. @param {PlayerState} player 검사할 플레이어 @returns {boolean} 빈 필드 여부 */
+    function isEmptyPlayerField(player) {
+        return player.board.every((row) => row.every((cell) => cell === null));
+    }
+
+    /** 빈 필드 적의 첫 배치 후보를 무작위로 고른다. 구경 시작 직후에는 양쪽 적이 서로 다른 열을 사용한다. @param {PlayerState} player CPU 플레이어 @param {Enemy} controller CPU 컨트롤러 @returns {object|null} 무작위 배치 후보 */
+    function selectRandomEmptyFieldPlacement(player, controller) {
+        if (!usesRandomEmptyFieldPlacement(controller) || !isEmptyPlayerField(player)) return null;
+        const safeSimulations = player.aiSimulations.filter((simulation) => !causesImmediateDefeat(player, simulation));
+        let candidates = safeSimulations.length ? safeSimulations : player.aiSimulations;
+        const openingColumns = game?.watch?.openingPlacementColumns;
+        const isWatchOpening = Array.isArray(openingColumns) && game.players.every((candidate) => candidate.placedPairCount === 0);
+        if (isWatchOpening && openingColumns.length) {
+            const differentColumnCandidates = candidates.filter((simulation) => !openingColumns.includes(simulation.x));
+            if (differentColumnCandidates.length) candidates = differentColumnCandidates;
+        }
+        if (!candidates.length) return null;
+        const selected = candidates[Math.floor(randomFloat() * candidates.length)];
+        if (isWatchOpening) openingColumns.push(selected.x);
+        return selected;
+    }
+
     /**
      * prepareTurn을 마친 컨트롤러에 피버 룰 공통 연쇄 전략과 기본 제공 적의 공통 우선순위를 적용한다.
      * 피버 공통 전략은 솔로몬을 제외한 외부 적에도 적용하며, 솔로몬의 대체 인공지능은 솔로몬 제외 정책을 유지한다.
@@ -2354,6 +2418,12 @@
      * @returns {void}
      */
     function applyPreparedControllerDecision(player, controller, appliesBundledEngineStrategy) {
+        const randomEmptyFieldPlacement = selectRandomEmptyFieldPlacement(player, controller);
+        if (randomEmptyFieldPlacement) {
+            player.aiTarget = randomEmptyFieldPlacement.x;
+            player.aiRotation = ((randomEmptyFieldPlacement.rotation % 4) + 4) % 4;
+            return;
+        }
         const appliesFeverComboStrategy = game?.feverRule && player.fever?.active && !(player.controller instanceof Solomon);
         if (appliesFeverComboStrategy) {
             // 외부 적이 기본 prepareTurn을 호출하지 않았더라도 피버에서는 엔진이 모든 후보를 직접 다시 계산한다.
@@ -5903,11 +5973,12 @@
         watchSelectedAction = 0;
     }
 
-    /** 구경 모드의 기본 룰·피버 룰 버튼 영역을 반환한다. @param {number} index 0: 기본 룰, 1: 피버 룰 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    /** 구경 모드 규칙 버튼 영역을 반환한다. @param {number} index WATCH_RULE_OPTIONS 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
     function getWatchRuleButtonBounds(index) {
-        const width = 220;
-        const gap = 20;
-        return { x: WIDTH / 2 - width - gap / 2 + index * (width + gap), y: 390, width, height: 58 };
+        const width = 190;
+        const gap = 15;
+        const totalWidth = WATCH_RULE_OPTIONS.length * width + (WATCH_RULE_OPTIONS.length - 1) * gap;
+        return { x: (WIDTH - totalWidth) / 2 + index * (width + gap), y: 390, width, height: 58 };
     }
 
     /** 구경 모드의 시작·취소 버튼 영역을 반환한다. @param {number} index 0: 시작, 1: 취소 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
@@ -5942,7 +6013,10 @@
         else if (key === 'arrowleft' || key === 'arrowright') {
             const direction = key === 'arrowleft' ? -1 : 1;
             if (watchSelectionFocus === 0) watchDifficulty = (watchDifficulty + direction + DIFFICULTIES.length) % DIFFICULTIES.length;
-            else if (watchSelectionFocus === 1) watchRule = watchRule === 'standard' ? 'fever' : 'standard';
+            else if (watchSelectionFocus === 1) {
+                const currentIndex = Math.max(0, WATCH_RULE_OPTIONS.findIndex((option) => option.key === watchRule));
+                watchRule = WATCH_RULE_OPTIONS[(currentIndex + direction + WATCH_RULE_OPTIONS.length) % WATCH_RULE_OPTIONS.length].key;
+            }
             else watchSelectedAction = watchSelectedAction === 0 ? 1 : 0;
         } else if (key === 'enter' || key === ' ') activateWatchSelection();
     }
@@ -5964,14 +6038,14 @@
         });
         context.fillStyle = '#b8dbe2'; context.font = `18px ${MESSAGE_FONT}`;
         context.fillText(translate('모드'), WIDTH / 2, 373);
-        ['standard', 'fever'].forEach((rule, index) => {
+        WATCH_RULE_OPTIONS.forEach((option, index) => {
             const bounds = getWatchRuleButtonBounds(index);
-            const selected = rule === watchRule;
+            const selected = option.key === watchRule;
             const focused = watchSelectionFocus === 1 && selected;
-            context.fillStyle = selected ? (rule === 'fever' ? RULE_OPTION_BACKGROUND_COLORS.fever : RULE_OPTION_BACKGROUND_COLORS.standard) : '#0b202c';
+            context.fillStyle = selected ? option.backgroundColor : '#0b202c';
             context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.strokeStyle = focused ? '#f7c843' : '#3b6070'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
-            context.fillStyle = '#f5fbfc'; context.font = `18px ${BUTTON_FONT}`; context.fillText(translate(rule === 'fever' ? '피버 룰' : '기본 룰'), bounds.x + bounds.width / 2, bounds.y + 36);
+            context.fillStyle = '#f5fbfc'; context.font = `18px ${BUTTON_FONT}`; context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + 36);
         });
         ['시작', '취소'].forEach((label, index) => {
             const bounds = getWatchActionButtonBounds(index);
@@ -6373,9 +6447,11 @@
         ];
         titleOptions.forEach((option, index) => {
             const y = menuStartY + index * (menuHeight + menuGap);
-            context.fillStyle = option.color; context.fillRect(menuX, y, menuWidth, menuHeight);
-            context.strokeStyle = titleMenuFocus === index ? '#f7c843' : option.color; context.lineWidth = titleMenuFocus === index ? 4 : 2; context.strokeRect(menuX, y, menuWidth, menuHeight);
-            context.fillStyle = '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate(option.label), WIDTH / 2, y + 30);
+            const locked = isTitleMenuItemLocked(index);
+            context.fillStyle = locked ? '#3c4650' : option.color; context.fillRect(menuX, y, menuWidth, menuHeight);
+            context.strokeStyle = locked ? '#7c8791' : titleMenuFocus === index ? '#f7c843' : option.color; context.lineWidth = titleMenuFocus === index && !locked ? 4 : 2; context.strokeRect(menuX, y, menuWidth, menuHeight);
+            context.fillStyle = locked ? '#c4cbd0' : '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`;
+            context.fillText(locked ? `${translate(option.label)} (${translate('잠김')})` : translate(option.label), WIDTH / 2, y + 30);
         });
         context.fillStyle = '#24292f'; context.fillRect(32, 665, 85, 23);
         context.strokeStyle = titleMenuFocus === 6 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 6 ? 2 : 1; context.strokeRect(32, 665, 85, 23);
@@ -6992,9 +7068,7 @@
                 return;
             }
             if (menuScreen === 'title' && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
-                titleMenuFocus = key === 'arrowleft' || key === 'arrowup'
-                    ? (titleMenuFocus + 7) % 8
-                    : (titleMenuFocus + 1) % 8;
+                moveTitleMenuFocus(key === 'arrowleft' || key === 'arrowup' ? -1 : 1);
             } else if (menuScreen === 'opponent' && key === 'arrowup') {
                 opponentMenuFocus = Math.max(0, opponentMenuFocus - 1);
             } else if (menuScreen === 'opponent' && key === 'arrowdown') {
@@ -7091,11 +7165,28 @@
         }
     }
 
+    /** 메인 메뉴의 지정한 항목이 잠겼는지 확인한다. @param {number} index 메뉴 항목 순번 @returns {boolean} 잠금 여부 */
+    function isTitleMenuItemLocked(index) {
+        return index === 3 && !isWatchModeUnlocked();
+    }
+
+    /** 잠긴 항목을 건너뛰어 메인 메뉴 포커스를 이동한다. @param {number} direction 이전 -1 또는 다음 1 @returns {void} */
+    function moveTitleMenuFocus(direction) {
+        for (let offset = 1; offset <= 8; offset += 1) {
+            const index = (titleMenuFocus + direction * offset + 8) % 8;
+            if (!isTitleMenuItemLocked(index)) {
+                titleMenuFocus = index;
+                return;
+            }
+        }
+    }
+
     /**
      * 메인 메뉴에서 포커스된 항목을 실행한다.
      * @returns {void}
      */
     function activateTitleMenu() {
+        if (isTitleMenuItemLocked(titleMenuFocus)) return;
         playMenuSelectSound();
         if (titleMenuFocus === 0) openRuleSelection();
         else if (titleMenuFocus === 1) openSimulator();
@@ -7210,13 +7301,13 @@
                 watchSelectionFocus = 0;
                 return;
             }
-            const ruleIndex = [0, 1].find((index) => {
+            const ruleIndex = WATCH_RULE_OPTIONS.findIndex((option, index) => {
                 const bounds = getWatchRuleButtonBounds(index);
                 return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
             });
-            if (ruleIndex !== undefined) {
+            if (ruleIndex >= 0) {
                 playMenuSelectSound();
-                watchRule = ruleIndex === 0 ? 'standard' : 'fever';
+                watchRule = WATCH_RULE_OPTIONS[ruleIndex].key;
                 watchSelectionFocus = 1;
                 return;
             }
@@ -8161,7 +8252,7 @@
         combo6SpellEffect = null;
 
         /**  
-         * 1연쇄 발생 시 적이 말하는 주문 효과음. (해당 적의 SoundPool 의 spellCombo1 이 null일 때 대신 사용, null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * 1연쇄 발생 시 적이 말하는 주문 효과음. 적 SoundPool에 음원이 없을 때 기본 대전의 적은 이 값을 사용한다. 구경 모드 좌측 적은 대신 공통 spellCombo1을 사용한다.
          * @type {string|null}
          */
         commonEnemySpellCombo1 = null;
