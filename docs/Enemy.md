@@ -311,7 +311,7 @@ expect(state.player.board.columns).toBe(6);
 - `getMyFeverFieldInfo(player)`: 피버 중인 경우 피버 전용 필드를 `{ columns, rows, cells }` 복사본으로 반환하고, 피버 중이 아니면 `null`을 반환합니다.
 - `getMyFeverStatus(player)`: `{ active, gauge, nextTime, targetCombo, leftTime, damage, turn }`을 반환합니다. `leftTime`은 밀리초 단위이고 `damage`는 일반 피해와 분리된 피버 전용 피해이며, 피버 룰이 아닌 게임에서는 `null`입니다.
 
-기본 제공 적인 `BundledEnemy` 하위 클래스는 피버 상황에서 패배 위치를 피한 뒤 예상 연쇄 수가 가장 큰 위치와 회전을 자동으로 선택합니다. 외부에서 `Enemy`를 직접 상속한 적에게는 이 공통 특수 조건이 적용되지 않으므로, 필요하면 위 메서드와 `player.aiSimulations`를 이용해 자체 전략을 구현해야 합니다.
+피버 룰에서 피버 필드를 조작할 때는 솔로몬을 제외한 모든 적이 개별 전략보다 공통 연쇄 최적화 전략을 우선합니다. 엔진은 외부 적이 `super.prepareTurn(player)`를 호출하지 않았더라도 모든 착지 위치와 회전을 다시 시뮬레이션하고, 즉시 패배하지 않는 후보 중 예상 연쇄 수가 가장 큰 배치를 선택합니다. 예상 연쇄 수가 같으면 예상 ATTACK이 큰 후보를 선택합니다. 일반 필드와 연속 피버에서는 각 적의 기존 전략을 그대로 사용합니다.
 
 이 메서드는 주로 `chooseTarget()`에서 현재 필드 높이, 색상 연결, 방해뿌요 위치를 판단할 때 사용합니다.
 

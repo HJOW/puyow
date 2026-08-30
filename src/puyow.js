@@ -135,7 +135,7 @@
     /** 피버 룰에서 피버를 발동시키는 상쇄 전등 수다. @type {number} */
     const FEVER_GAUGE_MAX = 7;
     /** 피버 룰의 게임 시작 및 피버 종료 직후 켜져 있는 전등 수다. @type {number} */
-    const FEVER_LIGHT_STARTS = 0;
+    const FEVER_LIGHT_STARTS = 6;
     /** 피버 룰의 시작 목표 연쇄 수다. @type {number} */
     const FEVER_INITIAL_TARGET_COMBO = 5;
     /** 피버 룰의 시작 다음 피버 시간(초)이다. @type {number} */
@@ -2157,7 +2157,36 @@
         enterControl(player);
     }
 
-    /** 기본 제공 적이 피버 중이면 즉시 패배하지 않는 후보 가운데 예상 연쇄가 가장 큰 배치를 고른다. @param {PlayerState} player CPU 플레이어 @returns {object|null} 선택 후보 */
+    /**
+     * 현재 뿌요 쌍의 모든 착지 가능 위치와 회전을 시뮬레이션한다.
+     * 외부 적이 prepareTurn을 재정의했더라도 피버 룰의 공통 연쇄 전략이 후보를 다시 준비할 때 사용한다.
+     * @param {PlayerState} player CPU 플레이어
+     * @returns {void}
+     */
+    function prepareAiPlacementSimulations(player) {
+        if (!player.active) {
+            player.aiSimulations = [];
+            return;
+        }
+        const simulations = [];
+        for (let rotation = 0; rotation < 4; rotation += 1) {
+            for (let x = 0; x < COLUMNS; x += 1) {
+                const placement = findLandingPlacement(player, x, rotation);
+                if (!placement) continue;
+                const positions = activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
+                simulations.push({
+                    x,
+                    rotation,
+                    positions,
+                    attack: player.estimateAttack(player.active.colors, positions),
+                    combo: player.estimateCombo(player.active.colors, positions)
+                });
+            }
+        }
+        player.aiSimulations = simulations;
+    }
+
+    /** 솔로몬을 제외한 적이 피버 중이면 즉시 패배하지 않는 후보 가운데 예상 연쇄가 가장 큰 배치를 고른다. @param {PlayerState} player CPU 플레이어 @returns {object|null} 선택 후보 */
     function findBestFeverComboPlacement(player) {
         return player.aiSimulations.reduce((best, simulation) => {
             if (causesImmediateDefeat(player, simulation)) return best;
@@ -2173,15 +2202,18 @@
     }
 
     /**
-     * prepareTurn을 마친 컨트롤러의 개별 전략과 기본 제공 적 공통 우선순위를 적용한다.
-     * 솔로몬의 대체 인공지능도 이 함수를 벨리알 인스턴스와 함께 호출해 실제 벨리알과 같은 결정을 얻는다.
+     * prepareTurn을 마친 컨트롤러에 피버 룰 공통 연쇄 전략과 기본 제공 적의 공통 우선순위를 적용한다.
+     * 피버 공통 전략은 솔로몬을 제외한 외부 적에도 적용하며, 솔로몬의 대체 인공지능은 솔로몬 제외 정책을 유지한다.
      * @param {PlayerState} player CPU 플레이어
      * @param {Enemy} controller 결정에 사용할 컨트롤러
      * @param {boolean} appliesBundledEngineStrategy 기본 제공 적 공통 전략 적용 여부
      * @returns {void}
      */
     function applyPreparedControllerDecision(player, controller, appliesBundledEngineStrategy) {
-        if (appliesBundledEngineStrategy && game?.feverRule && player.fever?.active && !(controller instanceof Amdusias)) {
+        const appliesFeverComboStrategy = game?.feverRule && player.fever?.active && !(player.controller instanceof Solomon);
+        if (appliesFeverComboStrategy) {
+            // 외부 적이 기본 prepareTurn을 호출하지 않았더라도 피버에서는 엔진이 모든 후보를 직접 다시 계산한다.
+            prepareAiPlacementSimulations(player);
             const feverPlacement = findBestFeverComboPlacement(player) || findBestAttackPlacement(player, player.active.x, null, true);
             player.aiTarget = feverPlacement.x;
             player.aiRotation = ((feverPlacement.rotation % 4) + 4) % 4;
@@ -2193,10 +2225,9 @@
             player.aiTarget = controller.chooseTarget(player);
             player.aiRotation = ((controller.chooseRotate(player) % 4) + 4) % 4;
         }
-        if (!appliesBundledEngineStrategy) return;
+        if (!appliesBundledEngineStrategy && !appliesFeverComboStrategy) return;
         const selectedPlacement = player.aiSimulations.find((simulation) => simulation.x === player.aiTarget && simulation.rotation === player.aiRotation);
-        const amdusiasFeverAttack = controller instanceof Amdusias && game?.feverRule && player.fever?.active;
-        if (!amdusiasFeverAttack && selectedPlacement && causesImmediateDefeat(player, selectedPlacement)) {
+        if (selectedPlacement && causesImmediateDefeat(player, selectedPlacement)) {
             const safePlacement = findBestAttackPlacement(player, player.active.x, null, true);
             if (safePlacement.positions.length) {
                 player.aiTarget = safePlacement.x;
@@ -2229,8 +2260,8 @@
         // CPU 플레이어면 이번 뿌요 쌍의 목표 위치와 회전을 미리 결정한다.
         if (player.controller) {
             player.controller.prepareTurn(player);
-            // 기본 제공 적에 한해서만 플레이어 연쇄 대응 같은 엔진 공통 특수 규칙을 적용한다.
-            // 외부 등록 적은 자신의 chooseTarget·chooseRotate 결정만 사용한다.
+            // 피버 필드의 연쇄 최적화는 솔로몬을 제외한 모든 적에 적용하고,
+            // 플레이어 연쇄 대응 같은 나머지 엔진 공통 특수 규칙은 기본 제공 적에만 적용한다.
             // findBestAttackPlacement가 즉시 패배 후보를 먼저 제외하므로 생존 조건만 이 우선순위보다 앞선다.
             const appliesBundledEngineStrategy = player.controller instanceof BundledEnemy && !(player.controller instanceof Solomon);
             applyPreparedControllerDecision(player, player.controller, appliesBundledEngineStrategy);
@@ -8532,29 +8563,7 @@
          * @returns {void}
          */
         prepareTurn(player) {
-            // 조작 중인 뿌요가 없으면 이번 턴에 평가할 후보도 없다.
-            if (!player.active) {
-                player.aiSimulations = [];
-                return;
-            }
-            const simulations = [];
-            // 모든 회전 상태와 열을 순회하며 실제로 착지 가능한 후보를 만든다.
-            for (let rotation = 0; rotation < 4; rotation += 1) {
-                for (let x = 0; x < COLUMNS; x += 1) {
-                    const placement = findLandingPlacement(player, x, rotation);
-                    // 벽이나 쌓인 뿌요 때문에 놓을 수 없는 후보는 제외한다.
-                    if (!placement) continue;
-                    const positions = activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
-                    simulations.push({
-                        x,
-                        rotation,
-                        positions,
-                        attack: player.estimateAttack(player.active.colors, positions),
-                        combo: player.estimateCombo(player.active.colors, positions)
-                    });
-                }
-            }
-            player.aiSimulations = simulations;
+            prepareAiPlacementSimulations(player);
         }
 
         /**
@@ -9980,7 +9989,7 @@
 
     /**
      * 암두시아스는 유니콘 작곡가 콘셉트의 기본 제공 적이다. 벨리알의 예고쌍·싹쓸이 평가를
-     * 이어받되 한 단계 높은 5연쇄 목표와 피버 전용 우선순위를 사용한다.
+     * 이어받되 일반 필드에서 한 단계 높은 5연쇄 목표를 사용한다. 피버 필드에서는 공통 연쇄 최적화 전략을 따른다.
      */
     class Amdusias extends Belial {
         constructor() {
@@ -10007,12 +10016,9 @@
             const simulations = safeSimulations.length ? safeSimulations : player.aiSimulations;
             const occupancy = this.getFieldOccupancy(player);
             const score = (simulation) => simulation.attack + (simulation.previewAttack || 0) + (simulation.previewCombo || 0) * 1000;
-            // 피버 중에는 패배 위치보다 먼저 최고 공격력을 찾는다. enterControl도 이 우선순위를 보존한다.
             let selected = this.selectSimulation(simulations, (simulation) => simulation.allClear === true, score);
-            if (!selected && game?.feverRule && this.isInFever(player)) {
-                selected = this.selectSimulation(simulations, () => true, score);
             // 피버 룰에서 피버가 아닐 때 DAMAGE가 있으면 생존 다음 우선순위로 공격력 시뮬레이션을 쓴다.
-            } else if (!selected && game?.feverRule && player.damage > 0) {
+            if (!selected && game?.feverRule && player.damage > 0) {
                 selected = this.selectSimulation(simulations, () => true, score);
             } else if (!selected && occupancy >= 0.8) {
                 selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 1, score);

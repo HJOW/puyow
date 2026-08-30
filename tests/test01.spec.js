@@ -1013,6 +1013,59 @@ test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_gallery')).enemies)).toContain('FeverGalleryEnemy');
 });
 
+test('피버 상태에서는 외부 적도 개별 전략 대신 연쇄 최적 위치와 회전을 사용한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverComboPriorityEnemy extends window.WebPuyo.Enemy {
+      constructor() {
+        super();
+        this.sortPriority = -100;
+        this.customDecisionCalled = false;
+      }
+
+      getClassType() { return 'FeverComboPriorityEnemy'; }
+      getName() { return '피버 연쇄 최적화 테스트 적'; }
+
+      // super.prepareTurn을 호출하지 않는 외부 적이어도 엔진이 피버 후보를 다시 준비해야 한다.
+      prepareTurn(player) {
+        this.player = player;
+        window.feverComboPriorityEnemy = this;
+        player.fever.active = true;
+        player.fever.leftTime = 10000;
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+        for (let x = 0; x < 3; x += 1) player.board[0][x] = 'red';
+        player.active.colors = ['red', 'blue'];
+        player.aiSimulations = [];
+      }
+
+      chooseTarget() { this.customDecisionCalled = true; return 5; }
+      chooseRotate() { this.customDecisionCalled = true; return 2; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverComboPriorityEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const controller = window.feverComboPriorityEnemy;
+    if (!controller?.player) return null;
+    const placement = controller.player.aiSimulations.find((simulation) => (
+      simulation.x === controller.player.aiTarget && simulation.rotation === controller.player.aiRotation
+    ));
+    return {
+      target: controller.player.aiTarget,
+      rotation: controller.player.aiRotation,
+      combo: placement?.combo,
+      simulationCount: controller.player.aiSimulations.length,
+      customDecisionCalled: controller.customDecisionCalled,
+    };
+  })).toEqual({ target: 0, rotation: 0, combo: 1, simulationCount: 22, customDecisionCalled: false });
+});
+
 test('피버 전용 필드는 적 테마보다 우선하고 일반 필드는 적 테마를 유지한다', async ({ page }) => {
   await page.evaluate(() => {
     class FeverPriorityThemeEnemy extends window.WebPuyo.Enemy {
@@ -1085,7 +1138,7 @@ test('피버 상태의 싹쓸이는 목표 연쇄만 올리고 별도 ATTACK을 
         // 자체 공격은 없으며, DAMAGE가 생긴다면 싹쓸이의 기존 추가 12뿐이다.
         player.fever.active = true;
         player.fever.leftTime = 10000;
-        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
         for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
         player.hasPlacedPuyoSinceAllClear = true;
         player.phase = 'explode';
@@ -1129,7 +1182,7 @@ test('연속 피버와 피버 상태는 낮은 연쇄 뒤 4연쇄 피버 패턴�
         this.prepared = true;
         player.fever.active = true;
         player.fever.leftTime = 10000;
-        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
         for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
         // 1연쇄 후 남는 뿌요가 있어 싹쓸이 보너스 없이 목표 최솟값만 확인한다.
         player.board[0][5] = 'blue';
@@ -1202,7 +1255,7 @@ test('3색 피버 룰의 일반 필드 싹쓸이는 4연쇄 패턴을 배치한�
         super.prepareTurn(player);
         if (this.prepared) return;
         this.prepared = true;
-        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
         for (let x = 0; x < 4; x += 1) player.board[0][x] = 'green';
         player.hasPlacedPuyoSinceAllClear = true;
         player.phase = 'explode';
@@ -1244,7 +1297,7 @@ test('마지막 전등이 켜지는 일반 필드 싹쓸이는 5연쇄 패턴 �
         this.prepared = true;
         player.fever.gauge = 7;
         player.fever.pendingActivation = true;
-        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
         for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
         player.hasPlacedPuyoSinceAllClear = true;
         player.phase = 'explode';
@@ -1286,7 +1339,7 @@ test('common sound pool plays the Fever gauge light sound after an offset', asyn
         if (this.prepared) return;
         this.prepared = true;
         player.damage = 1;
-        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
         for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
         player.phase = 'explode';
         player.phaseTimer = 0;
@@ -1333,7 +1386,7 @@ test('피버 중 공격은 피버와 일반 DAMAGE를 모두 상쇄한 뒤 남�
         player.normalDamage = 2;
         // 4의 공격으로 피버 DAMAGE 1, 일반 DAMAGE 2를 상쇄하고 남은 1을 상대에게 보낸다.
         player.attack = 4;
-        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
         for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
         player.phase = 'explode';
         player.phaseTimer = 0;
@@ -1433,7 +1486,7 @@ test('피버 룰의 시간 만료 연쇄는 상대 방해뿌요 낙하를 기다
         // 다음 프레임에서 0이 되지만, 연쇄와 에너지 전달은 끝까지 정산한다.
         player.fever.leftTime = 1;
         player.attack = 1;
-        player.board = Array.from({ length: 17 }, () => Array(6).fill(null));
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
         for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
         player.phase = 'explode';
         player.phaseTimer = 0;
