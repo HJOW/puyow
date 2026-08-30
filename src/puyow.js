@@ -505,8 +505,8 @@
     const OPPONENTS = [];
     /** 구경 모드의 무작위 대전 후보에서 제외할 적 종류다. @type {Set<string>} */
     const WATCH_EXCLUDED_OPPONENT_TYPES = new Set(['Solomon', 'Andromalius', 'Dantalion']);
-    /** 구경 대전에 출전할 수 있는 승리를 확인할 난이도 키다. @type {('hard'|'extreme')[]} */
-    const WATCH_ELIGIBLE_DIFFICULTY_KEYS = ['hard', 'extreme'];
+    /** 구경 해금 및 대전 출전 승리를 확인할 난이도 키다. @type {('normal'|'hard'|'extreme')[]} */
+    const WATCH_ELIGIBLE_DIFFICULTY_KEYS = ['normal', 'hard', 'extreme'];
     /** 빈 필드에서 첫 배치를 무작위로 정할 기본 제공 적 종류다. @type {Set<string>} */
     const RANDOM_EMPTY_FIELD_ENEMY_TYPES = new Set(['Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus']);
     /** getClassType()별로 외부에서 지정한 적 사운드 풀이다. @type {Map<string, SoundPool>} */
@@ -1853,14 +1853,12 @@
         syncBackgroundMusic();
     }
 
-    /** 데카라비아를 기본 룰 또는 피버 룰에서 한 번이라도 이겼는지 확인한다. @returns {boolean} 구경 메뉴 해금 여부 */
+    /** 데카라비아를 기본 룰 또는 피버 룰의 보통 이상 난이도에서 한 번이라도 이겼는지 확인한다. @returns {boolean} 구경 메뉴 해금 여부 */
     function isWatchModeUnlocked() {
-        if (store.clearList.includes('Decarabia')) return true;
-        return [...Object.values(store.clearListByDifficulty), ...Object.values(store.feverClearListByDifficulty)]
-            .some((clears) => clears.includes('Decarabia'));
+        return hasWatchEligibleClear('Decarabia');
     }
 
-    /** 지정한 적을 기본·피버 룰의 어려움 또는 극한에서 한 번이라도 이겼는지 확인한다. @param {string} className 적 클래스 이름 @returns {boolean} 구경 대전 출전 가능 여부 */
+    /** 지정한 적을 기본·피버 룰의 보통 이상 난이도에서 한 번이라도 이겼는지 확인한다. @param {string} className 적 클래스 이름 @returns {boolean} 구경 대전 출전 가능 여부 */
     function hasWatchEligibleClear(className) {
         return WATCH_ELIGIBLE_DIFFICULTY_KEYS.some((difficultyKey) => (
             store.clearListByDifficulty[difficultyKey].includes(className)
@@ -1868,7 +1866,7 @@
         ));
     }
 
-    /** 구경 모드에 사용할 수 있는 출시된 적 목록을 반환한다. 어려움·극한에서 이긴 적 중 솔로몬·안드로말리우스·단탈리온은 항상 제외한다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean}[]} 후보 적 목록 */
+    /** 구경 모드에 사용할 수 있는 출시된 적 목록을 반환한다. 보통 이상에서 이긴 적 중 솔로몬·안드로말리우스·단탈리온은 항상 제외한다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean}[]} 후보 적 목록 */
     function getWatchOpponentCandidates() {
         return OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail
             && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType) && hasWatchEligibleClear(entry.className));

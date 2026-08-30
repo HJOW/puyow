@@ -2720,7 +2720,7 @@ test('기본 룰과 피버 룰의 적 초상화 화살표는 선택 가능한 �
   }
 });
 
-test('구경 메뉴는 데카라비아 승리 전에는 잠기고 키보드·클릭으로 건너뛴다', async ({ page }) => {
+test('구경 메뉴는 데카라비아를 보통 이상에서 이기기 전에는 잠기고 키보드·클릭으로 건너뛴다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({
       clearList: [],
@@ -2734,6 +2734,19 @@ test('구경 메뉴는 데카라비아 승리 전에는 잠기고 키보드·클
   await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 468 } });
   expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 
+  await page.reload();
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
+
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: ['Decarabia'],
+      clearListByDifficulty: { easy: ['Decarabia'], normal: [], hard: [], extreme: [] },
+      feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
+    }));
+  });
   await page.reload();
   await enterMainMenu(page);
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
@@ -2758,7 +2771,7 @@ test('구경 설정은 키보드와 마우스로 색상 수·규칙·취소를 �
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({
       clearList: ['Decarabia'],
-      clearListByDifficulty: { easy: [], normal: [], hard: ['Decarabia', 'Belial'], extreme: [] },
+      clearListByDifficulty: { easy: [], normal: ['Andromalius', 'Dantalion', 'Decarabia', 'Belial'], hard: [], extreme: [] },
       feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
     }));
   });
