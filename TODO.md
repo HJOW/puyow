@@ -20,6 +20,12 @@
    "피버 (완화)" 는 피버 룰과 동일하지만, 다만 "게임 시작 및 피버 종료 직후 켜져 있는 전등 수" 를 FEVER_LIGHT_STARTS + 3 으로 게임이 진행되도록 해줘. (단 FEVER_LIGHT_STARTS + 3 이 6 초과인 경우 6으로 적용해줘.)
    나머지는 "피버 룰" 구경 모드와 동일하게 구현해줘.
    
+6. "구경" 모드에서, 좌측 적의 연쇄 주문 효과음은
+   적 클래스의 SoundPool 의 개별 효과음 (spellCombo1 ~ spellCombo7 의 연쇄별 음원) 이 높은 우선순위로 사용되는 건 이전과 동일하고
+   해당 상황에서 위 효과음이 없는 경우 CommonSoundPool 의 spellCombo1 ~ spellCombo7 의 연쇄별 음원을 사용해줘. 
+   (기존에는 CommonSoundPool 의 commonEnemySpellCombo1 ~ commonEnemySpellCombo7 의 연쇄별 음원을 사용 중이었을 거야.)
+   "구경" 모드에 한정이야.
+   
    
 
 
