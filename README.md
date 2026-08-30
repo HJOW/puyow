@@ -44,6 +44,37 @@
 
 중앙 상단에는 플레이어와 CPU의 다음 뿌요 2쌍이 각각 표시됩니다. 중앙 중간에는 선택한 적의 초상화가, 중앙 하단에는 양쪽 점수가 표시됩니다. 뿌요가 폭발하면 해당 위치에 연쇄 수가 나타나 위로 떠오르고, 2초 뒤 사라집니다.
 
+## 로컬에서 구동을 위해 설치
+
+1. git 과 node.js 를 설치합니다.
+   Git - [git scm](https://git-scm.com/install/windows)
+   Node.js - [Node.js](https://nodejs.org/ko/download) - Windows 의 경우 설치 프로그램 (msi) 버전 이용
+2. git을 통해 설치
+   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 을 열고
+   PuyoW 를 설치할 디렉토리로 접근한 후
+   명령어 `git clone https://github.com/HJOW/puyow.git` 입력, 엔터
+
+3. npm 패키지 설치
+   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 창에서
+   명령어 `npm install` 입력, 엔터
+
+## 로컬에서 실행
+
+1. 서버 구동
+   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 을 열고
+   PuyoW 가 설치된 디렉토리로 접근
+   명령어 `npm start` 입력, 엔터
+
+2. 접속, 플레이
+   웹 브라우저 (Googld Chrome / MS Edge / Naver Whale / Mozilla Firefox / ...) 로 
+   주소 `localhost:9891` 입력해 접속
+   즐기기
+
+3. 게임 종료  
+   웹 브라우저 종료
+   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 창에서
+   단축키 CTRL + C 입력
+
 ## 개발 안내
 
 게임 설정, 라이브러리 사용법, 새 AI 상대 제작 방법은 [HOWTO.md](HOWTO.md)를 참고하세요.
