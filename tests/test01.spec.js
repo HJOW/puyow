@@ -950,9 +950,9 @@ test('적의 빠른 하강 대기 시간은 일반·위기 상황별 비율을 �
   expect(result).toEqual({ normalBefore: false, normalAt: true, dangerBefore: false, dangerAt: true });
 });
 
-test('암두시아스는 기본·피버 룰 진행 목록에 출시되고 키마리스는 출시 예정으로 표시된다', async ({ page }) => {
+test('키마리스는 기본·피버 룰 진행 목록에 출시되고 안드레알푸스는 출시 예정으로 표시된다', async ({ page }) => {
   await page.evaluate(() => {
-    const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial'];
+    const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias'];
     localStorage.setItem('puyow_store', JSON.stringify({
       clearList: [],
       clearListByDifficulty: { easy: cleared, normal: cleared, hard: cleared },
@@ -968,6 +968,10 @@ test('암두시아스는 기본·피버 룰 진행 목록에 출시되고 키마
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['암두시아스', 'Amdusias', 'アムドゥシアス', '阿姆杜西亚斯'].includes(text)))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['키마리스', 'Kimaris', 'キマリス', '基马里斯'].includes(text)))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드레알푸스', 'Andrealphus', 'アンドレアルフス', '安德雷阿尔弗斯'].includes(text)))).toBe(true);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowRight');
 
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
@@ -976,7 +980,13 @@ test('암두시아스는 기본·피버 룰 진행 목록에 출시되고 키마
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['암두시아스', 'Amdusias', 'アムドゥシアス', '阿姆杜西亚斯'].includes(text)))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['키마리스', 'Kimaris', 'キマリス', '基马里斯'].includes(text)))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드레알푸스', 'Andrealphus', 'アンドレアルフス', '安德雷阿尔弗斯'].includes(text)))).toBe(true);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.name)).toBe('키마리스');
 });
 
 test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async ({ page }) => {
