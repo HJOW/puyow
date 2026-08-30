@@ -105,7 +105,8 @@ test('WebMCP 도구 스키마는 퍼즐뿌요와 최신 게임 상태 필드를 
       statusRequired: tools.now_game_status.outputSchema.required,
       playerRequired: tools.now_game_status.outputSchema.properties.player.required,
       feverTargetMinimum: tools.now_game_status.outputSchema.properties.fever.properties.targetCombo.minimum,
-      activeYType: tools.now_game_status.outputSchema.properties.player.properties.active.properties.y.type
+      activeYType: tools.now_game_status.outputSchema.properties.player.properties.active.properties.y.type,
+      puzzleConditionTypes: tools.now_game_status.outputSchema.properties.puzzle.properties.winConditionType.enum
     };
   });
   expect(schema.screenEnum).toContain('puzzle_stage_select');
@@ -113,6 +114,7 @@ test('WebMCP 도구 스키마는 퍼즐뿌요와 최신 게임 상태 필드를 
   expect(schema.playerRequired).toEqual(expect.arrayContaining(['point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount']));
   expect(schema.feverTargetMinimum).toBe(4);
   expect(schema.activeYType).toBe('number');
+  expect(schema.puzzleConditionTypes).toContain('color');
 });
 
 test('기본 룰·연습·플레이 방법의 양쪽 필드는 기본 패배 칸에 빨간 X를 표시한다', async ({ page }) => {
@@ -1996,6 +1998,107 @@ test('퍼즐뿌요 스테이지 클리어는 결과 화면 전환 전에 저장�
   })).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.puzzle?.stageIndex)).toBe(1);
+});
+
+test('퍼즐뿌요 color 조건은 동시 폭발한 일반뿌요 색 수를 스테이지와 게임 화면에 표시하고 클리어한다', async ({ page }) => {
+  await page.evaluate(() => {
+    const stage = window.WebPuyo.PUZZLE_STAGES[0];
+    stage.stageData = {
+      puyos: [
+        ...Array.from({ length: 4 }, (_, x) => ({ x, y: 0, color: 'red' })),
+        ...Array.from({ length: 4 }, (_, x) => ({ x, y: 1, color: 'blue' })),
+        { x: 4, y: 0, color: 'garbage' }
+      ]
+    };
+    stage.suppliedNextPuyos = [['green', 'yellow']];
+    stage.winConditionType = 'color';
+    stage.winConditionValue = 2;
+  });
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['한 번에 2가지 색 뿌요를 터뜨려봐', 'Pop 2 colors at once!', '一度に2色のぷよを消そう！', '一次消除 2 种颜色的魔法气泡！'].includes(text)))).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
+  expect(['한 번에 2가지 색 뿌요를 터뜨려봐', 'Pop 2 colors at once!', '一度に2色のぷよを消そう！', '一次消除 2 种颜色的魔法气泡！'])
+    .toContain(await page.evaluate(() => window.WebPuyo.getGameState()?.puzzle?.condition));
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(1000);
+  await page.keyboard.up('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 6000 }).toBe('game_over');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState()?.winner)).toBe('player');
+  expect(await page.evaluate(() => JSON.parse(window.localStorage.getItem('puyow_store')).puzzleClearStages)).toContain(0);
+});
+
+test('퍼즐뿌요 color 조건은 동시에 제거된 방해뿌요를 색 수에 포함하지 않는다', async ({ page }) => {
+  await page.evaluate(() => {
+    const stage = window.WebPuyo.PUZZLE_STAGES[0];
+    stage.stageData = {
+      puyos: [
+        ...Array.from({ length: 4 }, (_, x) => ({ x, y: 0, color: 'red' })),
+        ...Array.from({ length: 4 }, (_, x) => ({ x, y: 1, color: 'blue' })),
+        { x: 4, y: 0, color: 'garbage' }
+      ]
+    };
+    stage.suppliedNextPuyos = [['green', 'yellow']];
+    stage.winConditionType = 'color';
+    stage.winConditionValue = 3;
+  });
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.down('ArrowDown');
+  await page.waitForTimeout(1000);
+  await page.keyboard.up('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 6000 }).toBe(true);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState()?.winner)).toBeNull();
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('playing');
+});
+
+test('퍼즐뿌요 스테이지 카드의 9글자 초과 클리어 조건은 말줄임표로 표시한다', async ({ page }) => {
+  await page.evaluate(() => {
+    const stage = window.WebPuyo.PUZZLE_STAGES[0];
+    stage.winConditionType = 'color';
+    stage.winConditionValue = 3;
+  });
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
+    '한 번에 3가지...', 'Pop 3 col...', '一度に3色のぷよを...', '一次消除 3 种颜...'
+  ].includes(text)))).toBe(true);
+});
+
+test('준비된 퍼즐뿌요 스테이지의 모든 힌트는 지원 언어로 번역된다', async ({ page }) => {
+  const expectedHints = {
+    'ko-KR': ['한 번만 회전해', '마지막 폭발은 초록색으로', '마지막 파란색 폭발 후를 생각해', '방해뿌요는 터뜨려야 제맛', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?', '저 위의 빨간 색은 왜 있을까?', '그냥 내려 봐'],
+    'en-US': ['Rotate only once.', 'Make the last pop green.', 'Think about what comes after the final blue pop.', 'Pop the garbage puyos too.', 'Where should you pop first? The right side?', 'Why is there red up there?', 'Just drop it.'],
+    'ja-JP': ['一度だけ回転しよう。', '最後は緑で消そう。', '最後の青ぷよ消去の後を考えよう。', 'おじゃまぷよも消そう。', 'どこから消そう？右側かな？', '上の赤いぷよはなぜあるのかな？', 'そのまま落としてみよう。'],
+    'zh-CN': ['只旋转一次。', '最后用绿色消除。', '想想最后一次蓝色魔法气泡消除之后。', '也消除垃圾噗哟吧。', '从哪里开始消除？右边？', '上面的红噗哟为什么会在那里？', '直接落下试试。']
+  };
+  for (const [language, expected] of Object.entries(expectedHints)) {
+    await page.addInitScript((locale) => {
+      Object.defineProperty(navigator, 'language', { configurable: true, value: locale });
+    }, language);
+    await page.reload();
+    expect(await page.evaluate(() => window.WebPuyo.PUZZLE_STAGES.map((stage) => window.WebPuyo.translate(stage.hint)))).toEqual(expected);
+  }
 });
 
 test('퍼즐뿌요 스테이지 선택 카드는 저장된 클리어와 별 달성 표식을 표시한다', async ({ page }) => {
