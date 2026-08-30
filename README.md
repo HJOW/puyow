@@ -2,6 +2,10 @@
 
 브라우저에서 즐기는 2D 뿌요 대전 퍼즐 게임입니다. 왼쪽 필드는 플레이어가, 오른쪽 필드는 CPU 상대가 사용합니다. 같은 색 뿌요를 연결해 연쇄를 만들고, 방해뿌요를 보내 상대보다 먼저 필드를 막아 보세요.
 
+## Do you want to see english document?
+
+[English README](README.en.md)
+
 ## 지금 플레이
 
 [https://hjow.github.io/puyow/](https://hjow.github.io/puyow/) 에 접속하여 플레이해 보세요.
