@@ -4268,6 +4268,19 @@
     }
 
     /**
+     * 적의 현재 필드와 공격 상태가 초상화의 위기 표정 조건에 해당하는지 판별한다.
+     * @param {PlayerState} enemy 적 플레이어
+     * @param {PlayerState|undefined} opponent 적의 상대 플레이어
+     * @returns {boolean} 위기 상태 여부
+     */
+    function isEnemyInCrisis(enemy, opponent) {
+        const occupiedCells = enemy.board
+            .slice(0, VISIBLE_ROWS)
+            .reduce((count, row) => count + row.filter((cell) => cell !== null).length, 0);
+        return occupiedCells >= COLUMNS * VISIBLE_ROWS / 2 || enemy.damage + (opponent?.attack ?? 0) >= 30;
+    }
+
+    /**
      * 적의 현재 필드와 공격 상태에 맞는 중앙 초상화 표정을 결정한다.
      * @param {PlayerState} enemy 적 플레이어
      * @param {PlayerState} opponent 적의 상대 플레이어
@@ -4276,11 +4289,8 @@
     function getEnemyPortraitExpression(enemy, opponent) {
         // 게임 종료 중 패배한 적은 최우선으로 패배 표정을 표시한다.
         if (game.ending?.loser === enemy) return 'defeated';
-        const occupiedCells = enemy.board
-            .slice(0, VISIBLE_ROWS)
-            .reduce((count, row) => count + row.filter((cell) => cell !== null).length, 0);
         // 필드 점유율 또는 예정 공격량이 높으면 위기 표정을 표시한다.
-        if (occupiedCells >= COLUMNS * VISIBLE_ROWS / 2 || enemy.damage + opponent.attack >= 30) return 'crisis';
+        if (isEnemyInCrisis(enemy, opponent)) return 'crisis';
         return 'normal';
     }
 
@@ -8449,6 +8459,13 @@
     class Enemy {
         /** 이 적이 연쇄 시 재생되는 효과음들을 담은 사운드풀 @type {SoundPool} */
         soundPool = null;
+
+        /** 일반적인 상황에서, 아래 방향키 이용 딜레이 비율 (목표 결정 후 빠른 하강까지 기다리는 시간 값에 곱셈이 되는 비율) (0~1) @type {number}  */
+        normalFastDownDelayRate = 1;
+
+        /** 위기 상황에서, 아래 방향키 이용 딜레이 비율 (목표 결정 후 빠른 하강까지 기다리는 시간 값에 곱셈이 되는 비율) (0~1) @type {number}  */
+        dangerFastDownDelayRate = 1;
+
         constructor() {
             this.sortPriority = 1;
             this.hidden = false;
@@ -8528,7 +8545,10 @@
          */
         useFastDown(player) {
             const delay = getSelectedDifficulty().fastDownDelay;
-            return delay !== null && player.aiDecisionElapsed >= delay;
+            if (delay === null) return false;
+            const opponent = game?.players.find((candidate) => candidate !== player);
+            const delayRate = isEnemyInCrisis(player, opponent) ? this.dangerFastDownDelayRate : this.normalFastDownDelayRate;
+            return player.aiDecisionElapsed >= delay * delayRate;
         }
 
         /**
@@ -8851,7 +8871,10 @@
             if (this.decisionState === 'fallback') return this.fallbackEnemy.useFastDown(player);
             if (this.decisionState !== 'ready') return false;
             const delay = getSelectedDifficulty().fastDownDelay;
-            return delay !== null && this.fastDownElapsed >= delay;
+            if (delay === null) return false;
+            const opponent = game?.players.find((candidate) => candidate !== player);
+            const delayRate = isEnemyInCrisis(player, opponent) ? this.dangerFastDownDelayRate : this.normalFastDownDelayRate;
+            return this.fastDownElapsed >= delay * delayRate;
         }
 
         /** 착지 또는 턴 교체 시 남아 있는 Responses API 요청을 취소한다. @param {PlayerState|null} player CPU 플레이어 @param {string} reason 취소 사유 @returns {void} */
@@ -8899,6 +8922,8 @@
         constructor() {
             super();
             this.attackPlacement = null;
+            this.normalFastDownDelayRate = 3.0;
+            this.dangerFastDownDelayRate = 1.0;
         }
 
         /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
@@ -9022,6 +9047,8 @@
             this.phase = 'initialLeft';
             this.turnsRemaining = this.randomTurns();
             this.attackPlacement = null;
+            this.normalFastDownDelayRate = 2.5;
+            this.dangerFastDownDelayRate = 0.9;
         }
 
         /**
@@ -9478,6 +9505,8 @@
             this.turnCount = 0;
             this.turnsUntilSimulation = this.randomTurnsUntilSimulation();
             this.attackPlacement = null;
+            this.normalFastDownDelayRate = 2.0;
+            this.dangerFastDownDelayRate = 0.8;
         }
 
         /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
@@ -9590,6 +9619,8 @@
             super();
             this.sortPriority = 4;
             this.notAvail = false;
+            this.normalFastDownDelayRate = 1.5;
+            this.dangerFastDownDelayRate = 0.8;
         }
 
         /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
@@ -9767,6 +9798,8 @@
             super();
             this.sortPriority = 5;
             this.notAvail = false;
+            this.normalFastDownDelayRate = 1.25;
+            this.dangerFastDownDelayRate = 0.75;
         }
 
         /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
@@ -9916,6 +9949,8 @@
             super();
             this.sortPriority = 6;
             this.notAvail = false;
+            this.normalFastDownDelayRate = 1.0;
+            this.dangerFastDownDelayRate = 0.5;
         }
 
         /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */

@@ -899,6 +899,57 @@ test('기본·피버 룰 적 선택에서 극한 AI 난이도를 선택해 게�
   expect(await page.evaluate(() => window.WebPuyo.getGameState().feverRule)).toBe(true);
 });
 
+test('적의 빠른 하강 대기 시간은 일반·위기 상황별 비율을 적용한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FastDownDelayRateEnemy extends window.WebPuyo.Enemy {
+      constructor() {
+        super();
+        this.sortPriority = -100;
+        this.normalFastDownDelayRate = 0.5;
+        this.dangerFastDownDelayRate = 0.1;
+      }
+
+      getClassType() { return 'FastDownDelayRateEnemy'; }
+      getName() { return '빠른 하강 지연 비율 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        this.player = player;
+        window.fastDownDelayRateEnemy = this;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FastDownDelayRateEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.fastDownDelayRateEnemy?.player)).toBeTruthy();
+
+  const result = await page.evaluate(() => {
+    const controller = window.fastDownDelayRateEnemy;
+    const player = controller.player;
+    player.aiDecisionElapsed = 749;
+    const normalBefore = controller.useFastDown(player);
+    player.aiDecisionElapsed = 750;
+    const normalAt = controller.useFastDown(player);
+
+    // 화면의 위기 표정 기준과 같이, 보이는 12행 중 절반인 6행을 채운다.
+    player.board = Array.from({ length: 25 }, (_, y) => Array.from({ length: 6 }, () => (y < 6 ? 'red' : null)));
+    player.aiDecisionElapsed = 149;
+    const dangerBefore = controller.useFastDown(player);
+    player.aiDecisionElapsed = 150;
+    const dangerAt = controller.useFastDown(player);
+    return { normalBefore, normalAt, dangerBefore, dangerAt };
+  });
+
+  expect(result).toEqual({ normalBefore: false, normalAt: true, dangerBefore: false, dangerAt: true });
+});
+
 test('암두시아스는 기본·피버 룰 진행 목록에 출시되고 키마리스는 출시 예정으로 표시된다', async ({ page }) => {
   await page.evaluate(() => {
     const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial'];

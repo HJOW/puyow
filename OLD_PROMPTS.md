@@ -1,5 +1,18 @@
 
 
+아래 내용은 74차 수정요청한 내용이야. 참고만 해줘.
+----------------------------------------------------------
+
+
+적 클래스 (Enemy) 에 normalFastDownDelayRate, dangerFastDownDelayRate 멤버변수를 추가했어.
+적마다 "빠르게 두기" 지연시간을 다르게 두어 난이도 조절에 활용하려는 목적이야.
+
+해당 적 인공지능이, 어디에 둘 지와 회전 여부를 결정 완료한 후 딜레이 지연 후 빠르게 두고 있어.
+이 딜레이 시간은 게임 난이도에 따라 AI_FAST_DOWN_DELAY_EASY, AI_FAST_DOWN_DELAY_NORMAL, AI_FAST_DOWN_DELAY_HARD, AI_FAST_DOWN_DELAY_EXTREME 값을 이용하고 있어.
+
+이제 이 값에, (일반적인 상황의 경우) 적마다 가진 normalFastDownDelayRate 만큼을 곱해 나온 시간(밀리초)만큼 딜레이 지연 후 빠르게 두도록 해줘.
+단, 위기 상황 (적 초상화가 위기 표정인 상황) 에서는 normalFastDownDelayRate 대신 dangerFastDownDelayRate 를 적용해줘.
+
 
 아래 내용은 73차 수정요청한 내용이야. 참고만 해줘.
 ----------------------------------------------------------

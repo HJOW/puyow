@@ -166,6 +166,16 @@ CPU 한 차례를 시작할 때 게임은 `prepareTurn(player)`, `chooseTarget(p
 
 `useFastDown(player)`은 목표 열과 회전이 결정된 뒤 AI가 아래 방향키를 눌러 이번 뿌요 쌍을 빠르게 내릴지 결정합니다. 기본 `Enemy` 구현은 선택된 AI 난이도에 따라 동작합니다. `쉬움`은 빠른 하강을 사용하지 않고, `보통`은 목표 결정 1,500ms 뒤, `어려움`은 300ms 뒤, `극한`은 즉시 빠르게 하강합니다. 기본 제공되는 안드로말리우스와 단탈리온도 이 정책을 그대로 따릅니다. 사용자 정의 AI가 자체 정책을 사용하려면 이 메서드를 재정의하고, 기본 정책을 일부 유지하려면 `super.useFastDown(player)`를 호출합니다.
 
+각 적은 `normalFastDownDelayRate`와 `dangerFastDownDelayRate`로 이 대기 시간을 조절할 수 있습니다. 둘 다 기본값은 `1`이며, 난이도별 대기 시간에 곱해집니다. 중앙 초상화가 위기 표정이 되는 조건(필드의 절반 이상이 차 있거나 `DAMAGE + 상대 ATTACK`이 30 이상)에서는 `dangerFastDownDelayRate`를, 그 외에는 `normalFastDownDelayRate`를 사용합니다. 예를 들어 일반 상황에는 80%, 위기에는 절반만 기다리려면 생성자에서 다음처럼 설정합니다.
+
+```js
+constructor() {
+    super();
+    this.normalFastDownDelayRate = 0.8;
+    this.dangerFastDownDelayRate = 0.5;
+}
+```
+
 `PuyoW.getSelectedDifficulty()`는 현재 선택되어 게임에 적용되는 AI 난이도를 조회합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환합니다. 반환 객체의 `key`는 `'easy'`, `'normal'`, `'hard'`, `'extreme'` 중 하나이고, `name`은 표시명, `fastDownDelay`는 빠른 하강 대기 시간(ms)이며 쉬움에서는 `null`입니다.
 
 ```js
