@@ -1513,6 +1513,8 @@
             this.outgoingWarningDelay = 0;
             // 상대 필드에 에너지 도착으로 이미 알려진 정수 ATTACK이다.
             this.announcedAttack = 0;
+            /** 현재 announcedAttack을 표시 중인 에너지다. 예고 취소 시 다른 에너지의 표시를 지우지 않도록 식별한다. @type {object|null} */
+            this.announcedAttackEnergy = null;
             this.lastAttackTransfer = null;
             this.lastAttackEnergySource = null;
             this.receivesPuyos = true;
@@ -2038,6 +2040,7 @@
             state.warningReductionDelay = 0;
             state.outgoingWarningDelay = 0;
             state.announcedAttack = 0;
+            state.announcedAttackEnergy = null;
             state.lastAttackTransfer = null;
             state.lastAttackEnergySource = null;
         });
@@ -2897,18 +2900,24 @@
      */
     function deliverFinalAttackEnergy(player, opponent) {
         const amount = Math.floor(player.attack);
-        if (amount < 1) return;
-        player.attack -= amount;
-        player.outgoingWarningDelay = Math.floor(player.attack);
         const energyTransfers = getEnergyTransfers();
         const lastEnergy = player.lastAttackTransfer;
+        // 연쇄 중 먼저 출발한 에너지도 이후 ATTACK 상쇄로 최종 전달량이 0이 될 수 있다.
+        // 이때는 남아 있는 예고를 즉시 취소해 상대 필드에 오래 표시되지 않게 한다.
+        if (amount < 1) {
+            cancelEnergyPreview(lastEnergy);
+            player.lastAttackTransfer = null;
+            return;
+        }
+        player.attack -= amount;
+        player.outgoingWarningDelay = Math.floor(player.attack);
         // 마지막 폭발에서 이미 출발한 에너지를 최종 DAMAGE 정산에 사용한다.
         // 해당 연출이 끝난 상태라면 지금이 곧 "에너지 완료 후" 시점이다.
         if (lastEnergy && energyTransfers?.includes(lastEnergy)) {
             lastEnergy.finalDamageAmount = amount;
         } else {
             opponent.damage += amount;
-            player.announcedAttack = 0;
+            clearAnnouncedAttack(player);
         }
         player.lastAttackTransfer = null;
     }
@@ -2956,7 +2965,7 @@
         if (cancelledDamage || cancelledAttack) route.push({ target: ownTarget, kind: 'cancel', amount: cancelledDamage, attackAmount: cancelledAttack, arcDirection: 'up' });
         if (delivered || travelToOpponent) route.push({ target: opponentTarget, kind: 'damage', amount: delivered, previewAmount, arcDirection: (cancelledDamage || cancelledAttack) ? 'down' : startsAtExplosion ? 'up' : 'down' });
         if (!route.length) return null;
-        const energy = { player, opponent, position: source, route, routeIndex: 0, elapsed: 0, fading: false, finalDamageAmount: 0, spellEffectCombo: null, spellEffectPlayed: false };
+        const energy = { player, opponent, position: source, route, routeIndex: 0, elapsed: 0, fading: false, previewCancelled: false, finalDamageAmount: 0, spellEffectCombo: null, spellEffectPlayed: false };
         energyTransfers.push(energy);
         return energy;
     }
@@ -2969,6 +2978,29 @@
      */
     function warningAmount(player, opponent) {
         return player.damage + opponent.announcedAttack + player.warningReductionDelay;
+    }
+
+    /**
+     * 특정 에너지가 표시한 예고만 지운다. 다른 에너지가 더 최신 예고를 표시 중이면 유지한다.
+     * @param {PlayerState} player 예고 공격력을 보낸 플레이어
+     * @param {object|null} [energy=null] 지울 예고를 표시한 에너지
+     * @returns {void}
+     */
+    function clearAnnouncedAttack(player, energy = null) {
+        if (energy && player.announcedAttackEnergy !== energy) return;
+        player.announcedAttack = 0;
+        player.announcedAttackEnergy = null;
+    }
+
+    /**
+     * 최종 DAMAGE가 상쇄된 에너지가 예고를 새로 표시하거나 기존 예고를 남기지 못하게 한다.
+     * @param {object|null} energy 취소할 공격 에너지
+     * @returns {void}
+     */
+    function cancelEnergyPreview(energy) {
+        if (!energy) return;
+        energy.previewCancelled = true;
+        clearAnnouncedAttack(energy.player, energy);
     }
 
     /**
@@ -2985,7 +3017,7 @@
                 if (energy.elapsed < 150) return true;
                 if (energy.finalDamageAmount) {
                     energy.opponent.damage += energy.finalDamageAmount;
-                    energy.player.announcedAttack = 0;
+                    clearAnnouncedAttack(energy.player, energy);
                 }
                 return false;
             }
@@ -2996,11 +3028,15 @@
             if (segment.kind === 'cancel') {
                 energy.player.warningReductionDelay = Math.max(0, energy.player.warningReductionDelay - segment.amount);
                 energy.opponent.announcedAttack = Math.max(0, energy.opponent.announcedAttack - segment.attackAmount);
+                if (!energy.opponent.announcedAttack) energy.opponent.announcedAttackEnergy = null;
             } else {
-                if (segment.previewAmount !== null) energy.player.announcedAttack = segment.previewAmount;
+                if (segment.previewAmount !== null && !energy.previewCancelled) {
+                    energy.player.announcedAttack = segment.previewAmount;
+                    energy.player.announcedAttackEnergy = energy;
+                }
                 if (segment.amount) {
                     energy.opponent.damage += segment.amount;
-                    energy.player.announcedAttack = 0;
+                    clearAnnouncedAttack(energy.player, energy);
                 }
                 if (energy.spellEffectCombo !== null && !energy.spellEffectPlayed) {
                     playComboSpellEffect(energy.spellEffectCombo);
@@ -3242,10 +3278,12 @@
         player.damage = 0;
         player.normalDamage = 0;
         player.announcedAttack = 0;
+        player.announcedAttackEnergy = null;
         opponent.attack = 0;
         opponent.damage = 0;
         opponent.normalDamage = 0;
         opponent.announcedAttack = 0;
+        opponent.announcedAttackEnergy = null;
         opponent.warningReductionDelay = 0;
         puzzle.turn += 1;
         enterControl(player);
@@ -5460,7 +5498,7 @@
         if (!simulator || simulator.mode !== 'draw') return;
         simulator.backup = simulator.player.board.map((row) => [...row]);
         simulator.mode = 'simulation'; simulator.player.effects = null; simulator.player.comboPopups = []; simulator.energyTransfers = [];
-        simulator.target.damage = 0; simulator.target.attack = 0; simulator.target.warningReductionDelay = 0; simulator.target.outgoingWarningDelay = 0; simulator.target.announcedAttack = 0;
+        simulator.target.damage = 0; simulator.target.attack = 0; simulator.target.warningReductionDelay = 0; simulator.target.outgoingWarningDelay = 0; simulator.target.announcedAttack = 0; simulator.target.announcedAttackEnergy = null;
         startGravity(simulator.player, 'simulatorExplode');
         syncBackgroundMusic();
     }
@@ -5471,7 +5509,7 @@
         if (simulator.backup) simulator.player.board = simulator.backup.map((row) => [...row]);
         simulator.player.gravityAnimation = null; simulator.player.effects = null; simulator.player.phase = 'idle';
         simulator.player.point = 0; simulator.player.attack = 0; simulator.player.damage = 0; simulator.player.combo = 0; simulator.player.comboPopups = [];
-        simulator.target.damage = 0; simulator.target.attack = 0; simulator.target.warningReductionDelay = 0; simulator.target.outgoingWarningDelay = 0; simulator.target.announcedAttack = 0; simulator.energyTransfers = [];
+        simulator.target.damage = 0; simulator.target.attack = 0; simulator.target.warningReductionDelay = 0; simulator.target.outgoingWarningDelay = 0; simulator.target.announcedAttack = 0; simulator.target.announcedAttackEnergy = null; simulator.energyTransfers = [];
         simulator.mode = 'draw'; simulator.focusArea = 'palette'; simulator.paletteFocus = 0; simulator.waitTimer = 0;
         syncBackgroundMusic();
     }

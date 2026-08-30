@@ -1358,6 +1358,61 @@ test('피버 중 공격은 피버와 일반 DAMAGE를 모두 상쇄한 뒤 남�
   }), { timeout: 10000 }).toBe(true);
 });
 
+test('연쇄 도중 상쇄되어 최종 전달량이 0인 공격은 상대 예고뿌요를 남기지 않는다', async ({ page }) => {
+  await page.evaluate(() => {
+    class CancelledAttackPreviewEnemy extends window.WebPuyo.Enemy {
+      constructor() {
+        super();
+        this.sortPriority = -100;
+        this.prepared = false;
+      }
+
+      getClassType() { return 'CancelledAttackPreviewEnemy'; }
+      getName() { return '상쇄 예고뿌요 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (this.prepared) return;
+        this.prepared = true;
+        this.player = player;
+        window.cancelledAttackPreviewEnemy = this;
+        player.allClearEnabled = false;
+        // 첫 폭발은 ATTACK 예고를 출발시키고, 낙하한 두 번째 색 뿌요가 이어서 폭발한다.
+        player.attack = 10;
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+        for (let x = 0; x < 6; x += 1) player.board[0][x] = 'red';
+        for (let x = 0; x < 3; x += 1) player.board[1][x] = 'green';
+        player.board[2][3] = 'green';
+        player.phase = 'explode';
+        player.phaseTimer = 0;
+        // 첫 예고가 상대 천장에 도착한 뒤, 두 번째 폭발의 ATTACK이 이를 포함해 자신의 DAMAGE를 모두 상쇄한다.
+        window.setTimeout(() => {
+          player.damage = 100000;
+          window.cancelledAttackPreviewDamageQueued = true;
+        }, 300);
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new CancelledAttackPreviewEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.cancelledAttackPreviewDamageQueued === true)).toBe(true);
+  await page.waitForTimeout(3000);
+  const result = await page.evaluate(() => {
+    const controller = window.cancelledAttackPreviewEnemy;
+    const state = window.WebPuyo.getGameState();
+    return { announcedAttack: controller?.player?.announcedAttack, warningPuyos: state?.player.warningPuyos };
+  });
+  expect(result).toEqual({ announcedAttack: 0, warningPuyos: [] });
+});
+
 test('피버 룰의 시간 만료 연쇄는 상대 방해뿌요 낙하를 기다리지 않고 종료한다', async ({ page }) => {
   await page.evaluate(() => {
     class FeverExpiredComboEnemy extends window.WebPuyo.Enemy {
