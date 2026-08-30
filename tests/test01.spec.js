@@ -62,7 +62,7 @@ async function enterMainMenu(page) {
 
 async function openSettings(page) {
   await enterMainMenu(page);
-  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
 }
@@ -110,7 +110,9 @@ test('WebMCP 도구 스키마는 퍼즐뿌요와 최신 게임 상태 필드를 
     };
   });
   expect(schema.screenEnum).toContain('puzzle_stage_select');
+  expect(schema.screenEnum).toContain('watch_select');
   expect(schema.statusRequired).toContain('puzzle');
+  expect(schema.statusRequired).toContain('watch');
   expect(schema.playerRequired).toEqual(expect.arrayContaining(['point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount']));
   expect(schema.feverTargetMinimum).toBe(4);
   expect(schema.activeYType).toBe('number');
@@ -279,7 +281,7 @@ test('일반·방해뿌요 클래스는 이름을 제공하고 캔버스에 직�
 
 test('갤러리 일반뿌요 목록에 철구뿌요를 처음부터 잠금 해제 상태로 표시한다', async ({ page }) => {
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
 
@@ -324,7 +326,7 @@ test('플레이어 이름은 설정에 저장되며 게임 화면에 적용되�
   await page.locator('#webpuyo_canvas').click({ position: { x: 460, y: 648 } });
 
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.playerName)).toBe('ABCDEFGHIJ');
-  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowUp');
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowUp');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1762,8 +1764,8 @@ test('2D URL 예약어는 컨텍스트 경로와 지원 시스템 언어로 치�
 
 test('독일어와 프랑스어 stringTable은 FEVER 표기와 주요 화면 문구를 제공한다', async ({ page }) => {
   const expected = {
-    'de-DE': { fever: 'FEVER-Regeln', puzzle: 'Puzzle-Puyo', start: 'Spiel starten', language: 'de' },
-    'fr-FR': { fever: 'Règles FEVER', puzzle: 'Puzzle Puyo', start: 'Commencer', language: 'fr' }
+    'de-DE': { fever: 'FEVER-Regeln', puzzle: 'Puzzle-Puyo', start: 'Spiel starten', watch: 'Zuschauen', language: 'de' },
+    'fr-FR': { fever: 'Règles FEVER', puzzle: 'Puzzle Puyo', start: 'Commencer', watch: 'Regarder', language: 'fr' }
   };
   for (const [locale, values] of Object.entries(expected)) {
     await page.addInitScript((language) => {
@@ -1776,6 +1778,7 @@ test('독일어와 프랑스어 stringTable은 FEVER 표기와 주요 화면 문
         fever: window.WebPuyo.translate('피버 룰'),
         puzzle: window.WebPuyo.translate('퍼즐뿌요'),
         start: window.WebPuyo.translate('게임 시작'),
+        watch: window.WebPuyo.translate('구경'),
         language: window.WebPuyo.convertURL('[LANG]')
       };
     });
@@ -2610,7 +2613,7 @@ test('세로 화면에서는 캔버스를 회전하고 클릭 좌표를 변환�
 
   await enterMainMenu(page);
   const logicalX = 640;
-  const logicalY = 525;
+  const logicalY = 580;
   await page.mouse.click(
     bounds.left + bounds.width * (1 - logicalY / 720),
     bounds.top + bounds.height * logicalX / 1280
@@ -2637,7 +2640,7 @@ test('화면 가로방향 고정은 저장되며 세로 화면 입력도 회전�
   expect(bounds.width).toBeCloseTo(375, 1);
   expect(bounds.height).toBeCloseTo(375 * 9 / 16, 1);
 
-  await page.mouse.click(bounds.left + bounds.width / 2, bounds.top + bounds.height * 525 / 720);
+  await page.mouse.click(bounds.left + bounds.width / 2, bounds.top + bounds.height * 580 / 720);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
 });
 
@@ -2714,4 +2717,115 @@ test('기본 룰과 피버 룰의 적 초상화 화살표는 선택 가능한 �
       await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
     }
   }
+});
+
+test('구경 설정은 키보드와 마우스로 색상 수·규칙·취소를 고르고 두 CPU의 대전을 시작한다', async ({ page }) => {
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await expect.poll(() => page.evaluate(() => ['구경', 'Watch', '観戦', '观战', 'Zuschauen', 'Regarder'].some((text) => window.testCanvasTexts.includes(text)))).toBe(true);
+
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+
+  const initialState = await page.evaluate(() => window.WebPuyo.getGameState());
+  expect(initialState).toMatchObject({ watch: true, feverRule: true, colorCount: 5, playerCanControl: false });
+  expect(initialState.aiDifficulty).toEqual({ key: 'extreme', name: '극한', fastDownDelay: 100 });
+  expect(initialState.player.isCpu).toBe(true);
+  expect(initialState.opponent.isCpu).toBe(true);
+  expect(initialState.player.name).not.toBe(initialState.opponent.name);
+  expect(['솔로몬', '안드로말리우스', '단탈리온']).not.toContain(initialState.player.name);
+  expect(['솔로몬', '안드로말리우스', '단탈리온']).not.toContain(initialState.opponent.name);
+
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('playing');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('z');
+  await page.keyboard.press('Enter');
+  expect((await page.evaluate(() => window.WebPuyo.getGameState())).paused).toBe(false);
+  const placedPairCountBeforePause = await page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state.player.placedPairCount + state.opponent.placedPairCount;
+  });
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState())).toMatchObject({ watch: true, paused: true });
+  await expect.poll(() => page.evaluate(() => ['일시정지', 'Paused', '一時停止', '暂停', 'Pausiert', 'Pause'].some((text) => window.testCanvasTexts.includes(text)))).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState())).toMatchObject({ watch: true, paused: false });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('playing');
+  await expect.poll(() => page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state.player.placedPairCount + state.opponent.placedPairCount;
+  }), { timeout: 15000 }).toBeGreaterThan(placedPairCountBeforePause);
+  await expect.poll(() => page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state.player.placedPairCount > 0 && state.opponent.placedPairCount > 0;
+  }), { timeout: 15000 }).toBe(true);
+  expect((await page.evaluate(() => window.WebPuyo.getScreenState())).playerCanControl).toBe(false);
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty())).toEqual({ key: 'normal', name: '보통', fastDownDelay: 1500 });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 468 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await page.locator('#webpuyo_canvas').click({ position: { x: 520, y: 294 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 760, y: 420 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 750, y: 540 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 468 } });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 530, y: 540 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('playing');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await page.locator('#webpuyo_canvas').click({ position: { x: 735, y: 408 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});
+
+test('구경 결과 화면을 5초 동안 조작하지 않으면 새 적 두 명의 대전을 자동 시작한다', async ({ page }) => {
+  await page.evaluate(() => {
+    window.watchTestControllerCount = 0;
+    class WatchAutoLoser extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -300; window.watchTestControllerCount += 1; }
+      getClassType() { return 'WatchAutoLoser'; }
+      getName() { return '구경 자동 패배 적'; }
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        for (let y = 0; y < 12; y += 1) player.board[y][2] = 'garbage';
+      }
+      chooseTarget() { return 0; }
+      useFastDown() { return true; }
+    }
+    class WatchAutoWinner extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -299; window.watchTestControllerCount += 1; }
+      getClassType() { return 'WatchAutoWinner'; }
+      getName() { return '구경 자동 승리 적'; }
+      chooseTarget() { return 5; }
+      useFastDown() { return true; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new WatchAutoLoser() });
+    window.WebPuyo.registerOpponent({ createController: () => new WatchAutoWinner() });
+    Math.random = () => 0;
+  });
+
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 12000 }).toBe('game_over');
+  const controllerCountAtResult = await page.evaluate(() => window.watchTestControllerCount);
+  await expect.poll(() => page.evaluate(() => window.watchTestControllerCount), { timeout: 8000 }).toBeGreaterThan(controllerCountAtResult);
+  expect((await page.evaluate(() => window.WebPuyo.getGameState())).watch).toBe(true);
 });
