@@ -954,9 +954,9 @@ test('적의 빠른 하강 대기 시간은 일반·위기 상황별 비율을 �
   expect(result).toEqual({ normalBefore: false, normalAt: true, dangerBefore: false, dangerAt: true });
 });
 
-test('키마리스는 기본·피버 룰 진행 목록에 출시되고 안드레알푸스는 출시 예정으로 표시된다', async ({ page }) => {
+test('안드레알푸스는 기본·피버 룰에 출시되고 플라우로스는 출시 예정으로 표시된다', async ({ page }) => {
   await page.evaluate(() => {
-    const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias'];
+    const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias', 'Kimaris'];
     localStorage.setItem('puyow_store', JSON.stringify({
       clearList: [],
       clearListByDifficulty: { easy: cleared, normal: cleared, hard: cleared },
@@ -973,24 +973,31 @@ test('키마리스는 기본·피버 룰 진행 목록에 출시되고 안드레
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['암두시아스', 'Amdusias', 'アムドゥシアス', '阿姆杜西亚斯'].includes(text)))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['키마리스', 'Kimaris', 'キマリス', '基马里斯'].includes(text)))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드레알푸스', 'Andrealphus', 'アンドレアルフス', '安德雷阿尔弗斯'].includes(text)))).toBe(true);
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['추후 출시예정', 'Coming soon', '近日公開予定', '即将推出'].includes(text)))).toBe(true);
+  for (let index = 0; index < 2; index += 1) await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.name)).toBe('안드레알푸스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.placedPairCount || 0), { timeout: 15000 }).toBeGreaterThan(1);
 
-  await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['키마리스', 'Kimaris', 'キマリス', '基马里斯'].includes(text)))).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드레알푸스', 'Andrealphus', 'アンドレアルフス', '安德雷阿尔弗斯'].includes(text)))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['추후 출시예정', 'Coming soon', '近日公開予定', '即将推出'].includes(text)))).toBe(true);
+  for (let index = 0; index < 2; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.name)).toBe('키마리스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.name)).toBe('안드레알푸스');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState()?.feverRule)).toBe(true);
 });
 
 test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async ({ page }) => {
@@ -1294,6 +1301,107 @@ test('키마리스는 비피버 싹쓸이 경로를 6연쇄 기반보다 우선�
   });
   expect(plan.simulation.combo).toBeGreaterThanOrEqual(1);
   expect(plan.allClear || plan.nextResult?.allClear).toBe(true);
+});
+
+test('안드레알푸스는 2수 싹쓸이 후보의 회전값을 실제 선택에 적용한다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    board[0][2] = 'yellow';
+    board[1][2] = 'yellow';
+    const player = {
+      board,
+      active: { x: 2, y: 12, rotation: 0, colors: ['yellow', 'yellow'] },
+      nextPairs: [['red', 'blue']],
+      aiSimulations: [],
+      attack: 0,
+      damage: 0,
+      warningReductionDelay: 0,
+      estimateAttack(colors, positions) { return window.WebPuyo.estimateAttack(this.board, colors, positions); },
+      estimateCombo(colors, positions) { return window.WebPuyo.estimateCombo(this.board, colors, positions); },
+    };
+    const controller = new window.WebPuyo.Andrealphus();
+    controller.prepareTurn(player);
+    player.aiTarget = controller.chooseTarget(player);
+    const rotation = controller.chooseRotate(player);
+    const selectedPlan = window.WebPuyo.simulateNMovePlacements(player, controller.targetCombo, controller.lookaheadTurnCount)
+      .find((plan) => plan.simulation.x === player.aiTarget && plan.simulation.rotation === rotation);
+    return {
+      target: player.aiTarget,
+      rotation,
+      allClear: selectedPlan?.allClear === true,
+      targetCombo: controller.targetCombo,
+      lookaheadTurnCount: controller.lookaheadTurnCount,
+    };
+  });
+
+  expect(result).toEqual({ target: 4, rotation: 3, allClear: true, targetCombo: 7, lookaheadTurnCount: 2 });
+});
+
+test('키마리스 2턴 시뮬레이션 처리 시간을 측정한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class KimarisTimingEnemy extends window.WebPuyo.Kimaris {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'KimarisTimingEnemy'; }
+      getName() { return '키마리스 2턴 시뮬레이션 시간 측정 적'; }
+
+      prepareTurn(player) {
+        // 4색을 열마다 번갈아 배치해 필드에 12개를 고정한다.
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+        const colors = ['red', 'blue', 'green', 'yellow'];
+        for (let y = 0; y < 3; y += 1) {
+          for (let x = 0; x < 4; x += 1) player.board[y][x] = colors[x];
+        }
+        player.active.colors = ['red', 'blue'];
+        player.nextPairs = [['green', 'yellow'], ['blue', 'red']];
+
+        // 공통 준비 단계에서 현재 턴의 후보를 만들고, 키마리스의 2턴 읽기만 측정한다.
+        window.WebPuyo.Enemy.prototype.prepareTurn.call(this, player);
+        this.findBestLookaheadPlacement(player); // 워밍업(JIT) 호출
+        const samples = [];
+        let firstPlacement = null;
+        for (let index = 0; index < 7; index += 1) {
+          const startedAt = performance.now();
+          const placement = this.findBestLookaheadPlacement(player);
+          const elapsedMs = performance.now() - startedAt;
+          if (!firstPlacement) firstPlacement = placement;
+          samples.push(elapsedMs);
+        }
+        const totalMs = samples.reduce((sum, elapsedMs) => sum + elapsedMs, 0);
+        window.kimarisSimulationTiming = {
+          boardPuyoCount: player.board.flat().filter(Boolean).length,
+          lookaheadTurnCount: this.lookaheadTurnCount,
+          simulationCount: player.aiSimulations.length,
+          firstMs: samples[0],
+          averageMs: totalMs / samples.length,
+          minMs: Math.min(...samples),
+          maxMs: Math.max(...samples),
+          samples,
+          placement: firstPlacement ? { x: firstPlacement.x, rotation: firstPlacement.rotation } : null,
+        };
+        player.fallTimer = -100000;
+        this.player = player;
+      }
+
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new KimarisTimingEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.kimarisSimulationTiming || null), { timeout: 10000 }).not.toBeNull();
+  const timing = await page.evaluate(() => window.kimarisSimulationTiming);
+  console.log(`키마리스 2턴 시뮬레이션: 첫 회 ${timing.firstMs.toFixed(3)}ms, 평균 ${timing.averageMs.toFixed(3)}ms (최소 ${timing.minMs.toFixed(3)}ms, 최대 ${timing.maxMs.toFixed(3)}ms; 필드 ${timing.boardPuyoCount}개, 후보 ${timing.simulationCount}개)`);
+  expect(timing.boardPuyoCount).toBeGreaterThanOrEqual(10);
+  expect(timing.lookaheadTurnCount).toBe(2);
+  expect(timing.simulationCount).toBeGreaterThan(0);
+  expect(timing.samples).toHaveLength(7);
+  expect(timing.placement).not.toBeNull();
 });
 
 test('기본 룰 적은 패배 위치 경고에서 X=2의 비폭발 배치를 최우선으로 피한다', async ({ page }) => {

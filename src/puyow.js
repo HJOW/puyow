@@ -242,7 +242,7 @@
             '뿌요 W': 'Puyo W',
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '구경': 'Watch', '모드': 'Mode', '색상 수': 'Colors', '다음 대전까지 %1초': 'Next match in %1 sec', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Pop %1 colors at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
-            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '안드레알푸스': 'Andrealphus', '시작': 'Start', '이전': 'Back',
+            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '안드레알푸스': 'Andrealphus', '플라우로스': 'Flauros', '시작': 'Start', '이전': 'Back',
             '극한': 'Extreme',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -264,7 +264,7 @@
             '뿌요 W': 'Puyo W',
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
             '게임 시작': 'ゲーム開始', '구경': '観戦', '모드': 'モード', '색상 수': '色数', '다음 대전까지 %1초': '次の対戦まで%1秒', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '현재 턴 %1 / %2': 'ターン %1 / %2', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一度に%1色のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
-            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '안드레알푸스': 'アンドレアルフス', '시작': '開始', '이전': '戻る',
+            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '안드레알푸스': 'アンドレアルフス', '플라우로스': 'フラウロス', '시작': '開始', '이전': '戻る',
             '극한': '極限',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -287,7 +287,7 @@
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
             '게임 시작': '开始游戏', '구경': '观战', '모드': '模式', '색상 수': '颜色数', '다음 대전까지 %1초': '距离下一场对战还有%1秒', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '퍼즐뿌요': '益智魔法气泡', '퍼즐뿌요 스테이지': '益智魔法气泡关卡', '스테이지 %1': '关卡 %1', '권장 턴 수 %1': '推荐回合数: %1', '현재 턴 %1': '第 %1 回合', '현재 턴 %1 / %2': '第 %1 / %2 回合', '%1 연쇄 해봐': '试试 %1 连锁！', '싹쓸이 해봐': '试试全消！', '한 번에 %1개 뿌요를 터뜨려봐': '一次消除 %1 个魔法气泡！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一次消除 %1 种颜色的魔法气泡！', '방해뿌요 %1개를 발생 시켜봐': '发送 %1 个垃圾魔法气泡！', '스테이지 클리어': '关卡完成', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
-            '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯', '안드레알푸스': '安德雷阿尔弗斯',
+            '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯', '안드레알푸스': '安德雷阿尔弗斯', '플라우로스': '弗劳洛斯',
             '극한': '极限',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -3394,6 +3394,19 @@
      */
     function warningAmount(player, opponent) {
         return player.damage + opponent.announcedAttack + player.warningReductionDelay;
+    }
+
+    /**
+     * 2수 읽기 적이 상쇄 판단에 사용할 위협량을 구한다. 화면에 표시 중인 예고를 우선 반영하고,
+     * 에너지 이동 중 아직 예고로 나타나지 않은 상대 ATTACK도 놓치지 않는다.
+     * @param {PlayerState} player 위협량을 판단할 CPU 플레이어
+     * @returns {number} 표시 중이거나 곧 표시될 방해뿌요 수
+     */
+    function getLookaheadIncomingGarbage(player) {
+        const opponent = game?.players.find((candidate) => candidate !== player);
+        const displayedWarning = opponent ? warningAmount(player, opponent) : player.damage + player.warningReductionDelay;
+        const pendingAttack = player.damage + (opponent ? opponent.attack : 0);
+        return Math.max(displayedWarning, pendingAttack);
     }
 
     /**
@@ -10817,6 +10830,9 @@
         /** @returns {string} 적 이름 */
         getName() { return '키마리스'; }
 
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 화면 예고를 반영한 상쇄 대상 방해뿌요 수 */
+        getIncomingGarbage(player) { return getLookaheadIncomingGarbage(player); }
+
         /**
          * 공통 N수 시뮬레이션 결과에 현재 방해뿌요 상쇄 우선순위를 더한다.
          * @param {PlayerState} player 자동 조작할 플레이어
@@ -10919,14 +10935,25 @@
     }
 
     /**
-     * 안드레알푸스는 수학·기하학·천문학에 능통한 미모후작을 거대한 공작으로 각색한 출시 예정 적이다.
-     * 전용 AI가 구현되기 전까지는 이동·회전·빠른 하강 없이 자연 낙하만 사용한다.
+     * 안드레알푸스는 수학·기하학·천문학에 능통한 미모후작을 거대한 공작으로 각색한 기본 제공 적이다.
+     * 키마리스와 같은 생존·상쇄 평가를 2수 앞까지 읽되, 더 높은 연쇄를 목표로 삼는다.
      */
     class Andrealphus extends BundledEnemy {
         constructor() {
             super();
             this.sortPriority = 8;
-            this.notAvail = true;
+            this.notAvail = false;
+            /** 이 수보다 적은 방해뿌요는 긴급 상쇄 대상으로 보지 않는다. @type {number} */
+            this.ignorableIncomingGarbage = 4;
+            /** 피버가 아닌 평상시 목표 연쇄 수. @type {number} */
+            this.targetCombo = 7;
+            /** 현재 수를 포함해 읽을 예고쌍 수. @type {number} */
+            this.lookaheadTurnCount = 2;
+            /** 현재 턴의 2수 읽기 배치 후보다. @type {object|null} */
+            this.attackPlacement = null;
+            // 키마리스가 암두시아스에서 물려받는 일반·위기 빠른 하강 속도와 같게 유지한다.
+            this.normalFastDownDelayRate = 1.0;
+            this.dangerFastDownDelayRate = 0.5;
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -10935,19 +10962,102 @@
         /** @returns {string} 적 이름 */
         getName() { return '안드레알푸스'; }
 
-        // TODO: 안드레알푸스 전용 이동·회전·빠른 하강 AI를 구현한다.
         /**
-         * 전용 AI가 구현될 때까지 현재 열을 유지한다.
+         * 현재 예고된 방해뿌요 수를 반환한다. 키마리스 계열의 상쇄 우선순위와 같은 기준을 쓴다.
          * @param {PlayerState} player 자동 조작할 플레이어
-         * @returns {number} 현재 X 좌표
+         * @returns {number} 다음 정산에 받을 수 있는 방해뿌요 수
          */
-        chooseTarget(player) { return this.getPreparedPlacement()?.x ?? (player.active ? player.active.x : 2); }
+        getIncomingGarbage(player) {
+            return getLookaheadIncomingGarbage(player);
+        }
 
-        /** @returns {number} 회전하지 않는 기본값 */
-        chooseRotate(player) { return this.selectSafeRotation(player, this.getPreparedPlacement()?.rotation ?? 0); }
+        /**
+         * 공통 N수 시뮬레이션 결과에 현재 방해뿌요 상쇄 우선순위를 더한다.
+         * 키마리스와 독립적으로 두어, 각 적의 목표 연쇄·탐색 수를 안전하게 다르게 유지한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @param {object} plan 공통 N수 시뮬레이션 결과
+         * @param {number} incomingGarbage 현재 확정·예고 공격을 합친 방해뿌요 수
+         * @returns {object} 비교 가능한 후보 평가값
+         */
+        evaluateLookaheadPlacement(player, plan, incomingGarbage) {
+            const availableAttack = Math.floor(player.attack + plan.attack);
+            const remainingIncoming = Math.max(0, incomingGarbage - availableAttack);
+            const unresolvedDanger = incomingGarbage >= this.ignorableIncomingGarbage && remainingIncoming >= this.ignorableIncomingGarbage;
+            return { ...plan, remainingIncoming, unresolvedDanger };
+        }
 
-        /** @returns {boolean} 빠른 하강을 사용하지 않으므로 항상 false */
-        useFastDown() { return false; }
+        /**
+         * 2수 읽기 결과에서 생존·긴급 상쇄·장기 연쇄 순으로 더 좋은 후보인지 판별한다.
+         * @param {object} candidate 새 후보 평가값
+         * @param {object|null} best 현재 최고 후보 평가값
+         * @param {boolean} incomingIsUrgent 방해뿌요를 긴급 상쇄해야 하는지
+         * @returns {boolean} 새 후보 선택 여부
+         */
+        isBetterLookaheadPlacement(candidate, best, incomingIsUrgent) {
+            if (!best) return true;
+            if (incomingIsUrgent && candidate.unresolvedDanger !== best.unresolvedDanger) return !candidate.unresolvedDanger;
+            if (incomingIsUrgent && candidate.unresolvedDanger && candidate.remainingIncoming !== best.remainingIncoming) {
+                return candidate.remainingIncoming < best.remainingIncoming;
+            }
+            if (candidate.score !== best.score) return candidate.score > best.score;
+            if (candidate.maxCombo !== best.maxCombo) return candidate.maxCombo > best.maxCombo;
+            return candidate.simulation.x > best.simulation.x;
+        }
+
+        /**
+         * 현재 수와 다음 예고쌍을 공통 N수 시뮬레이션으로 읽어 안드레알푸스의 최적 착지 후보를 고른다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {object|null} 선택한 현재 턴 후보
+         */
+        findBestLookaheadPlacement(player) {
+            const incomingGarbage = Math.max(0, Math.floor(this.getIncomingGarbage(player)));
+            const incomingIsUrgent = incomingGarbage >= this.ignorableIncomingGarbage;
+            let best = null;
+            simulateNMovePlacements(player, this.targetCombo, this.lookaheadTurnCount).forEach((plan) => {
+                const candidate = this.evaluateLookaheadPlacement(player, plan, incomingGarbage);
+                if (candidate && this.isBetterLookaheadPlacement(candidate, best, incomingIsUrgent)) best = candidate;
+            });
+            return best?.simulation || null;
+        }
+
+        /**
+         * 피버 중에는 Enemy의 연쇄 최적 후보를 그대로 사용하고, 평상시에는 2수 읽기를 준비한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {void}
+         */
+        prepareTurn(player) {
+            Enemy.prototype.prepareTurn.call(this, player);
+            this.attackPlacement = null;
+            if (this.getPreparedPlacement()) return;
+            this.attackPlacement = this.findBestLookaheadPlacement(player)
+                || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
+        }
+
+        /**
+         * 2수 읽기에서 선택한 목표 X 좌표를 반환한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {number} 목표 X 좌표
+         */
+        chooseTarget(player) {
+            const preparedPlacement = this.getPreparedPlacement();
+            if (preparedPlacement) return preparedPlacement.x;
+            if (!this.attackPlacement) this.attackPlacement = this.findBestLookaheadPlacement(player);
+            return this.attackPlacement?.x ?? (player.active ? player.active.x : 2);
+        }
+
+        /**
+         * 2수 읽기에서 선택한 회전을 실제 조작에도 적용하고, 즉시 패배 후보만 공통 안전 후보로 바꾼다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {number} 적용할 회전값
+         */
+        chooseRotate(player) {
+            const preparedPlacement = this.getPreparedPlacement();
+            if (!preparedPlacement && !this.attackPlacement) {
+                this.attackPlacement = this.findBestLookaheadPlacement(player)
+                    || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
+            }
+            return this.selectSafeRotation(player, preparedPlacement?.rotation ?? this.attackPlacement?.rotation ?? 0);
+        }
 
         /**
          * 공작 깃털과 천문 궤도 문양을 갖춘 일반·위기·우는 초상화를 그린다.
@@ -11026,6 +11136,141 @@
     }
 
     /**
+     * 플라우로스는 강하고 무서운 표범 모습으로 나타나며, 삼각형 밖에서는 거짓말로 소환자를 속인다는
+     * 전승을 귀엽지만 위엄 있는 모습으로 각색한 출시 예정 적이다.
+     */
+    class Flauros extends BundledEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 9;
+            this.notAvail = true;
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Flauros'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '플라우로스'; }
+
+        /**
+         * TODO: 플라우로스 전용 AI를 구현한다. 출시 전에는 이동·회전·빠른 하강 판단 없이 자연 낙하만 한다.
+         * @returns {void}
+         */
+        prepareTurn() { this.preparedPlacement = null; }
+
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 현재 X 좌표 */
+        chooseTarget(player) { return player.active ? player.active.x : 2; }
+
+        /** @returns {number} 회전하지 않는 기본값 */
+        chooseRotate() { return 0; }
+
+        /** @returns {boolean} 빠른 하강을 사용하지 않으므로 항상 false */
+        useFastDown() { return false; }
+
+        /**
+         * 검은 점무늬, 날카로운 눈, 삼각형 마법진으로 표현한 표범의 일반·위기·우는 초상화를 그린다.
+         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+         * @param {number} centerX 캐릭터 중심 X 좌표
+         * @param {number} centerY 캐릭터 중심 Y 좌표
+         * @param {number} scale 기본 크기 대비 배율
+         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+         * @returns {void}
+         */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            const size = 72 * scale;
+            drawingContext.save();
+            drawingContext.translate(centerX, centerY);
+            drawingContext.lineJoin = 'round';
+            drawingContext.lineCap = 'round';
+            drawingContext.fillStyle = '#34262c';
+            drawingContext.strokeStyle = '#160f14';
+            drawingContext.lineWidth = 4 * scale;
+
+            // 삼각형 마법진과 긴 꼬리로 전승 속 사나운 표범의 실루엣을 만든다.
+            drawingContext.strokeStyle = '#d98539';
+            drawingContext.lineWidth = 2.5 * scale;
+            drawingContext.beginPath();
+            drawingContext.moveTo(0, -size * 0.9);
+            drawingContext.lineTo(-size * 0.78, size * 0.52);
+            drawingContext.lineTo(size * 0.78, size * 0.52);
+            drawingContext.closePath();
+            drawingContext.stroke();
+            drawingContext.strokeStyle = '#160f14';
+            drawingContext.lineWidth = 4 * scale;
+            drawingContext.beginPath();
+            drawingContext.moveTo(size * 0.43, size * 0.43);
+            drawingContext.quadraticCurveTo(size * 0.92, size * 0.68, size * 0.72, size * 0.04);
+            drawingContext.stroke();
+
+            drawingContext.fillStyle = '#b56b32';
+            drawingContext.beginPath();
+            drawingContext.ellipse(0, size * 0.26, size * 0.52, size * 0.52, 0, 0, Math.PI * 2);
+            drawingContext.fill();
+            drawingContext.stroke();
+            [-1, 1].forEach((direction) => {
+                drawingContext.beginPath();
+                drawingContext.moveTo(direction * size * 0.28, -size * 0.38);
+                drawingContext.lineTo(direction * size * 0.58, -size * 0.78);
+                drawingContext.lineTo(direction * size * 0.52, -size * 0.19);
+                drawingContext.closePath();
+                drawingContext.fill();
+                drawingContext.stroke();
+            });
+            drawingContext.fillStyle = '#d99145';
+            drawingContext.beginPath();
+            drawingContext.ellipse(0, -size * 0.08, size * 0.48, size * 0.46, 0, 0, Math.PI * 2);
+            drawingContext.fill();
+            drawingContext.stroke();
+            drawingContext.fillStyle = '#3a2020';
+            [-0.28, -0.1, 0.1, 0.28].forEach((offset, index) => {
+                drawingContext.beginPath();
+                drawingContext.ellipse(offset * size, index % 2 ? size * 0.14 : -size * 0.28, size * 0.07, size * 0.1, offset * 1.6, 0, Math.PI * 2);
+                drawingContext.fill();
+            });
+            drawingContext.fillStyle = '#f0c982';
+            drawingContext.beginPath();
+            drawingContext.ellipse(0, size * 0.23, size * 0.28, size * 0.2, 0, 0, Math.PI * 2);
+            drawingContext.fill();
+            drawingContext.stroke();
+
+            const eyeY = -size * 0.08;
+            if (expression === 'defeated') {
+                drawingContext.strokeStyle = '#26151a';
+                drawingContext.lineWidth = 3 * scale;
+                [-size * 0.17, size * 0.17].forEach((eyeX) => {
+                    drawingContext.beginPath();
+                    drawingContext.moveTo(eyeX - size * 0.08, eyeY - size * 0.07);
+                    drawingContext.lineTo(eyeX + size * 0.08, eyeY + size * 0.07);
+                    drawingContext.moveTo(eyeX + size * 0.08, eyeY - size * 0.07);
+                    drawingContext.lineTo(eyeX - size * 0.08, eyeY + size * 0.07);
+                    drawingContext.stroke();
+                });
+                drawingContext.fillStyle = '#72cdeb';
+                [-size * 0.17, size * 0.17].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY + size * 0.2, size * 0.06, size * 0.14, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.strokeStyle = '#26151a';
+                drawingContext.beginPath(); drawingContext.arc(0, size * 0.34, size * 0.11, Math.PI, Math.PI * 2); drawingContext.stroke();
+            } else {
+                drawingContext.fillStyle = expression === 'crisis' ? '#fff0a6' : '#f6e6ac';
+                [-size * 0.17, size * 0.17].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.1, expression === 'crisis' ? size * 0.13 : size * 0.09, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.fillStyle = expression === 'crisis' ? '#e53935' : '#2c1720';
+                [-size * 0.17, size * 0.17].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.035, size * 0.075, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.fillStyle = '#26151a';
+                drawingContext.beginPath(); drawingContext.moveTo(0, size * 0.13); drawingContext.lineTo(size * 0.07, size * 0.21); drawingContext.lineTo(0, size * 0.25); drawingContext.lineTo(-size * 0.07, size * 0.21); drawingContext.closePath(); drawingContext.fill();
+                drawingContext.strokeStyle = '#26151a';
+                drawingContext.beginPath();
+                if (expression === 'crisis') drawingContext.arc(0, size * 0.38, size * 0.12, Math.PI, Math.PI * 2);
+                else drawingContext.arc(0, size * 0.28, size * 0.12, 0, Math.PI);
+                drawingContext.stroke();
+                if (expression === 'crisis') {
+                    drawingContext.fillStyle = '#72cdeb';
+                    drawingContext.beginPath(); drawingContext.ellipse(size * 0.36, size * 0.03, size * 0.06, size * 0.12, 0.2, 0, Math.PI * 2); drawingContext.fill();
+                }
+            }
+            drawingContext.restore();
+        }
+    }
+
+    /**
      * 연습 모드에서 조작하거나 뿌요를 받지 않는 상대다.
      */
     class PracticeEnemy extends BundledEnemy {
@@ -11060,7 +11305,8 @@
         createOpponentEntry(() => new Belial()),
         createOpponentEntry(() => new Amdusias()),
         createOpponentEntry(() => new Kimaris()),
-        createOpponentEntry(() => new Andrealphus())
+        createOpponentEntry(() => new Andrealphus()),
+        createOpponentEntry(() => new Flauros())
     );
 
     /**
@@ -11154,6 +11400,7 @@
     WebPuyo = {
         Enemy,
         Kimaris,
+        Andrealphus,
         Puyo,
         RedPuyo,
         GreenPuyo,
