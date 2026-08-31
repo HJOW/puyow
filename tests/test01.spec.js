@@ -3469,6 +3469,64 @@ test('구경 설정은 키보드와 마우스로 색상 수·규칙·취소를 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
+test('구경 중앙 영역은 양쪽 적의 초상화와 현재 표정을 함께 그린다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: ['Decarabia'],
+      clearListByDifficulty: { easy: [], normal: ['Decarabia', 'WatchPortraitLeft', 'WatchPortraitRight'], hard: [], extreme: [] },
+      feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await page.evaluate(() => {
+    window.watchPortraitCalls = [];
+    class WatchPortraitLeft extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -300; }
+      getClassType() { return 'WatchPortraitLeft'; }
+      getName() { return '구경 좌측 초상화 적'; }
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        for (let y = 0; y < 6; y += 1) {
+          for (let x = 0; x < 6; x += 1) player.board[y][x] = 'red';
+        }
+      }
+      useFastDown() { return false; }
+      drawPortrait(context, x, y, scale, expression) {
+        window.watchPortraitCalls.push({ type: this.getClassType(), x, y, scale, expression });
+      }
+    }
+    class WatchPortraitRight extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -299; }
+      getClassType() { return 'WatchPortraitRight'; }
+      getName() { return '구경 우측 초상화 적'; }
+      prepareTurn(player) { super.prepareTurn(player); }
+      useFastDown() { return false; }
+      drawPortrait(context, x, y, scale, expression) {
+        window.watchPortraitCalls.push({ type: this.getClassType(), x, y, scale, expression });
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new WatchPortraitLeft() });
+    window.WebPuyo.registerOpponent({ createController: () => new WatchPortraitRight() });
+    Math.random = () => 0;
+  });
+
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('playing');
+  await expect.poll(() => page.evaluate(() => window.watchPortraitCalls.some((call) => (
+    call.type === 'WatchPortraitLeft' && call.x === 545 && call.y === 380 && call.expression === 'crisis'
+  ))), { timeout: 5000 }).toBe(true);
+  expect(await page.evaluate(() => window.watchPortraitCalls.some((call) => (
+    call.type === 'WatchPortraitRight' && call.x === 735 && call.y === 380 && call.expression === 'normal'
+  )))).toBe(true);
+});
+
 test('구경 결과 화면을 5초 동안 조작하지 않으면 새 적 두 명의 대전을 자동 시작한다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({

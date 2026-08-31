@@ -4808,6 +4808,10 @@
         if (game.continuousFever && game.fever) {
             context.fillStyle = game.fever.leftTime <= 10000 ? '#ef5350' : '#f5fbfc'; context.font = `48px ${MESSAGE_FONT}`;
             context.fillText(String(Math.ceil(game.fever.leftTime / 1000)), WIDTH / 2, 396);
+        } else if (game.watch) {
+            // 구경은 두 CPU가 모두 적이므로, 중앙 좌우에 각자의 현재 표정을 함께 표시한다.
+            left.controller.drawPortrait(context, 545, 380, 0.72, getEnemyPortraitExpression(left, right));
+            right.controller.drawPortrait(context, 735, 380, 0.72, getEnemyPortraitExpression(right, left));
         } else {
             right.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, getEnemyPortraitExpression(right, left));
         }
