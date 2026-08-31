@@ -1703,9 +1703,14 @@
         OPPONENTS.sort((left, right) => left.sortPriority - right.sortPriority);
     }
 
+    /** observation 코드가 적용되어 진행도·출시 상태 제한을 해제해야 하는지 확인한다. @returns {boolean} 관전용 전체 해금 여부 */
+    function isObservationCodeApplied() {
+        return codeApplied.includes('observation');
+    }
+
     /**
      * 숨김 처리되지 않아 적 선택 화면에 표시할 적 목록을 반환한다.
-        * @returns {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} 표시할 적 목록
+     * @returns {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} 표시할 적 목록
      */
     function getVisibleOpponents() {
         return OPPONENTS.filter((opponent) => !opponent.hidden);
@@ -1724,6 +1729,7 @@
      * @returns {boolean} 선택 가능 여부
      */
     function isOpponentUnlocked(opponent) {
+        if (isObservationCodeApplied()) return true;
         // 솔로몬은 저장 진행도와 무관한 세션 전용 적이므로 기존 적의 순차 해금 조건에 끼워 넣지 않는다.
         if (opponent.classType === 'Solomon') return solomonSessionUnlocked;
         const progressionOpponents = OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail && entry.classType !== 'Solomon');
@@ -1898,6 +1904,7 @@
 
     /** 데카라비아를 기본 룰 또는 피버 룰의 보통 이상 난이도에서 한 번이라도 이겼는지 확인한다. @returns {boolean} 구경 메뉴 해금 여부 */
     function isWatchModeUnlocked() {
+        if (isObservationCodeApplied()) return true;
         return hasWatchEligibleClear('Decarabia');
     }
 
@@ -1909,8 +1916,9 @@
         ));
     }
 
-    /** 구경 모드에 사용할 수 있는 출시된 적 목록을 반환한다. 보통 이상에서 이긴 적 중 솔로몬·안드로말리우스·단탈리온은 항상 제외한다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean}[]} 후보 적 목록 */
+    /** 구경 모드에 사용할 수 있는 적 목록을 반환한다. observation 코드 적용 중에는 표시되는 출시 적 중 솔로몬·안드로말리우스·단탈리온만 제외한다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean}[]} 후보 적 목록 */
     function getWatchOpponentCandidates() {
+        if (isObservationCodeApplied()) return OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType));
         return OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail
             && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType) && hasWatchEligibleClear(entry.className));
     }
@@ -7781,7 +7789,7 @@
             });
             if (cardIndex >= 0) {
                 const clickedOpponent = visibleOpponents[cardIndex];
-                if (!clickedOpponent.notAvail && isOpponentUnlocked(clickedOpponent)) {
+                if (getSelectableOpponents().includes(clickedOpponent)) {
                     playMenuSelectSound();
                     selectedOpponent = OPPONENTS.indexOf(clickedOpponent);
                     opponentMenuFocus = 2;
@@ -8051,10 +8059,9 @@
         const fAction = codeAvailables[code];
         if (typeof(fAction) != 'function') { alert('유효하지 않은 코드입니다.'); return; }
 
-        codeApplied.push(code);
+        if(codeApplied.indexOf(code) >= 0) { codeApplied.splice(codeApplied.indexOf(code), 1); }
+        else { codeApplied.push(code); if(typeof(fAction) === 'function') fAction(); }
         storageManager.setItem(CODE_STORE_KEY, JSON.stringify(codeApplied));
-
-        if(typeof(fAction) === 'function') fAction();
     }
 
     /**

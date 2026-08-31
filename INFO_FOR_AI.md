@@ -87,6 +87,7 @@
 
 - 구경 메뉴는 기본 룰 또는 피버 룰에서 데카라비아를 `normal`, `hard`, `extreme` 중 하나로 이겼을 때만 열린다. 쉬움과 난이도 없는 기존 `clearList` 기록은 해금 근거가 아니다.
 - 구경 CPU 후보는 두 규칙에서 보통 이상으로 이긴 출시된 적이다. `Solomon`, `Andromalius`, `Dantalion`은 항상 제외하며, 서로 다른 두 적을 뽑아야 한다.
+- `puyow_code`에 `observation`이 있으면 저장 진행도는 바꾸지 않고 적 선택 화면의 진행도 잠금만 해제한다. `hidden` 및 출시 예정(`notAvail`) 적은 기존처럼 잠긴 채로 유지한다. 같은 코드가 있으면 구경 메뉴도 즉시 열리며, 구경 후보는 숨김·출시 예정 적과 `Solomon`, `Andromalius`, `Dantalion`을 제외한 모든 출시 적이다.
 - 구경 대전은 적 잠금 해제와 갤러리 잠금 해제를 진행시키지 않는다.
 - 일반 대전 승리 기록은 `clearListByDifficulty`(기본)와 `feverClearListByDifficulty`(피버)에 난이도별로 저장된다. `clearList`는 이전 기본 룰 호환용 전체 목록이므로 신규 난이도 판단 근거로 사용하지 않는다.
 

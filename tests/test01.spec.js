@@ -380,6 +380,70 @@ test('초기화 시 저장된 코드 배열을 불러오고 잘못된 값은 빈
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['after-error']);
 });
 
+test('observation 코드는 진행도를 바꾸지 않고 출시된 표시 적과 구경 모드를 연다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      clearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
+      feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
+    }));
+    localStorage.setItem('puyow_code', JSON.stringify(['observation']));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['솔로몬', 'Solomon', 'ソロモン', '所罗门'].includes(text)))).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['추후 출시예정', 'Coming soon', '近日公開予定', '即将推出'].includes(text)))).toBe(true);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.name)).toBe('안드로말리우스');
+
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await page.evaluate(() => {
+    class ObservationHiddenEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -1001; this.hidden = true; }
+      getClassType() { return 'ObservationHiddenEnemy'; }
+      getName() { return '구경 제외 숨김 적'; }
+    }
+    class ObservationPlannedEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -1000; this.notAvail = true; }
+      getClassType() { return 'ObservationPlannedEnemy'; }
+      getName() { return '구경 제외 출시 예정 적'; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new ObservationHiddenEnemy() });
+    window.WebPuyo.registerOpponent({ createController: () => new ObservationPlannedEnemy() });
+    Math.random = () => 0;
+  });
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.watch)).toBe(true);
+  const names = await page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return [state.player.name, state.opponent.name];
+  });
+  expect(names).toEqual(['세레', '데카라비아']);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).clearList)).toEqual([]);
+  await page.evaluate(() => localStorage.removeItem('puyow_code'));
+});
+
 test('플레이어 이름은 설정에 저장되며 게임 화면에 적용되고 최대 10자로 제한된다', async ({ page }) => {
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('PLAYER 1'))).toBe(true);
