@@ -10604,13 +10604,15 @@
 
     /**
      * 키마리스는 검은 말의 용감한 보물 탐험가를 귀엽게 각색한 기본 제공 적이다.
-     * 암두시아스의 판단을 따르되 필드 점유율이 30% 이하일 때는 6연쇄 이상만 즉시 공격한다.
+     * 현재 뿌요와 다음 예고쌍을 함께 읽어 연쇄 기반·공격·생존을 비교한다.
      */
     class Kimaris extends Amdusias {
         constructor() {
             super();
             this.sortPriority = 7;
             this.notAvail = false;
+            /** 이 수보다 적은 방해뿌요는 긴급 상쇄 대상으로 보지 않는다. @type {number} */
+            this.ignorableIncomingGarbage = 4;
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -10620,24 +10622,133 @@
         getName() { return '키마리스'; }
 
         /**
-         * 저점유 필드에서는 6연쇄 기회가 생길 때까지 공격하지 않고 연쇄 기반을 쌓는다.
-         * 그 밖의 상태에서는 암두시아스의 판단을 그대로 사용한다.
-         * 피버 중에는 결정 적용 단계의 공통 피버 연쇄 최적화가 이 결과보다 우선한다.
-         * @param {PlayerState} player 자동 조작할 플레이어
-         * @returns {number} 목표 X 좌표
+         * 보드의 연결 재료·높이·패배 위치 주변 여유를 점수화한다.
+         * @param {(string|null)[][]} board 안정 상태 보드
+         * @returns {number} 다음 연쇄를 위한 기반 점수
          */
+        getLookaheadBoardScore(board) {
+            let score = 0;
+            for (let y = 0; y < ROWS; y += 1) {
+                for (let x = 0; x < COLUMNS; x += 1) {
+                    const color = board[y][x];
+                    if (!COLORS.includes(color)) continue;
+                    score -= y * 4;
+                    if (x < COLUMNS - 1 && board[y][x + 1] === color) score += 80;
+                    if (y < ROWS - 1 && board[y + 1][x] === color) score += 55;
+                    if (y >= 8 && (x === 2 || (usesSecondDefeatCell() && x === 3))) score -= 180;
+                }
+            }
+            return score;
+        }
+
+        /**
+         * 현재 가상 보드에서 다음 예고쌍의 최적 착지 결과를 찾는다.
+         * @param {(string|null)[][]} board 현재 뿌요를 놓은 뒤의 안정 상태 보드
+         * @param {string[]|undefined} colors 다음 예고쌍 색상
+         * @returns {{combo:number,attack:number,boardScore:number}|null} 다음 턴 최적 결과
+         */
+        findBestNextTurnResult(board, colors) {
+            if (!Array.isArray(colors) || colors.length !== 2) return { combo: 0, attack: 0, boardScore: this.getLookaheadBoardScore(board) };
+            const virtualPlayer = { board, active: { x: 2, y: ACTIVE_PUYO_SPAWN_Y, rotation: 0, colors } };
+            let best = null;
+            for (let rotation = 0; rotation < 4; rotation += 1) {
+                for (let x = 0; x < COLUMNS; x += 1) {
+                    const placement = findLandingPlacement(virtualPlayer, x, rotation);
+                    if (!placement) continue;
+                    const positions = activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
+                    const resultBoard = simulatePlacementBoard(board, colors, positions);
+                    if (!resultBoard || isDefeatBoard(resultBoard)) continue;
+                    const combo = estimateCombo(board, colors, positions);
+                    const attack = estimateAttack(board, colors, positions);
+                    const boardScore = this.getLookaheadBoardScore(resultBoard);
+                    const score = combo * 6000 + attack * 1000 + boardScore;
+                    if (!best || score > best.score || (score === best.score && x > best.x)) best = { x, rotation, combo, attack, boardScore, score };
+                }
+            }
+            return best;
+        }
+
+        /**
+         * 현재 후보의 생존·상쇄·다음 턴 연쇄 기회를 함께 평가한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @param {object} simulation 현재 뿌요의 가상 착지 후보
+         * @param {number} incomingGarbage 현재 확정·예고 공격을 합친 방해뿌요 수
+         * @returns {object|null} 비교 가능한 후보 평가값
+         */
+        evaluateLookaheadPlacement(player, simulation, incomingGarbage) {
+            if (causesImmediateDefeat(player, simulation)) return null;
+            const board = simulatePlacementBoard(player.board, player.active.colors, simulation.positions);
+            if (!board || isDefeatBoard(board)) return null;
+            const nextResult = this.findBestNextTurnResult(board, player.nextPairs[0]);
+            if (!nextResult) return null;
+            const availableAttack = Math.floor(player.attack + simulation.attack);
+            const remainingIncoming = Math.max(0, incomingGarbage - availableAttack);
+            const unresolvedDanger = incomingGarbage >= this.ignorableIncomingGarbage && remainingIncoming >= this.ignorableIncomingGarbage;
+            const boardScore = this.getLookaheadBoardScore(board);
+            const score = simulation.combo * 4000
+                + simulation.attack * 900
+                + nextResult.combo * 6000
+                + nextResult.attack * 1000
+                + nextResult.boardScore
+                + boardScore * 0.5;
+            return { simulation, remainingIncoming, unresolvedDanger, score, nextResult };
+        }
+
+        /**
+         * 2수 읽기 결과에서 생존·긴급 상쇄·장기 연쇄 순으로 더 좋은 후보인지 판별한다.
+         * @param {object} candidate 새 후보 평가값
+         * @param {object|null} best 현재 최고 후보 평가값
+         * @param {boolean} incomingIsUrgent 방해뿌요를 긴급 상쇄해야 하는지
+         * @returns {boolean} 새 후보 선택 여부
+         */
+        isBetterLookaheadPlacement(candidate, best, incomingIsUrgent) {
+            if (!best) return true;
+            if (incomingIsUrgent && candidate.unresolvedDanger !== best.unresolvedDanger) return !candidate.unresolvedDanger;
+            if (incomingIsUrgent && candidate.unresolvedDanger && candidate.remainingIncoming !== best.remainingIncoming) {
+                return candidate.remainingIncoming < best.remainingIncoming;
+            }
+            if (candidate.score !== best.score) return candidate.score > best.score;
+            if (candidate.nextResult.combo !== best.nextResult.combo) return candidate.nextResult.combo > best.nextResult.combo;
+            return candidate.simulation.x > best.simulation.x;
+        }
+
+        /**
+         * 현재 뿌요와 다음 예고쌍을 함께 시뮬레이션해 키마리스의 최적 착지 후보를 고른다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {object|null} 선택한 현재 턴 후보
+         */
+        findBestLookaheadPlacement(player) {
+            const incomingGarbage = Math.max(0, Math.floor(this.getIncomingGarbage(player)));
+            const incomingIsUrgent = incomingGarbage >= this.ignorableIncomingGarbage;
+            let best = null;
+            player.aiSimulations.forEach((simulation) => {
+                const candidate = this.evaluateLookaheadPlacement(player, simulation, incomingGarbage);
+                if (candidate && this.isBetterLookaheadPlacement(candidate, best, incomingIsUrgent)) best = candidate;
+            });
+            return best?.simulation || null;
+        }
+
+        /**
+         * 기본 Enemy의 피버·초기 배치·패배 위치 공통 후보가 없을 때만 2수 읽기 후보를 준비한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {void}
+         */
+        prepareTurn(player) {
+            // 암두시아스 계열의 기존 즉시 공격·쌓기 판단은 거치지 않는다.
+            // Enemy의 피버 연쇄 최적화와 공통 생존 규칙만 그대로 유지한다.
+            Enemy.prototype.prepareTurn.call(this, player);
+            this.attackPlacement = null;
+            if (this.getPreparedPlacement()) return;
+            this.attackPlacement = this.findBestLookaheadPlacement(player)
+                || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
+        }
+
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 2수 읽기로 선택한 목표 X 좌표 */
         chooseTarget(player) {
             const preparedPlacement = this.getPreparedPlacement();
             if (preparedPlacement) return preparedPlacement.x;
-            if (this.getFieldOccupancy(player) > 0.3) return super.chooseTarget(player);
-
-            const safeSimulations = this.getSafeSimulations(player);
-            const simulations = safeSimulations.length ? safeSimulations : player.aiSimulations;
-            const score = (simulation) => simulation.attack + (simulation.previewAttack || 0) + (simulation.previewCombo || 0) * 1000;
-            let selected = this.selectSimulation(simulations, (simulation) => simulation.combo >= 6, score);
-            if (!selected) selected = this.selectBuildSimulation(player, simulations);
-            this.attackPlacement = selected || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, !this.isInFever(player));
-            return this.attackPlacement.x;
+            if (!this.attackPlacement) this.attackPlacement = this.findBestLookaheadPlacement(player);
+            return this.attackPlacement?.x ?? (player.active ? player.active.x : 2);
         }
 
         /**
@@ -10902,6 +11013,7 @@
 
     WebPuyo = {
         Enemy,
+        Kimaris,
         Puyo,
         RedPuyo,
         GreenPuyo,
