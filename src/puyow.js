@@ -496,8 +496,10 @@
     let noticeUrl = 'notice_[LANG].txt';
     /** 공통 사운드 풀 @type {CommonSoundPool} */
     let commonSoundPool = null;
-    /** 사용 가능한 코드들 */
-    let codeAvailables = {};
+    /** 사용 가능한 코드들, 키로 코드가 탑재되며, 그 값은 함수로 탑재된다. (코드 적용 시 동작해야 하는 함수) @type {object} */
+    let codeAvailables = {
+        "observation" : function() {}, // observation : 현재 진행 상황과 관계없이 모든 적을 잠금 해제하며, 구경 모드 해제
+    };
     /** 입력된 테스트 기능 잠금 해제 코드들 @type {string[]} */
     let codeApplied = [];
     /** 난이도별 표시명과 제공 색상 목록이다. @type {{name:string, colors:string[]}[]} */
@@ -1084,6 +1086,12 @@
             const parsed = JSON.parse(serialized);
             if (!Array.isArray(parsed)) throw new TypeError('puyow_code는 JSON 배열이어야 합니다.');
             codeApplied = parsed;
+
+            // code 에 따른 동작 실행
+            for(const code of codeApplied) {
+                const fAction = codeAvailables[code];
+                if(typeof(fAction) === 'function') fAction();
+            }
         } catch (error) {
             console.error('Puyo W 코드 저장 데이터를 불러오지 못했습니다.', error);
             codeApplied = [];
@@ -8040,17 +8048,13 @@
         if (!code || typeof code !== 'string') throw new TypeError('code는 문자열이어야 합니다.');
         
         // codeAvailables 의 키로 존재하는 코드만 입력 가능
-        let exists = false;
-        for(const key in codeAvailables) {
-            if (codeAvailables[key] === code) {
-                exists = true;
-                break;
-            }
-        }
-        if (!exists) { alert('유효하지 않은 코드입니다.'); return; }
+        const fAction = codeAvailables[code];
+        if (typeof(fAction) != 'function') { alert('유효하지 않은 코드입니다.'); return; }
 
         codeApplied.push(code);
         storageManager.setItem(CODE_STORE_KEY, JSON.stringify(codeApplied));
+
+        if(typeof(fAction) === 'function') fAction();
     }
 
     /**
