@@ -10,6 +10,9 @@
 
 [https://hjow.github.io/puyow/](https://hjow.github.io/puyow/) 에 접속하여 플레이해 보세요.
 
+또는
+[https://puyow-8745b.web.app](https://puyow-8745b.web.app) 에서도 플레이 가능.
+
 ## 게임 시작
 
 메인 화면에서 `게임 시작`을 선택한 뒤 난이도와 상대를 고르고 `시작`을 누르면 3초 카운트다운 후 대전이 시작됩니다. 처음에는 안드로말리우스와만 대전할 수 있으며, 승리한 뒤 다음 상대가 순서대로 열립니다.
