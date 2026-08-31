@@ -2415,6 +2415,21 @@ test('시뮬레이터 그리기 모드에서는 마우스와 키보드로 13번�
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.editableRows)).toBe(13);
 });
 
+test('시뮬레이터의 초기화 버튼은 좌측 플레이 영역의 뿌요를 모두 제거한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  const canvas = page.locator('#webpuyo_canvas');
+  await canvas.click({ position: { x: 207, y: 539 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.length)).toBe(1);
+  await expect.poll(() => page.evaluate(() => ['초기화', 'Reset', '初期化', '重置'].some((label) => window.testCanvasTexts.includes(label)))).toBe(true);
+
+  await canvas.click({ position: { x: 960, y: 489 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.length)).toBe(0);
+});
+
 test('시뮬레이터 전용 철구뿌요는 키보드와 마우스로 배치되고 재생 후에도 남는다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');

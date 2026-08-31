@@ -5684,7 +5684,8 @@
             { kind: 'play', value: null, x: 906, y: 332, width: CELL * 3, height: CELL },
             { kind: 'copyJson', value: null, x: 906, y: 378, width: CELL * 3, height: CELL },
             { kind: 'pasteJson', value: null, x: 906, y: 424, width: CELL * 3, height: CELL },
-            { kind: 'exit', value: null, x: 906, y: 470, width: CELL * 3, height: CELL }
+            { kind: 'reset', value: null, x: 906, y: 470, width: CELL * 3, height: CELL },
+            { kind: 'exit', value: null, x: 906, y: 516, width: CELL * 3, height: CELL }
         );
         return items;
     }
@@ -5740,6 +5741,12 @@
         }
     }
 
+    /** 시뮬레이터 그리기 모드의 좌측 플레이 영역을 비운다. @returns {void} */
+    function resetSimulatorBoard() {
+        if (!simulator || simulator.mode !== 'draw') return;
+        simulator.player.board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+    }
+
     /** 선택한 항목을 필드 칸에 반영한다. @param {number} x X 좌표 @param {number} y Y 좌표 @returns {void} */
     function placeSimulatorPuyo(x, y) {
         if (!simulator || simulator.mode !== 'draw' || x < 0 || x >= COLUMNS || y < 0 || y >= SIMULATOR_EDITABLE_ROWS) return;
@@ -5757,6 +5764,7 @@
         else if (item.kind === 'play') startSimulatorPlayback();
         else if (item.kind === 'copyJson') copySimulatorJson();
         else if (item.kind === 'pasteJson') pasteSimulatorJson();
+        else if (item.kind === 'reset') resetSimulatorBoard();
         else { simulator = null; menuScreen = 'title'; loadNotice(); }
     }
 
@@ -5878,7 +5886,7 @@
             if (item.kind === 'puyo') drawPuyo(item.x, item.y, item.value);
             else if (item.kind === 'eraser') { context.strokeStyle = '#f4f7f8'; context.lineWidth = 7; context.beginPath(); context.moveTo(item.x + 8, item.y + CELL - 8); context.lineTo(item.x + CELL - 8, item.y + 8); context.stroke(); }
             else {
-                const labels = { play: '▶', exit: translate('종료'), copyJson: translate('JSON복사'), pasteJson: translate('JSON넣기') };
+                const labels = { play: '▶', exit: translate('종료'), copyJson: translate('JSON복사'), pasteJson: translate('JSON넣기'), reset: translate('초기화') };
                 context.fillStyle = '#fff'; context.font = item.kind === 'play' ? '24px sans-serif' : `15px ${BUTTON_FONT}`;
                 context.fillText(labels[item.kind], item.x + item.width / 2, item.y + 26);
             }
