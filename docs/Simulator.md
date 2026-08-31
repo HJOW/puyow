@@ -102,7 +102,7 @@ ATTACK 증가량 = (점수 증가량 / 마진 레이트) * EXPLOSION_REWARD_MULT
 
 ### 3D 버전에서 공통 계산 재사용
 
-3D 규칙·표현을 구현할 때도 `PuyoW.common.findExplosionGroupsOnBoard()`, `collapseBoard()`, `simulatePlacementBoard()`, `estimateCombo()`, `estimateAttack()`을 사용할 수 있습니다. 이 함수들은 2D 논리 보드의 복사본을 계산하므로 3D 메시 상태와 분리해 결과만 반영할 수 있습니다.
+3D 규칙·표현을 구현할 때도 `PuyoW.common.findExplosionGroupsOnBoard()`, `collapseBoard()`, `simulatePlacementBoard()`, `estimateCombo()`, `estimateAttack()`을 사용할 수 있습니다. CPU 후보를 N수까지 읽을 때는 `simulateNMovePlacements(player, targetCombo, turnCount)` 또는 최선 후보만 반환하는 `findBestNMovePlacement()`을 사용합니다. 목표 연쇄 수는 두 번째 매개변수입니다. 이 함수들은 2D 논리 보드의 복사본을 계산하므로 3D 메시 상태와 분리해 결과만 반영할 수 있습니다.
 
 ---
 

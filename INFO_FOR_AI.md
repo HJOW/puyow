@@ -104,12 +104,15 @@
 - `registerLanguage()`, `registerOpponent()`, `registerWarningPuyo()`, `registerFeverStageState()`, `registerPuzzleStage()`가 주요 확장 지점이다. 입력 검증과 중복 처리 방식은 기존 등록 함수에 맞춘다.
 - 적은 `Enemy` 또는 `BundledEnemy` 계열이다. `getClassType()`의 안정성은 저장 진행도·사운드 연결에 중요하므로 기존 클래스 타입을 바꾸지 않는다.
 - 적의 위치·회전 결정은 게임 루프 밖의 별도 보정 함수가 아니라 `prepareTurn()`, `chooseTarget()`, `chooseRotate()` 안에서 끝낸다. 기본 `Enemy.prepareTurn()`은 피버 연쇄 최적화와 패배 위치 회피 후보를 `preparedPlacement`로 준비하고, 기본 제공 적은 `BundledEnemy`에서 연쇄 대응·즉시 패배 보호를 추가한다. 외부 적이 이 공통 규칙을 유지하려면 세 메서드에서 `super` 구현을 호출하고, 완전히 독자적인 AI라면 세 메서드를 재정의하면 된다.
+- `Kimaris`는 `PuyoW.Kimaris`로도 공개된다. 피버 중에는 `preparedPlacement`의 공통 연쇄 최적화를 그대로 쓰며, 평상시에는 `simulateNMovePlacements(player, targetCombo, turnCount)`로 현재 수부터 N수까지 평가한다. 기본 목표는 6연쇄·2수이며, 목표에 못 미치는 작은 즉시 공격보다 6연쇄 기반을, 싹쓸이 기회는 그보다 더 높게 평가한다. 즉시 패배 후보는 제외하고, 상쇄 뒤 남는 방해뿌요가 4개 이상일 때만 긴급 상쇄를 장기 연쇄보다 우선한다.
 - `WarningPuyo` 확장은 양의 정수 `unitCount`, 비어 있지 않은 `type`, `draw(context, x, y, cellSize)`를 갖춰야 한다.
 - 사운드는 `SoundPool`/`CommonSoundPool`/`EnemySoundPool`과 `setEnemySoundPool()`을 사용한다. 배경음은 중복 재생하지 않고 일시정지·음소거·볼륨 상태와 동기화해야 한다.
 
 ## 3D와 공통 함수
 
 3D 구현 또는 외부 도구가 게임 규칙 계산을 재사용할 때는 `PuyoW.common`(또는 `PuyoW.getCommonFunctions()`)을 사용한다. 이 객체의 함수는 입력 보드를 직접 변경하지 않는 공통 계산 함수다. 대표적으로 착지/폭발/점수/공격/중력/싱글 보드 시뮬레이션 함수가 있다.
+
+N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, turnCount)`와 `findBestNMovePlacement(player, targetCombo, turnCount)`로 재사용한다. 목표 연쇄 수는 두 번째 매개변수이며, 반환값은 이번 수의 `simulation`과 이후 경로·점수를 함께 가진다. 탐색량은 착지 후보 수에 따라 지수적으로 늘어나므로, 실시간 적은 기본처럼 2수 수준을 사용한다.
 
 공통 계산을 수정하면 2D 게임, CPU 미리보기, 시뮬레이터, 피버 패턴 검증, 3D 소비자에 미치는 영향을 확인한다.
 

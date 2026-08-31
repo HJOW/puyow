@@ -2919,6 +2919,142 @@
         return best;
     }
 
+    /**
+     * N수 읽기에서 연쇄 기반을 비교할 보드 점수를 계산한다.
+     * 낮은 위치의 같은 색 연결을 높게 평가하고 패배 칸 주변 적층은 줄인다.
+     * @param {(string|null)[][]} board 안정 상태 보드
+     * @returns {number} 연쇄 기반 점수
+     */
+    function getNMoveBoardScore(board) {
+        let score = 0;
+        for (let y = 0; y < ROWS; y += 1) {
+            for (let x = 0; x < COLUMNS; x += 1) {
+                const color = board[y][x];
+                if (!COLORS.includes(color)) continue;
+                score -= y * 4;
+                if (x < COLUMNS - 1 && board[y][x + 1] === color) score += 80;
+                if (y < ROWS - 1 && board[y + 1][x] === color) score += 55;
+                if (y >= 8 && (x === 2 || (usesSecondDefeatCell() && x === 3))) score -= 180;
+            }
+        }
+        return score;
+    }
+
+    /**
+     * 한 수의 연쇄·싱글 보드 결과를 목표 연쇄 중심으로 점수화한다.
+     * 목표보다 작은 연쇄는 쌓기 기회를 잃으므로, 싹쓸이와 목표 연쇄보다 낮게 평가한다.
+     * @param {number} combo 해당 수의 예상 연쇄 수
+     * @param {number} attack 해당 수의 예상 ATTACK
+     * @param {boolean} allClear 해당 수 후 싹쓸이 여부
+     * @param {number} targetCombo 목표 연쇄 수
+     * @param {(string|null)[][]} board 해당 수 후 안정 상태 보드
+     * @returns {number} N수 읽기용 점수
+     */
+    function getNMovePlacementScore(combo, attack, allClear, targetCombo, board) {
+        const boardScore = getNMoveBoardScore(board);
+        if (allClear) return 2000000 + combo * 10000 + attack * 1000 + boardScore;
+        if (combo >= targetCombo) return 1000000 + combo * 10000 + attack * 1000 + boardScore;
+        // 목표에 못 미치는 1~(목표-1)연쇄는 평상시에는 기반을 끊는 작은 공격이다.
+        const prematureChainPenalty = combo > 0 ? (targetCombo - combo + 1) * 25000 : 0;
+        return attack * 200 + boardScore - prematureChainPenalty;
+    }
+
+    /**
+     * 가상 보드에서 한 수를 놓은 뒤 남은 수만큼 최선의 경로를 재귀적으로 찾는다.
+     * @param {(string|null)[][]} board 이번 수 전 안정 상태 보드
+     * @param {string[]|undefined} colors 이번 수 뿌요 색상
+     * @param {string[][]} nextPairs 이번 수 뒤 예고쌍 목록
+     * @param {number} nextPairIndex 사용할 예고쌍 인덱스
+     * @param {number} remainingTurns 이번 수를 포함해 남은 탐색 수
+     * @param {number} targetCombo 목표 연쇄 수
+     * @returns {object|null} 이 보드에서의 최선 경로
+     */
+    function findBestNMoveBoardResult(board, colors, nextPairs, nextPairIndex, remainingTurns, targetCombo) {
+        if (!Array.isArray(colors) || colors.length !== 2) return null;
+        const virtualPlayer = { board, active: { x: 2, y: ACTIVE_PUYO_SPAWN_Y, rotation: 0, colors } };
+        let best = null;
+        for (let rotation = 0; rotation < 4; rotation += 1) {
+            for (let x = 0; x < COLUMNS; x += 1) {
+                const placement = findLandingPlacement(virtualPlayer, x, rotation);
+                if (!placement) continue;
+                const positions = activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
+                const resultBoard = simulatePlacementBoard(board, colors, positions);
+                if (!resultBoard || isDefeatBoard(resultBoard)) continue;
+                const combo = estimateCombo(board, colors, positions);
+                const attack = estimateAttack(board, colors, positions);
+                const allClear = isAllClearBoard(resultBoard);
+                const future = remainingTurns > 1
+                    ? findBestNMoveBoardResult(resultBoard, nextPairs[nextPairIndex], nextPairs, nextPairIndex + 1, remainingTurns - 1, targetCombo)
+                    : null;
+                const score = getNMovePlacementScore(combo, attack, allClear, targetCombo, resultBoard)
+                    + (future ? future.score * 0.92 : 0);
+                const candidate = {
+                    x, rotation, positions, board: resultBoard, combo, attack, allClear,
+                    maxCombo: Math.max(combo, future?.maxCombo || 0),
+                    totalAttack: attack + (future?.totalAttack || 0),
+                    score,
+                    nextResult: future
+                };
+                if (!best || candidate.score > best.score
+                    || (candidate.score === best.score && candidate.maxCombo > best.maxCombo)
+                    || (candidate.score === best.score && candidate.maxCombo === best.maxCombo && candidate.x > best.x)) best = candidate;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * 현재 수와 예고쌍을 N수까지 가상 배치한다. 목표 연쇄에 못 미치는 작은 즉시 공격보다
+     * 목표 연쇄 기반과 싹쓸이를 높게 평가하며, 각 반환 항목은 이번 수의 후보를 `simulation`에 담는다.
+     * @param {PlayerState} player 현재 수를 판단할 CPU 플레이어
+     * @param {number} targetCombo 목표 연쇄 수. 두 번째 매개변수로 받아 AI별 목표를 바꿀 수 있다.
+     * @param {number} turnCount 현재 수를 포함한 탐색 수 N
+     * @returns {object[]} 이번 수 후보별 N수 평가 결과
+     */
+    function simulateNMovePlacements(player, targetCombo = 6, turnCount = 2) {
+        if (!player?.active || !Array.isArray(player.aiSimulations)) return [];
+        const target = Math.max(1, Math.floor(Number(targetCombo) || 6));
+        const nextPairs = Array.isArray(player.nextPairs) ? player.nextPairs : [];
+        const turns = Math.max(1, Math.min(Math.floor(Number(turnCount) || 2), nextPairs.length + 1));
+        return player.aiSimulations.reduce((results, simulation) => {
+            if (causesImmediateDefeat(player, simulation)) return results;
+            const board = simulatePlacementBoard(player.board, player.active.colors, simulation.positions);
+            if (!board || isDefeatBoard(board)) return results;
+            const combo = simulation.combo;
+            const attack = simulation.attack;
+            const allClear = isAllClearBoard(board);
+            const future = turns > 1
+                ? findBestNMoveBoardResult(board, nextPairs[0], nextPairs, 1, turns - 1, target)
+                : null;
+            const score = getNMovePlacementScore(combo, attack, allClear, target, board)
+                + (future ? future.score * 0.92 : 0);
+            results.push({
+                simulation, board, combo, attack, allClear,
+                maxCombo: Math.max(combo, future?.maxCombo || 0),
+                totalAttack: attack + (future?.totalAttack || 0),
+                score,
+                nextResult: future
+            });
+            return results;
+        }, []);
+    }
+
+    /**
+     * N수 시뮬레이션 결과 가운데 목표 연쇄·싱글 보드 기준 최선의 이번 수 후보를 반환한다.
+     * @param {PlayerState} player 현재 수를 판단할 CPU 플레이어
+     * @param {number} targetCombo 목표 연쇄 수
+     * @param {number} turnCount 현재 수를 포함한 탐색 수 N
+     * @returns {object|null} 최선 후보의 N수 평가 결과
+     */
+    function findBestNMovePlacement(player, targetCombo = 6, turnCount = 2) {
+        return simulateNMovePlacements(player, targetCombo, turnCount).reduce((best, candidate) => {
+            if (!best || candidate.score > best.score
+                || (candidate.score === best.score && candidate.maxCombo > best.maxCombo)
+                || (candidate.score === best.score && candidate.maxCombo === best.maxCombo && candidate.simulation.x > best.simulation.x)) return candidate;
+            return best;
+        }, null);
+    }
+
     /** @param {(string|null)[][]} board 검사할 보드 @returns {boolean} 빈 보드 여부 */
     function isAllClearBoard(board) {
         return board.every((row) => row.every((cell) => cell === null));
@@ -10613,6 +10749,10 @@
             this.notAvail = false;
             /** 이 수보다 적은 방해뿌요는 긴급 상쇄 대상으로 보지 않는다. @type {number} */
             this.ignorableIncomingGarbage = 4;
+            /** 피버가 아닌 평상시 목표 연쇄 수. @type {number} */
+            this.targetCombo = 6;
+            /** 현재 수를 포함해 읽을 예고쌍 수. @type {number} */
+            this.lookaheadTurnCount = 2;
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -10622,76 +10762,17 @@
         getName() { return '키마리스'; }
 
         /**
-         * 보드의 연결 재료·높이·패배 위치 주변 여유를 점수화한다.
-         * @param {(string|null)[][]} board 안정 상태 보드
-         * @returns {number} 다음 연쇄를 위한 기반 점수
-         */
-        getLookaheadBoardScore(board) {
-            let score = 0;
-            for (let y = 0; y < ROWS; y += 1) {
-                for (let x = 0; x < COLUMNS; x += 1) {
-                    const color = board[y][x];
-                    if (!COLORS.includes(color)) continue;
-                    score -= y * 4;
-                    if (x < COLUMNS - 1 && board[y][x + 1] === color) score += 80;
-                    if (y < ROWS - 1 && board[y + 1][x] === color) score += 55;
-                    if (y >= 8 && (x === 2 || (usesSecondDefeatCell() && x === 3))) score -= 180;
-                }
-            }
-            return score;
-        }
-
-        /**
-         * 현재 가상 보드에서 다음 예고쌍의 최적 착지 결과를 찾는다.
-         * @param {(string|null)[][]} board 현재 뿌요를 놓은 뒤의 안정 상태 보드
-         * @param {string[]|undefined} colors 다음 예고쌍 색상
-         * @returns {{combo:number,attack:number,boardScore:number}|null} 다음 턴 최적 결과
-         */
-        findBestNextTurnResult(board, colors) {
-            if (!Array.isArray(colors) || colors.length !== 2) return { combo: 0, attack: 0, boardScore: this.getLookaheadBoardScore(board) };
-            const virtualPlayer = { board, active: { x: 2, y: ACTIVE_PUYO_SPAWN_Y, rotation: 0, colors } };
-            let best = null;
-            for (let rotation = 0; rotation < 4; rotation += 1) {
-                for (let x = 0; x < COLUMNS; x += 1) {
-                    const placement = findLandingPlacement(virtualPlayer, x, rotation);
-                    if (!placement) continue;
-                    const positions = activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
-                    const resultBoard = simulatePlacementBoard(board, colors, positions);
-                    if (!resultBoard || isDefeatBoard(resultBoard)) continue;
-                    const combo = estimateCombo(board, colors, positions);
-                    const attack = estimateAttack(board, colors, positions);
-                    const boardScore = this.getLookaheadBoardScore(resultBoard);
-                    const score = combo * 6000 + attack * 1000 + boardScore;
-                    if (!best || score > best.score || (score === best.score && x > best.x)) best = { x, rotation, combo, attack, boardScore, score };
-                }
-            }
-            return best;
-        }
-
-        /**
-         * 현재 후보의 생존·상쇄·다음 턴 연쇄 기회를 함께 평가한다.
+         * 공통 N수 시뮬레이션 결과에 현재 방해뿌요 상쇄 우선순위를 더한다.
          * @param {PlayerState} player 자동 조작할 플레이어
-         * @param {object} simulation 현재 뿌요의 가상 착지 후보
+         * @param {object} plan 공통 N수 시뮬레이션 결과
          * @param {number} incomingGarbage 현재 확정·예고 공격을 합친 방해뿌요 수
-         * @returns {object|null} 비교 가능한 후보 평가값
+         * @returns {object} 비교 가능한 후보 평가값
          */
-        evaluateLookaheadPlacement(player, simulation, incomingGarbage) {
-            if (causesImmediateDefeat(player, simulation)) return null;
-            const board = simulatePlacementBoard(player.board, player.active.colors, simulation.positions);
-            if (!board || isDefeatBoard(board)) return null;
-            const nextResult = this.findBestNextTurnResult(board, player.nextPairs[0]);
-            if (!nextResult) return null;
-            const availableAttack = Math.floor(player.attack + simulation.attack);
+        evaluateLookaheadPlacement(player, plan, incomingGarbage) {
+            const availableAttack = Math.floor(player.attack + plan.attack);
             const remainingIncoming = Math.max(0, incomingGarbage - availableAttack);
             const unresolvedDanger = incomingGarbage >= this.ignorableIncomingGarbage && remainingIncoming >= this.ignorableIncomingGarbage;
-            const boardScore = this.getLookaheadBoardScore(board);
-            const score = simulation.combo * 4000
-                + simulation.attack * 900
-                + nextResult.combo * 6000
-                + nextResult.attack * 1000
-                + nextResult.boardScore
-                + boardScore * 0.5;
-            return { simulation, remainingIncoming, unresolvedDanger, score, nextResult };
+            return { ...plan, remainingIncoming, unresolvedDanger };
         }
 
         /**
@@ -10708,12 +10789,12 @@
                 return candidate.remainingIncoming < best.remainingIncoming;
             }
             if (candidate.score !== best.score) return candidate.score > best.score;
-            if (candidate.nextResult.combo !== best.nextResult.combo) return candidate.nextResult.combo > best.nextResult.combo;
+            if (candidate.maxCombo !== best.maxCombo) return candidate.maxCombo > best.maxCombo;
             return candidate.simulation.x > best.simulation.x;
         }
 
         /**
-         * 현재 뿌요와 다음 예고쌍을 함께 시뮬레이션해 키마리스의 최적 착지 후보를 고른다.
+         * 현재 뿌요와 예고쌍을 공통 N수 시뮬레이션으로 읽어 키마리스의 최적 착지 후보를 고른다.
          * @param {PlayerState} player 자동 조작할 플레이어
          * @returns {object|null} 선택한 현재 턴 후보
          */
@@ -10721,8 +10802,8 @@
             const incomingGarbage = Math.max(0, Math.floor(this.getIncomingGarbage(player)));
             const incomingIsUrgent = incomingGarbage >= this.ignorableIncomingGarbage;
             let best = null;
-            player.aiSimulations.forEach((simulation) => {
-                const candidate = this.evaluateLookaheadPlacement(player, simulation, incomingGarbage);
+            simulateNMovePlacements(player, this.targetCombo, this.lookaheadTurnCount).forEach((plan) => {
+                const candidate = this.evaluateLookaheadPlacement(player, plan, incomingGarbage);
                 if (candidate && this.isBetterLookaheadPlacement(candidate, best, incomingIsUrgent)) best = candidate;
             });
             return best?.simulation || null;
@@ -10993,6 +11074,8 @@
         activeRenderCells,
         findLandingPlacement,
         findBestPreviewResult,
+        simulateNMovePlacements,
+        findBestNMovePlacement,
         findExplosionsOnBoard,
         findExplosionGroupsOnBoard,
         getChainBonus,
@@ -11055,6 +11138,8 @@
         activeRenderCells,
         findLandingPlacement,
         findBestPreviewResult,
+        simulateNMovePlacements,
+        findBestNMovePlacement,
         findExplosionsOnBoard,
         findExplosionGroupsOnBoard,
         getChainBonus,

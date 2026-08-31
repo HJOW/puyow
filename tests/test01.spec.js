@@ -1115,6 +1115,187 @@ test('외부 적은 피버 상태에서도 세 선택 메서드를 재정의해 
   }), { timeout: 10000 }).toEqual({ target: 5, rotation: 2, targetCalled: true, rotationCalled: true });
 });
 
+test('키마리스는 3개 방해뿌요를 긴급 상쇄 우선순위에서 제외한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class KimarisLookaheadEnemy extends window.WebPuyo.Kimaris {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'KimarisLookaheadEnemy'; }
+      getName() { return '키마리스 3개 방해 테스트 적'; }
+
+      prepareTurn(player) {
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+        for (let y = 0; y < 3; y += 1) player.board[y][0] = 'red';
+        for (let y = 0; y < 2; y += 1) player.board[y][3] = 'red';
+        player.board[0][5] = 'iron';
+        player.normalDamage = 3;
+        player.active.colors = ['red', 'red'];
+        player.nextPairs[0] = ['red', 'blue'];
+        super.prepareTurn(player);
+        player.fallTimer = -100000;
+        this.player = player;
+        window.kimarisLookaheadEnemy = this;
+      }
+
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new KimarisLookaheadEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const controller = window.kimarisLookaheadEnemy;
+    const player = controller?.player;
+    const placement = controller?.attackPlacement;
+    if (!player || !placement) return null;
+    const plan = window.WebPuyo.common.findBestNMovePlacement(player, controller.targetCombo, controller.lookaheadTurnCount);
+    const evaluation = plan && controller.evaluateLookaheadPlacement(player, plan, 3);
+    return { combo: placement.combo, maxCombo: evaluation?.maxCombo, remainingIncoming: evaluation?.remainingIncoming };
+  }), { timeout: 10000 }).not.toBeNull();
+  const result = await page.evaluate(() => {
+    const controller = window.kimarisLookaheadEnemy;
+    const player = controller.player;
+    const placement = controller.attackPlacement;
+    const plan = window.WebPuyo.common.findBestNMovePlacement(player, controller.targetCombo, controller.lookaheadTurnCount);
+    const evaluation = controller.evaluateLookaheadPlacement(player, plan, 3);
+    return { combo: placement.combo, maxCombo: evaluation.maxCombo, remainingIncoming: evaluation.remainingIncoming };
+  });
+  expect(result.combo).toBe(0);
+  expect(result.remainingIncoming).toBeLessThan(4);
+  expect(result.maxCombo).toBeGreaterThanOrEqual(0);
+  const priority = await page.evaluate(() => {
+    const controller = new window.WebPuyo.Kimaris();
+    const preferredLongTerm = {
+      unresolvedDanger: true, remainingIncoming: 4, score: 100,
+      maxCombo: 1, simulation: { x: 0 }
+    };
+    const emergencyCancel = {
+      unresolvedDanger: false, remainingIncoming: 3, score: 1,
+      maxCombo: 0, simulation: { x: 1 }
+    };
+    return {
+      ignored: controller.isBetterLookaheadPlacement(emergencyCancel, preferredLongTerm, false),
+      urgent: controller.isBetterLookaheadPlacement(emergencyCancel, preferredLongTerm, true),
+    };
+  });
+  expect(priority).toEqual({ ignored: false, urgent: true });
+});
+
+test('키마리스는 4개 이상 방해뿌요가 남을 상황이면 즉시 상쇄를 우선한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class KimarisCounterEnemy extends window.WebPuyo.Kimaris {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'KimarisCounterEnemy'; }
+      getName() { return '키마리스 상쇄 테스트 적'; }
+
+      prepareTurn(player) {
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+        for (let y = 0; y < 3; y += 1) player.board[y][0] = 'red';
+        for (let y = 0; y < 2; y += 1) player.board[y][3] = 'red';
+        player.board[0][5] = 'iron';
+        player.normalDamage = 4;
+        player.active.colors = ['red', 'red'];
+        player.nextPairs[0] = ['red', 'blue'];
+        super.prepareTurn(player);
+        player.fallTimer = -100000;
+        this.player = player;
+        window.kimarisCounterEnemy = this;
+      }
+
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new KimarisCounterEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const controller = window.kimarisCounterEnemy;
+    const player = controller?.player;
+    const placement = controller?.attackPlacement;
+    if (!player || !placement) return null;
+    const plan = window.WebPuyo.common.simulateNMovePlacements(player, controller.targetCombo, controller.lookaheadTurnCount)
+      .find((candidate) => candidate.simulation.x === placement.x && candidate.simulation.rotation === placement.rotation);
+    const evaluation = plan && controller.evaluateLookaheadPlacement(player, plan, 4);
+    return { combo: placement.combo, attack: placement.attack, remainingIncoming: evaluation?.remainingIncoming, unresolvedDanger: evaluation?.unresolvedDanger };
+  }), { timeout: 10000 }).not.toBeNull();
+  const result = await page.evaluate(() => {
+    const controller = window.kimarisCounterEnemy;
+    const player = controller.player;
+    const placement = controller.attackPlacement;
+    const plan = window.WebPuyo.common.simulateNMovePlacements(player, controller.targetCombo, controller.lookaheadTurnCount)
+      .find((candidate) => candidate.simulation.x === placement.x && candidate.simulation.rotation === placement.rotation);
+    const evaluation = controller.evaluateLookaheadPlacement(player, plan, 4);
+    return { combo: placement.combo, attack: placement.attack, remainingIncoming: evaluation.remainingIncoming, unresolvedDanger: evaluation.unresolvedDanger };
+  });
+  expect(result.combo).toBeGreaterThanOrEqual(1);
+  expect(Math.floor(result.attack)).toBeGreaterThanOrEqual(1);
+  expect(result.remainingIncoming).toBeLessThan(4);
+  expect(result.unresolvedDanger).toBe(false);
+});
+
+test('키마리스는 비피버 싹쓸이 경로를 6연쇄 기반보다 우선한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class KimarisAllClearEnemy extends window.WebPuyo.Kimaris {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'KimarisAllClearEnemy'; }
+      getName() { return '키마리스 싹쓸이 테스트 적'; }
+
+      prepareTurn(player) {
+        player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+        for (let y = 0; y < 3; y += 1) player.board[y][0] = 'red';
+        for (let y = 0; y < 2; y += 1) player.board[y][3] = 'red';
+        player.active.colors = ['red', 'red'];
+        player.nextPairs[0] = ['red', 'blue'];
+        super.prepareTurn(player);
+        player.fallTimer = -100000;
+        this.player = player;
+        window.kimarisAllClearEnemy = this;
+      }
+
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new KimarisAllClearEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const controller = window.kimarisAllClearEnemy;
+    const player = controller?.player;
+    const placement = controller?.attackPlacement;
+    if (!player || !placement) return null;
+    const plan = window.WebPuyo.common.simulateNMovePlacements(player, controller.targetCombo, controller.lookaheadTurnCount)
+      .find((candidate) => candidate.simulation.x === placement.x && candidate.simulation.rotation === placement.rotation);
+    if (!plan) return null;
+    return { combo: placement.combo, allClear: plan.allClear, nextAllClear: plan.nextResult?.allClear === true };
+  }), { timeout: 10000 }).not.toBeNull();
+  const plan = await page.evaluate(() => {
+    const controller = window.kimarisAllClearEnemy;
+    const player = controller.player;
+    const placement = controller.attackPlacement;
+    return window.WebPuyo.common.simulateNMovePlacements(player, controller.targetCombo, controller.lookaheadTurnCount)
+      .find((candidate) => candidate.simulation.x === placement.x && candidate.simulation.rotation === placement.rotation);
+  });
+  expect(plan.simulation.combo).toBeGreaterThanOrEqual(1);
+  expect(plan.allClear || plan.nextResult?.allClear).toBe(true);
+});
+
 test('기본 룰 적은 패배 위치 경고에서 X=2의 비폭발 배치를 최우선으로 피한다', async ({ page }) => {
   await page.evaluate(() => {
     class StandardDefeatPositionEnemy extends window.WebPuyo.Enemy {
