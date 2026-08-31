@@ -102,7 +102,7 @@
 
 ## 저장소·다국어·외부 확장
 
-- 진행도와 설정은 `localStorage`의 `puyow_store`, 갤러리 잠금은 `puyow_gallery`에 저장된다. 읽을 때 이전 형식을 보정하므로 새 필드는 기본값·마이그레이션을 함께 설계한다.
+- 진행도와 설정은 `localStorage`의 `puyow_store`, 갤러리 잠금은 `puyow_gallery`, 테스트 기능 코드 배열은 `puyow_code`에 저장된다. 초기화 시 `puyow_code`를 JSON 배열로 복원하며, 파싱 실패는 오류를 기록한 뒤 빈 배열로 계속한다. 읽을 때 이전 형식을 보정하므로 새 필드는 기본값·마이그레이션을 함께 설계한다.
 - `registerLanguage()`, `registerOpponent()`, `registerWarningPuyo()`, `registerFeverStageState()`, `registerPuzzleStage()`가 주요 확장 지점이다. 입력 검증과 중복 처리 방식은 기존 등록 함수에 맞춘다.
 - 적은 `Enemy` 또는 `BundledEnemy` 계열이다. `getClassType()`의 안정성은 저장 진행도·사운드 연결에 중요하므로 기존 클래스 타입을 바꾸지 않는다.
 - 적의 위치·회전 결정은 게임 루프 밖의 별도 보정 함수가 아니라 `prepareTurn()`, `chooseTarget()`, `chooseRotate()` 안에서 끝낸다. 기본 `Enemy.prepareTurn()`은 피버 연쇄 최적화와 패배 위치 회피 후보를 `preparedPlacement`로 준비하고, 기본 제공 적은 `BundledEnemy`에서 연쇄 대응·즉시 패배 보호를 추가한다. 외부 적이 이 공통 규칙을 유지하려면 세 메서드에서 `super` 구현을 호출하고, 완전히 독자적인 AI라면 세 메서드를 재정의하면 된다.
@@ -111,6 +111,7 @@
 - `Flauros`는 `BundledEnemy` 하위의 9번째 출시 예정 적이다. `notAvail`을 유지하며, 전용 AI가 구현되기 전에는 이동·회전·빠른 하강 없이 자연 낙하만 하도록 `prepareTurn()`/선택 메서드에 TODO가 있다. 일반·위기·우는 표정의 표범 초상화와 다국어 이름은 이미 등록되어 있다.
 - `WarningPuyo` 확장은 양의 정수 `unitCount`, 비어 있지 않은 `type`, `draw(context, x, y, cellSize)`를 갖춰야 한다.
 - 사운드는 `SoundPool`/`CommonSoundPool`/`EnemySoundPool`과 `setEnemySoundPool()`을 사용한다. 배경음은 중복 재생하지 않고 일시정지·음소거·볼륨 상태와 동기화해야 한다. 설정 화면의 배경음악·효과음 슬라이더 값은 슬라이더 오른쪽(논리 X=930)에 표시한다.
+- 설정 화면 오른쪽 아래의 작은 `코드` 버튼은 키보드 포커스 순서에 포함하지 않고 마우스 클릭만 받는다. 클릭하면 `prompt('코드를 입력하세요')`를 호출하며, 취소·공란은 무시하고 값이 있으면 `trim()` 후 `addCode()`에 전달한다.
 
 ## 3D와 공통 함수
 

@@ -331,6 +331,55 @@ test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여
   })).toEqual({ music: true, effects: true });
 });
 
+test('설정 오른쪽 아래 코드 버튼은 마우스로만 코드를 입력받고 공란은 무시한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [] }));
+    localStorage.removeItem('puyow_code');
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  await page.evaluate(() => {
+    window.codePromptTitles = [];
+    window.prompt = (title) => { window.codePromptTitles.push(title); return '  sample-code  '; };
+  });
+  for (let index = 0; index < 14; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.codePromptTitles)).toEqual([]);
+  await page.locator('#webpuyo_canvas').click({ position: { x: 1232, y: 692 } });
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['sample-code']);
+  expect(await page.evaluate(() => window.codePromptTitles)).toEqual(['코드를 입력하세요']);
+
+  await page.evaluate(() => { window.prompt = () => '   '; });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 1232, y: 692 } });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['sample-code']);
+
+  await page.evaluate(() => { window.prompt = () => null; });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 1232, y: 692 } });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['sample-code']);
+});
+
+test('초기화 시 저장된 코드 배열을 불러오고 잘못된 값은 빈 배열로 보정한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [] }));
+    localStorage.setItem('puyow_code', JSON.stringify(['saved-code']));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  await page.evaluate(() => { window.prompt = () => 'added-code'; });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 1232, y: 692 } });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['saved-code', 'added-code']);
+
+  await page.evaluate(() => localStorage.setItem('puyow_code', '{invalid-json'));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  await page.evaluate(() => { window.prompt = () => 'after-error'; });
+  await page.locator('#webpuyo_canvas').click({ position: { x: 1232, y: 692 } });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['after-error']);
+});
+
 test('플레이어 이름은 설정에 저장되며 게임 화면에 적용되고 최대 10자로 제한된다', async ({ page }) => {
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('PLAYER 1'))).toBe(true);

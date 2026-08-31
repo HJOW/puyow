@@ -190,6 +190,10 @@
     const STORE_KEY = 'puyow_store';
     /** 갤러리 잠금 해제 정보를 저장할 브라우저 저장소 키다. @type {string} */
     const GALLERY_STORE_KEY = 'puyow_gallery';
+    /** 설정 화면에서 테스트 코드를 입력할 버튼의 논리 좌표와 크기다. 키보드 포커스에는 포함하지 않는다. @type {{x:number,y:number,width:number,height:number}} */
+    const SETTINGS_CODE_BUTTON = { x: 1200, y: 680, width: 64, height: 24 };
+    /** 테스트 기능 활성화 코드를 저장할 브라우저 저장소 키다. @type {string} */
+    const CODE_STORE_KEY = 'puyow_code';
     /** 설정에서 새로 제안하고 저장값이 비어 있을 때 보정할 기본 OpenAI 모델명이다. @type {string} */
     const DEFAULT_AI_MODEL = 'gpt-5.6-luna';
     /** 설정 화면에서 선택할 수 있는 AI 서비스 제공자 목록이다. Google은 현재 제공하지 않는다. @type {string[]} */
@@ -250,7 +254,7 @@
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
-            '설정': 'Settings', '이름': 'Name', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '없음': 'None', '크게': 'Large', '그래픽 설정': 'Graphics quality', '사운드 데이터 URL': 'Sound data URL', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
+            '설정': 'Settings', '이름': 'Name', '코드': 'Code', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '없음': 'None', '크게': 'Large', '그래픽 설정': 'Graphics quality', '사운드 데이터 URL': 'Sound data URL', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
             '플레이 방법': 'How to Play', '갤러리': 'Gallery', '대상 유형': 'Category', '대상': 'Item', '일반뿌요': 'Puyos', '예고뿌요': 'Warning Puyos', '적': 'Enemies', '빨강뿌요': 'Red Puyo', '초록뿌요': 'Green Puyo', '노랑뿌요': 'Yellow Puyo', '파랑뿌요': 'Blue Puyo', '보라뿌요': 'Purple Puyo', '방해뿌요': 'Garbage Puyo', '딱딱뿌요': 'Hard Puyo', '작은 예고뿌요': 'Small Warning Puyo', '큰 예고뿌요': 'Large Warning Puyo', '빨간 돌': 'Red Rock', '별': 'Star', '태양': 'Sun', '중성자별': 'Neutron Star', '블랙홀': 'Black Hole', '위기': 'Crisis', '다시보기': 'Replay',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': 'An all clear makes your next attack much stronger.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
             '은하': 'Galaxy',
@@ -272,7 +276,7 @@
             '시뮬레이터': 'シミュレーター', '팔레트': 'パレット', '재생': '再生', '그리기': '描画', '시뮬레이션': 'シミュレーション', '지우개': '消しゴム',
             'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
             '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
-            '설정': '設定', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '없음': 'なし', '크게': '大きく', '그래픽 설정': 'グラフィック設定', '사운드 데이터 URL': 'サウンドデータURL', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', 'AI API 테스트': 'AI APIテスト', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 관련 기능은 추후 제공 예정': 'サウンド機能は今後のアップデートで提供予定です。', '설정 저장 후 다시 시도해 주세요': '設定を保存してから、もう一度お試しください。', 'AI API 테스트 요청 중...': 'AI APIをテスト中…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI APIテスト成功（JSONスキーマ検証: 合格）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI APIテスト失敗（JSONスキーマ検証: 失敗）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI APIテスト失敗（JSONスキーマ検証: 未実施）',
+            '설정': '設定', '코드': 'コード', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '없음': 'なし', '크게': '大きく', '그래픽 설정': 'グラフィック設定', '사운드 데이터 URL': 'サウンドデータURL', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', 'AI API 테스트': 'AI APIテスト', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 관련 기능은 추후 제공 예정': 'サウンド機能は今後のアップデートで提供予定です。', '설정 저장 후 다시 시도해 주세요': '設定を保存してから、もう一度お試しください。', 'AI API 테스트 요청 중...': 'AI APIをテスト中…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI APIテスト成功（JSONスキーマ検証: 合格）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI APIテスト失敗（JSONスキーマ検証: 失敗）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI APIテスト失敗（JSONスキーマ検証: 未実施）',
             '플레이 방법': '遊び方', '갤러리': 'ギャラリー', '대상 유형': '種類', '대상': '対象', '일반뿌요': 'ぷよ', '예고뿌요': '予告ぷよ', '적': '敵', '빨강뿌요': '赤ぷよ', '초록뿌요': '緑ぷよ', '노랑뿌요': '黄ぷよ', '파랑뿌요': '青ぷよ', '보라뿌요': '紫ぷよ', '방해뿌요': 'おじゃまぷよ', '딱딱뿌요': 'かたぷよ', '작은 예고뿌요': '小さい予告ぷよ', '큰 예고뿌요': '大きい予告ぷよ', '빨간 돌': '赤い岩', '별': '星', '태양': '太陽', '중성자별': '中性子星', '블랙홀': 'ブラックホール', '위기': 'ピンチ', '다시보기': 'もう一度見る',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '左右・下キーでぷよを動かし、Z・Xキーで回転できます。', '좌우 방향키로 뿌요 이동': '左右キーでぷよを移動', '아래 방향키로 빨리 떨어뜨리기': '下キーで速く落下', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Zキーで左回転', 'X 키를 눌러 우측으로 뿌요 회전': 'Xキーで右回転', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '同じ色のぷよを4個以上つなげると消して攻撃できます。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '同じ色のぷよ4個がつながり、相手を攻撃できます。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'ぷよが消えると、隣接するおじゃまぷよも消えます。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '連鎖でぷよを消すと、より強く攻撃できます。', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': '全消しをすると、次の攻撃が大幅に強化されます。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '3段目の端にぷよが残ると負けです。',
             '은하': '銀河',
@@ -295,7 +299,7 @@
             '시뮬레이터': '模拟器', '팔레트': '调色板', '재생': '播放', '그리기': '绘制', '시뮬레이션': '模拟', '지우개': '橡皮擦',
             'JSON복사': '复制 JSON', 'JSON넣기': '粘贴 JSON', '배치가 클립보드에 복사됨': '布局已复制到剪贴板',
             '클립보드 복사 실패': '复制到剪贴板失败', 'JSON 파싱 실패': 'JSON 解析失败', '배치 JSON을 입력하세요.': '请输入布局 JSON。',
-            '설정': '设置', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '없음': '无', '크게': '大', '그래픽 설정': '图形设置', '사운드 데이터 URL': '声音数据 URL', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', 'AI API 테스트': 'AI API 测试', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 관련 기능은 추후 제공 예정': '声音功能将在未来更新中提供。', '설정 저장 후 다시 시도해 주세요': '请先保存设置后再试。', 'AI API 테스트 요청 중...': '正在测试 AI API…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API 测试成功（JSON 架构检查：通过）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API 测试失败（JSON 架构检查：失败）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API 测试失败（JSON 架构检查：未执行）',
+            '설정': '设置', '코드': '代码', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '없음': '无', '크게': '大', '그래픽 설정': '图形设置', '사운드 데이터 URL': '声音数据 URL', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', 'AI API 테스트': 'AI API 测试', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 관련 기능은 추후 제공 예정': '声音功能将在未来更新中提供。', '설정 저장 후 다시 시도해 주세요': '请先保存设置后再试。', 'AI API 테스트 요청 중...': '正在测试 AI API…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API 测试成功（JSON 架构检查：通过）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API 测试失败（JSON 架构检查：失败）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API 测试失败（JSON 架构检查：未执行）',
             '플레이 방법': '玩法说明', '갤러리': '图鉴', '대상 유형': '类别', '대상': '对象', '일반뿌요': '普通噗哟', '예고뿌요': '预告噗哟', '적': '敌人', '빨강뿌요': '红噗哟', '초록뿌요': '绿噗哟', '노랑뿌요': '黄噗哟', '파랑뿌요': '蓝噗哟', '보라뿌요': '紫噗哟', '방해뿌요': '垃圾噗哟', '딱딱뿌요': '硬噗哟', '작은 예고뿌요': '小型预告噗哟', '큰 예고뿌요': '大型预告噗哟', '빨간 돌': '红色岩石', '별': '星星', '태양': '太阳', '중성자별': '中子星', '블랙홀': '黑洞', '위기': '危机', '다시보기': '再次观看',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '使用左右和下方向键移动噗哟，使用 Z、X 键旋转。', '좌우 방향키로 뿌요 이동': '用左右方向键移动噗哟', '아래 방향키로 빨리 떨어뜨리기': '用下方向键快速落下', 'Z 키를 눌러 좌측으로 뿌요 회전': '按 Z 键向左旋转', 'X 키를 눌러 우측으로 뿌요 회전': '按 X 键向右旋转', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '连接四个或更多相同颜色的噗哟即可消除并攻击对手。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '四个相同颜色的噗哟连接后可以攻击对手。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': '消除噗哟时，相邻的垃圾噗哟也会一起消失。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '连续消除噗哟可以发动更强的攻击。', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': '全消后，下一次攻击会大幅增强。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '噗哟停留在第 3 行末端时会失败。',
             '은하': '银河',
@@ -492,6 +496,10 @@
     let noticeUrl = 'notice_[LANG].txt';
     /** 공통 사운드 풀 @type {CommonSoundPool} */
     let commonSoundPool = null;
+    /** 사용 가능한 코드들 */
+    let codeAvailables = {};
+    /** 입력된 테스트 기능 잠금 해제 코드들 @type {string[]} */
+    let codeApplied = [];
     /** 난이도별 표시명과 제공 색상 목록이다. @type {{name:string, colors:string[]}[]} */
     const DIFFICULTIES = [
         { name: '3색', colors: ['green', 'yellow', 'blue'] },
@@ -1062,6 +1070,23 @@
         } catch (error) {
             console.error('Puyo W 저장 데이터 불러오기에 실패했습니다.', error);
             store = createInitialStore();
+        }
+    }
+
+    /** 저장된 테스트 기능 활성화 코드를 불러온다. 잘못된 값은 기록하고 빈 배열로 시작한다. @returns {void} */
+    function loadAppliedCodes() {
+        try {
+            const serialized = storageManager.getItem(CODE_STORE_KEY);
+            if (!serialized) {
+                codeApplied = [];
+                return;
+            }
+            const parsed = JSON.parse(serialized);
+            if (!Array.isArray(parsed)) throw new TypeError('puyow_code는 JSON 배열이어야 합니다.');
+            codeApplied = parsed;
+        } catch (error) {
+            console.error('Puyo W 코드 저장 데이터를 불러오지 못했습니다.', error);
+            codeApplied = [];
         }
     }
 
@@ -5425,6 +5450,19 @@
         menuScreen = 'title'; loadNotice();
     }
 
+    /** 설정 화면에서 마우스로 테스트 기능 코드를 입력받아 등록한다. @returns {void} */
+    function enterSettingsCode() {
+        let input;
+        try {
+            input = typeof window.prompt === 'function' ? window.prompt('코드를 입력하세요') : null;
+        } catch (error) {
+            console.error('Puyo W 코드 입력 창을 표시하지 못했습니다.', error);
+            return;
+        }
+        if (typeof input !== 'string' || !input.trim()) return;
+        addCode(input.trim());
+    }
+
     /** 모든 저장 데이터를 지우고 2초 뒤 첫 화면으로 돌아간다. @returns {void} */
     function resetAllSettings() {
         try {
@@ -5671,6 +5709,9 @@
         [{ label: '저장', x: 390, focus: 11, color: '#4cc9b0' }, { label: '취소', x: 565, focus: 12, color: '#ef5350' }, { label: '초기화', x: 740, focus: 13, color: '#7e6bc4' }].forEach((button) => {
             context.fillStyle = button.color; context.fillRect(button.x, 640, 150, 42); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 640, 150, 42); context.fillStyle = '#fff'; context.font = `14px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 75, 666);
         });
+        context.fillStyle = '#263640'; context.fillRect(SETTINGS_CODE_BUTTON.x, SETTINGS_CODE_BUTTON.y, SETTINGS_CODE_BUTTON.width, SETTINGS_CODE_BUTTON.height);
+        context.strokeStyle = '#52606d'; context.lineWidth = 1; context.strokeRect(SETTINGS_CODE_BUTTON.x, SETTINGS_CODE_BUTTON.y, SETTINGS_CODE_BUTTON.width, SETTINGS_CODE_BUTTON.height);
+        context.fillStyle = '#d8f2f5'; context.font = `11px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('코드'), SETTINGS_CODE_BUTTON.x + SETTINGS_CODE_BUTTON.width / 2, SETTINGS_CODE_BUTTON.y + 16);
     }
 
     /** 설정 초기화 중 다른 그래픽 없이 진행 문구만 표시한다. @returns {void} */
@@ -7656,7 +7697,8 @@
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
-            if (y >= 525 && y <= 561 && x >= 540 && x <= 960 && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 9; runAiApiTest(); }
+            if (x >= SETTINGS_CODE_BUTTON.x && x <= SETTINGS_CODE_BUTTON.x + SETTINGS_CODE_BUTTON.width && y >= SETTINGS_CODE_BUTTON.y && y <= SETTINGS_CODE_BUTTON.y + SETTINGS_CODE_BUTTON.height) enterSettingsCode();
+            else if (y >= 525 && y <= 561 && x >= 540 && x <= 960 && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 9; runAiApiTest(); }
             else if (y >= 600 && y <= 620 && x >= 540 && x <= 960) { playMenuSelectSound(); settingsFocus = 10; settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
             else if (y >= 640 && y <= 682 && x >= 390 && x <= 540) { settingsFocus = 11; saveSettings(); }
             else if (y >= 640 && y <= 682 && x >= 565 && x <= 715) { settingsFocus = 12; cancelSettings(); }
@@ -7993,6 +8035,24 @@
         if (!commonSoundPool) commonSoundPool = createSoundPool(true);
     }
 
+    /** 테스트 기능 활성화를 위한 코드를 등록한다. @param {string} code  */
+    function addCode(code) {
+        if (!code || typeof code !== 'string') throw new TypeError('code는 문자열이어야 합니다.');
+        
+        // codeAvailables 의 키로 존재하는 코드만 입력 가능
+        let exists = false;
+        for(const key in codeAvailables) {
+            if (codeAvailables[key] === code) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) { alert('유효하지 않은 코드입니다.'); return; }
+
+        codeApplied.push(code);
+        storageManager.setItem(CODE_STORE_KEY, JSON.stringify(codeApplied));
+    }
+
     /**
      * WebMCP에 노출할 게임 도구를 등록한다. 미지원 브라우저에서는 아무 작업도 하지 않는다.
      * @returns {void}
@@ -8249,6 +8309,7 @@
         languageCode = navigator.language || navigator.userLanguage || 'ko';
         if (languageCode === 'ko-KR') languageCode = 'ko';
         loadStore();
+        loadAppliedCodes();
         soundDataURL = store.settings.soundDataURL;
         loadSoundDataURL();
         createdCanvas = false;
@@ -11477,6 +11538,7 @@
         getNextPairs,
         playSound,
         showMessage,
+        addCode,
         initialize,
         destroy,
         get urlContextPath() { return urlContextPath; },
