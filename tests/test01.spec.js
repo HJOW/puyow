@@ -1080,6 +1080,128 @@ test('피버 상태에서는 외부 적도 개별 전략 대신 연쇄 최적 �
   })).toEqual({ target: 0, rotation: 0, combo: 1, simulationCount: 22, customDecisionCalled: false });
 });
 
+test('기본 룰 적은 패배 위치 경고에서 X=2의 비폭발 배치를 최우선으로 피한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class StandardDefeatPositionEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'StandardDefeatPositionEnemy'; }
+      getName() { return '기본 패배 위치 테스트 적'; }
+
+      prepareTurn(player) {
+        player.board[8][2] = 'garbage';
+        super.prepareTurn(player);
+        player.fallTimer = -100000;
+        this.player = player;
+        window.standardDefeatPositionEnemy = this;
+      }
+
+      chooseTarget() { return 2; }
+      chooseRotate() { return 0; }
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new StandardDefeatPositionEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const player = window.standardDefeatPositionEnemy?.player;
+    if (!player) return null;
+    const placement = player.aiSimulations.find((simulation) => (
+      simulation.x === player.aiTarget && simulation.rotation === player.aiRotation
+    ));
+    return placement?.positions.map((position) => position.x) || null;
+  }), { timeout: 10000 }).not.toContain(2);
+});
+
+test('피버 룰의 비피버 적은 한 패배 위치 경고에도 X=2와 X=3의 비폭발 배치를 모두 피한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverDefeatPositionEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'FeverDefeatPositionEnemy'; }
+      getName() { return '피버 패배 위치 테스트 적'; }
+
+      prepareTurn(player) {
+        player.board[8][2] = 'garbage';
+        super.prepareTurn(player);
+        player.fallTimer = -100000;
+        this.player = player;
+        window.feverDefeatPositionEnemy = this;
+      }
+
+      chooseTarget() { return 2; }
+      chooseRotate() { return 0; }
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverDefeatPositionEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const player = window.feverDefeatPositionEnemy?.player;
+    if (!player) return null;
+    const placement = player.aiSimulations.find((simulation) => (
+      simulation.x === player.aiTarget && simulation.rotation === player.aiRotation
+    ));
+    return placement?.positions.map((position) => position.x) || null;
+  }), { timeout: 10000 }).not.toEqual(expect.arrayContaining([2, 3]));
+});
+
+test('패배 위치 경고 중에도 X=2에 놓아 폭발하는 기본 룰 적 배치는 유지한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class ExplodingDefeatPositionEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'ExplodingDefeatPositionEnemy'; }
+      getName() { return '패배 위치 폭발 예외 테스트 적'; }
+
+      prepareTurn(player) {
+        player.board[8][2] = 'garbage';
+        for (const x of [0, 1, 3]) {
+          player.board[0][x] = 'red';
+          player.board[1][x] = 'red';
+        }
+        player.active.colors = ['red', 'blue'];
+        super.prepareTurn(player);
+        player.fallTimer = -100000;
+        this.player = player;
+        window.explodingDefeatPositionEnemy = this;
+      }
+
+      chooseTarget() { return 2; }
+      chooseRotate() { return 0; }
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new ExplodingDefeatPositionEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const player = window.explodingDefeatPositionEnemy?.player;
+    if (!player) return null;
+    const placement = player.aiSimulations.find((simulation) => (
+      simulation.x === player.aiTarget && simulation.rotation === player.aiRotation
+    ));
+    return placement ? { target: player.aiTarget, rotation: player.aiRotation, combo: placement.combo } : null;
+  }), { timeout: 10000 }).toEqual({ target: 2, rotation: 0, combo: 1 });
+});
+
 test('피버 전용 필드는 적 테마보다 우선하고 일반 필드는 적 테마를 유지한다', async ({ page }) => {
   await page.evaluate(() => {
     class FeverPriorityThemeEnemy extends window.WebPuyo.Enemy {

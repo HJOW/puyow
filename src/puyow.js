@@ -2374,6 +2374,49 @@
         }, null);
     }
 
+    /**
+     * 피버가 아닌 적이 미리 피해야 할 패배 위치 열을 구한다.
+     * 실제 패배 위치는 y=11이지만, y=8까지 쌓이면 해당 열에 비폭발 배치를
+     * 우선적으로 금지한다. 피버 규칙은 두 패배 열을 함께 피하고, 피버 중에는
+     * 피버 연쇄 전략을 그대로 사용한다.
+     * @param {PlayerState} player CPU 플레이어
+     * @returns {number[]} 피해야 할 열 목록
+     */
+    function getAiDefeatPositionAvoidanceColumns(player) {
+        if (!game || player.fever?.active) return [];
+        const columns = game.feverRule ? [2, 3] : [2];
+        return columns.some((column) => player.board[8][column] !== null) ? columns : [];
+    }
+
+    /**
+     * 패배 위치 경고 중에 폭발하지 않고 위험 열에 놓는 후보인지 확인한다.
+     * @param {PlayerState} player CPU 플레이어
+     * @param {object} simulation 가상 배치 후보
+     * @returns {boolean} 우선적으로 피해야 하는 후보 여부
+     */
+    function isAiDefeatPositionPlacementRestricted(player, simulation) {
+        const columns = getAiDefeatPositionAvoidanceColumns(player);
+        return columns.length > 0
+            && simulation.combo === 0
+            && simulation.positions.some((position) => columns.includes(position.x));
+    }
+
+    /**
+     * 패배 위치 경고 규칙을 만족하는 후보 중 공격력이 높은 배치를 고른다.
+     * @param {PlayerState} player CPU 플레이어
+     * @returns {object|null} 안전 후보
+     */
+    function findAiDefeatPositionSafePlacement(player) {
+        const candidates = player.aiSimulations.filter((simulation) => !isAiDefeatPositionPlacementRestricted(player, simulation));
+        if (!candidates.length) return null;
+        const immediatelySafeCandidates = candidates.filter((simulation) => !causesImmediateDefeat(player, simulation));
+        const selectableCandidates = immediatelySafeCandidates.length ? immediatelySafeCandidates : candidates;
+        return selectableCandidates.reduce((best, simulation) => {
+            if (!best || simulation.attack > best.attack || (simulation.attack === best.attack && simulation.x > best.x)) return simulation;
+            return best;
+        }, null);
+    }
+
     /** 적의 새 조작 턴에 상대가 2연쇄 이상을 진행 중인지 판별한다. 양쪽 모두 CPU인 구경 모드에서도 자신의 상대를 찾는다. @param {PlayerState} player 조작 턴을 시작할 적 @returns {boolean} 즉시 공격 우선 여부 */
     function shouldCounterPlayerChain(player) {
         const opponent = game?.players.find((candidate) => candidate !== player);
@@ -2416,6 +2459,9 @@
      * @returns {void}
      */
     function applyPreparedControllerDecision(player, controller, appliesBundledEngineStrategy) {
+        // 외부 적이 후보를 준비하지 않아도 패배 위치 회피는 공통으로 적용한다.
+        const defeatPositionAvoidanceActive = getAiDefeatPositionAvoidanceColumns(player).length > 0;
+        if (defeatPositionAvoidanceActive) prepareAiPlacementSimulations(player);
         const randomEmptyFieldPlacement = selectRandomEmptyFieldPlacement(player, controller);
         if (randomEmptyFieldPlacement) {
             player.aiTarget = randomEmptyFieldPlacement.x;
@@ -2437,8 +2483,16 @@
             player.aiTarget = controller.chooseTarget(player);
             player.aiRotation = ((controller.chooseRotate(player) % 4) + 4) % 4;
         }
+        let selectedPlacement = player.aiSimulations.find((simulation) => simulation.x === player.aiTarget && simulation.rotation === player.aiRotation);
+        if (defeatPositionAvoidanceActive && (!selectedPlacement || isAiDefeatPositionPlacementRestricted(player, selectedPlacement))) {
+            const safePlacement = findAiDefeatPositionSafePlacement(player);
+            if (safePlacement) {
+                player.aiTarget = safePlacement.x;
+                player.aiRotation = safePlacement.rotation;
+                selectedPlacement = safePlacement;
+            }
+        }
         if (!appliesBundledEngineStrategy && !appliesFeverComboStrategy) return;
-        const selectedPlacement = player.aiSimulations.find((simulation) => simulation.x === player.aiTarget && simulation.rotation === player.aiRotation);
         if (selectedPlacement && causesImmediateDefeat(player, selectedPlacement)) {
             const safePlacement = findBestAttackPlacement(player, player.active.x, null, true);
             if (safePlacement.positions.length) {
