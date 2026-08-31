@@ -2954,6 +2954,29 @@ test('게임 중 왼쪽 아래 스틱은 왼쪽 이동과 빠른 하강을 함�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState().player.active.y)).toBeLessThan(initial.y);
 });
 
+test('컨트롤 전부터 누른 오른쪽 키를 뿌요 지급 직후 반영한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await page.evaluate(() => {
+    window.firstControlX = null;
+    const captureFirstControlFrame = () => {
+      const state = window.WebPuyo.getGameState();
+      if (state?.playerCanControl) window.firstControlX = state.player.active.x;
+      else window.requestAnimationFrame(captureFirstControlFrame);
+    };
+    window.requestAnimationFrame(captureFirstControlFrame);
+  });
+
+  await page.keyboard.down('ArrowRight');
+  await expect.poll(() => page.evaluate(() => window.firstControlX), { timeout: 5000 }).toBe(3);
+
+  await page.keyboard.up('ArrowRight');
+});
+
 test('게임 외와 연습 게임 배경음악은 하나만 재생되고 일시정지에 맞춰 멈춘다', async ({ page }) => {
   const languageCode = await page.evaluate(() => {
     const systemCode = navigator.language.slice(0, 2).toLowerCase();

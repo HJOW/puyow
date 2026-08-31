@@ -472,6 +472,13 @@
     let horizontalHoldElapsed = 0;
     /** 좌우 방향키 홀드 반복 이동의 누적 시간(ms)이다. @type {number} */
     let horizontalRepeatElapsed = 0;
+    /** 키보드 방향키 입력 상태를 해제한다. 창 포커스를 잃어 keyup 이벤트를 받지 못한 경우에도 입력이 남지 않게 한다. @returns {void} */
+    function resetKeyboardDirectionInput() {
+        isDownKeyPressed = false;
+        horizontalKeyPressed = null;
+        horizontalHoldElapsed = 0;
+        horizontalRepeatElapsed = 0;
+    }
     /** 가상 컨트롤러에서 현재 홀드 중인 방향키 상태다. @type {{arrowleft:boolean,arrowright:boolean,arrowup:boolean,arrowdown:boolean}} */
     let virtualDirectionInput = { arrowleft: false, arrowright: false, arrowup: false, arrowdown: false };
     /** 터치·포인터별로 누르고 있는 가상 컨트롤러 버튼 목록이다. @type {Map<number,string[]>} */
@@ -2523,6 +2530,11 @@
             horizontalRepeatElapsed = 0;
         }
         player.active = { x: 2, y: ACTIVE_PUYO_SPAWN_Y, rotation: 0, colors: takeNextPair(player) };
+        // 뿌요 지급 전부터 누르고 있던 좌우 키도 새 조작 턴의 첫 프레임에 즉시 반영한다.
+        // 이후의 반복 이동은 아래 게임 루프가 일반 홀드 입력과 같은 간격으로 처리한다.
+        if (!player.controller && player === game?.players[0] && horizontalKeyPressed) {
+            moveActive(player, horizontalKeyPressed === 'arrowleft' ? -1 : 1, 0);
+        }
         // CPU 플레이어면 이번 뿌요 쌍의 목표 위치와 회전을 미리 결정한다.
         if (player.controller) {
             player.controller.prepareTurn(player);
@@ -7376,6 +7388,16 @@
             return;
         }
         // 시작 또는 재개 카운트다운 중에는 일시정지를 포함한 게임 조작을 받지 않는다.
+        // 컨트롤 가능 여부와 무관하게 방향키의 현재 눌림 상태는 기록한다.
+        // 그래야 카운트다운이나 이전 턴의 정산 중에 누른 키를 새 뿌요 지급 순간에도 반영할 수 있다.
+        if (key === 'arrowleft' || key === 'arrowright') {
+            if (horizontalKeyPressed !== key) {
+                horizontalKeyPressed = key;
+                horizontalHoldElapsed = 0;
+                horizontalRepeatElapsed = 0;
+            }
+        }
+        if (key === 'arrowdown') isDownKeyPressed = true;
         if (game.countdown > 0) {
             return;
         }
@@ -7403,14 +7425,6 @@
         if (key === 'arrowleft' && !event.repeat) moveActive(player, -1, 0);
         if (key === 'arrowright' && !event.repeat) moveActive(player, 1, 0);
         if (key === 'arrowup' && !event.repeat) rotateActive(player, 1);
-        if (key === 'arrowleft' || key === 'arrowright') {
-            if (horizontalKeyPressed !== key) {
-                horizontalKeyPressed = key;
-                horizontalHoldElapsed = 0;
-                horizontalRepeatElapsed = 0;
-            }
-        }
-        if (key === 'arrowdown') isDownKeyPressed = true;
         if (key === 'z') rotateActive(player, -1);
         if (key === 'x') rotateActive(player, 1);
     }
@@ -8241,6 +8255,7 @@
         gameStartFirework = null;
         window.removeEventListener('keydown', handleKeydown);
         window.removeEventListener('keyup', handleKeyup);
+        window.removeEventListener('blur', resetKeyboardDirectionInput);
         window.removeEventListener('resize', updateCanvasOrientation);
         window.removeEventListener('orientationchange', updateCanvasOrientation);
         canvas.removeEventListener('click', handleCanvasClick);
@@ -8248,6 +8263,7 @@
         canvas.removeEventListener('pointermove', handleVirtualPointerMove);
         canvas.removeEventListener('pointerup', handleVirtualPointerUp);
         canvas.removeEventListener('pointercancel', handleVirtualPointerUp);
+        resetKeyboardDirectionInput();
         resetVirtualControllerInput();
         resetGamepadInput();
         if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
@@ -8364,6 +8380,7 @@
         initialized = true;
         window.addEventListener('keydown', handleKeydown);
         window.addEventListener('keyup', handleKeyup);
+        window.addEventListener('blur', resetKeyboardDirectionInput);
         window.addEventListener('resize', updateCanvasOrientation);
         window.addEventListener('orientationchange', updateCanvasOrientation);
         canvas.addEventListener('click', handleCanvasClick);
