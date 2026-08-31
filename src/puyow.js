@@ -84,6 +84,12 @@
         { startSecond: 144, rate: 16 }, { startSecond: 160, rate: 12 }, { startSecond: 176, rate: 8 }, { startSecond: 192, rate: 6 },
         { startSecond: 208, rate: 4 }, { startSecond: 224, rate: 3 }, { startSecond: 240, rate: 2 }, { startSecond: 256, rate: 1 }
     ];
+    /** 시간 진행 배율이 증가하기 시작하는 게임 경과 시간(초)이다. @type {number} */
+    const TIME_PROGRESS_MULTIPLIER_START_SECOND = 300;
+    /** 시간 진행 배율이 두 배가 되는 간격(초)이다. @type {number} */
+    const TIME_PROGRESS_MULTIPLIER_INTERVAL_SECOND = 20;
+    /** 시간 진행 배율의 최대값이다. @type {number} */
+    const MAX_TIME_PROGRESS_MULTIPLIER = 1024;
     /** 뿌요 폭발로 계산된 ATTACK에 적용할 배율이다. 밸런스 조절 및 임시 테스트에 사용한다. @type {number} */
     const EXPLOSION_REWARD_MULTIPLIER = 1;
     /** 화면에 표시할 점수의 최소 자릿수다. @type {number} */
@@ -1826,6 +1832,7 @@
             countdownStartsGame: true,
             elapsed: 0,
             marginRate: MARGIN_RATE_SCHEDULE[0].rate,
+            timeProgressMultiplier: 1,
             practice: soloMode,
             continuousFever,
             feverRule,
@@ -1917,6 +1924,7 @@
             countdownStartsGame: true,
             elapsed: 0,
             marginRate: MARGIN_RATE_SCHEDULE[0].rate,
+            timeProgressMultiplier: 1,
             practice: false,
             continuousFever: false,
             feverRule,
@@ -2025,7 +2033,7 @@
         const pairQueue = stage.suppliedNextPuyos.map((pair) => [...pair]);
         game = {
             running: true, paused: false, winner: null, ending: null,
-            countdown: 3000, countdownStartsGame: true, elapsed: 0, marginRate: MARGIN_RATE_SCHEDULE[0].rate,
+            countdown: 3000, countdownStartsGame: true, elapsed: 0, marginRate: MARGIN_RATE_SCHEDULE[0].rate, timeProgressMultiplier: 1,
             practice: true, continuousFever: false, feverRule: false, fever: null,
             puzzle: {
                 stage,
@@ -2806,15 +2814,35 @@
         return marginRate;
     }
 
-    /** 현재 게임 경과 시간을 반영해 마진 레이트를 갱신한다. @returns {void} */
-    function refreshGameMarginRate() {
-        if (game) game.marginRate = getMarginRate(game.elapsed);
+    /**
+     * 게임 경과 시간에 해당하는 시간 진행 배율을 구한다.
+     * 300초까지는 1이고, 320초부터 20초 간격으로 두 배씩 증가해 최대 1024가 된다.
+     * @param {number} elapsed 게임 경과 시간(ms)
+     * @returns {number} ATTACK에 곱할 시간 진행 배율
+     */
+    function getTimeProgressMultiplier(elapsed) {
+        const elapsedSecond = Math.max(0, Math.floor(elapsed / 1000));
+        const increaseCount = Math.max(0, Math.floor((elapsedSecond - TIME_PROGRESS_MULTIPLIER_START_SECOND) / TIME_PROGRESS_MULTIPLIER_INTERVAL_SECOND));
+        return Math.min(MAX_TIME_PROGRESS_MULTIPLIER, 2 ** increaseCount);
     }
 
-    /** 점수 증가량을 현재 마진 레이트와 ATTACK 배율로 변환한다. @param {number} point 점수 증가량 @returns {number} ATTACK 증가량 */
-    function calculateExplosionAttack(point) {
-        const marginRate = game?.marginRate ?? MARGIN_RATE_SCHEDULE[0].rate;
-        return point / marginRate * EXPLOSION_REWARD_MULTIPLIER;
+    /** 현재 게임 경과 시간을 반영해 마진 레이트와 시간 진행 배율을 갱신한다. @returns {void} */
+    function refreshGameMarginRate() {
+        if (!game) return;
+        game.marginRate = getMarginRate(game.elapsed);
+        game.timeProgressMultiplier = getTimeProgressMultiplier(game.elapsed);
+    }
+
+    /**
+     * 점수 증가량을 마진 레이트·ATTACK 배율·시간 진행 배율로 변환한다.
+     * 생략한 두 값은 현재 게임 상태를 사용하므로 실제 게임과 AI 예상 공격 계산은 같은 식을 쓴다.
+     * @param {number} point 점수 증가량
+     * @param {number} [marginRate=현재 마진 레이트] ATTACK 계산에 사용할 마진 레이트
+     * @param {number} [timeProgressMultiplier=현재 시간 진행 배율] ATTACK에 곱할 시간 진행 배율
+     * @returns {number} ATTACK 증가량
+     */
+    function calculateExplosionAttack(point, marginRate = game?.marginRate ?? MARGIN_RATE_SCHEDULE[0].rate, timeProgressMultiplier = game?.timeProgressMultiplier ?? 1) {
+        return point / marginRate * EXPLOSION_REWARD_MULTIPLIER * timeProgressMultiplier;
     }
 
     /** 화면용 점수를 소수점 없이 정수 문자열로 변환한다. @param {number} point 점수 @returns {string} 표시용 점수 */
@@ -5132,7 +5160,7 @@
         opponent.phase = 'idle';
         config.preset.forEach(({ x, y, color }) => { player.board[y][x] = color; });
         game = {
-            running: true, paused: false, winner: null, ending: null, countdown: 0, countdownStartsGame: false, elapsed: 0, marginRate: MARGIN_RATE_SCHEDULE[0].rate, practice: true,
+            running: true, paused: false, winner: null, ending: null, countdown: 0, countdownStartsGame: false, elapsed: 0, marginRate: MARGIN_RATE_SCHEDULE[0].rate, timeProgressMultiplier: 1, practice: true,
             difficulty: selectedDifficulty, aiDifficulty: selectedAiDifficulty, themeController, pairQueueColors: COLORS,
             pairQueue: [...config.pairs, ['blue', 'yellow'], ['red', 'green']], energyTransfers: [], players: [player, opponent],
             tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, greenExplosionShown: false, stageThreeGarbageDropped: false, message: config.intro, messageElapsed: 0, messageDuration: stage === 1 ? 2000 : 4800, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1, stageOneStep: stage === 1 ? 'intro' : null, stageOneElapsed: 0 }
@@ -7849,7 +7877,7 @@
      * 현재 일반 대전의 읽기 전용 상태 스냅샷을 반환한다.
      * 반환된 객체와 그 안의 배열을 변경해도 실제 게임 상태에는 영향을 주지 않는다.
      * 메뉴, 튜토리얼 또는 초기화 전 상태에서는 null을 반환한다.
-     * @returns {{screen:string, playerCanControl:boolean, running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, practice:boolean, watch:boolean, continuousFever:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
+     * @returns {{screen:string, playerCanControl:boolean, running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, timeProgressMultiplier:number, practice:boolean, watch:boolean, continuousFever:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
      */
     function getGameState() {
         if (!game || game.tutorial) return null;
@@ -7864,6 +7892,7 @@
             countdown: game.countdown,
             elapsed: game.elapsed,
             marginRate: game.marginRate,
+            timeProgressMultiplier: game.timeProgressMultiplier,
             practice: game.practice,
             watch: game.watch !== undefined,
             continuousFever: game.continuousFever === true,
@@ -11083,6 +11112,7 @@
         getColorBonus,
         calculateExplosionPoint,
         getMarginRate,
+        getTimeProgressMultiplier,
         calculateExplosionAttack,
         formatIntegerPoint,
         formatPoint,
@@ -11147,6 +11177,7 @@
         getColorBonus,
         calculateExplosionPoint,
         getMarginRate,
+        getTimeProgressMultiplier,
         calculateExplosionAttack,
         formatIntegerPoint,
         formatPoint,

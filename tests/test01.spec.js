@@ -2656,6 +2656,33 @@ test('새 게임의 마진 레이트는 70으로 시작한다', async ({ page })
   expect(await page.evaluate(() => window.WebPuyo.getGameState().marginRate)).toBe(70);
 });
 
+test('폭발 점수 보너스는 최소 1이며 시간 진행 배율은 300초 뒤 20초마다 두 배가 된다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const groups = [{ color: 'red', cells: [[0, 0], [1, 0], [2, 0], [3, 0]] }];
+    const elapsedTimes = [0, 300000, 319999, 320000, 340000, 500000, 900000];
+    return {
+      point: window.WebPuyo.calculateExplosionPoint(groups, 1),
+      direct: elapsedTimes.map((elapsed) => window.WebPuyo.getTimeProgressMultiplier(elapsed)),
+      common: elapsedTimes.map((elapsed) => window.WebPuyo.common.getTimeProgressMultiplier(elapsed)),
+      attackAtStart: window.WebPuyo.calculateExplosionAttack(70, 70, 1),
+      attackAtMaximum: window.WebPuyo.calculateExplosionAttack(70, 70, 1024),
+    };
+  });
+  expect(result.point).toBe(40);
+  expect(result.direct).toEqual([1, 1, 1, 2, 4, 1024, 1024]);
+  expect(result.common).toEqual(result.direct);
+  expect(result.attackAtStart).toBe(1);
+  expect(result.attackAtMaximum).toBe(1024);
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().timeProgressMultiplier)).toBe(1);
+});
+
 test('공통 사운드 풀은 시뮬레이터의 뿌요 착지·폭발·주문 효과음을 재생한다', async ({ page }) => {
   await page.evaluate(() => {
     window.WebPuyo.commonSoundPool.puyoFall = 'sounds/test-puyo-fall.ogg';

@@ -49,7 +49,7 @@
 - 한 폭발 단계의 색 뿌요 수를 `N`이라 하면, 점수는 `N * hardMultiplier * max(1, chainBonus + connectionBonus + colorBonus) * 10`이다.
 - 연결 보너스는 각 그룹이 아니라 **동시에 폭발한 색 뿌요 전체 수**로 계산한다.
 - `hardMultiplier`는 그 단계에서 한 번에 파괴한 딱딱뿌요 수에만 적용한다.
-- ATTACK은 현재 마진 레이트로 점수를 나눈 값이다. 마진 레이트는 경과 시간에 따라 달라진다.
+- ATTACK은 현재 마진 레이트로 점수를 나눈 뒤 `EXPLOSION_REWARD_MULTIPLIER`와 시간 진행 배율을 곱한 값이다. 시간 진행 배율은 300초까지 1이고 320초부터 20초마다 두 배가 되어 최대 1024다. `game.timeProgressMultiplier`와 `getTimeProgressMultiplier(elapsed)`를 함께 갱신·검증한다.
 - 싹쓸이는 기본 룰·연습에서 점수와 예약 공격을 준다. 피버 룰·연속 피버에는 일반 싹쓸이 공격을 그대로 적용하지 않는다.
 - 연쇄 중에는 에너지/ATTACK 전달과 DAMAGE 상쇄 순서가 중요하다. `resolveExplosions()`와 전송·정산 함수의 대기 조건을 우회하지 말고, 연쇄 완료 뒤 상대 DAMAGE로 넘어가는 계약을 보존한다.
 
