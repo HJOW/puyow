@@ -2061,6 +2061,33 @@ test('플레이 방법 시연은 에너지 이동 초기화 오류 없이 시작
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 7000 }).toBe('tutorial_demo');
 });
 
+test('플레이 방법 4단계는 보라 싹쓸이 뒤 빨강 두 쌍으로 티켓 공격과 재싹쓸이를 시연한다', async ({ page }) => {
+  await page.addInitScript(() => {
+    let tutorialTime = performance.now();
+    window.requestAnimationFrame = (callback) => window.setTimeout(() => {
+      tutorialTime += 50;
+      callback(tutorialTime);
+    }, 4);
+  });
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const nextPairs = window.WebPuyo.getNextPairs()?.player.nextPairs || [];
+    window.tutorialSawTicketPairSequence ||= nextPairs[0]?.every((color) => color === 'red')
+      && nextPairs[1]?.every((color) => color === 'red');
+    window.tutorialEnteredStageFive ||= nextPairs[0]?.[0] === 'red' && nextPairs[0]?.[1] === 'blue';
+    return {
+      ticketPairSequence: window.tutorialSawTicketPairSequence,
+      enteredStageFive: window.tutorialEnteredStageFive,
+      nextPairs
+    };
+  }), { timeout: 20000, intervals: [20] }).toMatchObject({ ticketPairSequence: true, enteredStageFive: true });
+});
+
 test('플레이 방법 1단계는 지정된 뿌요 순서와 조작 시연 메시지를 사용한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
@@ -2514,6 +2541,25 @@ test('준비된 퍼즐뿌요 스테이지의 모든 힌트는 지원 언어로 �
     }, language);
     await page.reload();
     expect(await page.evaluate(() => window.WebPuyo.PUZZLE_STAGES.map((stage) => window.WebPuyo.translate(stage.hint)))).toEqual(expected);
+  }
+});
+
+test('플레이 방법 4단계의 싹쓸이 안내 문구는 모든 기본 언어로 번역된다', async ({ page }) => {
+  const message = '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.';
+  const expected = {
+    'ko-KR': message,
+    'en-US': 'An all clear makes your next attack much stronger.',
+    'ja-JP': '全消しをすると、次の攻撃が大幅に強化されます。',
+    'zh-CN': '全消后，下一次攻击会大幅增强。',
+    'de-DE': 'Ein All Clear verstärkt deinen nächsten Angriff deutlich.',
+    'fr-FR': 'Un Tout Effacé renforce considérablement ta prochaine attaque.'
+  };
+  for (const [locale, translation] of Object.entries(expected)) {
+    await page.addInitScript((language) => {
+      Object.defineProperty(navigator, 'language', { configurable: true, value: language });
+    }, locale);
+    await page.reload();
+    expect(await page.evaluate((key) => window.WebPuyo.translate(key), message)).toBe(translation);
   }
 });
 
