@@ -2338,7 +2338,7 @@
 
     /**
      * 현재 뿌요 쌍의 모든 착지 가능 위치와 회전을 시뮬레이션한다.
-     * 외부 적이 prepareTurn을 재정의했더라도 피버 룰의 공통 연쇄 전략이 후보를 다시 준비할 때 사용한다.
+     * Enemy.prepareTurn의 기본 구현과 적별 전략이 공통으로 사용한다.
      * @param {PlayerState} player CPU 플레이어
      * @returns {void}
      */
@@ -2451,58 +2451,6 @@
     }
 
     /**
-     * prepareTurn을 마친 컨트롤러에 피버 룰 공통 연쇄 전략과 기본 제공 적의 공통 우선순위를 적용한다.
-     * 피버 공통 전략은 솔로몬을 제외한 외부 적에도 적용하며, 솔로몬의 대체 인공지능은 솔로몬 제외 정책을 유지한다.
-     * @param {PlayerState} player CPU 플레이어
-     * @param {Enemy} controller 결정에 사용할 컨트롤러
-     * @param {boolean} appliesBundledEngineStrategy 기본 제공 적 공통 전략 적용 여부
-     * @returns {void}
-     */
-    function applyPreparedControllerDecision(player, controller, appliesBundledEngineStrategy) {
-        // 외부 적이 후보를 준비하지 않아도 패배 위치 회피는 공통으로 적용한다.
-        const defeatPositionAvoidanceActive = getAiDefeatPositionAvoidanceColumns(player).length > 0;
-        if (defeatPositionAvoidanceActive) prepareAiPlacementSimulations(player);
-        const randomEmptyFieldPlacement = selectRandomEmptyFieldPlacement(player, controller);
-        if (randomEmptyFieldPlacement) {
-            player.aiTarget = randomEmptyFieldPlacement.x;
-            player.aiRotation = ((randomEmptyFieldPlacement.rotation % 4) + 4) % 4;
-            return;
-        }
-        const appliesFeverComboStrategy = game?.feverRule && player.fever?.active && !(player.controller instanceof Solomon);
-        if (appliesFeverComboStrategy) {
-            // 외부 적이 기본 prepareTurn을 호출하지 않았더라도 피버에서는 엔진이 모든 후보를 직접 다시 계산한다.
-            prepareAiPlacementSimulations(player);
-            const feverPlacement = findBestFeverComboPlacement(player) || findBestAttackPlacement(player, player.active.x, null, true);
-            player.aiTarget = feverPlacement.x;
-            player.aiRotation = ((feverPlacement.rotation % 4) + 4) % 4;
-        } else if (appliesBundledEngineStrategy && shouldCounterPlayerChain(player)) {
-            const attackPlacement = findBestAttackPlacement(player, player.active.x, null, true);
-            player.aiTarget = attackPlacement.x;
-            player.aiRotation = ((attackPlacement.rotation % 4) + 4) % 4;
-        } else {
-            player.aiTarget = controller.chooseTarget(player);
-            player.aiRotation = ((controller.chooseRotate(player) % 4) + 4) % 4;
-        }
-        let selectedPlacement = player.aiSimulations.find((simulation) => simulation.x === player.aiTarget && simulation.rotation === player.aiRotation);
-        if (defeatPositionAvoidanceActive && (!selectedPlacement || isAiDefeatPositionPlacementRestricted(player, selectedPlacement))) {
-            const safePlacement = findAiDefeatPositionSafePlacement(player);
-            if (safePlacement) {
-                player.aiTarget = safePlacement.x;
-                player.aiRotation = safePlacement.rotation;
-                selectedPlacement = safePlacement;
-            }
-        }
-        if (!appliesBundledEngineStrategy && !appliesFeverComboStrategy) return;
-        if (selectedPlacement && causesImmediateDefeat(player, selectedPlacement)) {
-            const safePlacement = findBestAttackPlacement(player, player.active.x, null, true);
-            if (safePlacement.positions.length) {
-                player.aiTarget = safePlacement.x;
-                player.aiRotation = safePlacement.rotation;
-            }
-        }
-    }
-
-    /**
      * 조작 단계로 전환하고 다음 뿌요 한 쌍을 꺼낸다.
      * @param {PlayerState} player 전환할 플레이어
      * @returns {void}
@@ -2526,14 +2474,9 @@
         // CPU 플레이어면 이번 뿌요 쌍의 목표 위치와 회전을 미리 결정한다.
         if (player.controller) {
             player.controller.prepareTurn(player);
-            // 피버 필드의 연쇄 최적화는 솔로몬을 제외한 모든 적에 적용하고,
-            // 플레이어 연쇄 대응 같은 나머지 엔진 공통 특수 규칙은 기본 제공 적에만 적용한다.
-            // findBestAttackPlacement가 즉시 패배 후보를 먼저 제외하므로 생존 조건만 이 우선순위보다 앞선다.
-            const appliesBundledEngineStrategy = player.controller instanceof BundledEnemy && !(player.controller instanceof Solomon);
-            applyPreparedControllerDecision(player, player.controller, appliesBundledEngineStrategy);
-            // 기본 제공 적의 개별 쌓기 전략보다 즉시 패배 회피를 항상 우선한다. 피버 룰에서는
-            // isDefeatBoard가 (2,11)과 (3,11)을 모두 검사하므로, 최종 x·회전 조합도 두 칸을
-            // 포함한 실제 폭발·중력 결과로 재검증한 뒤 위험하면 안전한 후보로 교체한다.
+            // 위치·회전의 모든 판단은 컨트롤러의 확장 메서드가 맡고, 게임 루프는 결과만 적용한다.
+            player.aiTarget = player.controller.chooseTarget(player);
+            player.aiRotation = ((player.controller.chooseRotate(player) % 4) + 4) % 4;
             player.aiFastDown = false;
             player.aiDecisionElapsed = 0;
         }
@@ -9040,6 +8983,8 @@
             this.sortPriority = 1;
             this.hidden = false;
             this.notAvail = false;
+            /** 이번 턴에 공통 규칙이 미리 선택한 착지 후보다. 적 구현은 chooseTarget/chooseRotate에서 이를 우선할 수 있다. @type {object|null} */
+            this.preparedPlacement = null;
             // 이 좌표에 뿌요가 있으면 AI는 일반 쌓기 대신 공격력 시뮬레이션을 우선한다.
             this.attackSimulationTriggerPosition = { x: 2, y: 8 };
             this.soundPool = createSoundPool(false);
@@ -9059,12 +9004,36 @@
         }
 
         /**
-         * 위치와 회전별 가상 착지 결과를 계산하여 AI가 사용할 후보 목록을 준비한다.
+         * 위치와 회전별 가상 착지 결과 및 공통 우선 후보를 준비한다.
+         * 외부 적은 이 메서드를 재정의해 독자 전략을 사용할 수 있고, 기본 피버·패배 위치
+         * 규칙을 유지하려면 먼저 super.prepareTurn(player)을 호출하면 된다.
          * @param {PlayerState} player 자동 조작할 플레이어
          * @returns {void}
          */
         prepareTurn(player) {
+            this.preparedPlacement = null;
             prepareAiPlacementSimulations(player);
+            const randomEmptyFieldPlacement = selectRandomEmptyFieldPlacement(player, this);
+            if (randomEmptyFieldPlacement) {
+                this.preparedPlacement = randomEmptyFieldPlacement;
+                return;
+            }
+            if (game?.feverRule && player.fever?.active && !(this instanceof Solomon)) {
+                // 피버 중에는 적별 chooseTarget/chooseRotate보다 연쇄 최적 시뮬레이션을 우선한다.
+                prepareAiPlacementSimulations(player);
+                this.preparedPlacement = findBestFeverComboPlacement(player)
+                    || findBestAttackPlacement(player, player.active.x, null, true);
+                return;
+            }
+            if (getAiDefeatPositionAvoidanceColumns(player).length) {
+                // 패배 위치 경고는 적별 쌓기 전략보다 앞서 안전한 후보를 미리 고른다.
+                this.preparedPlacement = findAiDefeatPositionSafePlacement(player);
+            }
+        }
+
+        /** 이번 턴에 prepareTurn이 정한 공통 우선 후보를 반환한다. @returns {object|null} 미리 선택된 후보 */
+        getPreparedPlacement() {
+            return this.preparedPlacement;
         }
 
         /**
@@ -9073,7 +9042,7 @@
          * @returns {number} 목표 X 좌표
          */
         chooseTarget(player) {
-            return COLUMNS - 1;
+            return this.getPreparedPlacement()?.x ?? COLUMNS - 1;
         }
 
         /**
@@ -9082,7 +9051,7 @@
          * @returns {number} 목표 회전값 (0: 위, 1: 오른쪽, 2: 아래, 3: 왼쪽)
          */
         chooseRotate(player) {
-            return 0;
+            return this.getPreparedPlacement()?.rotation ?? 0;
         }
 
         /**
@@ -9191,6 +9160,44 @@
     class BundledEnemy extends Enemy {
         constructor() { super(); }
 
+        /**
+         * 기본 제공 적의 공통 연쇄 대응 후보를 준비한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @returns {void}
+         */
+        prepareTurn(player) {
+            super.prepareTurn(player);
+            if (this.getPreparedPlacement() || this instanceof Solomon || !shouldCounterPlayerChain(player)) return;
+            this.preparedPlacement = findBestAttackPlacement(player, player.active.x, null, true);
+        }
+
+        /**
+         * 기본 제공 적의 선택이 즉시 패배하면 안전한 공격 후보로 바꾸고 회전값을 반환한다.
+         * chooseRotate를 재정의하는 하위 클래스는 이 메서드를 호출해 같은 보호 규칙을 유지한다.
+         * @param {PlayerState} player 자동 조작할 플레이어
+         * @param {number} rotation 요청한 회전값
+         * @returns {number} 적용할 회전값
+         */
+        selectSafeRotation(player, rotation) {
+            const normalizedRotation = ((rotation % 4) + 4) % 4;
+            const selectedPlacement = player.aiSimulations.find((simulation) => simulation.x === player.aiTarget && simulation.rotation === normalizedRotation);
+            if (!selectedPlacement || !causesImmediateDefeat(player, selectedPlacement)) return normalizedRotation;
+            const safePlacement = findBestAttackPlacement(player, player.active.x, null, true);
+            if (!safePlacement.positions.length) return normalizedRotation;
+            player.aiTarget = safePlacement.x;
+            return safePlacement.rotation;
+        }
+
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 공통 우선 후보 또는 기본 목표 X 좌표 */
+        chooseTarget(player) {
+            return this.getPreparedPlacement()?.x ?? super.chooseTarget(player);
+        }
+
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 즉시 패배 보호를 반영한 회전값 */
+        chooseRotate(player) {
+            return this.selectSafeRotation(player, this.getPreparedPlacement()?.rotation ?? super.chooseRotate(player));
+        }
+
         /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
         getClassType() {
             return 'BundledEnemy';
@@ -9236,9 +9243,9 @@
         applyFallback(player) {
             if (!player.active) return;
             this.fallbackEnemy.prepareTurn(player);
-            applyPreparedControllerDecision(player, this.fallbackEnemy, this.fallbackEnemy instanceof BundledEnemy);
-            this.targetX = player.aiTarget;
-            this.targetRotation = player.aiRotation;
+            this.targetX = this.fallbackEnemy.chooseTarget(player);
+            player.aiTarget = this.targetX;
+            this.targetRotation = ((this.fallbackEnemy.chooseRotate(player) % 4) + 4) % 4;
             player.aiDecisionElapsed = 0;
             this.decisionState = 'fallback';
         }
@@ -9491,6 +9498,8 @@
          * @returns {number} 목표 X 좌표
          */
         chooseTarget(player) {
+            const preparedPlacement = this.getPreparedPlacement();
+            if (preparedPlacement) return preparedPlacement.x;
             const bottomRowsFilled = player.board[0].every((cell) => cell !== null) && player.board[1].every((cell) => cell !== null);
             const safeSimulations = player.aiSimulations.filter((simulation) => !causesImmediateDefeat(player, simulation));
             const simulations = safeSimulations.length ? safeSimulations : player.aiSimulations;
@@ -9518,7 +9527,8 @@
 
         /** 공격력 시뮬레이션 단계에서는 최고 공격 후보가 요구하는 회전을 사용한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
         chooseRotate(player) {
-            return this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player);
+            const preparedPlacement = this.getPreparedPlacement();
+            return this.selectSafeRotation(player, preparedPlacement?.rotation ?? (this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player)));
         }
 
         /**
@@ -9638,6 +9648,8 @@
          * @returns {number} 목표 X 좌표
          */
         chooseTarget(player) {
+            const preparedPlacement = this.getPreparedPlacement();
+            if (preparedPlacement) return preparedPlacement.x;
             // 중앙이 높이 쌓였거나 시뮬레이션 단계면 최대 공격 위치를 선택한다.
             const trigger = this.attackSimulationTriggerPosition;
             const triggerOccupied = player.board[trigger.y][trigger.x] !== null;
@@ -9672,7 +9684,8 @@
 
         /** 공격력 시뮬레이션 단계에서는 최고 공격 후보가 요구하는 회전을 사용한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
         chooseRotate(player) {
-            return this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player);
+            const preparedPlacement = this.getPreparedPlacement();
+            return this.selectSafeRotation(player, preparedPlacement?.rotation ?? (this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player)));
         }
 
         /**
@@ -9915,6 +9928,8 @@
          * @returns {number} 목표 X 좌표
          */
         chooseTarget(player) {
+            const preparedPlacement = this.getPreparedPlacement();
+            if (preparedPlacement) return preparedPlacement.x;
             const safeSimulations = this.getSafeSimulations(player);
             const simulations = safeSimulations.length ? safeSimulations : player.aiSimulations;
             const occupancy = this.getFieldOccupancy(player);
@@ -9944,7 +9959,8 @@
 
         /** 선택된 공격 또는 쌓기 후보의 회전값을 적용한다. @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
         chooseRotate(player) {
-            return this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player);
+            const preparedPlacement = this.getPreparedPlacement();
+            return this.selectSafeRotation(player, preparedPlacement?.rotation ?? (this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player)));
         }
 
         /**
@@ -10099,6 +10115,8 @@
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 X 좌표 */
         chooseTarget(player) {
+            const preparedPlacement = this.getPreparedPlacement();
+            if (preparedPlacement) return preparedPlacement.x;
             const trigger = this.attackSimulationTriggerPosition;
             const triggerOccupied = player.board[trigger.y][trigger.x] !== null;
             if (triggerOccupied || player.damage >= AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD) {
@@ -10126,7 +10144,8 @@
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
         chooseRotate(player) {
-            return this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player);
+            const preparedPlacement = this.getPreparedPlacement();
+            return this.selectSafeRotation(player, preparedPlacement?.rotation ?? (this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player)));
         }
 
         /** 은빛 말과 그리폰 날개, 차가운 눈을 귀엽게 표현한 세레의 세 표정 */
@@ -10220,6 +10239,8 @@
          * @returns {number} 목표 X 좌표
          */
         chooseTarget(player) {
+            const preparedPlacement = this.getPreparedPlacement();
+            if (preparedPlacement) return preparedPlacement.x;
             const safeSimulations = this.getSafeSimulations(player);
             const simulations = safeSimulations.length ? safeSimulations : player.aiSimulations;
             const occupancy = this.getFieldOccupancy(player);
@@ -10383,6 +10404,8 @@
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 X 좌표 */
         chooseTarget(player) {
+            const preparedPlacement = this.getPreparedPlacement();
+            if (preparedPlacement) return preparedPlacement.x;
             const safeSimulations = this.getSafeSimulations(player);
             const simulations = safeSimulations.length ? safeSimulations : player.aiSimulations;
             const occupancy = this.getFieldOccupancy(player);
@@ -10513,6 +10536,8 @@
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 X 좌표 */
         chooseTarget(player) {
+            const preparedPlacement = this.getPreparedPlacement();
+            if (preparedPlacement) return preparedPlacement.x;
             const safeSimulations = this.getSafeSimulations(player);
             const simulations = safeSimulations.length ? safeSimulations : player.aiSimulations;
             const occupancy = this.getFieldOccupancy(player);
@@ -10602,6 +10627,8 @@
          * @returns {number} 목표 X 좌표
          */
         chooseTarget(player) {
+            const preparedPlacement = this.getPreparedPlacement();
+            if (preparedPlacement) return preparedPlacement.x;
             if (this.getFieldOccupancy(player) > 0.3) return super.chooseTarget(player);
 
             const safeSimulations = this.getSafeSimulations(player);
@@ -10666,10 +10693,10 @@
          * @param {PlayerState} player 자동 조작할 플레이어
          * @returns {number} 현재 X 좌표
          */
-        chooseTarget(player) { return player.active ? player.active.x : 2; }
+        chooseTarget(player) { return this.getPreparedPlacement()?.x ?? (player.active ? player.active.x : 2); }
 
         /** @returns {number} 회전하지 않는 기본값 */
-        chooseRotate() { return 0; }
+        chooseRotate(player) { return this.selectSafeRotation(player, this.getPreparedPlacement()?.rotation ?? 0); }
 
         /** @returns {boolean} 빠른 하강을 사용하지 않으므로 항상 false */
         useFastDown() { return false; }

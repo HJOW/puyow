@@ -1027,32 +1027,28 @@ test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_gallery')).enemies)).toContain('FeverGalleryEnemy');
 });
 
-test('피버 상태에서는 외부 적도 개별 전략 대신 연쇄 최적 위치와 회전을 사용한다', async ({ page }) => {
+test('Enemy 기본 구현은 피버 상태에서 연쇄 최적 위치와 회전을 준비한다', async ({ page }) => {
   await page.evaluate(() => {
     class FeverComboPriorityEnemy extends window.WebPuyo.Enemy {
       constructor() {
         super();
         this.sortPriority = -100;
-        this.customDecisionCalled = false;
       }
 
       getClassType() { return 'FeverComboPriorityEnemy'; }
       getName() { return '피버 연쇄 최적화 테스트 적'; }
 
-      // super.prepareTurn을 호출하지 않는 외부 적이어도 엔진이 피버 후보를 다시 준비해야 한다.
       prepareTurn(player) {
-        this.player = player;
-        window.feverComboPriorityEnemy = this;
         player.fever.active = true;
         player.fever.leftTime = 10000;
         player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
         for (let x = 0; x < 3; x += 1) player.board[0][x] = 'red';
         player.active.colors = ['red', 'blue'];
-        player.aiSimulations = [];
+        super.prepareTurn(player);
+        player.fallTimer = -100000;
+        this.player = player;
+        window.feverComboPriorityEnemy = this;
       }
-
-      chooseTarget() { this.customDecisionCalled = true; return 5; }
-      chooseRotate() { this.customDecisionCalled = true; return 2; }
     }
     window.WebPuyo.registerOpponent({ createController: () => new FeverComboPriorityEnemy() });
   });
@@ -1075,9 +1071,48 @@ test('피버 상태에서는 외부 적도 개별 전략 대신 연쇄 최적 �
       rotation: controller.player.aiRotation,
       combo: placement?.combo,
       simulationCount: controller.player.aiSimulations.length,
-      customDecisionCalled: controller.customDecisionCalled,
     };
-  })).toEqual({ target: 0, rotation: 0, combo: 1, simulationCount: 22, customDecisionCalled: false });
+  }), { timeout: 10000 }).toEqual({ target: 0, rotation: 0, combo: 1, simulationCount: 22 });
+});
+
+test('외부 적은 피버 상태에서도 세 선택 메서드를 재정의해 독자 결정을 사용할 수 있다', async ({ page }) => {
+  await page.evaluate(() => {
+    class CustomFeverDecisionEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; this.targetCalled = false; this.rotationCalled = false; }
+      getClassType() { return 'CustomFeverDecisionEnemy'; }
+      getName() { return '피버 독자 결정 테스트 적'; }
+
+      prepareTurn(player) {
+        player.fever.active = true;
+        player.fever.leftTime = 10000;
+        player.fallTimer = -100000;
+        this.player = player;
+        window.customFeverDecisionEnemy = this;
+      }
+
+      chooseTarget() { this.targetCalled = true; return 5; }
+      chooseRotate() { this.rotationCalled = true; return 2; }
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new CustomFeverDecisionEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const controller = window.customFeverDecisionEnemy;
+    return controller?.player ? {
+      target: controller.player.aiTarget,
+      rotation: controller.player.aiRotation,
+      targetCalled: controller.targetCalled,
+      rotationCalled: controller.rotationCalled,
+    } : null;
+  }), { timeout: 10000 }).toEqual({ target: 5, rotation: 2, targetCalled: true, rotationCalled: true });
 });
 
 test('기본 룰 적은 패배 위치 경고에서 X=2의 비폭발 배치를 최우선으로 피한다', async ({ page }) => {
@@ -1095,8 +1130,8 @@ test('기본 룰 적은 패배 위치 경고에서 X=2의 비폭발 배치를 �
         window.standardDefeatPositionEnemy = this;
       }
 
-      chooseTarget() { return 2; }
-      chooseRotate() { return 0; }
+      chooseTarget(player) { return super.chooseTarget(player); }
+      chooseRotate(player) { return super.chooseRotate(player); }
       useFastDown() { return false; }
     }
     window.WebPuyo.registerOpponent({ createController: () => new StandardDefeatPositionEnemy() });
@@ -1134,8 +1169,8 @@ test('피버 룰의 비피버 적은 한 패배 위치 경고에도 X=2와 X=3�
         window.feverDefeatPositionEnemy = this;
       }
 
-      chooseTarget() { return 2; }
-      chooseRotate() { return 0; }
+      chooseTarget(player) { return super.chooseTarget(player); }
+      chooseRotate(player) { return super.chooseRotate(player); }
       useFastDown() { return false; }
     }
     window.WebPuyo.registerOpponent({ createController: () => new FeverDefeatPositionEnemy() });
@@ -1178,8 +1213,8 @@ test('패배 위치 경고 중에도 X=2에 놓아 폭발하는 기본 룰 적 �
         window.explodingDefeatPositionEnemy = this;
       }
 
-      chooseTarget() { return 2; }
-      chooseRotate() { return 0; }
+      chooseTarget(player) { return super.chooseTarget(player); }
+      chooseRotate(player) { return super.chooseRotate(player); }
       useFastDown() { return false; }
     }
     window.WebPuyo.registerOpponent({ createController: () => new ExplodingDefeatPositionEnemy() });
