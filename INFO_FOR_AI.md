@@ -110,7 +110,7 @@
 - `Andrealphus`는 `PuyoW.Andrealphus`로도 공개된 `BundledEnemy` 하위의 출시된 8번째 적이다. 키마리스와 독립된 동일 판단 흐름(일반·위기 빠른 하강 지연 비율, 화면 예고 위협량 반영 포함)을 사용하되 평상시 목표는 7연쇄·2수 탐색이다. 피버 중에는 `Enemy.prepareTurn()`이 준비하는 공통 연쇄 최적 후보를 그대로 우선한다. 2수 읽기 배치의 X와 회전값을 모두 실제 조작에 적용한다. 안드레알푸스의 조정 때문에 키마리스의 목표 6연쇄·2수 계약을 바꾸지 않는다.
 - `Flauros`는 `BundledEnemy` 하위의 9번째 출시 예정 적이다. `notAvail`을 유지하며, 전용 AI가 구현되기 전에는 이동·회전·빠른 하강 없이 자연 낙하만 하도록 `prepareTurn()`/선택 메서드에 TODO가 있다. 일반·위기·우는 표정의 표범 초상화와 다국어 이름은 이미 등록되어 있다.
 - `WarningPuyo` 확장은 양의 정수 `unitCount`, 비어 있지 않은 `type`, `draw(context, x, y, cellSize)`를 갖춰야 한다.
-- 사운드는 `SoundPool`/`CommonSoundPool`/`EnemySoundPool`과 `setEnemySoundPool()`을 사용한다. 배경음은 중복 재생하지 않고 일시정지·음소거·볼륨 상태와 동기화해야 한다.
+- 사운드는 `SoundPool`/`CommonSoundPool`/`EnemySoundPool`과 `setEnemySoundPool()`을 사용한다. 배경음은 중복 재생하지 않고 일시정지·음소거·볼륨 상태와 동기화해야 한다. 설정 화면의 배경음악·효과음 슬라이더 값은 슬라이더 오른쪽(논리 X=930)에 표시한다.
 
 ## 3D와 공통 함수
 

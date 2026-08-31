@@ -5613,7 +5613,7 @@
             if (row.kind === 'slider') {
                 context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(540, row.y - 8, 360, 16);
                 context.fillStyle = '#4cc9b0'; context.fillRect(542, row.y - 6, 356 * row.value / 100, 12);
-                context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 915, row.y + 4);
+                context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 930, row.y + 4);
             } else if (row.kind === 'radio') {
                 row.options.forEach((option) => {
                     const selected = row.value === option.value;

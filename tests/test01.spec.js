@@ -315,6 +315,22 @@ test('설정의 AI 서비스 제공자는 OpenAI만 표시하고 기존 Google �
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('OpenAI');
 });
 
+test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여백에 표시한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { musicVolume: 42, effectsVolume: 73 } }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  await expect.poll(() => page.evaluate(() => {
+    const values = window.testCanvasTextCalls.filter((call) => ['42', '73'].includes(call.text));
+    return {
+      music: values.some((call) => call.text === '42' && call.x === 930 && call.y === 149),
+      effects: values.some((call) => call.text === '73' && call.x === 930 && call.y === 199),
+    };
+  })).toEqual({ music: true, effects: true });
+});
+
 test('플레이어 이름은 설정에 저장되며 게임 화면에 적용되고 최대 10자로 제한된다', async ({ page }) => {
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('PLAYER 1'))).toBe(true);
