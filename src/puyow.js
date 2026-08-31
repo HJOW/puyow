@@ -110,10 +110,12 @@
     const MESSAGE_FONT = buildFontStack(MESSAGE_FONT_NAME);
     /** 4방향 인접 좌표 계산에 사용할 X, Y 변화량이다. @type {number[][]} */
     const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    /** 기본 룰·연습의 싹쓸이 성공 시 상대방에게 보낼 방해뿌요 수다. 피버 룰과 연속 피버에는 적용하지 않는다. @type {number} */
-    const ALL_CLEAR_DAMAGE = 12;
-    /** 싹쓸이 성공 시 즉시 더할 점수다. @type {number} */
-    const ALL_CLEAR_POINT = 100;
+    /** 싹쓸이 티켓을 사용한 폭발에 직접 더할 ATTACK이다. 마진 레이트·시간 배율은 적용하지 않는다. @type {number} */
+    const ALL_CLEAR_TICKET_ATTACK = 30;
+    /** 싹쓸이 티켓을 사용한 폭발에 직접 더할 점수다. 30 ATTACK을 마진 레이트 70으로 환산한 값이다. @type {number} */
+    const ALL_CLEAR_TICKET_POINT = 2100;
+    /** 피버 룰·연속 피버의 기존 싹쓸이 점수 보너스다. 티켓 적용 범위 밖이므로 유지한다. @type {number} */
+    const FEVER_ALL_CLEAR_POINT = 100;
     /** 싹쓸이 디버깅 시 기본 룰·피버 룰·연습의 첫 두 뿌요 쌍을 같은 색으로 고정할지 여부다. @type {boolean} */
     const DEBUG_CLEAR_RULE_MODE = false;
     /** 싹쓸이 황금빛 필드 효과의 지속 시간(ms)이다. @type {number} */
@@ -1573,7 +1575,8 @@
             this.aiSimulations = [];
             this.hasPlacedPuyoSinceAllClear = false;
             this.allClearEffectElapsed = 0;
-            this.pendingAllClearDamage = 0;
+            /** 다음 색 뿌요 폭발에 점수 2100·ATTACK 30을 더하는 싹쓸이 티켓 보유 여부다. */
+            this.allClearTicket = false;
             /** 실제 방해뿌요 낙하가 일어난 누적 횟수다. 피버 턴 정산 대기에 사용한다. @type {number} */
             this.garbageDropCount = 0;
             // 실제 수치는 먼저 차감하되, 예고뿌요 표시는 에너지 도착까지 유지한다.
@@ -2255,7 +2258,7 @@
         player.effects = null;
         player.hasPlacedPuyoSinceAllClear = false;
         player.allClearEffectElapsed = 0;
-        player.pendingAllClearDamage = 0;
+        player.allClearTicket = false;
         if (countTurn) feverState.turn += 1;
         feverState.pendingCombo = 0;
         feverState.pendingAllClear = false;
@@ -3209,6 +3212,7 @@
         // 이번 단계에 폭발할 색 뿌요가 있으면 점수와 공격을 처리한다.
         if (exploding.length) {
             const resolution = getExplosionResolution(player.board, exploding);
+            const ticketBonus = consumeAllClearTicket(player);
             player.combo += 1;
             if (game?.puzzle && player === game.players[0]) {
                 game.puzzle.pendingMaxExplosion = Math.max(game.puzzle.pendingMaxExplosion, exploding.length);
@@ -3217,8 +3221,8 @@
             }
             playComboSounds(player);
             const point = calculateExplosionPoint(explosionGroups, player.combo, resolution.brokenHardGarbageCount);
-            player.point += point;
-            player.attack += calculateExplosionAttack(point);
+            player.point += point + ticketBonus.point;
+            player.attack += calculateExplosionAttack(point) + ticketBonus.attack;
             // 피버 룰에서는 상쇄할 DAMAGE 또는 상대 ATTACK이 있으면 폭발 공격을 최소 1 이상 보장한다.
             if (game?.feverRule && Math.floor(player.attack) < 1 && (Math.floor(player.damage) > 0 || Math.floor(opponent.attack) > 0)) {
                 player.attack = 1;
@@ -3248,6 +3252,18 @@
         } else {
             player.phase = 'garbage';
         }
+    }
+
+    /** 현재 플레이가 피버 계열이 아닌 싹쓸이 티켓 적용 대상인지 확인한다. @returns {boolean} 티켓을 사용·획득하는 모드인지 여부 */
+    function usesAllClearTicket() {
+        return !game?.feverRule && !game?.continuousFever;
+    }
+
+    /** 보유 중인 싹쓸이 티켓을 이번 색 뿌요 폭발에 적용하고 소진한다. @param {PlayerState} player 티켓 보유 여부를 확인할 플레이어 @returns {{point:number,attack:number}} 이번 폭발에 더할 점수와 ATTACK */
+    function consumeAllClearTicket(player) {
+        if (!usesAllClearTicket() || !player.allClearTicket) return { point: 0, attack: 0 };
+        player.allClearTicket = false;
+        return { point: ALL_CLEAR_TICKET_POINT, attack: ALL_CLEAR_TICKET_ATTACK };
     }
 
     /**
@@ -3332,18 +3348,6 @@
             clearAnnouncedAttack(player);
         }
         player.lastAttackTransfer = null;
-    }
-
-    /**
-     * 싹쓸이 보너스 피해를 상대 필드로 전달하는 에너지 연출을 등록한다.
-     * @param {PlayerState} player 싹쓸이를 달성한 플레이어
-     * @param {PlayerState} opponent 보너스를 받을 상대 플레이어
-     * @param {number} amount 전달할 피해량
-     * @returns {void}
-     */
-    function sendAllClearEnergy(player, opponent, amount) {
-        if (amount < 1) return;
-        queueEnergyTransfer(player, opponent, { x: player.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP + VISIBLE_ROWS * CELL / 2 }, 0, 0, amount);
     }
 
     /**
@@ -3562,25 +3566,18 @@
     }
 
     function isWinnerSettlementPending(player) {
-        return isResolutionPhase(player.phase) || player.allClearEffectElapsed > 0 || player.pendingAllClearDamage > 0 || hasPendingEnergyTransfers();
+        return isResolutionPhase(player.phase) || player.allClearEffectElapsed > 0 || hasPendingEnergyTransfers();
     }
 
     /**
-     * 싹쓸이 표시 시간을 진행하고 효과가 끝나면 예약된 기본 룰 공격 에너지를 보낸다.
+     * 싹쓸이 표시 시간을 진행한다. 티켓은 이미 부여되어 있으므로 효과 종료 시 별도 공격을 보내지 않는다.
      * 패배 연출 중에도 호출할 수 있도록 일반 플레이어 단계 갱신과 분리한다.
      * @param {PlayerState} player 싹쓸이를 발생시킨 플레이어
-     * @param {PlayerState} opponent 공격을 받을 상대
      * @param {number} delta 이전 프레임 후 경과한 밀리초
      * @returns {void}
      */
-    function updateAllClearEffect(player, opponent, delta) {
+    function updateAllClearEffect(player, delta) {
         player.allClearEffectElapsed = Math.max(0, player.allClearEffectElapsed - delta);
-        // 패배 연출이 시작된 프레임 경계에서 효과 시간이 이미 0이 되었더라도 예약 공격은
-        // 반드시 상대 예고뿌요까지 전달되도록 남은 값을 즉시 에너지로 전환한다.
-        if (player.allClearEffectElapsed === 0 && player.pendingAllClearDamage > 0) {
-            sendAllClearEnergy(player, opponent, player.pendingAllClearDamage);
-            player.pendingAllClearDamage = 0;
-        }
     }
 
     /** 완료한 연쇄·싹쓸이 여부와 직전 목표로 다음 목표 연쇄를 계산한다. @param {number} combo 완료 연쇄 @param {boolean} allClear 싹쓸이 여부 @param {number} previousTarget 직전 목표 연쇄 @returns {number} 4~12 범위의 다음 목표 */
@@ -3601,7 +3598,6 @@
     /** 연쇄에 따른 ATTACK·DAMAGE 전달과 싹쓸이 연출이 끝났는지 확인한다. 상대 방해뿌요 낙하는 다음 피버 스테이지와 병행한다. @param {PlayerState} player 사용자 @returns {boolean} 아직 기다려야 하는지 여부 */
     function isContinuousFeverSettlementPending(player) {
         return player.allClearEffectElapsed > 0
-            || player.pendingAllClearDamage > 0
             || hasPendingEnergyTransfers();
     }
 
@@ -3625,7 +3621,6 @@
     /** 피버 룰 연쇄의 ATTACK·DAMAGE 전달과 싹쓸이 연출이 끝났는지 확인한다. 상대 방해뿌요 낙하는 다음 피버 스테이지와 병행한다. @param {PlayerState} player 연쇄 플레이어 @returns {boolean} 대기 필요 여부 */
     function isFeverRuleSettlementPending(player) {
         return player.allClearEffectElapsed > 0
-            || player.pendingAllClearDamage > 0
             || hasPendingEnergyTransfers();
     }
 
@@ -3681,7 +3676,7 @@
         const puzzle = game?.puzzle;
         if (!puzzle) return true;
         puzzle.pendingWarningAmount = Math.max(puzzle.pendingWarningAmount, warningAmount(opponent, player));
-        if (player.allClearEffectElapsed > 0 || player.pendingAllClearDamage > 0 || hasPendingEnergyTransfers()) return false;
+        if (player.allClearEffectElapsed > 0 || hasPendingEnergyTransfers()) return false;
         if (isPuzzleStageCleared(player)) {
             finishPuzzleStage(player);
             return true;
@@ -3715,7 +3710,7 @@
         // 별도로 진행한다. 시작 시점의 스냅샷에 의존하지 않고 매 프레임 정산 상태를 확인해야
         // 양측 어느 쪽이 먼저 패배하더라도 싹쓸이 예고뿌요 생성까지 완료할 수 있다.
         if (isResolutionPhase(ending.winner.phase)) updatePlayer(ending.winner, ending.loser, delta);
-        else updateAllClearEffect(ending.winner, ending.loser, delta);
+        else updateAllClearEffect(ending.winner, delta);
         // 패배 연출과 승자의 연쇄·싹쓸이·에너지 이동이 모두 끝난 뒤에만 게임을 종료한다.
         if (ending.elapsed > ending.duration && !isWinnerSettlementPending(ending.winner)) {
             recordEnemyClear(ending.winner);
@@ -3737,7 +3732,7 @@
         player.comboPopups = player.comboPopups
             .map((popup) => ({ ...popup, elapsed: popup.elapsed + delta }))
             .filter((popup) => popup.elapsed < 2000);
-        updateAllClearEffect(player, opponent, delta);
+        updateAllClearEffect(player, delta);
         if (game?.puzzle && player === game.players[0]) {
             game.puzzle.pendingWarningAmount = Math.max(game.puzzle.pendingWarningAmount, warningAmount(opponent, player));
         }
@@ -3770,7 +3765,7 @@
             // 연속 피버의 DAMAGE는 다음 피버 스테이지가 배치될 때까지 예고로만 남기며 방해뿌요를 생성하지 않는다.
             if (game?.continuousFever) return;
             // 연습·플레이 방법에서는 연쇄와 그에 딸린 모든 에너지 이동이 끝난 뒤에만 방해뿌요를 떨어뜨린다.
-            if (game?.practice && (opponent.combo > 0 || isResolutionPhase(opponent.phase) || opponent.allClearEffectElapsed > 0 || opponent.pendingAllClearDamage > 0 || hasPendingEnergyTransfers())) return;
+            if (game?.practice && (opponent.combo > 0 || isResolutionPhase(opponent.phase) || opponent.allClearEffectElapsed > 0 || hasPendingEnergyTransfers())) return;
             if (player.damage > 0) dropGarbage(player);
             return;
         }
@@ -3887,10 +3882,10 @@
                 const triggeredAllClear = player.allClearEnabled && isAllClear && player.hasPlacedPuyoSinceAllClear;
                 if (triggeredAllClear) {
                     playSound(commonSoundPool?.clears, 'effects', '싹쓸이 효과음');
-                    // 피버 룰·연속 피버의 싹쓸이는 목표 연쇄 보너스와 황금 연출만 제공한다.
-                    // 뿌요 폭발에서 생긴 ATTACK 에너지는 resolveExplosions()의 기존 경로로 그대로 전달된다.
-                    if (!game?.feverRule && !game?.continuousFever) player.pendingAllClearDamage += ALL_CLEAR_DAMAGE;
-                    player.point += ALL_CLEAR_POINT;
+                    // 피버 계열은 기존처럼 목표 연쇄 보너스와 황금 연출만 제공한다.
+                    // 그 밖의 모드는 다음 색 뿌요 폭발에만 적용할 티켓을 받으며, 별도 ATTACK은 만들지 않는다.
+                    if (usesAllClearTicket()) player.allClearTicket = true;
+                    else player.point += FEVER_ALL_CLEAR_POINT;
                     player.allClearEffectElapsed = ALL_CLEAR_EFFECT_DURATION;
                     player.hasPlacedPuyoSinceAllClear = false;
                 }
@@ -4610,6 +4605,13 @@
         const puzzleTargetField = isPuzzleTargetField(player);
         drawFieldBezelBackground(player, { x: x - CELL, y: FIELD_TOP - CELL, width: CELL * 8, height: CELL * 14, player });
         drawFieldPlayerBackground(player, { x, y: FIELD_TOP, width: CELL * 6, height: CELL * 12, player });
+        if (player.allClearTicket) {
+            context.save();
+            context.fillStyle = '#ffd54f';
+            context.globalAlpha = 0.3;
+            context.fillRect(x, FIELD_TOP, CELL * 6, CELL * 12);
+            context.restore();
+        }
         if (player.allClearEffectElapsed > 0) {
             context.save();
             context.fillStyle = '#ffd54f';
@@ -5149,7 +5151,7 @@
             1: { pairs: [['red', 'blue'], ['yellow', 'green'], ['yellow', 'red']], targets: [3, 2, 3], intro: '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어' },
             2: { pairs: [['red', 'red'], ['green', 'green'], ['green', 'green']], targets: [2, 1, 1], intro: '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.' },
             3: { pairs: [['green', 'red']], targets: [1], intro: '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.' },
-            4: { pairs: [['purple', 'purple']], targets: [2], intro: '게임 중 싹쓸이를 하면 강력한 공격을 할 수 있어.' },
+            4: { pairs: [['purple', 'purple']], targets: [2], intro: '게임 중 싹쓸이를 하면 티켓을 얻어. 다음 폭발의 점수와 ATTACK이 크게 늘어나.' },
             5: { pairs: [['red', 'blue']], targets: [2], intro: '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.' }
         };
         return { ...configs[stage], preset: presets[stage] || [] };
@@ -5168,7 +5170,7 @@
             running: true, paused: false, winner: null, ending: null, countdown: 0, countdownStartsGame: false, elapsed: 0, marginRate: MARGIN_RATE_SCHEDULE[0].rate, timeProgressMultiplier: 1, practice: true,
             difficulty: selectedDifficulty, aiDifficulty: selectedAiDifficulty, themeController, pairQueueColors: COLORS,
             pairQueue: [...config.pairs, ['blue', 'yellow'], ['red', 'green']], energyTransfers: [], players: [player, opponent],
-            tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, greenExplosionShown: false, stageThreeGarbageDropped: false, message: config.intro, messageElapsed: 0, messageDuration: stage === 1 ? 2000 : 4800, actionFlags: {}, allClearPreviewElapsed: null, allClearGarbageShown: false, resultElapsed: 0, finalFocus: 1, stageOneStep: stage === 1 ? 'intro' : null, stageOneElapsed: 0 }
+            tutorial: { stage, config, mode: 'intro', elapsed: 0, pieceElapsed: 0, placedCount: 0, lastCombo: 0, greenExplosionShown: false, stageThreeGarbageDropped: false, message: config.intro, messageElapsed: 0, messageDuration: stage === 1 ? 2000 : 4800, actionFlags: {}, resultElapsed: 0, finalFocus: 1, stageOneStep: stage === 1 ? 'intro' : null, stageOneElapsed: 0 }
         };
         updateNextPairs(player);
         showTutorialMessage(config.intro, game.tutorial.messageDuration);
@@ -5293,13 +5295,7 @@
             }
             return;
         }
-        let holdAllClearGarbage = false;
-        if (tutorial.stage === 4 && opponent.damage >= ALL_CLEAR_DAMAGE) {
-            if (tutorial.allClearPreviewElapsed === null) tutorial.allClearPreviewElapsed = 0;
-            tutorial.allClearPreviewElapsed += delta;
-            holdAllClearGarbage = tutorial.allClearPreviewElapsed < 2000;
-        }
-        if (!holdAllClearGarbage) updatePlayer(opponent, player, delta);
+        updatePlayer(opponent, player, delta);
         if (tutorial.stage === 1) {
             updateTutorialStageOne(player, opponent, delta);
             return;
@@ -5307,7 +5303,8 @@
         // 3단계는 예고 표시만으로 끝내지 않고, 적 필드의 실제 방해뿌요 낙하를 한 번 확인한다.
         if (tutorial.stage === 3 && opponent.phase !== 'idle') tutorial.stageThreeGarbageDropped = true;
         const waitingForGarbage = tutorial.stage >= 2 && opponent.phase !== 'idle' && player.phase === 'control' && player.placedPairCount > 0;
-        player.tutorialHold = tutorial.stage === 4 && (player.allClearEffectElapsed > 0 || holdAllClearGarbage);
+        // 4단계의 싹쓸이는 티켓만 주므로, 황금 연출이 끝나면 별도 방해뿌요 대기 없이 진행한다.
+        player.tutorialHold = tutorial.stage === 4 && player.allClearEffectElapsed > 0;
         if (!waitingForGarbage) updatePlayer(player, opponent, delta);
         const currentPiece = Math.min(player.placedPairCount, tutorial.config.pairs.length - 1);
         if (player.placedPairCount !== tutorial.placedCount) {
@@ -5332,13 +5329,10 @@
                 }
             }
         }
-        if (tutorial.stage === 4 && tutorial.allClearPreviewElapsed !== null && tutorial.allClearPreviewElapsed >= 2000 && opponent.phase === 'idle' && opponent.damage <= 0) {
-            tutorial.allClearGarbageShown = true;
-        }
-        const stageFourComplete = tutorial.stage !== 4 || (tutorial.allClearGarbageShown && player.allClearEffectElapsed <= 0 && player.pendingAllClearDamage <= 0 && !hasPendingEnergyTransfers());
+        const stageFourComplete = tutorial.stage !== 4 || (player.allClearTicket && player.allClearEffectElapsed <= 0 && !hasPendingEnergyTransfers());
         const stageTwoComplete = tutorial.stage !== 2 || (tutorial.greenExplosionShown && !hasPendingEnergyTransfers());
         const stageThreeComplete = tutorial.stage !== 3 || (tutorial.stageThreeGarbageDropped && !hasPendingEnergyTransfers());
-        if (player.placedPairCount >= tutorial.config.pairs.length && player.phase === 'control' && opponent.phase === 'idle' && !tutorial.message && !holdAllClearGarbage && stageFourComplete && stageTwoComplete && stageThreeComplete) {
+        if (player.placedPairCount >= tutorial.config.pairs.length && player.phase === 'control' && opponent.phase === 'idle' && !tutorial.message && stageFourComplete && stageTwoComplete && stageThreeComplete) {
             if (tutorial.stage < 5) enterTutorialStage(tutorial.stage + 1);
         }
     }
@@ -5939,6 +5933,8 @@
         if (!simulator || simulator.mode !== 'draw') return;
         simulator.backup = simulator.player.board.map((row) => [...row]);
         simulator.mode = 'simulation'; simulator.player.effects = null; simulator.player.comboPopups = []; simulator.energyTransfers = [];
+        simulator.player.hasPlacedPuyoSinceAllClear = simulator.player.board.some((row) => row.some((cell) => cell !== null));
+        simulator.player.allClearEffectElapsed = 0; simulator.player.allClearTicket = false;
         simulator.target.damage = 0; simulator.target.attack = 0; simulator.target.warningReductionDelay = 0; simulator.target.outgoingWarningDelay = 0; simulator.target.announcedAttack = 0; simulator.target.announcedAttackEnergy = null;
         startGravity(simulator.player, 'simulatorExplode');
         syncBackgroundMusic();
@@ -5950,6 +5946,7 @@
         if (simulator.backup) simulator.player.board = simulator.backup.map((row) => [...row]);
         simulator.player.gravityAnimation = null; simulator.player.effects = null; simulator.player.phase = 'idle';
         simulator.player.point = 0; simulator.player.attack = 0; simulator.player.damage = 0; simulator.player.combo = 0; simulator.player.comboPopups = [];
+        simulator.player.hasPlacedPuyoSinceAllClear = false; simulator.player.allClearEffectElapsed = 0; simulator.player.allClearTicket = false;
         simulator.target.damage = 0; simulator.target.attack = 0; simulator.target.warningReductionDelay = 0; simulator.target.outgoingWarningDelay = 0; simulator.target.announcedAttack = 0; simulator.target.announcedAttackEnergy = null; simulator.energyTransfers = [];
         simulator.mode = 'draw'; simulator.focusArea = 'palette'; simulator.paletteFocus = 0; simulator.waitTimer = 0;
         syncBackgroundMusic();
@@ -5962,14 +5959,15 @@
         const exploding = explosionGroups.flatMap((group) => group.cells);
         if (!exploding.length) return false;
         const resolution = getExplosionResolution(player.board, exploding);
+        const ticketBonus = consumeAllClearTicket(player);
         applyExplosionResolution(player.board, resolution);
         player.combo += 1;
         playComboSounds(player);
         const center = exploding.reduce((sum, [x, y]) => ({ x: sum.x + x, y: sum.y + y }), { x: 0, y: 0 });
         player.comboPopups.push({ x: center.x / exploding.length, y: center.y / exploding.length, combo: player.combo, elapsed: 0 });
         const point = calculateExplosionPoint(explosionGroups, player.combo, resolution.brokenHardGarbageCount);
-        player.point += point;
-        player.attack += calculateExplosionAttack(point);
+        player.point += point + ticketBonus.point;
+        player.attack += calculateExplosionAttack(point) + ticketBonus.attack;
         sendAttackEnergy(player, simulator.target, center.x / exploding.length, center.y / exploding.length);
         player.effects = { cells: [...resolution.removed.values()], elapsed: 0, duration: 420 }; player.phase = 'simulatorEffect';
         return true;
@@ -5983,9 +5981,10 @@
         player.comboPopups = player.comboPopups
             .map((popup) => ({ ...popup, elapsed: popup.elapsed + delta }))
             .filter((popup) => popup.elapsed < 2000);
+        updateAllClearEffect(player, delta);
         if (simulator.mode === 'complete') return;
         if (simulator.mode === 'settling') {
-            if (!hasPendingEnergyTransfers()) { simulator.mode = 'complete'; simulator.focusArea = 'complete'; }
+            if (player.allClearEffectElapsed <= 0 && !hasPendingEnergyTransfers()) { simulator.mode = 'complete'; simulator.focusArea = 'complete'; }
             return;
         }
         if (player.phase === 'gravity') {
@@ -5998,8 +5997,15 @@
             }
             if (!explodeSimulatorPuyos()) {
                 deliverFinalAttackEnergy(player, simulator.target);
+                const triggeredAllClear = player.allClearEnabled && player.hasPlacedPuyoSinceAllClear && isAllClearBoard(player.board);
+                if (triggeredAllClear) {
+                    playSound(commonSoundPool?.clears, 'effects', '싹쓸이 효과음');
+                    player.allClearTicket = true;
+                    player.allClearEffectElapsed = ALL_CLEAR_EFFECT_DURATION;
+                    player.hasPlacedPuyoSinceAllClear = false;
+                }
                 player.combo = 0;
-                simulator.mode = hasPendingEnergyTransfers() ? 'settling' : 'complete';
+                simulator.mode = (player.allClearEffectElapsed > 0 || hasPendingEnergyTransfers()) ? 'settling' : 'complete';
                 simulator.focusArea = 'complete';
             }
         } else if (player.phase === 'simulatorEffect') {
@@ -6023,6 +6029,19 @@
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         context.fillStyle = '#0c2433'; context.fillRect(x - CELL, FIELD_TOP - CELL, CELL * 8, CELL * 14);
         context.fillStyle = '#112f40'; context.fillRect(x, FIELD_TOP, CELL * 6, CELL * 12);
+        if (player.allClearTicket || player.allClearEffectElapsed > 0) {
+            context.save();
+            context.fillStyle = '#ffd54f';
+            if (player.allClearTicket) {
+                context.globalAlpha = 0.3;
+                context.fillRect(x, FIELD_TOP, CELL * 6, CELL * 12);
+            }
+            if (player.allClearEffectElapsed > 0) {
+                context.globalAlpha = 0.5 * (player.allClearEffectElapsed / ALL_CLEAR_EFFECT_DURATION);
+                context.fillRect(x, FIELD_TOP, CELL * 6, CELL * 12);
+            }
+            context.restore();
+        }
         context.strokeStyle = 'rgba(162,220,235,.14)'; context.lineWidth = 1;
         for (let i = 0; i <= COLUMNS; i += 1) { context.beginPath(); context.moveTo(x + i * CELL, FIELD_TOP); context.lineTo(x + i * CELL, FIELD_BOTTOM); context.stroke(); }
         for (let i = 0; i <= VISIBLE_ROWS; i += 1) { context.beginPath(); context.moveTo(x, FIELD_TOP + i * CELL); context.lineTo(x + COLUMNS * CELL, FIELD_TOP + i * CELL); context.stroke(); }
@@ -7750,7 +7769,7 @@
      * 한 플레이어의 보드와 대기열을 JSON으로 직렬화 가능한 상태로 만든다.
      * @param {PlayerState} player 상태를 읽을 플레이어
      * @param {PlayerState} opponent 상대 플레이어
-     * @returns {{name:string, isCpu:boolean, phase:string, point:number, attack:number, damage:number, normalDamage:number, combo:number, placedPairCount:number, board:{columns:number, rows:number, visibleRows:number, puyos:{x:number,y:number,color:string}[]}, nextPairs:string[][], warningPuyos:string[], active:{x:number,y:number,rotation:number,colors:string[],cells:{x:number,y:number,color:string}[]}|null}}
+     * @returns {{name:string, isCpu:boolean, phase:string, point:number, attack:number, damage:number, normalDamage:number, combo:number, placedPairCount:number, allClearTicket:boolean, board:{columns:number, rows:number, visibleRows:number, puyos:{x:number,y:number,color:string}[]}, nextPairs:string[][], warningPuyos:string[], active:{x:number,y:number,rotation:number,colors:string[],cells:{x:number,y:number,color:string}[]}|null}}
      */
     function getPlayerGameStatus(player, opponent) {
         const puyos = [];
@@ -7774,6 +7793,7 @@
             normalDamage: player.normalDamage,
             combo: player.combo,
             placedPairCount: player.placedPairCount,
+            allClearTicket: player.allClearTicket,
             board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos },
             nextPairs: player.nextPairs.map((pair) => [...pair]),
             warningPuyos: warningUnits(warningAmount(player, opponent)).map((unit) => unit.type),
@@ -7861,7 +7881,7 @@
 
     /**
      * 현재 시뮬레이터 편집 상태의 읽기 전용 스냅샷을 반환한다.
-     * @returns {{mode:'draw'|'simulation'|'settling'|'complete', selected:string, focusArea:'palette'|'board'|'complete', boardFocus:{x:number,y:number}, board:{columns:number,rows:number,visibleRows:number,editableRows:number,puyos:{x:number,y:number,color:string}[]}}|null}
+     * @returns {{mode:'draw'|'simulation'|'settling'|'complete', selected:string, focusArea:'palette'|'board'|'complete', allClearTicket:boolean, boardFocus:{x:number,y:number}, board:{columns:number,rows:number,visibleRows:number,editableRows:number,puyos:{x:number,y:number,color:string}[]}}|null}
      */
     function getSimulatorState() {
         if (!simulator) return null;
@@ -7873,6 +7893,7 @@
             mode: simulator.mode,
             selected: simulator.selected,
             focusArea: simulator.focusArea,
+            allClearTicket: simulator.player.allClearTicket,
             boardFocus: { ...simulator.boardFocus },
             board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, editableRows: SIMULATOR_EDITABLE_ROWS, puyos }
         };
@@ -7993,6 +8014,7 @@
                 point: { type: 'number', minimum: 0 }, attack: { type: 'number', minimum: 0 },
                 damage: { type: 'number', minimum: 0 }, normalDamage: { type: 'number', minimum: 0 },
                 combo: { type: 'integer', minimum: 0 }, placedPairCount: { type: 'integer', minimum: 0 },
+                allClearTicket: { type: 'boolean', description: 'Whether the player holds an all-clear ticket for the next colored-puyo explosion.' },
                 board: { type: 'object', properties: {
                     columns: { type: 'integer', const: COLUMNS }, rows: { type: 'integer', const: ROWS }, visibleRows: { type: 'integer', const: VISIBLE_ROWS },
                     puyos: { type: 'array', items: puyoSchema, description: 'All fixed puyos, including hidden rows.' }
@@ -8011,7 +8033,7 @@
                         cells: { type: 'array', items: { type: 'array', items: boardCellSchema, minItems: COLUMNS, maxItems: COLUMNS }, minItems: ROWS, maxItems: ROWS }
                     }, required: ['columns', 'rows', 'cells'] }
                 }, required: ['active', 'gauge', 'nextTime', 'targetCombo', 'leftTime', 'damage', 'turn', 'selectedStageTarget', 'stageSuppliedPair', 'field'] }, active: activeSchema
-            }, required: ['name', 'isCpu', 'phase', 'point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount', 'board', 'nextPairs', 'warningPuyos', 'fever', 'active']
+            }, required: ['name', 'isCpu', 'phase', 'point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount', 'allClearTicket', 'board', 'nextPairs', 'warningPuyos', 'fever', 'active']
         };
         const puzzleSchema = {
             type: ['object', 'null'], properties: {

@@ -113,7 +113,7 @@ test('WebMCP 도구 스키마는 퍼즐뿌요와 최신 게임 상태 필드를 
   expect(schema.screenEnum).toContain('watch_select');
   expect(schema.statusRequired).toContain('puzzle');
   expect(schema.statusRequired).toContain('watch');
-  expect(schema.playerRequired).toEqual(expect.arrayContaining(['point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount']));
+  expect(schema.playerRequired).toEqual(expect.arrayContaining(['point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount', 'allClearTicket']));
   expect(schema.feverTargetMinimum).toBe(4);
   expect(schema.activeYType).toBe('number');
   expect(schema.puzzleConditionTypes).toContain('color');
@@ -1521,6 +1521,55 @@ test('피버 상태의 싹쓸이는 목표 연쇄만 올리고 별도 ATTACK을 
   expect(state.player.warningPuyos).toEqual([]);
 });
 
+test('기본 룰의 싹쓸이 티켓은 다음 폭발에서 고정 점수·ATTACK을 적용하고 다시 획득한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class AllClearTicketEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -2; }
+      getClassType() { return 'AllClearTicketEnemy'; }
+      getName() { return '싹쓸이 티켓 테스트 적'; }
+      prepareTurn(player) { this.player = player; player.fallTimer = -100000; window.allClearTicketEnemy = this; }
+      chooseTarget(player) { return player.active.x; }
+      chooseRotate(player) { return player.active.rotation; }
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new AllClearTicketEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.allClearTicketEnemy?.player?.phase), { timeout: 6000 }).toBe('control');
+
+  await page.evaluate(() => {
+    const player = window.allClearTicketEnemy.player;
+    player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+    player.hasPlacedPuyoSinceAllClear = true;
+    player.phase = 'explode';
+    player.phaseTimer = 150;
+  });
+  await expect.poll(() => page.evaluate(() => {
+    const player = window.allClearTicketEnemy?.player;
+    return player && { point: player.point, ticket: player.allClearTicket };
+  }), { timeout: 6000 }).toEqual({ point: 40, ticket: true });
+
+  await page.evaluate(() => {
+    const player = window.allClearTicketEnemy.player;
+    player.damage = 20;
+    player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    for (let x = 0; x < 4; x += 1) player.board[0][x] = 'red';
+    player.hasPlacedPuyoSinceAllClear = true;
+    player.phase = 'explode';
+    player.phaseTimer = 150;
+  });
+  await expect.poll(() => page.evaluate(() => {
+    const player = window.allClearTicketEnemy?.player;
+    return player && { point: player.point, damage: player.damage, ticket: player.allClearTicket };
+  }), { timeout: 6000 }).toEqual({ point: 2180, damage: 0, ticket: true });
+});
+
 test('연속 피버와 피버 상태는 낮은 연쇄 뒤 4연쇄 피버 패턴을 사용한다', async ({ page }) => {
   await page.evaluate(() => {
     class FeverLowComboEnemy extends window.WebPuyo.Enemy {
@@ -2774,6 +2823,24 @@ test('시뮬레이터 연쇄는 새 점수 계산식과 같은 연쇄 문구를 
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => text === '1연쇄' || text === '1 Chain'))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000040'))).toBe(true);
+});
+
+test('시뮬레이터 싹쓸이는 추가 점수·ATTACK 없이 티켓을 부여한 뒤 완료한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  const canvas = page.locator('#webpuyo_canvas');
+  for (const x of [207, 245, 283, 321]) await canvas.click({ position: { x, y: 539 } });
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.WebPuyo.getSimulatorState())).toMatchObject({
+    allClearTicket: true,
+    board: { puyos: [] }
+  });
+  expect(await page.evaluate(() => window.testCanvasTexts.includes('000000040'))).toBe(true);
+  expect(await page.evaluate(() => window.testCanvasTexts.includes('000000140'))).toBe(false);
 });
 
 test('시뮬레이터 그리기 모드에서는 마우스와 키보드로 13번째 줄에 뿌요를 배치한다', async ({ page }) => {
