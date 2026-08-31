@@ -47,7 +47,7 @@
 점수/공격 변경은 `calculateExplosionPoint()`, `calculateExplosionAttack()`, `resolveExplosions()` 및 시뮬레이터·AI 미리보기까지 함께 확인한다.
 
 - 한 폭발 단계의 색 뿌요 수를 `N`이라 하면, 점수는 `N * hardMultiplier * max(1, chainBonus + connectionBonus + colorBonus) * 10`이다.
-- 연결 보너스는 각 그룹이 아니라 **동시에 폭발한 색 뿌요 전체 수**로 계산한다.
+- 연결 보너스는 폭발 단계별 색상 수를 먼저 합산해 계산한다. 단색이면 그 색의 전체 수를, 다색이면 **가장 많이 폭발한 한 색의 수**를 `getConnectionBonus()`에 넣는다. 색수 보너스와 점수용 일반 뿌요 수는 여전히 동시에 폭발한 전체 색·전체 일반 뿌요 기준이다.
 - `hardMultiplier`는 그 단계에서 한 번에 파괴한 딱딱뿌요 수에만 적용한다.
 - ATTACK은 현재 마진 레이트로 점수를 나눈 뒤 `EXPLOSION_REWARD_MULTIPLIER`와 시간 진행 배율을 곱한 값이다. 시간 진행 배율은 300초까지 1이고 320초부터 20초마다 두 배가 되어 최대 1024다. `game.timeProgressMultiplier`와 `getTimeProgressMultiplier(elapsed)`를 함께 갱신·검증한다.
 - 싹쓸이는 기본 룰·연습에서 점수와 예약 공격을 준다. 피버 룰·연속 피버에는 일반 싹쓸이 공격을 그대로 적용하지 않는다.

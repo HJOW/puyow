@@ -2788,8 +2788,8 @@
     }
 
     /**
-     * 한 폭발 단계의 점수 증가량을 계산한다. 동시에 폭발한 일반 뿌요 수 전체로 연결 보너스를 계산하고,
-     * 인접 방해뿌요는 점수용 뿌요 수에 포함하지 않는다.
+     * 한 폭발 단계의 점수 증가량을 계산한다. 단색 폭발은 해당 색 전체 수, 다색 폭발은
+     * 색별 제거 수 중 가장 큰 값으로 연결 보너스를 계산하고 인접 방해뿌요는 점수용 수에 포함하지 않는다.
      * @param {{color:string, cells:number[][]}[]} explosionGroups 이번 단계에 폭발한 색 뿌요 연결 그룹
      * @param {number} combo 현재 연쇄 수
      * @param {number} [brokenHardGarbageCount=0] 이번 단계에서 한 번에 파괴한 딱딱뿌요 수
@@ -2797,8 +2797,13 @@
      */
     function calculateExplosionPoint(explosionGroups, combo, brokenHardGarbageCount = 0) {
         const puyoCount = explosionGroups.reduce((total, group) => total + group.cells.length, 0);
-        const connectionBonus = getConnectionBonus(puyoCount);
-        const colorBonus = getColorBonus(new Set(explosionGroups.map((group) => group.color)).size);
+        const colorPuyoCounts = new Map();
+        explosionGroups.forEach((group) => {
+            colorPuyoCounts.set(group.color, (colorPuyoCounts.get(group.color) || 0) + group.cells.length);
+        });
+        const largestColorPuyoCount = Math.max(0, ...colorPuyoCounts.values());
+        const connectionBonus = getConnectionBonus(largestColorPuyoCount);
+        const colorBonus = getColorBonus(colorPuyoCounts.size);
         const bonus = Math.max(1, getChainBonus(combo) + connectionBonus + colorBonus);
         const hardGarbageMultiplier = brokenHardGarbageCount * HARD_GARBAGE_SCORE_MULTIPLIER + 1;
         return puyoCount * hardGarbageMultiplier * bonus * 10;

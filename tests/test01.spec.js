@@ -2683,6 +2683,22 @@ test('폭발 점수 보너스는 최소 1이며 시간 진행 배율은 300초 �
   expect(await page.evaluate(() => window.WebPuyo.getGameState().timeProgressMultiplier)).toBe(1);
 });
 
+test('다색 동시 폭발 연결 보너스는 가장 많이 터진 한 색만 사용한다', async ({ page }) => {
+  const points = await page.evaluate(() => {
+    const cells = (count) => Array.from({ length: count }, (_, index) => [index, 0]);
+    return {
+      singleColor: window.WebPuyo.calculateExplosionPoint([
+        { color: 'red', cells: cells(4) }, { color: 'red', cells: cells(5) },
+      ], 1),
+      threeColors: window.WebPuyo.calculateExplosionPoint([
+        { color: 'red', cells: cells(4) }, { color: 'blue', cells: cells(5) }, { color: 'yellow', cells: cells(4) },
+      ], 1),
+    };
+  });
+  expect(points.singleColor).toBe(540);
+  expect(points.threeColors).toBe(1040);
+});
+
 test('공통 사운드 풀은 시뮬레이터의 뿌요 착지·폭발·주문 효과음을 재생한다', async ({ page }) => {
   await page.evaluate(() => {
     window.WebPuyo.commonSoundPool.puyoFall = 'sounds/test-puyo-fall.ogg';
@@ -2857,7 +2873,7 @@ test('숨김 13번째 줄 뿌요는 중력으로 내려온 뒤 다음 폭발 판
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.color === 'red'))).toBe(false);
 });
 
-test('시뮬레이터 점수는 동시 폭발의 색수와 총 연결 보너스를 합산한다', async ({ page }) => {
+test('시뮬레이터 점수는 동시 폭발의 색수와 가장 많은 색의 연결 보너스를 합산한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -2872,10 +2888,10 @@ test('시뮬레이터 점수는 동시 폭발의 색수와 총 연결 보너스�
     await canvas.click({ position: { x, y: 501 } });
   }
   await canvas.click({ position: { x: 960, y: 350 } });
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000640'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000240'))).toBe(true);
 });
 
-test('시뮬레이터 점수는 동시 4·5색 폭발의 총 9개 연결 보너스를 적용한다', async ({ page }) => {
+test('시뮬레이터 점수는 동시 4·5색 폭발에서 5개 색의 연결 보너스를 적용한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -2892,7 +2908,7 @@ test('시뮬레이터 점수는 동시 4·5색 폭발의 총 9개 연결 보너�
   const canvas = page.locator('#webpuyo_canvas');
   await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000810'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000450'))).toBe(true);
 });
 
 test('시뮬레이터 점수는 다섯 뿌요 연결 보너스를 적용한다', async ({ page }) => {
