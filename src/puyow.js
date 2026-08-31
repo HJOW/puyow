@@ -1834,7 +1834,9 @@
             stageSuppliedPair: [],
             pendingActivation: false,
             deferGarbage: false,
-            pendingAllClearStage: false
+            pendingAllClearStage: false,
+            /** 피버 패턴을 놓기 직전 필드가 비어 있어, 이번 패턴의 첫 AI 배치를 무작위로 정해야 하는지 여부다. */
+            randomizeStageOpening: false
         };
     }
 
@@ -2284,8 +2286,11 @@
         });
     }
 
-    /** 다음 뿌요에 맞춰 피버 스테이지를 숨김 영역에 복사·변환하고, 중력 연출 뒤 지정 플레이어의 조작 턴을 준비한다. @param {PlayerState} player 대상 플레이어 @param {object} feverState 갱신할 피버 상태 @param {number} targetCombo 스테이지 목표 연쇄 @param {boolean} countTurn 피버 턴 수 증가 여부 @returns {void} */
-    function prepareFeverTurn(player, feverState, targetCombo = feverState.targetCombo, countTurn = true) {
+    /** 다음 뿌요에 맞춰 피버 스테이지를 숨김 영역에 복사·변환하고, 중력 연출 뒤 지정 플레이어의 조작 턴을 준비한다. @param {PlayerState} player 대상 플레이어 @param {object} feverState 갱신할 피버 상태 @param {number} targetCombo 스테이지 목표 연쇄 @param {boolean} countTurn 피버 턴 수 증가 여부 @param {boolean} [sourceFieldWasEmpty=isEmptyPlayerField(player)] 패턴 배치 직전 플레이 영역의 빈 상태 @returns {void} */
+    function prepareFeverTurn(player, feverState, targetCombo = feverState.targetCombo, countTurn = true, sourceFieldWasEmpty = isEmptyPlayerField(player)) {
+        // 패턴이 올라온 뒤에는 보드가 비어 있지 않으므로, 패턴 배치 전의 실제 플레이 영역 상태를 보존한다.
+        // 이 값은 패턴의 첫 AI 배치에만 사용하고, 그 뒤부터는 기존 전략을 따른다.
+        feverState.randomizeStageOpening = game?.feverRule === true && sourceFieldWasEmpty;
         const nextPair = peekNextPair(player);
         const stage = selectContinuousFeverStage(targetCombo, nextPair, player.colors);
         const colorMap = createContinuousFeverColorMap(stage, nextPair, player.colors);
@@ -2351,6 +2356,7 @@
     function activatePlayerFever(player) {
         const state = player.fever;
         if (!game?.feverRule || !state || state.active) return;
+        const normalFieldWasEmpty = isEmptyPlayerField(player);
         // 일반 필드와 일반 DAMAGE는 PlayerState에 그대로 보존하고, 새 피버 전용 상태를 활성화한다.
         state.field = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
         state.damage = 0;
@@ -2361,7 +2367,7 @@
         state.leftTime = state.nextTime * 1000;
         state.nextTime = FEVER_INITIAL_TIME;
         state.deferGarbage = false;
-        prepareFeverTurn(player, state);
+        prepareFeverTurn(player, state, state.targetCombo, true, normalFieldWasEmpty);
     }
 
     /** 피버 전용 필드와 피해를 초기화하고 보존된 일반 필드로 돌아가 누적 피해를 합산한다. @param {PlayerState} player 대상 플레이어 @param {'A'|'B'} exitType 종료 유형 @returns {void} */
@@ -2383,6 +2389,7 @@
         state.stageSuppliedPair = [];
         state.pendingActivation = false;
         state.pendingAllClearStage = false;
+        state.randomizeStageOpening = false;
         // targetCombo와 nextTime은 다음 피버 발동에서 이어서 사용하므로 초기화하지 않는다.
         player.active = null;
         player.combo = 0;
@@ -2492,9 +2499,10 @@
         return player.board.every((row) => row.every((cell) => cell === null));
     }
 
-    /** 빈 필드 적의 첫 배치 후보를 무작위로 고른다. 구경 시작 직후에는 양쪽 적이 서로 다른 열을 사용한다. @param {PlayerState} player CPU 플레이어 @param {Enemy} controller CPU 컨트롤러 @returns {object|null} 무작위 배치 후보 */
+    /** 빈 필드 적의 첫 배치 후보를 무작위로 고른다. 피버 패턴은 배치 전 필드가 비어 있던 경우 첫 배치만 무작위로 정한다. 구경 시작 직후에는 양쪽 적이 서로 다른 열을 사용한다. @param {PlayerState} player CPU 플레이어 @param {Enemy} controller CPU 컨트롤러 @returns {object|null} 무작위 배치 후보 */
     function selectRandomEmptyFieldPlacement(player, controller) {
-        if (!usesRandomEmptyFieldPlacement(controller) || !isEmptyPlayerField(player)) return null;
+        const randomizeStageOpening = game?.feverRule === true && player.fever?.randomizeStageOpening === true;
+        if (!usesRandomEmptyFieldPlacement(controller) || (!isEmptyPlayerField(player) && !randomizeStageOpening)) return null;
         const safeSimulations = player.aiSimulations.filter((simulation) => !causesImmediateDefeat(player, simulation));
         let candidates = safeSimulations.length ? safeSimulations : player.aiSimulations;
         const openingColumns = game?.watch?.openingPlacementColumns;
@@ -2506,6 +2514,7 @@
         if (!candidates.length) return null;
         const selected = candidates[Math.floor(randomFloat() * candidates.length)];
         if (isWatchOpening) openingColumns.push(selected.x);
+        if (randomizeStageOpening) player.fever.randomizeStageOpening = false;
         return selected;
     }
 
