@@ -2479,20 +2479,21 @@
      * @param {PlayerState} player CPU 플레이어
      * @returns {number[]} 피해야 할 열 목록
      */
-    function getAiDefeatPositionAvoidanceColumns(player) {
+    function getAiDefeatPositionAvoidanceColumns(player, forceAvoidance = false) {
         if (!game || player.fever?.active) return [];
         const columns = game.feverRule ? [2, 3] : [2];
-        return columns.some((column) => player.board[8][column] !== null) ? columns : [];
+        return forceAvoidance || columns.some((column) => player.board[8][column] !== null) ? columns : [];
     }
 
     /**
      * 패배 위치 경고 중에 폭발하지 않고 위험 열에 놓는 후보인지 확인한다.
      * @param {PlayerState} player CPU 플레이어
      * @param {object} simulation 가상 배치 후보
+     * @param {boolean} forceAvoidance 패배 위치 제한을 강제할지 여부
      * @returns {boolean} 우선적으로 피해야 하는 후보 여부
      */
-    function isAiDefeatPositionPlacementRestricted(player, simulation) {
-        const columns = getAiDefeatPositionAvoidanceColumns(player);
+    function isAiDefeatPositionPlacementRestricted(player, simulation, forceAvoidance = false) {
+        const columns = getAiDefeatPositionAvoidanceColumns(player, forceAvoidance);
         return columns.length > 0
             && simulation.combo === 0
             && simulation.positions.some((position) => columns.includes(position.x));
@@ -2501,10 +2502,11 @@
     /**
      * 패배 위치 경고 규칙을 만족하는 후보 중 공격력이 높은 배치를 고른다.
      * @param {PlayerState} player CPU 플레이어
+     * @param {boolean} forceAvoidance 패배 위치 제한을 강제할지 여부
      * @returns {object|null} 안전 후보
      */
-    function findAiDefeatPositionSafePlacement(player) {
-        const candidates = player.aiSimulations.filter((simulation) => !isAiDefeatPositionPlacementRestricted(player, simulation));
+    function findAiDefeatPositionSafePlacement(player, forceAvoidance = false) {
+        const candidates = player.aiSimulations.filter((simulation) => !isAiDefeatPositionPlacementRestricted(player, simulation, forceAvoidance));
         if (!candidates.length) return null;
         const immediatelySafeCandidates = candidates.filter((simulation) => !causesImmediateDefeat(player, simulation));
         const selectableCandidates = immediatelySafeCandidates.length ? immediatelySafeCandidates : candidates;
@@ -10624,6 +10626,11 @@
             return [0, 1, 2].every((y) => player.board[y][COLUMNS - 1] !== null);
         }
 
+        /** @param {PlayerState} player 자동 조작 플레이어 @param {number} x 검사할 열 @param {number} height 채워져야 할 높이 @returns {boolean} 아래부터 지정한 높이만큼 모두 찼는지 */
+        isColumnFilledToHeight(player, x, height) {
+            return Array.from({ length: height }, (_, y) => player.board[y][x] !== null).every(Boolean);
+        }
+
         /**
          * 우측 하단 세 칸을 우선 채우되, 폭발 뒤 최종 보드에서 즉시 패배하는 후보를 제외한다.
          * @param {PlayerState} player 자동 조작할 플레이어
@@ -10644,6 +10651,61 @@
             return selected;
         }
 
+        /** 피버 룰의 평상시에는 오른쪽 두 열을 화면 높이까지 먼저 쌓는다. @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 배치 후보 */
+        selectFeverRightTwoBuildPlacement(player) {
+            let selected = null;
+            let bestScore = -Infinity;
+            player.aiSimulations.forEach((simulation) => {
+                if (simulation.combo !== 0 || causesImmediateDefeat(player, simulation)) return;
+                if (!simulation.positions.every((position) => position.x >= COLUMNS - 2 && position.y < VISIBLE_ROWS)) return;
+                const score = simulation.positions.reduce((total, position) => {
+                    const filledHeight = player.board.reduce((height, row) => height + (row[position.x] !== null ? 1 : 0), 0);
+                    return total + 1000 - filledHeight * 10 - position.y;
+                }, 0);
+                if (score >= bestScore) { selected = simulation; bestScore = score; }
+            });
+            return selected;
+        }
+
+        /** 피버 룰의 평상시에는 오른쪽에서 세 번째 열을 10단까지만 쌓는다. @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 배치 후보 */
+        selectFeverThirdColumnBuildPlacement(player) {
+            let selected = null;
+            let bestScore = -Infinity;
+            const targetColumn = COLUMNS - 3;
+            player.aiSimulations.forEach((simulation) => {
+                if (simulation.combo !== 0 || causesImmediateDefeat(player, simulation)) return;
+                if (!simulation.positions.every((position) => position.x === targetColumn && position.y < 10)) return;
+                const score = simulation.positions.reduce((total, position) => total + 1000 - position.y, 0);
+                if (score >= bestScore) { selected = simulation; bestScore = score; }
+            });
+            return selected;
+        }
+
+        /** 오른쪽 빌드가 끝난 평상시에는 왼쪽 두 열을 균형 있게 쌓는다. @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 배치 후보 */
+        selectLeftBuildPlacement(player) {
+            let selected = null;
+            let bestScore = -Infinity;
+            player.aiSimulations.forEach((simulation) => {
+                if (simulation.combo !== 0 || causesImmediateDefeat(player, simulation)) return;
+                if (!simulation.positions.every((position) => position.x < 2)) return;
+                const score = simulation.positions.reduce((total, position) => {
+                    const filledHeight = player.board.reduce((height, row) => height + (row[position.x] !== null ? 1 : 0), 0);
+                    return total + 1000 - filledHeight * 10 - position.y;
+                }, 0);
+                if (score >= bestScore) { selected = simulation; bestScore = score; }
+            });
+            return selected;
+        }
+
+        /** @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 피버 비활성 평상시 빌드 후보 */
+        selectFeverRuleBuildPlacement(player) {
+            const rightColumnsFilled = this.isColumnFilledToHeight(player, COLUMNS - 2, VISIBLE_ROWS)
+                && this.isColumnFilledToHeight(player, COLUMNS - 1, VISIBLE_ROWS);
+            if (!rightColumnsFilled) return this.selectFeverRightTwoBuildPlacement(player);
+            if (!this.isColumnFilledToHeight(player, COLUMNS - 3, 10)) return this.selectFeverThirdColumnBuildPlacement(player);
+            return this.selectLeftBuildPlacement(player);
+        }
+
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 X 좌표 */
         chooseTarget(player) {
             const preparedPlacement = this.getPreparedPlacement();
@@ -10654,7 +10716,9 @@
                 this.attackPlacement = findBestAttackPlacement(player, 0, triggerOccupied ? trigger.x : null, true);
                 return this.attackPlacement.x;
             }
-            const buildPlacement = this.selectRightBuildPlacement(player);
+            const buildPlacement = game?.feverRule && !player.fever?.active
+                ? this.selectFeverRuleBuildPlacement(player)
+                : (this.isRightThreeRowsFilled(player) ? this.selectLeftBuildPlacement(player) : this.selectRightBuildPlacement(player));
             const safeFallback = player.aiSimulations.find((simulation) => !causesImmediateDefeat(player, simulation));
             const basicPlacement = buildPlacement || safeFallback;
             // 우측 하단 세 칸이 차기 전에는 폭발을 만들지 않는 회전·배치만 사용한다.
@@ -11297,6 +11361,13 @@
             return getLookaheadIncomingGarbage(player);
         }
 
+        isFieldAtLeastEightyPercentFilled(player) {
+            const occupiedCells = player.board
+                .slice(0, VISIBLE_ROWS)
+                .reduce((total, row) => total + row.filter((cell) => cell !== null).length, 0);
+            return occupiedCells >= COLUMNS * VISIBLE_ROWS * 0.8;
+        }
+
         /**
          * 공통 N수 시뮬레이션 결과에 현재 방해뿌요 상쇄 우선순위를 더한다.
          * 키마리스와 독립적으로 두어, 각 적의 목표 연쇄·탐색 수를 안전하게 다르게 유지한다.
@@ -11355,6 +11426,10 @@
             Enemy.prototype.prepareTurn.call(this, player);
             this.attackPlacement = null;
             if (this.getPreparedPlacement()) return;
+            if (!this.isInFever(player) && this.isFieldAtLeastEightyPercentFilled(player)) {
+                this.preparedPlacement = findAiDefeatPositionSafePlacement(player, true);
+                if (this.getPreparedPlacement()) return;
+            }
             this.attackPlacement = this.findBestLookaheadPlacement(player)
                 || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
         }
