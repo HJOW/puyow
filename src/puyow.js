@@ -11748,6 +11748,7 @@
         createSoundPool,
         setEnemySoundPool,
         setCommonSoundPool,
+        loadSoundDataURL,
         applySoundDataJson,
         setStorageManager,
         registerFeverStageState,
