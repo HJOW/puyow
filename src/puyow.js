@@ -1198,7 +1198,7 @@
     */
     function loadSoundDataURL(currentSoundURL, save) {
         if(typeof(currentSoundURL) == 'undefined' || currentSoundURL == null) currentSoundURL = soundDataURL;
-        if (soundDataURL === null || soundDataURL === '') return;
+        if (currentSoundURL === null || currentSoundURL === '') return;
         try {
             const convertedURL = convertURL(currentSoundURL);
 
