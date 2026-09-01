@@ -196,8 +196,8 @@
     const CODE_STORE_KEY = 'puyow_code';
     /** 설정에서 새로 제안하고 저장값이 비어 있을 때 보정할 기본 OpenAI 모델명이다. @type {string} */
     const DEFAULT_AI_MODEL = 'gpt-5.6-luna';
-    /** 설정 화면에서 선택할 수 있는 AI 서비스 제공자 목록이다. Google은 현재 제공하지 않는다. @type {string[]} */
-    const AI_SERVICE_PROVIDERS = ['OpenAI'];
+    /** 설정 화면에서 선택할 수 있는 AI 서비스 제공자 목록이다. 브랜드명은 번역하지 않는다. @type {string[]} */
+    const AI_SERVICE_PROVIDERS = ['OpenAI', 'LM Studio'];
     /** 그래픽 품질별 캔버스 출력 해상도다. 게임 내부 좌표는 항상 WIDTH x HEIGHT를 사용한다. @type {{key:'low'|'medium'|'high', label:string, width:number, height:number}[]} */
     const GRAPHICS_QUALITY_OPTIONS = [
         { key: 'low', label: '낮음', width: WIDTH, height: HEIGHT },
@@ -218,6 +218,8 @@
         { key: 'normal', label: '보통' },
         { key: 'large', label: '크게' }
     ];
+    /** AI API URL로 허용할 최대 글자 수다. */
+    const AI_API_URL_MAX_LENGTH = 200;
     /** 브라우저에서 직접 호출할 OpenAI Responses API 주소다. @type {string} */
     const OPENAI_RESPONSES_API_URL = 'https://api.openai.com/v1/responses';
     /** API 테스트 응답에 요구할 최소 JSON Schema다. @type {object} */
@@ -655,7 +657,7 @@
             feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             puzzleClearStages: [],
             puzzleStarStages: [],
-            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, soundDataURL: '', aiProvider: 'OpenAI', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
+            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, soundDataURL: '', aiProvider: 'OpenAI', aiApiURL: '', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
     }
@@ -670,6 +672,11 @@
     /** 저장된 사운드 데이터 URL을 최대 길이로 정규화한다. @param {unknown} value 저장값 @returns {string} 사운드 데이터 URL */
     function normalizeSoundDataURL(value) {
         return typeof value === 'string' ? Array.from(value).slice(0, SOUND_DATA_URL_MAX_LENGTH).join('') : '';
+    }
+
+    /** 저장된 AI API URL을 최대 길이로 정규화한다. @param {unknown} value 저장값 @returns {string} AI API URL */
+    function normalizeAiApiURL(value) {
+        return typeof value === 'string' ? Array.from(value).slice(0, AI_API_URL_MAX_LENGTH).join('') : '';
     }
 
     /** 현재 설정된 플레이어 이름을 반환한다. @returns {string} 플레이어 이름 */
@@ -1071,8 +1078,9 @@
                 graphicsQuality: getGraphicsQualityOption(settings.graphicsQuality).key,
                 landscapeOrientationLocked: normalizeLandscapeOrientationLocked(settings.landscapeOrientationLocked),
                 soundDataURL: normalizeSoundDataURL(settings.soundDataURL),
-                // 이전 Google 설정값은 더 이상 선택할 수 없으므로 기본 제공자인 OpenAI로 정규화한다.
+                // 이전 Google 등 지원하지 않는 설정값은 기본 제공자인 OpenAI로 정규화한다.
                 aiProvider: AI_SERVICE_PROVIDERS.includes(settings.aiProvider) ? settings.aiProvider : initial.settings.aiProvider,
+                aiApiURL: normalizeAiApiURL(settings.aiApiURL),
                 aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
                 aiModel: typeof settings.aiModel === 'string' && settings.aiModel.trim() ? settings.aiModel : initial.settings.aiModel
             }, muted: parsed.muted === true };
@@ -5465,6 +5473,7 @@
         clearSettingsApiTest();
         settingsDraft.playerName = normalizePlayerName(settingsDraft.playerName);
         settingsDraft.soundDataURL = normalizeSoundDataURL(settingsDraft.soundDataURL);
+        settingsDraft.aiApiURL = normalizeAiApiURL(settingsDraft.aiApiURL);
         const soundDataURLChanged = soundDataURL !== settingsDraft.soundDataURL;
         store.settings = { ...settingsDraft };
         saveStore();
@@ -5546,15 +5555,22 @@
         updateBackgroundMusicVolume();
     }
 
-    /** AI API 테스트에 필요한 세 입력값이 모두 채워졌는지 확인한다. @param {object|null} settings 설정값 @returns {boolean} 실행 가능 여부 */
+    /** 현재 제공자가 LM Studio인지 확인한다. @param {object|null} settings 설정값 @returns {boolean} LM Studio 여부 */
+    function isLmStudioProvider(settings) {
+        return settings?.aiProvider === 'LM Studio';
+    }
+
+    /** AI API 테스트에 필요한 입력값이 모두 채워졌는지 확인한다. LM Studio는 서버 URL도 필요하다. @param {object|null} settings 설정값 @returns {boolean} 실행 가능 여부 */
     function hasCompleteAiApiSettings(settings) {
-        return Boolean(settings && ['aiProvider', 'aiApiKey', 'aiModel'].every((key) => typeof settings[key] === 'string' && settings[key].trim()));
+        const requiredKeys = ['aiProvider', 'aiApiKey', 'aiModel', ...(isLmStudioProvider(settings) ? ['aiApiURL'] : [])];
+        return Boolean(settings && requiredKeys.every((key) => typeof settings[key] === 'string' && settings[key].trim()));
     }
 
     /** 편집 중인 AI 설정이 저장된 설정과 같은지 확인한다. @returns {boolean} 저장된 설정 사용 여부 */
     function hasSavedAiApiSettings() {
         return Boolean(settingsDraft && store.settings
             && settingsDraft.aiProvider === store.settings.aiProvider
+            && settingsDraft.aiApiURL === store.settings.aiApiURL
             && settingsDraft.aiApiKey === store.settings.aiApiKey
             && settingsDraft.aiModel === store.settings.aiModel);
     }
@@ -5566,7 +5582,7 @@
 
     /** API 테스트 실행 가능 여부를 반영한 설정 화면 포커스 순서를 만든다. @returns {number[]} 포커스 인덱스 목록 */
     function getSelectableSettingsFocuses() {
-        return [0, 1, 2, 3, 4, 5, 6, 7, 8, ...(canRunAiApiTest() ? [9] : []), 10, 11, 12, 13];
+        return [0, 1, 2, 3, 4, 5, 6, ...(isLmStudioProvider(settingsDraft) ? [7] : []), 8, 9, ...(canRunAiApiTest() ? [10] : []), 11, 12, 13, 14];
     }
 
     /** 설정 화면에서 다음 또는 이전 포커스로 이동한다. @param {number} direction 이동 방향 @returns {void} */
@@ -5599,13 +5615,63 @@
         return null;
     }
 
+    /** Chat Completions 응답에서 생성된 텍스트를 꺼낸다. @param {object} response API 응답 @returns {string|null} JSON 텍스트 */
+    function getChatCompletionsOutputText(response) {
+        const content = response?.choices?.[0]?.message?.content;
+        return typeof content === 'string' ? content : null;
+    }
+
+    /** 사용자가 입력한 LM Studio 서버 주소에 구조화 출력 엔드포인트를 결합한다. @param {string} baseURL 서버 기본 주소 @returns {string} Chat Completions 주소 */
+    function getLmStudioChatCompletionsURL(baseURL) {
+        const convertedBaseURL = convertURL(baseURL.trim());
+        const directoryBaseURL = convertedBaseURL.endsWith('/') ? convertedBaseURL : `${convertedBaseURL}/`;
+        return new URL('v1/chat/completions', directoryBaseURL).href;
+    }
+
+    /** 제공자에 맞는 구조화 JSON 생성 요청을 만든다. @param {object} settings 저장 설정 @param {string} prompt 사용자 프롬프트 @param {string} schemaName 스키마 이름 @param {object} schema JSON Schema @param {number} maxTokens 최대 출력 토큰 @returns {{url:string,options:object,readOutputText:(response:object)=>string|null}} 요청 정보 */
+    function createStructuredAiRequest(settings, prompt, schemaName, schema, maxTokens) {
+        const headers = { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' };
+        if (isLmStudioProvider(settings)) {
+            return {
+                url: getLmStudioChatCompletionsURL(settings.aiApiURL),
+                options: {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        model: settings.aiModel,
+                        messages: [{ role: 'user', content: prompt }],
+                        response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: true, schema } },
+                        max_tokens: maxTokens,
+                        stream: false
+                    })
+                },
+                readOutputText: getChatCompletionsOutputText
+            };
+        }
+        return {
+            url: convertURL(OPENAI_RESPONSES_API_URL),
+            options: {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    model: settings.aiModel,
+                    reasoning: { effort: 'low' },
+                    input: [{ role: 'user', content: prompt }],
+                    text: { format: { type: 'json_schema', name: schemaName, strict: true, schema } },
+                    max_output_tokens: maxTokens
+                })
+            },
+            readOutputText: getResponsesOutputText
+        };
+    }
+
     /** API 테스트의 최소 응답 스키마를 브라우저에서도 검사한다. @param {unknown} value 파싱된 응답 @returns {boolean} 스키마 통과 여부 */
     function isAiApiTestResult(value) {
         return Boolean(value && typeof value === 'object' && !Array.isArray(value)
             && Object.keys(value).length === 1 && value.success === true);
     }
 
-    /** 저장된 OpenAI 설정으로 Responses API를 직접 호출해 연결을 확인한다. @returns {Promise<void>} 완료 시점 */
+    /** 저장된 제공자 설정으로 구조화 JSON 생성 API를 직접 호출해 연결을 확인한다. @returns {Promise<void>} 완료 시점 */
     async function runAiApiTest() {
         if (!hasCompleteAiApiSettings(settingsDraft) || !hasSavedAiApiSettings()) {
             showSettingsApiTestMessage('설정 저장 후 다시 시도해 주세요');
@@ -5617,22 +5683,13 @@
         settingsApiTestPending = true;
         showSettingsApiTestMessage('AI API 테스트 요청 중...');
         try {
-            const response = await window.fetch(convertURL(OPENAI_RESPONSES_API_URL), {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: settings.aiModel,
-                    reasoning: { effort: 'low' },
-                    input: [{ role: 'user', content: 'Return only JSON matching the supplied schema, with success set to true.' }],
-                    text: { format: { type: 'json_schema', name: 'ai_api_test_result', strict: true, schema: AI_API_TEST_JSON_SCHEMA } },
-                    max_output_tokens: 64
-                })
-            });
+            const request = createStructuredAiRequest(settings, 'Return only JSON matching the supplied schema, with success set to true.', 'ai_api_test_result', AI_API_TEST_JSON_SCHEMA, 64);
+            const response = await window.fetch(request.url, request.options);
             if (!response.ok) {
                 showSettingsApiTestMessage('AI API 테스트 실패 (JSON 스키마 검사: 미실시)');
                 return;
             }
-            const outputText = getResponsesOutputText(await response.json());
+            const outputText = request.readOutputText(await response.json());
             if (requestId !== settingsApiTestRequestId) return;
             let result;
             try { result = outputText ? JSON.parse(outputText) : null; } catch (error) { result = null; }
@@ -5660,61 +5717,93 @@
             playMenuSelectSound();
             const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
             settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + 1) % GRAPHICS_QUALITY_OPTIONS.length].key;
-        } else if (settingsFocus === 9 && canRunAiApiTest()) { playMenuSelectSound(); runAiApiTest(); }
-        else if (settingsFocus === 10) { playMenuSelectSound(); settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
-        else if (settingsFocus === 11) saveSettings();
-        else if (settingsFocus === 12) cancelSettings();
-        else if (settingsFocus === 13) resetAllSettings();
+        } else if (settingsFocus === 6) {
+            playMenuSelectSound();
+            const currentIndex = AI_SERVICE_PROVIDERS.indexOf(settingsDraft.aiProvider);
+            settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[(currentIndex + 1) % AI_SERVICE_PROVIDERS.length];
+        } else if (settingsFocus === 10 && canRunAiApiTest()) { playMenuSelectSound(); runAiApiTest(); }
+        else if (settingsFocus === 11) { playMenuSelectSound(); settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
+        else if (settingsFocus === 12) saveSettings();
+        else if (settingsFocus === 13) cancelSettings();
+        else if (settingsFocus === 14) resetAllSettings();
+    }
+
+    /** 코드 버튼을 제외하고 축소한 설정 화면의 공통 논리 좌표다. 그리기와 마우스 판정이 함께 사용한다. */
+    const SETTINGS_UI_LAYOUT = {
+        rowYs: [82, 126, 170, 214, 258, 302, 346, 390, 434, 478],
+        labelX: 300,
+        controlX: 550,
+        controlWidth: 400,
+        controlHeight: 28,
+        optionWidth: 115,
+        optionGap: 20,
+        sliderWidth: 340,
+        testY: 502,
+        testHeight: 32,
+        checkboxY: 568,
+        checkboxSize: 18,
+        actionY: 652,
+        actionWidth: 140,
+        actionHeight: 38
+    };
+
+    /** 현재 설정값으로 표시할 행 정보를 만든다. @returns {object[]} 설정 행 */
+    function getSettingsRows() {
+        const x = SETTINGS_UI_LAYOUT.controlX;
+        const step = SETTINGS_UI_LAYOUT.optionWidth + SETTINGS_UI_LAYOUT.optionGap;
+        return [
+            { label: '이름', value: settingsDraft.playerName, kind: 'text' },
+            { label: '배경음악 볼륨', value: settingsDraft.musicVolume, kind: 'slider' },
+            { label: '효과음 볼륨', value: settingsDraft.effectsVolume, kind: 'slider' },
+            { label: '가상 컨트롤러 사용', value: settingsDraft.virtualController, kind: 'radio', options: VIRTUAL_CONTROLLER_OPTIONS.map((option, index) => ({ label: option.label, value: option.key, x: x + index * step, translateLabel: true })) },
+            { label: '그래픽 설정', value: settingsDraft.graphicsQuality, kind: 'radio', options: GRAPHICS_QUALITY_OPTIONS.map((option, index) => ({ label: option.label, value: option.key, x: x + index * step, translateLabel: true })) },
+            { label: '사운드 데이터 URL', value: settingsDraft.soundDataURL, kind: 'text' },
+            { label: 'AI 서비스 제공자', value: settingsDraft.aiProvider, kind: 'radio', options: AI_SERVICE_PROVIDERS.map((provider, index) => ({ label: provider, value: provider, x: x + index * step, translateLabel: false })) },
+            { label: 'AI API URL', value: settingsDraft.aiApiURL, kind: 'text', disabled: !isLmStudioProvider(settingsDraft) },
+            { label: 'AI API 키', value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
+            { label: '사용 모델명', value: settingsDraft.aiModel, kind: 'text' }
+        ].map((row, index) => ({ ...row, y: SETTINGS_UI_LAYOUT.rowYs[index] }));
+    }
+
+    /** 저장·취소·초기화 버튼 정보를 반환한다. @returns {object[]} 동작 버튼 */
+    function getSettingsActionButtons() {
+        return [{ label: '저장', x: 410, focus: 12, color: '#4cc9b0' }, { label: '취소', x: 570, focus: 13, color: '#ef5350' }, { label: '초기화', x: 730, focus: 14, color: '#7e6bc4' }];
     }
 
     /** 설정 화면을 그린다. @returns {void} */
     function drawSettings() {
+        const layout = SETTINGS_UI_LAYOUT;
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `34px ${TITLE_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 52);
-        const rows = [
-            { label: '이름', y: 95, value: settingsDraft.playerName, kind: 'text' },
-            { label: '배경음악 볼륨', y: 145, value: settingsDraft.musicVolume, kind: 'slider' },
-            { label: '효과음 볼륨', y: 195, value: settingsDraft.effectsVolume, kind: 'slider' },
-            { label: '가상 컨트롤러 사용', y: 245, value: settingsDraft.virtualController, kind: 'radio', options: VIRTUAL_CONTROLLER_OPTIONS.map((option, optionIndex) => ({ label: option.label, value: option.key, x: 530 + optionIndex * 145, width: 125 })) },
-            { label: '그래픽 설정', y: 295, value: settingsDraft.graphicsQuality, kind: 'radio', options: GRAPHICS_QUALITY_OPTIONS.map((option, optionIndex) => ({ label: option.label, value: option.key, x: 530 + optionIndex * 145, width: 125 })) },
-            { label: '사운드 데이터 URL', y: 345, value: settingsDraft.soundDataURL, kind: 'text' },
-            { label: 'AI 서비스 제공자', y: 395, value: settingsDraft.aiProvider, kind: 'provider' },
-            { label: 'AI API 키', y: 445, value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
-            { label: '사용 모델명', y: 495, value: settingsDraft.aiModel, kind: 'text' }
-        ];
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `30px ${TITLE_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 44);
+        const rows = getSettingsRows();
         rows.forEach((row, index) => {
-            context.textAlign = 'left'; context.fillStyle = '#d8f2f5'; context.font = `13px ${BUTTON_FONT}`; context.fillText(translate(row.label), 280, row.y + 4);
+            context.textAlign = 'left'; context.fillStyle = row.disabled ? '#6f858e' : '#d8f2f5'; context.font = `12px ${BUTTON_FONT}`; context.fillText(translate(row.label), layout.labelX, row.y + 4);
             const focused = settingsFocus === index;
             if (row.kind === 'slider') {
-                context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(540, row.y - 8, 360, 16);
-                context.fillStyle = '#4cc9b0'; context.fillRect(542, row.y - 6, 356 * row.value / 100, 12);
-                context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 930, row.y + 4);
+                context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(layout.controlX, row.y - 7, layout.sliderWidth, 14);
+                context.fillStyle = '#4cc9b0'; context.fillRect(layout.controlX + 2, row.y - 5, (layout.sliderWidth - 4) * row.value / 100, 10);
+                context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 920, row.y + 4);
             } else if (row.kind === 'radio') {
                 row.options.forEach((option) => {
                     const selected = row.value === option.value;
-                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(option.x, row.y - 16, option.width, 32);
-                    context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(option.x, row.y - 16, option.width, 32);
-                    context.beginPath(); context.arc(option.x + 16, row.y, 6, 0, Math.PI * 2); context.fillStyle = '#d8f2f5'; context.strokeStyle = '#d8f2f5'; context.lineWidth = 2; context.stroke();
-                    if (selected) { context.beginPath(); context.arc(option.x + 16, row.y, 3, 0, Math.PI * 2); context.fill(); }
-                    context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(translate(option.label), option.x + (option.width + 16) / 2, row.y + 4);
-                });
-            } else if (row.kind === 'provider') {
-                AI_SERVICE_PROVIDERS.forEach((provider, providerIndex) => {
-                    const x = 540 + providerIndex * 145; const selected = row.value === provider;
-                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(x, row.y - 16, 125, 32); context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(x, row.y - 16, 125, 32); context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(provider, x + 62.5, row.y + 4);
+                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(option.x, row.y - layout.controlHeight / 2, layout.optionWidth, layout.controlHeight);
+                    context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(option.x, row.y - layout.controlHeight / 2, layout.optionWidth, layout.controlHeight);
+                    context.beginPath(); context.arc(option.x + 14, row.y, 5, 0, Math.PI * 2); context.fillStyle = '#d8f2f5'; context.strokeStyle = '#d8f2f5'; context.lineWidth = 2; context.stroke();
+                    if (selected) { context.beginPath(); context.arc(option.x + 14, row.y, 2.5, 0, Math.PI * 2); context.fill(); }
+                    context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(option.translateLabel ? translate(option.label) : option.label, option.x + (layout.optionWidth + 14) / 2, row.y + 4);
                 });
             } else {
-                context.fillStyle = '#0b202c'; context.fillRect(540, row.y - 16, 420, 32); context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(540, row.y - 16, 420, 32);
+                context.fillStyle = row.disabled ? '#172932' : '#0b202c'; context.fillRect(layout.controlX, row.y - layout.controlHeight / 2, layout.controlWidth, layout.controlHeight); context.strokeStyle = focused ? '#ffd54f' : (row.disabled ? '#354851' : '#426474'); context.lineWidth = focused ? 3 : 2; context.strokeRect(layout.controlX, row.y - layout.controlHeight / 2, layout.controlWidth, layout.controlHeight);
                 const characters = Array.from(row.value);
-                const textFieldX = 551;
-                const textFieldWidth = 398;
+                const textFieldX = layout.controlX + 10;
+                const textFieldWidth = layout.controlWidth - 20;
                 const cursorIndex = settingsEditing && settingsFocus === index ? settingsCursor : 0;
                 let visibleStart = 0;
                 while (visibleStart < cursorIndex && context.measureText(characters.slice(visibleStart, cursorIndex).join('')).width > textFieldWidth - 4) visibleStart += 1;
                 let visibleEnd = visibleStart;
                 while (visibleEnd < characters.length && context.measureText(characters.slice(visibleStart, visibleEnd + 1).join('')).width <= textFieldWidth) visibleEnd += 1;
                 context.save();
-                context.beginPath(); context.rect(textFieldX, row.y - 15, textFieldWidth, 30); context.clip();
+                context.beginPath(); context.rect(textFieldX, row.y - 13, textFieldWidth, 26); context.clip();
                 const selection = settingsEditing && settingsFocus === index ? getSettingsTextSelectionRange() : null;
                 if (selection) {
                     const selectionStart = Math.max(selection[0], visibleStart);
@@ -5722,29 +5811,29 @@
                     if (selectionStart < selectionEnd) {
                         const selectionX = textFieldX + context.measureText(characters.slice(visibleStart, selectionStart).join('')).width;
                         const selectionWidth = context.measureText(characters.slice(selectionStart, selectionEnd).join('')).width;
-                        context.fillStyle = '#426f9e'; context.fillRect(selectionX, row.y - 11, selectionWidth, 18);
+                        context.fillStyle = '#426f9e'; context.fillRect(selectionX, row.y - 10, selectionWidth, 16);
                     }
                 }
-                context.fillStyle = '#f5fbfc'; context.textAlign = 'left'; context.fillText(characters.slice(visibleStart, visibleEnd).join('') || ' ', textFieldX, row.y + 4);
-                if (settingsEditing && settingsFocus === index) { const cursorX = textFieldX + context.measureText(characters.slice(visibleStart, settingsCursor).join('')).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 11, 2, 18); }
+                context.fillStyle = row.disabled ? '#70838c' : '#f5fbfc'; context.textAlign = 'left'; context.fillText(characters.slice(visibleStart, visibleEnd).join('') || ' ', textFieldX, row.y + 4);
+                if (settingsEditing && settingsFocus === index) { const cursorX = textFieldX + context.measureText(characters.slice(visibleStart, settingsCursor).join('')).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 10, 2, 16); }
                 context.restore();
             }
         });
         const apiTestEnabled = canRunAiApiTest();
-        context.fillStyle = apiTestEnabled ? '#264b5b' : '#263640'; context.fillRect(540, 525, 420, 36);
-        context.strokeStyle = settingsFocus === 9 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 9 && apiTestEnabled ? 3 : 2; context.strokeRect(540, 525, 420, 36);
-        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `14px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), 750, 549);
-        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `11px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), 540, 580);
-        const checkboxX = 540;
-        const checkboxY = 600;
-        context.fillStyle = '#0b202c'; context.fillRect(checkboxX, checkboxY, 20, 20);
-        context.strokeStyle = settingsFocus === 10 ? '#ffd54f' : '#426474'; context.lineWidth = settingsFocus === 10 ? 3 : 2; context.strokeRect(checkboxX, checkboxY, 20, 20);
+        context.fillStyle = apiTestEnabled ? '#264b5b' : '#263640'; context.fillRect(layout.controlX, layout.testY, layout.controlWidth, layout.testHeight);
+        context.strokeStyle = settingsFocus === 10 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 10 && apiTestEnabled ? 3 : 2; context.strokeRect(layout.controlX, layout.testY, layout.controlWidth, layout.testHeight);
+        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), layout.controlX + layout.controlWidth / 2, layout.testY + 21);
+        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `10px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), layout.controlX, 552);
+        const checkboxX = layout.controlX;
+        const checkboxY = layout.checkboxY;
+        context.fillStyle = '#0b202c'; context.fillRect(checkboxX, checkboxY, layout.checkboxSize, layout.checkboxSize);
+        context.strokeStyle = settingsFocus === 11 ? '#ffd54f' : '#426474'; context.lineWidth = settingsFocus === 11 ? 3 : 2; context.strokeRect(checkboxX, checkboxY, layout.checkboxSize, layout.checkboxSize);
         if (settingsDraft.landscapeOrientationLocked) {
-            context.strokeStyle = '#4cc9b0'; context.lineWidth = 3; context.beginPath(); context.moveTo(checkboxX + 4, checkboxY + 10); context.lineTo(checkboxX + 8, checkboxY + 15); context.lineTo(checkboxX + 17, checkboxY + 5); context.stroke();
+            context.strokeStyle = '#4cc9b0'; context.lineWidth = 3; context.beginPath(); context.moveTo(checkboxX + 3, checkboxY + 9); context.lineTo(checkboxX + 7, checkboxY + 14); context.lineTo(checkboxX + 16, checkboxY + 4); context.stroke();
         }
-        context.fillStyle = '#f5fbfc'; context.font = `14px ${BUTTON_FONT}`; context.textAlign = 'left'; context.fillText(translate('화면 가로방향 고정'), checkboxX + 30, checkboxY + 16);
-        [{ label: '저장', x: 390, focus: 11, color: '#4cc9b0' }, { label: '취소', x: 565, focus: 12, color: '#ef5350' }, { label: '초기화', x: 740, focus: 13, color: '#7e6bc4' }].forEach((button) => {
-            context.fillStyle = button.color; context.fillRect(button.x, 640, 150, 42); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, 640, 150, 42); context.fillStyle = '#fff'; context.font = `14px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + 75, 666);
+        context.fillStyle = '#f5fbfc'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'left'; context.fillText(translate('화면 가로방향 고정'), checkboxX + 27, checkboxY + 15);
+        getSettingsActionButtons().forEach((button) => {
+            context.fillStyle = button.color; context.fillRect(button.x, layout.actionY, layout.actionWidth, layout.actionHeight); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, layout.actionY, layout.actionWidth, layout.actionHeight); context.fillStyle = '#fff'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + layout.actionWidth / 2, layout.actionY + 24);
         });
         context.fillStyle = '#263640'; context.fillRect(SETTINGS_CODE_BUTTON.x, SETTINGS_CODE_BUTTON.y, SETTINGS_CODE_BUTTON.width, SETTINGS_CODE_BUTTON.height);
         context.strokeStyle = '#52606d'; context.lineWidth = 1; context.strokeRect(SETTINGS_CODE_BUTTON.x, SETTINGS_CODE_BUTTON.y, SETTINGS_CODE_BUTTON.width, SETTINGS_CODE_BUTTON.height);
@@ -7075,9 +7164,14 @@
         } else if (key === 'arrowdown') selectRelativeGalleryItem(1);
     }
 
-    /** 설정 화면에서 편집 가능한 텍스트 입력 필드 이름을 반환한다. @returns {'playerName'|'soundDataURL'|'aiApiKey'|'aiModel'|null} 설정 입력 필드 */
+    /** 설정 화면에서 편집 가능한 텍스트 입력 필드 이름을 반환한다. @returns {'playerName'|'soundDataURL'|'aiApiURL'|'aiApiKey'|'aiModel'|null} 설정 입력 필드 */
     function getSettingsTextField() {
-        return settingsFocus === 0 ? 'playerName' : (settingsFocus === 5 ? 'soundDataURL' : (settingsFocus === 7 ? 'aiApiKey' : (settingsFocus === 8 ? 'aiModel' : null)));
+        if (settingsFocus === 0) return 'playerName';
+        if (settingsFocus === 5) return 'soundDataURL';
+        if (settingsFocus === 7 && isLmStudioProvider(settingsDraft)) return 'aiApiURL';
+        if (settingsFocus === 8) return 'aiApiKey';
+        if (settingsFocus === 9) return 'aiModel';
+        return null;
     }
 
     /** 설정 텍스트 입력의 선택 범위를 반환한다. @returns {[number,number]|null} 선택 시작·끝 위치 */
@@ -7108,7 +7202,8 @@
         const characters = Array.from(settingsDraft[field]);
         const before = characters.slice(0, settingsCursor);
         const after = characters.slice(settingsCursor);
-        const maxLength = field === 'playerName' ? PLAYER_NAME_MAX_LENGTH : (field === 'soundDataURL' ? SOUND_DATA_URL_MAX_LENGTH : Infinity);
+        const maxLength = field === 'playerName' ? PLAYER_NAME_MAX_LENGTH
+            : (field === 'soundDataURL' ? SOUND_DATA_URL_MAX_LENGTH : (field === 'aiApiURL' ? AI_API_URL_MAX_LENGTH : Infinity));
         const availableLength = Number.isFinite(maxLength) ? Math.max(0, maxLength - before.length - after.length) : Infinity;
         const inserted = Number.isFinite(availableLength) ? Array.from(text).slice(0, availableLength).join('') : text;
         settingsDraft[field] = before.concat(Array.from(inserted), after).join('');
@@ -7197,8 +7292,11 @@
             else if (settingsFocus === 4) {
                 const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
                 settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + direction + GRAPHICS_QUALITY_OPTIONS.length) % GRAPHICS_QUALITY_OPTIONS.length].key;
-            } else if (settingsFocus === 10) settingsDraft.landscapeOrientationLocked = direction > 0;
-            else if (settingsFocus >= 11) settingsFocus = 11 + (settingsFocus - 11 + (direction < 0 ? 2 : 1)) % 3;
+            } else if (settingsFocus === 6) {
+                const currentIndex = AI_SERVICE_PROVIDERS.indexOf(settingsDraft.aiProvider);
+                settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[(currentIndex + direction + AI_SERVICE_PROVIDERS.length) % AI_SERVICE_PROVIDERS.length];
+            } else if (settingsFocus === 11) settingsDraft.landscapeOrientationLocked = direction > 0;
+            else if (settingsFocus >= 12) settingsFocus = 12 + (settingsFocus - 12 + (direction < 0 ? 2 : 1)) % 3;
         }
     }
 
@@ -7736,25 +7834,49 @@
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
+            const layout = SETTINGS_UI_LAYOUT;
             if (x >= SETTINGS_CODE_BUTTON.x && x <= SETTINGS_CODE_BUTTON.x + SETTINGS_CODE_BUTTON.width && y >= SETTINGS_CODE_BUTTON.y && y <= SETTINGS_CODE_BUTTON.y + SETTINGS_CODE_BUTTON.height) enterSettingsCode();
-            else if (y >= 525 && y <= 561 && x >= 540 && x <= 960 && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 9; runAiApiTest(); }
-            else if (y >= 600 && y <= 620 && x >= 540 && x <= 960) { playMenuSelectSound(); settingsFocus = 10; settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
-            else if (y >= 640 && y <= 682 && x >= 390 && x <= 540) { settingsFocus = 11; saveSettings(); }
-            else if (y >= 640 && y <= 682 && x >= 565 && x <= 715) { settingsFocus = 12; cancelSettings(); }
-            else if (y >= 640 && y <= 682 && x >= 740 && x <= 890) { settingsFocus = 13; resetAllSettings(); }
-            else if (y >= 79 && y <= 111) { settingsFocus = 0; settingsEditing = true; settingsCursor = Array.from(settingsDraft.playerName).length; clearSettingsTextSelection(); }
-            else if (y >= 137 && y <= 153) { settingsFocus = 1; settingsDraft.musicVolume = Math.round(Math.max(0, Math.min(100, (x - 540) / 360 * 100))); }
-            else if (y >= 187 && y <= 203) { settingsFocus = 2; settingsDraft.effectsVolume = Math.round(Math.max(0, Math.min(100, (x - 540) / 360 * 100))); }
-            else if (y >= 229 && y <= 261 && x >= 530 && x <= 655) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'none'; }
-            else if (y >= 229 && y <= 261 && x >= 675 && x <= 800) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'normal'; }
-            else if (y >= 229 && y <= 261 && x >= 820 && x <= 945) { playMenuSelectSound(); settingsFocus = 3; settingsDraft.virtualController = 'large'; }
-            else if (y >= 279 && y <= 311 && x >= 530 && x <= 655) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'low'; }
-            else if (y >= 279 && y <= 311 && x >= 675 && x <= 800) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'medium'; }
-            else if (y >= 279 && y <= 311 && x >= 820 && x <= 945) { playMenuSelectSound(); settingsFocus = 4; settingsDraft.graphicsQuality = 'high'; }
-            else if (y >= 329 && y <= 361 && x >= 540 && x <= 960) { settingsFocus = 5; settingsEditing = true; settingsCursor = Array.from(settingsDraft.soundDataURL).length; clearSettingsTextSelection(); }
-            else if (y >= 379 && y <= 411 && x >= 540 && x <= 665) { playMenuSelectSound(); settingsFocus = 6; settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[0]; }
-            else if (y >= 429 && y <= 461 && x >= 540 && x <= 960) { settingsFocus = 7; settingsEditing = true; settingsCursor = Array.from(settingsDraft.aiApiKey).length; clearSettingsTextSelection(); }
-            else if (y >= 479 && y <= 511 && x >= 540 && x <= 960) { settingsFocus = 8; settingsEditing = true; settingsCursor = Array.from(settingsDraft.aiModel).length; clearSettingsTextSelection(); }
+            else if (y >= layout.testY && y <= layout.testY + layout.testHeight && x >= layout.controlX && x <= layout.controlX + layout.controlWidth && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 10; runAiApiTest(); }
+            else if (y >= layout.checkboxY && y <= layout.checkboxY + layout.checkboxSize && x >= layout.controlX && x <= layout.controlX + layout.controlWidth) { playMenuSelectSound(); settingsFocus = 11; settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
+            else {
+                const action = getSettingsActionButtons().find((button) => x >= button.x && x <= button.x + layout.actionWidth && y >= layout.actionY && y <= layout.actionY + layout.actionHeight);
+                if (action) {
+                    settingsFocus = action.focus;
+                    if (action.focus === 12) saveSettings();
+                    else if (action.focus === 13) cancelSettings();
+                    else resetAllSettings();
+                    return;
+                }
+                const rows = getSettingsRows();
+                const rowIndex = rows.findIndex((row) => {
+                    if (row.disabled) return false;
+                    if (row.kind === 'slider') return x >= layout.controlX && x <= layout.controlX + layout.sliderWidth && y >= row.y - 7 && y <= row.y + 7;
+                    if (row.kind === 'radio') return row.options.some((option) => x >= option.x && x <= option.x + layout.optionWidth && y >= row.y - layout.controlHeight / 2 && y <= row.y + layout.controlHeight / 2);
+                    return x >= layout.controlX && x <= layout.controlX + layout.controlWidth && y >= row.y - layout.controlHeight / 2 && y <= row.y + layout.controlHeight / 2;
+                });
+                if (rowIndex >= 0) {
+                    const row = rows[rowIndex];
+                    settingsFocus = rowIndex;
+                    if (row.kind === 'slider') {
+                        settingsDraft[rowIndex === 1 ? 'musicVolume' : 'effectsVolume'] = Math.round(Math.max(0, Math.min(100, (x - layout.controlX) / layout.sliderWidth * 100)));
+                    } else if (row.kind === 'radio') {
+                        const option = row.options.find((candidate) => x >= candidate.x && x <= candidate.x + layout.optionWidth);
+                        if (option) {
+                            playMenuSelectSound();
+                            if (rowIndex === 3) settingsDraft.virtualController = option.value;
+                            else if (rowIndex === 4) settingsDraft.graphicsQuality = option.value;
+                            else settingsDraft.aiProvider = option.value;
+                        }
+                        settingsEditing = false;
+                        clearSettingsTextSelection();
+                    } else {
+                        settingsEditing = true;
+                        const field = getSettingsTextField();
+                        settingsCursor = field ? Array.from(settingsDraft[field]).length : 0;
+                        clearSettingsTextSelection();
+                    }
+                }
+            }
         } else {
             if (menuScreen === 'practiceDifficulty') {
                 const cancelBounds = getColorSelectionCancelButtonBounds();
@@ -9512,7 +9634,7 @@
     }
 
     /**
-     * 솔로몬은 매 조작 턴마다 현재 필드와 제공된 모든 NEXT를 OpenAI Responses API에 보내
+     * 솔로몬은 매 조작 턴마다 현재 필드와 제공된 모든 NEXT를 설정된 AI 제공자에 보내
      * 구조화된 최적 배치를 받아 조작하는 세션 전용 기본 적이다.
      */
     class Solomon extends BundledEnemy {
@@ -9640,7 +9762,7 @@
                 && player.phase === 'control' && player.active === this.turnActive);
         }
 
-        /** 저장된 OpenAI 설정으로 이번 턴의 배치를 요청한다. @param {PlayerState} player CPU 플레이어 @returns {Promise<void>} */
+        /** 저장된 AI 제공자 설정으로 이번 턴의 배치를 요청한다. @param {PlayerState} player CPU 플레이어 @returns {Promise<void>} */
         async requestPlacement(player) {
             const abortController = new AbortController();
             this.requestController = abortController;
@@ -9651,21 +9773,12 @@
                 abortController.abort();
             }, SOLOMON_API_TIMEOUT);
             try {
-                const response = await window.fetch(convertURL(OPENAI_RESPONSES_API_URL), {
-                    method: 'POST',
-                    headers: { Authorization: `Bearer ${store.settings.aiApiKey}`, 'Content-Type': 'application/json' },
-                    signal: abortController.signal,
-                    body: JSON.stringify({
-                        model: store.settings.aiModel,
-                        reasoning: { effort: 'low' },
-                        input: [{ role: 'user', content: this.buildPlacementPrompt(player) }],
-                        text: { format: { type: 'json_schema', name: 'solomon_puyo_placement', strict: true, schema: SOLOMON_PLACEMENT_JSON_SCHEMA } },
-                        max_output_tokens: 128
-                    })
-                });
-                if (!response.ok) throw new Error(`OpenAI Responses API HTTP ${response.status}`);
-                const outputText = getResponsesOutputText(await response.json());
-                if (!outputText) throw new Error('Responses API 응답에 output_text가 없습니다.');
+                const request = createStructuredAiRequest(store.settings, this.buildPlacementPrompt(player), 'solomon_puyo_placement', SOLOMON_PLACEMENT_JSON_SCHEMA, 128);
+                request.options.signal = abortController.signal;
+                const response = await window.fetch(request.url, request.options);
+                if (!response.ok) throw new Error(`${store.settings.aiProvider} API HTTP ${response.status}`);
+                const outputText = request.readOutputText(await response.json());
+                if (!outputText) throw new Error(`${store.settings.aiProvider} API 응답에 구조화 출력 텍스트가 없습니다.`);
                 let result;
                 try { result = JSON.parse(outputText); } catch (error) { throw new Error('솔로몬 배치 JSON을 파싱할 수 없습니다.', { cause: error }); }
                 if (!this.isCurrentTurn(player)) return;
@@ -9739,7 +9852,7 @@
             return this.fastDownElapsed >= delay * delayRate;
         }
 
-        /** 착지 또는 턴 교체 시 남아 있는 Responses API 요청을 취소한다. @param {PlayerState|null} player CPU 플레이어 @param {string} reason 취소 사유 @returns {void} */
+        /** 착지 또는 턴 교체 시 남아 있는 AI API 요청을 취소한다. @param {PlayerState|null} player CPU 플레이어 @param {string} reason 취소 사유 @returns {void} */
         cancelPendingRequest(player, reason = 'cancelled') {
             if (!this.requestController || (player && player !== this.turnPlayer)) return;
             this.requestController.puyowCancelReason = reason;

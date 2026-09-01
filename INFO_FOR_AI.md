@@ -112,8 +112,10 @@
 - `Andrealphus`는 `PuyoW.Andrealphus`로도 공개된 `BundledEnemy` 하위의 출시된 8번째 적이다. 키마리스와 독립된 동일 판단 흐름(일반·위기 빠른 하강 지연 비율, 화면 예고 위협량 반영 포함)을 사용하되 평상시 목표는 7연쇄·2수 탐색이다. 피버 중에는 `Enemy.prepareTurn()`이 준비하는 공통 연쇄 최적 후보를 그대로 우선한다. 2수 읽기 배치의 X와 회전값을 모두 실제 조작에 적용한다. 안드레알푸스의 조정 때문에 키마리스의 목표 6연쇄·2수 계약을 바꾸지 않는다.
 - `Flauros`는 `BundledEnemy` 하위의 9번째 출시 예정 적이다. `notAvail`을 유지하며, 전용 AI가 구현되기 전에는 이동·회전·빠른 하강 없이 자연 낙하만 하도록 `prepareTurn()`/선택 메서드에 TODO가 있다. 일반·위기·우는 표정의 표범 초상화와 다국어 이름은 이미 등록되어 있다.
 - `WarningPuyo` 확장은 양의 정수 `unitCount`, 비어 있지 않은 `type`, `draw(context, x, y, cellSize)`를 갖춰야 한다.
-- 사운드는 `SoundPool`/`CommonSoundPool`/`EnemySoundPool`과 `setEnemySoundPool()`을 사용한다. 배경음은 중복 재생하지 않고 일시정지·음소거·볼륨 상태와 동기화해야 한다. 설정 화면의 배경음악·효과음 슬라이더 값은 슬라이더 오른쪽(논리 X=930)에 표시한다.
+- 사운드는 `SoundPool`/`CommonSoundPool`/`EnemySoundPool`과 `setEnemySoundPool()`을 사용한다. 배경음은 중복 재생하지 않고 일시정지·음소거·볼륨 상태와 동기화해야 한다. 설정 화면의 배경음악·효과음 슬라이더 값은 축소된 슬라이더 오른쪽(논리 X=920)에 표시한다.
 - 설정 화면 오른쪽 아래의 작은 `코드` 버튼은 키보드 포커스 순서에 포함하지 않고 마우스 클릭만 받는다. 클릭하면 `prompt('코드를 입력하세요')`를 호출하며, 취소·공란은 무시하고 값이 있으면 `trim()` 후 `addCode()`에 전달한다.
+- 설정 화면의 AI 제공자는 번역하지 않는 브랜드명 `OpenAI`와 `LM Studio` 라디오 선택지다. `aiApiURL`은 `puyow_store.settings`에 저장되며 LM Studio에서만 활성화·포커스된다. OpenAI는 고정 `https://api.openai.com/v1/responses`를 사용하고, LM Studio는 사용자가 입력한 서버 기본 URL 아래의 `/v1/chat/completions`를 사용한다.
+- AI API 테스트와 솔로몬은 같은 제공자별 구조화 출력 요청 경로를 공유한다. LM Studio 요청은 저장된 `aiApiKey`를 `$LM_API_TOKEN`에 해당하는 Bearer 토큰으로 보내고, `response_format.json_schema`와 `choices[0].message.content` 형식을 사용한다.
 
 ## 3D와 공통 함수
 

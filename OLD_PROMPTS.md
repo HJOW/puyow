@@ -1,6 +1,51 @@
 
 
 
+아래 내용은 93차 수정요청한 내용이야. 참고만 해줘.
+----------------------------------------------------------
+
+
+
+1. 설정 화면 내 전체 UI 크기를 조금씩 줄여줘. (단 "코드" 버튼은 제외)
+   그리고 설정 화면 내 "저장", "취소", "초기화" 버튼 위치를 아래로 조금만 더 내려줘. 단 캔버스 바깥으로 벗어나면 안 돼.
+   마우스 클릭 좌표 주의하고. 화면 방향이 기운 경우 좌표가 변환되는 부분도 유의하고.
+
+2. AI 서비스 제공자에 "LM Studio" 선택지를 추가해줘.
+   이제 OpenAI 와 LM Studio 둘 중 하나를 선택해야 하니, 둘 다 라디오 버튼으로 바꿔줘.
+   키보드/마우스로 포커스, 선택이 가능해야 해.
+   LM Studio 는 다국어 처리는 하지 말자.
+
+3. AI API 키 입력란 위에 "AI API URL" 를 입력받도록 텍스트 컴포넌트와 라벨(label) 을 배치해줘.
+   키보드로 포커스, 마우스 클릭 모두 가능해야 하고,
+   다른 텍스트 컴포넌트처럼 단축키 사용이 가능하게 해줘.
+   그리고 "AI 서비스 제공자" 가 OpenAI 이면 "AI API URL" 입력란은 비활성화 시켜줘.
+   (이 경우 마우스 클릭 차단, 키보드 방향키 포커스 건너뛰기)
+   "AI 서비스 제공자" 가 LM Studio 이면 "AI API URL" 입력란은 활성화 시켜줘.
+   설정 저장 시 "AI API URL" 값 또한 storageManager 의 puyow_store 에 저장되어야 해.
+   
+4. 설정 화면에서 AI API 테스트 시,
+
+   AI 서비스 제공자가 OpenAI 인 경우는 
+       기존처럼 OpenAI API 테스트를 수행하면 돼.
+       이 때는 AI API URL 값을 사용할 필요가 없어.
+
+   AI 서비스 제공자가 LM Studio 인 경우는
+       https://lmstudio.ai/docs/developer/rest 
+       https://lmstudio.ai/docs/developer/openai-compat/structured-output
+       를 참고하여 LM Studio API 요청을 해야 해.
+       AI API URL은 LM Studio 가 설치된 서버 또는 PC를 가리키는 URL로서 사용되어야 해.
+       (AI API URL 값의 예: http://192.168.0.5/ )
+       이 경우 AI API 키는 $LM_API_TOKEN 값으로 사용되어야 해.
+
+   적 "솔로몬" 의 AI 호출 동작 파트도 마찬가지
+   AI 서비스 제공자가 OpenAI 인 경우는 
+       기본처럼 OpenAI API로 json 생성을 요청하면 돼.
+   AI 서비스 제공자가 "LM Studio"인 경우 테스트의 경우와 마찬가지로 LM Studio API 를 통해 json 생성을 요청해야 해.
+       테스트의 경우와 마찬가지로 AI API URL은 LM Studio 가 설치된 서버 또는 PC를 가리키는 URL로서 사용되어야 해.
+       (AI API URL 값의 예: http://192.168.0.5/ )
+       마찬가지로 AI API 키는 $LM_API_TOKEN 값으로 사용되어야 해.
+
+
 아래 내용은 92차 수정요청한 내용이야. 참고만 해줘.
 ----------------------------------------------------------
 
