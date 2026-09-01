@@ -506,7 +506,7 @@
     /** 공통 사운드 풀 @type {CommonSoundPool} */
     let commonSoundPool = null;
     /** 사용 가능한 코드들, 키로 코드가 탑재되며, 그 값은 함수로 탑재된다. (코드 적용 시 동작해야 하는 함수) @type {object} */
-    let codeAvailables = {
+    let codeArchive = {
         "observation" : function() {}, // observation : 현재 진행 상황과 관계없이 모든 적을 잠금 해제하며, 구경 모드 해제
     };
     /** 입력된 테스트 기능 잠금 해제 코드들 @type {string[]} */
@@ -1104,7 +1104,7 @@
 
             // code 에 따른 동작 실행
             for(const code of codeApplied) {
-                const fAction = codeAvailables[code];
+                const fAction = codeArchive[code];
                 if(typeof(fAction) === 'function') fAction();
             }
         } catch (error) {
@@ -1190,17 +1190,29 @@
         }
     }
 
-    /** 설정한 사운드 데이터 URL에서 JSON을 비동기로 불러온다. @returns {Promise<void>} 완료 시점 */
-    async function loadSoundDataURL() {
+    /** 설정한 사운드 데이터 URL에서 JSON을 비동기로 불러온다. 
+     * 
+     * @param {string|null|undefined} currentSoundURL 불러올 사운드 데이터 URL, 생략 시 설정값으로 저장된 사운드 URL 사용, 선택사항
+     * @param {boolean} save 설정에 반영해 스토리지에 저장할지 여부, 선택사항
+     * 
+    */
+    function loadSoundDataURL(currentSoundURL, save) {
+        if(typeof(currentSoundURL) == 'undefined' || currentSoundURL == null) currentSoundURL = soundDataURL;
         if (soundDataURL === null || soundDataURL === '') return;
         try {
-            const convertedURL = convertURL(soundDataURL);
+            const convertedURL = convertURL(currentSoundURL);
 
             // JSONP 로 convertedURL 호출
             const scriptObj = document.createElement('script');
             scriptObj.src = convertedURL;
             scriptObj.classList.add('script_jsonp');
             document.body.appendChild(scriptObj);
+
+            if(save) {
+                // 설정에 반영해 스토리지에 저장
+                store.settings.soundDataURL = currentSoundURL;
+                saveStore();
+            }
         } catch (error) {
             console.error('사운드 데이터 URL을 불러오지 못했습니다.', error);
         }
@@ -1572,6 +1584,17 @@
         if (WARNING_PUYO_CLASSES.includes(WarningPuyoType)) throw new Error('이미 등록된 예고뿌요 클래스입니다.');
         WARNING_PUYO_CLASSES.push(WarningPuyoType);
         WARNING_PUYO_CLASSES.sort((left, right) => right.unitCount - left.unitCount);
+    }
+
+    /**
+     * 사용 가능한 코드 등록
+     * 
+     * @param {string} code 코드
+     * @param {Function} action  코드 실행 시 호출할 함수
+     */
+    function registerCodeArchive(code, action) {
+        if(typeof(codeArchive[code]) != 'undefined') throw new Error('이미 등록된 코드입니다.');
+        codeArchive[code] = action;
     }
 
     /**
@@ -5474,15 +5497,16 @@
         settingsDraft.playerName = normalizePlayerName(settingsDraft.playerName);
         settingsDraft.soundDataURL = normalizeSoundDataURL(settingsDraft.soundDataURL);
         settingsDraft.aiApiURL = normalizeAiApiURL(settingsDraft.aiApiURL);
-        const soundDataURLChanged = soundDataURL !== settingsDraft.soundDataURL;
+        const convertedSoundDataURL = convertURL(settingsDraft.soundDataURL);
+        const soundDataURLChanged = soundDataURL !== convertedSoundDataURL;
         store.settings = { ...settingsDraft };
         saveStore();
         applyCanvasOutputResolution();
         updateCanvasOrientation();
         updateBackgroundMusicVolume();
         if (soundDataURLChanged) {
-            soundDataURL = settingsDraft.soundDataURL;
-            void loadSoundDataURL();
+            soundDataURL = convertedSoundDataURL;
+            loadSoundDataURL();
         }
         settingsDraft = null; settingsEditing = false; clearSettingsTextSelection();
         menuScreen = 'title'; loadNotice();
@@ -8200,8 +8224,8 @@
     function addCode(code) {
         if (!code || typeof code !== 'string') throw new TypeError('code는 문자열이어야 합니다.');
         
-        // codeAvailables 의 키로 존재하는 코드만 입력 가능
-        const fAction = codeAvailables[code];
+        // codeArchive 의 키로 존재하는 코드만 입력 가능
+        const fAction = codeArchive[code];
         if (typeof(fAction) != 'function') { alert('유효하지 않은 코드입니다.'); return; }
 
         if(codeApplied.indexOf(code) >= 0) { codeApplied.splice(codeApplied.indexOf(code), 1); }
@@ -11731,6 +11755,7 @@
         registerOpponent,
         registerWarningPuyo,
         registerLanguage,
+        registerCodeArchive,
         setNoticeFile,
         setURLContextPath,
         convertURL,
