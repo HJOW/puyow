@@ -290,6 +290,82 @@ test('갤러리 일반뿌요 목록에 철구뿌요를 처음부터 잠금 해�
   expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['잠김', 'Locked', 'ロック中', '已锁定'].includes(text)))).toBe(false);
 });
 
+test('카드 뽑기는 확인 전에는 자원을 쓰지 않고 취소하거나 확인할 수 있으며 등급 문구를 표시하지 않는다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], gold: 10000 }));
+  });
+  await page.reload();
+  await page.evaluate(() => { Math.random = () => 0; });
+  await enterMainMenu(page);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('10,000 GOLD'))).toBe(true);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
+    '1장 뽑기를 진행할까요?', 'Draw 1 card?', 'カードを1枚引きますか？', '要抽1张卡牌吗？', '1 Karte ziehen?', 'Tirer 1 carte ?'
+  ].includes(text)))).toBe(true);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).gold)).toBe(10000);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards') || '[]').length)).toBe(0);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).gold)).toBe(10000);
+  await page.keyboard.press('Enter');
+  const canvas = page.locator('#webpuyo_canvas');
+  await canvas.click({ position: { x: 550, y: 459 } });
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards'))?.length)).toBe(1);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).gold)).toBe(9000);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards'))[0].type)).toBe('puyo:red');
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['COMMON', 'UNCOMMON', 'RARE', 'EPIC'].includes(text)))).toBe(false);
+});
+
+test('카드 5장을 선택해 합성하면 원본을 제거하고 새 카드 1장을 저장한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], gold: 0 }));
+    localStorage.setItem('puyow_cards', JSON.stringify(Array.from({ length: 5 }, (_, index) => ({ id: `owned-${index}`, type: 'puyo:blue' }))));
+  });
+  await page.reload();
+  await page.evaluate(() => { Math.random = () => 0; });
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 5; index += 1) {
+    await page.keyboard.press('Enter');
+    if (index < 4) await page.keyboard.press('ArrowRight');
+  }
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards')).length)).toBe(5);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
+    '선택한 카드 5장을 합성할까요?', 'Synthesize the 5 selected cards?', '選択したカード5枚を合成しますか？', '要合成所选的5张卡牌吗？', 'Die 5 ausgewählten Karten kombinieren?', 'Fusionner les 5 cartes sélectionnées ?'
+  ].includes(text)))).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards'))?.length)).toBe(1);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards'))[0].type)).toBe('puyo:red');
+});
+
+test('기존 퍼즐 진행도는 GOLD 보상 완료로 이관하고 잘못된 GOLD는 0으로 보정한다', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('puyow_store', JSON.stringify({
+    clearList: [], gold: -10, puzzleClearStages: [0, 1], puzzleStarStages: [1]
+  })));
+  await page.reload();
+  await enterMainMenu(page);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('0 GOLD'))).toBe(true);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')));
+  expect(stored.gold).toBe(0);
+  expect(stored.puzzleGoldClearStages).toEqual([0, 1]);
+  expect(stored.puzzleGoldStarStages).toEqual([1]);
+});
+
 test('메뉴에서 Z 키는 Enter 키처럼 동작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('z');
@@ -2807,6 +2883,10 @@ test('퍼즐뿌요 스테이지 클리어는 결과 화면 전환 전에 저장�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 6000 }).toBe('game_over');
   expect(await page.evaluate(() => JSON.parse(window.localStorage.getItem('puyow_store')).puzzleClearStages)).toContain(0);
   expect(await page.evaluate(() => JSON.parse(window.localStorage.getItem('puyow_store')).puzzleStarStages)).toContain(0);
+  expect(await page.evaluate(() => {
+    const stored = JSON.parse(window.localStorage.getItem('puyow_store'));
+    return { gold: stored.gold, clearRewards: stored.puzzleGoldClearStages, starRewards: stored.puzzleGoldStarStages };
+  })).toEqual({ gold: 2000, clearRewards: [0], starRewards: [0] });
   await page.evaluate(() => { window.testCanvasTextCalls = []; });
   await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.some(({ text }) => ['현재 턴 1 / 2', 'Turn 1 / 2', 'ターン 1 / 2', '第 1 / 2 回合'].includes(text)))).toBe(true);
   expect(await page.evaluate(() => window.WebPuyo.getGameState().puzzle.starEarned)).toBe(true);
@@ -2918,12 +2998,12 @@ test('퍼즐뿌요 스테이지 카드의 9글자 초과 클리어 조건은 말
 
 test('준비된 퍼즐뿌요 스테이지의 모든 힌트는 지원 언어로 번역된다', async ({ page }) => {
   const expectedHints = {
-    'ko-KR': ['두 번째에 터뜨려', '한 번만 회전해', '마지막 폭발은 초록색으로', '마지막 파란색 폭발 후를 생각해', '3, 4연쇄째에 보충이 필요해', '방해뿌요는 터뜨려야 제맛', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?', '저 위의 빨간 색은 왜 있을까?', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해', '그냥 내려 봐'],
-    'en-US': ['Pop on the second turn.', 'Rotate only once.', 'Make the last pop green.', 'Think about what comes after the final blue pop.', 'You need a refill on the 3rd or 4th chain.', 'Pop the garbage puyos too.', 'Where should you pop first? The right side?', 'Why is there red up there?', 'Place four green puyos somewhere in the right three columns.', 'Just drop it.'],
-    'ja-JP': ['2回目で消そう。', '一度だけ回転しよう。', '最後は緑で消そう。', '最後の青ぷよ消去の後を考えよう。', '3・4連鎖目に補充が必要です。', 'おじゃまぷよも消そう。', 'どこから消そう？右側かな？', '上の赤いぷよはなぜあるのかな？', '右3列のどこかに緑ぷよ4個を置こう。', 'そのまま落としてみよう。'],
-    'zh-CN': ['在第二次消除。', '只旋转一次。', '最后用绿色消除。', '想想最后一次蓝色魔法气泡消除之后。', '第3或第4连锁需要补充。', '也消除垃圾噗哟吧。', '从哪里开始消除？右边？', '上面的红噗哟为什么会在那里？', '需要把4个绿色魔法气泡放在右侧三列的某处。', '直接落下试试。'],
-    'de-DE': ['Lass sie beim zweiten Zug platzen.', 'Drehe nur einmal.', 'Die letzte Explosion muss grün sein.', 'Denke an das Ende nach der letzten blauen Explosion.', 'Bei der 3. oder 4. Kette ist Nachschub nötig.', 'Lass auch die Müll-Puyos platzen.', 'Wo solltest du anfangen? Rechts?', 'Warum ist dort oben ein roter Puyo?', 'Platziere vier grüne Puyos irgendwo in den drei rechten Spalten.', 'Lass sie einfach fallen.'],
-    'fr-FR': ['Fais-les éclater au deuxième tour.', 'Ne tourne qu’une fois.', 'Fais éclater le dernier en vert.', 'Pense à ce qui suit la dernière explosion bleue.', 'Un ravitaillement est nécessaire à la 3e ou 4e chaîne.', 'Fais aussi éclater les Puyos-ordures.', 'Par où commencer ? À droite ?', 'Pourquoi ce Puyo rouge est-il là-haut ?', 'Place quatre Puyos verts quelque part dans les trois colonnes de droite.', 'Laisse-les simplement tomber.']
+    'ko-KR': ['두 번째에 터뜨려', '한 번만 회전해', '마지막 폭발은 초록색으로', '마지막 파란색 폭발 후를 생각해', '3, 4연쇄째에 보충이 필요해', '방해뿌요는 터뜨려야 제맛', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?', '저 위의 빨간 색은 왜 있을까?', '최초 폭발은 빨간색', '최초 폭발은 초록색', '최초 폭발은 노란색', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해', '그냥 내려 봐'],
+    'en-US': ['Pop on the second turn.', 'Rotate only once.', 'Make the last pop green.', 'Think about what comes after the final blue pop.', 'You need a refill on the 3rd or 4th chain.', 'Pop the garbage puyos too.', 'Where should you pop first? The right side?', 'Why is there red up there?', 'Make the first pop red.', 'Make the first pop green.', 'Make the first pop yellow.', 'Place four green puyos somewhere in the right three columns.', 'Just drop it.'],
+    'ja-JP': ['2回目で消そう。', '一度だけ回転しよう。', '最後は緑で消そう。', '最後の青ぷよ消去の後を考えよう。', '3・4連鎖目に補充が必要です。', 'おじゃまぷよも消そう。', 'どこから消そう？右側かな？', '上の赤いぷよはなぜあるのかな？', '最初は赤で消そう。', '最初は緑で消そう。', '最初は黄で消そう。', '右3列のどこかに緑ぷよ4個を置こう。', 'そのまま落としてみよう。'],
+    'zh-CN': ['在第二次消除。', '只旋转一次。', '最后用绿色消除。', '想想最后一次蓝色魔法气泡消除之后。', '第3或第4连锁需要补充。', '也消除垃圾噗哟吧。', '从哪里开始消除？右边？', '上面的红噗哟为什么会在那里？', '首次消除红色。', '首次消除绿色。', '首次消除黄色。', '需要把4个绿色魔法气泡放在右侧三列的某处。', '直接落下试试。'],
+    'de-DE': ['Lass sie beim zweiten Zug platzen.', 'Drehe nur einmal.', 'Die letzte Explosion muss grün sein.', 'Denke an das Ende nach der letzten blauen Explosion.', 'Bei der 3. oder 4. Kette ist Nachschub nötig.', 'Lass auch die Müll-Puyos platzen.', 'Wo solltest du anfangen? Rechts?', 'Warum ist dort oben ein roter Puyo?', 'Die erste Explosion ist rot.', 'Die erste Explosion ist grün.', 'Die erste Explosion ist gelb.', 'Platziere vier grüne Puyos irgendwo in den drei rechten Spalten.', 'Lass sie einfach fallen.'],
+    'fr-FR': ['Fais-les éclater au deuxième tour.', 'Ne tourne qu’une fois.', 'Fais éclater le dernier en vert.', 'Pense à ce qui suit la dernière explosion bleue.', 'Un ravitaillement est nécessaire à la 3e ou 4e chaîne.', 'Fais aussi éclater les Puyos-ordures.', 'Par où commencer ? À droite ?', 'Pourquoi ce Puyo rouge est-il là-haut ?', 'La première explosion est rouge.', 'La première explosion est verte.', 'La première explosion est jaune.', 'Place quatre Puyos verts quelque part dans les trois colonnes de droite.', 'Laisse-les simplement tomber.']
   };
   for (const [language, expected] of Object.entries(expectedHints)) {
     await page.addInitScript((locale) => {
@@ -3850,7 +3930,7 @@ test('구경 결과 화면을 5초 동안 조작하지 않으면 새 적 두 명
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({
       clearList: ['Decarabia'],
-      clearListByDifficulty: { easy: [], normal: [], hard: ['WatchAutoLoser', 'WatchAutoWinner'], extreme: [] },
+      clearListByDifficulty: { easy: [], normal: [], hard: ['Decarabia', 'WatchAutoLoser', 'WatchAutoWinner'], extreme: [] },
       feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
     }));
     localStorage.setItem('puyow_gallery', JSON.stringify({ warning: ['tiny'], enemies: ['Andromalius'] }));
@@ -3900,7 +3980,7 @@ test('구경 모드 좌측 적은 고유 주문 효과음이 없으면 플레이
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({
       clearList: ['Decarabia'],
-      clearListByDifficulty: { easy: [], normal: [], hard: ['WatchSpellLeft', 'WatchSpellRight'], extreme: [] },
+      clearListByDifficulty: { easy: [], normal: [], hard: ['Decarabia', 'WatchSpellLeft', 'WatchSpellRight'], extreme: [] },
       feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
     }));
   });

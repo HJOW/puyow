@@ -188,12 +188,26 @@
     const INITIAL_PAIR_QUEUE_LENGTH = 16;
     /** 브라우저 저장소에 사용할 키다. @type {string} */
     const STORE_KEY = 'puyow_store';
+    /** 보유 카드 인스턴스를 저장할 브라우저 저장소 키다. @type {string} */
+    const CARD_STORE_KEY = 'puyow_cards';
     /** 갤러리 잠금 해제 정보를 저장할 브라우저 저장소 키다. @type {string} */
     const GALLERY_STORE_KEY = 'puyow_gallery';
     /** 설정 화면에서 테스트 코드를 입력할 버튼의 논리 좌표와 크기다. 키보드 포커스에는 포함하지 않는다. @type {{x:number,y:number,width:number,height:number}} */
     const SETTINGS_CODE_BUTTON = { x: 1200, y: 680, width: 64, height: 24 };
     /** 테스트 기능 활성화 코드를 저장할 브라우저 저장소 키다. @type {string} */
     const CODE_STORE_KEY = 'puyow_code';
+    /** 모드별 GOLD 획득량 계산에 적용할 점수 패널티다. */
+    const STANDARD_RULE_GOLD_PENALTY = 300;
+    const FEVER_RULE_GOLD_PENALTY = 1000;
+    const PRACTICE_GOLD_PENALTY = 10000;
+    const CONTINUOUS_FEVER_GOLD_PENALTY = 100000;
+    /** 퍼즐뿌요의 최초 클리어·최초 별 획득 각각에 지급할 GOLD다. */
+    const PUZZLE_GOLD_REWARD = 1000;
+    /** 카드 뽑기 가격이다. */
+    const SINGLE_CARD_DRAW_PRICE = 1000;
+    const TEN_CARD_DRAW_PRICE = 9000;
+    /** 카드 합성 한 번에 소비할 카드 수다. */
+    const CARD_SYNTHESIS_COST = 5;
     /** 설정에서 새로 제안하고 저장값이 비어 있을 때 보정할 기본 OpenAI 모델명이다. @type {string} */
     const DEFAULT_AI_MODEL = 'gpt-5.6-luna';
     /** 설정 화면에서 선택할 수 있는 AI 서비스 제공자 목록이다. 브랜드명은 번역하지 않는다. @type {string[]} */
@@ -252,7 +266,7 @@
             '극한': 'Extreme',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
-            '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked', '두 번째에 터뜨려': 'Pop on the second turn.', '한 번만 회전해': 'Rotate only once.', '마지막 폭발은 초록색으로': 'Make the last pop green.', '마지막 파란색 폭발 후를 생각해': 'Think about what comes after the final blue pop.', '3, 4연쇄째에 보충이 필요해': 'You need a refill on the 3rd or 4th chain.', '방해뿌요는 터뜨려야 제맛': 'Pop the garbage puyos too.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Where should you pop first? The right side?', '저 위의 빨간 색은 왜 있을까?': 'Why is there red up there?', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Place four green puyos somewhere in the right three columns.', '그냥 내려 봐': 'Just drop it.',
+            '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked', '두 번째에 터뜨려': 'Pop on the second turn.', '한 번만 회전해': 'Rotate only once.', '마지막 폭발은 초록색으로': 'Make the last pop green.', '마지막 파란색 폭발 후를 생각해': 'Think about what comes after the final blue pop.', '3, 4연쇄째에 보충이 필요해': 'You need a refill on the 3rd or 4th chain.', '방해뿌요는 터뜨려야 제맛': 'Pop the garbage puyos too.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Where should you pop first? The right side?', '저 위의 빨간 색은 왜 있을까?': 'Why is there red up there?', '최초 폭발은 빨간색': 'Make the first pop red.', '최초 폭발은 초록색': 'Make the first pop green.', '최초 폭발은 노란색': 'Make the first pop yellow.', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Place four green puyos somewhere in the right three columns.', '그냥 내려 봐': 'Just drop it.',
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
@@ -263,6 +277,7 @@
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)',
             '화면 가로방향 고정': 'Lock landscape orientation',
             '피버 (완화)': 'FEVER (Relaxed)',
+            '카드': 'Cards', '1장 뽑기': 'Draw 1', '10장 뽑기': 'Draw 10', '합성': 'Synthesize', '카드 5장': '5 Cards', '확인': 'Confirm', '이용에 필요한 GOLD 가 부족합니다.': 'Not enough GOLD.', '카드 5장을 선택하고 이용해 주세요.': 'Select cards in groups of 5.', '1장 뽑기를 진행할까요?': 'Draw 1 card?', '10장 뽑기를 진행할까요?': 'Draw 10 cards?', '선택한 카드 %1장을 합성할까요?': 'Synthesize the %1 selected cards?',
         },
         ja: {
             '솔로몬': 'ソロモン', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'ソロモンAIの応答エラー：代替AIで続行します。',
@@ -274,7 +289,7 @@
             '극한': '極限',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
-            '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中', '두 번째에 터뜨려': '2回目で消そう。', '한 번만 회전해': '一度だけ回転しよう。', '마지막 폭발은 초록색으로': '最後は緑で消そう。', '마지막 파란색 폭발 후를 생각해': '最後の青ぷよ消去の後を考えよう。', '3, 4연쇄째에 보충이 필요해': '3・4連鎖目に補充が必要です。', '방해뿌요는 터뜨려야 제맛': 'おじゃまぷよも消そう。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'どこから消そう？右側かな？', '저 위의 빨간 색은 왜 있을까?': '上の赤いぷよはなぜあるのかな？', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': '右3列のどこかに緑ぷよ4個を置こう。', '그냥 내려 봐': 'そのまま落としてみよう。',
+            '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中', '두 번째에 터뜨려': '2回目で消そう。', '한 번만 회전해': '一度だけ回転しよう。', '마지막 폭발은 초록색으로': '最後は緑で消そう。', '마지막 파란색 폭발 후를 생각해': '最後の青ぷよ消去の後を考えよう。', '3, 4연쇄째에 보충이 필요해': '3・4連鎖目に補充が必要です。', '방해뿌요는 터뜨려야 제맛': 'おじゃまぷよも消そう。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'どこから消そう？右側かな？', '저 위의 빨간 색은 왜 있을까?': '上の赤いぷよはなぜあるのかな？', '최초 폭발은 빨간색': '最初は赤で消そう。', '최초 폭발은 초록색': '最初は緑で消そう。', '최초 폭발은 노란색': '最初は黄で消そう。', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': '右3列のどこかに緑ぷよ4個を置こう。', '그냥 내려 봐': 'そのまま落としてみよう。',
             '시뮬레이터': 'シミュレーター', '팔레트': 'パレット', '재생': '再生', '그리기': '描画', '시뮬레이션': 'シミュレーション', '지우개': '消しゴム',
             'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
             '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
@@ -285,6 +300,7 @@
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）',
             '화면 가로방향 고정': '画面を横向きに固定',
             '피버 (완화)': 'FEVER（緩和）',
+            '카드': 'カード', '1장 뽑기': '1枚引く', '10장 뽑기': '10枚引く', '합성': '合成', '카드 5장': 'カード5枚', '확인': '確認', '이용에 필요한 GOLD 가 부족합니다.': '利用に必要なGOLDが不足しています。', '카드 5장을 선택하고 이용해 주세요.': 'カードを5枚単位で選択してください。', '1장 뽑기를 진행할까요?': 'カードを1枚引きますか？', '10장 뽑기를 진행할까요?': 'カードを10枚引きますか？', '선택한 카드 %1장을 합성할까요?': '選択したカード%1枚を合成しますか？',
         },
         zh: {
             '솔로몬': '所罗门', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': '所罗门 AI 响应错误：将使用备用 AI 继续。',
@@ -308,6 +324,7 @@
             '음소거(꺼짐)' : '静音（关）', '음소거(활성)' : '静音（开）',
             '화면 가로방향 고정': '锁定横屏',
             '피버 (완화)': 'FEVER（缓和）',
+            '카드': '卡牌', '1장 뽑기': '抽1张', '10장 뽑기': '抽10张', '합성': '合成', '카드 5장': '5张卡牌', '확인': '确认', '이용에 필요한 GOLD 가 부족합니다.': '所需GOLD不足。', '카드 5장을 선택하고 이용해 주세요.': '请选择5张倍数的卡牌。', '1장 뽑기를 진행할까요?': '要抽1张卡牌吗？', '10장 뽑기를 진행할까요?': '要抽10张卡牌吗？', '선택한 카드 %1장을 합성할까요?': '要合成所选的%1张卡牌吗？',
         },
         // 독일어·프랑스어는 아래 초기화 구문에서 영어 표를 기본값으로 복사한 뒤 현지화한다. (영어 번역 데이터 일부를 같이 사용하기 위함)
         de: {},
@@ -501,6 +518,8 @@
     let urlContextPath = '/';
     /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} */
     let store = createInitialStore();
+    /** storageManager의 puyow_cards에서 불러온 개별 카드 인스턴스다. @type {{id:string,type:string}[]} */
+    let ownedCards = [];
     /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 puyow.js 기준으로 해석한다. @type {string} */
     let noticeUrl = 'notice_[LANG].txt';
     /** 공통 사운드 풀 @type {CommonSoundPool} */
@@ -657,9 +676,57 @@
             feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             puzzleClearStages: [],
             puzzleStarStages: [],
+            puzzleGoldClearStages: [],
+            puzzleGoldStarStages: [],
+            gold: 0,
             settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, soundDataURL: '', aiProvider: 'OpenAI', aiApiURL: '', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
+    }
+
+    /** 저장되거나 계산된 GOLD를 0 이상의 안전한 정수로 정규화한다. @param {unknown} value GOLD 후보 @returns {number} 정규화한 GOLD */
+    function normalizeGold(value) {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue) || numericValue < 0) return 0;
+        return Math.min(Number.MAX_SAFE_INTEGER, Math.floor(numericValue));
+    }
+
+    /** GOLD를 더하고 즉시 저장한다. @param {number} amount 더할 GOLD @returns {number} 실제 추가된 GOLD */
+    function addGold(amount) {
+        const previousGold = normalizeGold(store.gold);
+        store.gold = normalizeGold(previousGold + normalizeGold(amount));
+        saveStore();
+        return store.gold - previousGold;
+    }
+
+    /** 현재 카드 목록을 별도 저장 키에 기록한다. @returns {void} */
+    function saveCards() {
+        try {
+            storageManager.setItem(CARD_STORE_KEY, JSON.stringify(ownedCards));
+        } catch (error) {
+            console.error('Puyo W 카드 저장 데이터 기록에 실패했습니다.', error);
+        }
+    }
+
+    /** 저장된 카드 인스턴스를 검증해 불러온다. @returns {void} */
+    function loadCards() {
+        try {
+            const serialized = storageManager.getItem(CARD_STORE_KEY);
+            if (!serialized) { ownedCards = []; return; }
+            const parsed = JSON.parse(serialized);
+            if (!Array.isArray(parsed)) throw new TypeError('puyow_cards는 JSON 배열이어야 합니다.');
+            const validTypes = new Set(getCardDefinitions().map((definition) => definition.type));
+            const usedIds = new Set();
+            ownedCards = parsed.reduce((cards, card) => {
+                if (!card || typeof card.id !== 'string' || !card.id || typeof card.type !== 'string' || !validTypes.has(card.type) || usedIds.has(card.id)) return cards;
+                usedIds.add(card.id);
+                cards.push({ id: card.id, type: card.type });
+                return cards;
+            }, []);
+        } catch (error) {
+            console.error('Puyo W 카드 저장 데이터를 불러오지 못했습니다.', error);
+            ownedCards = [];
+        }
     }
 
     /** 저장된 플레이어 이름을 표시 가능한 기본값과 최대 길이로 정규화한다. @param {unknown} value 저장값 @returns {string} 플레이어 이름 */
@@ -1069,7 +1136,15 @@
             const puzzleStarStages = Array.isArray(parsed.puzzleStarStages)
                 ? [...new Set(parsed.puzzleStarStages.filter((index) => Number.isInteger(index) && index >= 0))]
                 : [];
-            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, puzzleClearStages, puzzleStarStages, settings: {
+            // 보상 기록 필드가 없던 기존 저장은 이미 달성한 퍼즐 진행도를 지급 완료로 간주해 소급 지급하지 않는다.
+            const puzzleGoldClearStages = Array.isArray(parsed.puzzleGoldClearStages)
+                ? [...new Set(parsed.puzzleGoldClearStages.filter((index) => Number.isInteger(index) && index >= 0))]
+                : [...puzzleClearStages];
+            const puzzleGoldStarStages = Array.isArray(parsed.puzzleGoldStarStages)
+                ? [...new Set(parsed.puzzleGoldStarStages.filter((index) => Number.isInteger(index) && index >= 0))]
+                : [...puzzleStarStages];
+            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, puzzleClearStages, puzzleStarStages,
+                puzzleGoldClearStages, puzzleGoldStarStages, gold: normalizeGold(parsed.gold), settings: {
                 playerName: normalizePlayerName(settings.playerName),
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
@@ -1084,6 +1159,7 @@
                 aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
                 aiModel: typeof settings.aiModel === 'string' && settings.aiModel.trim() ? settings.aiModel : initial.settings.aiModel
             }, muted: parsed.muted === true };
+            saveStore();
         } catch (error) {
             console.error('Puyo W 저장 데이터 불러오기에 실패했습니다.', error);
             store = createInitialStore();
@@ -1353,7 +1429,9 @@
         if (menuScreen === 'practiceDifficulty') return `difficulty:${colorSelectionFocus}:${selectedDifficulty}`;
         if (menuScreen === 'puzzleStage') return `puzzle:${puzzleStageFocus}:${puzzleStageScrollOffset}`;
         if (menuScreen === 'settings') return `settings:${settingsFocus}`;
-        if (menuScreen === 'gallery' && gallery) return `gallery:${gallery.focus}:${gallery.typeIndex}:${gallery.itemIndex}`;
+        if (menuScreen === 'gallery' && gallery) return gallery.confirmation
+            ? `gallery:confirmation:${gallery.confirmation.choice}`
+            : `gallery:${gallery.focus}:${gallery.typeIndex}:${gallery.itemIndex}:${gallery.buttonIndex}:${gallery.cardIndex}`;
         if (menuScreen === 'simulator' && simulator) return `simulator:${simulator.mode}:${simulator.focusArea}:${simulator.paletteFocus}`;
         return null;
     }
@@ -1909,6 +1987,7 @@
             running: true,
             paused: false,
             winner: null,
+            goldAwarded: false,
             ending: null,
             countdown: 3000,
             countdownStartsGame: true,
@@ -3664,6 +3743,51 @@
         if (changed) saveStore();
     }
 
+    /** AI 난이도별 GOLD 배율이다. */
+    const AI_DIFFICULTY_GOLD_BONUSES = Object.freeze({ easy: 3, normal: 4, hard: 5, extreme: 7 });
+    /** 기본 제공 적별 GOLD 배율이다. 등록 확장 적과 솔로몬은 1을 사용한다. */
+    const ENEMY_GOLD_BONUSES = Object.freeze({
+        Andromalius: 1, Dantalion: 2, Seere: 3, Decarabia: 4,
+        Belial: 5, Amdusias: 6, Kimaris: 7, Andrealphus: 8, Solomon: 1
+    });
+    Object.assign(stringTable.zh, {
+        '최초 폭발은 빨간색': '首次消除红色。', '최초 폭발은 초록색': '首次消除绿色。', '최초 폭발은 노란색': '首次消除黄色。'
+    });
+    Object.assign(stringTable.de, {
+        '최초 폭발은 빨간색': 'Die erste Explosion ist rot.', '최초 폭발은 초록색': 'Die erste Explosion ist grün.', '최초 폭발은 노란색': 'Die erste Explosion ist gelb.', '확인': 'Bestätigen', '1장 뽑기를 진행할까요?': '1 Karte ziehen?', '10장 뽑기를 진행할까요?': '10 Karten ziehen?', '선택한 카드 %1장을 합성할까요?': 'Die %1 ausgewählten Karten kombinieren?'
+    });
+    Object.assign(stringTable.fr, {
+        '최초 폭발은 빨간색': 'La première explosion est rouge.', '최초 폭발은 초록색': 'La première explosion est verte.', '최초 폭발은 노란색': 'La première explosion est jaune.', '확인': 'Confirmer', '1장 뽑기를 진행할까요?': 'Tirer 1 carte ?', '10장 뽑기를 진행할까요?': 'Tirer 10 cartes ?', '선택한 카드 %1장을 합성할까요?': 'Fusionner les %1 cartes sélectionnées ?'
+    });
+
+    /** 현재 게임의 GOLD 룰 패널티를 반환한다. @returns {number} 룰 패널티 */
+    function getGameGoldPenalty() {
+        if (game.continuousFever) return CONTINUOUS_FEVER_GOLD_PENALTY;
+        if (game.practice) return PRACTICE_GOLD_PENALTY;
+        return game.feverRule ? FEVER_RULE_GOLD_PENALTY : STANDARD_RULE_GOLD_PENALTY;
+    }
+
+    /** 종료된 현재 게임에서 지급할 GOLD를 계산한다. @returns {number} 지급 GOLD */
+    function calculateCurrentGameGoldReward() {
+        const player = game?.players?.[0];
+        if (!player || game.watch || game.puzzle || (!game.practice && game.winner !== player)) return 0;
+        const soloMode = game.practice === true;
+        const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key || 'normal';
+        const difficultyBonus = soloMode ? 1 : (AI_DIFFICULTY_GOLD_BONUSES[difficultyKey] || 1);
+        const enemyType = game.players[1]?.controller?.getClassType?.();
+        const enemyBonus = soloMode ? 1 : (ENEMY_GOLD_BONUSES[enemyType] || 1);
+        return normalizeGold(Math.floor((normalizeGold(player.point) / getGameGoldPenalty()) * difficultyBonus * enemyBonus));
+    }
+
+    /** 한 게임에서 한 번만 GOLD를 지급한다. 결과 화면이 나타나기 직전에 호출한다. @returns {number} 지급 GOLD */
+    function awardCurrentGameGold() {
+        if (!game || game.goldAwarded) return 0;
+        game.goldAwarded = true;
+        const reward = calculateCurrentGameGoldReward();
+        if (reward > 0) addGold(reward);
+        return reward;
+    }
+
     /**
      * 상대가 연쇄 처리 중인 단계인지 판별한다.
      * @param {string} phase 플레이어 진행 단계
@@ -3764,6 +3888,7 @@
         const stageIndex = game.puzzle.stageIndex;
         const earnedStar = player === game.players[0] && game.puzzle.turn <= game.puzzle.stage.turnLimit;
         let progressChanged = false;
+        let goldReward = 0;
         if (!store.puzzleClearStages.includes(stageIndex)) {
             store.puzzleClearStages.push(stageIndex);
             progressChanged = true;
@@ -3772,6 +3897,17 @@
             store.puzzleStarStages.push(stageIndex);
             progressChanged = true;
         }
+        if (!store.puzzleGoldClearStages.includes(stageIndex)) {
+            store.puzzleGoldClearStages.push(stageIndex);
+            goldReward += PUZZLE_GOLD_REWARD;
+            progressChanged = true;
+        }
+        if (earnedStar && !store.puzzleGoldStarStages.includes(stageIndex)) {
+            store.puzzleGoldStarStages.push(stageIndex);
+            goldReward += PUZZLE_GOLD_REWARD;
+            progressChanged = true;
+        }
+        if (goldReward > 0) store.gold = normalizeGold(store.gold + goldReward);
         if (progressChanged) saveStore();
         game.winner = player;
         game.running = false;
@@ -3822,8 +3958,9 @@
         // 패배 연출과 승자의 연쇄·싹쓸이·에너지 이동이 모두 끝난 뒤에만 게임을 종료한다.
         if (ending.elapsed > ending.duration && !isWinnerSettlementPending(ending.winner)) {
             recordEnemyClear(ending.winner);
-            game.running = false;
             game.winner = ending.winner;
+            awardCurrentGameGold();
+            game.running = false;
             game.ending = null;
             stopBackgroundMusic();
         }
@@ -5556,6 +5693,7 @@
         clearSettingsTextSelection();
         settingsResetting = true;
         store = createInitialStore();
+        ownedCards = [];
         applyCanvasOutputResolution();
         updateCanvasOrientation();
         galleryUnlocks = createInitialGalleryUnlocks();
@@ -5895,12 +6033,79 @@
         context.restore();
     }
 
-    /** 갤러리에 표시할 대상 유형 목록이다. @returns {{label:string,key:'puyo'|'warning'|'enemy'}[]} */
+    /** 카드 인스턴스 식별자 생성에 사용할 현재 접속 내 순번이다. */
+    let cardInstanceSequence = 0;
+
+    /** 고정 23종 카드의 유형·가중치 목록을 반환한다. @returns {{type:string,kind:'puyo'|'warning'|'enemy',value:string|number,weight:number}[]} */
+    function getCardDefinitions() {
+        return [
+            { type: 'puyo:red', kind: 'puyo', value: 'red', weight: 200 },
+            { type: 'puyo:blue', kind: 'puyo', value: 'blue', weight: 150 },
+            { type: 'puyo:green', kind: 'puyo', value: 'green', weight: 100 },
+            { type: 'puyo:yellow', kind: 'puyo', value: 'yellow', weight: 60 },
+            { type: 'puyo:purple', kind: 'puyo', value: 'purple', weight: 25 },
+            { type: 'puyo:garbage', kind: 'puyo', value: 'garbage', weight: 300 },
+            { type: 'puyo:hardGarbage', kind: 'puyo', value: HARD_GARBAGE, weight: 70 },
+            { type: 'puyo:iron', kind: 'puyo', value: IRON_PUYO, weight: 25 },
+            { type: 'warning:1', kind: 'warning', value: 1, weight: 300 },
+            { type: 'warning:6', kind: 'warning', value: 6, weight: 200 },
+            { type: 'warning:30', kind: 'warning', value: 30, weight: 50 },
+            { type: 'warning:210', kind: 'warning', value: 210, weight: 25 },
+            { type: 'warning:500', kind: 'warning', value: 500, weight: 15 },
+            { type: 'warning:2000', kind: 'warning', value: 2000, weight: 10 },
+            { type: 'warning:80000', kind: 'warning', value: 80000, weight: 5 },
+            { type: 'enemy:Andromalius', kind: 'enemy', value: 'Andromalius', weight: 200 },
+            { type: 'enemy:Dantalion', kind: 'enemy', value: 'Dantalion', weight: 150 },
+            { type: 'enemy:Seere', kind: 'enemy', value: 'Seere', weight: 130 },
+            { type: 'enemy:Decarabia', kind: 'enemy', value: 'Decarabia', weight: 125 },
+            { type: 'enemy:Belial', kind: 'enemy', value: 'Belial', weight: 100 },
+            { type: 'enemy:Amdusias', kind: 'enemy', value: 'Amdusias', weight: 50 },
+            { type: 'enemy:Kimaris', kind: 'enemy', value: 'Kimaris', weight: 25 },
+            { type: 'enemy:Andrealphus', kind: 'enemy', value: 'Andrealphus', weight: 10 }
+        ];
+    }
+
+    /** 가중치에 따라 카드 종류 하나를 뽑는다. @returns {object} 카드 정의 */
+    function drawRandomCardDefinition() {
+        const definitions = getCardDefinitions();
+        const totalWeight = definitions.reduce((total, definition) => total + definition.weight, 0);
+        let target = randomFloat() * totalWeight;
+        return definitions.find((definition) => ((target -= definition.weight) < 0)) || definitions[definitions.length - 1];
+    }
+
+    /** 카드 종류로 저장 가능한 개별 인스턴스를 만든다. @param {string} type 카드 종류 @returns {{id:string,type:string}} 카드 인스턴스 */
+    function createCardInstance(type) {
+        let id;
+        do {
+            cardInstanceSequence += 1;
+            id = `card-${Date.now().toString(36)}-${cardInstanceSequence.toString(36)}`;
+        } while (ownedCards.some((card) => card.id === id));
+        return { id, type };
+    }
+
+    /** 지정한 수만큼 카드를 추첨해 보유 목록에 추가한다. @param {number} count 장수 @returns {{id:string,type:string}[]} 추가된 카드 */
+    function grantRandomCards(count) {
+        const granted = Array.from({ length: count }, () => createCardInstance(drawRandomCardDefinition().type));
+        ownedCards.push(...granted);
+        saveCards();
+        return granted;
+    }
+
+    /** 가중치에 따른 카드 등급과 배경색을 반환한다. @param {number} weight 가중치 @returns {{key:string,color:string}} 등급 */
+    function getCardRarity(weight) {
+        if (weight < 10) return { key: 'EPIC', color: '#e7be48' };
+        if (weight < 50) return { key: 'RARE', color: '#a9d9f5' };
+        if (weight < 140) return { key: 'UNCOMMON', color: '#b9e6b4' };
+        return { key: 'COMMON', color: '#d9dde1' };
+    }
+
+    /** 갤러리에 표시할 대상 유형 목록이다. @returns {{label:string,key:'puyo'|'warning'|'enemy'|'card'}[]} */
     function getGalleryTypes() {
         return [
             { label: '일반뿌요', key: 'puyo' },
             { label: '예고뿌요', key: 'warning' },
-            { label: '적', key: 'enemy' }
+            { label: '적', key: 'enemy' },
+            { label: '카드', key: 'card' }
         ];
     }
 
@@ -5939,6 +6144,7 @@
                 };
             });
         }
+        if (type === 'card') return [];
         const expressions = ['normal', 'crisis', 'defeated'];
         return getVisibleOpponents().map((entry) => {
             const enemy = entry.createController();
@@ -5977,7 +6183,8 @@
     /** 갤러리를 첫 유형·첫 대상으로 열고 저장된 잠금 상태를 새로 읽는다. @returns {void} */
     function openGallery() {
         loadGalleryUnlocks();
-        gallery = { typeIndex: 0, itemIndex: 0, focus: 'type', portraitElapsed: 0 };
+        loadCards();
+        gallery = { typeIndex: 0, itemIndex: 0, focus: 'type', portraitElapsed: 0, buttonIndex: 0, cardIndex: 0, cardScrollRow: 0, selectedCardIds: new Set(), confirmation: null };
         menuScreen = 'gallery';
     }
 
@@ -5988,6 +6195,10 @@
         gallery.typeIndex = (gallery.typeIndex + amount + types.length) % types.length;
         const items = getGalleryItems();
         gallery.itemIndex = Math.max(0, items.findIndex((item) => !item.locked));
+        gallery.buttonIndex = 0;
+        gallery.cardIndex = 0;
+        gallery.cardScrollRow = 0;
+        gallery.selectedCardIds.clear();
         gallery.portraitElapsed = 0;
     }
 
@@ -6002,9 +6213,186 @@
         }
     }
 
+    /** 메인 메뉴와 갤러리 좌측 상단에 보유 GOLD를 표시한다. @returns {void} */
+    function drawGoldBalance() {
+        context.save();
+        context.textAlign = 'left';
+        context.textBaseline = 'alphabetic';
+        context.fillStyle = '#f7c843';
+        context.font = `13px ${MESSAGE_FONT}`;
+        context.fillText(`${normalizeGold(store.gold).toLocaleString('en-US')} GOLD`, 18, 26);
+        context.restore();
+    }
+
+    /** 카드 갤러리 좌측 작업 버튼의 영역을 반환한다. @param {number} index 버튼 순번 @returns {{x:number,y:number,width:number,height:number}} */
+    function getCardGalleryButtonBounds(index) {
+        return { x: 54, y: 245 + index * 112, width: 310, height: 82 };
+    }
+
+    /** 카드 갤러리에서 현재 스크롤을 반영한 카드 영역을 반환한다. @param {number} index 카드 순번 @returns {{x:number,y:number,width:number,height:number,visible:boolean}} */
+    function getCardGalleryCardBounds(index) {
+        const row = Math.floor(index / 8);
+        const visibleRow = row - (gallery?.cardScrollRow || 0);
+        return { x: 430 + (index % 8) * 101, y: 184 + visibleRow * 124, width: 62, height: 124, visible: visibleRow >= 0 && visibleRow < 4 };
+    }
+
+    /** 카드 포커스가 네 줄 표시 범위 안에 들도록 스크롤한다. @returns {void} */
+    function ensureCardFocusVisible() {
+        if (!gallery || !ownedCards.length) { if (gallery) gallery.cardScrollRow = 0; return; }
+        gallery.cardIndex = Math.max(0, Math.min(ownedCards.length - 1, gallery.cardIndex));
+        const row = Math.floor(gallery.cardIndex / 8);
+        if (row < gallery.cardScrollRow) gallery.cardScrollRow = row;
+        if (row >= gallery.cardScrollRow + 4) gallery.cardScrollRow = row - 3;
+        const maxScroll = Math.max(0, Math.ceil(ownedCards.length / 8) - 4);
+        gallery.cardScrollRow = Math.max(0, Math.min(maxScroll, gallery.cardScrollRow));
+    }
+
+    /** 카드의 대상 그림을 카드 중앙에 그린다. @param {{type:string}} card 카드 인스턴스 @param {object} bounds 카드 영역 @returns {void} */
+    function drawCardTarget(card, bounds) {
+        const definition = getCardDefinitions().find((candidate) => candidate.type === card.type);
+        if (!definition) return;
+        const centerX = bounds.x + bounds.width / 2;
+        const centerY = bounds.y + 52;
+        context.save();
+        if (definition.kind === 'puyo') {
+            context.translate(centerX, centerY); context.scale(0.82, 0.82);
+            getPuyo(definition.value).draw(context, -CELL / 2, -CELL / 2, CELL);
+        } else if (definition.kind === 'warning') {
+            const WarningPuyoType = WARNING_PUYO_CLASSES.find((Type) => Type.unitCount === definition.value);
+            if (WarningPuyoType) {
+                context.translate(centerX, centerY); context.scale(0.82, 0.82);
+                new WarningPuyoType().draw(context, -CELL / 2, -CELL / 2, CELL);
+            }
+        } else {
+            const entry = OPPONENTS.find((opponent) => opponent.classType === definition.value);
+            entry?.createController().drawPortrait(context, centerX, centerY, 0.17, 'normal');
+        }
+        context.restore();
+    }
+
+    /** 카드 작업 확인창의 버튼 영역을 반환한다. @param {number} index 0=확인, 1=취소 @returns {{x:number,y:number,width:number,height:number}} */
+    function getCardConfirmationButtonBounds(index) {
+        return { x: 480 + index * 180, y: 430, width: 140, height: 58 };
+    }
+
+    /** 카드 작업 확인창에 표시할 번역 문구를 반환한다. @param {number} index 작업 버튼 순번 @returns {string} */
+    function getCardConfirmationMessage(index) {
+        if (index === 0) return translate('1장 뽑기를 진행할까요?');
+        if (index === 1) return translate('10장 뽑기를 진행할까요?');
+        return translate('선택한 카드 %1장을 합성할까요?', gallery?.selectedCardIds.size || 0);
+    }
+
+    /** 카드 작업 확인창을 닫는다. @param {boolean} [playSound=true] 취소 효과음 재생 여부 @returns {void} */
+    function cancelCardGalleryConfirmation(playSound = true) {
+        if (!gallery?.confirmation) return;
+        gallery.confirmation = null;
+        if (playSound) playMenuCancelSound();
+    }
+
+    /** 카드 갤러리 작업 버튼을 검증하고 확인 후 실행한다. @param {number} index 0=1장, 1=10장, 2=합성 @param {boolean} [confirmed=false] 확인 완료 여부 @returns {void} */
+    function activateCardGalleryButton(index, confirmed = false) {
+        if (!gallery) return;
+        gallery.buttonIndex = index;
+        if (index < 2) {
+            const price = index === 0 ? SINGLE_CARD_DRAW_PRICE : TEN_CARD_DRAW_PRICE;
+            const count = index === 0 ? 1 : 10;
+            if (normalizeGold(store.gold) < price) {
+                showMessage(translate('이용에 필요한 GOLD 가 부족합니다.'));
+                return;
+            }
+            if (!confirmed) {
+                gallery.confirmation = { actionIndex: index, choice: 0 };
+                return;
+            }
+            gallery.confirmation = null;
+            store.gold -= price;
+            saveStore();
+            const firstNewIndex = ownedCards.length;
+            grantRandomCards(count);
+            gallery.cardIndex = firstNewIndex;
+            gallery.focus = 'cards';
+            ensureCardFocusVisible();
+            return;
+        }
+        const selectedIds = gallery.selectedCardIds;
+        if (!selectedIds.size || selectedIds.size % CARD_SYNTHESIS_COST !== 0) {
+            showMessage(translate('카드 5장을 선택하고 이용해 주세요.'));
+            return;
+        }
+        if (!confirmed) {
+            gallery.confirmation = { actionIndex: index, choice: 0 };
+            return;
+        }
+        gallery.confirmation = null;
+        const resultCount = selectedIds.size / CARD_SYNTHESIS_COST;
+        ownedCards = ownedCards.filter((card) => !selectedIds.has(card.id));
+        selectedIds.clear();
+        const firstNewIndex = ownedCards.length;
+        grantRandomCards(resultCount);
+        gallery.cardIndex = Math.max(0, firstNewIndex);
+        gallery.focus = ownedCards.length ? 'cards' : 'cardButtons';
+        ensureCardFocusVisible();
+    }
+
+    /** 카드 작업의 화면 음영·메시지·확인/취소 버튼을 그린다. @returns {void} */
+    function drawCardGalleryConfirmation() {
+        if (!gallery?.confirmation) return;
+        context.fillStyle = 'rgba(2, 8, 13, 0.78)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.fillStyle = '#102c3b'; context.fillRect(380, 250, 520, 270);
+        context.strokeStyle = '#6ea2b8'; context.lineWidth = 3; context.strokeRect(380, 250, 520, 270);
+        context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.font = `24px ${MESSAGE_FONT}`;
+        context.fillText(getCardConfirmationMessage(gallery.confirmation.actionIndex), WIDTH / 2, 345);
+        [translate('확인'), translate('취소')].forEach((label, index) => {
+            const bounds = getCardConfirmationButtonBounds(index);
+            const focused = gallery.confirmation.choice === index;
+            context.fillStyle = focused ? '#563068' : '#173848'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#f7c843' : '#4d7180'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = '#f5fbfc'; context.font = `20px ${BUTTON_FONT}`; context.fillText(label, bounds.x + bounds.width / 2, bounds.y + 37);
+        });
+    }
+
+    /** 카드 갤러리의 좌측 버튼과 보유 카드 격자를 그린다. @returns {void} */
+    function drawCardGallery() {
+        context.fillStyle = '#0c2433'; context.fillRect(34, 180, 350, 500);
+        context.strokeStyle = gallery.focus === 'cardButtons' ? '#f7c843' : '#3b6070'; context.lineWidth = gallery.focus === 'cardButtons' ? 3 : 2; context.strokeRect(34, 180, 350, 500);
+        const buttonLabels = ['1장 뽑기', '10장 뽑기', '합성'];
+        const buttonCosts = ['1,000 GOLD', '9,000 GOLD', translate('카드 5장')];
+        buttonLabels.forEach((label, index) => {
+            const bounds = getCardGalleryButtonBounds(index);
+            const focused = gallery.focus === 'cardButtons' && gallery.buttonIndex === index;
+            context.fillStyle = focused ? '#563068' : '#173848'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#f7c843' : '#4d7180'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate(label), bounds.x + bounds.width / 2, bounds.y + 32);
+            context.fillStyle = '#c9dce2'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(buttonCosts[index], bounds.x + bounds.width / 2, bounds.y + 59);
+        });
+        context.fillStyle = '#102c3b'; context.fillRect(414, 180, 832, 500);
+        context.strokeStyle = gallery.focus === 'cards' ? '#f7c843' : '#3b6070'; context.lineWidth = gallery.focus === 'cards' ? 3 : 2; context.strokeRect(414, 180, 832, 500);
+        ownedCards.forEach((card, index) => {
+            const bounds = getCardGalleryCardBounds(index);
+            if (!bounds.visible) return;
+            const definition = getCardDefinitions().find((candidate) => candidate.type === card.type);
+            if (!definition) return;
+            const selected = gallery.selectedCardIds.has(card.id);
+            const focused = gallery.focus === 'cards' && gallery.cardIndex === index;
+            context.fillStyle = getCardRarity(definition.weight).color; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = selected ? '#ef5350' : focused ? '#f7c843' : '#53656d'; context.lineWidth = selected || focused ? 4 : 1; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            drawCardTarget(card, bounds);
+        });
+        const totalRows = Math.ceil(ownedCards.length / 8);
+        if (totalRows > 4) {
+            const track = { x: 1235, y: 188, width: 5, height: 484 };
+            const thumbHeight = track.height * (4 / totalRows);
+            const maxScroll = totalRows - 4;
+            const thumbY = track.y + (track.height - thumbHeight) * (gallery.cardScrollRow / maxScroll);
+            context.fillStyle = '#284958'; context.fillRect(track.x, track.y, track.width, track.height);
+            context.fillStyle = '#f7c843'; context.fillRect(track.x, thumbY, track.width, thumbHeight);
+        }
+    }
+
     /** 갤러리 화면을 그린다. @returns {void} */
     function drawGallery() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        drawGoldBalance();
         const closeButton = getGalleryCloseButtonBounds();
         context.fillStyle = '#264b5b'; context.fillRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
         context.strokeStyle = '#6ea2b8'; context.lineWidth = 2; context.strokeRect(closeButton.x, closeButton.y, closeButton.width, closeButton.height);
@@ -6020,6 +6408,12 @@
             context.strokeStyle = selected && gallery.focus === 'type' ? '#f7c843' : '#3b6070'; context.lineWidth = selected && gallery.focus === 'type' ? 4 : 2; context.strokeRect(x, typeY, typeWidth, 54);
             context.fillStyle = '#f5fbfc'; context.font = `19px ${BUTTON_FONT}`; context.fillText(translate(type.label), x + typeWidth / 2, typeY + 34);
         });
+        if (types[gallery.typeIndex]?.key === 'card') {
+            drawCardGallery();
+            drawCardGalleryConfirmation();
+            context.textBaseline = 'alphabetic';
+            return;
+        }
         context.fillStyle = '#0c2433'; context.fillRect(34, 180, 350, 500);
         context.strokeStyle = gallery.focus === 'target' ? '#f7c843' : '#3b6070'; context.lineWidth = gallery.focus === 'target' ? 3 : 2; context.strokeRect(34, 180, 350, 500);
         const items = getGalleryItems();
@@ -6752,6 +7146,7 @@
     function drawMenu() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         if (menuScreen === 'title') drawMainMenuGalleryFloaters();
+        if (menuScreen === 'title') drawGoldBalance();
         const opponentMenuScaled = menuScreen === 'opponent';
         if (opponentMenuScaled) {
             context.save();
@@ -7174,11 +7569,56 @@
     /** 갤러리의 키보드·게임패드 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
     function handleGalleryKeydown(key) {
         if (!gallery) return;
+        if (gallery.confirmation) {
+            if (key === 'escape') cancelCardGalleryConfirmation();
+            else if (key === 'arrowleft' || key === 'arrowright') gallery.confirmation.choice = gallery.confirmation.choice === 0 ? 1 : 0;
+            else if (key === 'enter' || key === ' ') {
+                if (gallery.confirmation.choice === 0) {
+                    const actionIndex = gallery.confirmation.actionIndex;
+                    playMenuSelectSound();
+                    activateCardGalleryButton(actionIndex, true);
+                } else cancelCardGalleryConfirmation();
+            }
+            return;
+        }
         if (key === 'escape') { closeGallery(); return; }
+        const cardTypeSelected = getGalleryTypes()[gallery.typeIndex]?.key === 'card';
         if (gallery.focus === 'type') {
             if (key === 'arrowleft') selectGalleryType(-1);
             else if (key === 'arrowright') selectGalleryType(1);
-            else if (key === 'arrowdown' || key === 'enter' || key === ' ') gallery.focus = 'target';
+            else if (key === 'arrowdown' || key === 'enter' || key === ' ') gallery.focus = cardTypeSelected ? (ownedCards.length ? 'cards' : 'cardButtons') : 'target';
+            return;
+        }
+        if (cardTypeSelected && gallery.focus === 'cardButtons') {
+            if (key === 'arrowup') {
+                if (gallery.buttonIndex === 0) gallery.focus = 'type';
+                else gallery.buttonIndex -= 1;
+            } else if (key === 'arrowdown') gallery.buttonIndex = Math.min(2, gallery.buttonIndex + 1);
+            else if (key === 'arrowright' && ownedCards.length) { gallery.focus = 'cards'; ensureCardFocusVisible(); }
+            else if (key === 'enter' || key === ' ') activateCardGalleryButton(gallery.buttonIndex);
+            return;
+        }
+        if (cardTypeSelected && gallery.focus === 'cards') {
+            if (!ownedCards.length) { gallery.focus = 'cardButtons'; gallery.buttonIndex = 0; return; }
+            if (key === 'enter' || key === ' ') {
+                const id = ownedCards[gallery.cardIndex]?.id;
+                if (id) {
+                    if (gallery.selectedCardIds.has(id)) gallery.selectedCardIds.delete(id);
+                    else gallery.selectedCardIds.add(id);
+                }
+                return;
+            }
+            const column = gallery.cardIndex % 8;
+            const row = Math.floor(gallery.cardIndex / 8);
+            if (key === 'arrowleft') {
+                if (column === 0) gallery.focus = 'cardButtons';
+                else gallery.cardIndex -= 1;
+            } else if (key === 'arrowright' && gallery.cardIndex + 1 < ownedCards.length) gallery.cardIndex += 1;
+            else if (key === 'arrowup') {
+                if (row === 0) gallery.focus = 'type';
+                else gallery.cardIndex -= 8;
+            } else if (key === 'arrowdown' && gallery.cardIndex + 8 < ownedCards.length) gallery.cardIndex += 8;
+            ensureCardFocusVisible();
             return;
         }
         if (key === 'arrowleft' || key === 'arrowright') {
@@ -7665,6 +8105,17 @@
         if (actionSoundCountBefore === menuActionSoundCount && focusBefore !== getMenuFocusToken()) playMenuFocusMoveSound();
     }
 
+    /** 카드 갤러리에서 마우스 휠로 카드 행을 스크롤한다. @param {WheelEvent} event 휠 이벤트 @returns {void} */
+    function handleCanvasWheel(event) {
+        if (game || menuScreen !== 'gallery' || !gallery || gallery.confirmation || getGalleryTypes()[gallery.typeIndex]?.key !== 'card') return;
+        const { x, y } = getCanvasEventCoordinates(event);
+        if (x < 414 || x > 1246 || y < 180 || y > 680) return;
+        const maxScroll = Math.max(0, Math.ceil(ownedCards.length / 8) - 4);
+        if (!maxScroll) return;
+        gallery.cardScrollRow = Math.max(0, Math.min(maxScroll, gallery.cardScrollRow + (event.deltaY > 0 ? 1 : -1)));
+        if (event.cancelable) event.preventDefault();
+    }
+
     /** 캔버스 클릭의 실제 화면 동작을 처리한다. @param {MouseEvent} event 마우스 이벤트 @returns {void} */
     function handleCanvasClickCore(event) {
         if (settingsResetting) return;
@@ -7778,6 +8229,22 @@
             return;
         }
         if (menuScreen === 'gallery' && gallery) {
+            if (gallery.confirmation) {
+                const choice = [0, 1].find((index) => {
+                    const bounds = getCardConfirmationButtonBounds(index);
+                    return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+                });
+                if (choice === 0) {
+                    const actionIndex = gallery.confirmation.actionIndex;
+                    gallery.confirmation.choice = 0;
+                    playMenuSelectSound();
+                    activateCardGalleryButton(actionIndex, true);
+                } else if (choice === 1) {
+                    gallery.confirmation.choice = 1;
+                    cancelCardGalleryConfirmation();
+                }
+                return;
+            }
             const closeButton = getGalleryCloseButtonBounds();
             if (x >= closeButton.x && x <= closeButton.x + closeButton.width && y >= closeButton.y && y <= closeButton.y + closeButton.height) {
                 closeGallery();
@@ -7793,8 +8260,37 @@
                 playMenuSelectSound();
                 gallery.typeIndex = typeIndex;
                 gallery.itemIndex = Math.max(0, getGalleryItems().findIndex((item) => !item.locked));
+                gallery.buttonIndex = 0;
+                gallery.cardIndex = 0;
+                gallery.cardScrollRow = 0;
+                gallery.selectedCardIds.clear();
                 gallery.focus = 'type';
                 gallery.portraitElapsed = 0;
+                return;
+            }
+            if (types[gallery.typeIndex]?.key === 'card') {
+                const buttonIndex = [0, 1, 2].find((index) => {
+                    const bounds = getCardGalleryButtonBounds(index);
+                    return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+                });
+                if (buttonIndex !== undefined) {
+                    playMenuSelectSound();
+                    gallery.focus = 'cardButtons';
+                    activateCardGalleryButton(buttonIndex);
+                    return;
+                }
+                const cardIndex = ownedCards.findIndex((card, index) => {
+                    const bounds = getCardGalleryCardBounds(index);
+                    return bounds.visible && x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+                });
+                if (cardIndex >= 0) {
+                    playMenuSelectSound();
+                    gallery.cardIndex = cardIndex;
+                    gallery.focus = 'cards';
+                    const id = ownedCards[cardIndex].id;
+                    if (gallery.selectedCardIds.has(id)) gallery.selectedCardIds.delete(id);
+                    else gallery.selectedCardIds.add(id);
+                }
                 return;
             }
             const items = getGalleryItems();
@@ -8416,6 +8912,7 @@
         window.removeEventListener('resize', updateCanvasOrientation);
         window.removeEventListener('orientationchange', updateCanvasOrientation);
         canvas.removeEventListener('click', handleCanvasClick);
+        canvas.removeEventListener('wheel', handleCanvasWheel);
         canvas.removeEventListener('pointerdown', handleVirtualPointerDown);
         canvas.removeEventListener('pointermove', handleVirtualPointerMove);
         canvas.removeEventListener('pointerup', handleVirtualPointerUp);
@@ -8493,6 +8990,7 @@
         languageCode = navigator.language || navigator.userLanguage || 'ko';
         if (languageCode === 'ko-KR') languageCode = 'ko';
         loadStore();
+        loadCards();
         loadAppliedCodes();
         soundDataURL = store.settings.soundDataURL;
         loadSoundDataURL();
@@ -8541,6 +9039,7 @@
         window.addEventListener('resize', updateCanvasOrientation);
         window.addEventListener('orientationchange', updateCanvasOrientation);
         canvas.addEventListener('click', handleCanvasClick);
+        canvas.addEventListener('wheel', handleCanvasWheel, { passive: false });
         canvas.addEventListener('pointerdown', handleVirtualPointerDown);
         canvas.addEventListener('pointermove', handleVirtualPointerMove);
         canvas.addEventListener('pointerup', handleVirtualPointerUp);
