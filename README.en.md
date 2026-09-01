@@ -68,7 +68,7 @@ The top center displays the player's and CPU's next two Puyo pairs. The selected
 
 ## Development Guide
 
-See [HOWTO.md](HOWTO.md) for information about game settings, library usage, and creating new AI opponents.
+See [HOWTO.en.md](HOWTO.en.md) for information about game settings, library usage, and creating new AI opponents.
 
 ## AI Disclosure
 
