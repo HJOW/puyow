@@ -1,6 +1,8 @@
 # Puyo W
 
-브라우저에서 즐기는 2D 뿌요 대전 퍼즐 게임입니다. 왼쪽 필드는 플레이어가, 오른쪽 필드는 CPU 상대가 사용합니다. 같은 색 뿌요를 연결해 연쇄를 만들고, 방해뿌요를 보내 상대보다 먼저 필드를 막아 보세요.
+브라우저에서 즐기는 2D 뿌요 대전 퍼즐 게임입니다.
+같은 색 4개의 뿌요가 만나면 터집니다.
+연쇄 폭발을 일으켜 강력한 공격을 일으켜 보세요.
 
 ## Do you want to see english document?
 
@@ -48,38 +50,40 @@
 
 ## 화면 안내
 
-중앙 상단에는 플레이어와 CPU의 다음 뿌요 2쌍이 각각 표시됩니다. 중앙 중간에는 선택한 적의 초상화가, 중앙 하단에는 양쪽 점수가 표시됩니다. 뿌요가 폭발하면 해당 위치에 연쇄 수가 나타나 위로 떠오르고, 2초 뒤 사라집니다.
+중앙 상단에는 플레이어와 CPU의 다음 뿌요 2쌍이 각각 표시됩니다. 중앙 중간에는 선택한 적의 초상화가, 중앙 하단에는 양쪽 점수가 표시됩니다.   
+뿌요가 폭발하면 해당 위치에 연쇄 수가 나타나 위로 떠오르고, 2초 뒤 사라집니다.
 
 ## 로컬에서 구동을 위해 설치
 
-1. git 과 node.js 를 설치합니다.
-   Git - [git scm](https://git-scm.com/install/windows)
-   Node.js - [Node.js](https://nodejs.org/ko/download) - Windows 의 경우 설치 프로그램 (msi) 버전 이용
-2. git을 통해 설치
-   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 을 열고
-   PuyoW 를 설치할 디렉토리로 접근한 후
-   명령어 `git clone https://github.com/HJOW/puyow.git` 입력, 엔터
+1. git 과 node.js 를 설치합니다.    
+   Git - [git scm](https://git-scm.com/install/windows)   
+   Node.js - [Node.js](https://nodejs.org/ko/download) - Windows 의 경우 설치 프로그램 (msi) 버전 이용    
+   
+2. git을 통해 설치   
+   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 을 열고    
+   PuyoW 를 설치할 디렉토리로 접근한 후   
+   명령어 `git clone https://github.com/HJOW/puyow.git` 입력, 엔터   
 
 3. npm 패키지 설치
-   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 창에서
-   명령어 `npm install` 입력, 엔터
+   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 창에서     
+   명령어 `npm install` 입력, 엔터   
 
 ## 로컬에서 실행
 
 1. 서버 구동
-   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 을 열고
-   PuyoW 가 설치된 디렉토리로 접근
-   명령어 `npm start` 입력, 엔터
-
+   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 을 열고    
+   PuyoW 가 설치된 디렉토리로 접근   
+   명령어 `npm start` 입력, 엔터    
+    
 2. 접속, 플레이
-   웹 브라우저 (Googld Chrome / MS Edge / Naver Whale / Mozilla Firefox / ...) 로 
-   주소 `localhost:9891` 입력해 접속
-   즐기기
+   웹 브라우저 (Googld Chrome / MS Edge / Naver Whale / Mozilla Firefox / ...) 로    
+   주소 `localhost:9891` 입력해 접속   
+   즐기기    
 
-3. 게임 종료  
-   웹 브라우저 종료
-   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 창에서
-   단축키 CTRL + C 입력
+3. 게임 종료     
+   웹 브라우저 종료   
+   명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 창에서    
+   단축키 CTRL + C 입력    
 
 ## 개발 안내
 
