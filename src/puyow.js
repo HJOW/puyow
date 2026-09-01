@@ -8977,6 +8977,30 @@
             hint : '저 위의 빨간 색은 왜 있을까?'
         }),
         new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":0,"y":0,"color":"blue"},{"x":1,"y":0,"color":"blue"},{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"blue"},{"x":5,"y":0,"color":"blue"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"green"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"green"},{"x":2,"y":2,"color":"green"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"green"},{"x":5,"y":2,"color":"red"},{"x":3,"y":3,"color":"green"},{"x":4,"y":3,"color":"green"},{"x":3,"y":4,"color":"red"},{"x":4,"y":4,"color":"red"},{"x":4,"y":5,"color":"red"}]},
+            suppliedNextPuyos : [['red', 'blue'], ['red', 'red'], ['red', 'red']],
+            turnLimit : 3,
+            winConditionType : 'combo',
+            winConditionValue : 6,
+            hint : '최초 폭발은 빨간색'
+        }),
+        new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":0,"y":0,"color":"blue"},{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"blue"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"blue"},{"x":1,"y":1,"color":"red"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":1,"y":2,"color":"blue"},{"x":2,"y":2,"color":"red"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"red"},{"x":5,"y":2,"color":"blue"},{"x":1,"y":3,"color":"red"},{"x":2,"y":3,"color":"blue"},{"x":3,"y":3,"color":"red"},{"x":4,"y":3,"color":"blue"},{"x":5,"y":3,"color":"red"},{"x":5,"y":4,"color":"red"}]},
+            suppliedNextPuyos : [['green', 'green'], ['green', 'blue'], ['green', 'green']],
+            turnLimit : 3,
+            winConditionType : 'combo',
+            winConditionValue : 7,
+            hint : '최초 폭발은 초록색'
+        }),
+        new PuzzlePuyoStage({
+            stageData : {"puyos":[{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"red"},{"x":4,"y":0,"color":"blue"},{"x":5,"y":0,"color":"red"},{"x":1,"y":1,"color":"red"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"red"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"blue"},{"x":3,"y":2,"color":"red"},{"x":4,"y":2,"color":"blue"},{"x":5,"y":2,"color":"red"},{"x":1,"y":3,"color":"blue"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"blue"},{"x":4,"y":3,"color":"red"}]},
+            suppliedNextPuyos : [['green', 'green'], ['green', 'yellow'], ['yellow', 'yellow'], ['green', 'green'], ['yellow', 'red']],
+            turnLimit : 5,
+            winConditionType : 'combo',
+            winConditionValue : 7,
+            hint : '최초 폭발은 노란색'
+        }),
+        new PuzzlePuyoStage({
             stageData : {"puyos":[{"x":0,"y":0,"color":"red"},{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"blue"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"yellow"},{"x":1,"y":1,"color":"yellow"},{"x":2,"y":1,"color":"red"},{"x":3,"y":1,"color":"blue"},{"x":4,"y":1,"color":"green"},{"x":5,"y":1,"color":"green"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"blue"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"red"},{"x":5,"y":2,"color":"yellow"},{"x":3,"y":3,"color":"green"},{"x":4,"y":3,"color":"red"},{"x":5,"y":3,"color":"yellow"},{"x":3,"y":4,"color":"yellow"},{"x":4,"y":4,"color":"yellow"},{"x":5,"y":4,"color":"blue"},{"x":3,"y":5,"color":"blue"},{"x":4,"y":5,"color":"blue"},{"x":3,"y":6,"color":"blue"}]},
             suppliedNextPuyos : [['green', 'green'], ['green', 'green'], ['yellow', 'yellow']],
             turnLimit : 3,
