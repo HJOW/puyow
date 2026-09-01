@@ -350,6 +350,48 @@ test('카드 5장을 선택해 합성하면 원본을 제거하고 새 카드 1�
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards'))[0].type)).toBe('puyo:red');
 });
 
+test('공개 askConfirm은 요청을 순서대로 표시하고 키보드와 마우스 선택 결과를 Promise로 반환한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.evaluate(() => {
+    window.askConfirmResults = [];
+    window.WebPuyo.askConfirm('First confirmation').then((value) => window.askConfirmResults.push(value));
+    window.WebPuyo.askConfirm('Second confirmation').then((value) => window.askConfirmResults.push(value));
+  });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('First confirmation'))).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Second confirmation'))).toBe(true);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.askConfirmResults)).toEqual([true, false]);
+
+  await page.evaluate(() => {
+    window.mouseConfirmResult = null;
+    window.WebPuyo.askConfirm('Mouse confirmation').then((value) => { window.mouseConfirmResult = value; });
+  });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Mouse confirmation'))).toBe(true);
+  await page.locator('#webpuyo_canvas').click({ position: { x: 550, y: 459 } });
+  await expect.poll(() => page.evaluate(() => window.mouseConfirmResult)).toBe(true);
+});
+
+test('게임 중 askConfirm은 응답 전까지 게임을 일시정지하고 응답 후 재개한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await page.evaluate(() => {
+    window.gameConfirmResult = null;
+    window.WebPuyo.askConfirm('Pause the match').then((value) => { window.gameConfirmResult = value; });
+  });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Pause the match'))).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.gameConfirmResult)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+});
+
 test('기존 퍼즐 진행도는 GOLD 보상 완료로 이관하고 잘못된 GOLD는 0으로 보정한다', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('puyow_store', JSON.stringify({
     clearList: [], gold: -10, puzzleClearStages: [0, 1], puzzleStarStages: [1]

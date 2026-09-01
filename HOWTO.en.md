@@ -73,7 +73,7 @@ PuyoW.initialize('webpuyo_canvas');
 In Node.js CommonJS, load the library as follows. A DOM-free Node.js process cannot call `initialize()`, but can use controller classes and opponent-registration APIs.
 
 ```js
-const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, initialize } = require('./src/puyow.js');
+const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, askConfirm, initialize } = require('./src/puyow.js');
 ```
 
 `initialize(target)` accepts a canvas element, a canvas element's `id` string, or a `div` element that will contain a canvas. Passing a `div` creates and attaches the game canvas within it; that canvas is removed by `destroy()`. Passing a canvas uses that element and `destroy()` does not remove it. The canvas's actual `width` and `height` are nevertheless set according to the game's graphics setting. If the argument is omitted, `null`, `undefined`, or an empty string and no `webpuyo_canvas` exists, the library creates a canvas as a child of `body`, attaches the game, and removes it on `destroy()`. An unknown ID or an element that is neither canvas nor div raises an error.
@@ -94,6 +94,19 @@ PuyoW.showMessage(message, '#ffffff', 3000, '#263238');
 ```
 
 In browsers supporting WebMCP, AI can invoke the same behavior through the `show_message` tool. Its `message` must already be localized, and `color`, `duration`, and `backgroundColor` default to `'white'`, `2000`, and `null`.
+
+### Showing a confirmation dialog
+
+`PuyoW.askConfirm(message)` dims the entire current screen, displays `message` with Confirm and Cancel buttons in the center, and returns a `Promise<boolean>`. Use the arrow keys to move between buttons and Enter to select one; Escape cancels. Both buttons also support mouse clicks. Confirm resolves to `true`, while Cancel resolves to `false`. The Confirm and Cancel button labels use the current game language.
+
+`message` is a required string and is displayed as supplied without translation. When called during gameplay, the function pauses the game and its background music. A game paused by this function resumes after the response; a game that was already paused remains paused. Concurrent calls are displayed one at a time in request order. As with `showMessage()`, call `initialize()` first.
+
+```js
+const confirmed = await PuyoW.askConfirm(translateForMyApp('Continue?'));
+if (confirmed) {
+    // Run the confirmed action.
+}
+```
 
 ### Setting the notice path
 

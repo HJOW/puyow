@@ -407,6 +407,12 @@
     let settingsSelectionAnchor = null;
     /** 화면 최상단에 표시할 외부 메시지다. @type {{message:string,color:string,backgroundColor:string|null,elapsed:number,duration:number}|null} */
     let screenMessage = null;
+    /** 현재 표시 중인 공용 확인 대화상자다. @type {{message:string,choice:number,resolve:(value:boolean)=>void}|null} */
+    let confirmDialog = null;
+    /** 동시에 요청된 확인 대화상자를 순서대로 표시하기 위한 대기열이다. @type {{message:string,choice:number,resolve:(value:boolean)=>void}[]} */
+    let confirmDialogQueue = [];
+    /** 확인 대화상자 연속 표시 중 자동 일시정지한 게임과 복원 여부다. @type {{game:object|null,resume:boolean}|null} */
+    let confirmDialogPauseContext = null;
     /** Game start firework animation state. @type {{elapsed:number,particles:{angle:number,speed:number,delay:number,size:number,color:string}[]}|null} */
     let gameStartFirework = null;
     /** 외부 메시지가 유지 시간 뒤 사라지는 데 걸리는 시간(ms)이다. @type {number} */
@@ -1419,6 +1425,7 @@
 
     /** 현재 입력 가능한 메뉴 포커스를 비교하기 위한 식별자를 만든다. @returns {string|null} */
     function getMenuFocusToken() {
+        if (confirmDialog) return `confirmation:${confirmDialog.choice}`;
         if (game?.tutorial?.mode === 'complete') return `tutorial:${game.tutorial.finalFocus}`;
         if (game?.paused) return `pause:${pauseMenuFocus}`;
         if (game) return null;
@@ -1429,9 +1436,7 @@
         if (menuScreen === 'practiceDifficulty') return `difficulty:${colorSelectionFocus}:${selectedDifficulty}`;
         if (menuScreen === 'puzzleStage') return `puzzle:${puzzleStageFocus}:${puzzleStageScrollOffset}`;
         if (menuScreen === 'settings') return `settings:${settingsFocus}`;
-        if (menuScreen === 'gallery' && gallery) return gallery.confirmation
-            ? `gallery:confirmation:${gallery.confirmation.choice}`
-            : `gallery:${gallery.focus}:${gallery.typeIndex}:${gallery.itemIndex}:${gallery.buttonIndex}:${gallery.cardIndex}`;
+        if (menuScreen === 'gallery' && gallery) return `gallery:${gallery.focus}:${gallery.typeIndex}:${gallery.itemIndex}:${gallery.buttonIndex}:${gallery.cardIndex}`;
         if (menuScreen === 'simulator' && simulator) return `simulator:${simulator.mode}:${simulator.focusArea}:${simulator.paletteFocus}`;
         return null;
     }
@@ -6184,7 +6189,7 @@
     function openGallery() {
         loadGalleryUnlocks();
         loadCards();
-        gallery = { typeIndex: 0, itemIndex: 0, focus: 'type', portraitElapsed: 0, buttonIndex: 0, cardIndex: 0, cardScrollRow: 0, selectedCardIds: new Set(), confirmation: null };
+        gallery = { typeIndex: 0, itemIndex: 0, focus: 'type', portraitElapsed: 0, buttonIndex: 0, cardIndex: 0, cardScrollRow: 0, selectedCardIds: new Set() };
         menuScreen = 'gallery';
     }
 
@@ -6270,8 +6275,8 @@
         context.restore();
     }
 
-    /** 카드 작업 확인창의 버튼 영역을 반환한다. @param {number} index 0=확인, 1=취소 @returns {{x:number,y:number,width:number,height:number}} */
-    function getCardConfirmationButtonBounds(index) {
+    /** 공용 확인 대화상자의 버튼 영역을 반환한다. @param {number} index 0=확인, 1=취소 @returns {{x:number,y:number,width:number,height:number}} */
+    function getConfirmDialogButtonBounds(index) {
         return { x: 480 + index * 180, y: 430, width: 140, height: 58 };
     }
 
@@ -6282,15 +6287,8 @@
         return translate('선택한 카드 %1장을 합성할까요?', gallery?.selectedCardIds.size || 0);
     }
 
-    /** 카드 작업 확인창을 닫는다. @param {boolean} [playSound=true] 취소 효과음 재생 여부 @returns {void} */
-    function cancelCardGalleryConfirmation(playSound = true) {
-        if (!gallery?.confirmation) return;
-        gallery.confirmation = null;
-        if (playSound) playMenuCancelSound();
-    }
-
-    /** 카드 갤러리 작업 버튼을 검증하고 확인 후 실행한다. @param {number} index 0=1장, 1=10장, 2=합성 @param {boolean} [confirmed=false] 확인 완료 여부 @returns {void} */
-    function activateCardGalleryButton(index, confirmed = false) {
+    /** 확인을 마친 카드 갤러리 작업을 조건 재검사 후 실행한다. @param {number} index 0=1장, 1=10장, 2=합성 @returns {void} */
+    function executeCardGalleryAction(index) {
         if (!gallery) return;
         gallery.buttonIndex = index;
         if (index < 2) {
@@ -6300,11 +6298,6 @@
                 showMessage(translate('이용에 필요한 GOLD 가 부족합니다.'));
                 return;
             }
-            if (!confirmed) {
-                gallery.confirmation = { actionIndex: index, choice: 0 };
-                return;
-            }
-            gallery.confirmation = null;
             store.gold -= price;
             saveStore();
             const firstNewIndex = ownedCards.length;
@@ -6319,11 +6312,6 @@
             showMessage(translate('카드 5장을 선택하고 이용해 주세요.'));
             return;
         }
-        if (!confirmed) {
-            gallery.confirmation = { actionIndex: index, choice: 0 };
-            return;
-        }
-        gallery.confirmation = null;
         const resultCount = selectedIds.size / CARD_SYNTHESIS_COST;
         ownedCards = ownedCards.filter((card) => !selectedIds.has(card.id));
         selectedIds.clear();
@@ -6334,20 +6322,23 @@
         ensureCardFocusVisible();
     }
 
-    /** 카드 작업의 화면 음영·메시지·확인/취소 버튼을 그린다. @returns {void} */
-    function drawCardGalleryConfirmation() {
-        if (!gallery?.confirmation) return;
-        context.fillStyle = 'rgba(2, 8, 13, 0.78)'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        context.fillStyle = '#102c3b'; context.fillRect(380, 250, 520, 270);
-        context.strokeStyle = '#6ea2b8'; context.lineWidth = 3; context.strokeRect(380, 250, 520, 270);
-        context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.font = `24px ${MESSAGE_FONT}`;
-        context.fillText(getCardConfirmationMessage(gallery.confirmation.actionIndex), WIDTH / 2, 345);
-        [translate('확인'), translate('취소')].forEach((label, index) => {
-            const bounds = getCardConfirmationButtonBounds(index);
-            const focused = gallery.confirmation.choice === index;
-            context.fillStyle = focused ? '#563068' : '#173848'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-            context.strokeStyle = focused ? '#f7c843' : '#4d7180'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
-            context.fillStyle = '#f5fbfc'; context.font = `20px ${BUTTON_FONT}`; context.fillText(label, bounds.x + bounds.width / 2, bounds.y + 37);
+    /** 카드 갤러리 작업을 검증한 뒤 공용 확인 대화상자를 요청한다. @param {number} index 0=1장, 1=10장, 2=합성 @returns {void} */
+    function activateCardGalleryButton(index) {
+        if (!gallery) return;
+        gallery.buttonIndex = index;
+        if (index < 2) {
+            const price = index === 0 ? SINGLE_CARD_DRAW_PRICE : TEN_CARD_DRAW_PRICE;
+            if (normalizeGold(store.gold) < price) {
+                showMessage(translate('이용에 필요한 GOLD 가 부족합니다.'));
+                return;
+            }
+        } else if (!gallery.selectedCardIds.size || gallery.selectedCardIds.size % CARD_SYNTHESIS_COST !== 0) {
+            showMessage(translate('카드 5장을 선택하고 이용해 주세요.'));
+            return;
+        }
+        const requestedGallery = gallery;
+        void askConfirm(getCardConfirmationMessage(index)).then((confirmed) => {
+            if (confirmed && gallery === requestedGallery && getGalleryTypes()[gallery.typeIndex]?.key === 'card') executeCardGalleryAction(index);
         });
     }
 
@@ -6410,7 +6401,6 @@
         });
         if (types[gallery.typeIndex]?.key === 'card') {
             drawCardGallery();
-            drawCardGalleryConfirmation();
             context.textBaseline = 'alphabetic';
             return;
         }
@@ -7308,6 +7298,23 @@
         context.fillText(translate('종료'), 735, 417);
     }
 
+    /** 현재 공용 확인 대화상자를 모든 화면 요소 위에 그린다. @returns {void} */
+    function drawConfirmDialog() {
+        if (!confirmDialog) return;
+        context.fillStyle = 'rgba(2, 8, 13, 0.78)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.fillStyle = '#102c3b'; context.fillRect(380, 250, 520, 270);
+        context.strokeStyle = '#6ea2b8'; context.lineWidth = 3; context.strokeRect(380, 250, 520, 270);
+        context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.font = `24px ${MESSAGE_FONT}`;
+        context.fillText(confirmDialog.message, WIDTH / 2, 345, 440);
+        [translate('확인'), translate('취소')].forEach((label, index) => {
+            const bounds = getConfirmDialogButtonBounds(index);
+            const focused = confirmDialog.choice === index;
+            context.fillStyle = focused ? '#563068' : '#173848'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#f7c843' : '#4d7180'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = '#f5fbfc'; context.font = `20px ${BUTTON_FONT}`; context.fillText(label, bounds.x + bounds.width / 2, bounds.y + 37);
+        });
+    }
+
     /**
      * 현재 메뉴 또는 실행 중인 게임의 한 프레임을 렌더링한다.
      * @returns {void}
@@ -7345,6 +7352,7 @@
         }
         drawScreenMessage();
         drawGameStartFirework();
+        drawConfirmDialog();
     }
 
     /** 화면 최상단에 표시 중인 외부 메시지를 그린다. @returns {void} */
@@ -7569,18 +7577,6 @@
     /** 갤러리의 키보드·게임패드 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
     function handleGalleryKeydown(key) {
         if (!gallery) return;
-        if (gallery.confirmation) {
-            if (key === 'escape') cancelCardGalleryConfirmation();
-            else if (key === 'arrowleft' || key === 'arrowright') gallery.confirmation.choice = gallery.confirmation.choice === 0 ? 1 : 0;
-            else if (key === 'enter' || key === ' ') {
-                if (gallery.confirmation.choice === 0) {
-                    const actionIndex = gallery.confirmation.actionIndex;
-                    playMenuSelectSound();
-                    activateCardGalleryButton(actionIndex, true);
-                } else cancelCardGalleryConfirmation();
-            }
-            return;
-        }
         if (key === 'escape') { closeGallery(); return; }
         const cardTypeSelected = getGalleryTypes()[gallery.typeIndex]?.key === 'card';
         if (gallery.focus === 'type') {
@@ -7842,11 +7838,28 @@
         if (actionSoundCountBefore === menuActionSoundCount && focusBefore !== getMenuFocusToken()) playMenuFocusMoveSound();
     }
 
+    /** 공용 확인 대화상자의 키보드·게임패드 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
+    function handleConfirmDialogKeydown(key) {
+        if (!confirmDialog) return;
+        if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
+            confirmDialog.choice = confirmDialog.choice === 0 ? 1 : 0;
+        } else if (key === 'escape') {
+            playMenuCancelSound();
+            resolveConfirmDialog(false);
+        } else if (key === 'enter' || key === ' ') {
+            const confirmed = confirmDialog.choice === 0;
+            if (confirmed) playMenuSelectSound();
+            else playMenuCancelSound();
+            resolveConfirmDialog(confirmed);
+        }
+    }
+
     /** 키 입력의 실제 화면 동작을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @returns {void} */
     function handleKeydownCore(event) {
         let key = event.key.toLowerCase();
         if (key === 'z' && shouldTreatZAsEnter(event)) key = 'enter';
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
+        if (confirmDialog) { handleConfirmDialogKeydown(key); return; }
         if (settingsResetting) return;
         if (!game && menuScreen === 'initialTitle') {
             if (key === 'enter') enterMainMenu();
@@ -8107,7 +8120,7 @@
 
     /** 카드 갤러리에서 마우스 휠로 카드 행을 스크롤한다. @param {WheelEvent} event 휠 이벤트 @returns {void} */
     function handleCanvasWheel(event) {
-        if (game || menuScreen !== 'gallery' || !gallery || gallery.confirmation || getGalleryTypes()[gallery.typeIndex]?.key !== 'card') return;
+        if (confirmDialog || game || menuScreen !== 'gallery' || !gallery || getGalleryTypes()[gallery.typeIndex]?.key !== 'card') return;
         const { x, y } = getCanvasEventCoordinates(event);
         if (x < 414 || x > 1246 || y < 180 || y > 680) return;
         const maxScroll = Math.max(0, Math.ceil(ownedCards.length / 8) - 4);
@@ -8118,6 +8131,20 @@
 
     /** 캔버스 클릭의 실제 화면 동작을 처리한다. @param {MouseEvent} event 마우스 이벤트 @returns {void} */
     function handleCanvasClickCore(event) {
+        if (confirmDialog) {
+            const { x, y } = getCanvasEventCoordinates(event);
+            const choice = [0, 1].find((index) => {
+                const bounds = getConfirmDialogButtonBounds(index);
+                return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+            });
+            if (choice !== undefined) {
+                confirmDialog.choice = choice;
+                if (choice === 0) playMenuSelectSound();
+                else playMenuCancelSound();
+                resolveConfirmDialog(choice === 0);
+            }
+            return;
+        }
         if (settingsResetting) return;
         if (!game && menuScreen === 'initialTitle') {
             enterMainMenu();
@@ -8229,22 +8256,6 @@
             return;
         }
         if (menuScreen === 'gallery' && gallery) {
-            if (gallery.confirmation) {
-                const choice = [0, 1].find((index) => {
-                    const bounds = getCardConfirmationButtonBounds(index);
-                    return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
-                });
-                if (choice === 0) {
-                    const actionIndex = gallery.confirmation.actionIndex;
-                    gallery.confirmation.choice = 0;
-                    playMenuSelectSound();
-                    activateCardGalleryButton(actionIndex, true);
-                } else if (choice === 1) {
-                    gallery.confirmation.choice = 1;
-                    cancelCardGalleryConfirmation();
-                }
-                return;
-            }
             const closeButton = getGalleryCloseButtonBounds();
             if (x >= closeButton.x && x <= closeButton.x + closeButton.width && y >= closeButton.y && y <= closeButton.y + closeButton.height) {
                 closeGallery();
@@ -8501,8 +8512,8 @@
             return { screen: game.tutorial.mode === 'intro' ? 'tutorial_intro' : 'tutorial_demo', playerCanControl: false };
         }
         if (!game.running) return { screen: 'game_over', playerCanControl: false };
-        if (game.countdown > 0) return { screen: 'countdown', playerCanControl: false };
         if (game.paused) return { screen: 'paused', playerCanControl: false };
+        if (game.countdown > 0) return { screen: 'countdown', playerCanControl: false };
         if (game.ending) return { screen: 'ending', playerCanControl: false };
         return { screen: 'playing', playerCanControl: !game.watch && game.players[0].controller === null && game.players[0].phase === 'control' && game.players[0].active !== null };
     }
@@ -8619,6 +8630,53 @@
         if (typeof duration !== 'number' || !Number.isFinite(duration) || duration < 0) throw new RangeError('duration은 0 이상의 유한한 숫자여야 합니다.');
         if (backgroundColor !== null && typeof backgroundColor !== 'string') throw new TypeError('backgroundColor는 문자열 또는 null이어야 합니다.');
         screenMessage = { message, color, backgroundColor, elapsed: 0, duration };
+    }
+
+    /** 대기 중인 다음 확인 요청을 표시하고, 진행 중인 게임은 대화상자들이 모두 끝날 때까지 일시정지한다. @returns {void} */
+    function openNextConfirmDialog() {
+        if (confirmDialog || !confirmDialogQueue.length) return;
+        if (!confirmDialogPauseContext) {
+            confirmDialogPauseContext = { game, resume: Boolean(game?.running && !game.paused) };
+            if (confirmDialogPauseContext.resume) {
+                resetKeyboardDirectionInput();
+                resetVirtualControllerInput();
+                game.paused = true;
+                pauseBackgroundMusic();
+            }
+        }
+        confirmDialog = confirmDialogQueue.shift();
+    }
+
+    /** 현재 확인 요청을 완료하고 다음 요청 또는 자동 일시정지 상태를 정리한다. @param {boolean} value 선택 결과 @returns {void} */
+    function resolveConfirmDialog(value) {
+        if (!confirmDialog) return;
+        const resolver = confirmDialog.resolve;
+        confirmDialog = null;
+        if (confirmDialogQueue.length) {
+            openNextConfirmDialog();
+        } else {
+            const pauseContext = confirmDialogPauseContext;
+            confirmDialogPauseContext = null;
+            if (pauseContext?.resume && game === pauseContext.game && game?.running && game.paused) {
+                game.paused = false;
+                resumeBackgroundMusic();
+            }
+        }
+        resolver(value === true);
+    }
+
+    /**
+     * 현재 화면을 음영 처리한 확인 대화상자를 표시한다. 메시지는 원문 그대로 표시하고 버튼만 현재 언어로 번역한다.
+     * @param {string} message 확인할 메시지
+     * @returns {Promise<boolean>} 확인은 true, 취소는 false
+     */
+    function askConfirm(message) {
+        if (!initialized || !context) throw new Error('확인 대화상자를 표시하려면 먼저 WebPuyo.initialize()를 호출해야 합니다.');
+        if (typeof message !== 'string') throw new TypeError('message는 문자열이어야 합니다.');
+        return new Promise((resolve) => {
+            confirmDialogQueue.push({ message, choice: 0, resolve });
+            openNextConfirmDialog();
+        });
     }
 
     /**
@@ -8905,6 +8963,10 @@
         feverStageValidationTimer = null;
         settingsResetting = false;
         screenMessage = null;
+        [confirmDialog, ...confirmDialogQueue].filter(Boolean).forEach((request) => request.resolve(false));
+        confirmDialog = null;
+        confirmDialogQueue = [];
+        confirmDialogPauseContext = null;
         gameStartFirework = null;
         window.removeEventListener('keydown', handleKeydown);
         window.removeEventListener('keyup', handleKeyup);
@@ -12375,6 +12437,7 @@
         getNextPairs,
         playSound,
         showMessage,
+        askConfirm,
         addCode,
         initialize,
         destroy,

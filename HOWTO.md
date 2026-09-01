@@ -73,7 +73,7 @@ PuyoW.initialize('webpuyo_canvas');
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, initialize } = require('./src/puyow.js');
+const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, askConfirm, initialize } = require('./src/puyow.js');
 ```
 
 `initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 게임용 canvas를 만들어 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 사용하고 `destroy()`가 요소를 제거하지 않습니다. 다만 게임의 그래픽 설정에 따라 해당 canvas의 실제 `width`와 `height`는 설정됩니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
@@ -94,6 +94,19 @@ PuyoW.showMessage(message, '#ffffff', 3000, '#263238');
 ```
 
 WebMCP를 지원하는 브라우저에서는 AI도 `show_message` 도구로 동일한 동작을 호출할 수 있습니다. 도구의 `message`는 이미 현지화된 문자열이어야 하며, `color`, `duration`, `backgroundColor`의 기본값은 각각 `'white'`, `2000`, `null`입니다.
+
+### 확인 대화상자 표시
+
+`PuyoW.askConfirm(message)`는 현재 화면 전체를 음영 처리하고 중앙에 `message`와 확인·취소 버튼을 표시하며 `Promise<boolean>`을 반환합니다. 키보드 방향키로 버튼을 이동하고 Enter로 선택할 수 있으며, ESC는 취소로 처리됩니다. 마우스로도 두 버튼을 클릭할 수 있습니다. 확인하면 `true`, 취소하면 `false`로 resolve됩니다. 확인·취소 버튼은 현재 게임 언어로 번역됩니다.
+
+`message`는 필수 문자열이며 함수 내부에서 번역하지 않고 받은 문자열 그대로 표시합니다. 게임 진행 중 호출하면 게임과 배경음악을 일시정지하고, 함수가 직접 일시정지했던 게임은 응답 후 다시 진행합니다. 호출 전에 이미 일시정지 상태였다면 응답 후에도 일시정지를 유지합니다. 동시에 여러 번 호출하면 요청 순서대로 하나씩 표시됩니다. `showMessage()`와 마찬가지로 먼저 `initialize()`를 호출해야 합니다.
+
+```js
+const confirmed = await PuyoW.askConfirm(translateForMyApp('Continue?'));
+if (confirmed) {
+    // 확인 후 실행할 작업
+}
+```
 
 ### 공지사항 경로 설정
 
