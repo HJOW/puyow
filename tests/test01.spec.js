@@ -1442,6 +1442,18 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   expect(await page.evaluate(() => window.WebPuyo.getGameState().fever.leftTime)).toBe(pausedTime);
 });
 
+test('조작 뿌요 자연 낙하 속도는 최대 16배까지 증가한다', async ({ page }) => {
+  const multipliers = await page.evaluate(() => {
+    const elapsedTimes = [0, 59999, 60000, 4440000, 4500000, 9000000];
+    return {
+      direct: elapsedTimes.map((elapsed) => window.WebPuyo.getPlayerFallSpeedMultiplier(elapsed)),
+      common: elapsedTimes.map((elapsed) => window.WebPuyo.common.getPlayerFallSpeedMultiplier(elapsed)),
+    };
+  });
+  expect(multipliers.direct).toEqual([1, 1, 1.2, 15.8, 16, 16]);
+  expect(multipliers.common).toEqual(multipliers.direct);
+});
+
 test('피버·연속 피버에서 새로 지급된 조작 뿌요의 자연 낙하는 1.5배가 아니다', async ({ page }) => {
   async function measureNaturalDrop() {
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
