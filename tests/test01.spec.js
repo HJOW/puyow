@@ -1700,7 +1700,9 @@ test('안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 
       lookaheadTurnCount: controller.lookaheadTurnCount,
       lookaheadTimeLimitMs: controller.lookaheadTimeLimitMs,
       workerSearchDepth: controller.workerSearchDepth,
-      inheritsWorkerSearchEnemy: controller instanceof window.WebPuyo.WorkerSearchEnemy,
+      inheritsEnemy: controller instanceof window.WebPuyo.Enemy,
+      workerSearchHelpers: ['beginWorkerSearchTurn', 'startWorkerLookaheadSearch', 'isWorkerSearchPending', 'getWorkerSearchTarget', 'getWorkerSearchRotation']
+        .every((name) => typeof window.WebPuyo[name] === 'function'),
     };
   });
 
@@ -1712,8 +1714,64 @@ test('안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 
     lookaheadTurnCount: 3,
     lookaheadTimeLimitMs: 1000,
     workerSearchDepth: 3,
-    inheritsWorkerSearchEnemy: true,
+    inheritsEnemy: true,
+    workerSearchHelpers: true,
   });
+});
+
+test('외부 Enemy 하위 클래스도 Worker 탐색 보조 함수로 결과를 적용한다', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    class ExternalWorkerEnemy extends window.WebPuyo.Enemy {
+      constructor() {
+        super();
+        this.targetCombo = 7;
+        this.lookaheadTurnCount = 3;
+        this.lookaheadTimeLimitMs = 1000;
+        this.ignorableIncomingGarbage = 4;
+      }
+
+      getClassType() { return 'ExternalWorkerEnemy'; }
+      getName() { return '외부 Worker 탐색 적'; }
+
+      prepareTurn(player) {
+        window.WebPuyo.beginWorkerSearchTurn(this);
+        super.prepareTurn(player);
+        if (!this.getPreparedPlacement()) window.WebPuyo.startWorkerLookaheadSearch(this, player);
+      }
+
+      chooseTarget(player) { return window.WebPuyo.getWorkerSearchTarget(this, player); }
+      chooseRotate(player) { return window.WebPuyo.getWorkerSearchRotation(this, player); }
+      updateControl(player) { return window.WebPuyo.isWorkerSearchPending(this, player); }
+    }
+
+    const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    board[0][2] = 'yellow';
+    board[1][2] = 'yellow';
+    const player = {
+      board,
+      active: { x: 2, y: 12, rotation: 0, colors: ['yellow', 'yellow'] },
+      nextPairs: [['red', 'blue'], ['green', 'blue']],
+      aiSimulations: [],
+      attack: 0,
+      damage: 0,
+      warningReductionDelay: 0,
+      estimateAttack(colors, positions) { return window.WebPuyo.estimateAttack(this.board, colors, positions); },
+      estimateCombo(colors, positions) { return window.WebPuyo.estimateCombo(this.board, colors, positions); },
+    };
+    const controller = new ExternalWorkerEnemy();
+    controller.prepareTurn(player);
+    await controller.pendingWorkerSearch.promise;
+    const target = controller.chooseTarget(player);
+    const rotation = controller.chooseRotate(player);
+    return {
+      inheritsEnemy: controller instanceof window.WebPuyo.Enemy,
+      state: controller.workerSearchState,
+      pending: controller.updateControl(player),
+      validPlacement: player.aiSimulations.some((candidate) => candidate.x === target && candidate.rotation === rotation),
+    };
+  });
+
+  expect(result).toEqual({ inheritsEnemy: true, state: 'ready', pending: false, validPlacement: true });
 });
 
 test('3수 이상 공통 Worker 탐색은 정상 완료 Worker를 다음 요청에서 재사용한다', async ({ page }) => {

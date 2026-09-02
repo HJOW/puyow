@@ -2789,6 +2789,7 @@
      */
     function lockActive(player) {
         // 비동기 판단을 기다리는 적은 뿌요가 실제 바닥이나 다른 뿌요에 닿는 즉시 요청을 취소한다.
+        cancelPendingWorkerSearch(player.controller, player, 'contact');
         player.controller?.cancelPendingRequest?.(player, 'contact');
         // 피버 룰의 방해뿌요 지연은 배치마다 새로 판정한다. 이번 배치가 폭발에 성공하면
         // resolveExplosions에서 다시 true가 되어 다음 컨트롤까지 DAMAGE 낙하를 미룬다.
@@ -3764,6 +3765,107 @@
             useSynchronousFallback('메인 스코프 초기화 오류', error instanceof Error ? error : new Error(String(error)));
         }
         return { cancel, promise };
+    }
+
+    /** @param {Enemy|object|null} enemy Worker 탐색 상태를 가진 적 @param {PlayerState|object|null} player CPU 플레이어 @returns {boolean} 아직 같은 조작 턴의 탐색인지 여부 */
+    function isCurrentWorkerSearch(enemy, player) {
+        return !!enemy && player === enemy.workerSearchPlayer && player?.active === enemy.workerSearchActive;
+    }
+
+    /** @param {Enemy|object|null} enemy Worker 탐색을 실행한 적 @param {PlayerState|object|null} player CPU 플레이어 @param {string} [reason='cancelled'] 취소 사유 @returns {void} */
+    function cancelPendingWorkerSearch(enemy, player = null, reason = 'cancelled') {
+        if (!enemy?.pendingWorkerSearch || (player && player !== enemy.workerSearchPlayer)) return;
+        enemy.pendingWorkerSearch.cancel(reason);
+        enemy.pendingWorkerSearch = null;
+        if (reason === 'contact') enemy.workerSearchState = 'cancelled';
+    }
+
+    /** @param {Enemy|object} enemy Worker 탐색을 사용할 적 @returns {void} 다음 조작 턴의 탐색 상태를 초기화한다 */
+    function beginWorkerSearchTurn(enemy) {
+        cancelPendingWorkerSearch(enemy, null, 'replaced');
+        enemy.attackPlacement = null;
+        enemy.workerSearchDepth = 0;
+        enemy.workerSearchState = 'idle';
+    }
+
+    /** @param {Enemy|object} enemy 적 @param {PlayerState|object} player CPU 플레이어 @param {number} rotation 요청 회전값 @returns {number} 즉시 패배 보호를 반영한 회전값 */
+    function selectWorkerSearchRotation(enemy, player, rotation) {
+        if (typeof enemy.selectSafeRotation === 'function') return enemy.selectSafeRotation(player, rotation);
+        return ((Math.floor(Number(rotation) || 0) % 4) + 4) % 4;
+    }
+
+    /** @param {Enemy|object} enemy Worker 탐색 결과를 적용할 적 @param {PlayerState|object} player CPU 플레이어 @param {{depth:number,placement:{x:number,rotation:number}}} result Worker 결과 @returns {void} */
+    function applyWorkerSearchResult(enemy, player, result) {
+        if (!isCurrentWorkerSearch(enemy, player) || !result?.placement) return;
+        const placement = result.placement;
+        if (!player.aiSimulations.some((candidate) => candidate.x === placement.x && candidate.rotation === placement.rotation)) {
+            throw new Error('Worker가 현재 뿌요에 적용할 수 없는 위치 또는 회전을 반환했습니다.');
+        }
+        enemy.attackPlacement = { ...placement };
+        enemy.workerSearchDepth = result.depth;
+        player.aiTarget = placement.x;
+        player.aiRotation = selectWorkerSearchRotation(enemy, player, placement.rotation);
+        player.aiDecisionElapsed = 0;
+        enemy.workerSearchState = 'ready';
+    }
+
+    /** @param {Enemy|object} enemy Worker가 1수 결과를 내지 못했을 때의 기존 동기 후보 @param {PlayerState|object} player CPU 플레이어 @returns {object|null} */
+    function getWorkerSearchFallbackPlacement(enemy, player) {
+        return findBestNMovePlacement(player, enemy.targetCombo, 1)?.simulation
+            || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
+    }
+
+    /** @param {Enemy|object} enemy Worker 탐색을 시작할 적 @param {PlayerState|object} player CPU 플레이어 @returns {void} */
+    function startWorkerLookaheadSearch(enemy, player) {
+        cancelPendingWorkerSearch(enemy, null, 'replaced');
+        enemy.workerSearchPlayer = player;
+        enemy.workerSearchActive = player.active;
+        enemy.workerSearchDepth = 0;
+        enemy.workerSearchState = 'pending';
+        const opponent = game?.players.find((candidate) => candidate !== player) ?? null;
+        enemy.pendingWorkerSearch = simulateNMovePlacementsInWorker(
+            player,
+            enemy.targetCombo,
+            enemy.lookaheadTurnCount,
+            enemy.lookaheadTimeLimitMs,
+            {
+                opponent,
+                urgentGarbageThreshold: enemy.ignorableIncomingGarbage,
+                onProgress: (result) => applyWorkerSearchResult(enemy, player, result),
+                onComplete: (result) => {
+                    if (!isCurrentWorkerSearch(enemy, player)) return;
+                    enemy.pendingWorkerSearch = null;
+                    if (result.placement) applyWorkerSearchResult(enemy, player, result);
+                    else {
+                        enemy.attackPlacement = getWorkerSearchFallbackPlacement(enemy, player);
+                        player.aiTarget = enemy.attackPlacement?.x ?? (player.active ? player.active.x : 2);
+                        player.aiRotation = selectWorkerSearchRotation(enemy, player, enemy.attackPlacement?.rotation ?? 0);
+                        enemy.workerSearchDepth = 0;
+                        player.aiDecisionElapsed = 0;
+                    }
+                    enemy.workerSearchState = 'ready';
+                },
+                onError: () => { enemy.workerSearchState = 'pending'; }
+            }
+        );
+    }
+
+    /** @param {Enemy|object|null} enemy Worker 탐색 적 @param {PlayerState|object|null} player CPU 플레이어 @returns {boolean} 첫 결과를 기다리는지 여부 */
+    function isWorkerSearchPending(enemy, player) {
+        return enemy?.workerSearchState === 'pending' && isCurrentWorkerSearch(enemy, player);
+    }
+
+    /** @param {Enemy|object} enemy Worker 탐색 적 @param {PlayerState|object} player CPU 플레이어 @returns {number} 공통 후보 또는 Worker 탐색 결과의 목표 X 좌표 */
+    function getWorkerSearchTarget(enemy, player) {
+        const preparedPlacement = enemy.getPreparedPlacement?.();
+        if (preparedPlacement) return preparedPlacement.x;
+        return enemy.attackPlacement?.x ?? (player.active ? player.active.x : 2);
+    }
+
+    /** @param {Enemy|object} enemy Worker 탐색 적 @param {PlayerState|object} player CPU 플레이어 @returns {number} 공통 후보 또는 Worker 탐색 결과의 안전한 회전값 */
+    function getWorkerSearchRotation(enemy, player) {
+        const preparedPlacement = enemy.getPreparedPlacement?.();
+        return selectWorkerSearchRotation(enemy, player, preparedPlacement?.rotation ?? enemy.attackPlacement?.rotation ?? 0);
     }
 
     /** @param {(string|null)[][]} board 검사할 보드 @returns {boolean} 빈 보드 여부 */
@@ -10584,6 +10686,18 @@
             this.notAvail = false;
             /** 이번 턴에 공통 규칙이 미리 선택한 착지 후보다. 적 구현은 chooseTarget/chooseRotate에서 이를 우선할 수 있다. @type {object|null} */
             this.preparedPlacement = null;
+            /** Worker 탐색 또는 적별 공격 판단이 선택한 현재 턴 배치 후보다. @type {object|null} */
+            this.attackPlacement = null;
+            /** 현재 Worker 탐색 작업이다. @type {{cancel:(reason?:string)=>void,promise:Promise<object>}|null} */
+            this.pendingWorkerSearch = null;
+            /** Worker 탐색을 시작했던 플레이어다. @type {PlayerState|object|null} */
+            this.workerSearchPlayer = null;
+            /** Worker 탐색을 시작했던 현재 뿌요 쌍이다. @type {object|null} */
+            this.workerSearchActive = null;
+            /** 메인 스코프에 마지막으로 탑재된 반복 심화 탐색 깊이다. @type {number} */
+            this.workerSearchDepth = 0;
+            /** @type {'idle'|'pending'|'ready'|'cancelled'} */
+            this.workerSearchState = 'idle';
             // 이 좌표에 뿌요가 있으면 AI는 일반 쌓기 대신 공격력 시뮬레이션을 우선한다.
             this.attackSimulationTriggerPosition = { x: 2, y: 8 };
             this.soundPool = createSoundPool(false);
@@ -12382,143 +12496,10 @@
     }
 
     /**
-     * Worker 반복 심화 탐색 적의 공통 수명주기·취소 규약을 제공한다.
-     * 하위 적은 `prepareTurn()`에서 안전·피버 등 고유 우선 후보를 처리한 뒤
-     * `startWorkerLookaheadSearch()`를 호출하면 된다.
-     */
-    class WorkerSearchEnemy extends BundledEnemy {
-        constructor() {
-            super();
-            /** 현재 턴의 Worker 또는 fallback 탐색 배치 후보다. @type {object|null} */
-            this.attackPlacement = null;
-            /** 현재 Worker 탐색 작업이다. @type {{cancel:(reason?:string)=>void,promise:Promise<object>}|null} */
-            this.pendingWorkerSearch = null;
-            /** Worker 탐색을 시작했던 플레이어다. @type {PlayerState|object|null} */
-            this.workerSearchPlayer = null;
-            /** Worker 탐색을 시작했던 현재 뿌요 쌍이다. @type {object|null} */
-            this.workerSearchActive = null;
-            /** 메인 스코프에 마지막으로 탑재된 반복 심화 탐색 깊이다. @type {number} */
-            this.workerSearchDepth = 0;
-            /** @type {'idle'|'pending'|'ready'|'cancelled'} */
-            this.workerSearchState = 'idle';
-        }
-
-        /** 다음 조작 턴의 Worker 탐색을 준비하며 이전 요청과 결과를 정리한다. @returns {void} */
-        beginWorkerSearchTurn() {
-            this.cancelPendingRequest(null, 'replaced');
-            this.attackPlacement = null;
-            this.workerSearchDepth = 0;
-            this.workerSearchState = 'idle';
-        }
-
-        /** @param {PlayerState|object} player 현재 Worker 결과를 적용할 플레이어 @returns {boolean} 아직 같은 조작 턴인지 여부 */
-        isCurrentWorkerSearch(player) {
-            return player === this.workerSearchPlayer && player?.active === this.workerSearchActive;
-        }
-
-        /**
-         * Worker가 완료한 깊이의 현재 1수 최적 위치·회전을 메인 스코프에 탑재한다.
-         * @param {PlayerState|object} player CPU 플레이어
-         * @param {{depth:number,placement:{x:number,rotation:number,positions?:object[],combo?:number,attack?:number}}} result Worker 결과
-         * @returns {void}
-         */
-        applyWorkerSearchResult(player, result) {
-            if (!this.isCurrentWorkerSearch(player) || !result?.placement) return;
-            const placement = result.placement;
-            if (!player.aiSimulations.some((candidate) => candidate.x === placement.x && candidate.rotation === placement.rotation)) {
-                throw new Error('Worker가 현재 뿌요에 적용할 수 없는 위치 또는 회전을 반환했습니다.');
-            }
-            this.attackPlacement = { ...placement };
-            this.workerSearchDepth = result.depth;
-            player.aiTarget = placement.x;
-            player.aiRotation = this.selectSafeRotation(player, placement.rotation);
-            player.aiDecisionElapsed = 0;
-            this.workerSearchState = 'ready';
-        }
-
-        /** @param {PlayerState|object} player Worker 탐색에서 상대 상태를 읽을 CPU 플레이어 @returns {PlayerState|object|null} */
-        getWorkerSearchOpponent(player) {
-            return game?.players.find((candidate) => candidate !== player) ?? null;
-        }
-
-        /** @param {PlayerState|object} player Worker가 1수 결과를 내지 못했을 때의 기존 동기 후보 @returns {object|null} */
-        getWorkerSearchFallbackPlacement(player) {
-            return findBestNMovePlacement(player, this.targetCombo, 1)?.simulation
-                || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
-        }
-
-        /** @param {PlayerState|object} player Worker 탐색을 시작할 CPU 플레이어 @returns {void} */
-        startWorkerLookaheadSearch(player) {
-            this.cancelPendingRequest(null, 'replaced');
-            this.workerSearchPlayer = player;
-            this.workerSearchActive = player.active;
-            this.workerSearchDepth = 0;
-            this.workerSearchState = 'pending';
-            this.pendingWorkerSearch = simulateNMovePlacementsInWorker(
-                player,
-                this.targetCombo,
-                this.lookaheadTurnCount,
-                this.lookaheadTimeLimitMs,
-                {
-                    opponent: this.getWorkerSearchOpponent(player),
-                    urgentGarbageThreshold: this.ignorableIncomingGarbage,
-                    onProgress: (result) => this.applyWorkerSearchResult(player, result),
-                    onComplete: (result) => {
-                        if (!this.isCurrentWorkerSearch(player)) return;
-                        this.pendingWorkerSearch = null;
-                        if (result.placement) this.applyWorkerSearchResult(player, result);
-                        else {
-                            this.attackPlacement = this.getWorkerSearchFallbackPlacement(player);
-                            player.aiTarget = this.attackPlacement?.x ?? (player.active ? player.active.x : 2);
-                            player.aiRotation = this.selectSafeRotation(player, this.attackPlacement?.rotation ?? 0);
-                            this.workerSearchDepth = 0;
-                            player.aiDecisionElapsed = 0;
-                        }
-                        this.workerSearchState = 'ready';
-                    },
-                    onError: () => { this.workerSearchState = 'pending'; }
-                }
-            );
-        }
-
-        /** 착지 또는 다음 턴 시작 시 현재 Worker 탐색을 종료한다. @param {PlayerState|object|null} player CPU 플레이어 @param {string} [reason='cancelled'] 종료 사유 @returns {void} */
-        cancelPendingRequest(player, reason = 'cancelled') {
-            if (!this.pendingWorkerSearch || (player && player !== this.workerSearchPlayer)) return;
-            this.pendingWorkerSearch.cancel(reason);
-            this.pendingWorkerSearch = null;
-            if (reason === 'contact') this.workerSearchState = 'cancelled';
-        }
-
-        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} Worker 탐색 결과의 목표 X 좌표 */
-        chooseTarget(player) {
-            const preparedPlacement = this.getPreparedPlacement();
-            if (preparedPlacement) return preparedPlacement.x;
-            return this.attackPlacement?.x ?? (player.active ? player.active.x : 2);
-        }
-
-        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} Worker 탐색 결과의 안전한 회전값 */
-        chooseRotate(player) {
-            const preparedPlacement = this.getPreparedPlacement();
-            return this.selectSafeRotation(player, preparedPlacement?.rotation ?? this.attackPlacement?.rotation ?? 0);
-        }
-
-        /** @param {PlayerState} player Worker 탐색 결과가 준비될 때까지 기본 이동을 대체했는지 @returns {boolean} */
-        updateControl(player) {
-            return this.workerSearchState === 'pending' && this.isCurrentWorkerSearch(player);
-        }
-
-        /** @param {PlayerState} player CPU 플레이어 @returns {boolean} Worker 결과를 기다리는 동안에는 빠른 하강을 하지 않는다. */
-        useFastDown(player) {
-            if (this.workerSearchState === 'pending' && this.isCurrentWorkerSearch(player)) return false;
-            return super.useFastDown(player);
-        }
-    }
-
-    /**
      * 안드레알푸스는 수학·기하학·천문학에 능통한 미모후작을 거대한 공작으로 각색한 기본 제공 적이다.
      * 키마리스와 같은 생존·상쇄 평가를 사용하되, 일반 상황에서는 Worker로 3수 앞까지 읽는다.
      */
-    class Andrealphus extends WorkerSearchEnemy {
+    class Andrealphus extends BundledEnemy {
         constructor() {
             super();
             this.sortPriority = 8;
@@ -12614,14 +12595,35 @@
          * @returns {void}
          */
         prepareTurn(player) {
-            this.beginWorkerSearchTurn();
+            beginWorkerSearchTurn(this);
             Enemy.prototype.prepareTurn.call(this, player);
             if (this.getPreparedPlacement()) return;
             if (!this.isInFever(player) && this.isFieldAtLeastEightyPercentFilled(player)) {
                 this.preparedPlacement = findAiDefeatPositionSafePlacement(player, true);
                 if (this.getPreparedPlacement()) return;
             }
-            this.startWorkerLookaheadSearch(player);
+            startWorkerLookaheadSearch(this, player);
+        }
+
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} Worker 탐색 결과의 목표 X 좌표 */
+        chooseTarget(player) {
+            return getWorkerSearchTarget(this, player);
+        }
+
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} Worker 탐색 결과의 안전한 회전값 */
+        chooseRotate(player) {
+            return getWorkerSearchRotation(this, player);
+        }
+
+        /** @param {PlayerState} player CPU 플레이어 @returns {boolean} Worker 결과가 준비될 때까지 기본 이동을 대체했는지 */
+        updateControl(player) {
+            return isWorkerSearchPending(this, player);
+        }
+
+        /** @param {PlayerState} player CPU 플레이어 @returns {boolean} Worker 결과를 기다리는 동안에는 빠른 하강을 하지 않는다. */
+        useFastDown(player) {
+            if (isWorkerSearchPending(this, player)) return false;
+            return super.useFastDown(player);
         }
 
         /**
@@ -12965,7 +12967,12 @@
 
     WebPuyo = {
         Enemy,
-        WorkerSearchEnemy,
+        beginWorkerSearchTurn,
+        startWorkerLookaheadSearch,
+        cancelPendingWorkerSearch,
+        isWorkerSearchPending,
+        getWorkerSearchTarget,
+        getWorkerSearchRotation,
         Kimaris,
         Andrealphus,
         Puyo,

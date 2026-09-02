@@ -296,12 +296,12 @@ const combo = player.estimateCombo(
 
 ## Worker-based N-move search opponents
 
-For opponents that look ahead three or more moves, extend `PuyoW.WorkerSearchEnemy`. The base class handles starting the Worker search, applying iterative-deepening results, cancelling on contact, and pausing input while a result is pending. While a search is pending, `updateControl()` waits before horizontal movement and rotation, and `useFastDown()` prevents a fast drop until the first result is available. A subclass therefore does not need to implement `chooseTarget()` or `chooseRotate()` separately.
+External opponents that look ahead three or more moves only need to extend the base `PuyoW.Enemy`. Worker-search state (`pendingWorkerSearch`, `workerSearchPlayer`, `workerSearchActive`, `workerSearchDepth`, `workerSearchState`, and `attackPlacement`) already belongs to `Enemy`; do not extend `BundledEnemy`, which is reserved for built-in opponents.
 
-In `prepareTurn()`, first call `beginWorkerSearchTurn()` to clear the previous request, then call normal `super.prepareTurn(player)` to prepare Fever, defeat-cell, and bundled-opponent priority placements. Call `startWorkerLookaheadSearch(player)` only when no shared placement was prepared.
+In `prepareTurn()`, call `PuyoW.beginWorkerSearchTurn(this)` to clear the previous request and result, then call normal `super.prepareTurn(player)` to prepare shared Fever and defeat-cell candidates. Call `PuyoW.startWorkerLookaheadSearch(this, player)` only when no shared placement was prepared. Connect target, rotation, and pending-state decisions through the public helpers below to use the Worker result.
 
 ```js
-class WorkerPlannerEnemy extends PuyoW.WorkerSearchEnemy {
+class WorkerPlannerEnemy extends PuyoW.Enemy {
     constructor() {
         super();
         this.targetCombo = 7;
@@ -314,17 +314,24 @@ class WorkerPlannerEnemy extends PuyoW.WorkerSearchEnemy {
     getName() { return 'Worker Planner'; }
 
     prepareTurn(player) {
-        this.beginWorkerSearchTurn();
+        PuyoW.beginWorkerSearchTurn(this);
         super.prepareTurn(player);
         if (this.getPreparedPlacement()) return;
-        this.startWorkerLookaheadSearch(player);
+        PuyoW.startWorkerLookaheadSearch(this, player);
+    }
+
+    chooseTarget(player) { return PuyoW.getWorkerSearchTarget(this, player); }
+    chooseRotate(player) { return PuyoW.getWorkerSearchRotation(this, player); }
+    updateControl(player) { return PuyoW.isWorkerSearchPending(this, player); }
+    useFastDown(player) {
+        return !PuyoW.isWorkerSearchPending(this, player) && super.useFastDown(player);
     }
 }
 ```
 
-When a pair contacts the floor or another puyo, the engine calls `cancelPendingRequest(player, 'contact')`. `beginWorkerSearchTurn()` also cancels the previous request when the turn changes, so subclasses do not need their own Worker-termination code. If a subclass overrides `cancelPendingRequest()` to manage additional asynchronous resources, it must call `super.cancelPendingRequest(player, reason)`.
+When a pair contacts the floor or another puyo, the engine cancels only that opponent's Worker request. `PuyoW.beginWorkerSearchTurn(this)` also cancels the previous request when the turn changes, so subclasses do not need their own Worker-termination code. To stop a search for another reason, call `PuyoW.cancelPendingWorkerSearch(this, player, reason)`.
 
-`startWorkerLookaheadSearch()` reads `targetCombo`, `lookaheadTurnCount`, `lookaheadTimeLimitMs`, and `ignorableIncomingGarbage`, then calls `PuyoW.common.simulateNMovePlacementsInWorker()`. It applies the best current-pair position and rotation as depths 1, 2, and 3 complete. If no first-move result is available or the Worker fails, it falls back to the existing synchronous one-move search. Normally completed Workers are kept in a global pool of up to two Workers for reuse by the next turn or another Worker opponent in watch mode; cancelled, failed, or timed-out Workers are not reused.
+`PuyoW.startWorkerLookaheadSearch()` reads `targetCombo`, `lookaheadTurnCount`, `lookaheadTimeLimitMs`, and `ignorableIncomingGarbage`, then calls `PuyoW.common.simulateNMovePlacementsInWorker()`. It applies the best current-pair position and rotation as depths 1, 2, and 3 complete. If no first-move result is available or the Worker fails, it falls back to the existing synchronous one-move search. Normally completed Workers are kept in a global pool of up to two Workers for reuse by the next turn or another Worker opponent in watch mode; cancelled, failed, or timed-out Workers are not reused.
 
 Tools or experimental opponents that do not use the base class can call the common function directly. Call `cancel()` when its result should no longer be applied; `promise` completes with the final-depth result or fallback result.
 
