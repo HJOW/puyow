@@ -6647,7 +6647,7 @@
     /** 메인 화면 왼쪽에 noticeUrl 내용을 줄바꿈해 표시한다. @returns {void} */
     function drawNotice() {
         if (!noticeText) return;
-        const x = 42; const y = 230; const width = 300; const lineHeight = 18; const lines = [];
+        const x = 42; const y = 230; const width = 350; const lineHeight = 18; const lines = [];
         context.save();
         context.beginPath(); context.rect(x, y, width, 390); context.clip();
         context.fillStyle = '#a9d9e5'; context.textAlign = 'left'; context.font = `13px ${quoteFontNameIfNeeded(MESSAGE_FONT_NAME)}`;
