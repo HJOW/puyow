@@ -2929,6 +2929,13 @@
         return 1;
     }
 
+    /** 조작 중인 뿌요 쌍의 한 칸 낙하 간격을 반환한다. 피버의 1.5배는 보드 중력 애니메이션에만 적용하며, 새로 지급된 뿌요의 자연 낙하에는 적용하지 않는다. 빠른 하강 전의 AI 자연 낙하는 플레이어와 같은 속도를 쓴다. @param {PlayerState} player 대상 플레이어 @param {boolean} fastDown 빠른 하강 여부 @returns {number} 한 칸 낙하 간격(ms) */
+    function getActivePuyoFallInterval(player, fastDown) {
+        if (fastDown) return 55;
+        const speedMultiplier = Math.min(MAX_PLAYER_FALL_SPEED_MULTIPLIER, 1 + Math.floor(game.elapsed / 60000) * 0.2);
+        return PLAYER_FALL_INTERVAL / speedMultiplier;
+    }
+
     /**
      * 모든 보드 뿌요의 낙하 목적지와 가속 애니메이션을 준비한다.
      * @param {PlayerState} player 중력을 적용할 플레이어
@@ -4759,10 +4766,8 @@
             }
             // AI 정책 또는 사용자·가상 컨트롤러·튜토리얼 입력으로 빠른 하강을 적용할지 여부다.
             const fastDown = player.controller ? player.aiFastDown : tutorialAutoplay ? player.tutorialFastDown === true : isDownKeyPressed || virtualDirectionInput.arrowdown || player.tutorialFastDown === true;
-            // 경과 시간 1분마다 0.2씩 증가하며 최대 배율을 넘지 않는 사용자 자동 낙하 속도 배율이다.
-            const speedMultiplier = Math.min(MAX_PLAYER_FALL_SPEED_MULTIPLIER, 1 + Math.floor(game.elapsed / 60000) * 0.2);
-            // 빠른 하강·AI·사용자 자동 낙하 각각에 적용할 한 칸 낙하 간격(ms)이다.
-            const fallInterval = fastDown ? 55 : player.controller ? 290 : PLAYER_FALL_INTERVAL / speedMultiplier;
+            // 피버의 1.5배는 이미 고정된 보드가 중력으로 정산될 때만 적용한다.
+            const fallInterval = getActivePuyoFallInterval(player, fastDown);
             const currentFloor = Math.floor(player.active.y);
             const nextFloor = currentFloor - 1;
             if (nextFloor < 0 || !canPlace(player, { ...player.active, y: nextFloor })) {

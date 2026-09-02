@@ -1442,6 +1442,106 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   expect(await page.evaluate(() => window.WebPuyo.getGameState().fever.leftTime)).toBe(pausedTime);
 });
 
+test('피버·연속 피버에서 새로 지급된 조작 뿌요의 자연 낙하는 1.5배가 아니다', async ({ page }) => {
+  async function measureNaturalDrop() {
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
+    const before = await page.evaluate(() => window.WebPuyo.getGameState().player.active.y);
+    await page.waitForTimeout(512);
+    const after = await page.evaluate(() => window.WebPuyo.getGameState().player.active.y);
+    return before - after;
+  }
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  const continuousFeverDrop = await measureNaturalDrop();
+
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('puyow_store') || '{"clearList":[]}');
+    saved.feverClearListByDifficulty = { easy: [], normal: ['Kimaris'], hard: [], extreme: [] };
+    localStorage.setItem('puyow_store', JSON.stringify(saved));
+  });
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+  const feverStartDrop = await measureNaturalDrop();
+
+  for (const drop of [continuousFeverDrop, feverStartDrop]) {
+    expect(drop).toBeGreaterThan(0.18);
+    expect(drop).toBeLessThan(0.34);
+  }
+});
+
+test('빠른 하강 전 적 조작 뿌요의 자연 낙하는 난이도와 무관하게 플레이어와 같다', async ({ page }) => {
+  await page.evaluate(() => {
+    class NaturalFallSpeedEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'NaturalFallSpeedEnemy'; }
+      getName() { return '자연 낙하 속도 테스트 적'; }
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new NaturalFallSpeedEnemy() });
+  });
+
+  async function startAtDifficulty(key, moveCount, expectedKey) {
+    await enterMainMenu(page);
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+    await page.keyboard.press('ArrowDown');
+    for (let index = 0; index < moveCount; index += 1) await page.keyboard.press(key);
+    expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty().key)).toBe(expectedKey);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
+  }
+
+  await startAtDifficulty('ArrowLeft', 1, 'easy');
+  const easyDrop = await page.evaluate(async () => {
+    const before = window.WebPuyo.getGameState();
+    await new Promise((resolve) => setTimeout(resolve, 512));
+    const after = window.WebPuyo.getGameState();
+    return {
+      player: before.player.active.y - after.player.active.y,
+      opponent: before.opponent.active.y - after.opponent.active.y,
+    };
+  });
+  expect(easyDrop.player).toBeCloseTo(easyDrop.opponent, 2);
+
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await page.evaluate(() => {
+    class NaturalFallSpeedEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'NaturalFallSpeedEnemy'; }
+      getName() { return '자연 낙하 속도 테스트 적'; }
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new NaturalFallSpeedEnemy() });
+  });
+  await startAtDifficulty('ArrowRight', 2, 'extreme');
+  const extremeDrop = await page.evaluate(async () => {
+    const before = window.WebPuyo.getGameState();
+    await new Promise((resolve) => setTimeout(resolve, 512));
+    const after = window.WebPuyo.getGameState();
+    return {
+      player: before.player.active.y - after.player.active.y,
+      opponent: before.opponent.active.y - after.opponent.active.y,
+    };
+  });
+  expect(extremeDrop.player).toBeCloseTo(extremeDrop.opponent, 2);
+});
+
 test('연속 피버는 두 번째 패배 칸 (3, 11)도 패배로 판정하고 적 결과 상세를 숨긴다', async ({ page }) => {
   await page.evaluate(() => {
     Math.random = () => 0.999999;
