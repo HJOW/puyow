@@ -1700,6 +1700,7 @@ test('안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 
       lookaheadTurnCount: controller.lookaheadTurnCount,
       lookaheadTimeLimitMs: controller.lookaheadTimeLimitMs,
       workerSearchDepth: controller.workerSearchDepth,
+      inheritsWorkerSearchEnemy: controller instanceof window.WebPuyo.WorkerSearchEnemy,
     };
   });
 
@@ -1711,7 +1712,42 @@ test('안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 
     lookaheadTurnCount: 3,
     lookaheadTimeLimitMs: 1000,
     workerSearchDepth: 3,
+    inheritsWorkerSearchEnemy: true,
   });
+});
+
+test('3수 이상 공통 Worker 탐색은 정상 완료 Worker를 다음 요청에서 재사용한다', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    board[0][0] = 'red';
+    board[0][1] = 'red';
+    const player = {
+      board,
+      active: { x: 2, y: 12, rotation: 0, colors: ['red', 'blue'] },
+      nextPairs: [['green', 'yellow'], ['blue', 'red']],
+      aiSimulations: [],
+      attack: 0,
+      damage: 0,
+      warningReductionDelay: 0,
+      estimateAttack(colors, positions) { return window.WebPuyo.estimateAttack(this.board, colors, positions); },
+      estimateCombo(colors, positions) { return window.WebPuyo.estimateCombo(this.board, colors, positions); },
+    };
+    const originalCreateObjectURL = URL.createObjectURL;
+    let createdWorkerCount = 0;
+    URL.createObjectURL = (...args) => {
+      createdWorkerCount += 1;
+      return originalCreateObjectURL.apply(URL, args);
+    };
+    try {
+      await window.WebPuyo.common.simulateNMovePlacementsInWorker(player, 6, 3, 1000).promise;
+      await window.WebPuyo.common.simulateNMovePlacementsInWorker(player, 6, 3, 1000).promise;
+      return createdWorkerCount;
+    } finally {
+      URL.createObjectURL = originalCreateObjectURL;
+    }
+  });
+
+  expect(result).toBe(1);
 });
 
 test('3수 이상 공통 Worker 탐색은 깊이별 현재 1수 결과를 순서대로 전달한다', async ({ page }) => {

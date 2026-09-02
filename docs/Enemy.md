@@ -348,6 +348,58 @@ const combo = player.estimateCombo(
 );
 ```
 
+## Worker 기반 N수 탐색 적
+
+3수 이상을 읽는 적은 `PuyoW.WorkerSearchEnemy`를 상속하는 것이 권장됩니다. 이 기반 클래스는 Worker 탐색의 시작·반복 심화 결과 반영·착지 시 취소·대기 중 입력 정지를 함께 처리합니다. 탐색 중에는 `updateControl()`이 수평 이동과 회전을 기다리고, `useFastDown()`도 첫 결과가 나올 때까지 빠른 하강을 막습니다. 따라서 `chooseTarget()`과 `chooseRotate()`를 별도로 구현할 필요가 없습니다.
+
+하위 적은 `prepareTurn()`에서 먼저 `beginWorkerSearchTurn()`으로 직전 요청을 정리하고, 일반 `super.prepareTurn(player)`로 피버·패배 위치·기본 제공 적의 공통 우선 후보를 준비합니다. 공통 후보가 없을 때만 `startWorkerLookaheadSearch(player)`를 호출하세요.
+
+```js
+class WorkerPlannerEnemy extends PuyoW.WorkerSearchEnemy {
+    constructor() {
+        super();
+        this.targetCombo = 7;
+        this.lookaheadTurnCount = 3;
+        this.lookaheadTimeLimitMs = 50;
+        this.ignorableIncomingGarbage = 4;
+    }
+
+    getClassType() { return 'WorkerPlannerEnemy'; }
+    getName() { return 'Worker 탐색 적'; }
+
+    prepareTurn(player) {
+        this.beginWorkerSearchTurn();
+        super.prepareTurn(player);
+        if (this.getPreparedPlacement()) return;
+        this.startWorkerLookaheadSearch(player);
+    }
+}
+```
+
+엔진은 뿌요가 바닥이나 다른 뿌요에 닿으면 `cancelPendingRequest(player, 'contact')`를 호출합니다. 다른 턴으로 교체할 때도 `beginWorkerSearchTurn()`이 기존 요청을 취소하므로, 하위 적은 자체 Worker 종료 코드를 추가하지 않아도 됩니다. 추가 비동기 자원을 관리하려고 `cancelPendingRequest()`를 재정의한다면 반드시 `super.cancelPendingRequest(player, reason)`를 호출해야 합니다.
+
+`startWorkerLookaheadSearch()`는 `targetCombo`, `lookaheadTurnCount`, `lookaheadTimeLimitMs`, `ignorableIncomingGarbage`를 읽어 `PuyoW.common.simulateNMovePlacementsInWorker()`를 호출합니다. 깊이 1·2·3이 완료될 때마다 현재 수의 최선 위치와 회전이 반영됩니다. 첫 수 결과가 없거나 Worker 오류가 나면 기존 동기 1수 탐색으로 대체됩니다. 정상 완료 Worker는 전역 풀에 최대 두 개까지 보관되어 다음 턴 또는 구경 모드의 다른 Worker 적이 재사용되고, 취소·오류·시간 초과 Worker는 재사용하지 않습니다.
+
+기반 클래스를 사용하지 않는 도구나 실험용 적은 공통 함수를 직접 호출할 수 있습니다. 반환된 작업의 `cancel()`은 결과를 더 이상 적용하지 않을 때 호출하고, `promise`는 최종 깊이의 결과 또는 fallback 결과로 완료됩니다.
+
+```js
+const request = PuyoW.common.simulateNMovePlacementsInWorker(
+    player, 7, 3, 50,
+    {
+        onProgress: ({ depth, placement }) => {
+            console.log(depth, placement.x, placement.rotation);
+        }
+    }
+);
+
+request.promise.then((result) => {
+    if (!result.cancelled && result.placement) {
+        console.log(result.depth, result.placement.x, result.placement.rotation);
+    }
+});
+// 뿌요가 이미 착지했거나 턴이 바뀌었다면: request.cancel('contact');
+```
+
 ---
 
 [개발 안내](../HOWTO.md) · [그래픽](Graphics.md) · [뿌요](Puyo.md) · [시뮬레이터·피버](Simulator.md) · [사운드](Sound.md)
