@@ -763,11 +763,11 @@ test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => {
-    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 4'].includes(call.text));
+    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 5'].includes(call.text));
       return {
       music: values.some((call) => call.text === '42' && call.x === 920 && call.y === 130),
       effects: values.some((call) => call.text === '73' && call.x === 920 && call.y === 174),
-      build: values.some((call) => call.text === 'Build 4' && call.x === 10 && call.y === 710),
+      build: values.some((call) => call.text === 'Build 5' && call.x === 10 && call.y === 710),
       };
   })).toEqual({ music: true, effects: true, build: true });
 });
@@ -1394,10 +1394,10 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   await expect.poll(() => page.evaluate(() => {
     const texts = window.testCanvasTexts;
     const localizedOptions = [
-      ['기본 룰', '피버 룰', '연습', '연속 피버'],
-      ['Standard Rules', 'FEVER Rules', 'Practice', 'Continuous FEVER'],
-      ['基本ルール', 'FEVERルール', '練習', '連続FEVER'],
-      ['基本规则', 'FEVER规则', '练习', '连续FEVER'],
+      ['기본 룰', '피버 룰', '피버 룰 (시작)', '연습', '연속 피버'],
+      ['Standard Rules', 'FEVER Rules', 'FEVER Rules (Start)', 'Practice', 'Continuous FEVER'],
+      ['基本ルール', 'FEVERルール', 'FEVER ルール (開始)', '練習', '連続FEVER'],
+      ['基本规则', 'FEVER规则', 'FEVER 规则（开始）', '练习', '连续FEVER'],
     ];
     return localizedOptions.some((options) => options.every((text) => texts.includes(text)));
   })).toBe(true);
@@ -1498,6 +1498,34 @@ test('피버 룰은 전용 적 선택 화면에서 4색을 골라 보라색 없�
   expect(state.player.nextPairs.flat()).not.toContain('purple');
   expect(state.player.fever).toMatchObject({ active: false, gauge: 0, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
   expect(state.opponent.fever).toMatchObject({ active: false, gauge: 0, nextTime: 15, targetCombo: 5, leftTime: 0, damage: 0 });
+});
+
+test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽이 즉시 5연쇄·60초 피버로 시작한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => {
+    const labels = ['피버 룰 (시작)', 'FEVER Rules (Start)', 'FEVER ルール (開始)', 'FEVER 规则（开始）'];
+    const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(908, 312, 1, 1).data;
+    return labels.some((label) => window.testCanvasTexts.includes(label)) && Array.from(color).join(',') === '75,31,111,255';
+  })).toBe(true);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    const bothInFever = [state?.player, state?.opponent].every((player) => (
+      player?.fever?.active && player.fever.targetCombo === 5 && player.fever.leftTime > 55000 && player.fever.leftTime <= 60000
+    ));
+    return state?.feverStart === true && state.feverRule === true && !state.continuousFever && bothInFever;
+  }), { timeout: 10000 }).toBe(true);
+
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 908, y: 312 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
 });
 
 test('피버 룰은 키보드로 3색을 선택해 초록·노랑·파랑만 사용하는 대전을 시작한다', async ({ page }) => {
@@ -1791,6 +1819,44 @@ test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 10000 }).toBe('player');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_gallery')).enemies)).toContain('FeverGalleryEnemy');
+});
+
+test('피버 룰 (시작) 승리는 피버 룰과 분리된 진행도로 저장되고 적 갤러리를 해금한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverStartProgressEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -1; }
+      getClassType() { return 'FeverStartProgressEnemy'; }
+      getName() { return '피버 시작 진행도 테스트 적'; }
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        player.board[11][3] = 'red';
+        player.phase = 'check';
+        player.phaseTimer = 150;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverStartProgressEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 10000 }).toBe('player');
+  const progress = await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('puyow_store'));
+    const gallery = JSON.parse(localStorage.getItem('puyow_gallery'));
+    return {
+      fever: saved.feverClearListByDifficulty.normal,
+      feverStart: saved.feverStartClearListByDifficulty.normal,
+      gallery: gallery.enemies,
+    };
+  });
+  expect(progress.fever).toEqual([]);
+  expect(progress.feverStart).toEqual(['FeverStartProgressEnemy']);
+  expect(progress.gallery).toContain('FeverStartProgressEnemy');
 });
 
 test('Enemy 기본 구현은 피버 상태에서 연쇄 최적 위치와 회전을 준비한다', async ({ page }) => {
@@ -3273,8 +3339,8 @@ test('2D URL 예약어는 컨텍스트 경로와 지원 시스템 언어로 치�
 
 test('독일어와 프랑스어 stringTable은 FEVER 표기와 주요 화면 문구를 제공한다', async ({ page }) => {
   const expected = {
-    'de-DE': { fever: 'FEVER-Regeln', relaxedFever: 'FEVER (Entspannt)', puzzle: 'Puzzle-Puyo', start: 'Spiel starten', watch: 'Zuschauen', language: 'de' },
-    'fr-FR': { fever: 'Règles FEVER', relaxedFever: 'FEVER (adouci)', puzzle: 'Puzzle Puyo', start: 'Commencer', watch: 'Regarder', language: 'fr' }
+    'de-DE': { fever: 'FEVER-Regeln', feverStart: 'FEVER-Regeln (Start)', relaxedFever: 'FEVER (Entspannt)', puzzle: 'Puzzle-Puyo', start: 'Spiel starten', watch: 'Zuschauen', language: 'de' },
+    'fr-FR': { fever: 'Règles FEVER', feverStart: 'Règles FEVER (Début)', relaxedFever: 'FEVER (adouci)', puzzle: 'Puzzle Puyo', start: 'Commencer', watch: 'Regarder', language: 'fr' }
   };
   for (const [locale, values] of Object.entries(expected)) {
     await page.addInitScript((language) => {
@@ -3285,6 +3351,7 @@ test('독일어와 프랑스어 stringTable은 FEVER 표기와 주요 화면 문
       window.WebPuyo.setURLContextPath('/puyow/');
       return {
         fever: window.WebPuyo.translate('피버 룰'),
+        feverStart: window.WebPuyo.translate('피버 룰 (시작)'),
         relaxedFever: window.WebPuyo.translate('피버 (완화)'),
         puzzle: window.WebPuyo.translate('퍼즐뿌요'),
         start: window.WebPuyo.translate('게임 시작'),
