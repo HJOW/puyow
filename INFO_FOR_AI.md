@@ -129,13 +129,13 @@
 - 설정 화면의 AI 제공자는 번역하지 않는 브랜드명 `OpenAI`와 `LM Studio` 라디오 선택지다. `aiApiURL`은 `puyow_store.settings`에 저장되며 LM Studio에서만 활성화·포커스된다. OpenAI는 고정 `https://api.openai.com/v1/responses`를 사용하고, LM Studio는 사용자가 입력한 서버 기본 URL 아래의 `/v1/chat/completions`를 사용한다.
 - AI API 테스트와 솔로몬은 같은 제공자별 구조화 출력 요청 경로를 공유한다. LM Studio 요청은 저장된 `aiApiKey`를 `$LM_API_TOKEN`에 해당하는 Bearer 토큰으로 보내고, `response_format.json_schema`와 `choices[0].message.content` 형식을 사용한다.
 
-## 3D와 공통 함수
+## 공통 계산 함수
 
-3D 구현 또는 외부 도구가 게임 규칙 계산을 재사용할 때는 `PuyoW.common`(또는 `PuyoW.getCommonFunctions()`)을 사용한다. 이 객체의 함수는 입력 보드를 직접 변경하지 않는 공통 계산 함수다. 대표적으로 착지/폭발/점수/공격/중력/싱글 보드 시뮬레이션 함수가 있다.
+현재 개발·유지보수 범위는 2D 버전이다. 게임 규칙 계산을 재사용할 때는 `PuyoW.common`(또는 `PuyoW.getCommonFunctions()`)을 사용한다. 이 객체의 함수는 입력 보드를 직접 변경하지 않는 공통 계산 함수다. 대표적으로 착지/폭발/점수/공격/중력/싱글 보드 시뮬레이션 함수가 있다.
 
 N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, turnCount)`와 `findBestNMovePlacement(player, targetCombo, turnCount)`로 재사용한다. 목표 연쇄 수는 두 번째 매개변수이며, 반환값은 이번 수의 `simulation`과 이후 경로·점수를 함께 가진다. 기본 룰·피버 룰 대전(구경 포함)은 각 플레이어의 내부 `nextPairs`에 현재 수 뒤 20쌍을 미리 확정해 유지한다. 중앙 화면, `getGameState()`, `getNextPairs()`는 호환성을 위해 앞 두 쌍만 보여 주지만, 동기 N수 탐색과 Worker snapshot은 20쌍 전체를 사용한다. 3수 이상 비동기 탐색은 `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)`를 사용한다. 이 함수는 Blob Worker에 현재·상대 필드, 공격·피해, 피버 필드·상태, 예고뿌요, 룰 정보를 JSON snapshot으로 보내고, 깊이별 현재 1수 결과를 `onProgress`로 전달한다. 탐색량은 착지 후보 수에 따라 지수적으로 늘어나므로, 일반 실시간 적은 기존처럼 2수 수준을 사용한다.
 
-공통 계산을 수정하면 2D 게임, CPU 미리보기, 시뮬레이터, 피버 패턴 검증, 3D 소비자에 미치는 영향을 확인한다.
+공통 계산을 수정하면 2D 게임, CPU 미리보기, 시뮬레이터, 피버 패턴 검증에 미치는 영향을 확인한다. 3D 버전은 개발 대상에서 철회했으므로 새로운 3D 구현·API·테스트를 추가하거나 3D 소비자 호환성을 전제로 작업하지 않는다.
 
 ## 테스트 작업 체크리스트
 
