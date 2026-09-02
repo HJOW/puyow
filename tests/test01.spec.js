@@ -685,6 +685,76 @@ test('OpenAI에서는 AI API URL 포커스와 클릭을 건너뛰고 LM Studio�
   });
 });
 
+test('Prompt API를 지원하지 않으면 선택지를 숨기고 저장된 Prompt API 설정을 LM Studio로 이관한다', async ({ page }) => {
+  await page.addInitScript(() => { delete window.LanguageModel; });
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { aiProvider: 'Prompt API' } }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  expect(await page.evaluate(() => window.testCanvasTextCalls.some((call) => call.text === 'Prompt API' && call.y === 346))).toBe(false);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('LM Studio');
+});
+
+test('Prompt API는 API 테스트와 솔로몬 배치에서 JSON Schema 제약 prompt를 사용한다', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.promptApiCalls = [];
+    window.LanguageModel = {
+      create: async (createOptions) => {
+        const call = { createOptions, prompt: null, promptOptions: null, destroyed: false };
+        window.promptApiCalls.push(call);
+        return {
+          prompt: async (prompt, promptOptions) => {
+            call.prompt = prompt;
+            call.promptOptions = promptOptions;
+            return window.promptApiCalls.length === 1 ? '{"success":true}' : '{"x":4,"rotation":1}';
+          },
+          destroy: () => { call.destroyed = true; },
+        };
+      },
+    };
+  });
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { aiProvider: 'OpenAI' } }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Prompt API'))).toBe(true);
+  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.promptApiCalls.length)).toBe(1);
+  expect(await page.evaluate(() => window.promptApiCalls[0])).toMatchObject({
+    promptOptions: { responseConstraint: { required: ['success'] } },
+    destroyed: true,
+  });
+
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
+  await page.keyboard.press('Enter');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.promptApiCalls.length), { timeout: 5000 }).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => page.evaluate(() => {
+    const active = window.WebPuyo.getGameState()?.opponent.active;
+    return active ? { x: active.x, rotation: active.rotation } : null;
+  }), { timeout: 3000 }).toEqual({ x: 4, rotation: 1 });
+  expect(await page.evaluate(() => window.promptApiCalls[1])).toMatchObject({
+    promptOptions: { responseConstraint: { required: ['x', 'rotation'] } },
+    destroyed: true,
+  });
+});
+
 test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여백에 표시한다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { musicVolume: 42, effectsVolume: 73 } }));
@@ -693,11 +763,11 @@ test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => {
-    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 3'].includes(call.text));
+    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 4'].includes(call.text));
       return {
       music: values.some((call) => call.text === '42' && call.x === 920 && call.y === 130),
       effects: values.some((call) => call.text === '73' && call.x === 920 && call.y === 174),
-      build: values.some((call) => call.text === 'Build 3' && call.x === 10 && call.y === 710),
+      build: values.some((call) => call.text === 'Build 4' && call.x === 10 && call.y === 710),
       };
   })).toEqual({ music: true, effects: true, build: true });
 });

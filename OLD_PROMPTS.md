@@ -1,5 +1,45 @@
 
 
+
+
+
+아래 내용은 98차 수정요청한 내용이야. 참고만 해줘.
+----------------------------------------------------------
+
+
+
+1. 게임 초기화 시, 해당 브라우저가 Prompt API 를 지원하는지 먼저 체크
+
+  + 게임 초기화 시, 
+    * LanguageModel 이라는 변수가 존재하는지 체크 (typeof 사용, undefined 시 미지원)
+    * LanguageModel.create 가 함수인지 체크 (typeof 사용, function 이 아니면 미지원)
+    * LanguageModel.availability() 를 호출하여 모델 사용 가능여부 체크 (available 인 경우만 지원으로 처리)
+    * Prompt API 참고 자료
+      https://developer.chrome.com/docs/ai/prompt-api
+      https://github.com/webmachinelearning/prompt-api
+
+  + Prompt API 지원 시
+    * 설정 화면에서 AI 서비스 제공자에 "Prompt API" 선택지 추가
+    * "Prompt API" 선택 시 "AI API URL", "AI API 키", "사용 모델명" 비활성화 (클릭 차단, 포커스 건너뜀)
+    * "Prompt API" 선택된 상태로 "AI API 테스트" 클릭 시 Prompt API 호출 여부를 테스트 해야 함.
+    * Prompt API 참고 자료
+      https://developer.chrome.com/docs/ai/prompt-api
+      https://github.com/webmachinelearning/prompt-api
+
+  + Prompt API 미지원 시
+    * 설정 화면에서 AI 서비스 제공자에 "Prompt API" 선택지 숨김
+    * 저장된 설정 상에 AI 서비스 제공자가 "Prompt API" 로 선택되어 있었던 경우 
+      LM Studio 로 자동 변경 및 AI API URL 및 AI API 키, 사용 모델명 모두 내용 삭제
+    
+2. AI 서비스 제공자를 "Prompt API" 선택된 상태에서 적 "솔로몬" 과 게임 시 (기본 룰, 피버 룰)
+   https://github.com/webmachinelearning/prompt-api
+   자료의 Structured output with JSON schema or RegExp constraints 단락을 참고하여 json 생성을 요청
+   뿌요를 둘 위치와 회전 정보를 받아 인공지능 동작시켜야 함.
+   오류 발생 / 타임아웃 / 응답받은 데이터 형식 안맞는 경우 OpenAI 사용 시와 동일하게 처리.
+   세션은 매 게임마다 생성, 게임 내에서 매 턴마다 동일세션 재사용
+
+
+
 아래 내용은 97차 수정요청한 내용이야. 참고만 해줘.
 ----------------------------------------------------------
 

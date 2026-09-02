@@ -1,9 +1,6 @@
 ## 언젠간 수정해야 할 사항
 
-1. AI 서비스 제공자 추가 - 로컬 LLM
-   참고 : https://developer.mozilla.org/en-US/docs/Web/API/LanguageModel
-
-2. 피버 패턴 툴
+1. 피버 패턴 툴
    feverpatterntool.html, feverpatterntool.js 를 통해 피버 패턴을 개발할 수 있는 페이지 개발
    puyow.js 본 게임의 시뮬레이터 화면 코드를 재사용
 

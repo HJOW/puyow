@@ -127,8 +127,8 @@
 - `WarningPuyo` 확장은 양의 정수 `unitCount`, 비어 있지 않은 `type`, `draw(context, x, y, cellSize)`를 갖춰야 한다.
 - 사운드는 `SoundPool`/`CommonSoundPool`/`EnemySoundPool`과 `setEnemySoundPool()`을 사용한다. 배경음은 중복 재생하지 않고 일시정지·음소거·볼륨 상태와 동기화해야 한다. 설정 화면의 배경음악·효과음 슬라이더 값은 축소된 슬라이더 오른쪽(논리 X=920)에 표시한다.
 - 설정 화면 오른쪽 아래의 작은 `코드` 버튼은 키보드 포커스 순서에 포함하지 않고 마우스 클릭만 받는다. 클릭하면 `prompt('코드를 입력하세요')`를 호출하며, 취소·공란은 무시하고 값이 있으면 `trim()` 후 `addCode()`에 전달한다.
-- 설정 화면의 AI 제공자는 번역하지 않는 브랜드명 `OpenAI`와 `LM Studio` 라디오 선택지다. `aiApiURL`은 `puyow_store.settings`에 저장되며 LM Studio에서만 활성화·포커스된다. OpenAI는 고정 `https://api.openai.com/v1/responses`를 사용하고, LM Studio는 사용자가 입력한 서버 기본 URL 아래의 `/v1/chat/completions`를 사용한다.
-- AI API 테스트와 솔로몬은 같은 제공자별 구조화 출력 요청 경로를 공유한다. LM Studio 요청은 저장된 `aiApiKey`를 `$LM_API_TOKEN`에 해당하는 Bearer 토큰으로 보내고, `response_format.json_schema`와 `choices[0].message.content` 형식을 사용한다.
+- 설정 화면의 AI 제공자는 번역하지 않는 브랜드명 `OpenAI`, `LM Studio`와 (초기화 때 `globalThis.LanguageModel` 존재 및 `create` 함수 여부를 확인한 브라우저에서만) `Prompt API` 라디오 선택지다. Prompt API를 지원하지 않는 브라우저에서 저장된 제공자가 Prompt API이면 LM Studio로 자동 이관한다. `aiApiURL`은 `puyow_store.settings`에 저장되며 LM Studio에서만 활성화·포커스되고, Prompt API에서는 URL·키·모델명 모두 비활성화·포커스 제외한다. OpenAI는 고정 `https://api.openai.com/v1/responses`를 사용하고, LM Studio는 사용자가 입력한 서버 기본 URL 아래의 `/v1/chat/completions`를 사용한다.
+- AI API 테스트와 솔로몬은 같은 제공자별 구조화 출력 요청 경로를 공유한다. LM Studio 요청은 저장된 `aiApiKey`를 `$LM_API_TOKEN`에 해당하는 Bearer 토큰으로 보내고, `response_format.json_schema`와 `choices[0].message.content` 형식을 사용한다. Prompt API는 요청마다 `LanguageModel.create()` 세션을 만들고 `session.prompt(prompt, { responseConstraint: schema, signal })`로 JSON Schema 제약 출력을 받은 뒤 즉시 `destroy()`한다. Prompt API 오류·취소·타임아웃·잘못된 JSON은 다른 제공자와 같은 솔로몬 대체 AI 처리 경로를 사용한다.
 
 ## 공통 계산 함수
 

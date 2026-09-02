@@ -16,7 +16,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 3;
+    const BUILDNO = 4;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -212,8 +212,10 @@
     const CARD_SYNTHESIS_COST = 5;
     /** 설정에서 새로 제안하고 저장값이 비어 있을 때 보정할 기본 OpenAI 모델명이다. @type {string} */
     const DEFAULT_AI_MODEL = 'gpt-5.6-luna';
-    /** 설정 화면에서 선택할 수 있는 AI 서비스 제공자 목록이다. 브랜드명은 번역하지 않는다. @type {string[]} */
+    /** 항상 선택할 수 있는 AI 서비스 제공자 목록이다. 브랜드명은 번역하지 않는다. @type {string[]} */
     const AI_SERVICE_PROVIDERS = ['OpenAI', 'LM Studio'];
+    /** 브라우저 내장 AI 기반의 선택적 제공자 이름이다. @type {string} */
+    const PROMPT_API_PROVIDER = 'Prompt API';
     /** 그래픽 품질별 캔버스 출력 해상도다. 게임 내부 좌표는 항상 WIDTH x HEIGHT를 사용한다. @type {{key:'low'|'medium'|'high', label:string, width:number, height:number}[]} */
     const GRAPHICS_QUALITY_OPTIONS = [
         { key: 'low', label: '낮음', width: WIDTH, height: HEIGHT },
@@ -431,6 +433,8 @@
     const SCREEN_MESSAGE_FADE_DURATION = 500;
     /** AI API 테스트 요청이 진행 중인지 여부다. @type {boolean} */
     let settingsApiTestPending = false;
+    /** 초기화 시 확인한 Prompt API 지원 여부다. @type {boolean} */
+    let promptApiSupported = false;
     /** 현재 페이지 접속 중 AI API 테스트를 통과해 솔로몬을 사용할 수 있는지 여부다. 저장하지 않는다. @type {boolean} */
     let solomonSessionUnlocked = false;
     /** 종료된 설정 화면의 비동기 응답을 무시하기 위한 요청 식별자다. @type {number} */
@@ -681,6 +685,26 @@
         const reserved = new Set([primaryFontName, TITLE_FONT_NAME, BUTTON_FONT_NAME, MESSAGE_FONT_NAME]);
         const uniqueFallbacks = [...new Set(FALLBACK_FONTS)].filter((fontName) => !reserved.has(fontName));
         return [primaryFontName, ...uniqueFallbacks].map(quoteFontNameIfNeeded).join(', ');
+    }
+
+    /**
+     * 현재 브라우저가 Prompt API의 세션 생성 기능을 제공하는지 확인한다.
+     * 게임 초기화 시 한 번만 호출해 설정 화면의 선택지를 결정한다.
+     * @returns {boolean} Prompt API 지원 여부
+     */
+    function checkPromptApiSupport() {
+        const languageModel = typeof globalThis !== 'undefined' ? globalThis.LanguageModel : undefined;
+        return typeof languageModel !== 'undefined' && typeof languageModel.create === 'function';
+    }
+
+    /** 현재 설정 화면에서 선택할 수 있는 AI 제공자 목록을 반환한다. @returns {string[]} 제공자 목록 */
+    function getAiServiceProviders() {
+        return promptApiSupported ? [...AI_SERVICE_PROVIDERS, PROMPT_API_PROVIDER] : [...AI_SERVICE_PROVIDERS];
+    }
+
+    /** 현재 제공자가 Prompt API인지 확인한다. @param {object|null} settings 설정값 @returns {boolean} Prompt API 여부 */
+    function isPromptApiProvider(settings) {
+        return settings?.aiProvider === PROMPT_API_PROVIDER;
     }
 
     /**
@@ -1176,8 +1200,10 @@
                 graphicsQuality: getGraphicsQualityOption(settings.graphicsQuality).key,
                 landscapeOrientationLocked: normalizeLandscapeOrientationLocked(settings.landscapeOrientationLocked),
                 soundDataURL: normalizeSoundDataURL(settings.soundDataURL),
-                // 이전 Google 등 지원하지 않는 설정값은 기본 제공자인 OpenAI로 정규화한다.
-                aiProvider: AI_SERVICE_PROVIDERS.includes(settings.aiProvider) ? settings.aiProvider : initial.settings.aiProvider,
+                // Prompt API를 지원하지 않는 브라우저에서는 기존 Prompt API 설정을 LM Studio로 이관한다.
+                aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
+                    ? 'LM Studio'
+                    : getAiServiceProviders().includes(settings.aiProvider) ? settings.aiProvider : initial.settings.aiProvider,
                 aiApiURL: normalizeAiApiURL(settings.aiApiURL),
                 aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
                 aiModel: typeof settings.aiModel === 'string' && settings.aiModel.trim() ? settings.aiModel : initial.settings.aiModel
@@ -6353,14 +6379,16 @@
         return settings?.aiProvider === 'LM Studio';
     }
 
-    /** AI API 테스트에 필요한 입력값이 모두 채워졌는지 확인한다. LM Studio는 서버 URL도 필요하다. @param {object|null} settings 설정값 @returns {boolean} 실행 가능 여부 */
+    /** AI API 테스트에 필요한 입력값이 모두 채워졌는지 확인한다. Prompt API는 별도 입력값이 필요 없다. @param {object|null} settings 설정값 @returns {boolean} 실행 가능 여부 */
     function hasCompleteAiApiSettings(settings) {
+        if (isPromptApiProvider(settings)) return promptApiSupported;
         const requiredKeys = ['aiProvider', 'aiApiKey', 'aiModel', ...(isLmStudioProvider(settings) ? ['aiApiURL'] : [])];
         return Boolean(settings && requiredKeys.every((key) => typeof settings[key] === 'string' && settings[key].trim()));
     }
 
     /** 편집 중인 AI 설정이 저장된 설정과 같은지 확인한다. @returns {boolean} 저장된 설정 사용 여부 */
     function hasSavedAiApiSettings() {
+        if (isPromptApiProvider(settingsDraft)) return Boolean(store.settings && settingsDraft.aiProvider === store.settings.aiProvider);
         return Boolean(settingsDraft && store.settings
             && settingsDraft.aiProvider === store.settings.aiProvider
             && settingsDraft.aiApiURL === store.settings.aiApiURL
@@ -6375,7 +6403,10 @@
 
     /** API 테스트 실행 가능 여부를 반영한 설정 화면 포커스 순서를 만든다. @returns {number[]} 포커스 인덱스 목록 */
     function getSelectableSettingsFocuses() {
-        return [0, 1, 2, 3, 4, 5, 6, ...(isLmStudioProvider(settingsDraft) ? [7] : []), 8, 9, ...(canRunAiApiTest() ? [10] : []), 11, 12, 13, 14];
+        const aiSettingFocuses = isPromptApiProvider(settingsDraft) ? [] : [
+            ...(isLmStudioProvider(settingsDraft) ? [7] : []), 8, 9
+        ];
+        return [0, 1, 2, 3, 4, 5, 6, ...aiSettingFocuses, ...(canRunAiApiTest() ? [10] : []), 11, 12, 13, 14];
     }
 
     /** 설정 화면에서 다음 또는 이전 포커스로 이동한다. @param {number} direction 이동 방향 @returns {void} */
@@ -6421,7 +6452,7 @@
         return new URL('v1/chat/completions', directoryBaseURL).href;
     }
 
-    /** 제공자에 맞는 구조화 JSON 생성 요청을 만든다. @param {object} settings 저장 설정 @param {string} prompt 사용자 프롬프트 @param {string} schemaName 스키마 이름 @param {object} schema JSON Schema @param {number} maxTokens 최대 출력 토큰 @returns {{url:string,options:object,readOutputText:(response:object)=>string|null}} 요청 정보 */
+    /** HTTP 기반 제공자에 맞는 구조화 JSON 생성 요청을 만든다. @param {object} settings 저장 설정 @param {string} prompt 사용자 프롬프트 @param {string} schemaName 스키마 이름 @param {object} schema JSON Schema @param {number} maxTokens 최대 출력 토큰 @returns {{url:string,options:object,readOutputText:(response:object)=>string|null}} 요청 정보 */
     function createStructuredAiRequest(settings, prompt, schemaName, schema, maxTokens) {
         const headers = { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' };
         if (isLmStudioProvider(settings)) {
@@ -6458,6 +6489,35 @@
         };
     }
 
+    /**
+     * 제공자별 구조화 JSON 생성 결과 텍스트를 요청한다.
+     * Prompt API 세션은 한 번의 요청에만 사용하고 항상 해제해 이전 턴의 문맥이 이어지지 않게 한다.
+     * @param {object} settings 저장 설정
+     * @param {string} prompt 사용자 프롬프트
+     * @param {string} schemaName 스키마 이름
+     * @param {object} schema JSON Schema
+     * @param {number} maxTokens 최대 출력 토큰
+     * @param {AbortSignal} [signal] 요청 취소 신호
+     * @returns {Promise<string|null>} 구조화 JSON 텍스트
+     */
+    async function requestStructuredAiOutput(settings, prompt, schemaName, schema, maxTokens, signal) {
+        if (isPromptApiProvider(settings)) {
+            if (!promptApiSupported) throw new Error('Prompt API를 지원하지 않는 브라우저입니다.');
+            const languageModel = globalThis.LanguageModel;
+            const session = await languageModel.create({ signal });
+            try {
+                return await session.prompt(prompt, { responseConstraint: schema, signal });
+            } finally {
+                if (typeof session.destroy === 'function') session.destroy();
+            }
+        }
+        const request = createStructuredAiRequest(settings, prompt, schemaName, schema, maxTokens);
+        if (signal) request.options.signal = signal;
+        const response = await window.fetch(request.url, request.options);
+        if (!response.ok) throw new Error(`${settings.aiProvider} API HTTP ${response.status}`);
+        return request.readOutputText(await response.json());
+    }
+
     /** API 테스트의 최소 응답 스키마를 브라우저에서도 검사한다. @param {unknown} value 파싱된 응답 @returns {boolean} 스키마 통과 여부 */
     function isAiApiTestResult(value) {
         return Boolean(value && typeof value === 'object' && !Array.isArray(value)
@@ -6476,13 +6536,7 @@
         settingsApiTestPending = true;
         showSettingsApiTestMessage('AI API 테스트 요청 중...');
         try {
-            const request = createStructuredAiRequest(settings, 'Return only JSON matching the supplied schema, with success set to true.', 'ai_api_test_result', AI_API_TEST_JSON_SCHEMA, 64);
-            const response = await window.fetch(request.url, request.options);
-            if (!response.ok) {
-                showSettingsApiTestMessage('AI API 테스트 실패 (JSON 스키마 검사: 미실시)');
-                return;
-            }
-            const outputText = request.readOutputText(await response.json());
+            const outputText = await requestStructuredAiOutput(settings, 'Return only JSON matching the supplied schema, with success set to true.', 'ai_api_test_result', AI_API_TEST_JSON_SCHEMA, 64);
             if (requestId !== settingsApiTestRequestId) return;
             let result;
             try { result = outputText ? JSON.parse(outputText) : null; } catch (error) { result = null; }
@@ -6512,8 +6566,9 @@
             settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + 1) % GRAPHICS_QUALITY_OPTIONS.length].key;
         } else if (settingsFocus === 6) {
             playMenuSelectSound();
-            const currentIndex = AI_SERVICE_PROVIDERS.indexOf(settingsDraft.aiProvider);
-            settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[(currentIndex + 1) % AI_SERVICE_PROVIDERS.length];
+            const providers = getAiServiceProviders();
+            const currentIndex = providers.indexOf(settingsDraft.aiProvider);
+            settingsDraft.aiProvider = providers[(currentIndex + 1) % providers.length];
         } else if (settingsFocus === 10 && canRunAiApiTest()) { playMenuSelectSound(); runAiApiTest(); }
         else if (settingsFocus === 11) { playMenuSelectSound(); settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
         else if (settingsFocus === 12) saveSettings();
@@ -6551,10 +6606,10 @@
             { label: '가상 컨트롤러 사용', value: settingsDraft.virtualController, kind: 'radio', options: VIRTUAL_CONTROLLER_OPTIONS.map((option, index) => ({ label: option.label, value: option.key, x: x + index * step, translateLabel: true })) },
             { label: '그래픽 설정', value: settingsDraft.graphicsQuality, kind: 'radio', options: GRAPHICS_QUALITY_OPTIONS.map((option, index) => ({ label: option.label, value: option.key, x: x + index * step, translateLabel: true })) },
             { label: '사운드 데이터 URL', value: settingsDraft.soundDataURL, kind: 'text' },
-            { label: 'AI 서비스 제공자', value: settingsDraft.aiProvider, kind: 'radio', options: AI_SERVICE_PROVIDERS.map((provider, index) => ({ label: provider, value: provider, x: x + index * step, translateLabel: false })) },
+            { label: 'AI 서비스 제공자', value: settingsDraft.aiProvider, kind: 'radio', options: getAiServiceProviders().map((provider, index) => ({ label: provider, value: provider, x: x + index * step, translateLabel: false })) },
             { label: 'AI API URL', value: settingsDraft.aiApiURL, kind: 'text', disabled: !isLmStudioProvider(settingsDraft) },
-            { label: 'AI API 키', value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text' },
-            { label: '사용 모델명', value: settingsDraft.aiModel, kind: 'text' }
+            { label: 'AI API 키', value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text', disabled: isPromptApiProvider(settingsDraft) },
+            { label: '사용 모델명', value: settingsDraft.aiModel, kind: 'text', disabled: isPromptApiProvider(settingsDraft) }
         ].map((row, index) => ({ ...row, y: SETTINGS_UI_LAYOUT.rowYs[index] }));
     }
 
@@ -8256,8 +8311,8 @@
         if (settingsFocus === 0) return 'playerName';
         if (settingsFocus === 5) return 'soundDataURL';
         if (settingsFocus === 7 && isLmStudioProvider(settingsDraft)) return 'aiApiURL';
-        if (settingsFocus === 8) return 'aiApiKey';
-        if (settingsFocus === 9) return 'aiModel';
+        if (settingsFocus === 8 && !isPromptApiProvider(settingsDraft)) return 'aiApiKey';
+        if (settingsFocus === 9 && !isPromptApiProvider(settingsDraft)) return 'aiModel';
         return null;
     }
 
@@ -8380,8 +8435,9 @@
                 const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
                 settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + direction + GRAPHICS_QUALITY_OPTIONS.length) % GRAPHICS_QUALITY_OPTIONS.length].key;
             } else if (settingsFocus === 6) {
-                const currentIndex = AI_SERVICE_PROVIDERS.indexOf(settingsDraft.aiProvider);
-                settingsDraft.aiProvider = AI_SERVICE_PROVIDERS[(currentIndex + direction + AI_SERVICE_PROVIDERS.length) % AI_SERVICE_PROVIDERS.length];
+                const providers = getAiServiceProviders();
+                const currentIndex = providers.indexOf(settingsDraft.aiProvider);
+                settingsDraft.aiProvider = providers[(currentIndex + direction + providers.length) % providers.length];
             } else if (settingsFocus === 11) settingsDraft.landscapeOrientationLocked = direction > 0;
             else if (settingsFocus >= 12) settingsFocus = 12 + (settingsFocus - 12 + (direction < 0 ? 2 : 1)) % 3;
         }
@@ -9765,6 +9821,7 @@
         if (typeof document === 'undefined' || typeof window === 'undefined') {
             throw new Error('Web Puyo 초기화에는 브라우저 DOM 환경이 필요합니다.');
         }
+        promptApiSupported = checkPromptApiSupport();
         prepareFontImportStyle();
         prepareRuntimeLayoutStyle();
         languageCode = navigator.language || navigator.userLanguage || 'ko';
@@ -11161,11 +11218,7 @@
                 abortController.abort();
             }, SOLOMON_API_TIMEOUT);
             try {
-                const request = createStructuredAiRequest(store.settings, this.buildPlacementPrompt(player), 'solomon_puyo_placement', SOLOMON_PLACEMENT_JSON_SCHEMA, 128);
-                request.options.signal = abortController.signal;
-                const response = await window.fetch(request.url, request.options);
-                if (!response.ok) throw new Error(`${store.settings.aiProvider} API HTTP ${response.status}`);
-                const outputText = request.readOutputText(await response.json());
+                const outputText = await requestStructuredAiOutput(store.settings, this.buildPlacementPrompt(player), 'solomon_puyo_placement', SOLOMON_PLACEMENT_JSON_SCHEMA, 128, abortController.signal);
                 if (!outputText) throw new Error(`${store.settings.aiProvider} API 응답에 구조화 출력 텍스트가 없습니다.`);
                 let result;
                 try { result = JSON.parse(outputText); } catch (error) { throw new Error('솔로몬 배치 JSON을 파싱할 수 없습니다.', { cause: error }); }
