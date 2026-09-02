@@ -173,6 +173,130 @@ test('피버 룰과 연속 피버의 양쪽 필드는 두 패배 칸에 빨간 X
   await expectDefeatCellMarkers(page, [2, 3]);
 });
 
+test('기본 룰은 AI에 다음 20쌍을 제공하고 공개 다음 뿌요는 두 쌍으로 유지한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class BasicNextPairQueueEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; this.snapshot = null; }
+      getClassType() { return 'BasicNextPairQueueEnemy'; }
+      getName() { return '기본 다음 20쌍 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        if (!this.snapshot) {
+          const plans = window.WebPuyo.common.simulateNMovePlacements(player, 6, 3);
+          this.snapshot = {
+            queuedPairCount: player.nextPairs.length,
+            hasThreeMovePath: plans.some((plan) => plan.nextResult?.nextResult),
+            workerDepth: null,
+          };
+          window.WebPuyo.common.simulateNMovePlacementsInWorker(player, 6, 3, 1000).promise
+            .then((result) => { this.snapshot.workerDepth = result.depth; });
+        }
+        this.player = player;
+        window.basicNextPairQueueEnemy = this;
+        player.fallTimer = -100000;
+      }
+
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new BasicNextPairQueueEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => {
+    const controller = window.basicNextPairQueueEnemy;
+    if (!controller?.snapshot || controller.snapshot.workerDepth === null) return null;
+    const state = window.WebPuyo.getGameState();
+    const next = window.WebPuyo.getNextPairs();
+    return {
+      queuedPairCount: controller.snapshot.queuedPairCount,
+      hasThreeMovePath: controller.snapshot.hasThreeMovePath,
+      workerDepth: controller.snapshot.workerDepth,
+      statePairCount: state?.opponent.nextPairs.length,
+      apiPairCount: next?.opponent.nextPairs.length,
+    };
+  }), { timeout: 10000 }).toEqual({
+    queuedPairCount: 20,
+    hasThreeMovePath: true,
+    workerDepth: 3,
+    statePairCount: 2,
+    apiPairCount: 2,
+  });
+});
+
+test('피버 룰도 AI용 다음 20쌍을 유지한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class FeverNextPairQueueEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'FeverNextPairQueueEnemy'; }
+      getName() { return '피버 다음 20쌍 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        window.feverNextPairQueueEnemy = { queuedPairCount: player.nextPairs.length };
+        player.fallTimer = -100000;
+      }
+
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new FeverNextPairQueueEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => ({
+    queuedPairCount: window.feverNextPairQueueEnemy?.queuedPairCount,
+    statePairCount: window.WebPuyo.getGameState()?.opponent.nextPairs.length,
+    apiPairCount: window.WebPuyo.getNextPairs()?.opponent.nextPairs.length,
+  })), { timeout: 10000 }).toEqual({ queuedPairCount: 20, statePairCount: 2, apiPairCount: 2 });
+});
+
+test('구경 모드는 양쪽 AI에 다음 20쌍을 제공한다', async ({ page }) => {
+  await page.evaluate(() => {
+    class WatchNextPairQueueEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'WatchNextPairQueueEnemy'; }
+      getName() { return '구경 다음 20쌍 테스트 적'; }
+
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        window.watchNextPairQueueEnemy = { queuedPairCount: player.nextPairs.length };
+        player.fallTimer = -100000;
+      }
+
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new WatchNextPairQueueEnemy() });
+    window.WebPuyo.addCode('observation');
+    Math.random = () => 0;
+  });
+
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => ({
+    queuedPairCount: window.watchNextPairQueueEnemy?.queuedPairCount,
+    playerPairCount: window.WebPuyo.getGameState()?.player.nextPairs.length,
+    opponentPairCount: window.WebPuyo.getGameState()?.opponent.nextPairs.length,
+  })), { timeout: 10000 }).toEqual({ queuedPairCount: 20, playerPairCount: 2, opponentPairCount: 2 });
+});
+
 test('DAMAGE 방해뿌요 30개는 현재 숨김 생성 범위의 다섯 줄(Y 16~20)에서 생성된다', async ({ page }) => {
   await page.evaluate(() => {
     class GarbageSpawnPositionEnemy extends window.WebPuyo.Enemy {

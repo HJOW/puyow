@@ -189,7 +189,7 @@ if (difficulty.key === 'hard') {
 
 `PuyoW.getSelectedColorCount()`는 게임에 적용할 일반 뿌요 색상 수를 `3`, `4`, `5` 중 하나로 반환합니다. 게임 시작 전에는 적 선택 화면의 현재 선택을, 게임 중에는 시작할 때 확정된 선택을 반환하므로 색상 수에 맞춘 AI 후보 생성을 구현할 때 사용할 수 있습니다.
 
-3D 버전의 AI도 `PuyoW.common.findLandingPlacement()`, `PuyoW.common.estimateCombo()`, `PuyoW.common.estimateAttack()`, `PuyoW.common.findBestPreviewResult()`에 해당하는 보드 계산을 재사용할 수 있습니다. 현재 AI의 N수 읽기를 재사용하려면 `PuyoW.common.simulateNMovePlacements(player, targetCombo, turnCount)`를 호출합니다. `targetCombo`는 두 번째 매개변수로, 목표에 못 미치는 작은 연쇄보다 목표 연쇄 기반을 낮게 평가합니다. `findBestNMovePlacement()`는 가장 높은 점수의 한 결과를 돌려줍니다. 2D와 동일한 후보 평가 결과를 사용하려면 6x17 보드와 두 색상 배열을 같은 형식으로 전달해야 합니다.
+3D 버전의 AI도 `PuyoW.common.findLandingPlacement()`, `PuyoW.common.estimateCombo()`, `PuyoW.common.estimateAttack()`, `PuyoW.common.findBestPreviewResult()`에 해당하는 보드 계산을 재사용할 수 있습니다. 현재 AI의 N수 읽기를 재사용하려면 `PuyoW.common.simulateNMovePlacements(player, targetCombo, turnCount)`를 호출합니다. `targetCombo`는 두 번째 매개변수로, 목표에 못 미치는 작은 연쇄보다 목표 연쇄 기반을 낮게 평가합니다. `findBestNMovePlacement()`는 가장 높은 점수의 한 결과를 돌려줍니다. 기본 룰·피버 룰 대전(구경 포함)에서는 `player.nextPairs`에 현재 수 뒤 20쌍이 미리 확정되어 있고, 동기 N수 탐색과 Worker 탐색은 이 전체 대기열을 사용합니다. 중앙 화면과 `PuyoW.getNextPairs()`는 기존처럼 앞 두 쌍만 보여 줍니다. 2D와 동일한 후보 평가 결과를 사용하려면 6x17 보드와 두 색상 배열을 같은 형식으로 전달해야 합니다.
 
 기본 룰 적 선택에서는 3·4·5색을 선택할 수 있습니다. 피버 룰 적 선택도 색상 수와 AI 난이도를 모두 고르지만 4·5색만 선택할 수 있습니다. 메인 메뉴의 `연습`은 3·4·5색 선택 뒤 시작하고, `연속 피버`는 같은 색상 선택 화면에서 4·5색만 고른 뒤 시작합니다. 두 단독 모드의 색상 선택 화면은 방향키·Enter·마우스를 지원하며 ESC 또는 선택지 밖 클릭으로 메인 메뉴에 돌아갑니다.
 

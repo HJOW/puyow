@@ -132,7 +132,7 @@
 
 3D 구현 또는 외부 도구가 게임 규칙 계산을 재사용할 때는 `PuyoW.common`(또는 `PuyoW.getCommonFunctions()`)을 사용한다. 이 객체의 함수는 입력 보드를 직접 변경하지 않는 공통 계산 함수다. 대표적으로 착지/폭발/점수/공격/중력/싱글 보드 시뮬레이션 함수가 있다.
 
-N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, turnCount)`와 `findBestNMovePlacement(player, targetCombo, turnCount)`로 재사용한다. 목표 연쇄 수는 두 번째 매개변수이며, 반환값은 이번 수의 `simulation`과 이후 경로·점수를 함께 가진다. 3수 이상 비동기 탐색은 `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)`를 사용한다. 이 함수는 Blob Worker에 현재·상대 필드, 공격·피해, 피버 필드·상태, 예고뿌요, 룰 정보를 JSON snapshot으로 보내고, 깊이별 현재 1수 결과를 `onProgress`로 전달한다. 탐색량은 착지 후보 수에 따라 지수적으로 늘어나므로, 일반 실시간 적은 기존처럼 2수 수준을 사용한다.
+N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, turnCount)`와 `findBestNMovePlacement(player, targetCombo, turnCount)`로 재사용한다. 목표 연쇄 수는 두 번째 매개변수이며, 반환값은 이번 수의 `simulation`과 이후 경로·점수를 함께 가진다. 기본 룰·피버 룰 대전(구경 포함)은 각 플레이어의 내부 `nextPairs`에 현재 수 뒤 20쌍을 미리 확정해 유지한다. 중앙 화면, `getGameState()`, `getNextPairs()`는 호환성을 위해 앞 두 쌍만 보여 주지만, 동기 N수 탐색과 Worker snapshot은 20쌍 전체를 사용한다. 3수 이상 비동기 탐색은 `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)`를 사용한다. 이 함수는 Blob Worker에 현재·상대 필드, 공격·피해, 피버 필드·상태, 예고뿌요, 룰 정보를 JSON snapshot으로 보내고, 깊이별 현재 1수 결과를 `onProgress`로 전달한다. 탐색량은 착지 후보 수에 따라 지수적으로 늘어나므로, 일반 실시간 적은 기존처럼 2수 수준을 사용한다.
 
 공통 계산을 수정하면 2D 게임, CPU 미리보기, 시뮬레이터, 피버 패턴 검증, 3D 소비자에 미치는 영향을 확인한다.
 

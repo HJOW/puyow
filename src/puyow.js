@@ -184,8 +184,10 @@
     const WATCH_AUTO_RESTART_DELAY = 5000;
     /** 적이 공격 위력 시뮬레이션을 우선할 피해량 기준이다. @type {number} */
     const AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD = 12;
+    /** 기본·피버 대전에서 AI가 미리 읽을 다음 뿌요 쌍 수다. @type {number} */
+    const AI_NEXT_PAIR_LOOKAHEAD_COUNT = 20;
     /** 공통 뿌요 쌍 대기열의 초기 길이다. @type {number} */
-    const INITIAL_PAIR_QUEUE_LENGTH = 16;
+    const INITIAL_PAIR_QUEUE_LENGTH = AI_NEXT_PAIR_LOOKAHEAD_COUNT;
     /** 브라우저 저장소에 사용할 키다. @type {string} */
     const STORE_KEY = 'puyow_store';
     /** 보유 카드 인스턴스를 저장할 브라우저 저장소 키다. @type {string} */
@@ -1718,6 +1720,7 @@
             this.gravityNextPhase = 'explode';
             this.effects = null;
             this.comboPopups = [];
+            /** AI가 읽을 미리 확정된 다음 뿌요 쌍이다. 기본·피버 대전에서는 20쌍을 유지한다. @type {string[][]} */
             this.nextPairs = [];
             this.pairQueuePosition = 0;
             // 이 플레이어가 실제로 필드에 고정한 뿌요 쌍의 누적 횟수
@@ -2236,16 +2239,24 @@
         while (game.pairQueue.length <= requiredPosition) game.pairQueue.push(createRandomPair(game.pairQueueColors));
     }
 
+    /** @returns {boolean} 기본·피버 대전 또는 구경 대전에서 20수 AI 대기열을 유지하는지 여부 */
+    function usesAiNextPairLookahead() {
+        return !!game && !game.practice && !game.puzzle && !game.continuousFever && !game.tutorial;
+    }
+
     /**
-     * 플레이어의 현재 대기열 순번 기준으로 다음 뿌요 쌍 표시를 갱신한다. 단독 모드에서는 중앙 영역 전체를 써서 네 쌍을 표시한다.
-     * @param {PlayerState} player 표시를 갱신할 플레이어
+     * 플레이어의 현재 대기열 순번 기준으로 다음 뿌요 쌍 대기열을 갱신한다.
+     * 기본·피버 대전과 구경 대전은 AI 탐색을 위해 20쌍을 유지하며, 화면과 공개 상태 API는 그중 앞 두 쌍만 노출한다.
+     * 단독 모드는 기존처럼 중앙 영역 전체에 표시할 네 쌍만 유지한다.
+     * @param {PlayerState} player 대기열을 갱신할 플레이어
      * @returns {void}
      */
     function updateNextPairs(player) {
         const nextPairCount = game?.puzzle || game?.continuousFever || (game?.practice && !game?.tutorial) ? 4 : 2;
-        ensurePairQueue(player.pairQueuePosition + nextPairCount - 1);
+        const queuedPairCount = usesAiNextPairLookahead() ? AI_NEXT_PAIR_LOOKAHEAD_COUNT : nextPairCount;
+        ensurePairQueue(player.pairQueuePosition + queuedPairCount - 1);
         player.nextPairs = game.pairQueue
-            .slice(player.pairQueuePosition, player.pairQueuePosition + nextPairCount)
+            .slice(player.pairQueuePosition, player.pairQueuePosition + queuedPairCount)
             .map((pair) => [...pair]);
     }
 
@@ -5631,7 +5642,7 @@
                 context.fillStyle = '#0b202c'; context.fillRect(x, nextAreaY, 148, 150);
                 context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, nextAreaY, 148, 150);
                 context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(`${player.name} NEXT`, x + 74, nextAreaY + 23);
-                const displayedPairs = playerIndex === 1 ? [...player.nextPairs].reverse() : player.nextPairs;
+                const displayedPairs = playerIndex === 1 ? [...player.nextPairs.slice(0, 2)].reverse() : player.nextPairs.slice(0, 2);
                 displayedPairs.forEach((pair, pairIndex) => {
                     const pairX = x + 21 + pairIndex * 70;
                     drawPuyo(pairX, nextAreaY + 43, pair[1], 0.68);
@@ -9151,7 +9162,7 @@
             placedPairCount: player.placedPairCount,
             allClearTicket: player.allClearTicket,
             board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos },
-            nextPairs: player.nextPairs.map((pair) => [...pair]),
+            nextPairs: player.nextPairs.slice(0, 2).map((pair) => [...pair]),
             warningPuyos: warningUnits(warningAmount(player, opponent)).map((unit) => unit.type),
             fever: player.fever ? {
                 active: player.fever.active,
@@ -9369,8 +9380,8 @@
         if (!game) return null;
         const [player, opponent] = game.players;
         return {
-            player: { name: player.name, nextPairs: player.nextPairs.map((pair) => [...pair]) },
-            opponent: { name: opponent.name, nextPairs: opponent.nextPairs.map((pair) => [...pair]) }
+            player: { name: player.name, nextPairs: player.nextPairs.slice(0, 2).map((pair) => [...pair]) },
+            opponent: { name: opponent.name, nextPairs: opponent.nextPairs.slice(0, 2).map((pair) => [...pair]) }
         };
     }
 
@@ -10992,7 +11003,7 @@
                 currentState: { incomingDamage: player.damage, fever: this.getMyFeverStatus(player) },
                 suppliedPuyos: [
                     { order: 'current', colors: [...player.active.colors] },
-                    ...player.nextPairs.map((colors, index) => ({ order: `next_${index + 1}`, colors: [...colors] }))
+                    ...player.nextPairs.slice(0, 2).map((colors, index) => ({ order: `next_${index + 1}`, colors: [...colors] }))
                 ],
                 fallbackSafetyCondition: {
                     dangerousCells: dangerCells,
