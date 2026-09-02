@@ -8454,7 +8454,12 @@
 
     /** 키 입력의 실제 화면 동작을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @returns {void} */
     function handleKeydownCore(event) {
-        let key = event.key.toLowerCase();
+        const textInputInProgress = isTextInputInProgress(event);
+        const rawKey = event.key.toLowerCase();
+        // macOS의 한글 입력기처럼 문자값이 달라져도 물리 Z/X 키는 회전 조작으로 유지한다.
+        let key = rawKey;
+        if (!textInputInProgress && (rawKey === 'z' || event.code === 'KeyZ')) key = 'z';
+        else if (!textInputInProgress && (rawKey === 'x' || event.code === 'KeyX')) key = 'x';
         if (key === 'z' && shouldTreatZAsEnter(event)) key = 'enter';
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
         if (confirmDialog) { handleConfirmDialogKeydown(key); return; }

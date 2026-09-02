@@ -3577,7 +3577,16 @@ test('common sound pool plays menu and game-start sounds', async ({ page }) => {
     'sounds/test-game-start.ogg',
   ]));
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
-  await page.keyboard.press('X');
+  const initialRotation = await page.evaluate(() => window.WebPuyo.getGameState().player.active.rotation);
+  // 한글 입력기처럼 event.key가 달라도 물리 KeyX/KeyZ는 회전해야 한다.
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', {
+    key: 'ㅌ', code: 'KeyX', bubbles: true, cancelable: true,
+  })));
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.player.active?.rotation)).toBe((initialRotation + 1) % 4);
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', {
+    key: 'ㅋ', code: 'KeyZ', bubbles: true, cancelable: true,
+  })));
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.player.active?.rotation)).toBe(initialRotation);
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
     'sounds/test-puyo-rotate.ogg',
   ]));
