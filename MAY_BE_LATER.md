@@ -1,5 +1,11 @@
 ## 언젠간 수정해야 할 사항
 
+1. AI 서비스 제공자 추가 - 로컬 LLM
+   참고 : https://developer.mozilla.org/en-US/docs/Web/API/LanguageModel
+
+2. 피버 패턴 툴
+   feverpatterntool.html, feverpatterntool.js 를 통해 피버 패턴을 개발할 수 있는 페이지 개발
+   puyow.js 본 게임의 시뮬레이터 화면 코드를 재사용
 
 ----------------------------------------------------------
 ## 참고사항
@@ -7,4 +13,5 @@
 게임 플레이 페이지는 puyow.html, 
 게임 핵심 코드는 puyow.js 에 구현하고 있어.
 모든 파일은 UTF-8 인코딩을 사용하고, 기본 언어는 한국어야.
-예전 요청했던 내용은 OLD_PROMPTS.md 에 있어. 게임의 룰 설명도 OLD_PROMPTS.md 하단에 있어.
+INFO_FOR_AI.md 파일을 참고 후 작업해줘. 게임 룰 설명도 이 안에 기재되어 있어. 
+(작업 후 다음 작업에 참고할 수 있도록 INFO_FOR_AI.md 파일을 업데이트해줘.)
