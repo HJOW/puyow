@@ -10828,11 +10828,11 @@
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 초상화 중심 X 좌표
          * @param {number} centerY 초상화 중심 Y 좌표
-       * @param {number} scale 기본 크기 대비 배율
-       * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+         * @param {number} scale 기본 크기 대비 배율
+         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
          * @returns {void}
          */
-            drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
         }
 
         /**
