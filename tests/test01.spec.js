@@ -1492,6 +1492,67 @@ test('세레의 일반 쌓기는 오른쪽 두 열, X=3 절반, 왼쪽부터 순
   expect(await page.evaluate(() => window.seereStandardBuildTargets[0])).toBeGreaterThanOrEqual(4);
 });
 
+test('세레는 오른쪽 하단 세 칸이 비어 있어도 일반 착수 카운트를 증가시키고 20~25회 간격을 사용한다', async ({ page }) => {
+  await page.evaluate(() => {
+    const originalPrepareTurn = window.WebPuyo.Enemy.prototype.prepareTurn;
+    window.WebPuyo.Enemy.prototype.prepareTurn = function prepareSeereTurnCountProbe(player) {
+      const result = originalPrepareTurn.call(this, player);
+      if (this.getClassType() === 'Seere') window.seereTurnCountProbe = { controller: this, player };
+      return result;
+    };
+    window.WebPuyo.addCode('observation');
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.seereTurnCountProbe !== undefined)).toBe(true);
+  const result = await page.evaluate(() => {
+    const { controller } = window.seereTurnCountProbe;
+    const originalIsRightThreeRowsFilled = controller.isRightThreeRowsFilled;
+    const originalSelectStandardRuleBuildPlacement = controller.selectStandardRuleBuildPlacement;
+    const originalTurnsUntilSimulation = controller.turnsUntilSimulation;
+    const originalTurnCount = controller.turnCount;
+    const placement = { x: 5, rotation: 0, combo: 0, positions: [{ x: 5, y: 0 }, { x: 5, y: 1 }] };
+    const player = {
+      board: Array.from({ length: 25 }, () => Array(6).fill(null)),
+      aiSimulations: [placement],
+      fever: { active: false },
+      active: { colors: ['red', 'blue'] },
+      damage: 0
+    };
+    controller.preparedPlacement = null;
+    controller.turnCount = 0;
+    controller.turnsUntilSimulation = 99;
+    controller.isRightThreeRowsFilled = () => false;
+    controller.selectStandardRuleBuildPlacement = () => placement;
+    controller.chooseTarget(player);
+    const countedTurn = controller.turnCount;
+    controller.turnCount = 0;
+    controller.turnsUntilSimulation = 0;
+    controller.chooseTarget(player);
+    const simulationTurnCount = controller.turnCount;
+    const intervals = Array.from({ length: 100 }, () => controller.randomTurnsUntilSimulation());
+    controller.isRightThreeRowsFilled = originalIsRightThreeRowsFilled;
+    controller.selectStandardRuleBuildPlacement = originalSelectStandardRuleBuildPlacement;
+    controller.turnsUntilSimulation = originalTurnsUntilSimulation;
+    controller.turnCount = originalTurnCount;
+    return { countedTurn, simulationTurnCount, intervals };
+  });
+
+  expect(result.countedTurn).toBe(1);
+  expect(result.simulationTurnCount).toBe(0);
+  expect(result.intervals.every((interval) => interval >= 20 && interval <= 25)).toBe(true);
+});
+
 test('안드레알푸스는 기본·피버 룰에 출시되고 플라우로스는 출시 예정으로 표시된다', async ({ page }) => {
   await page.evaluate(() => {
     const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias', 'Kimaris'];

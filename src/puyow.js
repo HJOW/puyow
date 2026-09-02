@@ -11812,7 +11812,7 @@
 
         /** @returns {number} 다음 공격 시뮬레이션 전까지의 일반 배치 턴 수 */
         randomTurnsUntilSimulation() {
-            return 10 + Math.floor(randomFloat() * 6);
+            return 20 + Math.floor(randomFloat() * 6);
         }
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {boolean} 우측 하단 세 칸이 모두 채워졌는지 */
@@ -11949,20 +11949,25 @@
                 : this.selectStandardRuleBuildPlacement(player);
             const safeFallback = player.aiSimulations.find((simulation) => !causesImmediateDefeat(player, simulation));
             const basicPlacement = buildPlacement || safeFallback;
-            // 우측 하단 세 칸이 차기 전에는 폭발을 만들지 않는 회전·배치만 사용한다.
+            // 일반 착수는 쌓기 단계와 관계없이 모두 다음 공격 시뮬레이션까지의 간격에 포함한다.
+            this.turnCount += 1;
+            if (this.turnCount > this.turnsUntilSimulation && player.active) {
+                // 공격 시뮬레이션 차례라면 우측 하단 세 칸이 덜 차 있어도 공격을 우선한다.
+                this.attackPlacement = findBestAttackPlacement(player, COLUMNS - 1, null, true);
+                this.turnCount = 0;
+                this.turnsUntilSimulation = this.randomTurnsUntilSimulation();
+                return this.attackPlacement.x;
+            }
+            // 공격 시뮬레이션 차례가 아니고 우측 하단 세 칸이 차기 전이면 폭발을 만들지 않는 회전·배치만 사용한다.
             if (!this.isRightThreeRowsFilled(player) && basicPlacement) {
                 this.attackPlacement = basicPlacement;
                 return basicPlacement.x;
             }
-            this.turnCount += 1;
             if (this.turnCount <= this.turnsUntilSimulation || !player.active) {
                 this.attackPlacement = basicPlacement;
                 return basicPlacement ? basicPlacement.x : COLUMNS - 1;
             }
-            this.attackPlacement = findBestAttackPlacement(player, COLUMNS - 1, null, true);
-            this.turnCount = 0;
-            this.turnsUntilSimulation = this.randomTurnsUntilSimulation();
-            return this.attackPlacement.x;
+            return COLUMNS - 1;
         }
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 회전값 */
