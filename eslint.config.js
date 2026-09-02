@@ -5,6 +5,7 @@ module.exports = [
     {
         ignores: [
             '**/node_modules/**',
+            'src/three.min.js',
             'src/three.core.min.js',
             'src/three.module.min.js',
         ],

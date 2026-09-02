@@ -44,15 +44,13 @@
         <!-- 게임 로딩 스크립트 -->
         <script>
             document.addEventListener("DOMContentLoaded", function() {
-                const canvas = document.getElementById("webpuyo_canvas");
+                const divTarget = document.getElementById("puyow_target");
                 // window.PuyoW.setNoticeFile('https://hjow.github.io/puyow/src/notice_[LANG].txt'); // 공지사항 URL을 변경
-                window.PuyoW.initialize(canvas); // 게임 구동
+                window.PuyoW.initialize(divTarget); // 게임 구동
             });
         </script>
     </head>
     <body class="webpuyo">
-        <main>
-            <canvas id="webpuyo_canvas" width="1280" height="720" aria-label="Web Puyo puzzle game"></canvas>
-        </main>
+        <div id="puyow_target" width="1280" height="720" aria-label="Web Puyo puzzle game"></div>
     </body>
 </html>

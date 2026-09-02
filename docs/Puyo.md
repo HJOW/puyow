@@ -22,7 +22,7 @@
 
 `PuyoW.registerWarningPuyo()`에 하위 클래스를 전달하면 새 단위를 등록할 수 있습니다. 등록은 반드시 `initialize()` 전에 해야 하며, 등록된 클래스는 `static unitCount`의 큰 값부터 자동 정렬됩니다.
 
-2D·3D 렌더러에서 색상과 뿌요 정보를 공유하려면 `PuyoW.common.randomColor(colors)`와 `PuyoW.common.getPuyo(type)`를 사용합니다. 이 함수들은 뿌요 색상 식별자와 공통 Puyo 객체를 반환하며, 3D 렌더러는 반환된 색상·이름을 이용해 자체 메시를 선택해야 합니다.
+`PuyoW.common.randomColor(colors)`와 `PuyoW.common.getPuyo(type)`는 색상과 공통 Puyo 객체를 반환합니다. 독립 3D 렌더러는 제공하지 않으며, 2D 게임 위의 선택적 연출도 이 값을 읽기 전용으로 사용할 수 있습니다.
 
 클래스에는 다음 계약이 필요합니다.
 
@@ -56,7 +56,7 @@ class CrownWarningPuyo extends PuyoW.WarningPuyo {
 }
 
 PuyoW.registerWarningPuyo(CrownWarningPuyo);
-PuyoW.initialize('webpuyo_canvas');
+PuyoW.initialize();
 ```
 
 같은 클래스를 두 번 등록하거나, `WarningPuyo`를 상속하지 않은 클래스, `draw()`를 구현하지 않은 클래스, 잘못된 단위값을 등록하면 오류가 발생합니다. 예고줄에는 기존과 같이 최대 6개 아이콘만 표시됩니다.

@@ -111,32 +111,3 @@ body.webpuyo {
 	min-height: 100vh;
 	overflow: hidden;
 }
-
-.webpuyo main {
-	aspect-ratio: 16 / 9;
-	height: min(100vh, 56.25vw);
-	margin: auto;
-	max-width: 100vw;
-	position: relative;
-}
-
-.webpuyo canvas {
-	display: block;
-	height: 100%;
-	image-rendering: auto;
-	touch-action: none;
-	width: 100%;
-}
-
-/* 세로 화면에서는 가로형 게임 화면을 시계 방향으로 돌려 화면을 채운다. */
-body.webpuyo.puyow-portrait main {
-	flex-shrink: 0;
-	height: auto;
-	max-width: none;
-	width: min(100vh, 177.7777777778vw);
-}
-
-body.webpuyo.puyow-portrait canvas {
-	transform: rotate(90deg);
-	transform-origin: center;
-}

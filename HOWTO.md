@@ -17,8 +17,8 @@
 ## 프로젝트 구성
 
 - `index.html`: 배포 페이지의 진입점입니다.
-- `src/puyow.html`: 게임 캔버스를 포함한 페이지 구조와 초기화 호출을 정의합니다.
-- `src/puyow.css`: 전체 화면 캔버스 레이아웃과 글꼴 스타일을 정의합니다.
+- `src/puyow.html`: 게임 최상위 div와 초기화 호출을 정의합니다.
+- `src/puyow.css`: 배경·색상 체계·세로 중앙 정렬과 글꼴 스타일을 정의합니다. 게임 canvas의 크기·배치·회전은 런타임에 `puyow.js`가 넣는 style 태그가 담당합니다.
 - `src/puyow.js`: 브라우저/CommonJS 라이브러리, 게임 규칙, 렌더링, 입력, CPU 조작을 구현합니다.
 - `HOWTO.md`: 페이지 구성, 라이브러리 사용법, 번역 및 공통 개발 안내를 제공합니다.
 - `docs/`: 그래픽, 뿌요, 적·AI, 시뮬레이터·피버, 사운드별 개발자 문서를 제공합니다.
@@ -28,6 +28,7 @@
 puyow.js 는 CDN으로도 사용할 수 있습니다.
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/puyow.css"/>
+<script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/three.min.js"></script>
 <script src='https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/puyow.js'></script>
 ```
 
@@ -48,17 +49,19 @@ puyow.js 는 CDN으로도 사용할 수 있습니다.
 라이브러리를 불러오는 것만으로는 게임이 초기화되지 않습니다. 브라우저에서는 모든 적 등록 스크립트를 불러온 뒤 `PuyoW.initialize()`를 명시적으로 호출해야 메뉴와 입력 처리가 시작됩니다.
 
 ```html
+<div id="puyow_target"></div>
+<script defer src="three.min.js"></script>
 <script defer src="puyow.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    window.PuyoW.initialize('webpuyo_canvas');
+    window.PuyoW.initialize('puyow_target');
 });
 </script>
 ```
 
 ### URL 컨텍스트 경로와 예약어 URL
 
-ROOT가 아닌 웹 애플리케이션 경로에 게임을 배포할 때는 초기화 전에 `PuyoW.setURLContextPath()`로 URL 컨텍스트 경로를 지정할 수 있습니다. 기본값은 `'/'`이며, 설정값은 URL의 `[CTX]` 문자열로 그대로 치환되므로 필요한 앞뒤 슬래시를 함께 지정해야 합니다. 3D 버전도 같은 방식으로 `PuyoW3D.setURLContextPath()`와 `PuyoW3D.convertURL()`을 제공합니다.
+ROOT가 아닌 웹 애플리케이션 경로에 게임을 배포할 때는 초기화 전에 `PuyoW.setURLContextPath()`로 URL 컨텍스트 경로를 지정할 수 있습니다. 기본값은 `'/'`이며, 설정값은 URL의 `[CTX]` 문자열로 그대로 치환되므로 필요한 앞뒤 슬래시를 함께 지정해야 합니다.
 
 `convertURL(url)`은 상대경로와 절대 URL 모두에서 `[CTX]`를 컨텍스트 경로로, `[LANG]`를 시스템 언어의 앞 두 글자로 치환합니다. 지원하는 언어는 기본 한국어(`ko`)와 번역표에 등록된 `en`, `ja`, `zh`이며, 그 밖의 언어는 `en`으로 치환합니다.
 
@@ -67,7 +70,7 @@ PuyoW.setURLContextPath('/my-puyo-app/');
 PuyoW.setNoticeFile('[CTX]notices/notice_[LANG].txt');
 const imageUrl = PuyoW.convertURL('[CTX]assets/logo_[LANG].png');
 
-PuyoW.initialize('webpuyo_canvas');
+PuyoW.initialize('puyow_target');
 ```
 
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
@@ -76,7 +79,7 @@ Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 �
 const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, askConfirm, initialize } = require('./src/puyow.js');
 ```
 
-`initialize(target)`의 `target`에는 canvas 요소, canvas 요소의 `id` 문자열, 또는 canvas를 넣을 `div` 요소를 전달할 수 있습니다. `div`를 전달하면 그 안에 게임용 canvas를 만들어 연결하며, 이 canvas는 `destroy()` 호출 시 제거됩니다. canvas 요소를 직접 전달하면 해당 요소를 사용하고 `destroy()`가 요소를 제거하지 않습니다. 다만 게임의 그래픽 설정에 따라 해당 canvas의 실제 `width`와 `height`는 설정됩니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달했을 때 `webpuyo_canvas` canvas가 없으면, 라이브러리는 `body`의 자식으로 새 canvas를 만들고 게임을 연결하며 `destroy()` 시 제거합니다. 지정한 ID가 존재하지 않거나 canvas·div가 아닌 요소를 전달하면 오류가 발생합니다.
+`initialize(target)`의 `target`은 게임 최상위 `div` 요소 또는 그 `id` 문자열입니다. 라이브러리는 이 div에 `div_puyow_root` 클래스를 붙이고, 같은 8자리 난수 접미사를 가진 `div_puyow_2d_<번호>`·`div_puyow_3d_<번호>` canvas를 생성합니다. 2D canvas가 기본 입력·표시 레이어이며, 3D canvas는 투명한 선택적 Three.js 연출용 레이어입니다. `three.min.js`가 없으면 3D canvas는 그대로 만들되 renderer·레이어 전환을 하지 않고 2D 게임을 계속합니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달하면 `body` 바로 아래에 최상위 div를 만듭니다. canvas 요소나 canvas ID를 전달하는 이전 초기화 방식은 지원하지 않습니다.
 
 ## 실행 중 표시와 설정
 
@@ -123,21 +126,21 @@ PuyoW.setNoticeFile('notices/notice-[LANG].txt');
 // 다른 서버의 공지사항을 사용한다.
 PuyoW.setNoticeFile('https://example.com/puyo/notice.txt');
 
-PuyoW.initialize('webpuyo_canvas');
+PuyoW.initialize('puyow_target');
 ```
 
 `setNoticeFile()`은 `initialize()` 호출 전에만 사용할 수 있습니다. 초기화가 끝난 뒤 호출하면 오류가 발생하므로, 경로를 바꾸려면 `destroy()`로 게임을 종료한 뒤 다시 설정하고 `initialize()`를 호출해야 합니다.
 
 ## 종료 및 정리
 
-`PuyoW.destroy()`는 `initialize()`로 시작한 게임 인스턴스를 종료하고 초기화 전 상태로 되돌립니다. 페이지 전환, 동적 UI 제거, 같은 페이지에서 다른 canvas로 게임을 다시 초기화할 때 호출합니다.
+`PuyoW.destroy()`는 `initialize()`로 시작한 게임 인스턴스를 종료하고 초기화 전 상태로 되돌립니다. 페이지 전환, 동적 UI 제거, 같은 페이지에서 다른 최상위 div로 게임을 다시 초기화할 때 호출합니다.
 
-이 메서드는 키보드와 canvas 클릭 이벤트를 해제하고, 예약된 애니메이션 프레임을 취소하며, 등록된 WebMCP 도구도 해제합니다. `initialize()`가 기본 canvas를 찾지 못해 직접 생성한 `webpuyo_canvas`는 DOM에서 제거하지만, 개발자가 HTML에 넣었거나 `initialize(target)`으로 전달한 canvas는 제거하지 않습니다.
+이 메서드는 키보드와 2D canvas 이벤트를 해제하고, 예약된 애니메이션 프레임과 등록된 WebMCP 도구를 정리합니다. `initialize()`가 만든 최상위 div는 삭제하고, 전달받은 div는 남긴 채 그 안에 만든 두 canvas만 제거합니다. 모든 `div_puyow_root` 클래스도 제거하며, 런타임 레이아웃 style 태그도 라이브러리가 만들었을 때만 제거합니다.
 
 `destroy()` 뒤에는 다시 `initialize()`를 호출할 수 있습니다. 아직 초기화되지 않은 상태에서 호출해도 아무 작업 없이 안전하게 끝납니다.
 
 ```js
-PuyoW.initialize('webpuyo_canvas');
+PuyoW.initialize('puyow_target');
 
 // 페이지의 게임 영역을 없애기 전에 실행한다.
 PuyoW.destroy();
@@ -187,9 +190,9 @@ await page.addInitScript(() => {
 await page.goto('/puyow.html');
 ```
 
-### 2D·3D 공통 함수
+### 공통 함수
 
-2D 렌더러에 종속되지 않는 규칙·보드·점수 유틸리티는 `PuyoW.common`으로 공개합니다. 3D 버전은 아래 네임스페이스를 사용해 같은 계산 결과를 재사용할 수 있습니다. `PuyoW.getCommonFunctions()`도 같은 읽기 전용 함수 모음을 반환합니다.
+2D 렌더러에 종속되지 않는 규칙·보드·점수 유틸리티는 `PuyoW.common`으로 공개합니다. `PuyoW.getCommonFunctions()`도 같은 읽기 전용 함수 모음을 반환합니다.
 
 ```js
 const common = PuyoW.common;
@@ -199,9 +202,9 @@ const attack = common.calculateExplosionAttack(point);
 const combo = common.estimateCombo(board, colors, positions);
 ```
 
-공통 함수에는 `randomFloat`, `randomColor`, `translate`, `getPuyo`, `activeCells`, `activeRenderCells`, `findLandingPlacement`, `findBestPreviewResult`, `simulateNMovePlacements`, `findBestNMovePlacement`, `simulateNMovePlacementsInWorker`, `findExplosionsOnBoard`, `findExplosionGroupsOnBoard`, `collapseBoard`, `simulatePlacementBoard`, `isAllClearBoard`, `estimateAttack`, `estimateCombo`, `getChainBonus`, `getConnectionBonus`, `getColorBonus`, `getMarginRate`, `getTimeProgressMultiplier`, `calculateExplosionPoint`, `calculateExplosionAttack`, `formatIntegerPoint`, `formatPoint`, `warningUnits`가 포함됩니다. `simulateNMovePlacements(player, targetCombo, turnCount)`는 목표 연쇄 수를 두 번째 인자로 받아 이번 수부터 N수까지의 후보를 평가하며, `findBestNMovePlacement()`는 그중 최선 결과를 반환합니다. `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)`는 3수 이상 탐색을 Blob Worker에서 반복 심화로 처리하고, 각 완료 깊이의 현재 1수 배치를 `options.onProgress`로 전달합니다. `getTimeProgressMultiplier(elapsed)`는 300초까지 1, 이후 20초마다 두 배(최대 1024)를 반환합니다. 보드·배열을 받는 함수는 입력값을 직접 변경하지 않으므로 3D 상태를 별도로 유지하면서 결과만 사용할 수 있습니다.
+공통 함수에는 `randomFloat`, `randomColor`, `translate`, `getPuyo`, `activeCells`, `activeRenderCells`, `findLandingPlacement`, `findBestPreviewResult`, `simulateNMovePlacements`, `findBestNMovePlacement`, `simulateNMovePlacementsInWorker`, `findExplosionsOnBoard`, `findExplosionGroupsOnBoard`, `collapseBoard`, `simulatePlacementBoard`, `isAllClearBoard`, `estimateAttack`, `estimateCombo`, `getChainBonus`, `getConnectionBonus`, `getColorBonus`, `getMarginRate`, `getTimeProgressMultiplier`, `calculateExplosionPoint`, `calculateExplosionAttack`, `formatIntegerPoint`, `formatPoint`, `warningUnits`가 포함됩니다. `simulateNMovePlacements(player, targetCombo, turnCount)`는 목표 연쇄 수를 두 번째 인자로 받아 이번 수부터 N수까지의 후보를 평가하며, `findBestNMovePlacement()`는 그중 최선 결과를 반환합니다. `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)`는 3수 이상 탐색을 Blob Worker에서 반복 심화로 처리하고, 각 완료 깊이의 현재 1수 배치를 `options.onProgress`로 전달합니다. `getTimeProgressMultiplier(elapsed)`는 300초까지 1, 이후 20초마다 두 배(최대 1024)를 반환합니다. 보드·배열을 받는 함수는 입력값을 직접 변경하지 않습니다.
 
-일부 함수는 2D 게임의 보드 형식(열 6개, 행 17개)과 색상 문자열을 전제로 합니다. 3D에서 독립 규칙을 구현할 때도 이 데이터 계약을 유지하고, 화면 그리기 함수는 3D 메시로 별도 구현해야 합니다.
+일부 함수는 2D 게임의 보드 형식(열 6개, 행 17개)과 색상 문자열을 전제로 합니다. 독립된 3D 게임 버전은 제공하지 않으며, 2D 게임 위의 선택적 3D 연출은 필요할 때 이 계산 결과를 읽기 전용으로 활용할 수 있습니다.
 
 ---
 

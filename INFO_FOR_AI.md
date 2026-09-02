@@ -135,7 +135,7 @@
 
 N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, turnCount)`와 `findBestNMovePlacement(player, targetCombo, turnCount)`로 재사용한다. 목표 연쇄 수는 두 번째 매개변수이며, 반환값은 이번 수의 `simulation`과 이후 경로·점수를 함께 가진다. 기본 룰·피버 룰 대전(구경 포함)은 각 플레이어의 내부 `nextPairs`에 현재 수 뒤 20쌍을 미리 확정해 유지한다. 중앙 화면, `getGameState()`, `getNextPairs()`는 호환성을 위해 앞 두 쌍만 보여 주지만, 동기 N수 탐색과 Worker snapshot은 20쌍 전체를 사용한다. 3수 이상 비동기 탐색은 `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)`를 사용한다. 이 함수는 Blob Worker에 현재·상대 필드, 공격·피해, 피버 필드·상태, 예고뿌요, 룰 정보를 JSON snapshot으로 보내고, 깊이별 현재 1수 결과를 `onProgress`로 전달한다. 탐색량은 착지 후보 수에 따라 지수적으로 늘어나므로, 일반 실시간 적은 기존처럼 2수 수준을 사용한다.
 
-공통 계산을 수정하면 2D 게임, CPU 미리보기, 시뮬레이터, 피버 패턴 검증에 미치는 영향을 확인한다. 3D 버전은 개발 대상에서 철회했으므로 새로운 3D 구현·API·테스트를 추가하거나 3D 소비자 호환성을 전제로 작업하지 않는다.
+공통 계산을 수정하면 2D 게임, CPU 미리보기, 시뮬레이터, 피버 패턴 검증에 미치는 영향을 확인한다. 독립 3D 게임 버전은 개발 대상에서 철회했다. 다만 2D 초기화는 같은 8자리 접미사의 2D·투명 3D canvas를 최상위 `div_puyow_root` 아래에 만들며, 후자는 Three.js가 있을 때만 선택적 연출에 사용한다. 실행용 동적 스타일은 남는 세로 공간에서도 두 canvas의 실제 표시 영역을 화면 상단에 맞추고, 세로 화면에서는 회전 후 보이는 좌측 경계도 화면 좌측에 맞춘다. 클릭 좌표는 계속 2D canvas의 실제 bounding rect를 기준으로 변환한다. 새 독립 3D API·게임·소비자 호환성을 전제로 작업하지 않는다.
 
 ## 테스트 작업 체크리스트
 

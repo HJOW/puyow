@@ -100,10 +100,6 @@ ATTACK 증가량 = (점수 증가량 / 마진 레이트) * EXPLOSION_REWARD_MULT
 
 시간 진행 배율은 실제 게임 경과 시간이 300초까지는 1이며, 320초부터 20초마다 두 배가 되어 최대 1024입니다. 게임·AI 예상 공격은 이 값을 적용하고, 시간 개념이 없는 시뮬레이터는 기본값 1을 사용합니다. 이 상수와 계산식은 실제 게임, 시뮬레이터, AI의 예상 공격 계산이 공유합니다. 값을 바꾸면 `tests/test01.spec.js`의 딱딱뿌요 1개·2개 동시 파괴 점수 기대값도 같은 식으로 갱신해야 합니다.
 
-### 3D 버전에서 공통 계산 재사용
-
-3D 규칙·표현을 구현할 때도 `PuyoW.common.findExplosionGroupsOnBoard()`, `collapseBoard()`, `simulatePlacementBoard()`, `estimateCombo()`, `estimateAttack()`을 사용할 수 있습니다. CPU 후보를 N수까지 읽을 때는 `simulateNMovePlacements(player, targetCombo, turnCount)` 또는 최선 후보만 반환하는 `findBestNMovePlacement()`을 사용합니다. 목표 연쇄 수는 두 번째 매개변수입니다. 이 함수들은 2D 논리 보드의 복사본을 계산하므로 3D 메시 상태와 분리해 결과만 반영할 수 있습니다.
-
 ---
 
 [개발 안내](../HOWTO.md) · [그래픽](Graphics.md) · [적·AI](Enemy.md) · [뿌요](Puyo.md) · [사운드](Sound.md)

@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-test('3D 페이지는 PuyoW3D 전역을 초기화하고 2D 게임을 시작하지 않는다', async ({ page }) => {
+// 독립 3D 버전은 철회됐다. 2D 게임 내부의 투명 3D canvas 검증은 test01.spec.js에서 수행한다.
+
+test.skip('3D 페이지는 PuyoW3D 전역을 초기화하고 2D 게임을 시작하지 않는다', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
 
@@ -32,7 +34,7 @@ test('3D 페이지는 PuyoW3D 전역을 초기화하고 2D 게임을 시작하�
   expect(pageErrors).toEqual([]);
 });
 
-test('3D URL 예약어 API는 2D와 같은 컨텍스트 경로를 지원한다', async ({ page }) => {
+test.skip('3D URL 예약어 API는 2D와 같은 컨텍스트 경로를 지원한다', async ({ page }) => {
   await page.goto('/puyow3d.html');
   const result = await page.evaluate(() => {
     const systemCode = navigator.language.slice(0, 2).toLowerCase();
@@ -49,7 +51,7 @@ test('3D URL 예약어 API는 2D와 같은 컨텍스트 경로를 지원한다',
   expect(result.url).toBe(`/tomcat-puyow/assets/puyo_${result.languageCode}.png`);
 });
 
-test('3D 게임은 키보드 조작으로 활성 쌍을 보드에 고정한다', async ({ page }) => {
+test.skip('3D 게임은 키보드 조작으로 활성 쌍을 보드에 고정한다', async ({ page }) => {
   await page.goto('/puyow3d.html');
   await expect.poll(() => page.evaluate(() => window.PuyoW3D.getState().game.active)).not.toBeNull();
 
@@ -62,7 +64,7 @@ test('3D 게임은 키보드 조작으로 활성 쌍을 보드에 고정한다',
   await expect.poll(() => page.evaluate(() => window.PuyoW3D.getState().game.active)).not.toBeNull();
 });
 
-test('3D 게임은 ESC 일시정지와 canvas 클릭 즉시 낙하를 지원한다', async ({ page }) => {
+test.skip('3D 게임은 ESC 일시정지와 canvas 클릭 즉시 낙하를 지원한다', async ({ page }) => {
   await page.goto('/puyow3d.html');
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.PuyoW3D.getState().game.paused)).toBe(true);

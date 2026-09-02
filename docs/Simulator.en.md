@@ -99,10 +99,6 @@ Do not add connection bonuses separately for each connected group of a color. Fo
 
 The time-progress multiplier is 1 through 300 seconds of actual game time, doubles every 20 seconds from 320 seconds, and caps at 1024. The game and AI attack estimates apply it; the simulator, which has no time concept, defaults to 1. The game, simulator, and AI share this constant and formula. If you change it, update the expected scores for destroying one and two hard garbage simultaneously in `tests/test01.spec.js` using the same formula.
 
-### Reusing common calculations in the 3D version
-
-When implementing 3D rules or presentation, you can also use `PuyoW.common.findExplosionGroupsOnBoard()`, `collapseBoard()`, `simulatePlacementBoard()`, `estimateCombo()`, and `estimateAttack()`. To look ahead N CPU moves, use `simulateNMovePlacements(player, targetCombo, turnCount)` or `findBestNMovePlacement()`, which returns only the best candidate. The target chain count is the second parameter. These functions calculate a copy of the 2D logical board, so a 3D implementation can keep mesh state separate and apply only the result.
-
 ---
 
 [Development guide](../HOWTO.en.md) · [Graphics](Graphics.en.md) · [Opponents and AI](Enemy.en.md) · [Puyos](Puyo.en.md) · [Sound](Sound.en.md)

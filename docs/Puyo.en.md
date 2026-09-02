@@ -22,7 +22,7 @@ Garbage-puyo preview rows consist of `PuyoW.WarningPuyo` objects. A subclass can
 
 Pass a subclass to `PuyoW.registerWarningPuyo()` to register a new unit. Registration must happen before `initialize()`. Registered classes are automatically sorted by descending `static unitCount`.
 
-To share color and puyo information between 2D and 3D renderers, use `PuyoW.common.randomColor(colors)` and `PuyoW.common.getPuyo(type)`. These functions return a puyo color identifier and a shared Puyo object; a 3D renderer should select its own mesh from the returned color and name.
+`PuyoW.common.randomColor(colors)` and `PuyoW.common.getPuyo(type)` return a color identifier and shared Puyo object. There is no standalone 3D renderer; optional effects over the 2D game may read these values without changing them.
 
 The class must meet the following contract:
 
@@ -56,7 +56,7 @@ class CrownWarningPuyo extends PuyoW.WarningPuyo {
 }
 
 PuyoW.registerWarningPuyo(CrownWarningPuyo);
-PuyoW.initialize('webpuyo_canvas');
+PuyoW.initialize();
 ```
 
 An error is raised when registering the same class twice, a class that does not inherit from `WarningPuyo`, a class without `draw()`, or an invalid unit value. As before, a preview row displays at most six icons.

@@ -16,7 +16,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 2;
+    const BUILDNO = 3;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -361,8 +361,12 @@
         '은하': 'Galaxie', '음소거(꺼짐)': 'Muet (désactivé)', '음소거(활성)': 'Muet (activé)', '화면 가로방향 고정': 'Verrouiller le mode paysage', '피버 (완화)': 'FEVER (adouci)'
     });
 
-    /** 현재 연결된 캔버스 요소다. @type {HTMLCanvasElement|null} */
+    /** 현재 최상위 게임 영역이다. @type {HTMLDivElement|null} */
+    let puyowRoot = null;
+    /** 현재 연결된 2D 게임 캔버스 요소다. @type {HTMLCanvasElement|null} */
     let canvas = null;
+    /** 선택적 Three.js 연출을 위한 투명 3D 캔버스 요소다. @type {HTMLCanvasElement|null} */
+    let threeCanvas = null;
     /** 현재 연결된 캔버스 2D 렌더링 컨텍스트다. @type {CanvasRenderingContext2D|null} */
     let context = null;
     /** 라이브러리가 초기화되어 이벤트와 게임 루프가 연결됐는지 여부다. @type {boolean} */
@@ -373,8 +377,14 @@
     let pendingInitialTitleEntry = false;
     /** 초기 타이틀에서 피버 스테이지 검증을 시작할 타이머다. @type {number|null} */
     let feverStageValidationTimer = null;
-    /** initialize()가 canvas를 직접 만들어 연결했는지 여부다. @type {boolean} */
-    let createdCanvas = false;
+    /** initialize()가 최상위 div를 직접 만들어 연결했는지 여부다. @type {boolean} */
+    let createdPuyowRoot = false;
+    /** initialize()가 실행용 레이아웃 style 태그를 만들었는지 여부다. @type {boolean} */
+    let createdRuntimeLayoutStyle = false;
+    /** initialize()가 만든 실행용 레이아웃 style 태그다. @type {HTMLStyleElement|null} */
+    let runtimeLayoutStyle = null;
+    /** 현재 페이지에서 선택적 Three.js 연출을 사용할 수 있는지 여부다. @type {boolean} */
+    let threeAvailable = false;
     /** 다음 게임 프레임 취소에 사용할 요청 식별자다. @type {number|null} */
     let animationFrameId = null;
     /** 등록된 WebMCP 도구를 한 번에 해제하는 컨트롤러다. @type {AbortController|null} */
@@ -818,6 +828,11 @@
         if (!canvas) return outputSize;
         if (canvas.width !== outputSize.width) canvas.width = outputSize.width;
         if (canvas.height !== outputSize.height) canvas.height = outputSize.height;
+        // 3D canvas는 아직 renderer를 만들지 않더라도 2D canvas와 실제 출력 크기를 맞춘다.
+        if (threeCanvas) {
+            if (threeCanvas.width !== outputSize.width) threeCanvas.width = outputSize.width;
+            if (threeCanvas.height !== outputSize.height) threeCanvas.height = outputSize.height;
+        }
         context = canvas.getContext('2d');
         if (!context) throw new Error('2D 캔버스 컨텍스트를 만들 수 없습니다.');
         return applyCanvasCoordinateTransform();
@@ -9605,8 +9620,18 @@
         resetGamepadInput();
         if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
         if (webMcpAbortController) webMcpAbortController.abort();
-        if (createdCanvas && canvas.parentNode) canvas.parentNode.removeChild(canvas);
+        // 외부에서 전달한 최상위 div는 남기고, 초기화가 만든 canvas·실행용 style만 해제한다.
+        if (createdPuyowRoot) puyowRoot?.remove();
+        else {
+            canvas?.remove();
+            threeCanvas?.remove();
+        }
+        document.querySelectorAll('.div_puyow_root').forEach((element) => element.classList.remove('div_puyow_root'));
+        if (createdRuntimeLayoutStyle) runtimeLayoutStyle?.remove();
+        document.body?.classList.remove('puyow-portrait');
+        puyowRoot = null;
         canvas = null;
+        threeCanvas = null;
         context = null;
         game = null;
         simulator = null;
@@ -9623,7 +9648,10 @@
         watchSelectionOpen = false;
         watchSelectionFocus = 0;
         watchSelectedAction = 0;
-        createdCanvas = false;
+        createdPuyowRoot = false;
+        createdRuntimeLayoutStyle = false;
+        runtimeLayoutStyle = null;
+        threeAvailable = false;
         animationFrameId = null;
         webMcpAbortController = null;
         initialized = false;
@@ -9641,25 +9669,92 @@
         style.className = 'puyow_font_import';
         style.textContent = `
             @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic&family=Nanum+Gothic+Coding&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans+Mono:wght@100..900&family=Noto+Sans+SC:wght@100..900&display=swap');
-            
-            body.puyow-portrait main {
-                flex-shrink: 0;
-                height: auto;
-                max-width: none;
-                width: min(100vh, 177.7777777778vw);
-            }
-
-            body.puyow-portrait canvas {
-                transform: rotate(90deg);
-                transform-origin: center;
-            }
         `;
         document.head.appendChild(style);
     }
 
+    /** 게임 실행에 필요한 canvas 배치·크기·회전 CSS를 동적으로 준비한다. @returns {void} */
+    function prepareRuntimeLayoutStyle() {
+        const existingStyle = document.querySelector('style.puyow_runtime_layout');
+        if (existingStyle) {
+            runtimeLayoutStyle = /** @type {HTMLStyleElement} */ (existingStyle);
+            createdRuntimeLayoutStyle = false;
+            return;
+        }
+        runtimeLayoutStyle = document.createElement('style');
+        runtimeLayoutStyle.className = 'puyow_runtime_layout';
+        runtimeLayoutStyle.textContent = `
+            .div_puyow_root {
+                align-self: flex-start;
+                flex: 0 0 auto;
+                height: 56.25vw;
+                margin: 0;
+                position: relative;
+                width: 100vw;
+            }
+
+            .div_puyow_root > canvas[data-puyow-canvas] {
+                display: block;
+                height: 100%;
+                image-rendering: auto;
+                inset: 0;
+                position: absolute;
+                touch-action: none;
+                width: 100%;
+            }
+
+            .div_puyow_root > canvas[data-puyow-canvas="2d"] { z-index: 2; }
+            .div_puyow_root > canvas[data-puyow-canvas="3d"] {
+                background: transparent;
+                pointer-events: none;
+                z-index: 1;
+            }
+
+            body.puyow-portrait .div_puyow_root {
+                height: 100vw;
+                width: 177.7777777778vw;
+            }
+
+            body.puyow-portrait .div_puyow_root > canvas[data-puyow-canvas] {
+                /* 회전 후 실제 표시 영역의 좌측 상단이 뷰포트 좌측 상단에 맞도록 보정한다. */
+                transform: translateX(100vw) rotate(90deg);
+                transform-origin: top left;
+            }
+        `;
+        document.head.appendChild(runtimeLayoutStyle);
+        createdRuntimeLayoutStyle = true;
+    }
+
+    /** @returns {object|null} 브라우저 또는 CommonJS 전역에 탑재된 Three.js 객체 */
+    function getThreeLibrary() {
+        if (typeof globalThis !== 'undefined' && globalThis.THREE) return globalThis.THREE;
+        if (typeof window !== 'undefined' && window.THREE) return window.THREE;
+        return null;
+    }
+
     /**
-     * 지정한 캔버스에 게임을 연결하고 메뉴 렌더링을 시작한다.
-     * @param {HTMLCanvasElement|string|null} target 캔버스 요소 또는 요소 id. 생략 시 기본 캔버스를 찾거나 만든다.
+     * 선택적 Three.js 연출의 앞뒤 레이어를 바꾼다. THREE가 없으면 2D 입력 레이어를 그대로 유지한다.
+     * 실제 연출 구현은 이 함수로 시작·종료 시점을 연결한다.
+     * @param {boolean} active 3D canvas를 앞으로 가져올지 여부
+     * @returns {boolean} 레이어 교환 가능 여부
+     */
+    function setThreeCanvasLayerActive(active) {
+        if (!threeAvailable || !canvas || !threeCanvas) return false;
+        canvas.style.zIndex = active ? '1' : '2';
+        threeCanvas.style.zIndex = active ? '2' : '1';
+        threeCanvas.style.pointerEvents = active ? 'auto' : 'none';
+        return true;
+    }
+
+    /** @returns {number} 8자리 양의 정수 canvas ID 접미사 */
+    function createCanvasIdSuffix() {
+        const randomValue = Math.min(0.999999999, Math.max(0, Number(randomFloat()) || 0));
+        return 10000000 + Math.floor(randomValue * 90000000);
+    }
+
+    /**
+     * 지정한 최상위 div 아래에 2D·3D canvas를 만들고 메뉴 렌더링을 시작한다.
+     * @param {HTMLDivElement|string|null} target 최상위 div 요소 또는 div id. 생략 시 body 아래에 새 div를 만든다.
      * @returns {void}
      */
     function initialize(target = null) {
@@ -9670,6 +9765,7 @@
             throw new Error('Web Puyo 초기화에는 브라우저 DOM 환경이 필요합니다.');
         }
         prepareFontImportStyle();
+        prepareRuntimeLayoutStyle();
         languageCode = navigator.language || navigator.userLanguage || 'ko';
         if (languageCode === 'ko-KR') languageCode = 'ko';
         loadStore();
@@ -9677,40 +9773,24 @@
         loadAppliedCodes();
         soundDataURL = store.settings.soundDataURL;
         loadSoundDataURL();
-        createdCanvas = false;
-        const usesDefaultCanvas = target === null || target === undefined || target === '';
-        const targetElement = usesDefaultCanvas ? document.getElementById('webpuyo_canvas') : typeof target === 'string' ? document.getElementById(target) : target;
-        if (targetElement && typeof targetElement.getContext === 'function') {
-            // canvas DOM 객체를 직접 전달한 경우에는 해당 요소를 그대로 사용한다.
-            canvas = targetElement;
-        } else if (targetElement && targetElement.nodeType === 1 && targetElement.tagName.toLowerCase() === 'div') {
-            // div를 전달한 경우에는 그 안에 게임용 canvas를 만들어 사용한다.
-            canvas = document.createElement('canvas');
-            createdCanvas = true;
-            canvas.id = 'webpuyo_canvas';
-            canvas.width = WIDTH;
-            canvas.height = HEIGHT;
-            canvas.setAttribute('aria-label', 'Web Puyo puzzle game');
-            canvas.style.cssText = 'display:block;width:min(100vw, 1280px);height:auto;aspect-ratio:16 / 9;';
-            targetElement.appendChild(canvas);
-        } else {
-            canvas = targetElement;
-        }
-        // 기본 캔버스가 문서에 없으면 접근 가능한 새 캔버스를 생성한다.
-        if (usesDefaultCanvas && !canvas) {
-            canvas = document.createElement('canvas');
-            createdCanvas = true;
-            canvas.id = 'webpuyo_canvas';
-            canvas.width = WIDTH;
-            canvas.height = HEIGHT;
-            canvas.setAttribute('aria-label', 'Web Puyo puzzle game');
-            canvas.style.cssText = 'display:block;width:min(100vw, 1280px);height:auto;aspect-ratio:16 / 9;';
-            document.body.appendChild(canvas);
-        }
-        // 전달된 대상이 2D 컨텍스트를 만들 수 있는 캔버스인지 검증한다.
-        if (!canvas || typeof canvas.getContext !== 'function') {
-            throw new TypeError('유효한 canvas 요소 또는 id를 전달해야 합니다.');
-        }
+        const usesDefaultRoot = target === null || target === undefined || target === '';
+        createdPuyowRoot = usesDefaultRoot;
+        puyowRoot = usesDefaultRoot ? document.createElement('div') : typeof target === 'string' ? document.getElementById(target) : target;
+        if (usesDefaultRoot) document.body.appendChild(puyowRoot);
+        puyowRoot.classList.add('div_puyow_root');
+        const canvasIdSuffix = createCanvasIdSuffix();
+        threeCanvas = document.createElement('canvas');
+        threeCanvas.id = `div_puyow_3d_${canvasIdSuffix}`;
+        threeCanvas.dataset.puyowCanvas = '3d';
+        threeCanvas.setAttribute('aria-hidden', 'true');
+        canvas = document.createElement('canvas');
+        canvas.id = `div_puyow_2d_${canvasIdSuffix}`;
+        canvas.dataset.puyowCanvas = '2d';
+        canvas.setAttribute('aria-label', 'Web Puyo puzzle game');
+        puyowRoot.append(threeCanvas, canvas);
+        // 3D 연출은 아직 구현하지 않는다. THREE가 없으면 canvas는 그대로 두고 renderer·레이어 교환만 생략한다.
+        threeAvailable = Boolean(getThreeLibrary());
+        threeCanvas.dataset.threeAvailable = String(threeAvailable);
         context = canvas.getContext('2d');
         if (!context) throw new Error('2D 캔버스 컨텍스트를 만들 수 없습니다.');
         applyCanvasOutputResolution();
@@ -12993,8 +13073,8 @@
     }
 
     /**
-     * 2D 렌더러에 종속되지 않아 3D 버전도 재사용할 수 있는 공통 함수 모음이다.
-     * 모든 함수는 입력 보드를 직접 바꾸지 않으며, 3D 규칙 구현에서 PuyoW.common으로 접근한다.
+     * 2D 렌더러에 종속되지 않아 선택적 연출·외부 분석 도구도 읽기 전용으로 재사용할 수 있는 공통 함수 모음이다.
+     * 모든 함수는 입력 보드를 직접 바꾸지 않으며, 선택적 연출·분석 도구에서 PuyoW.common으로 접근한다.
      */
     const commonFunctions = Object.freeze({
         randomFloat,

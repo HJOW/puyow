@@ -17,8 +17,8 @@ See [README.md](README.md) for the game introduction, controls, and match rules.
 ## Project structure
 
 - `index.html`: Entry point for the published page.
-- `src/puyow.html`: Defines the page structure containing the game canvas and its initialization call.
-- `src/puyow.css`: Defines the full-screen canvas layout and font styles.
+- `src/puyow.html`: Defines the game root div and its initialization call.
+- `src/puyow.css`: Defines background, color scheme, vertical centering, and font styles. `puyow.js` inserts the runtime style for canvas sizing, placement, and rotation.
 - `src/puyow.js`: Implements the browser/CommonJS library, game rules, rendering, input, and CPU control.
 - `HOWTO.md`: Provides page-structure, library-use, translation, and common development guidance.
 - `docs/`: Provides developer documentation for graphics, puyos, opponents/AI, simulator/Fever, and sound.
@@ -29,6 +29,7 @@ You can also use `puyow.js` from a CDN.
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/puyow.css"/>
+<script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/three.min.js"></script>
 <script src='https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/puyow.js'></script>
 ```
 
@@ -48,17 +49,19 @@ When the player wins a regular match, the opponent class name is recorded in bro
 Loading the library alone does not initialize the game. In a browser, explicitly call `PuyoW.initialize()` after loading every opponent-registration script to start menu and input handling.
 
 ```html
+<div id="puyow_target"></div>
+<script defer src="three.min.js"></script>
 <script defer src="puyow.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    window.PuyoW.initialize('webpuyo_canvas');
+    window.PuyoW.initialize('puyow_target');
 });
 </script>
 ```
 
 ### URL context paths and reserved URL tokens
 
-When deploying the game below a web-application path other than ROOT, call `PuyoW.setURLContextPath()` before initialization to set the URL context path. The default is `'/'`. The value directly replaces `[CTX]` in a URL, so include any required leading and trailing slashes. The 3D version provides `PuyoW3D.setURLContextPath()` and `PuyoW3D.convertURL()` in the same way.
+When deploying the game below a web-application path other than ROOT, call `PuyoW.setURLContextPath()` before initialization to set the URL context path. The default is `'/'`. The value directly replaces `[CTX]` in a URL, so include any required leading and trailing slashes.
 
 `convertURL(url)` replaces `[CTX]` with the context path and `[LANG]` with the first two characters of the system language in both relative paths and absolute URLs. Supported languages are Korean by default (`ko`) and registered translation-table languages `en`, `ja`, and `zh`; other languages are replaced with `en`.
 
@@ -67,7 +70,7 @@ PuyoW.setURLContextPath('/my-puyo-app/');
 PuyoW.setNoticeFile('[CTX]notices/notice_[LANG].txt');
 const imageUrl = PuyoW.convertURL('[CTX]assets/logo_[LANG].png');
 
-PuyoW.initialize('webpuyo_canvas');
+PuyoW.initialize('puyow_target');
 ```
 
 In Node.js CommonJS, load the library as follows. A DOM-free Node.js process cannot call `initialize()`, but can use controller classes and opponent-registration APIs.
@@ -76,7 +79,7 @@ In Node.js CommonJS, load the library as follows. A DOM-free Node.js process can
 const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, askConfirm, initialize } = require('./src/puyow.js');
 ```
 
-`initialize(target)` accepts a canvas element, a canvas element's `id` string, or a `div` element that will contain a canvas. Passing a `div` creates and attaches the game canvas within it; that canvas is removed by `destroy()`. Passing a canvas uses that element and `destroy()` does not remove it. The canvas's actual `width` and `height` are nevertheless set according to the game's graphics setting. If the argument is omitted, `null`, `undefined`, or an empty string and no `webpuyo_canvas` exists, the library creates a canvas as a child of `body`, attaches the game, and removes it on `destroy()`. An unknown ID or an element that is neither canvas nor div raises an error.
+`initialize(target)` accepts the game-root `div` element or its `id` string. The library adds the `div_puyow_root` class and creates `div_puyow_2d_<number>` and `div_puyow_3d_<number>` canvases with the same random eight-digit suffix. The 2D canvas is the default display and input layer; the transparent 3D canvas is reserved for optional Three.js effects. Without `three.min.js`, the 3D canvas is still created, but the renderer and layer switching are skipped while the 2D game continues. If the argument is omitted, `null`, `undefined`, or an empty string, the library creates a game-root div directly under `body`. The former canvas-element and canvas-ID initialization forms are not supported.
 
 ## Runtime display and settings
 
@@ -123,21 +126,21 @@ PuyoW.setNoticeFile('notices/notice-[LANG].txt');
 // Use a notice from another server.
 PuyoW.setNoticeFile('https://example.com/puyo/notice.txt');
 
-PuyoW.initialize('webpuyo_canvas');
+PuyoW.initialize('puyow_target');
 ```
 
 Use `setNoticeFile()` only before `initialize()`. Calling it after initialization raises an error; to change the path, end the game with `destroy()`, set it again, then call `initialize()`.
 
 ## Shutdown and cleanup
 
-`PuyoW.destroy()` terminates the game instance started by `initialize()` and restores its pre-initialization state. Call it for page transitions, dynamic UI removal, or reinitializing the game on a different canvas in the same page.
+`PuyoW.destroy()` terminates the game instance started by `initialize()` and restores its pre-initialization state. Call it for page transitions, dynamic UI removal, or reinitializing the game on a different root div in the same page.
 
-It removes keyboard and canvas-click events, cancels scheduled animation frames, and unregisters WebMCP tools. A `webpuyo_canvas` created directly because `initialize()` could not find the default canvas is removed from the DOM, but a canvas supplied in HTML or passed to `initialize(target)` is not removed.
+It removes keyboard and 2D-canvas events, cancels scheduled animation frames, and unregisters WebMCP tools. It removes a game-root div created by `initialize()`; for a supplied div it preserves the div and removes only the two canvases it created. It also removes every `div_puyow_root` class and removes the runtime layout style only when the library created it.
 
 You can call `initialize()` again after `destroy()`. Calling it before initialization safely does nothing.
 
 ```js
-PuyoW.initialize('webpuyo_canvas');
+PuyoW.initialize('puyow_target');
 
 // Run before removing the page's game area.
 PuyoW.destroy();
@@ -187,9 +190,9 @@ await page.addInitScript(() => {
 await page.goto('/puyow.html');
 ```
 
-### Shared 2D/3D functions
+### Common functions
 
-Rules, board, and scoring utilities that do not depend on the 2D renderer are exposed through `PuyoW.common`. The 3D version can reuse the same calculation results through the namespace below. `PuyoW.getCommonFunctions()` returns the same read-only function collection.
+Rules, board, and scoring utilities that do not depend on the 2D renderer are exposed through `PuyoW.common`. `PuyoW.getCommonFunctions()` returns the same read-only function collection.
 
 ```js
 const common = PuyoW.common;
@@ -199,9 +202,9 @@ const attack = common.calculateExplosionAttack(point);
 const combo = common.estimateCombo(board, colors, positions);
 ```
 
-Common functions include `randomFloat`, `randomColor`, `translate`, `getPuyo`, `activeCells`, `activeRenderCells`, `findLandingPlacement`, `findBestPreviewResult`, `simulateNMovePlacements`, `findBestNMovePlacement`, `simulateNMovePlacementsInWorker`, `findExplosionsOnBoard`, `findExplosionGroupsOnBoard`, `collapseBoard`, `simulatePlacementBoard`, `isAllClearBoard`, `estimateAttack`, `estimateCombo`, `getChainBonus`, `getConnectionBonus`, `getColorBonus`, `getMarginRate`, `getTimeProgressMultiplier`, `calculateExplosionPoint`, `calculateExplosionAttack`, `formatIntegerPoint`, `formatPoint`, and `warningUnits`. `simulateNMovePlacements(player, targetCombo, turnCount)` accepts its target chain count as the second argument and evaluates candidates from the current move through N moves; `findBestNMovePlacement()` returns the best of them. `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)` performs iterative deepening for 3-or-more-move searches in a Blob Worker and reports the current-move placement after each completed depth through `options.onProgress`. `getTimeProgressMultiplier(elapsed)` returns 1 through 300 seconds, then doubles every 20 seconds up to 1024. Functions accepting boards or arrays do not change their inputs, so 3D can maintain state separately and use only their results.
+Common functions include `randomFloat`, `randomColor`, `translate`, `getPuyo`, `activeCells`, `activeRenderCells`, `findLandingPlacement`, `findBestPreviewResult`, `simulateNMovePlacements`, `findBestNMovePlacement`, `simulateNMovePlacementsInWorker`, `findExplosionsOnBoard`, `findExplosionGroupsOnBoard`, `collapseBoard`, `simulatePlacementBoard`, `isAllClearBoard`, `estimateAttack`, `estimateCombo`, `getChainBonus`, `getConnectionBonus`, `getColorBonus`, `getMarginRate`, `getTimeProgressMultiplier`, `calculateExplosionPoint`, `calculateExplosionAttack`, `formatIntegerPoint`, `formatPoint`, and `warningUnits`. `simulateNMovePlacements(player, targetCombo, turnCount)` accepts its target chain count as the second argument and evaluates candidates from the current move through N moves; `findBestNMovePlacement()` returns the best of them. `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)` performs iterative deepening for 3-or-more-move searches in a Blob Worker and reports the current-move placement after each completed depth through `options.onProgress`. `getTimeProgressMultiplier(elapsed)` returns 1 through 300 seconds, then doubles every 20 seconds up to 1024. Functions accepting boards or arrays do not change their inputs.
 
-Some functions assume the 2D game's board format (6 columns and 17 rows) and color strings. Preserve that data contract even when implementing independent 3D rules, and implement screen drawing separately with 3D meshes.
+Some functions assume the 2D game's board format (6 columns and 17 rows) and color strings. There is no separate 3D game version; optional 3D effects over the 2D game may read these calculations without changing their inputs.
 
 ---
 

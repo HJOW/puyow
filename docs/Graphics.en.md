@@ -37,7 +37,7 @@ PuyoW.toCanvasLength(38);
 
 `PuyoW.applyCanvasCoordinateTransform()` reapplies the current graphics setting's logical-coordinate transform to the 2D context. Call it after external rendering code changes the context coordinate system with `setTransform()`. It is normally applied automatically during game rendering, so you do not need to call it separately.
 
-The 3D version uses the same logical coordinates, but uses the rules and coordinate functions in `PuyoW.common` instead of a canvas context. World-coordinate conversion and orthographic-camera projection are handled by the 3D renderer.
+There is no standalone 3D version. Optional Three.js effects over the 2D game may use the transparent 3D canvas, while game input and the logical coordinate system remain owned by the 2D canvas.
 
 ---
 

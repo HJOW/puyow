@@ -69,7 +69,7 @@ async function openSettings(page) {
 
 async function expectDefeatCellMarkers(page, columns) {
   await expect.poll(() => page.evaluate((targetColumns) => {
-    const drawingContext = document.querySelector('#webpuyo_canvas').getContext('2d');
+    const drawingContext = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d');
     return [188, 864].every((fieldX) => targetColumns.every((column) => {
       const [red, green, blue] = drawingContext.getImageData(fieldX + column * 38 + 12, 114, 1, 1).data;
       return red >= green * 2 && red >= blue * 1.5;
@@ -82,8 +82,97 @@ test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한�
 
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 360 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 360 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});
+
+test('초기화는 최상위 div 안에 같은 난수 접미사의 2D·3D canvas를 만들고 destroy가 생성 DOM을 정리한다', async ({ page }) => {
+  const initialized = await page.evaluate(() => {
+    const root = document.getElementById('puyow_target');
+    const twoDimensional = root.querySelector('[data-puyow-canvas="2d"]');
+    const threeDimensional = root.querySelector('[data-puyow-canvas="3d"]');
+    const twoMatch = twoDimensional.id.match(/^div_puyow_2d_(\d{8})$/);
+    const threeMatch = threeDimensional.id.match(/^div_puyow_3d_(\d{8})$/);
+    const twoBounds = twoDimensional.getBoundingClientRect();
+    const threeBounds = threeDimensional.getBoundingClientRect();
+    return {
+      rootClass: root.classList.contains('div_puyow_root'),
+      suffixes: [twoMatch?.[1], threeMatch?.[1]],
+      canvasSizes: [[twoDimensional.width, twoDimensional.height], [threeDimensional.width, threeDimensional.height]],
+      bounds: [[twoBounds.width, twoBounds.height], [threeBounds.width, threeBounds.height]],
+      layers: [getComputedStyle(twoDimensional).zIndex, getComputedStyle(threeDimensional).zIndex],
+      transparent: getComputedStyle(threeDimensional).backgroundColor,
+      threeAvailable: threeDimensional.dataset.threeAvailable,
+    };
+  });
+
+  expect(initialized.rootClass).toBe(true);
+  expect(initialized.suffixes[0]).toMatch(/^\d{8}$/);
+  expect(initialized.suffixes[0]).toBe(initialized.suffixes[1]);
+  expect(initialized.canvasSizes[0]).toEqual(initialized.canvasSizes[1]);
+  expect(initialized.bounds[0]).toEqual(initialized.bounds[1]);
+  expect(initialized.layers).toEqual(['2', '1']);
+  expect(initialized.transparent).toBe('rgba(0, 0, 0, 0)');
+  expect(initialized.threeAvailable).toBe('true');
+
+  const destroyed = await page.evaluate(() => {
+    const extra = document.createElement('span');
+    extra.className = 'div_puyow_root';
+    document.body.appendChild(extra);
+    window.PuyoW.destroy();
+    const root = document.getElementById('puyow_target');
+    const result = {
+      rootRetained: document.body.contains(root),
+      rootClassRemoved: !root.classList.contains('div_puyow_root'),
+      generatedCanvasesRemoved: root.querySelectorAll('[data-puyow-canvas]').length === 0,
+      everyRootClassRemoved: document.querySelectorAll('.div_puyow_root').length === 0,
+      runtimeStyleRemoved: document.querySelector('style.puyow_runtime_layout') === null,
+    };
+    extra.remove();
+    return result;
+  });
+
+  expect(destroyed).toEqual({
+    rootRetained: true,
+    rootClassRemoved: true,
+    generatedCanvasesRemoved: true,
+    everyRootClassRemoved: true,
+    runtimeStyleRemoved: true,
+  });
+
+  const defaultRootLifecycle = await page.evaluate(() => {
+    window.PuyoW.initialize();
+    const root = document.querySelector('body > .div_puyow_root');
+    const created = {
+      directBodyChild: root?.parentElement === document.body,
+      canvasCount: root?.querySelectorAll('[data-puyow-canvas]').length,
+    };
+    window.PuyoW.destroy();
+    return { ...created, removed: !document.body.contains(root) };
+  });
+  expect(defaultRootLifecycle).toEqual({ directBodyChild: true, canvasCount: 2, removed: true });
+});
+
+test('Three.js가 없어도 3D canvas를 만들되 3D 컨텍스트 없이 2D 게임을 실행한다', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.puyowCanvasContextRequests = [];
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function recordPuyowCanvasContext(type, ...args) {
+      window.puyowCanvasContextRequests.push({ canvas: this.dataset.puyowCanvas || null, type });
+      return originalGetContext.call(this, type, ...args);
+    };
+  });
+  await page.route('**/three.min.js', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+  await page.reload();
+
+  const fallback = await page.evaluate(() => ({
+    threeAvailable: document.querySelector('[data-puyow-canvas="3d"]').dataset.threeAvailable,
+    threeContextRequests: window.puyowCanvasContextRequests.filter((request) => request.canvas === '3d'),
+    screen: window.PuyoW.getScreenState().screen,
+  }));
+
+  expect(fallback).toEqual({ threeAvailable: 'false', threeContextRequests: [], screen: 'initial_title' });
+  await enterMainMenu(page);
 });
 
 test('WebMCP 도구 스키마는 퍼즐뿌요와 최신 게임 상태 필드를 노출한다', async ({ page }) => {
@@ -357,12 +446,12 @@ test('시뮬레이터는 양쪽 기본 패배 칸을 표시하고 해당 칸의 
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
   await expectDefeatCellMarkers(page, [2]);
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 925, y: 247 } });
   await canvas.click({ position: { x: 283, y: 121 } });
   await expect.poll(() => page.evaluate(() => {
     const hasBluePuyo = window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.x === 2 && puyo.y === 11 && puyo.color === 'blue');
-    const [red, green, blue] = document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(276, 114, 1, 1).data;
+    const [red, green, blue] = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(276, 114, 1, 1).data;
     return hasBluePuyo && blue > red * 1.3 && blue > green * 1.2;
   })).toBe(true);
 });
@@ -436,7 +525,7 @@ test('카드 뽑기는 확인 전에는 자원을 쓰지 않고 취소하거나 
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).gold)).toBe(10000);
   await page.keyboard.press('Enter');
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 550, y: 459 } });
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards'))?.length)).toBe(1);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).gold)).toBe(9000);
@@ -493,7 +582,7 @@ test('공개 askConfirm은 요청을 순서대로 표시하고 키보드와 마�
     window.WebPuyo.askConfirm('Mouse confirmation').then((value) => { window.mouseConfirmResult = value; });
   });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Mouse confirmation'))).toBe(true);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 550, y: 459 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 550, y: 459 } });
   await expect.poll(() => page.evaluate(() => window.mouseConfirmResult)).toBe(true);
 });
 
@@ -551,8 +640,8 @@ test('설정의 AI 서비스 제공자는 OpenAI와 LM Studio를 라디오로 �
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('LM Studio'))).toBe(true);
   expect(await page.evaluate(() => window.testCanvasTexts.includes('Google'))).toBe(false);
 
-  await page.locator('#webpuyo_canvas').click({ position: { x: 740, y: 346 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 480, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 740, y: 346 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('LM Studio');
 });
@@ -569,13 +658,13 @@ test('OpenAI에서는 AI API URL 포커스와 클릭을 건너뛰고 LM Studio�
   await openSettings(page);
 
   // 비활성 URL 입력란은 클릭과 키 입력을 받지 않으며, 아래 이동은 API 키로 건너뛴다.
-  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 390 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 700, y: 390 } });
   await page.keyboard.type('blocked');
   for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.keyboard.type('openai-key');
   await page.keyboard.press('Enter');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 480, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings)).toMatchObject({
     aiProvider: 'OpenAI', aiApiURL: 'http://kept.example/', aiApiKey: 'openai-key',
   });
@@ -590,7 +679,7 @@ test('OpenAI에서는 AI API URL 포커스와 클릭을 건너뛰고 LM Studio�
   await page.keyboard.press('Control+A');
   await page.keyboard.type('http://192.168.0.5/');
   await page.keyboard.press('Enter');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 480, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings)).toMatchObject({
     aiProvider: 'LM Studio', aiApiURL: 'http://192.168.0.5/', aiApiKey: 'openai-key',
   });
@@ -627,16 +716,16 @@ test('설정 오른쪽 아래 코드 버튼은 마우스로만 코드를 입력�
   for (let index = 0; index < 14; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => window.codePromptTitles)).toEqual([]);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 1232, y: 692 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1232, y: 692 } });
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['observation']);
   expect(await page.evaluate(() => window.codePromptTitles)).toEqual(['코드를 입력하세요']);
 
   await page.evaluate(() => { window.prompt = () => '   '; });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 1232, y: 692 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1232, y: 692 } });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['observation']);
 
   await page.evaluate(() => { window.prompt = () => null; });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 1232, y: 692 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1232, y: 692 } });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['observation']);
 });
 
@@ -649,7 +738,7 @@ test('초기화 시 저장된 코드 배열을 불러오고 잘못된 값은 빈
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await page.evaluate(() => { window.prompt = () => 'observation'; });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 1232, y: 692 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1232, y: 692 } });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['saved-code', 'observation']);
 
   await page.evaluate(() => localStorage.setItem('puyow_code', '{invalid-json'));
@@ -657,7 +746,7 @@ test('초기화 시 저장된 코드 배열을 불러오고 잘못된 값은 빈
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await page.evaluate(() => { window.prompt = () => 'observation'; });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 1232, y: 692 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1232, y: 692 } });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['observation']);
 });
 
@@ -729,11 +818,11 @@ test('플레이어 이름은 설정에 저장되며 게임 화면에 적용되�
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('PLAYER 1'))).toBe(true);
 
-  await page.locator('#webpuyo_canvas').click({ position: { x: 600, y: 82 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 82 } });
   for (let index = 0; index < 8; index += 1) await page.keyboard.press('Backspace');
   await page.keyboard.type('ABCDEFGHIJK');
   await page.keyboard.press('Enter');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 480, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
 
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.playerName)).toBe('ABCDEFGHIJ');
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowUp');
@@ -751,10 +840,10 @@ test('사운드 데이터 URL은 최대 200자로 저장되고 초기화 시 변
     '사운드 데이터 URL', 'Sound data URL', 'サウンドデータURL', '声音数据 URL',
   ].includes(text)))).toBe(true);
 
-  await page.locator('#webpuyo_canvas').click({ position: { x: 600, y: 302 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 302 } });
   await page.keyboard.type('x'.repeat(201));
   await page.keyboard.press('Enter');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 480, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.soundDataURL.length)).toBe(200);
 
   let requestedUrl = null;
@@ -787,7 +876,7 @@ test('설정 텍스트 입력은 선택, 복사, 붙여넣기와 클립보드 �
     });
   });
   await openSettings(page);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 600, y: 302 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 302 } });
   await page.keyboard.type('before');
   await page.keyboard.press('Control+A');
   await page.keyboard.type('abcdef');
@@ -824,7 +913,7 @@ test('설정 텍스트 입력은 선택, 복사, 붙여넣기와 클립보드 �
 
 test('그래픽 설정은 키보드와 마우스로 저장되며 캔버스 출력 해상도와 공개 좌표 변환 API에 반영된다', async ({ page }) => {
   expect(await page.evaluate(() => ({
-    canvas: [document.querySelector('#webpuyo_canvas').width, document.querySelector('#webpuyo_canvas').height],
+    canvas: [document.querySelector('[data-puyow-canvas="2d"]').width, document.querySelector('[data-puyow-canvas="2d"]').height],
     output: window.WebPuyo.getCanvasOutputSize(),
   }))).toEqual({
     canvas: [1280, 720],
@@ -836,7 +925,7 @@ test('그래픽 설정은 키보드와 마우스로 저장되며 캔버스 출�
   await page.keyboard.press('ArrowRight');
   for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => [document.querySelector('#webpuyo_canvas').width, document.querySelector('#webpuyo_canvas').height])).toEqual([1920, 1080]);
+  await expect.poll(() => page.evaluate(() => [document.querySelector('[data-puyow-canvas="2d"]').width, document.querySelector('[data-puyow-canvas="2d"]').height])).toEqual([1920, 1080]);
   expect(await page.evaluate(() => ({
     settings: JSON.parse(localStorage.getItem('puyow_store')).settings.graphicsQuality,
     point: window.WebPuyo.toCanvasCoordinates(640, 360),
@@ -844,9 +933,9 @@ test('그래픽 설정은 키보드와 마우스로 저장되며 캔버스 출�
   }))).toEqual({ settings: 'medium', point: { x: 960, y: 540 }, length: 57 });
 
   await page.keyboard.press('Enter');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 895, y: 258 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 480, y: 671 } });
-  await expect.poll(() => page.evaluate(() => [document.querySelector('#webpuyo_canvas').width, document.querySelector('#webpuyo_canvas').height])).toEqual([3840, 2160]);
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 895, y: 258 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
+  await expect.poll(() => page.evaluate(() => [document.querySelector('[data-puyow-canvas="2d"]').width, document.querySelector('[data-puyow-canvas="2d"]').height])).toEqual([3840, 2160]);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.graphicsQuality)).toBe('high');
 });
 
@@ -872,7 +961,7 @@ test('가상 컨트롤러 크기는 이전 저장값을 호환하고 키보드�
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 595, y: 214 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 595, y: 214 } });
   for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.virtualController)).toBe('none');
@@ -898,7 +987,7 @@ test('빈 사용 모델명은 기본값으로 보정되고 API 테스트 버튼�
     requestCount += 1;
     await route.fulfill({ status: 500 });
   });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 518 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 700, y: 518 } });
   await page.waitForTimeout(100);
   expect(requestCount).toBe(0);
 });
@@ -991,8 +1080,8 @@ test('솔로몬은 성공한 AI API 테스트 뒤 현재 접속에서만 안드�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(false);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('AI API test succeeded (JSON schema: passed).'))).toBe(true);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 671 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => {
@@ -1033,8 +1122,8 @@ test('솔로몬은 매 턴 구조화된 배치를 요청하고 X 이동 후 회�
   for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => requestBodies.length).toBe(1);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 671 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1077,8 +1166,8 @@ test('솔로몬은 LM Studio 선택 시 저장된 서버와 토큰으로 Chat Co
   for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => requests.length).toBe(1);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 671 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1120,8 +1209,8 @@ test('솔로몬의 잘못된 API 배치는 게임을 일시정지하고 현재 �
   for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => requestCount).toBe(1);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 671 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1164,8 +1253,8 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
       });
     };
   });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 671 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1191,10 +1280,10 @@ test('저장하지 않은 AI 설정은 API 테스트 요청 대신 저장 안내
     await route.fulfill({ status: 500 });
   });
   await openSettings(page);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 600, y: 434 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 434 } });
   await page.keyboard.press('x');
   await page.keyboard.press('Enter');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 700, y: 518 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 700, y: 518 } });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
     '설정 저장 후 다시 시도해 주세요',
     'Save your settings and try again.',
@@ -1266,7 +1355,7 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   expect(feverState.player.board.puyos.length).toBeGreaterThan(0);
   expect(feverState.player.active.colors).toEqual(feverState.fever.stageSuppliedPair);
   expect(feverState.colors).toEqual(['red', 'green', 'yellow', 'blue', 'purple']);
-  expect(await page.evaluate(() => Array.from(document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(210, 120, 1, 1).data))).toEqual([232, 144, 53, 255]);
+  expect(await page.evaluate(() => Array.from(document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(210, 120, 1, 1).data))).toEqual([232, 144, 53, 255]);
   expect(await page.evaluate(() => {
     const texts = window.testCanvasTexts;
     return [
@@ -2357,7 +2446,7 @@ test('피버 전용 필드는 적 테마보다 우선하고 일반 필드는 적
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.fever?.active)).toBe(true);
   const pixels = await page.evaluate(() => {
-    const drawingContext = document.querySelector('#webpuyo_canvas').getContext('2d');
+    const drawingContext = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d');
     return {
       normalField: Array.from(drawingContext.getImageData(210, 120, 1, 1).data),
       feverField: Array.from(drawingContext.getImageData(886, 120, 1, 1).data),
@@ -2948,7 +3037,7 @@ test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
   await page.keyboard.press('Enter');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 20, y: 20 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 20, y: 20 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
@@ -2982,7 +3071,7 @@ test('연속 피버의 중앙 정렬된 3색 버튼은 마우스로 선택할 �
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
 
-  await page.locator('#webpuyo_canvas').click({ position: { x: 520, y: 364 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 520, y: 364 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
   expect(await page.evaluate(() => window.WebPuyo.getGameState().colorCount)).toBe(3);
 });
@@ -3089,7 +3178,7 @@ test('게임 규칙 선택지 밖 클릭과 ESC는 메인 메뉴로 돌아간다
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 
   await page.keyboard.press('Enter');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 20, y: 20 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 20, y: 20 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
@@ -3141,7 +3230,7 @@ test('구글 폰트 import URL은 컨텍스트 경로 변환 예외로 기존 �
     window.PuyoW.destroy();
     window.PuyoW.setURLContextPath('/tomcat-puyow/');
     document.querySelector('style.puyow_font_import')?.remove();
-    window.PuyoW.initialize('webpuyo_canvas');
+    window.PuyoW.initialize('puyow_target');
     return document.querySelector('style.puyow_font_import')?.textContent;
   });
 
@@ -3155,7 +3244,7 @@ test('게임 규칙 선택지의 기본 룰·연습 색상과 연속 피버 아�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await expect.poll(() => page.evaluate(() => {
-    const canvas = document.querySelector('#webpuyo_canvas');
+    const canvas = document.querySelector('[data-puyow-canvas="2d"]');
     const context = canvas.getContext('2d');
     const standard = context.getImageData(360, 285, 1, 1).data;
     const practice = context.getImageData(360, 387, 1, 1).data;
@@ -3171,7 +3260,7 @@ test('게임 규칙 선택지의 기본 룰·연습 색상과 연속 피버 아�
 
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 513 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 513 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
@@ -3190,7 +3279,7 @@ test('연습·연속 피버 색상 선택 화면의 취소는 이전 규칙 선�
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 474 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 474 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
 });
 
@@ -3204,9 +3293,9 @@ test('퍼즐뿌요는 스테이지 선택, 잠금 해제, 5색 지급과 두 번
 
   const initiallyOpenedStages = await page.evaluate(() => window.WebPuyo.PUZZLE_STAGES.map((stage) => stage.opened));
   expect(initiallyOpenedStages).toEqual([true, true, ...Array(initiallyOpenedStages.length - 2).fill(false)]);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 334, y: 550 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 334, y: 550 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 334, y: 550 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 334, y: 550 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 5000 }).toBe(true);
   const state = await page.evaluate(() => window.WebPuyo.getGameState());
@@ -3233,7 +3322,7 @@ test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 �
     await expect.poll(() => page.evaluate(() => {
       const practiceNames = ['연습 상대', 'Practice Opponent', '練習相手', '练习对手'];
       const opponentScoreShown = window.testCanvasTextCalls.some(({ text, y }) => practiceNames.includes(text) && y === 516);
-      const [red, , blue] = document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(700, 492, 1, 1).data;
+      const [red, , blue] = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(700, 492, 1, 1).data;
       return !opponentScoreShown && red > blue;
     }), { timeout: 5000 }).toBe(true);
   }
@@ -3269,7 +3358,7 @@ test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 �
   await expectSoloNextLayout();
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['현재 턴 1 / 2', 'Turn 1 / 2', 'ターン 1 / 2', '第 1 / 2 回合'].includes(text)))).toBe(true);
   await expect.poll(() => page.evaluate(() => {
-    const [red, green, blue] = document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(952, 114, 1, 1).data;
+    const [red, green, blue] = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(952, 114, 1, 1).data;
     return red >= green * 2 && red >= blue * 1.5;
   })).toBe(false);
 });
@@ -3284,7 +3373,7 @@ test('퍼즐뿌요 스테이지 선택의 취소는 키보드와 마우스로 �
 
   await page.keyboard.press('ArrowLeft');
   await expect.poll(() => page.evaluate(() => {
-    const pixels = document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(420, 220, 440, 55).data;
+    const pixels = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(420, 220, 440, 55).data;
     for (let index = 0; index < pixels.length; index += 4) if (pixels[index] > 180 && pixels[index + 1] > 120 && pixels[index + 2] < 130) return true;
     return false;
   })).toBe(false);
@@ -3295,7 +3384,7 @@ test('퍼즐뿌요 스테이지 선택의 취소는 키보드와 마우스로 �
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 130, y: 550 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 130, y: 550 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
 });
 
@@ -3323,7 +3412,7 @@ test('퍼즐뿌요 스테이지 선택은 여섯 번째 스테이지에서 키�
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 1150, y: 640 } });
   await canvas.click({ position: { x: 1150, y: 550 } });
   await canvas.click({ position: { x: 1150, y: 550 } });
@@ -3365,12 +3454,12 @@ test('퍼즐뿌요 스테이지 클리어는 결과 화면 전환 전에 저장�
     return x >= 850 && (finalScorePrefixes.some((prefix) => text.startsWith(prefix)) || puzzleLabels.includes(text));
   }))).toBe(false);
   await expect.poll(() => page.evaluate(() => {
-    const pixels = document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(950, 370, 56, 60).data;
+    const pixels = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(950, 370, 56, 60).data;
     for (let index = 0; index < pixels.length; index += 4) if (pixels[index] > 190 && pixels[index + 1] > 130 && pixels[index + 2] < 130) return true;
     return false;
   })).toBe(true);
 
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 197 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 197 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
   await expect.poll(() => page.evaluate(() => {
     const openedStages = window.WebPuyo.PUZZLE_STAGES.map((stage) => stage.opened);
@@ -3517,7 +3606,7 @@ test('퍼즐뿌요 스테이지 선택 카드는 저장된 클리어와 별 달�
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
-    const context = document.querySelector('#webpuyo_canvas').getContext('2d');
+    const context = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d');
     const hasGoldMarker = (x, y, width, height) => {
       const pixels = context.getImageData(x, y, width, height).data;
       for (let index = 0; index < pixels.length; index += 4) {
@@ -3772,7 +3861,7 @@ test('공통 사운드 풀은 시뮬레이터의 뿌요 착지·폭발·주문 �
       { x: 0, y: 0, color: 'red' }, { x: 0, y: 1, color: 'red' }, { x: 0, y: 2, color: 'red' }, { x: 0, y: 12, color: 'red' },
     ] });
   });
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
@@ -3833,7 +3922,7 @@ test('시뮬레이터 연쇄는 새 점수 계산식과 같은 연쇄 문구를 
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   for (const x of [207, 245, 283, 321]) {
     await canvas.click({ position: { x, y: 539 } });
   }
@@ -3848,7 +3937,7 @@ test('시뮬레이터 싹쓸이는 추가 점수·ATTACK 없이 티켓을 부여
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   for (const x of [207, 245, 283, 321]) await canvas.click({ position: { x, y: 539 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('simulator_complete');
@@ -3866,7 +3955,7 @@ test('시뮬레이터 그리기 모드에서는 마우스와 키보드로 13번�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   // 13번째 줄(y=12)은 FIELD_TOP 바로 위의 숨김 영역이며, 그리기 중에는 마우스로 편집할 수 있다.
   await canvas.click({ position: { x: 207, y: 83 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.x === 0 && puyo.y === 12 && puyo.color === 'red'))).toBe(true);
@@ -3886,7 +3975,7 @@ test('시뮬레이터의 초기화 버튼은 좌측 플레이 영역의 뿌요�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 207, y: 539 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.length)).toBe(1);
   await expect.poll(() => page.evaluate(() => ['초기화', 'Reset', '初期化', '重置'].some((label) => window.testCanvasTexts.includes(label)))).toBe(true);
@@ -3901,7 +3990,7 @@ test('시뮬레이터 전용 철구뿌요는 키보드와 마우스로 배치되
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   // 팔레트의 세 번째 줄 두 번째 항목인 철구뿌요를 키보드로 선택한다.
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
@@ -3933,7 +4022,7 @@ test('숨김 13번째 줄 뿌요는 폭발 연결 수에 포함되지 않는다'
   puyos.push({ x: 0, y: 11, color: 'red' }, { x: 1, y: 11, color: 'red' }, { x: 2, y: 11, color: 'red' }, { x: 0, y: 12, color: 'red' });
   await page.evaluate((pastedPuyos) => { window.prompt = () => JSON.stringify({ puyos: pastedPuyos }); }, puyos);
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
@@ -3950,7 +4039,7 @@ test('숨김 13번째 줄 뿌요는 중력으로 내려온 뒤 다음 폭발 판
   await page.evaluate(() => { window.prompt = () => JSON.stringify({ puyos: [
     { x: 0, y: 0, color: 'red' }, { x: 0, y: 1, color: 'red' }, { x: 0, y: 2, color: 'red' }, { x: 0, y: 12, color: 'red' },
   ] }); });
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('simulator_complete');
@@ -3963,7 +4052,7 @@ test('시뮬레이터 점수는 동시 폭발의 색수와 가장 많은 색의 
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   for (const x of [207, 245, 283, 321]) {
     await canvas.click({ position: { x, y: 539 } });
   }
@@ -3989,7 +4078,7 @@ test('시뮬레이터 점수는 동시 4·5색 폭발에서 5개 색의 연결 �
     ] });
   });
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000450'))).toBe(true);
@@ -4001,7 +4090,7 @@ test('시뮬레이터 점수는 다섯 뿌요 연결 보너스를 적용한다',
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   for (const x of [207, 245, 283, 321, 359]) {
     await canvas.click({ position: { x, y: 539 } });
   }
@@ -4027,7 +4116,7 @@ test('시뮬레이터에서 딱딱뿌요 하나의 파괴는 점수에 세 배�
     });
   }, puyos);
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 960, y: 440 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.color === 'hardGarbage'))).toBe(true);
   await canvas.click({ position: { x: 960, y: 395 } });
@@ -4053,7 +4142,7 @@ test('시뮬레이터에서 동시에 파괴한 두 딱딱뿌요는 점수에 �
     ] });
   });
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
@@ -4074,7 +4163,7 @@ test('시뮬레이터 딱딱뿌요는 한 방향 폭발에 일반 방해뿌요�
     ] });
   });
 
-  const canvas = page.locator('#webpuyo_canvas');
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
@@ -4085,12 +4174,14 @@ test('세로 화면에서는 캔버스를 회전하고 클릭 좌표를 변환�
   await page.setViewportSize({ width: 375, height: 667 });
   await expect.poll(() => page.evaluate(() => document.body.classList.contains('puyow-portrait'))).toBe(true);
 
-  const bounds = await page.locator('#webpuyo_canvas').evaluate((canvas) => {
+  const bounds = await page.locator('[data-puyow-canvas="2d"]').evaluate((canvas) => {
     const rect = canvas.getBoundingClientRect();
     return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
   });
   expect(bounds.width).toBeCloseTo(375, 1);
   expect(bounds.height).toBeCloseTo(bounds.width * 16 / 9, 1);
+  expect(bounds.left).toBeCloseTo(0, 1);
+  expect(bounds.top).toBeCloseTo(0, 1);
 
   await enterMainMenu(page);
   const logicalX = 640;
@@ -4128,12 +4219,14 @@ test('화면 가로방향 고정은 저장되며 세로 화면 입력도 회전�
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.landscapeOrientationLocked)).toBe(true);
   expect(await page.evaluate(() => document.body.classList.contains('puyow-portrait'))).toBe(false);
 
-  const bounds = await page.locator('#webpuyo_canvas').evaluate((canvas) => {
+  const bounds = await page.locator('[data-puyow-canvas="2d"]').evaluate((canvas) => {
     const rect = canvas.getBoundingClientRect();
     return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
   });
   expect(bounds.width).toBeCloseTo(375, 1);
   expect(bounds.height).toBeCloseTo(375 * 9 / 16, 1);
+  expect(bounds.left).toBeCloseTo(0, 1);
+  expect(bounds.top).toBeCloseTo(0, 1);
 
   await page.mouse.click(bounds.left + bounds.width / 2, bounds.top + bounds.height * 580 / 720);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
@@ -4147,10 +4240,10 @@ test('변경된 사운드 데이터 URL을 저장하면 즉시 사운드 데이�
   });
 
   await openSettings(page);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 600, y: 302 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 302 } });
   await page.keyboard.type('https://sound.example/sounds_[LANG].json');
   await page.keyboard.press('Enter');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 480, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
 
   await expect.poll(() => requestedUrl).toBe('https://sound.example/sounds_en.json');
 });
@@ -4184,7 +4277,7 @@ test('기본 룰과 피버 룰의 적 초상화 화살표는 선택 가능한 �
   await page.reload();
 
   const arrowColorAt = (x, y, color) => page.evaluate(({ x: pixelX, y: pixelY, expected }) => {
-    const pixel = Array.from(document.querySelector('#webpuyo_canvas').getContext('2d').getImageData(pixelX, pixelY, 1, 1).data);
+    const pixel = Array.from(document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(pixelX, pixelY, 1, 1).data);
     return pixel[0] === expected[0] && pixel[1] === expected[1] && pixel[2] === expected[2];
   }, { x, y, expected: color });
   const openOpponentMenu = async (feverRule) => {
@@ -4200,12 +4293,12 @@ test('기본 룰과 피버 룰의 적 초상화 화살표는 선택 가능한 �
     await expect.poll(() => arrowColorAt(805, 383, [107, 188, 232])).toBe(true);
     expect(await arrowColorAt(475, 383, [107, 188, 232])).toBe(false);
 
-    await page.locator('#webpuyo_canvas').click({ position: { x: 805, y: 383 } });
+    await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 805, y: 383 } });
     await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.some(({ text, x, y }) => text === 'Dantalion' && x === 640 && y === 450))).toBe(true);
     await expect.poll(() => arrowColorAt(475, 383, [247, 200, 67])).toBe(true);
     expect(await arrowColorAt(805, 383, [247, 200, 67])).toBe(false);
 
-    await page.locator('#webpuyo_canvas').click({ position: { x: 475, y: 383 } });
+    await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 475, y: 383 } });
     await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.some(({ text, x, y }) => text === 'Andromalius' && x === 640 && y === 450))).toBe(true);
     if (!feverRule) {
       await page.keyboard.press('Escape');
@@ -4225,7 +4318,7 @@ test('구경 메뉴는 데카라비아를 보통 이상에서 이기기 전에�
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 468 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 468 } });
   expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 
   await page.reload();
@@ -4330,19 +4423,19 @@ test('구경 설정은 키보드와 마우스로 색상 수·규칙·취소를 �
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
   expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty())).toEqual({ key: 'normal', name: '보통', fastDownDelay: 1500 });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 468 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 468 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 520, y: 294 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 760, y: 420 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 750, y: 540 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 520, y: 294 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 760, y: 420 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 750, y: 540 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 640, y: 468 } });
-  await page.locator('#webpuyo_canvas').click({ position: { x: 530, y: 540 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 468 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 530, y: 540 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('playing');
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
-  await page.locator('#webpuyo_canvas').click({ position: { x: 735, y: 408 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 735, y: 408 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
