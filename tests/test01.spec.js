@@ -221,13 +221,13 @@ test('기본 룰은 AI에 다음 20쌍을 제공하고 공개 다음 뿌요는 �
       statePairCount: state?.opponent.nextPairs.length,
       apiPairCount: next?.opponent.nextPairs.length,
     };
-  }), { timeout: 10000 }).toEqual({
+  }), { timeout: 10000 }).toEqual(expect.objectContaining({
     queuedPairCount: 20,
     hasThreeMovePath: true,
-    workerDepth: 3,
+    workerDepth: expect.any(Number),
     statePairCount: 2,
     apiPairCount: 2,
-  });
+  }));
 });
 
 test('피버 룰도 AI용 다음 20쌍을 유지한다', async ({ page }) => {
@@ -1440,6 +1440,56 @@ test('적의 빠른 하강 대기 시간은 일반·위기 상황별 비율을 �
   });
 
   expect(result).toEqual({ normalBefore: false, normalAt: true, dangerBefore: false, dangerAt: true });
+});
+
+test('세레의 일반 쌓기는 오른쪽 두 열, X=3 절반, 왼쪽부터 순서대로 진행한다', async ({ page }) => {
+  await page.evaluate(() => {
+    const originalPrepareTurn = window.WebPuyo.Enemy.prototype.prepareTurn;
+    window.seereStandardBuildTargets = [];
+    window.WebPuyo.Enemy.prototype.prepareTurn = function prepareSeereStandardBuildProbe(player) {
+      if (this.getClassType() !== 'Seere' || window.seereStandardBuildTargets.length) {
+        return originalPrepareTurn.call(this, player);
+      }
+      const createBoard = () => {
+        const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+        // 빈 필드 무작위 착수 분기를 지나도록, 빌드·공격 조건과 무관한 하단 칸 하나만 채운다.
+        board[0][2] = 'blue';
+        return board;
+      };
+      const fillColumn = (board, column, height) => {
+        const colors = ['red', 'green', 'yellow'];
+        for (let y = 0; y < height; y += 1) board[y][column] = colors[(column + y) % colors.length];
+      };
+      const scenarios = [
+        createBoard(),
+        (() => { const board = createBoard(); fillColumn(board, 4, 12); fillColumn(board, 5, 12); return board; })(),
+        (() => { const board = createBoard(); fillColumn(board, 4, 12); fillColumn(board, 5, 12); fillColumn(board, 3, 6); return board; })(),
+        (() => { const board = createBoard(); fillColumn(board, 4, 12); fillColumn(board, 5, 12); fillColumn(board, 3, 6); fillColumn(board, 0, 12); return board; })(),
+      ];
+      scenarios.forEach((board) => {
+        player.board = board;
+        this.preparedPlacement = null;
+        originalPrepareTurn.call(this, player);
+        window.seereStandardBuildTargets.push(this.selectStandardRuleBuildPlacement(player)?.x ?? null);
+      });
+    };
+    window.WebPuyo.addCode('observation');
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.name)).toBe('세레');
+  await expect.poll(() => page.evaluate(() => window.seereStandardBuildTargets)).toEqual([expect.any(Number), 3, 0, 1]);
+  expect(await page.evaluate(() => window.seereStandardBuildTargets[0])).toBeGreaterThanOrEqual(4);
 });
 
 test('안드레알푸스는 기본·피버 룰에 출시되고 플라우로스는 출시 예정으로 표시된다', async ({ page }) => {

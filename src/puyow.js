@@ -9132,6 +9132,12 @@
         return { screen: 'playing', playerCanControl: !game.watch && game.players[0].controller === null && game.players[0].phase === 'control' && game.players[0].active !== null };
     }
 
+    /** @returns {number} 현재 화면·상태 API에 노출할 다음 뿌요 쌍 수 */
+    function getExposedNextPairCount() {
+        // 기본·피버 대전(구경 포함)은 AI 내부 20쌍과 별개로 두 쌍만 보이며, 단독 모드의 기존 네 쌍 계약은 유지한다.
+        return usesSoloPlayLayout() ? 4 : 2;
+    }
+
     /**
      * 한 플레이어의 보드와 대기열을 JSON으로 직렬화 가능한 상태로 만든다.
      * @param {PlayerState} player 상태를 읽을 플레이어
@@ -9162,7 +9168,7 @@
             placedPairCount: player.placedPairCount,
             allClearTicket: player.allClearTicket,
             board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos },
-            nextPairs: player.nextPairs.slice(0, 2).map((pair) => [...pair]),
+            nextPairs: player.nextPairs.slice(0, getExposedNextPairCount()).map((pair) => [...pair]),
             warningPuyos: warningUnits(warningAmount(player, opponent)).map((unit) => unit.type),
             fever: player.fever ? {
                 active: player.fever.active,
@@ -9372,7 +9378,8 @@
     }
 
     /**
-     * 중앙 영역에 표시되는 양쪽의 다음 두 뿌요 쌍을 JSON 직렬화 가능한 복사본으로 반환한다.
+     * 중앙 영역에 표시되는 다음 뿌요 쌍을 JSON 직렬화 가능한 복사본으로 반환한다.
+     * 대전은 양쪽 두 쌍, 단독 모드는 플레이어 네 쌍을 노출한다.
      * 게임이 생성되지 않은 메뉴 상태에서는 null을 반환한다.
      * @returns {{player:{name:string,nextPairs:string[][]},opponent:{name:string,nextPairs:string[][]}}|null} 플레이어와 적의 다음 뿌요 정보
      */
@@ -9380,8 +9387,8 @@
         if (!game) return null;
         const [player, opponent] = game.players;
         return {
-            player: { name: player.name, nextPairs: player.nextPairs.slice(0, 2).map((pair) => [...pair]) },
-            opponent: { name: opponent.name, nextPairs: opponent.nextPairs.slice(0, 2).map((pair) => [...pair]) }
+            player: { name: player.name, nextPairs: player.nextPairs.slice(0, getExposedNextPairCount()).map((pair) => [...pair]) },
+            opponent: { name: opponent.name, nextPairs: opponent.nextPairs.slice(0, getExposedNextPairCount()).map((pair) => [...pair]) }
         };
     }
 
@@ -11818,24 +11825,58 @@
             return Array.from({ length: height }, (_, y) => player.board[y][x] !== null).every(Boolean);
         }
 
-        /**
-         * 우측 하단 세 칸을 우선 채우되, 폭발 뒤 최종 보드에서 즉시 패배하는 후보를 제외한다.
-         * @param {PlayerState} player 자동 조작할 플레이어
-         * @returns {object|null} 배치 후보
-         */
-        selectRightBuildPlacement(player) {
+        /** 일반 룰 평상시에는 오른쪽 두 열을 화면 높이까지 우선 채운다. @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 배치 후보 */
+        selectStandardRightTwoBuildPlacement(player) {
             let selected = null;
             let bestScore = -Infinity;
             player.aiSimulations.forEach((simulation) => {
-                if (simulation.combo !== 0) return;
-                if (causesImmediateDefeat(player, simulation)) return;
+                if (simulation.combo !== 0 || causesImmediateDefeat(player, simulation)) return;
+                if (!simulation.positions.every((position) => position.x >= COLUMNS - 2 && position.y < VISIBLE_ROWS)) return;
                 const score = simulation.positions.reduce((total, position) => {
-                    const targetRow = position.x === COLUMNS - 1 && position.y <= 2 ? 1000 : 0;
-                    return total + targetRow - Math.abs(position.x - (COLUMNS - 1)) * 50 - position.y;
+                    const filledHeight = player.board.reduce((height, row) => height + (row[position.x] !== null ? 1 : 0), 0);
+                    return total + 1000 - filledHeight * 10 - position.y;
                 }, 0);
                 if (score >= bestScore) { selected = simulation; bestScore = score; }
             });
             return selected;
+        }
+
+        /** 일반 룰 평상시에는 오른쪽에서 세 번째 열(X=3)을 화면 절반까지만 채운다. @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 배치 후보 */
+        selectStandardThirdColumnBuildPlacement(player) {
+            let selected = null;
+            let bestScore = -Infinity;
+            const targetColumn = COLUMNS - 3;
+            const targetHeight = Math.ceil(VISIBLE_ROWS / 2);
+            player.aiSimulations.forEach((simulation) => {
+                if (simulation.combo !== 0 || causesImmediateDefeat(player, simulation)) return;
+                if (!simulation.positions.every((position) => position.x === targetColumn && position.y < targetHeight)) return;
+                const score = simulation.positions.reduce((total, position) => total + 1000 - position.y, 0);
+                if (score >= bestScore) { selected = simulation; bestScore = score; }
+            });
+            return selected;
+        }
+
+        /** 일반 룰 평상시에는 왼쪽 두 열을 가장 왼쪽 열부터 차례대로 채운다. @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 배치 후보 */
+        selectStandardLeftBuildPlacement(player) {
+            const targetColumn = this.isColumnFilledToHeight(player, 0, VISIBLE_ROWS) ? 1 : 0;
+            let selected = null;
+            let bestScore = -Infinity;
+            player.aiSimulations.forEach((simulation) => {
+                if (simulation.combo !== 0 || causesImmediateDefeat(player, simulation)) return;
+                if (!simulation.positions.every((position) => position.x === targetColumn && position.y < VISIBLE_ROWS)) return;
+                const score = simulation.positions.reduce((total, position) => total + 1000 - position.y, 0);
+                if (score >= bestScore) { selected = simulation; bestScore = score; }
+            });
+            return selected;
+        }
+
+        /** @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 피버 비활성 일반 룰 평상시 빌드 후보 */
+        selectStandardRuleBuildPlacement(player) {
+            const rightColumnsFilled = this.isColumnFilledToHeight(player, COLUMNS - 2, VISIBLE_ROWS)
+                && this.isColumnFilledToHeight(player, COLUMNS - 1, VISIBLE_ROWS);
+            if (!rightColumnsFilled) return this.selectStandardRightTwoBuildPlacement(player);
+            if (!this.isColumnFilledToHeight(player, COLUMNS - 3, Math.ceil(VISIBLE_ROWS / 2))) return this.selectStandardThirdColumnBuildPlacement(player);
+            return this.selectStandardLeftBuildPlacement(player);
         }
 
         /** 피버 룰의 평상시에는 오른쪽 두 열을 화면 높이까지 먼저 쌓는다. @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 배치 후보 */
@@ -11868,8 +11909,8 @@
             return selected;
         }
 
-        /** 오른쪽 빌드가 끝난 평상시에는 왼쪽 두 열을 균형 있게 쌓는다. @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 배치 후보 */
-        selectLeftBuildPlacement(player) {
+        /** 피버 룰의 평상시에는 오른쪽 빌드 뒤 왼쪽 두 열을 균형 있게 쌓는다. @param {PlayerState} player 자동 조작 플레이어 @returns {object|null} 배치 후보 */
+        selectFeverLeftBuildPlacement(player) {
             let selected = null;
             let bestScore = -Infinity;
             player.aiSimulations.forEach((simulation) => {
@@ -11890,7 +11931,7 @@
                 && this.isColumnFilledToHeight(player, COLUMNS - 1, VISIBLE_ROWS);
             if (!rightColumnsFilled) return this.selectFeverRightTwoBuildPlacement(player);
             if (!this.isColumnFilledToHeight(player, COLUMNS - 3, 10)) return this.selectFeverThirdColumnBuildPlacement(player);
-            return this.selectLeftBuildPlacement(player);
+            return this.selectFeverLeftBuildPlacement(player);
         }
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 X 좌표 */
@@ -11905,7 +11946,7 @@
             }
             const buildPlacement = game?.feverRule && !player.fever?.active
                 ? this.selectFeverRuleBuildPlacement(player)
-                : (this.isRightThreeRowsFilled(player) ? this.selectLeftBuildPlacement(player) : this.selectRightBuildPlacement(player));
+                : this.selectStandardRuleBuildPlacement(player);
             const safeFallback = player.aiSimulations.find((simulation) => !causesImmediateDefeat(player, simulation));
             const basicPlacement = buildPlacement || safeFallback;
             // 우측 하단 세 칸이 차기 전에는 폭발을 만들지 않는 회전·배치만 사용한다.
