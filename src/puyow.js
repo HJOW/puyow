@@ -6628,6 +6628,7 @@
         getSettingsActionButtons().forEach((button) => {
             context.fillStyle = button.color; context.fillRect(button.x, layout.actionY, layout.actionWidth, layout.actionHeight); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, layout.actionY, layout.actionWidth, layout.actionHeight); context.fillStyle = '#fff'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + layout.actionWidth / 2, layout.actionY + 24);
         });
+        context.fillStyle = '#8aa6af'; context.font = `10px ${MESSAGE_FONT}`; context.textAlign = 'left'; context.fillText(`Build ${BUILDNO}`, 10, HEIGHT - 10);
         context.fillStyle = '#263640'; context.fillRect(SETTINGS_CODE_BUTTON.x, SETTINGS_CODE_BUTTON.y, SETTINGS_CODE_BUTTON.width, SETTINGS_CODE_BUTTON.height);
         context.strokeStyle = '#52606d'; context.lineWidth = 1; context.strokeRect(SETTINGS_CODE_BUTTON.x, SETTINGS_CODE_BUTTON.y, SETTINGS_CODE_BUTTON.width, SETTINGS_CODE_BUTTON.height);
         context.fillStyle = '#d8f2f5'; context.font = `11px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('코드'), SETTINGS_CODE_BUTTON.x + SETTINGS_CODE_BUTTON.width / 2, SETTINGS_CODE_BUTTON.y + 16);

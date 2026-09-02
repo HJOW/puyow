@@ -693,12 +693,13 @@ test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => {
-    const values = window.testCanvasTextCalls.filter((call) => ['42', '73'].includes(call.text));
-    return {
+    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 3'].includes(call.text));
+      return {
       music: values.some((call) => call.text === '42' && call.x === 920 && call.y === 130),
       effects: values.some((call) => call.text === '73' && call.x === 920 && call.y === 174),
-    };
-  })).toEqual({ music: true, effects: true });
+      build: values.some((call) => call.text === 'Build 3' && call.x === 10 && call.y === 710),
+      };
+  })).toEqual({ music: true, effects: true, build: true });
 });
 
 test('설정 오른쪽 아래 코드 버튼은 마우스로만 코드를 입력받고 공란은 무시한다', async ({ page }) => {
