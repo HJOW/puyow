@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Fever Pattern Tool</title>
+    <!--
+    피버 패턴 개발도구
+
+        Copyright 2026 HJOW
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+    -->
+
+    <style>
+    .full {
+        width: 100%;
+    }
+    .invisible {
+        display: none !important;
+    }
+    </style>
+
+    <!-- Game 관련 (필수) -->
+    <script defer src="../puyow.js"></script>
+    <script defer src="feverpatterntool.js"></script>
+    <!-- // Game 관련 (필수) -->
+</head>
+<body>
+    <div class="puyow_feverpatterntool_root">
+        <div class="puyow_feverpatterntool_game"></div>
+        <div class="puyow_feverpatterntool_result">
+            <textarea class="puyow_feverpatterntool_result_textarea full" id="puyow_feverpatterntool_result_textarea" readonly></textarea>
+        </div>
+    </div>
+</body>
+</html>
