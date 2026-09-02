@@ -1667,15 +1667,15 @@ test('키마리스는 비피버 싹쓸이 경로를 6연쇄 기반보다 우선�
   expect(plan.allClear || plan.nextResult?.allClear).toBe(true);
 });
 
-test('안드레알푸스는 2수 싹쓸이 후보의 회전값을 실제 선택에 적용한다', async ({ page }) => {
-  const result = await page.evaluate(() => {
+test('안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 선택에 적용한다', async ({ page }) => {
+  const result = await page.evaluate(async () => {
     const board = Array.from({ length: 25 }, () => Array(6).fill(null));
     board[0][2] = 'yellow';
     board[1][2] = 'yellow';
     const player = {
       board,
       active: { x: 2, y: 12, rotation: 0, colors: ['yellow', 'yellow'] },
-      nextPairs: [['red', 'blue']],
+      nextPairs: [['red', 'blue'], ['green', 'blue']],
       aiSimulations: [],
       attack: 0,
       damage: 0,
@@ -1684,10 +1684,13 @@ test('안드레알푸스는 2수 싹쓸이 후보의 회전값을 실제 선택�
       estimateCombo(colors, positions) { return window.WebPuyo.estimateCombo(this.board, colors, positions); },
     };
     const controller = new window.WebPuyo.Andrealphus();
+    controller.lookaheadTimeLimitMs = 1000;
     controller.prepareTurn(player);
+    const search = controller.pendingWorkerSearch;
+    await search.promise;
     player.aiTarget = controller.chooseTarget(player);
     const rotation = controller.chooseRotate(player);
-    const selectedPlan = window.WebPuyo.simulateNMovePlacements(player, controller.targetCombo, controller.lookaheadTurnCount)
+    const selectedPlan = window.WebPuyo.simulateNMovePlacements(player, controller.targetCombo, 1)
       .find((plan) => plan.simulation.x === player.aiTarget && plan.simulation.rotation === rotation);
     return {
       target: player.aiTarget,
@@ -1695,10 +1698,105 @@ test('안드레알푸스는 2수 싹쓸이 후보의 회전값을 실제 선택�
       allClear: selectedPlan?.allClear === true,
       targetCombo: controller.targetCombo,
       lookaheadTurnCount: controller.lookaheadTurnCount,
+      lookaheadTimeLimitMs: controller.lookaheadTimeLimitMs,
+      workerSearchDepth: controller.workerSearchDepth,
     };
   });
 
-  expect(result).toEqual({ target: 4, rotation: 3, allClear: true, targetCombo: 7, lookaheadTurnCount: 2 });
+  expect(result).toEqual({
+    target: 4,
+    rotation: 3,
+    allClear: true,
+    targetCombo: 7,
+    lookaheadTurnCount: 3,
+    lookaheadTimeLimitMs: 1000,
+    workerSearchDepth: 3,
+  });
+});
+
+test('3수 이상 공통 Worker 탐색은 깊이별 현재 1수 결과를 순서대로 전달한다', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    board[0][0] = 'red';
+    board[0][1] = 'red';
+    const player = {
+      board,
+      active: { x: 2, y: 12, rotation: 0, colors: ['red', 'blue'] },
+      nextPairs: [['green', 'yellow'], ['blue', 'red']],
+      aiSimulations: [],
+      attack: 0,
+      damage: 0,
+      warningReductionDelay: 0,
+      estimateAttack(colors, positions) { return window.WebPuyo.estimateAttack(this.board, colors, positions); },
+      estimateCombo(colors, positions) { return window.WebPuyo.estimateCombo(this.board, colors, positions); },
+    };
+    const opponent = {
+      board: Array.from({ length: 25 }, () => Array(6).fill(null)),
+      active: null,
+      nextPairs: [],
+      attack: 0,
+      damage: 0,
+      announcedAttack: 0,
+      warningReductionDelay: 0,
+    };
+    const depths = [];
+    const search = window.WebPuyo.common.simulateNMovePlacementsInWorker(player, 6, 3, 1000, {
+      opponent,
+      urgentGarbageThreshold: 4,
+      onProgress: (progress) => depths.push(progress.depth),
+    });
+    const completed = await search.promise;
+    return {
+      depths,
+      depth: completed.depth,
+      fallback: completed.fallback,
+      placement: completed.placement ? { x: completed.placement.x, rotation: completed.placement.rotation } : null,
+    };
+  });
+
+  expect(result.depths).toEqual([1, 2, 3]);
+  expect(result).toMatchObject({ depth: 3, fallback: false });
+  expect(result.placement).toMatchObject({ x: expect.any(Number), rotation: expect.any(Number) });
+});
+
+test('3수 Worker 메인 콜백 오류는 기존 1수 탐색 결과로 즉시 대체한다', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    board[0][0] = 'red';
+    board[0][1] = 'red';
+    const player = {
+      board,
+      active: { x: 2, y: 12, rotation: 0, colors: ['red', 'blue'] },
+      nextPairs: [['green', 'yellow'], ['blue', 'red']],
+      aiSimulations: [],
+      attack: 0,
+      damage: 0,
+      warningReductionDelay: 0,
+      estimateAttack(colors, positions) { return window.WebPuyo.estimateAttack(this.board, colors, positions); },
+      estimateCombo(colors, positions) { return window.WebPuyo.estimateCombo(this.board, colors, positions); },
+    };
+    new window.WebPuyo.Enemy().prepareTurn(player);
+    const errors = [];
+    const originalConsoleError = console.error;
+    console.error = (...args) => errors.push(args.map(String).join(' '));
+    try {
+      const search = window.WebPuyo.common.simulateNMovePlacementsInWorker(player, 6, 3, 1000, {
+        onProgress: () => { throw new Error('테스트용 메인 콜백 오류'); },
+      });
+      const completed = await search.promise;
+      return {
+        fallback: completed.fallback,
+        depth: completed.depth,
+        placement: completed.placement ? { x: completed.placement.x, rotation: completed.placement.rotation } : null,
+        errorLogged: errors.some((message) => message.includes('테스트용 메인 콜백 오류')),
+      };
+    } finally {
+      console.error = originalConsoleError;
+    }
+  });
+
+  expect(result).toMatchObject({ fallback: true, depth: 0, errorLogged: true });
+  expect(result.placement).toMatchObject({ x: expect.any(Number), rotation: expect.any(Number) });
 });
 
 test('키마리스 2턴 시뮬레이션 처리 시간을 측정한다', async ({ page }) => {

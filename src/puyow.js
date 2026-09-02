@@ -3270,6 +3270,473 @@
         }, null);
     }
 
+    /**
+     * Blob Worker 안에서만 실행할 3수 이상 N수 탐색의 독립 스코프다.
+     * 메인 스코프의 함수·클래스·game 상태를 참조하지 않도록 모든 상수와 규칙은 인자로 받고,
+     * Worker 생성 시 이 함수 본문 전체를 문자열로 포함한다.
+     * @param {object} constants Worker 전용 게임 상수
+     * @returns {void}
+     */
+    function nMoveSimulationWorkerBootstrap(constants) {
+        const { columns, rows, visibleRows, spawnY, colors, hardGarbage, directions, chainBonus, connectionBonus, colorBonus, hardGarbageScoreMultiplier } = constants;
+        const offsets = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+
+        const copyBoard = (board) => Array.isArray(board) ? board.map((row) => Array.isArray(row) ? [...row] : Array(columns).fill(null)) : [];
+        const isUsableBoard = (board) => board.length === rows && board.every((row) => row.length === columns);
+        const activeCells = (active) => {
+            const offset = offsets[active.rotation];
+            const baseY = Math.floor(active.y);
+            return [
+                { x: active.x, y: baseY, color: active.colors[0] },
+                { x: active.x + offset[0], y: baseY + offset[1], color: active.colors[1] }
+            ];
+        };
+        const canPlace = (board, active) => activeCells(active).every((cell) => (
+            cell.x >= 0 && cell.x < columns && cell.y >= 0 && cell.y < rows && !board[cell.y][cell.x]
+        ));
+        const findLandingPlacement = (board, colorsForPair, x, rotation) => {
+            let placement = { x, y: spawnY, rotation, colors: colorsForPair };
+            if (!canPlace(board, placement)) return null;
+            while (canPlace(board, { ...placement, y: placement.y - 1 })) placement = { ...placement, y: placement.y - 1 };
+            return placement;
+        };
+        const collapseBoard = (board) => {
+            const collapsed = Array.from({ length: rows }, () => Array(columns).fill(null));
+            for (let x = 0; x < columns; x += 1) {
+                let targetY = 0;
+                for (let y = 0; y < rows; y += 1) {
+                    if (board[y][x]) {
+                        collapsed[targetY][x] = board[y][x];
+                        targetY += 1;
+                    }
+                }
+            }
+            return collapsed;
+        };
+        const findExplosionGroups = (board) => {
+            const visited = new Set();
+            const groups = [];
+            for (let y = 0; y < visibleRows; y += 1) for (let x = 0; x < columns; x += 1) {
+                const color = board[y][x];
+                const key = `${x},${y}`;
+                if (!colors.includes(color) || visited.has(key)) continue;
+                const cells = [];
+                const queue = [[x, y]];
+                visited.add(key);
+                while (queue.length) {
+                    const [currentX, currentY] = queue.pop();
+                    cells.push([currentX, currentY]);
+                    directions.forEach(([deltaX, deltaY]) => {
+                        const nextX = currentX + deltaX;
+                        const nextY = currentY + deltaY;
+                        const nextKey = `${nextX},${nextY}`;
+                        if (nextX >= 0 && nextX < columns && nextY >= 0 && nextY < visibleRows
+                            && board[nextY][nextX] === color && !visited.has(nextKey)) {
+                            visited.add(nextKey);
+                            queue.push([nextX, nextY]);
+                        }
+                    });
+                }
+                if (cells.length >= 4) groups.push({ color, cells });
+            }
+            return groups;
+        };
+        const getExplosionResolution = (board, groups) => {
+            const removed = new Map();
+            const hardGarbageHits = new Map();
+            groups.forEach((group) => group.cells.forEach(([x, y]) => {
+                removed.set(`${x},${y}`, { x, y });
+                directions.forEach(([deltaX, deltaY]) => {
+                    const nextX = x + deltaX;
+                    const nextY = y + deltaY;
+                    if (nextX < 0 || nextX >= columns || nextY < 0 || nextY >= rows) return;
+                    const cell = board[nextY][nextX];
+                    const key = `${nextX},${nextY}`;
+                    if (cell === 'garbage') removed.set(key, { x: nextX, y: nextY });
+                    else if (cell === hardGarbage) hardGarbageHits.set(key, (hardGarbageHits.get(key) || 0) + 1);
+                });
+            }));
+            const degradedHardGarbage = [];
+            let brokenHardGarbageCount = 0;
+            hardGarbageHits.forEach((hitCount, key) => {
+                const [x, y] = key.split(',').map(Number);
+                if (hitCount >= 2) {
+                    removed.set(key, { x, y });
+                    brokenHardGarbageCount += 1;
+                } else degradedHardGarbage.push({ x, y });
+            });
+            return { removed, degradedHardGarbage, brokenHardGarbageCount };
+        };
+        const getChainBonus = (combo) => combo < chainBonus.length ? chainBonus[Math.max(0, combo)] : chainBonus[chainBonus.length - 1] * (combo - 18);
+        const getConnectionBonus = (count) => connectionBonus[Math.min(Math.max(0, count), connectionBonus.length - 1)];
+        const getColorBonus = (count) => count < colorBonus.length ? colorBonus[Math.max(0, count)] : colorBonus[colorBonus.length - 1] + count - 5;
+        const calculateAttack = (groups, combo, brokenHardGarbageCount, rules) => {
+            const puyoCount = groups.reduce((total, group) => total + group.cells.length, 0);
+            const perColor = new Map();
+            groups.forEach((group) => perColor.set(group.color, (perColor.get(group.color) || 0) + group.cells.length));
+            const largestColorCount = Math.max(0, ...perColor.values());
+            const bonus = Math.max(1, getChainBonus(combo) + getConnectionBonus(largestColorCount) + getColorBonus(perColor.size));
+            const point = puyoCount * (brokenHardGarbageCount * hardGarbageScoreMultiplier + 1) * bonus * 10;
+            return point / rules.marginRate * rules.timeProgressMultiplier;
+        };
+        const resolvePlacement = (sourceBoard, colorsForPair, positions, rules) => {
+            if (!isUsableBoard(sourceBoard) || !Array.isArray(colorsForPair) || colorsForPair.length !== 2 || !Array.isArray(positions) || positions.length !== 2) return null;
+            let board = copyBoard(sourceBoard);
+            for (let index = 0; index < 2; index += 1) {
+                const { x, y } = positions[index] || {};
+                if (!colors.includes(colorsForPair[index]) || !Number.isInteger(x) || !Number.isInteger(y)
+                    || x < 0 || x >= columns || y < 0 || y >= rows || board[y][x]) return null;
+                board[y][x] = colorsForPair[index];
+            }
+            board = collapseBoard(board);
+            let combo = 0;
+            let attack = 0;
+            while (true) {
+                const groups = findExplosionGroups(board);
+                if (!groups.length) return { board, combo, attack };
+                combo += 1;
+                const resolution = getExplosionResolution(board, groups);
+                attack += calculateAttack(groups, combo, resolution.brokenHardGarbageCount, rules);
+                resolution.degradedHardGarbage.forEach(({ x, y }) => { board[y][x] = 'garbage'; });
+                resolution.removed.forEach(({ x, y }) => { board[y][x] = null; });
+                board = collapseBoard(board);
+            }
+        };
+        const isDefeatBoard = (board, rules) => board[11][2] !== null || (rules.usesSecondDefeatCell && board[11][3] !== null);
+        const isIncomingGarbageDefeat = (board, combo, snapshot) => {
+            if (combo > 0 || snapshot.self.fever?.active) return false;
+            const incoming = Math.min(30, Math.floor(Math.max(0, snapshot.incomingGarbage || 0)));
+            if (!incoming) return false;
+            // 실제 방해뿌요의 일부 열 순서는 무작위이므로, 위험 칸에 한 개 더 올 수 있는 안전 우선 상한을 쓴다.
+            const extraPerColumn = Math.ceil(incoming / columns);
+            const dangerColumns = snapshot.rules.usesSecondDefeatCell ? [2, 3] : [2];
+            return dangerColumns.some((column) => board.reduce((height, row) => height + (row[column] !== null ? 1 : 0), 0) + extraPerColumn > 11);
+        };
+        const isAllClearBoard = (board) => board.every((row) => row.every((cell) => cell === null));
+        const getBoardScore = (board, rules) => {
+            let score = 0;
+            for (let y = 0; y < rows; y += 1) for (let x = 0; x < columns; x += 1) {
+                const color = board[y][x];
+                if (!colors.includes(color)) continue;
+                score -= y * 4;
+                if (x < columns - 1 && board[y][x + 1] === color) score += 80;
+                if (y < rows - 1 && board[y + 1][x] === color) score += 55;
+                if (y >= 8 && (x === 2 || (rules.usesSecondDefeatCell && x === 3))) score -= 180;
+            }
+            return score;
+        };
+        const getPlacementScore = (combo, attack, allClear, targetCombo, board, rules) => {
+            const boardScore = getBoardScore(board, rules);
+            if (allClear) return 2000000 + combo * 10000 + attack * 1000 + boardScore;
+            if (combo >= targetCombo) return 1000000 + combo * 10000 + attack * 1000 + boardScore;
+            return attack * 200 + boardScore - (combo > 0 ? (targetCombo - combo + 1) * 25000 : 0);
+        };
+        const expired = (state) => {
+            if (performance.now() < state.deadline) return false;
+            state.timedOut = true;
+            return true;
+        };
+        const findBestFuture = (board, colorsForPair, nextPairs, nextPairIndex, remainingTurns, snapshot, state) => {
+            if (expired(state) || !Array.isArray(colorsForPair) || colorsForPair.length !== 2) return null;
+            let best = null;
+            for (let rotation = 0; rotation < 4; rotation += 1) {
+                for (let x = 0; x < columns; x += 1) {
+                    if (expired(state)) return null;
+                    const landing = findLandingPlacement(board, colorsForPair, x, rotation);
+                    if (!landing) continue;
+                    const positions = activeCells(landing).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
+                    const resolved = resolvePlacement(board, colorsForPair, positions, snapshot.rules);
+                    if (!resolved || isDefeatBoard(resolved.board, snapshot.rules) || isIncomingGarbageDefeat(resolved.board, resolved.combo, snapshot)) continue;
+                    const allClear = isAllClearBoard(resolved.board);
+                    const future = remainingTurns > 1
+                        ? findBestFuture(resolved.board, nextPairs[nextPairIndex], nextPairs, nextPairIndex + 1, remainingTurns - 1, snapshot, state)
+                        : null;
+                    if (state.timedOut) return null;
+                    const candidate = {
+                        x, rotation, positions, board: resolved.board, combo: resolved.combo, attack: resolved.attack, allClear,
+                        maxCombo: Math.max(resolved.combo, future?.maxCombo || 0),
+                        totalAttack: resolved.attack + (future?.totalAttack || 0),
+                        score: getPlacementScore(resolved.combo, resolved.attack, allClear, snapshot.targetCombo, resolved.board, snapshot.rules) + (future ? future.score * 0.92 : 0),
+                        nextResult: future
+                    };
+                    if (!best || candidate.score > best.score
+                        || (candidate.score === best.score && candidate.maxCombo > best.maxCombo)
+                        || (candidate.score === best.score && candidate.maxCombo === best.maxCombo && candidate.x > best.x)) best = candidate;
+                }
+            }
+            return best;
+        };
+        const findBestCurrentPlacement = (snapshot, depth, state) => {
+            const board = snapshot.self.board;
+            const active = snapshot.self.active;
+            if (!isUsableBoard(board) || !active || !Array.isArray(active.colors) || active.colors.length !== 2) return null;
+            const incomingGarbage = Math.max(0, Math.floor(snapshot.incomingGarbage || 0));
+            const incomingIsUrgent = incomingGarbage >= snapshot.urgentGarbageThreshold;
+            let best = null;
+            for (let rotation = 0; rotation < 4; rotation += 1) {
+                for (let x = 0; x < columns; x += 1) {
+                    if (expired(state)) return null;
+                    const landing = findLandingPlacement(board, active.colors, x, rotation);
+                    if (!landing) continue;
+                    const positions = activeCells(landing).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
+                    const resolved = resolvePlacement(board, active.colors, positions, snapshot.rules);
+                    if (!resolved || isDefeatBoard(resolved.board, snapshot.rules) || isIncomingGarbageDefeat(resolved.board, resolved.combo, snapshot)) continue;
+                    const allClear = isAllClearBoard(resolved.board);
+                    const future = depth > 1
+                        ? findBestFuture(resolved.board, snapshot.self.nextPairs[0], snapshot.self.nextPairs, 1, depth - 1, snapshot, state)
+                        : null;
+                    if (state.timedOut) return null;
+                    const plan = {
+                        simulation: { x, rotation, positions, combo: resolved.combo, attack: resolved.attack },
+                        combo: resolved.combo,
+                        attack: resolved.attack,
+                        allClear,
+                        maxCombo: Math.max(resolved.combo, future?.maxCombo || 0),
+                        totalAttack: resolved.attack + (future?.totalAttack || 0),
+                        score: getPlacementScore(resolved.combo, resolved.attack, allClear, snapshot.targetCombo, resolved.board, snapshot.rules) + (future ? future.score * 0.92 : 0),
+                        nextResult: future
+                    };
+                    const availableAttack = Math.floor(snapshot.self.attack + plan.attack);
+                    const remainingIncoming = Math.max(0, incomingGarbage - availableAttack);
+                    const candidate = {
+                        ...plan,
+                        remainingIncoming,
+                        unresolvedDanger: incomingIsUrgent && remainingIncoming >= snapshot.urgentGarbageThreshold
+                    };
+                    if (!best
+                        || (incomingIsUrgent && candidate.unresolvedDanger !== best.unresolvedDanger && !candidate.unresolvedDanger)
+                        || (incomingIsUrgent && candidate.unresolvedDanger && candidate.remainingIncoming !== best.remainingIncoming && candidate.remainingIncoming < best.remainingIncoming)
+                        || (candidate.unresolvedDanger === best.unresolvedDanger && candidate.remainingIncoming === best.remainingIncoming && candidate.score > best.score)
+                        || (candidate.unresolvedDanger === best.unresolvedDanger && candidate.remainingIncoming === best.remainingIncoming && candidate.score === best.score && candidate.maxCombo > best.maxCombo)
+                        || (candidate.unresolvedDanger === best.unresolvedDanger && candidate.remainingIncoming === best.remainingIncoming && candidate.score === best.score && candidate.maxCombo === best.maxCombo && candidate.simulation.x > best.simulation.x)) best = candidate;
+                }
+            }
+            return best;
+        };
+
+        self.onmessage = ({ data }) => {
+            if (!data || data.type !== 'simulate') return;
+            try {
+                const snapshot = data.snapshot;
+                const maxDepth = Math.max(3, Math.min(Math.floor(Number(snapshot?.turnCount) || 3), Array.isArray(snapshot?.self?.nextPairs) ? snapshot.self.nextPairs.length + 1 : 3));
+                const state = { deadline: performance.now() + Math.max(1, Number(data.timeLimitMs) || 1), timedOut: false };
+                let latest = null;
+                for (let depth = 1; depth <= maxDepth; depth += 1) {
+                    if (expired(state)) break;
+                    const plan = findBestCurrentPlacement(snapshot, depth, state);
+                    if (state.timedOut) break;
+                    if (!plan) break;
+                    latest = { depth, placement: plan.simulation, score: plan.score, maxCombo: plan.maxCombo, totalAttack: plan.totalAttack };
+                    self.postMessage({ type: 'progress', requestId: data.requestId, result: latest });
+                }
+                self.postMessage({ type: 'done', requestId: data.requestId, result: latest, timedOut: state.timedOut });
+            } catch (error) {
+                self.postMessage({ type: 'error', requestId: data.requestId, message: error instanceof Error ? error.message : String(error) });
+            }
+        };
+    }
+
+    /** Worker Blob에 넣을 상수다. Worker는 메인 스코프의 closure를 공유하지 않는다. */
+    const N_MOVE_WORKER_CONSTANTS = Object.freeze({
+        columns: COLUMNS,
+        rows: ROWS,
+        visibleRows: VISIBLE_ROWS,
+        spawnY: ACTIVE_PUYO_SPAWN_Y,
+        colors: COLORS,
+        hardGarbage: HARD_GARBAGE,
+        directions: DIRECTIONS,
+        chainBonus: CHAIN_BONUS,
+        connectionBonus: CONNECTION_BONUS,
+        colorBonus: COLOR_BONUS,
+        hardGarbageScoreMultiplier: HARD_GARBAGE_SCORE_MULTIPLIER
+    });
+
+    /** @param {PlayerState|object|null} player 상태를 복사할 플레이어 @param {PlayerState|object|null} opponent 상대 플레이어 @returns {object} Worker에 보낼 JSON 호환 플레이어 상태 */
+    function createNMoveWorkerPlayerSnapshot(player, opponent) {
+        const board = Array.isArray(player?.board) ? player.board.map((row) => [...row]) : Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+        const active = player?.active ? {
+            x: player.active.x,
+            y: player.active.y,
+            rotation: player.active.rotation,
+            colors: Array.isArray(player.active.colors) ? [...player.active.colors] : []
+        } : null;
+        const warningPuyoAmount = Math.max(0, Number(player?.damage) || 0) + Math.max(0, Number(opponent?.announcedAttack) || 0) + Math.max(0, Number(player?.warningReductionDelay) || 0);
+        return {
+            board,
+            normalBoard: Array.isArray(player?.normalBoard) ? player.normalBoard.map((row) => [...row]) : board.map((row) => [...row]),
+            active,
+            nextPairs: Array.isArray(player?.nextPairs) ? player.nextPairs.map((pair) => Array.isArray(pair) ? [...pair] : []) : [],
+            attack: Math.max(0, Number(player?.attack) || 0),
+            damage: Math.max(0, Number(player?.damage) || 0),
+            normalDamage: Math.max(0, Number(player?.normalDamage) || 0),
+            announcedAttack: Math.max(0, Number(player?.announcedAttack) || 0),
+            warningReductionDelay: Math.max(0, Number(player?.warningReductionDelay) || 0),
+            warningPuyoAmount,
+            warningPuyoCount: warningUnits(warningPuyoAmount).length,
+            fever: player?.fever ? {
+                active: player.fever.active === true,
+                damage: Math.max(0, Number(player.fever.damage) || 0),
+                field: Array.isArray(player.fever.field) ? player.fever.field.map((row) => [...row]) : []
+            } : null
+        };
+    }
+
+    /** @param {PlayerState|object} player 현재 CPU 플레이어 @param {PlayerState|object|null} opponent 상대 플레이어 @param {number} targetCombo 목표 연쇄 @param {number} turnCount 탐색 수 @param {number} urgentGarbageThreshold 긴급 상쇄 기준 @returns {object} Worker 탐색용 JSON snapshot */
+    function createNMoveWorkerSnapshot(player, opponent, targetCombo, turnCount, urgentGarbageThreshold) {
+        const selfSnapshot = createNMoveWorkerPlayerSnapshot(player, opponent);
+        const opponentSnapshot = createNMoveWorkerPlayerSnapshot(opponent, player);
+        const displayedWarning = selfSnapshot.warningPuyoAmount;
+        const pendingAttack = selfSnapshot.damage + opponentSnapshot.attack;
+        return {
+            self: selfSnapshot,
+            opponent: opponentSnapshot,
+            incomingGarbage: Math.max(displayedWarning, pendingAttack),
+            urgentGarbageThreshold: Math.max(1, Math.floor(Number(urgentGarbageThreshold) || 1)),
+            targetCombo: Math.max(1, Math.floor(Number(targetCombo) || 6)),
+            turnCount: Math.max(3, Math.floor(Number(turnCount) || 3)),
+            rules: {
+                standard: !game?.feverRule && !game?.continuousFever,
+                feverRule: game?.feverRule === true,
+                continuousFever: game?.continuousFever === true,
+                usesSecondDefeatCell: usesSecondDefeatCell(),
+                marginRate: game?.marginRate ?? MARGIN_RATE_SCHEDULE[0].rate,
+                timeProgressMultiplier: game?.timeProgressMultiplier ?? 1
+            }
+        };
+    }
+
+    /** @returns {Worker} 3수 이상 탐색 전용 Blob Worker */
+    function createNMoveSimulationWorker() {
+        if (typeof Worker !== 'function' || typeof Blob !== 'function' || !URL?.createObjectURL) throw new Error('N수 AI Worker를 사용할 수 없는 환경입니다.');
+        const source = `(${nMoveSimulationWorkerBootstrap.toString()})(${JSON.stringify(N_MOVE_WORKER_CONSTANTS)});`;
+        const objectUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+        try {
+            return new Worker(objectUrl);
+        } finally {
+            URL.revokeObjectURL(objectUrl);
+        }
+    }
+
+    /**
+     * 3수 이상 N수 탐색을 Blob Worker에서 반복 심화 방식으로 실행한다.
+     * 각 깊이가 완전히 끝날 때마다 현재 1수의 최적 위치·회전을 메인 스코프 콜백에 전달하며,
+     * 시간 초과 또는 Worker 오류로 1수 결과가 없으면 기존 동기 N수 함수의 1수 결과를 사용한다.
+     * @param {PlayerState|object} player 현재 CPU 플레이어
+     * @param {number} [targetCombo=6] 목표 연쇄 수
+     * @param {number} [turnCount=3] 현재 수를 포함한 탐색 수
+     * @param {number} [timeLimitMs=50] 메인 스코프에서 측정할 최대 처리 시간(ms)
+     * @param {{opponent?:PlayerState|object|null,urgentGarbageThreshold?:number,onProgress?:(result:object)=>void,onComplete?:(result:object)=>void,onError?:(error:Error)=>void}} [options] Worker 결과 콜백
+     * @returns {{cancel:(reason?:string)=>void,promise:Promise<object>}} 취소 가능한 비동기 탐색 작업
+     */
+    function simulateNMovePlacementsInWorker(player, targetCombo = 6, turnCount = 3, timeLimitMs = 50, options = {}) {
+        const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        const normalizedTurns = Math.max(3, Math.floor(Number(turnCount) || 3));
+        const normalizedLimit = Math.max(1, Math.floor(Number(timeLimitMs) || 1));
+        const opponent = options.opponent ?? game?.players.find((candidate) => candidate !== player) ?? null;
+        let worker = null;
+        let timerId = null;
+        let completed = false;
+        let latestResult = null;
+        let resolvePromise;
+        const promise = new Promise((resolve) => { resolvePromise = resolve; });
+        const clearTimer = () => {
+            if (timerId !== null) clearTimeout(timerId);
+            timerId = null;
+        };
+        const terminateWorker = () => {
+            if (!worker) return;
+            worker.onmessage = null;
+            worker.onerror = null;
+            worker.terminate();
+            worker = null;
+        };
+        const notifyComplete = (result) => {
+            if (completed) return;
+            clearTimer();
+            terminateWorker();
+            try {
+                options.onComplete?.(result);
+            } catch (error) {
+                console.error('N수 AI Worker 완료 처리에 실패했습니다.', error);
+                if (!result.fallback) {
+                    useSynchronousFallback('메인 스코프 완료 처리 오류', error instanceof Error ? error : new Error(String(error)));
+                    return;
+                }
+            }
+            completed = true;
+            resolvePromise(result);
+        };
+        const useSynchronousFallback = (reason, error = null) => {
+            if (completed) return;
+            if (error) {
+                console.error(`N수 AI Worker ${reason}: ${error.message}`, error);
+                try { options.onError?.(error); } catch (callbackError) { console.error('N수 AI Worker 오류 콜백에 실패했습니다.', callbackError); }
+            }
+            const fallbackPlan = findBestNMovePlacement(player, targetCombo, 1);
+            notifyComplete({
+                depth: 0,
+                placement: fallbackPlan?.simulation || null,
+                score: fallbackPlan?.score ?? null,
+                fallback: true,
+                reason
+            });
+        };
+        const applyProgress = (result) => {
+            latestResult = result;
+            try {
+                options.onProgress?.(result);
+            } catch (error) {
+                terminateWorker();
+                useSynchronousFallback('메인 스코프 진행 결과 처리 오류', error instanceof Error ? error : new Error(String(error)));
+            }
+        };
+        const cancel = (reason = 'cancelled') => {
+            if (completed) return;
+            completed = true;
+            clearTimer();
+            terminateWorker();
+            resolvePromise({ cancelled: true, reason, depth: latestResult?.depth ?? 0, placement: latestResult?.placement || null });
+        };
+        try {
+            worker = createNMoveSimulationWorker();
+            const snapshot = createNMoveWorkerSnapshot(player, opponent, targetCombo, normalizedTurns, options.urgentGarbageThreshold ?? 1);
+            const requestId = `${Date.now()}-${Math.floor(randomFloat() * 1000000)}`;
+            const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+            const remainingTimeMs = Math.max(0, normalizedLimit - (now - startedAt));
+            if (remainingTimeMs <= 0) {
+                useSynchronousFallback('1수 탐색 시간 초과');
+                return { cancel, promise };
+            }
+            worker.onmessage = ({ data }) => {
+                if (!data || data.requestId !== requestId || completed) return;
+                if (data.type === 'progress' && data.result?.placement) {
+                    applyProgress(data.result);
+                    return;
+                }
+                if (data.type === 'done') {
+                    if (data.result?.placement) latestResult = data.result;
+                    if (latestResult?.placement) notifyComplete({ ...latestResult, fallback: false, timedOut: data.timedOut === true });
+                    else useSynchronousFallback(data.timedOut ? '1수 탐색 시간 초과' : '1수 탐색 결과 없음');
+                    return;
+                }
+                if (data.type === 'error') {
+                    useSynchronousFallback('Worker 오류', new Error(data.message || '알 수 없는 Worker 오류'));
+                }
+            };
+            worker.onerror = (event) => useSynchronousFallback('Worker 실행 오류', new Error(event.message || '알 수 없는 Worker 실행 오류'));
+            timerId = setTimeout(() => {
+                if (completed) return;
+                if (latestResult?.placement) notifyComplete({ ...latestResult, fallback: false, timedOut: true });
+                else useSynchronousFallback('1수 탐색 시간 초과');
+            }, remainingTimeMs);
+            worker.postMessage({ type: 'simulate', requestId, snapshot, timeLimitMs: remainingTimeMs });
+        } catch (error) {
+            terminateWorker();
+            useSynchronousFallback('메인 스코프 초기화 오류', error instanceof Error ? error : new Error(String(error)));
+        }
+        return { cancel, promise };
+    }
+
     /** @param {(string|null)[][]} board 검사할 보드 @returns {boolean} 빈 보드 여부 */
     function isAllClearBoard(board) {
         return board.every((row) => row.every((cell) => cell === null));
@@ -11887,7 +12354,7 @@
 
     /**
      * 안드레알푸스는 수학·기하학·천문학에 능통한 미모후작을 거대한 공작으로 각색한 기본 제공 적이다.
-     * 키마리스와 같은 생존·상쇄 평가를 2수 앞까지 읽되, 더 높은 연쇄를 목표로 삼는다.
+     * 키마리스와 같은 생존·상쇄 평가를 사용하되, 일반 상황에서는 Worker로 3수 앞까지 읽는다.
      */
     class Andrealphus extends BundledEnemy {
         constructor() {
@@ -11898,10 +12365,22 @@
             this.ignorableIncomingGarbage = 4;
             /** 피버가 아닌 평상시 목표 연쇄 수. @type {number} */
             this.targetCombo = 7;
-            /** 현재 수를 포함해 읽을 예고쌍 수. @type {number} */
-            this.lookaheadTurnCount = 2;
-            /** 현재 턴의 2수 읽기 배치 후보다. @type {object|null} */
+            /** 현재 수를 포함해 Worker가 읽을 예고쌍 수. @type {number} */
+            this.lookaheadTurnCount = 3;
+            /** Worker 반복 심화 탐색의 최대 대기 시간(ms)이다. 호출자가 인스턴스별로 조정할 수 있다. @type {number} */
+            this.lookaheadTimeLimitMs = 50;
+            /** 현재 턴의 Worker 또는 fallback 탐색 배치 후보다. @type {object|null} */
             this.attackPlacement = null;
+            /** 현재 3수 Worker 탐색 작업이다. @type {{cancel:(reason?:string)=>void,promise:Promise<object>}|null} */
+            this.pendingWorkerSearch = null;
+            /** Worker 탐색을 시작했던 플레이어다. @type {PlayerState|object|null} */
+            this.workerSearchPlayer = null;
+            /** Worker 탐색을 시작했던 현재 뿌요 쌍이다. @type {object|null} */
+            this.workerSearchActive = null;
+            /** 메인 스코프에 마지막으로 탑재된 반복 심화 탐색 깊이다. @type {number} */
+            this.workerSearchDepth = 0;
+            /** @type {'idle'|'pending'|'ready'|'cancelled'} */
+            this.workerSearchState = 'idle';
             // 키마리스가 암두시아스에서 물려받는 일반·위기 빠른 하강 속도와 같게 유지한다.
             this.normalFastDownDelayRate = 1.0;
             this.dangerFastDownDelayRate = 0.5;
@@ -11963,7 +12442,8 @@
         }
 
         /**
-         * 현재 수와 다음 예고쌍을 공통 N수 시뮬레이션으로 읽어 안드레알푸스의 최적 착지 후보를 고른다.
+         * 기존 동기 공통 함수를 이용하는 호환용 2수 이하 탐색이다.
+         * 일반 게임 흐름은 이 메서드 대신 Worker 반복 심화 탐색을 사용한다.
          * @param {PlayerState} player 자동 조작할 플레이어
          * @returns {object|null} 선택한 현재 턴 후보
          */
@@ -11971,28 +12451,99 @@
             const incomingGarbage = Math.max(0, Math.floor(this.getIncomingGarbage(player)));
             const incomingIsUrgent = incomingGarbage >= this.ignorableIncomingGarbage;
             let best = null;
-            simulateNMovePlacements(player, this.targetCombo, this.lookaheadTurnCount).forEach((plan) => {
+            simulateNMovePlacements(player, this.targetCombo, Math.min(2, this.lookaheadTurnCount)).forEach((plan) => {
                 const candidate = this.evaluateLookaheadPlacement(player, plan, incomingGarbage);
                 if (candidate && this.isBetterLookaheadPlacement(candidate, best, incomingIsUrgent)) best = candidate;
             });
             return best?.simulation || null;
         }
 
+        /** @param {PlayerState|object} player 현재 Worker 결과를 적용할 플레이어 @returns {boolean} 아직 같은 조작 턴인지 여부 */
+        isCurrentWorkerSearch(player) {
+            return player === this.workerSearchPlayer && player?.active === this.workerSearchActive;
+        }
+
         /**
-         * 피버 중에는 Enemy의 연쇄 최적 후보를 그대로 사용하고, 평상시에는 2수 읽기를 준비한다.
+         * Worker가 완료한 깊이의 현재 1수 최적 위치·회전을 메인 스코프에 탑재한다.
+         * @param {PlayerState|object} player CPU 플레이어
+         * @param {{depth:number,placement:{x:number,rotation:number,positions?:object[],combo?:number,attack?:number}}} result Worker 결과
+         * @returns {void}
+         */
+        applyWorkerSearchResult(player, result) {
+            if (!this.isCurrentWorkerSearch(player) || !result?.placement) return;
+            const placement = result.placement;
+            if (!player.aiSimulations.some((candidate) => candidate.x === placement.x && candidate.rotation === placement.rotation)) {
+                throw new Error('Worker가 현재 뿌요에 적용할 수 없는 위치 또는 회전을 반환했습니다.');
+            }
+            this.attackPlacement = { ...placement };
+            this.workerSearchDepth = result.depth;
+            player.aiTarget = placement.x;
+            player.aiRotation = this.selectSafeRotation(player, placement.rotation);
+            player.aiDecisionElapsed = 0;
+            this.workerSearchState = 'ready';
+        }
+
+        /** @param {PlayerState|object} player Worker 탐색을 시작할 CPU 플레이어 @returns {void} */
+        startWorkerLookaheadSearch(player) {
+            this.cancelPendingRequest(null, 'replaced');
+            this.workerSearchPlayer = player;
+            this.workerSearchActive = player.active;
+            this.workerSearchDepth = 0;
+            this.workerSearchState = 'pending';
+            const opponent = game?.players.find((candidate) => candidate !== player) ?? null;
+            this.pendingWorkerSearch = simulateNMovePlacementsInWorker(
+                player,
+                this.targetCombo,
+                this.lookaheadTurnCount,
+                this.lookaheadTimeLimitMs,
+                {
+                    opponent,
+                    urgentGarbageThreshold: this.ignorableIncomingGarbage,
+                    onProgress: (result) => this.applyWorkerSearchResult(player, result),
+                    onComplete: (result) => {
+                        if (!this.isCurrentWorkerSearch(player)) return;
+                        this.pendingWorkerSearch = null;
+                        if (result.placement) this.applyWorkerSearchResult(player, result);
+                        else {
+                            this.attackPlacement = findBestNMovePlacement(player, this.targetCombo, 1)?.simulation
+                                || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
+                            player.aiTarget = this.attackPlacement?.x ?? (player.active ? player.active.x : 2);
+                            player.aiRotation = this.selectSafeRotation(player, this.attackPlacement?.rotation ?? 0);
+                            this.workerSearchDepth = 0;
+                            player.aiDecisionElapsed = 0;
+                        }
+                        this.workerSearchState = 'ready';
+                    },
+                    onError: () => { this.workerSearchState = 'pending'; }
+                }
+            );
+        }
+
+        /** 착지 또는 다음 턴 시작 시 현재 Worker 탐색을 종료한다. @param {PlayerState|object|null} player CPU 플레이어 @param {string} [reason='cancelled'] 종료 사유 @returns {void} */
+        cancelPendingRequest(player, reason = 'cancelled') {
+            if (!this.pendingWorkerSearch || (player && player !== this.workerSearchPlayer)) return;
+            this.pendingWorkerSearch.cancel(reason);
+            this.pendingWorkerSearch = null;
+            if (reason === 'contact') this.workerSearchState = 'cancelled';
+        }
+
+        /**
+         * 피버·패배 위치 보호는 기존 공통 후보를 그대로 사용하고, 그 밖의 평상시만 Worker 3수 탐색을 시작한다.
          * @param {PlayerState} player 자동 조작할 플레이어
          * @returns {void}
          */
         prepareTurn(player) {
+            this.cancelPendingRequest(null, 'replaced');
             Enemy.prototype.prepareTurn.call(this, player);
             this.attackPlacement = null;
+            this.workerSearchDepth = 0;
+            this.workerSearchState = 'idle';
             if (this.getPreparedPlacement()) return;
             if (!this.isInFever(player) && this.isFieldAtLeastEightyPercentFilled(player)) {
                 this.preparedPlacement = findAiDefeatPositionSafePlacement(player, true);
                 if (this.getPreparedPlacement()) return;
             }
-            this.attackPlacement = this.findBestLookaheadPlacement(player)
-                || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
+            this.startWorkerLookaheadSearch(player);
         }
 
         /**
@@ -12003,7 +12554,6 @@
         chooseTarget(player) {
             const preparedPlacement = this.getPreparedPlacement();
             if (preparedPlacement) return preparedPlacement.x;
-            if (!this.attackPlacement) this.attackPlacement = this.findBestLookaheadPlacement(player);
             return this.attackPlacement?.x ?? (player.active ? player.active.x : 2);
         }
 
@@ -12014,11 +12564,18 @@
          */
         chooseRotate(player) {
             const preparedPlacement = this.getPreparedPlacement();
-            if (!preparedPlacement && !this.attackPlacement) {
-                this.attackPlacement = this.findBestLookaheadPlacement(player)
-                    || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
-            }
             return this.selectSafeRotation(player, preparedPlacement?.rotation ?? this.attackPlacement?.rotation ?? 0);
+        }
+
+        /** Worker가 아직 1수 결과를 준비하는 동안에는 수평 이동·회전을 멈춘다. @param {PlayerState} player CPU 플레이어 @returns {boolean} 기본 이동을 대체했는지 */
+        updateControl(player) {
+            return this.workerSearchState === 'pending' && this.isCurrentWorkerSearch(player);
+        }
+
+        /** @param {PlayerState} player CPU 플레이어 @returns {boolean} Worker 결과를 기다리는 동안에는 빠른 하강을 하지 않는다. */
+        useFastDown(player) {
+            if (this.workerSearchState === 'pending' && this.isCurrentWorkerSearch(player)) return false;
+            return super.useFastDown(player);
         }
 
         /**
@@ -12340,6 +12897,7 @@
         findBestPreviewResult,
         simulateNMovePlacements,
         findBestNMovePlacement,
+        simulateNMovePlacementsInWorker,
         findExplosionsOnBoard,
         findExplosionGroupsOnBoard,
         getChainBonus,
@@ -12408,6 +12966,7 @@
         findBestPreviewResult,
         simulateNMovePlacements,
         findBestNMovePlacement,
+        simulateNMovePlacementsInWorker,
         findExplosionsOnBoard,
         findExplosionGroupsOnBoard,
         getChainBonus,
