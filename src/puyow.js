@@ -603,11 +603,11 @@
         { key: 'fever', label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever },
         { key: 'relaxedFever', label: '피버 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever }
     ];
-    /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,activate?:()=>void}[]} */
+    /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,isDisabled?:()=>boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard, activate: () => openOpponentMenu('standard') },
         { label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, activate: () => openOpponentMenu('fever') },
-        { label: '피버 룰 (시작)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.feverStart, activate: () => openOpponentMenu('feverStart') },
+        { label: '피버 룰 (시작)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.feverStart, isDisabled: () => !isFeverStartRuleUnlocked(), activate: () => openOpponentMenu('feverStart') },
         { label: '연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice, activate: () => openPracticeDifficulty() },
         { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() },
         { label: '퍼즐뿌요', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.puzzle, activate: () => openPuzzleStageSelection() }
@@ -1916,12 +1916,18 @@
         return store.clearListByDifficulty;
     }
 
+    /** 모든 난이도에서 피버 룰로 키마리스를 이겼는지 확인해 피버 룰 (시작)의 잠금을 판정한다. @returns {boolean} 피버 룰 (시작) 해금 여부 */
+    function isFeverStartRuleUnlocked() {
+        return Object.values(store.feverClearListByDifficulty || {}).some((clearList) => Array.isArray(clearList) && clearList.includes('Kimaris'));
+    }
+
     /**
      * 이전 유효 적을 클리어해 현재 잠금이 해제된 적인지 판별한다.
      * @param {{className:string, hidden:boolean, notAvail:boolean}} opponent 판별할 적
+     * @param {'standard'|'fever'|'feverStart'} [rule=opponentMenuRule] 적용할 대전 규칙
      * @returns {boolean} 선택 가능 여부
      */
-    function isOpponentUnlocked(opponent) {
+    function isOpponentUnlocked(opponent, rule = opponentMenuRule) {
         if (isObservationCodeApplied()) return true;
         // 솔로몬은 저장 진행도와 무관한 세션 전용 적이므로 기존 적의 순차 해금 조건에 끼워 넣지 않는다.
         if (opponent.classType === 'Solomon') return solomonSessionUnlocked;
@@ -1929,7 +1935,7 @@
         const index = progressionOpponents.indexOf(opponent);
         if (index <= 0) return index === 0;
         const difficultyKey = getSelectedDifficulty().key;
-        const progressStore = getOpponentProgressStore();
+        const progressStore = getOpponentProgressStore(rule);
         const clearList = progressStore?.[difficultyKey] || [];
         return clearList.includes(progressionOpponents[index - 1].className);
     }
@@ -1938,16 +1944,16 @@
      * 현재 선택할 수 있는 적 목록을 반환한다.
      * @returns {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} 선택할 수 있는 적 목록
      */
-    function getSelectableOpponents() {
-        return getVisibleOpponents().filter((opponent) => !opponent.notAvail && isOpponentUnlocked(opponent));
+    function getSelectableOpponents(rule = opponentMenuRule) {
+        return getVisibleOpponents().filter((opponent) => !opponent.notAvail && isOpponentUnlocked(opponent, rule));
     }
 
     /**
      * 현재 선택값이 선택 가능한 적을 가리키도록 보정한다.
      * @returns {boolean} 선택 가능한 적 존재 여부
      */
-    function ensureSelectedOpponent() {
-        const selectable = getSelectableOpponents();
+    function ensureSelectedOpponent(rule = opponentMenuRule) {
+        const selectable = getSelectableOpponents(rule);
         if (!selectable.length) return false;
         if (!selectable.includes(OPPONENTS[selectedOpponent])) selectedOpponent = OPPONENTS.indexOf(selectable[0]);
         return true;
@@ -1956,10 +1962,11 @@
     /**
      * 선택 가능한 적 중 현재 적의 이전 또는 다음 적을 반환한다.
      * @param {number} direction 이전 -1 또는 다음 1
+     * @param {'standard'|'fever'|'feverStart'} [rule=opponentMenuRule] 적용할 대전 규칙
      * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean}|null} 이동 대상 적
      */
-    function getRelativeSelectableOpponent(direction) {
-        const selectable = getSelectableOpponents();
+    function getRelativeSelectableOpponent(direction, rule = opponentMenuRule) {
+        const selectable = getSelectableOpponents(rule);
         const currentIndex = selectable.indexOf(OPPONENTS[selectedOpponent]);
         if (currentIndex < 0) return null;
         return selectable[currentIndex + (direction < 0 ? -1 : 1)] || null;
@@ -1970,8 +1977,8 @@
      * @param {number} direction 이전 -1 또는 다음 1
      * @returns {boolean} 적 이동 여부
      */
-    function selectRelativeOpponent(direction) {
-        const target = getRelativeSelectableOpponent(direction);
+    function selectRelativeOpponent(direction, rule = opponentMenuRule) {
+        const target = getRelativeSelectableOpponent(direction, rule);
         if (!target) return false;
         selectedOpponent = OPPONENTS.indexOf(target);
         return true;
@@ -7419,7 +7426,12 @@
 
     /** 포커스 가능한 게임 규칙 선택지의 실제 배열 순번을 반환한다. @returns {number[]} 포커스 가능한 선택지 순번 */
     function getSelectableRuleOptionIndices() {
-        return GAME_RULE_OPTIONS.map((option, index) => option.disabled ? -1 : index).filter((index) => index >= 0);
+        return GAME_RULE_OPTIONS.map((option, index) => isGameRuleOptionDisabled(option) ? -1 : index).filter((index) => index >= 0);
+    }
+
+    /** 게임 규칙 선택지가 현재 잠겼는지 판정한다. @param {object} option 게임 규칙 선택지 @returns {boolean} 잠금 여부 */
+    function isGameRuleOptionDisabled(option) {
+        return option.disabled === true || option.isDisabled?.() === true;
     }
 
     /** 게임 규칙 선택지 하나의 화면 영역을 반환한다. @param {number} index 선택지 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
@@ -7623,7 +7635,7 @@
             return;
         }
         const option = GAME_RULE_OPTIONS[ruleSelectionFocus];
-        if (!option || option.disabled) return;
+        if (!option || isGameRuleOptionDisabled(option)) return;
         playMenuSelectSound();
         closeRuleSelection();
         option.activate();
@@ -7645,7 +7657,7 @@
             arrowdown: [3, 4, 4, 5, RULE_SELECTION_CANCEL_INDEX, null]
         };
         const nextIndex = focusByDirection[key]?.[ruleSelectionFocus];
-        if (Number.isInteger(nextIndex) && (nextIndex === RULE_SELECTION_CANCEL_INDEX || !GAME_RULE_OPTIONS[nextIndex]?.disabled)) ruleSelectionFocus = nextIndex;
+        if (Number.isInteger(nextIndex) && (nextIndex === RULE_SELECTION_CANCEL_INDEX || !isGameRuleOptionDisabled(GAME_RULE_OPTIONS[nextIndex]))) ruleSelectionFocus = nextIndex;
     }
 
     /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 그린다. @returns {void} */
@@ -7653,15 +7665,16 @@
         context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
         GAME_RULE_OPTIONS.forEach((option, index) => {
             const bounds = getRuleSelectionButtonBounds(index);
-            const disabled = option.disabled === true;
+            const disabled = isGameRuleOptionDisabled(option);
             const focused = !disabled && index === ruleSelectionFocus;
             context.fillStyle = disabled ? '#3c4650' : option.backgroundColor; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.strokeStyle = disabled ? '#7c8791' : focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.textAlign = 'center'; context.fillStyle = disabled ? '#c4cbd0' : '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
-            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (option.statusLabel ? 32 : 47));
-            if (option.statusLabel) {
+            const statusLabel = disabled ? '잠김' : option.statusLabel;
+            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (statusLabel ? 32 : 47));
+            if (statusLabel) {
                 context.fillStyle = disabled ? '#f0c674' : '#f5fbfc'; context.font = `15px ${BUTTON_FONT}`;
-                context.fillText(translate(option.statusLabel), bounds.x + bounds.width / 2, bounds.y + 59);
+                context.fillText(translate(statusLabel), bounds.x + bounds.width / 2, bounds.y + 59);
             }
         });
         const cancelBounds = getRuleSelectionCancelButtonBounds();
@@ -7872,7 +7885,7 @@
                 context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(difficulty.name), x + 55, 223);
             });
             context.fillStyle = '#d8f2f5'; context.font = `22px ${TITLE_FONT}`; context.fillText(translate('적 선택'), WIDTH / 2, 285);
-            ensureSelectedOpponent();
+            ensureSelectedOpponent(opponentMenuRule);
             const opponent = OPPONENTS[selectedOpponent];
             context.fillStyle = '#0b202c'; context.fillRect(WIDTH / 2 - 170, 300, 340, 170);
             context.strokeStyle = opponentMenuFocus === 2 ? '#f7c843' : '#ef8aa0'; context.lineWidth = opponentMenuFocus === 2 ? 4 : 3; context.strokeRect(WIDTH / 2 - 170, 300, 340, 170);
@@ -7880,8 +7893,8 @@
                 opponent.createController().drawPortrait(context, WIDTH / 2, 375, 0.62);
                 context.fillStyle = '#f5fbfc'; context.font = `28px ${BUTTON_FONT}`; context.fillText(translate(opponent.createController().getName()), WIDTH / 2, 450);
             }
-            const previousOpponent = getRelativeSelectableOpponent(-1);
-            const nextOpponent = getRelativeSelectableOpponent(1);
+            const previousOpponent = getRelativeSelectableOpponent(-1, opponentMenuRule);
+            const nextOpponent = getRelativeSelectableOpponent(1, opponentMenuRule);
             context.fillStyle = opponentMenuFocus === 2 ? '#f7c843' : '#6bbce8';
             if (previousOpponent) {
                 context.beginPath();
@@ -7904,7 +7917,7 @@
             visibleOpponents.forEach((entry, index) => {
                 const cardX = WIDTH / 2 - 80 + (index - selectedVisibleIndex) * 180;
                 const selected = entry === opponent;
-                const locked = !entry.notAvail && !isOpponentUnlocked(entry);
+                const locked = !entry.notAvail && !isOpponentUnlocked(entry, opponentMenuRule);
                 const disabled = entry.notAvail || locked;
                 context.fillStyle = disabled ? '#3c4650' : selected ? '#563068' : '#0b202c'; context.fillRect(cardX, 475, 160, 62);
                 context.strokeStyle = disabled ? '#7c8791' : selected ? '#ef8aa0' : '#3b6070'; context.lineWidth = 2; context.strokeRect(cardX, 475, 160, 62);
@@ -8806,7 +8819,7 @@
      */
     function openOpponentMenu(rule = 'standard') {
         opponentMenuRule = rule;
-        ensureSelectedOpponent();
+        ensureSelectedOpponent(rule);
         opponentMenuFocus = 0;
         selectedOpponentAction = 0;
         menuScreen = 'opponent';
@@ -8938,7 +8951,7 @@
                 return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
             });
             if (selectedIndex >= 0) {
-                if (!GAME_RULE_OPTIONS[selectedIndex].disabled) {
+                if (!isGameRuleOptionDisabled(GAME_RULE_OPTIONS[selectedIndex])) {
                     ruleSelectionFocus = selectedIndex;
                     activateRuleSelection();
                 }
@@ -9178,7 +9191,7 @@
             });
             if (cardIndex >= 0) {
                 const clickedOpponent = visibleOpponents[cardIndex];
-                if (getSelectableOpponents().includes(clickedOpponent)) {
+                if (getSelectableOpponents(opponentMenuRule).includes(clickedOpponent)) {
                     playMenuSelectSound();
                     selectedOpponent = OPPONENTS.indexOf(clickedOpponent);
                     opponentMenuFocus = 2;

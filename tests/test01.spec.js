@@ -1506,7 +1506,21 @@ test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽
   await expect.poll(() => page.evaluate(() => {
     const labels = ['피버 룰 (시작)', 'FEVER Rules (Start)', 'FEVER ルール (開始)', 'FEVER 规则（开始）'];
     const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(908, 312, 1, 1).data;
-    return labels.some((label) => window.testCanvasTexts.includes(label)) && Array.from(color).join(',') === '75,31,111,255';
+    return labels.some((label) => window.testCanvasTexts.includes(label)) && Array.from(color).join(',') === '60,70,80,255';
+  })).toBe(true);
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 908, y: 312 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('puyow_store') || '{"clearList":[]}');
+    saved.feverClearListByDifficulty = { easy: [], normal: [], hard: ['Kimaris'], extreme: [] };
+    localStorage.setItem('puyow_store', JSON.stringify(saved));
+  });
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => {
+    const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(908, 312, 1, 1).data;
+    return Array.from(color).join(',') === '75,31,111,255';
   })).toBe(true);
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
@@ -1823,6 +1837,13 @@ test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async
 
 test('피버 룰 (시작) 승리는 피버 룰과 분리된 진행도로 저장되고 적 갤러리를 해금한다', async ({ page }) => {
   await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('puyow_store') || '{"clearList":[]}');
+    saved.feverClearListByDifficulty = { easy: [], normal: [], hard: ['Kimaris'], extreme: [] };
+    localStorage.setItem('puyow_store', JSON.stringify(saved));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await page.evaluate(() => {
     class FeverStartProgressEnemy extends window.WebPuyo.Enemy {
       constructor() { super(); this.sortPriority = -1; }
       getClassType() { return 'FeverStartProgressEnemy'; }
@@ -1857,6 +1878,33 @@ test('피버 룰 (시작) 승리는 피버 룰과 분리된 진행도로 저장�
   expect(progress.fever).toEqual([]);
   expect(progress.feverStart).toEqual(['FeverStartProgressEnemy']);
   expect(progress.gallery).toContain('FeverStartProgressEnemy');
+});
+
+test('피버 룰 (시작)은 피버 룰의 여러 적 승리 기록이 있어도 적을 별도로 잠근다', async ({ page }) => {
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('puyow_store') || '{"clearList":[]}');
+    saved.feverClearListByDifficulty = {
+      easy: [],
+      normal: ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias', 'Kimaris'],
+      hard: [],
+      extreme: [],
+    };
+    saved.feverStartClearListByDifficulty = { easy: [], normal: [], hard: [], extreme: [] };
+    localStorage.setItem('puyow_store', JSON.stringify(saved));
+  });
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await expect.poll(() => page.evaluate(() => {
+    const texts = window.testCanvasTexts;
+    const firstOpponent = ['안드로말리우스', 'Andromalius', 'アンドロマリウス', '安德罗马利乌斯'];
+    const lockedOpponent = ['단탈리온', 'Dantalion', 'ダンタリオン', '丹塔利昂'];
+    return firstOpponent.some((text) => texts.includes(text)) && !lockedOpponent.some((text) => texts.includes(text));
+  })).toBe(true);
 });
 
 test('Enemy 기본 구현은 피버 상태에서 연쇄 최적 위치와 회전을 준비한다', async ({ page }) => {
