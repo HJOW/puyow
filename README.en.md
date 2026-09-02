@@ -80,7 +80,7 @@ This project is distributed under the [Apache License 2.0](LICENSE).
 
 ## Third Parties
 
-+ Three.js (not currently in use)
++ Three.js (Optional, used only for some special effects)
 
 The MIT License
 

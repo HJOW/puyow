@@ -99,7 +99,7 @@
 
 ## Third Parties
 
-+ Three.js (아직 사용중이지 않음)
++ Three.js (선택사항으로 일부 특수효과에만 사용)
 
 The MIT License
 
