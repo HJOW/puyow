@@ -1,9 +1,9 @@
 """Puyo W용 self-play DQN 학습기.
 
-현재 nodeserver.js에는 게임 조작 API가 없으므로, 이 파일은 Puyo W의
-핵심 보드 규칙을 작은 독립 환경으로 실행해 정책 모델을 학습한다. 학습된
-가중치는 PyTorch 체크포인트로 저장되며, 추후 브라우저/서버 어댑터가 붙을
-수 있도록 관측값과 행동의 계약을 고정한다.
+nodeserver.js의 인증된 학습 이벤트 API를 선택적으로 사용한다. 서버 URL을
+지정하지 않으면 Puyo W의 핵심 보드 규칙을 작은 독립 환경으로 실행하고,
+지정하면 매 에피소드의 관측값·행동·보상·종료 상태를 서버로 전달한다.
+학습된 가중치는 PyTorch 체크포인트로 저장된다.
 """
 
 # Puyo W - AI 인공지능용 학습 모델 (LM Studio 호환) 개발 스크립트
@@ -19,6 +19,9 @@
 import argparse
 import json
 import random
+import os
+import urllib.error
+import urllib.request
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,6 +36,50 @@ BOARD_HEIGHT = 12
 COLORS = 5
 ACTION_COUNT = BOARD_WIDTH * 4
 OBSERVATION_SIZE = BOARD_WIDTH * BOARD_HEIGHT * (COLORS + 1) + COLORS * 2 + 2
+
+
+class LearningApiClient:
+	"""nodeserver.js의 인증된 학습 이벤트 API 클라이언트."""
+
+	def __init__(self, server_url: str, token: str, timeout: float = 10.0) -> None:
+		if not token:
+			raise ValueError("API를 사용할 때는 --api-token 또는 PUYOW_AI_TOKEN이 필요합니다.")
+		self.endpoint = server_url.rstrip("/") + "/apis/learning"
+		self.token = token
+		self.timeout = timeout
+
+	def send(self, payload: dict) -> dict:
+		request = urllib.request.Request(
+			self.endpoint,
+			data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+			headers={"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"},
+			method="POST",
+		)
+		try:
+			with urllib.request.urlopen(request, timeout=self.timeout) as response:
+				result = json.loads(response.read().decode("utf-8"))
+		except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError) as error:
+			raise RuntimeError(f"학습 API 요청 실패: {error}") from error
+		if not result.get("ok"):
+			raise RuntimeError(f"학습 API가 요청을 거부했습니다: {result.get('error', '알 수 없는 오류')}")
+		return result
+
+	def reset(self, session_id: str, observation: torch.Tensor) -> dict:
+		return self.send({"event": "reset", "sessionId": session_id, "observation": observation.tolist()})
+
+	def step(self, session_id: str, state: torch.Tensor, action: int, reward: float, next_state: torch.Tensor, done: bool) -> dict:
+		return self.send({
+			"event": "step",
+			"sessionId": session_id,
+			"observation": state.tolist(),
+			"action": action,
+			"reward": reward,
+			"nextObservation": next_state.tolist(),
+			"done": done,
+		})
+
+	def episode_end(self, session_id: str) -> dict:
+		return self.send({"event": "episode_end", "sessionId": session_id, "done": True})
 
 
 @dataclass
@@ -166,10 +213,11 @@ class PolicyNetwork(nn.Module):
 		return self.layers(state)
 
 
-def train(episodes: int, seed: int, output: Path, device_name: str) -> None:
+def train(episodes: int, seed: int, output: Path, device_name: str, server_url: str = "", api_token: str = "") -> None:
 	random.seed(seed)
 	torch.manual_seed(seed)
 	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
+	api_client = LearningApiClient(server_url, api_token or os.environ.get("PUYOW_AI_TOKEN", "")) if server_url else None
 	policy = PolicyNetwork().to(device)
 	target = PolicyNetwork().to(device)
 	target.load_state_dict(policy.state_dict())
@@ -183,6 +231,9 @@ def train(episodes: int, seed: int, output: Path, device_name: str) -> None:
 	for episode in range(episodes):
 		environment = PuyoEnvironment(seed + episode)
 		state = environment.reset()
+		session_id = f"puyow-training-{seed}-{episode}"
+		if api_client:
+			api_client.reset(session_id, state)
 		episode_reward = 0.0
 		for _ in range(100):
 			epsilon = max(epsilon_end, epsilon_start - (epsilon_start - epsilon_end) * steps / total_steps)
@@ -192,6 +243,8 @@ def train(episodes: int, seed: int, output: Path, device_name: str) -> None:
 				with torch.no_grad():
 					action = int(policy(state.to(device)).argmax().item())
 			next_state, reward, done, _ = environment.step(action)
+			if api_client:
+				api_client.step(session_id, state, action, reward, next_state, done)
 			replay.append(Transition(state, action, reward, next_state, done))
 			state, episode_reward, steps = next_state, episode_reward + reward, steps + 1
 			if len(replay) >= batch_size:
@@ -214,6 +267,8 @@ def train(episodes: int, seed: int, output: Path, device_name: str) -> None:
 				target.load_state_dict(policy.state_dict())
 			if done:
 				break
+		if api_client:
+			api_client.episode_end(session_id)
 		if (episode + 1) % max(1, episodes // 10) == 0 or episode == 0:
 			print(f"episode={episode + 1}/{episodes} reward={episode_reward:.1f} epsilon={epsilon:.3f}")
 
@@ -229,14 +284,16 @@ def main() -> None:
 	parser.add_argument("--seed", type=int, default=2026, help="재현 가능한 난수 시드")
 	parser.add_argument("--output", type=Path, default=Path("learning/puyow_dqn.pt"), help="체크포인트 경로")
 	parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+	parser.add_argument("--server-url", default="", help="학습 이벤트를 전송할 nodeserver.js 주소(예: http://localhost:9891)")
+	parser.add_argument("--api-token", default="", help="nodeserver.js의 PUYOW_AI_TOKEN 값(미지정 시 환경변수 사용)")
 	args = parser.parse_args()
 	if args.episodes < 1:
 		parser.error("--episodes는 1 이상이어야 합니다.")
-	train(args.episodes, args.seed, args.output, args.device)
+	train(args.episodes, args.seed, args.output, args.device, args.server_url, args.api_token)
 
 
 
-# TODO: nodeserver.js에 관측값/행동/보상/에피소드 종료를 전달하는 인증된 API를 추가하고 실제 게임과 연결한다.
+# TODO: 브라우저의 실제 게임 루프가 이 클라이언트와 같은 API 계약으로 이벤트를 전송하도록 연결한다.
 # TODO: 실행 환경에 PyTorch를 설치하고 VS Code의 Python 인터프리터를 같은 환경으로 선택한다.
 # TODO: 저장한 PyTorch 체크포인트를 LM Studio가 지원하는 배포 형식으로 변환하는 export 경로를 추가한다.
 # TODO: hardGarbage, garbage, fever, all-clear ticket, margin rate, time multiplier를 환경에 반영한다.
