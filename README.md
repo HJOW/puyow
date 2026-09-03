@@ -113,10 +113,14 @@ Bun (https://bun.com/) 을 사용하여 서버 구동을 더 빠르게 진행할
 ## Third Parties
 
 + Three.js (선택사항으로 일부 특수효과에만 사용)
+  MIT License, Copyright © 2010-2026 three.js authors
+  https://github.com/mrdoob/three.js/blob/dev/LICENSE
 
-The MIT License
++ JSON5
+  MIT License, Copyright (c) 2012-2018 Aseem Kishore, and others.
+  https://github.com/json5/json5/blob/main/LICENSE.md
 
-Copyright © 2010-2026 three.js authors
++ The MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -630,6 +630,20 @@
     }
 
     /**
+     * JSON 문자열을 파싱하여 객체 혹은 배열로 반환한다. JSON5 를 지원한다.
+     * @returns {object|array} 파싱된 객체 혹은 배열, 실패 시 빈 객체 반환
+     */
+    function parseJSON(jsonString) {
+        try {
+            if(typeof(window.JSON5) != 'undefined') return window.JSON5.parse(jsonString);
+            return JSON.parse(jsonString);
+        } catch(e) {
+            console.error('Failed to parse JSON:', e);
+            return {};
+        }
+    }
+
+    /**
      * 설정 등을 저장할 때 사용하는 대리 객체
      */
     class StorageManager {
@@ -769,7 +783,7 @@
         try {
             const serialized = storageManager.getItem(CARD_STORE_KEY);
             if (!serialized) { ownedCards = []; return; }
-            const parsed = JSON.parse(serialized);
+            const parsed = parseJSON(serialized);
             if (!Array.isArray(parsed)) throw new TypeError('puyow_cards는 JSON 배열이어야 합니다.');
             const validTypes = new Set(getCardDefinitions().map((definition) => definition.type));
             const usedIds = new Set();
@@ -915,7 +929,7 @@
                 galleryUnlocks = initial;
                 return;
             }
-            const parsed = JSON.parse(serialized);
+            const parsed = parseJSON(serialized);
             if (!parsed || typeof parsed !== 'object') throw new TypeError('갤러리 저장 형식이 올바르지 않습니다.');
             const warning = Array.isArray(parsed.warning) ? parsed.warning.filter((type) => typeof type === 'string') : [];
             const enemies = Array.isArray(parsed.enemies) ? parsed.enemies.filter((type) => typeof type === 'string') : [];
@@ -1167,7 +1181,7 @@
                 store = createInitialStore();
                 return;
             }
-            const parsed = JSON.parse(serialized);
+            const parsed = parseJSON(serialized);
             if (!parsed || !Array.isArray(parsed.clearList) || !parsed.clearList.every((name) => typeof name === 'string')) {
                 throw new TypeError('clearList 배열이 필요합니다.');
             }
@@ -1246,7 +1260,7 @@
                 codeApplied = [];
                 return;
             }
-            const parsed = JSON.parse(serialized);
+            const parsed = parseJSON(serialized);
             if (!Array.isArray(parsed)) throw new TypeError('puyow_code는 JSON 배열이어야 합니다.');
             codeApplied = parsed;
 
@@ -1286,7 +1300,7 @@
      */
     function applySoundDataJson(soundDataJson) {
         if(soundDataJson == null) return;
-        if(typeof(soundDataJson) == 'string') soundDataJson = JSON.parse(soundDataJson);
+        if(typeof(soundDataJson) == 'string') soundDataJson = parseJSON(soundDataJson);
         if(soundDataJson.common) {
             const commonObj = soundDataJson.common;
             if(commonObj.gameStarts) commonSoundPool.gameStarts = commonObj.gameStarts;
@@ -6599,7 +6613,7 @@
             const outputText = await requestStructuredAiOutput(settings, 'Return only JSON matching the supplied schema, with success set to true.', 'ai_api_test_result', AI_API_TEST_JSON_SCHEMA, 64);
             if (requestId !== settingsApiTestRequestId) return;
             let result;
-            try { result = outputText ? JSON.parse(outputText) : null; } catch (error) { result = null; }
+            try { result = outputText ? parseJSON(outputText) : null; } catch (error) { result = null; }
             const testSucceeded = isAiApiTestResult(result);
             if (testSucceeded) unlockSolomonForSession();
             showSettingsApiTestMessage(testSucceeded
@@ -7219,7 +7233,7 @@
         const serialized = window.prompt(translate('배치 JSON을 입력하세요.'));
         if (serialized === null || serialized.trim() === '') return;
         try {
-            const parsed = JSON.parse(serialized);
+            const parsed = parseJSON(serialized);
             if (!parsed || !Array.isArray(parsed.puyos)) throw new TypeError('puyos 배열이 필요합니다.');
             const board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
             parsed.puyos.forEach((puyo) => {
@@ -11274,7 +11288,7 @@
                 const outputText = await requestStructuredAiOutput(store.settings, this.buildPlacementPrompt(player), 'solomon_puyo_placement', SOLOMON_PLACEMENT_JSON_SCHEMA, 128, abortController.signal);
                 if (!outputText) throw new Error(`${store.settings.aiProvider} API 응답에 구조화 출력 텍스트가 없습니다.`);
                 let result;
-                try { result = JSON.parse(outputText); } catch (error) { throw new Error('솔로몬 배치 JSON을 파싱할 수 없습니다.', { cause: error }); }
+                try { result = parseJSON(outputText); } catch (error) { throw new Error('솔로몬 배치 JSON을 파싱할 수 없습니다.', { cause: error }); }
                 if (!this.isCurrentTurn(player)) return;
                 if (!this.canUsePlacement(player, result)) throw new Error('응답받은 솔로몬 배치를 현재 뿌요에 사용할 수 없습니다.');
                 this.targetX = result.x;
@@ -13186,6 +13200,7 @@
     const commonFunctions = Object.freeze({
         randomFloat,
         randomColor,
+        parseJSON,
         translate,
         getPuyo,
         activeCells,

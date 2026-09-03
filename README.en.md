@@ -88,10 +88,14 @@ This project is distributed under the [Apache License 2.0](LICENSE).
 ## Third Parties
 
 + Three.js (Optional, used only for some special effects)
+  MIT License, Copyright © 2010-2026 three.js authors
+  https://github.com/mrdoob/three.js/blob/dev/LICENSE
+
++ JSON5
+  MIT License, Copyright (c) 2012-2018 Aseem Kishore, and others.
+  https://github.com/json5/json5/blob/main/LICENSE.md
 
 The MIT License
-
-Copyright © 2010-2026 three.js authors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
