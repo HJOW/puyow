@@ -8,7 +8,7 @@ mode, rule, 양측 board/normalBoard/fever.field 및 앞 두 nextPairs 계약을
 학습된 가중치는 PyTorch 체크포인트로 저장된다.
 """
 
-# Puyo W - AI 인공지능용 학습 모델 (LM Studio 호환) 개발 스크립트
+# Puyo W - AI 인공지능용 학습 모델 (LM Studio 호환) 생성기
 #
 # 이 스크립트에서는 PyTorch 를 이용해 Puyo W 학습 모델을 생성한다.
 #    브라우저 전이 전송을 사용할 때는 pythonserver.py를 먼저 구동한다.
@@ -37,6 +37,7 @@ import random
 import os
 import subprocess
 import sys
+import threading
 import urllib.error
 import urllib.request
 from collections import deque
@@ -54,9 +55,22 @@ from common import (
 	encode_observation_values, is_legal_observation_action, validate_observation,
 )
 
+# CLI(main())와 GUI 학습기(lngui.py)가 함께 참조하는 기본값이다. GUI는 시드·디바이스·상대는
+# 이 값을 그대로 쓰고, 모델 경로·에피소드 수·서버 주소만 사용자 입력으로 받는다.
+DEFAULT_SEED = 2026
+DEFAULT_DEVICE = "auto"
+DEFAULT_OPPONENT = "random"
+DEFAULT_OUTPUT = Path("python/puyow/default.pt")
+
 
 class LearningApiClient:
-	"""pythonserver.py의 인증된 학습 이벤트 API 클라이언트."""
+	"""pythonserver.py의 인증된 학습 이벤트 API 클라이언트.
+
+	토큰으로 `"localhost"`를 넣으면 pythonserver.py가 실제로 localhost/루프백 주소에서 온
+	요청일 때만 서버 설정 토큰과 무관하게 허용한다(원격 서버는 그대로 거부한다). GUI 학습기
+	(lngui.py)가 기본으로 채우는 로컬 서버 주소는 이 값으로 별도 토큰 설정 없이 사용한다.
+	빈 문자열은 이 예외에 해당하지 않으므로 허용되지 않는다.
+	"""
 
 	def __init__(self, server_url: str, token: str, timeout: float = 10.0) -> None:
 		if not token:
@@ -826,7 +840,84 @@ def _make_environment(
 	return PuyoDuelEnvironment(resolved_opponent, seed, self_play_action_fn=self_play_action_fn)
 
 
-def train(episodes: int, seed: int, output: Path, device_name: str, server_url: str = "", api_token: str = "", opponent: str = "random") -> None:
+class TrainingAbort(Exception):
+	"""GUI 학습기(lngui.py)가 창을 닫아 즉시 포기시킬 때만 올리는 예외다.
+
+	이 예외가 train()을 빠져나가면 체크포인트 저장 코드에 닿기 전에 함수가 끝나므로,
+	기존 파일이 있었더라도 전혀 손대지 않고 새 파일도 만들지 않는다.
+	"""
+
+
+class TrainingControl:
+	"""GUI 쓰레드가 학습 쓰레드의 일시정지·중단(저장)·강제 포기(무저장)를 요청하는 협조 객체.
+
+	일시정지·중단 요청은 진행 중인 에피소드가 끝난 뒤(check_at_episode_boundary)에만 반영되고,
+	강제 포기(request_abort)는 학습 스텝마다(check_abort) 확인해 거의 즉시 TrainingAbort로
+	학습을 중단시킨다. CLI 실행(control=None)에는 전혀 관여하지 않는다.
+	"""
+
+	def __init__(self) -> None:
+		self._running = threading.Event()
+		self._running.set()
+		self._paused = threading.Event()
+		self._stop_requested = threading.Event()
+		self._abort_requested = threading.Event()
+
+	def request_pause(self) -> None:
+		"""다음 에피소드 경계에서 학습을 일시정지하도록 예약한다."""
+		self._running.clear()
+
+	def request_resume(self) -> None:
+		"""일시정지를 풀고 학습을 재개한다."""
+		self._paused.clear()
+		self._running.set()
+
+	def request_stop(self) -> None:
+		"""다음 에피소드 경계에서 학습을 중단하도록 예약한다(중단 시 지금까지 결과를 저장)."""
+		self._stop_requested.set()
+		self._running.set()
+
+	def request_abort(self) -> None:
+		"""저장 없이 즉시 학습을 포기하도록 요청한다(GUI 창 닫기 전용)."""
+		self._abort_requested.set()
+		self._running.set()
+
+	def is_paused(self) -> bool:
+		"""일시정지 요청이 실제로 반영되어 학습 쓰레드가 대기 중인지 확인한다."""
+		return self._paused.is_set()
+
+	def check_abort(self) -> None:
+		"""학습 스텝마다 호출한다. 강제 포기 요청이 있으면 즉시 TrainingAbort를 올린다."""
+		if self._abort_requested.is_set():
+			raise TrainingAbort()
+
+	def check_at_episode_boundary(self) -> bool:
+		"""에피소드가 끝날 때마다 호출한다. 일시정지 중이면 재개·중단·포기까지 여기서 대기한다.
+
+		@returns 이번 경계에서 학습을 중단해야 하면 True.
+		"""
+		self.check_abort()
+		while not self._running.is_set():
+			self._paused.set()
+			if self._running.wait(timeout=0.1):
+				break
+			self.check_abort()
+		self._paused.clear()
+		return self._stop_requested.is_set()
+
+
+def train(
+	episodes: int, seed: int, output: Path, device_name: str, server_url: str = "", api_token: str = "", opponent: str = "random", *,
+	control: Optional[TrainingControl] = None, log: Callable[[str], None] = print,
+	on_progress: Optional[Callable[[int, int, dict], None]] = None,
+) -> None:
+	"""DQN 정책을 학습하고 체크포인트를 저장한다.
+
+	`control`을 넘기면 lngui.py 같은 GUI가 별도 쓰레드에서 일시정지·중단·강제 포기를 요청할 수
+	있다. `log`는 기본이 `print`라 CLI 동작은 그대로이며, GUI는 큐에 적재하는 콜백을 넘겨 로그
+	패널에 표시한다. `on_progress`는 매 에피소드가 끝날 때 (완료 수, 전체 수, 통계) 로 호출되어
+	GUI 진행 게이지를 갱신한다.
+	"""
 	random.seed(seed)
 	torch.manual_seed(seed)
 	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
@@ -848,9 +939,9 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 	loss_count = 0
 	if resumed:
 		# 기존 형식은 model 가중치만 저장했으므로 optimizer·replay buffer·epsilon은 이번 실행에서 새로 시작한다.
-		print(f"resume={output} 기존 모델 가중치로 추가 학습을 시작합니다.")
+		log(f"resume={output} 기존 모델 가중치로 추가 학습을 시작합니다.")
 	else:
-		print(f"new_model={output} 새 모델 가중치로 학습을 시작합니다.")
+		log(f"new_model={output} 새 모델 가중치로 학습을 시작합니다.")
 
 	# self-play(PuyoDuelEnvironment.SELF_PLAY_OPPONENT) 에피소드에서 상대측 행동을 고르는
 	# 콜백이다. 매 스텝 최신 epsilon으로 갱신되는 epsilon_holder를 통해, 학습 중인 에이전트와
@@ -863,6 +954,8 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 		return choose_policy_action(policy, observation, device)
 
 	for episode in range(episodes):
+		if control is not None:
+			control.check_abort()
 		environment = _make_environment(opponent, seed + episode, self_play_action)
 		state = environment.reset()
 		session_id = f"puyow-training-{seed}-{episode}"
@@ -871,6 +964,8 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 		episode_reward = 0.0
 		episode_result = "timeout"
 		for _ in range(max_steps_per_episode):
+			if control is not None:
+				control.check_abort()
 			epsilon = max(epsilon_end, epsilon_start - (epsilon_start - epsilon_end) * steps / total_steps)
 			epsilon_holder[0] = epsilon
 			if random.random() < epsilon:
@@ -909,14 +1004,22 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 			loss_count += 1
 		if api_client:
 			api_client.episode_end(session_id)
+		if on_progress is not None:
+			on_progress(episode + 1, episodes, {
+				"reward": episode_reward, "epsilon": epsilon, "result": episode_result,
+				"wins": win_count, "losses": loss_count,
+			})
 		if (episode + 1) % log_interval == 0 or episode == 0:
-			print(f"episode={episode + 1}/{episodes} reward={episode_reward:.1f} epsilon={epsilon:.3f} "
+			log(f"episode={episode + 1}/{episodes} reward={episode_reward:.1f} epsilon={epsilon:.3f} "
 				f"result={episode_result} wins={win_count} losses={loss_count}")
+		if control is not None and control.check_at_episode_boundary():
+			log(f"stopped_by_user episode={episode + 1}/{episodes}")
+			break
 
 	output.parent.mkdir(parents=True, exist_ok=True)
 	torch.save({"model": policy.state_dict(), "model_version": MODEL_VERSION, "observation_size": OBSERVATION_SIZE, "action_count": ACTION_COUNT, "seed": seed}, output)
 	output.with_suffix(".json").write_text(json.dumps({"model_version": MODEL_VERSION, "observation_size": OBSERVATION_SIZE, "action_count": ACTION_COUNT, "board": [BOARD_WIDTH, BOARD_HEIGHT]}, indent=2), encoding="utf-8")
-	print(f"saved={output} device={device}")
+	log(f"saved={output} device={device}")
 
 
 def export_gguf(source: Path, output: Path, converter: Path) -> None:
@@ -941,18 +1044,18 @@ def export_gguf(source: Path, output: Path, converter: Path) -> None:
 def main() -> None:
 	parser = argparse.ArgumentParser(description="Puyo W DQN 학습")
 	parser.add_argument("--episodes", type=int, default=1000, help="학습 에피소드 수")
-	parser.add_argument("--seed", type=int, default=2026, help="재현 가능한 난수 시드")
-	parser.add_argument("--output", type=Path, default=Path("python/puyow/default.pt"), help="체크포인트 경로(기존 파일이면 가중치를 복원해 추가 학습)")
-	parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+	parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="재현 가능한 난수 시드")
+	parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="체크포인트 경로(기존 파일이면 가중치를 복원해 추가 학습)")
+	parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default=DEFAULT_DEVICE)
 	parser.add_argument("--server-url", default="", help="학습 이벤트를 전송할 pythonserver.py 주소(예: http://localhost:9891)")
-	parser.add_argument("--api-token", default="", help="pythonserver.py의 learning_token 값(미지정 시 PUYOW_AI_TOKEN 환경변수 사용)")
+	parser.add_argument("--api-token", default="", help="pythonserver.py의 learning_token 값. 로컬 서버라면 \"localhost\"로도 인증할 수 있다(미지정 시 PUYOW_AI_TOKEN 환경변수 사용)")
 	parser.add_argument("--evaluate-episodes", type=int, default=0, help="학습하지 않고 epsilon=0으로 평가할 에피소드 수")
 	parser.add_argument("--infer-observation", type=Path, metavar="JSON", help="서버 없이 공통 관측 JSON 하나를 직접 추론")
 	parser.add_argument("--export-gguf", type=Path, metavar="MODEL_DIR", help="Hugging Face Transformer 모델 디렉터리를 GGUF로 변환")
 	parser.add_argument("--gguf-output", type=Path, default=Path("python/model-f16.gguf"), help="GGUF 출력 경로")
 	parser.add_argument("--llama-cpp-converter", type=Path, default=Path("llama.cpp") / "convert_hf_to_gguf.py", help="llama.cpp의 convert_hf_to_gguf.py 경로")
 	parser.add_argument(
-		"--opponent", default="random",
+		"--opponent", default=DEFAULT_OPPONENT,
 		choices=("random", "solo", PuyoDuelEnvironment.SELF_PLAY_OPPONENT) + bundledenemy.TRAINABLE_ENEMY_TYPES,
 		help="대전 상대. 'random'은 매 에피소드 self-play(자기 자신과 대전) 또는 bundledenemy의 적 "
 			"중 하나를 무작위로 고르고(기본값), 'self'는 항상 self-play, 'solo'는 상대 없이 "

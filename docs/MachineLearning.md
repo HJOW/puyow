@@ -46,6 +46,28 @@ python/puyow/default.json
 
 체크포인트에는 모델 가중치, 모델 계약 버전, 관측 벡터 크기, 행동 개수, 학습 시드가 들어 있다. 현재 모델 버전은 `2`이며 이전 444개 관측 모델은 의도적으로 호환되지 않으므로 다시 학습해야 한다.
 
+## GUI 학습기
+
+명령행 대신 화면으로 학습을 다루려면 `python/lngui.py`를 실행한다.
+
+```powershell
+python python/lngui.py
+```
+
+Tkinter 창에는 모델 저장 경로, 에피소드 수, 서버 주소 입력란과 Start/Pause/Stop 버튼, 진행 게이지, 로그 패널이 있다. 창을 열면 에피소드 수는 `5000`, 서버 주소는 `http://localhost:<pythonserver.py의 SERVER_CONFIG["port"]>`로 미리 채워진다. 시드·디바이스·상대는 `learning.py`의 기본값(`--seed`, `--device`, `--opponent`와 동일)을 그대로 쓰며 GUI에서 따로 입력받지 않는다.
+
+버튼 동작은 다음과 같다.
+
+- **Start**: 학습을 별도 쓰레드에서 시작한다. Start가 비활성화되고 Pause·Stop이 활성화된다.
+- **Pause**: 진행 중인 에피소드가 끝난 뒤 일시정지를 예약한다. 버튼이 "Resume"으로 바뀌며 실제로 정지가 반영될 때까지 비활성화되고, 반영되면 다시 활성화된다.
+- **Resume**: 학습을 재개하고 버튼이 다시 "Pause"로 바뀐다.
+- **Stop**: Pause·Stop 버튼을 즉시 비활성화하고, 진행 중인 에피소드가 끝나면 그때까지 학습한 가중치를 체크포인트(및 같은 경로의 `.json` 메타데이터)에 저장한 뒤 Start 버튼을 다시 활성화한다.
+- **창 닫기**: 학습을 즉시 포기한다. 이 경우 체크포인트를 저장하지 않으며, 기존 파일이 있었다면 전혀 손대지 않는다.
+
+GUI는 학습 쓰레드가 만드는 로그·진행 상황을 큐에 적재하고 메인(화면) 쓰레드가 주기적으로 비우는 방식으로 화면이 멈추지 않게 한다. `python python/learning.py ...`로 직접 실행하는 기존 CLI 방식은 이 GUI와 무관하게 그대로 동작한다.
+
+GUI가 기본으로 채우는 서버 주소(`http://localhost:<port>`)로 학습 전이를 보낼 때는 `SERVER_CONFIG["learning_token"]`을 따로 맞추지 않아도 된다. GUI가 API 토큰으로 항상 `"localhost"`를 보내고, `pythonserver.py`는 이 토큰을 실제로 localhost/루프백 주소에서 온 요청일 때만 서버 설정 토큰과 무관하게 허용하기 때문이다(아래 "서버 API와 함께 실행" 참고). 원격 서버이거나 다른(그러나 틀린) 토큰을 보낸 경우는 기존처럼 `SERVER_CONFIG["learning_token"]`과 정확히 일치해야 한다.
+
 ## 적 AI와 대전하며 학습
 
 `python/bundledenemy.py`는 `src/js/puyow.js`에 탑재된 기본 제공 적들(단탈리온, 세레, 데카라비아, 벨리알, 암두시아스, 키마리스, 안드레알푸스)의 판단 알고리즘을 Python으로 옮긴 모듈이다. 솔로몬(외부 AI API 전용)·안드로말리우스는 이식 대상에서 제외했고, 플라우로스(Flauros)는 클래스는 옮겨 두었지만 원작처럼 아직 판단 로직이 없는 출시 예정 상태라 대전 상대 목록에 넣지 않았다. `--opponent` 옵션으로 학습 중 대전할 상대를 고른다.
@@ -73,6 +95,8 @@ python python/learning.py --episodes 1000 --opponent Kimaris
 ## 서버 API와 함께 실행
 
 서버 전송 모드를 사용하면 먼저 [python/pythonserver.py](../python/pythonserver.py)를 실행한다. 실행 전에 파일 상단의 `SERVER_CONFIG["learning_token"]` 값을 학습기와 같은 토큰으로 직접 설정한다. 이 값은 개발용 설정이며 공개 서버에는 토큰을 소스에 저장하지 않아야 한다. 현재 구현은 단일 문자열 토큰만 검사한다. TODO에 적힌 여러 API 키의 OR 인증(토큰 컬렉션)은 아직 구현되어 있지 않다.
+
+localhost나 루프백 주소(`127.0.0.1`, `::1` 등)에서 온 요청은 예외다. 토큰을 `"localhost"`로 보내면 `SERVER_CONFIG["learning_token"]` 설정값과 무관하게 허용한다. 같은 컴퓨터에서 게임이나 GUI 학습기(`lngui.py`)와 `pythonserver.py`를 함께 띄워 쓸 때 토큰을 따로 맞추지 않아도 되게 하기 위함이다. 루프백이 아닌 주소, 또는 `"localhost"`가 아닌 틀린 토큰에는 이 예외가 적용되지 않고 기존처럼 거부된다. 빈 문자열 토큰은 이 예외 대상이 아니므로 루프백에서 호출해도 거부된다.
 
 Python 서버 실행:
 

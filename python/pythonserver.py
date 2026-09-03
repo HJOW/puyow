@@ -30,6 +30,7 @@
 
 import argparse
 import hmac
+import ipaddress
 import json
 import math
 import mimetypes
@@ -59,6 +60,10 @@ SERVER_CONFIG = {
 
 # nodeserver.js와 동일하게 학습 API에서 접근을 차단할 경로 조각이다.
 BLACKLIST_FILE_PATTERNS = ("/WEB-INF/", "/META-INF/")
+
+# 이 문자열을 토큰으로 보내고 호출자가 실제로 localhost/루프백 주소일 때만 서버 설정 토큰과
+# 무관하게 인증을 통과시킨다. 빈 문자열은 이 예외에 해당하지 않으며 평소처럼 거부된다.
+LOOPBACK_BYPASS_TOKEN = "localhost"
 
 # 세션 데이터는 프로세스 메모리에만 보관하며, 여러 HTTP 스레드의 접근을 보호한다.
 learning_sessions: dict[str, dict[str, Any]] = {}
@@ -104,17 +109,35 @@ def read_json_body(handler: BaseHTTPRequestHandler) -> dict[str, Any]:
 	return payload
 
 
+# localhost/루프백에서 온 요청인지 확인해 LOOPBACK_BYPASS_TOKEN 호출을 허용할지 판단하는 데 쓴다.
+def _is_loopback_client(handler: BaseHTTPRequestHandler) -> bool:
+	"""요청을 보낸 클라이언트 주소가 localhost/루프백 주소인지 확인한다."""
+	try:
+		return ipaddress.ip_address(handler.client_address[0]).is_loopback
+	except (ValueError, IndexError, TypeError):
+		return False
+
+
 # 학습 API와 DQN Chat Completions API가 동일하게 사용하는 Bearer 토큰 검증 함수다.
 def is_learning_authorized(handler: BaseHTTPRequestHandler) -> bool:
-	"""요청의 Bearer 토큰을 상수시간 비교로 검증한다."""
-	token = str(SERVER_CONFIG["learning_token"])
+	"""요청의 Bearer 토큰을 상수시간 비교로 검증한다.
+
+	토큰을 `LOOPBACK_BYPASS_TOKEN`("localhost")으로 보낸 호출은, 호출한 클라이언트가
+	localhost/루프백 주소일 때만 서버 설정 토큰과 무관하게 허용한다. 같은 컴퓨터에서 게임과
+	pythonserver.py를 함께 띄워 쓰거나 GUI 학습기(lngui.py)로 로컬 학습 API에 보고할 때 토큰을
+	따로 설정하지 않아도 되게 하기 위함이다. 빈 문자열 토큰은 이 예외에 해당하지 않으므로
+	루프백에서 호출하더라도 평소처럼 거부된다.
+	"""
 	authorization = handler.headers.get("Authorization", "")
-	# 토큰 설정 누락과 Bearer 형식 누락은 모두 인증 실패로 처리한다.
-	if not token or not authorization.startswith("Bearer "):
+	if not authorization.startswith("Bearer "):
 		return False
-	supplied = authorization.removeprefix("Bearer ").encode("utf-8")
-	expected = token.encode("utf-8")
-	return hmac.compare_digest(supplied, expected)
+	supplied = authorization.removeprefix("Bearer ")
+	if supplied == LOOPBACK_BYPASS_TOKEN and _is_loopback_client(handler):
+		return True
+	token = str(SERVER_CONFIG["learning_token"])
+	if not supplied or not token:
+		return False
+	return hmac.compare_digest(supplied.encode("utf-8"), token.encode("utf-8"))
 
 
 # 숫자형 API 필드가 NaN·무한대·boolean을 받지 않도록 검증한다.

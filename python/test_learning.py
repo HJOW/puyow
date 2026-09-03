@@ -3,6 +3,8 @@
 import json
 import shutil
 import subprocess
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -121,6 +123,118 @@ class RuleStateTest(unittest.TestCase):
 		self.assertEqual(training.OBSERVATION_SIZE, len(observation))
 		self.assertEqual(0.0, observation[0])
 		self.assertEqual(1.0, observation[training.BOARD_WIDTH * training.BOARD_HEIGHT])
+
+
+class TrainingControlTest(unittest.TestCase):
+	"""lngui.py(GUI 학습기)가 쓰는 일시정지·중단·강제 포기 협조 객체의 계약을 확인한다."""
+
+	def test_pause_blocks_at_boundary_until_resumed(self) -> None:
+		control = training.TrainingControl()
+		control.request_pause()
+		resumed_seen = []
+
+		def waiter() -> None:
+			control.check_at_episode_boundary()
+			resumed_seen.append(True)
+
+		thread = threading.Thread(target=waiter)
+		thread.start()
+		try:
+			self.assertTrue(control.is_paused())
+			# 일시정지 중에는 경계 확인이 끝나지 않아야 한다.
+			time.sleep(0.2)
+			self.assertEqual([], resumed_seen)
+			control.request_resume()
+			thread.join(timeout=2)
+			self.assertFalse(thread.is_alive())
+			self.assertEqual([True], resumed_seen)
+			self.assertFalse(control.is_paused())
+		finally:
+			control.request_abort()  # 테스트 실패로 스레드가 남더라도 정리한다.
+
+	def test_stop_without_pause_returns_immediately(self) -> None:
+		control = training.TrainingControl()
+		control.request_stop()
+		self.assertTrue(control.check_at_episode_boundary())
+
+	def test_stop_wakes_a_paused_wait_without_pausing(self) -> None:
+		control = training.TrainingControl()
+		control.request_pause()
+		results = []
+
+		def waiter() -> None:
+			results.append(control.check_at_episode_boundary())
+
+		thread = threading.Thread(target=waiter)
+		thread.start()
+		time.sleep(0.05)
+		control.request_stop()
+		thread.join(timeout=2)
+		self.assertEqual([True], results)
+
+	def test_abort_raises_immediately_even_when_not_paused(self) -> None:
+		control = training.TrainingControl()
+		control.request_abort()
+		with self.assertRaises(training.TrainingAbort):
+			control.check_abort()
+		with self.assertRaises(training.TrainingAbort):
+			control.check_at_episode_boundary()
+
+
+class _FakeHeaders(dict):
+	"""BaseHTTPRequestHandler.headers를 흉내 내는 최소 스텁이다."""
+
+
+class _FakeHandler:
+	"""HTTP 서버를 띄우지 않고 is_learning_authorized()를 단위 테스트하기 위한 스텁 핸들러."""
+
+	def __init__(self, authorization: str, client_ip: str) -> None:
+		self.headers = _FakeHeaders({"Authorization": authorization} if authorization is not None else {})
+		self.client_address = (client_ip, 54321)
+
+
+class LoopbackAuthorizationTest(unittest.TestCase):
+	"""`"localhost"` 토큰 호출을 localhost/루프백 클라이언트에만 허용하는지 확인한다."""
+
+	def setUp(self) -> None:
+		self._original_token = pythonserver.SERVER_CONFIG["learning_token"]
+		pythonserver.SERVER_CONFIG["learning_token"] = "secret-token"
+
+	def tearDown(self) -> None:
+		pythonserver.SERVER_CONFIG["learning_token"] = self._original_token
+
+	def test_localhost_token_from_loopback_is_authorized(self) -> None:
+		handler = _FakeHandler("Bearer localhost", "127.0.0.1")
+		self.assertTrue(pythonserver.is_learning_authorized(handler))
+
+	def test_localhost_token_from_ipv6_loopback_is_authorized(self) -> None:
+		handler = _FakeHandler("Bearer localhost", "::1")
+		self.assertTrue(pythonserver.is_learning_authorized(handler))
+
+	def test_localhost_token_from_remote_address_is_rejected(self) -> None:
+		handler = _FakeHandler("Bearer localhost", "203.0.113.5")
+		self.assertFalse(pythonserver.is_learning_authorized(handler))
+
+	def test_empty_token_from_loopback_is_rejected(self) -> None:
+		# 빈 문자열 토큰은 루프백 예외 대상이 아니므로, 로컬 호출이라도 다시 거부되어야 한다.
+		handler = _FakeHandler("Bearer ", "127.0.0.1")
+		self.assertFalse(pythonserver.is_learning_authorized(handler))
+
+	def test_empty_token_from_remote_address_is_rejected(self) -> None:
+		handler = _FakeHandler("Bearer ", "203.0.113.5")
+		self.assertFalse(pythonserver.is_learning_authorized(handler))
+
+	def test_wrong_token_from_loopback_is_still_rejected(self) -> None:
+		handler = _FakeHandler("Bearer wrong-token", "127.0.0.1")
+		self.assertFalse(pythonserver.is_learning_authorized(handler))
+
+	def test_correct_token_from_remote_address_is_authorized(self) -> None:
+		handler = _FakeHandler("Bearer secret-token", "203.0.113.5")
+		self.assertTrue(pythonserver.is_learning_authorized(handler))
+
+	def test_missing_authorization_header_is_rejected(self) -> None:
+		handler = _FakeHandler(None, "127.0.0.1")
+		self.assertFalse(pythonserver.is_learning_authorized(handler))
 
 
 @unittest.skipUnless(shutil.which("node"), "Node.js가 없어 JS 회귀 비교를 건너뜁니다.")

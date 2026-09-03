@@ -163,6 +163,8 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 
 모델 버전 2의 관측값은 528개다. 빈 칸·방해뿌요·5색 보드 채널 504개, 현재 쌍 10개, ATTACK/턴/DAMAGE/룰/티켓/경과시간/마진/시간 배율/피버 상태 14개 순서이며 JS 학습 전이, Python 환경, Solomon 서버가 `python/common.py`의 같은 계약을 사용한다. `learning.py`의 `--output` 경로가 실제 체크포인트 파일이면 `MODEL_VERSION`·`OBSERVATION_SIZE`·`ACTION_COUNT`를 검증한 후 가중치를 복원한다. 이전 444개 관측 모델은 호환하지 않으며 다시 학습해야 한다. `--evaluate-episodes`는 epsilon=0 승률을 집계하고, `--infer-observation`은 LM Studio/HTTP 없이 관측 JSON을 직접 추론한다. 체크포인트에는 optimizer·replay buffer·epsilon 상태를 저장하지 않는다.
 
+`python/lngui.py`는 `learning.py`를 감싼 Tkinter GUI 학습기다. 학습은 별도 쓰레드에서 돌리고 로그·진행 상황은 큐로 메인 쓰레드에 전달해 화면이 멈추지 않게 한다. GUI 제어는 `learning.TrainingControl`(일시정지·중단은 에피소드 경계에서만 반영, 강제 포기는 `TrainingAbort` 예외로 즉시 반영해 저장을 건너뜀)과 `train()`의 `control`·`log`·`on_progress` 키워드 인자로 구현했으며, 이 인자들을 생략하는 기존 CLI 호출은 그대로 동작한다. `learning.DEFAULT_SEED`·`DEFAULT_DEVICE`·`DEFAULT_OPPONENT`·`DEFAULT_OUTPUT`은 CLI `argparse` 기본값과 GUI 초기값이 공유하는 단일 출처다. `pythonserver.py`의 `is_learning_authorized()`는 토큰이 정확히 `LOOPBACK_BYPASS_TOKEN`("localhost")이고 호출자가 실제 localhost/루프백 주소(`_is_loopback_client()`)일 때만 서버 설정 토큰과 무관하게 허용한다. 빈 문자열 토큰은 이 예외 대상이 아니라서 루프백에서도 거부되며, `LearningApiClient`도 빈 토큰이면 즉시 `ValueError`를 올린다. GUI 학습기는 이 때문에 항상 `"localhost"`를 토큰으로 보낸다. 원격 서버이거나 `"localhost"`가 아닌 틀린 토큰에는 이 예외가 적용되지 않는다.
+
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
