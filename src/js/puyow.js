@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 5;
+    const BUILDNO = 6;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -554,7 +554,7 @@
     /** storageManager의 puyow_cards에서 불러온 개별 카드 인스턴스다. @type {{id:string,type:string}[]} */
     let ownedCards = [];
     /** 메인 화면 안내문 파일 경로 또는 절대 URL이다. 상대경로는 puyow.js 기준으로 해석한다. @type {string} */
-    let noticeUrl = 'notice_[LANG].txt';
+    let noticeUrl = '../notice/notice_[LANG].txt';
     /** 공통 사운드 풀 @type {CommonSoundPool} */
     let commonSoundPool = null;
     /** 사용 가능한 코드들, 키로 코드가 탑재되며, 그 값은 함수로 탑재된다. (코드 적용 시 동작해야 하는 함수) @type {object} */

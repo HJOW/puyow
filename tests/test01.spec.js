@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+const GAME_PAGE = '/puyow.html';
+const THREE_SCRIPT = '**/js/three.min.js';
+
 /** 테스트용 Gamepad API 구현을 브라우저 초기화 전에 설치한다. */
 async function installMockGamepad(page) {
   await page.addInitScript(() => {
@@ -51,7 +54,7 @@ async function installMockGamepad(page) {
 
 test.beforeEach(async ({ page }) => {
   await installMockGamepad(page);
-  await page.goto('/puyow.html');
+  await page.goto(GAME_PAGE);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
 });
 
@@ -84,6 +87,27 @@ test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 360 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});
+
+test('새 src 하위 디렉토리의 게임 리소스를 로드한다', async ({ page }) => {
+  const resources = await page.evaluate(() => ({
+    stylesheet: new URL(document.querySelector('link[rel="stylesheet"]').href).pathname,
+    icon: new URL(document.querySelector('link[rel="icon"]').href).pathname,
+    manifest: new URL(document.querySelector('link[rel="manifest"]').href).pathname,
+    scripts: [...document.scripts]
+      .map((script) => script.src)
+      .filter(Boolean)
+      .map((src) => new URL(src).pathname),
+  }));
+
+  expect(resources.stylesheet).toBe('/css/puyow.css');
+  expect(resources.icon).toBe('/img/icon45.png');
+  expect(resources.manifest).toBe('/manifest.webmanifest');
+  expect(resources.scripts).toEqual(expect.arrayContaining([
+    '/js/three.min.js',
+    '/js/json5.min.js',
+    '/js/puyow.js',
+  ]));
 });
 
 test('초기화는 최상위 div 안에 같은 난수 접미사의 2D·3D canvas를 만들고 destroy가 생성 DOM을 정리한다', async ({ page }) => {
@@ -162,7 +186,7 @@ test('Three.js가 없어도 3D canvas를 만들되 3D 컨텍스트 없이 2D 게
       return originalGetContext.call(this, type, ...args);
     };
   });
-  await page.route('**/three.min.js', (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+  await page.route(THREE_SCRIPT, (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
   await page.reload();
 
   const fallback = await page.evaluate(() => ({
@@ -763,11 +787,11 @@ test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => {
-    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 5'].includes(call.text));
+    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 6'].includes(call.text));
       return {
       music: values.some((call) => call.text === '42' && call.x === 920 && call.y === 130),
       effects: values.some((call) => call.text === '73' && call.x === 920 && call.y === 174),
-      build: values.some((call) => call.text === 'Build 5' && call.x === 10 && call.y === 710),
+      build: values.some((call) => call.text === 'Build 6' && call.x === 10 && call.y === 710),
       };
   })).toEqual({ music: true, effects: true, build: true });
 });

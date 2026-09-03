@@ -89,6 +89,13 @@
 
 게임 설정, 라이브러리 사용법, 새 AI 상대 제작 방법은 [HOWTO.md](HOWTO.md)를 참고하세요.
 
+## 소스 디렉토리 구조
+
+- 저장소 루트의 `index.html`은 `src/index.html`로 이동시키는 진입점입니다.
+- `src/puyow.html`은 실제 2D 게임 페이지이며, 핵심 코드는 `src/js/puyow.js`에 있습니다.
+- 스타일은 `src/css/puyow.css`, 선택적 라이브러리는 `src/js/`에, 아이콘은 `src/img/`에 있습니다.
+- 언어별 공지사항은 `src/notice/`, Webpack 배포 번들은 `src/bundle/`에 있습니다.
+
 ## AI 사용 고지
 
 이 프로젝트는 개발 과정에서 AI 도구를 활용했습니다. 생성되거나 제안된 코드와 문서는 프로젝트 관리자가 검토하고 프로젝트에 맞게 수정했습니다.

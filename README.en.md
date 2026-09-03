@@ -70,6 +70,13 @@ The top center displays the player's and CPU's next two Puyo pairs. The selected
 
 See [HOWTO.en.md](HOWTO.en.md) for information about game settings, library usage, and creating new AI opponents.
 
+## Source directory structure
+
+- The repository-root `index.html` redirects to `src/index.html`.
+- `src/puyow.html` is the 2D game page, and the core library is `src/js/puyow.js`.
+- The stylesheet is in `src/css/puyow.css`; optional libraries are in `src/js/`; icons are in `src/img/`.
+- Localized notices are in `src/notice/`, and the Webpack distribution bundle is in `src/bundle/`.
+
 ## AI Disclosure
 
 AI tools were used during the development of this project. The project manager reviewed the generated or suggested code and documentation and adapted them to fit the project.

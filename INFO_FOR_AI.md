@@ -5,7 +5,7 @@
 ## 판단 우선순위
 
 1. 현재 사용자의 명시 지시와 최신 `TODO.md`
-2. 현재 구현된 `src/puyow.js`와 그에 대응하는 테스트
+2. 현재 구현된 `src/js/puyow.js`와 그에 대응하는 테스트
 3. 이 문서, `HOWTO.md`, `docs/`
 4. `OLD_PROMPTS.md`
 
@@ -13,13 +13,18 @@
 
 ## 저장소와 실행 환경
 
-- 2D 게임 페이지: `puyow.html`
-- 핵심 엔진·캔버스 UI: `src/puyow.js`
+- 2D 게임 페이지: `src/puyow.html`
+- 핵심 엔진·캔버스 UI: `src/js/puyow.js`
+- 스타일: `src/css/puyow.css`
+- 선택적 라이브러리: `src/js/three.min.js`, `src/js/json5.min.js`
+- 이미지: `src/img/`
+- 언어별 공지사항: `src/notice/`
+- Webpack 번들 출력: `src/bundle/puyow.bundle.js`
 - E2E 회귀 테스트: `tests/test01.spec.js`
 - 개발자 문서: `HOWTO.md`, `docs/`
 - 모든 텍스트 파일은 UTF-8, 기본 UI 언어는 한국어다.
 - Windows PowerShell에서는 `npm.cmd test`와 `npx.cmd playwright ...`를 사용한다.
-- 기본 정적 검증: `node --check src/puyow.js`, `npm.cmd test`, `git diff --check`.
+- 기본 정적 검증: `node --check src/js/puyow.js`, `npm.cmd test`, `git diff --check`.
 - 게임 동작·캔버스 변경은 해당 Playwright 테스트도 실행한다. 정적 검사만으로 게임 동작을 검증했다고 판단하지 않는다.
 
 `puyow.js`는 IIFE 내부에서 게임 상태를 관리한다. CommonJS `module.exports`와 브라우저 `window.WebPuyo`로 내보내며, `window.PuyoW`는 같은 객체의 별칭이다. 외부 확장 등록은 일반적으로 `initialize()` 이전에 한다.
@@ -144,5 +149,5 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 1. 최신 `TODO.md`와 해당 소스·기존 테스트를 읽는다.
 2. 변경한 규칙의 정상 경로와 경계 조건(잠김, 취소, 패배, 정산, 저장)을 테스트에 추가하거나 갱신한다.
 3. 캔버스 UI는 키보드, Enter, 마우스, ESC, 외부 클릭, 잠긴 항목을 함께 확인한다.
-4. `node --check src/puyow.js`, `npm.cmd test`, 관련 Playwright 테스트를 실행한다.
+4. `node --check src/js/puyow.js`, `npm.cmd test`, 관련 Playwright 테스트를 실행한다.
 5. 최종 보고에는 변경 파일, 실행한 검증, 실행하지 못한 검증의 이유를 간단히 적는다.

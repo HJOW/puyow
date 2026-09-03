@@ -95,7 +95,7 @@ ATTACK increase = (score increase / margin rate) * EXPLOSION_REWARD_MULTIPLIER *
 
 Do not add connection bonuses separately for each connected group of a color. For a single-color explosion, calculate it once from the total normal puyos removed for that color. When several colors explode together, total each color and calculate it once from the largest count. For example, when four red and five blue puyos explode together, the normal-puyo count is 9, the two-color bonus is 3, and the connection bonus is 2 from the larger blue group of 5.
 
-`HARD_GARBAGE_SCORE_MULTIPLIER` in `src/puyow.js` is currently `2`. Thus, when four normal puyos explode in a 1-chain with a bonus value of 1, destroying one hard garbage produces `4 * (1 * 2 + 1) * 1 * 10 = 120` points; destroying two produces `4 * (2 * 2 + 1) * 1 * 10 = 200` points.
+`HARD_GARBAGE_SCORE_MULTIPLIER` in `src/js/puyow.js` is currently `2`. Thus, when four normal puyos explode in a 1-chain with a bonus value of 1, destroying one hard garbage produces `4 * (1 * 2 + 1) * 1 * 10 = 120` points; destroying two produces `4 * (2 * 2 + 1) * 1 * 10 = 200` points.
 
 The time-progress multiplier is 1 through 300 seconds of actual game time, doubles every 20 seconds from 320 seconds, and caps at 1024. The game and AI attack estimates apply it; the simulator, which has no time concept, defaults to 1. The game, simulator, and AI share this constant and formula. If you change it, update the expected scores for destroying one and two hard garbage simultaneously in `tests/test01.spec.js` using the same formula.
 

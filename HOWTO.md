@@ -16,10 +16,15 @@
 
 ## 프로젝트 구성
 
-- `index.html`: 배포 페이지의 진입점입니다.
-- `src/puyow.html`: 게임 최상위 div와 초기화 호출을 정의합니다.
-- `src/puyow.css`: 배경·색상 체계·세로 중앙 정렬과 글꼴 스타일을 정의합니다. 게임 canvas의 크기·배치·회전은 런타임에 `puyow.js`가 넣는 style 태그가 담당합니다.
-- `src/puyow.js`: 브라우저/CommonJS 라이브러리, 게임 규칙, 렌더링, 입력, CPU 조작을 구현합니다.
+- `index.html`: 저장소 루트에서 `src/index.html`로 이동시키는 진입점입니다.
+- `src/index.html`: 배포용 로딩 페이지이며 `src/puyow.html`로 이동합니다. 스타일은 `src/css/`에서 불러옵니다.
+- `src/puyow.html`: 게임 최상위 div와 초기화 호출을 정의하는 2D 플레이 페이지입니다.
+- `src/js/puyow.js`: 브라우저/CommonJS 라이브러리, 게임 규칙, 렌더링, 입력, CPU 조작을 구현합니다.
+- `src/js/three.min.js`, `src/js/json5.min.js`: 각각 3D 효과와 JSON5 처리를 위한 선택적 라이브러리입니다.
+- `src/css/puyow.css`: 배경·색상 체계·세로 중앙 정렬과 글꼴 스타일을 정의합니다. 게임 canvas의 크기·배치·회전은 런타임에 `puyow.js`가 넣는 style 태그가 담당합니다.
+- `src/img/`: PWA와 페이지에서 사용하는 아이콘을 보관합니다.
+- `src/notice/`: 언어별 공지사항 파일을 보관합니다.
+- `src/bundle/puyow.bundle.js`: `webpack`으로 생성하는 배포용 번들입니다.
 - `HOWTO.md`: 페이지 구성, 라이브러리 사용법, 번역 및 공통 개발 안내를 제공합니다.
 - `docs/`: 그래픽, 뿌요, 적·AI, 시뮬레이터·피버, 사운드별 개발자 문서를 제공합니다.
 
@@ -27,9 +32,10 @@
 
 puyow.js 는 CDN으로도 사용할 수 있습니다.
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/puyow.css"/>
-<script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/three.min.js"></script>
-<script src='https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/puyow.js'></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/css/puyow.css"/>
+<script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/js/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/js/json5.min.js"></script>
+<script src='https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/js/puyow.js'></script>
 ```
 
 
@@ -50,8 +56,10 @@ puyow.js 는 CDN으로도 사용할 수 있습니다.
 
 ```html
 <div id="puyow_target"></div>
-<script defer src="three.min.js"></script>
-<script defer src="puyow.js"></script>
+<!-- src/puyow.html 기준의 실제 경로 -->
+<script defer src="./js/three.min.js"></script>
+<script defer src="./js/json5.min.js"></script>
+<script defer src="./js/puyow.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     window.PuyoW.initialize('puyow_target');
@@ -76,7 +84,7 @@ PuyoW.initialize('puyow_target');
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, askConfirm, initialize } = require('./src/puyow.js');
+const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, askConfirm, initialize } = require('./src/js/puyow.js');
 ```
 
 `initialize(target)`의 `target`은 게임 최상위 `div` 요소 또는 그 `id` 문자열입니다. 라이브러리는 이 div에 `div_puyow_root` 클래스를 붙이고, 같은 8자리 난수 접미사를 가진 `div_puyow_2d_<번호>`·`div_puyow_3d_<번호>` canvas를 생성합니다. 2D canvas가 기본 입력·표시 레이어이며, 3D canvas는 투명한 선택적 Three.js 연출용 레이어입니다. `three.min.js`가 없으면 3D canvas는 그대로 만들되 renderer·레이어 전환을 하지 않고 2D 게임을 계속합니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달하면 `body` 바로 아래에 최상위 div를 만듭니다. canvas 요소나 canvas ID를 전달하는 이전 초기화 방식은 지원하지 않습니다.
@@ -113,15 +121,14 @@ if (confirmed) {
 
 ### 공지사항 경로 설정
 
-메인 화면 왼쪽에 표시할 공지사항은 기본적으로 `puyow.js`와 같은 경로의 `notice.txt`에서 읽습니다. 초기화하기 전에 `PuyoW.setNoticeFile(noticeFile)`을 호출하면 파일명, 상대경로 또는 절대 URL을 지정할 수 있습니다. 상대경로는 `puyow.js`가 로드된 URL을 기준으로 해석하고, `https://`와 같은 절대 URL은 지정한 주소 그대로 사용합니다. 경로 안의 `[CTX]`, `[LANG]`은 `convertURL()` 규칙으로 치환됩니다. 공지사항 파일은 다국어 번역을 거치지 않고 UTF-8 텍스트 그대로 표시합니다.
+메인 화면 왼쪽에 표시할 공지사항은 `notice_[LANG].txt`를 기본 경로로 사용합니다. 초기화하기 전에 `PuyoW.setNoticeFile(noticeFile)`을 호출하면 파일명, 상대경로 또는 절대 URL을 지정할 수 있습니다. 상대경로는 `puyow.js`가 로드된 URL을 기준으로 해석하고, `https://`와 같은 절대 URL은 지정한 주소 그대로 사용합니다. 저장소의 언어별 파일은 `src/notice/`에 있으므로 `src/js/puyow.js` 기준으로는 `../notice/notice_[LANG].txt`를 지정합니다. 경로 안의 `[CTX]`, `[LANG]`은 `convertURL()` 규칙으로 치환됩니다. 공지사항 파일은 다국어 번역을 거치지 않고 UTF-8 텍스트 그대로 표시합니다.
 
 ```js
-// 기본값과 같은 파일을 사용한다.
-PuyoW.setNoticeFile('notice.txt');
+// 저장소의 src/notice/ 아래 언어별 파일을 사용한다.
+PuyoW.setNoticeFile('../notice/notice_[LANG].txt');
 
-// puyow.js가 있는 위치의 notices/notice-ko.txt 를 사용한다.
-//     [LANG] 문구는 시스템 언어 코드 (ko, en, ...) 로 치환된다.
-PuyoW.setNoticeFile('notices/notice-[LANG].txt');
+// 애플리케이션 전용 파일은 로드된 스크립트 기준 상대 경로를 사용한다.
+PuyoW.setNoticeFile('notice-[LANG].txt');
 
 // 다른 서버의 공지사항을 사용한다.
 PuyoW.setNoticeFile('https://example.com/puyo/notice.txt');
