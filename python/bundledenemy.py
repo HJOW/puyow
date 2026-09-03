@@ -24,12 +24,9 @@ TRAINABLE_ENEMY_TYPES에는 넣지 않았다 — 즉 대전 상대로는 뽑히�
 아닌 열을 화면 밖 높이까지 쌓아 올리는 극단적인 경우의 동작은 원작과 다를 수 있다.
 그 밖에 다음도 학습 환경의 범위 밖이라 이식하지 않았다:
 
-* `configure_rule(fever_rule)`로 기본 룰/피버 룰을 고를 수 있지만, 이는 축소판이다.
-  실제로 바뀌는 것은 죽음 칸(피버 룰은 X=2·X=3 둘 다 검사)과 세레·암두시아스의
-  "피버 룰이 선택되어 있을 때"의 쌓기·공격 우선순위 분기뿐이다. puyow.js처럼 일반
-  필드와 별도의 피버 필드를 오가거나, 피버 게이지·제한 시간·목표 연쇄 상승, 연속
-  피버는 재현하지 않는다. `player.fever?.active`를 조건으로 쓰는 원작 분기(Enemy의
-  공통 피버 연쇄 최적화 등)는 이 축소판에 "활성 피버 상태"가 없으므로 계속 빠져 있다.
+* 일반 필드와 피버 필드 전환·게이지·제한 시간·목표 연쇄는 learning.py의
+  `PuyoDuelEnvironment`가 담당한다. 이 모듈은 `configure_rule()`로 전달받은 룰과
+  현재 플레이어의 피버 활성 여부에 맞춰 패배 칸 및 피버 연쇄 우선 판단을 적용한다.
 * 딱딱뿌요(hardGarbage)·철구뿌요(iron)는 시뮬레이터 전용이므로 제외했다. 방해뿌요
   (GARBAGE)는 지원한다.
 * `shouldCounterPlayerChain`(상대가 실시간으로 연쇄를 진행 중일 때 끼어드는 판단)은
@@ -73,19 +70,18 @@ SECOND_DEFEAT_COLUMN = 3
 DEFEAT_ROW = BOARD_HEIGHT - 1
 AVOIDANCE_WARNING_ROW = 8
 
-# 현재 대전에 적용 중인 룰이다. True면 피버 룰(죽음 칸 X=2·X=3, 세레·암두시아스의 피버 전용
-# 분기), False면 기본 룰(죽음 칸 X=2 하나)이다. 학습 스크립트는 한 번에 하나의 대전만
-# 동기적으로 진행하므로 이 모듈 전역 상태만으로 충분하며, configure_rule()로 에피소드마다
-# 갱신한다. 이 값이 True여도 puyow.js처럼 일반 필드와 별도의 피버 필드·게이지·제한 시간을
-# 오가는 동작은 재현하지 않는다(모듈 docstring의 "이식 범위와 단순화한 부분" 참고). 즉 여기서
-# 말하는 "피버 룰"은 단일 필드 위에서 죽음 칸과 일부 적 AI 분기만 바뀌는 축소판이다.
+# 현재 대전 룰과 판단 대상 플레이어의 피버 활성 여부다. 학습 스크립트는 환경 하나를
+# 순차 실행하므로 판단/해결 직전에 이 전역 상태를 갱신해도 안전하다. 필드 전환과 타이머는
+# learning.PuyoDuelEnvironment가 담당한다.
 FEVER_RULE_ACTIVE = False
+FEVER_ACTIVE = False
 
 
-def configure_rule(fever_rule: bool) -> None:
-    """이번 대전에 적용할 룰을 설정한다. 이후 이 모듈의 모든 패배 판정·적 AI 판단이 이 값을 따른다."""
-    global FEVER_RULE_ACTIVE
+def configure_rule(fever_rule: bool, fever_active: bool = False) -> None:
+    """이번 대전 룰과 현재 판단 대상의 피버 활성 여부를 설정한다."""
+    global FEVER_RULE_ACTIVE, FEVER_ACTIVE
     FEVER_RULE_ACTIVE = bool(fever_rule)
+    FEVER_ACTIVE = bool(fever_rule and fever_active)
 
 
 def _active_defeat_columns() -> Tuple[int, ...]:
@@ -99,13 +95,20 @@ AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD = 12
 
 DIRECTIONS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
-# puyow.js의 점수 계산 상수. 학습 환경은 게임 경과 시간에 따른 마진 레이트·시간 배율
-# 변화를 두지 않으므로, 항상 시작 값(마진 레이트 70, 시간 배율 1)을 사용한다.
+# puyow.js의 점수 계산 상수와 현재 게임 시간에 따른 공격 계산 상태다.
 CHAIN_BONUS = (0, 0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512)
 CONNECTION_BONUS = (0, 0, 0, 0, 0, 2, 3, 4, 5, 6, 7, 10)
 COLOR_BONUS = (0, 0, 3, 6, 12, 24)
 MARGIN_RATE = 70
+TIME_PROGRESS_MULTIPLIER = 1
 EXPLOSION_REWARD_MULTIPLIER = 1
+
+
+def configure_timing(margin_rate: float, time_progress_multiplier: float) -> None:
+    """학습 환경의 현재 경과 시간에 맞는 마진 레이트와 시간 진행 배율을 설정한다."""
+    global MARGIN_RATE, TIME_PROGRESS_MULTIPLIER
+    MARGIN_RATE = max(1.0, float(margin_rate))
+    TIME_PROGRESS_MULTIPLIER = max(1.0, float(time_progress_multiplier))
 
 
 class Placement:
@@ -260,8 +263,8 @@ def calculate_explosion_point(groups: Sequence[Tuple[int, List[Tuple[int, int]]]
 
 
 def calculate_explosion_attack(point: float) -> float:
-    """점수 증가량을 ATTACK 증가량으로 환산한다. puyow.js의 calculateExplosionAttack에 대응하며, 마진 레이트·시간 배율은 항상 시작값으로 고정한다."""
-    return point / MARGIN_RATE * EXPLOSION_REWARD_MULTIPLIER
+    """점수 증가량을 현재 마진 레이트와 시간 진행 배율로 ATTACK에 환산한다."""
+    return point / MARGIN_RATE * EXPLOSION_REWARD_MULTIPLIER * TIME_PROGRESS_MULTIPLIER
 
 
 def _place_and_resolve(board: Sequence[Sequence[int]], colors: Sequence[int], positions: Optional[Sequence[Tuple[int, int]]]):
@@ -636,6 +639,12 @@ class BaseEnemy:
         simulations = prepare_simulations(board, colors)
         if not simulations:
             return None
+        # 실제 게임의 BundledEnemy.prepareTurn처럼 피버 중에는 적별 빌드 전략보다
+        # 즉시 패배하지 않는 최대 연쇄·공격 후보를 우선한다.
+        if FEVER_ACTIVE:
+            safe = [simulation for simulation in simulations if not causes_immediate_defeat(board, colors, simulation.positions)]
+            if safe:
+                return max(safe, key=lambda simulation: (simulation.combo, simulation.attack))
         prepared = self._prepare_common(board, colors, simulations)
         if prepared is not None:
             return self._finalize(board, colors, simulations, prepared)

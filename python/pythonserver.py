@@ -42,7 +42,10 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import unquote, urlsplit
 
-from common import ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, COLORS, OBSERVATION_SIZE, action_to_placement, validate_observation
+from common import (
+	ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, MODEL_VERSION, OBSERVATION_SIZE,
+	action_to_placement, encode_observation_values, is_legal_observation_action, validate_observation,
+)
 
 
 # 서버 운영자가 이 컬렉션의 값을 수정해 포트와 인증 토큰을 설정한다.
@@ -234,6 +237,8 @@ def get_dqn_model() -> Any:
 			# 학습 당시의 관측·행동 수가 현재 common.py 계약과 다르면 추론을 막는다.
 			if not isinstance(checkpoint, dict):
 				raise ValueError("체크포인트가 객체 형식이 아닙니다.")
+			if checkpoint.get("model_version") != MODEL_VERSION:
+				raise ValueError(f"체크포인트 모델 버전이 현재 서버와 다릅니다(필요: {MODEL_VERSION}).")
 			if checkpoint.get("observation_size") != OBSERVATION_SIZE or checkpoint.get("action_count") != ACTION_COUNT:
 				raise ValueError("체크포인트의 관측값 또는 행동 계약이 현재 서버와 다릅니다.")
 			state_dict = checkpoint.get("model")
@@ -277,7 +282,7 @@ def get_latest_user_message(payload: dict[str, Any]) -> str:
 
 # Solomon 프롬프트의 게임 상태를 현재 DQN 체크포인트가 요구하는 고정 길이 벡터로 바꾼다.
 def build_dqn_observation(prompt: dict[str, Any]) -> list[float]:
-	"""Solomon 프롬프트의 필드·현재 쌍을 DQN 공통 관측 벡터로 변환한다."""
+	"""Solomon 프롬프트의 필드·현재 쌍·실제 시간·피버 상태를 공통 관측으로 변환한다."""
 	field = prompt.get("currentField")
 	supplied = prompt.get("suppliedPuyos")
 	if not isinstance(field, dict) or not isinstance(supplied, list):
@@ -295,49 +300,37 @@ def build_dqn_observation(prompt: dict[str, Any]) -> list[float]:
 			raise ApiError("occupiedCells.x가 보드 범위를 벗어났습니다.")
 		if isinstance(y, bool) or not isinstance(y, int) or y < 0:
 			raise ApiError("occupiedCells.y가 올바르지 않습니다.")
-		# 방해뿌요 등 현재 DQN의 다섯 색 채널에 없는 값은 이 관측 계약에서는 제외한다.
-		if color not in PUYO_COLORS:
-			continue
+		if not isinstance(color, str) or not color:
+			raise ApiError("occupiedCells.color가 올바르지 않습니다.")
 		# DQN의 현재 관측 계약은 puyow.js와 같이 표시 영역 12행만 사용한다.
 		if y < BOARD_HEIGHT:
 			board[y][x] = color
 	current_pair = next((entry.get("colors") for entry in supplied if isinstance(entry, dict) and entry.get("order") == "current"), None)
 	if not isinstance(current_pair, list) or len(current_pair) != 2 or any(color not in PUYO_COLORS for color in current_pair):
 		raise ApiError("현재 뿌요 쌍은 두 개의 색으로 제공되어야 합니다.")
-	values: list[float] = []
-	# 빈 칸 채널 다음에 puyow.js 색상 순서의 원-핫 채널을 차례로 쌓는다.
-	for channel in range(COLORS + 1):
-		# 각 채널은 보드 하단(y=0)부터 행 우선 순서로 기록한다.
-		for row in board:
-			for color in row:
-				values.append(float(color is None) if channel == 0 else float(color == PUYO_COLORS[channel - 1]))
-	# 현재 떨어지는 두 뿌요도 각각 다섯 색 원-핫 값으로 뒤에 추가한다.
-	for color in current_pair:
-		values.extend(float(color == candidate) for candidate in PUYO_COLORS)
 	current_state = prompt.get("currentState")
 	current_state = current_state if isinstance(current_state, dict) else {}
-	attack = current_state.get("attack", 0)
-	turn = current_state.get("placedPairCount", 0)
-	values.extend((min(max(float(attack), 0.0), 30.0) / 30.0, min(max(float(turn), 0.0), 100.0) / 100.0))
-	if len(values) != OBSERVATION_SIZE:
-		raise ApiError("생성한 DQN 관측값 길이가 공통 계약과 다릅니다.", HTTPStatus.INTERNAL_SERVER_ERROR)
-	return values
+	try:
+		return encode_observation_values(
+			board, current_pair,
+			attack=current_state.get("attack", 0),
+			turn=current_state.get("placedPairCount", 0),
+			incoming_damage=current_state.get("incomingDamage", 0),
+			fever_rule=current_state.get("feverRule", False),
+			all_clear_ticket=current_state.get("allClearTicket", False),
+			elapsed_ms=current_state.get("elapsedMs", 0),
+			margin_rate=current_state.get("marginRate", 70),
+			time_progress_multiplier=current_state.get("timeProgressMultiplier", 1),
+			fever=current_state.get("fever"),
+		)
+	except (TypeError, ValueError) as error:
+		raise ApiError(f"DQN 관측 상태가 올바르지 않습니다: {error}") from error
 
 
 # 모델이 고른 행동이 현재 보드의 기본 높이 조건에서 가능한지 빠르게 거른다.
 def is_legal_dqn_placement(observation: list[float], action: int) -> bool:
 	"""표시 영역의 현재 적재 높이를 기준으로 DQN 행동의 기본 배치 가능 여부를 판별한다."""
-	x, rotation = action_to_placement(action)
-	heights = []
-	# 빈 칸 채널의 0 값을 이용해 각 열에 이미 쌓인 뿌요 수를 계산한다.
-	for column in range(BOARD_WIDTH):
-		heights.append(sum(observation[y * BOARD_WIDTH + column] == 0 for y in range(BOARD_HEIGHT)))
-	# 세로 배치는 한 열에 두 칸, 가로 배치는 인접한 두 열에 각각 한 칸이 필요하다.
-	if rotation in (0, 2):
-		return heights[x] <= BOARD_HEIGHT - 2
-	if rotation == 1:
-		return x + 1 < BOARD_WIDTH and heights[x] < BOARD_HEIGHT and heights[x + 1] < BOARD_HEIGHT
-	return x > 0 and heights[x] < BOARD_HEIGHT and heights[x - 1] < BOARD_HEIGHT
+	return is_legal_observation_action(observation, action)
 
 
 # Q값 내림차순으로 후보를 보면서 처음 발견한 합법 행동을 Solomon 좌표 형식으로 반환한다.

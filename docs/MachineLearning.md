@@ -4,7 +4,7 @@
 
 ## 사전 준비
 
-저장소 루트에서 Python 3.10 이상과 PyTorch를 준비한다. 
+저장소 루트에서 Python 3.10 이상, PyTorch, Node.js를 준비한다. Node.js는 Python 피버 환경이 `src/js/puyow.js`의 실제 `FEVER_STAGES`를 읽을 때 사용한다.
 [https://www.python.org/](https://www.python.org/)
 
 Python 설치 후 PyTorch 는 Windows PowerShell 에서 다음처럼 설치할 수 있다.
@@ -34,15 +34,17 @@ python python/learning.py --episodes 1000 --device auto
 | `--server-url` | 빈 값 | 학습 API가 실행 중인 서버 주소 |
 | `--api-token` | 빈 값 | Python 서버의 `SERVER_CONFIG["learning_token"]` 값 |
 | `--opponent` | `random` | 대전 상대. 아래 "적 AI와 대전하며 학습" 참고 |
+| `--evaluate-episodes` | `0` | 학습 없이 epsilon=0으로 평가하고 승·패·무승부·승률을 출력할 에피소드 수 |
+| `--infer-observation` | 미지정 | LM Studio·HTTP 서버 없이 공통 관측 JSON 하나를 직접 추론 |
 
-학습이 끝나면 지정한 경로에 PyTorch 체크포인트가 저장되고, 같은 위치의 확장자를 `.json`으로 바꾼 메타데이터 파일도 생성된다. `--output` 경로에 실제 파일이 있으면 새 모델을 만들지 않고 그 파일의 가중치를 복원해 추가 학습한 뒤 같은 파일에 저장한다. 관측 벡터 길이 또는 행동 수가 현재 계약과 다르면 오류로 중단하며 기존 파일을 덮어쓰지 않는다. optimizer·replay buffer·epsilon은 체크포인트에 저장하지 않으므로 추가 학습 실행마다 새로 시작한다. 기본 출력은 다음 두 파일이다.
+학습이 끝나면 지정한 경로에 PyTorch 체크포인트가 저장되고, 같은 위치의 확장자를 `.json`으로 바꾼 메타데이터 파일도 생성된다. `--output` 경로에 실제 파일이 있으면 새 모델을 만들지 않고 그 파일의 가중치를 복원해 추가 학습한 뒤 같은 파일에 저장한다. 모델 버전, 관측 벡터 길이 또는 행동 수가 현재 계약과 다르면 오류로 중단하며 기존 파일을 덮어쓰지 않는다. optimizer·replay buffer·epsilon은 체크포인트에 저장하지 않으므로 추가 학습 실행마다 새로 시작한다. 기본 출력은 다음 두 파일이다.
 
 ```text
 python/puyow/default.pt
 python/puyow/default.json
 ```
 
-체크포인트에는 모델 가중치, 관측 벡터 크기, 행동 개수, 학습 시드가 들어 있다.
+체크포인트에는 모델 가중치, 모델 계약 버전, 관측 벡터 크기, 행동 개수, 학습 시드가 들어 있다. 현재 모델 버전은 `2`이며 이전 444개 관측 모델은 의도적으로 호환되지 않으므로 다시 학습해야 한다.
 
 ## 적 AI와 대전하며 학습
 
@@ -63,10 +65,10 @@ python python/learning.py --episodes 1000 --opponent Kimaris
 
 `solo` 이외의 대전 모드에서는 상대 선택과 별개로 다음 값도 매 에피소드마다 무작위로 정해진다.
 
-- **룰**: 기본 룰과 피버 룰 중 하나를 50%씩 고른다. 다만 이 환경의 피버 룰은 축소판이다 — 실제로 바뀌는 것은 죽음 칸(X=2·X=3 둘 다 검사)과 세레·암두시아스의 피버 전용 쌓기·공격 우선순위 분기뿐이며, puyow.js처럼 일반 필드와 별도의 피버 필드를 오가거나 피버 게이지·제한 시간·목표 연쇄 상승을 재현하지는 않는다. 자세한 내용은 `bundledenemy.py`의 `configure_rule()` 문서를 참고한다.
+- **룰**: 기본 룰과 피버 룰 중 하나를 50%씩 고른다. 피버 룰은 일반/피버 필드 이원화, 상쇄 7회 게이지, 플레이어별 다음 피버 시간, 제한 시간, 목표 연쇄 변경, 피버 중 최대 연쇄 우선 적 판단을 실행한다. 피버 패턴은 별도 복사본이 아니라 실행 시 `PuyoW.common.getFeverStageDefinitions()`로 실제 게임 데이터 54개를 읽어 색상 수와 지급쌍에 맞춰 배치한다.
 - **색상 수**: 3색, 4색, 5색 중 하나를 무작위로 골라 그 수만큼의 색으로만 뿌요 쌍을 생성한다(관측 벡터 채널 수 자체는 항상 5색 기준으로 고정이며, 쓰지 않는 채널은 0으로 남는다).
 
-딱딱뿌요·연속 피버·마진 레이트 시간 배율처럼 이 대전 환경이 아직 다루지 않는 부분은 `bundledenemy.py` 모듈 docstring과 아래 "현재 구현 범위"에 정리되어 있다.
+브라우저 게임은 `game.elapsed`의 실제 경과 밀리초를 관측값에 넣는다. CPU 속도로 즉시 진행되는 오프라인 학습에는 벽시계 시간이 의미 없으므로 양측 한 턴을 3초로 간주해 마진 레이트와 시간 진행 배율, 피버 제한 시간을 결정적으로 진행한다.
 
 ## 서버 API와 함께 실행
 
@@ -116,11 +118,11 @@ Content-Type: application/json
 
 ## 관측값과 행동
 
-현재 Python 환경의 관측 벡터는 길이 `444`다.
+현재 Python 환경의 모델 버전 2 관측 벡터는 길이 `528`이다.
 
-- 6×12 보드의 빈 칸 및 5색 뿌요 원-핫 채널: `432`개
+- 6×12 보드의 빈 칸, 방해뿌요, 5색 뿌요 원-핫 채널: `504`개
 - 현재 뿌요 쌍의 두 색 원-핫 정보: `10`개
-- 공격 상태 값과 턴 수: `2`개. 단일 `PuyoEnvironment`에서는 누적 ATTACK, 대전 `PuyoDuelEnvironment`에서는 에이전트가 직전 수에 만든 ATTACK을 사용한다.
+- 정규화된 전투·룰·시간·피버 상태: `14`개. 순서는 ATTACK, 턴, DAMAGE, 피버 룰 여부, 싹쓸이 티켓, 경과시간, 마진 레이트, 시간 진행 배율, 피버 활성, 게이지, 다음 피버 시간, 목표 연쇄, 남은 시간, 피버 DAMAGE다.
 
 보드 좌표는 `board[y][x]`이며 `y=0`이 바닥이다. 행동 번호는 `열 * 4 + 회전`으로 계산한다.
 
@@ -148,17 +150,16 @@ const state = window.PuyoW.getGameState();
 - `allClearTicket`: 기본 룰에서 다음 색 뿌요 폭발에 쓸 싹쓸이 티켓 보유 여부.
 - `nextPairs`: 양측 모두 현재 수 뒤의 앞 두 쌍만 제공한다. 내부 CPU 탐색용 대기열 전체를 노출하지 않는다.
 
-연속 피버의 남은 시간과 목표 상태는 기존 최상위 `fever.leftTime`, `fever.targetCombo` 등에 들어 있다. 현재 `/apis/learning` 전이의 444개 관측 벡터 계약은 그대로 유지되며, 위 상세 상태는 이후 피버·상대·승패 상태를 포함하는 학습 환경과 적 AI가 공통으로 조회하는 기준이다.
+연속 피버의 남은 시간과 목표 상태는 기존 최상위 `fever.leftTime`, `fever.targetCombo` 등에 들어 있다. `/apis/learning`과 솔로몬 DQN 요청은 같은 528개 관측 계약을 사용하며, 솔로몬 프롬프트의 `currentState.elapsedMs`는 JS 게임 루프가 관리하는 실제 `game.elapsed`다.
 
 ## 현재 구현 범위
 
-현재 학습 환경에는 일반 색 뿌요의 연결 폭발, 연쇄, 중력, 패배 위치(기본 룰 X=2, 피버 룰은 X=2·X=3), 일반 방해뿌요 교환, `bundledenemy.py`로 이식한 적 AI 또는 self-play와의 대전, 룰(기본/피버)·색상 수(3~5색)의 에피소드별 무작위 선택이 구현되어 있다. 다음 Puyo W 규칙은 아직 간소화되어 있으므로 실제 게임 AI로 사용하기 전에 보완해야 한다.
+현재 학습 환경에는 일반 색 뿌요의 연결 폭발, 연쇄, 중력, 패배 위치, 일반 방해뿌요 교환, 기본 룰 싹쓸이 티켓, 시간별 마진/공격 배율, 실제 게임 패턴 기반 피버 룰, 이식된 적 AI 또는 self-play와의 대전, 룰·색상 수의 에피소드별 무작위 선택이 구현되어 있다. 다음 부분은 의도적으로 제한되어 있다.
 
 - 딱딱뿌요(하드 방해뿌요)와 철구뿌요(시뮬레이터 전용)
-- 피버 룰의 일반 필드/피버 필드 이원화, 피버 게이지·제한 시간·목표 연쇄 상승, 연속 피버(현재 피버 룰은 죽음 칸과 일부 적 AI 분기만 반영하는 축소판이다)
-- 싹쓸이 티켓 및 마진 레이트·시간 진행 배율에 따른 실제 점수·ATTACK 계산(현재는 마진 레이트 70·시간 배율 1로 고정)
+- 연속 피버 단독 모드(대전 학습은 기본 룰과 피버 룰을 대상으로 한다)
 - 실제 브라우저 게임 루프의 상태 수집 및 행동 주입
-- 평가 전용(입실론 0, 승률 집계) 에피소드와 안드레알푸스의 Worker 비동기 3수 탐색(현재는 동기 시간 제한 탐색으로 대체)
+- 안드레알푸스의 Worker 비동기 3수 탐색(현재는 동기 시간 제한 탐색으로 대체)
 
 현재 `pythonserver.py` API는 학습 이벤트를 수신하고 세션 통계를 보관하며, `src/js/puyow.js`는 사용자 게임의 실제 배치·정산 결과를 해당 API 계약으로 전송한다. 브라우저에서 `configureLearningApi()`를 호출해야 전송이 활성화된다.
 
@@ -191,6 +192,18 @@ const state = window.PuyoW.getGameState();
 3. 게임 설정에서 AI 제공자로 **LM Studio**를 선택하고 URL에 `http://localhost:9891`, API 키에 `learning_token`과 같은 값을 넣는다. 모델명은 비어 있지 않은 임의 문자열(예: `puyow-dqn`)을 넣는다. 게임 클라이언트가 URL 뒤에 `/v1/chat/completions`를 붙여 요청한다.
 
 `model_path`가 비어 있거나 존재하지 않는 파일이면 `/v1/chat/completions`만 404를 반환한다. 이 경우에도 정적 파일 제공과 `/apis/learning` 학습 이벤트 API는 계속 실행된다.
+
+서버 없이 관측 벡터 하나를 직접 추론하려면 528개 숫자 배열 JSON을 준비하고 다음처럼 실행한다. 결과는 `action`, `x`, `rotation` JSON이며, 가득 찬 열과 벽을 침범하는 행동은 Q값 순위에서 건너뛴다.
+
+```powershell
+python python/learning.py --output python/puyow/default.pt --infer-observation observation.json
+```
+
+학습 없이 epsilon=0 승률을 확인하려면 다음 명령을 사용한다.
+
+```powershell
+python python/learning.py --output python/puyow/default.pt --evaluate-episodes 100 --opponent random
+```
 
 ## 도움말
 

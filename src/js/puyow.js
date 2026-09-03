@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 7;
+    const BUILDNO = 8;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -2156,14 +2156,19 @@
         return Boolean(learningApiConfig && game && !game.tutorial && !game.watch && game.players?.[0]?.controller === null);
     }
 
-    /** 실제 게임 보드와 현재 조작 쌍을 learning.py의 관측 벡터로 변환한다. @param {PlayerState} player 관측할 사용자 플레이어 @returns {number[]} 관측 벡터 */
+    /** 실제 게임 보드와 현재 조작 쌍·경과 시간·피버 상태를 learning.py의 관측 벡터로 변환한다. @param {PlayerState} player 관측할 사용자 플레이어 @returns {number[]} 관측 벡터 */
     function getLearningObservation(player) {
         const values = [];
-        for (let channel = 0; channel <= COLORS.length; channel += 1) {
+        // common.py와 동일하게 빈 칸, 방해뿌요, 다섯 색을 독립 채널로 기록한다.
+        for (let channel = 0; channel < COLORS.length + 2; channel += 1) {
             for (let y = 0; y < VISIBLE_ROWS; y += 1) {
                 for (let x = 0; x < COLUMNS; x += 1) {
                     const color = player.board[y]?.[x] || null;
-                    values.push(channel === 0 ? Number(!color) : Number(color === COLORS[channel - 1]));
+                    values.push(channel === 0
+                        ? Number(!color)
+                        : channel === 1
+                            ? Number(Boolean(color) && !COLORS.includes(color))
+                            : Number(color === COLORS[channel - 2]));
                 }
             }
         }
@@ -2171,8 +2176,25 @@
         for (const color of activeColors.slice(0, 2)) {
             for (const candidate of COLORS) values.push(Number(color === candidate));
         }
-        while (values.length < VISIBLE_ROWS * COLUMNS * (COLORS.length + 1) + COLORS.length * 2) values.push(0);
-        values.push(Math.min(player.attack, 30) / 30, Math.min(player.placedPairCount, 100) / 100);
+        while (values.length < VISIBLE_ROWS * COLUMNS * (COLORS.length + 2) + COLORS.length * 2) values.push(0);
+        const clampRatio = (value, maximum) => Math.min(Math.max(Number(value) || 0, 0), maximum) / maximum;
+        const fever = player.fever || {};
+        values.push(
+            clampRatio(player.attack, 30),
+            clampRatio(player.placedPairCount, 100),
+            clampRatio(player.damage, 30),
+            Number(game?.feverRule === true),
+            Number(player.allClearTicket === true),
+            clampRatio(game?.elapsed, 600000),
+            clampRatio(game?.marginRate ?? MARGIN_RATE_SCHEDULE[0].rate, 70),
+            clampRatio(Math.log2(Math.max(1, game?.timeProgressMultiplier || 1)), 10),
+            Number(fever.active === true),
+            clampRatio(fever.gauge, FEVER_GAUGE_MAX),
+            clampRatio(fever.nextTime ?? FEVER_INITIAL_TIME, FEVER_MAX_TIME),
+            clampRatio(fever.targetCombo ?? FEVER_INITIAL_TARGET_COMBO, CONTINUOUS_FEVER_MAX_TARGET_COMBO),
+            clampRatio(fever.leftTime, FEVER_START_INITIAL_TIME),
+            clampRatio(fever.damage, 30)
+        );
         return values;
     }
 
@@ -11348,7 +11370,17 @@
                     outputCoordinates: 'x is the final column of the first (rotation-axis) puyo. rotation is one of 0,1,2,3 as defined above.'
                 },
                 currentField: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, occupiedCells },
-                currentState: { incomingDamage: player.damage, fever: this.getMyFeverStatus(player) },
+                currentState: {
+                    attack: player.attack,
+                    placedPairCount: player.placedPairCount,
+                    incomingDamage: player.damage,
+                    feverRule,
+                    allClearTicket: player.allClearTicket,
+                    elapsedMs: game?.elapsed || 0,
+                    marginRate: game?.marginRate ?? MARGIN_RATE_SCHEDULE[0].rate,
+                    timeProgressMultiplier: game?.timeProgressMultiplier || 1,
+                    fever: this.getMyFeverStatus(player)
+                },
                 suppliedPuyos: [
                     { order: 'current', colors: [...player.active.colors] },
                     ...player.nextPairs.slice(0, 2).map((colors, index) => ({ order: `next_${index + 1}`, colors: [...colors] }))
@@ -13329,6 +13361,17 @@
         PUZZLE_STAGES.push(puzzlePuyoStage);
     }
 
+    /** 실제 게임이 사용하는 피버 패턴을 외부 학습 환경이 안전하게 복제할 수 있는 데이터로 반환한다. @returns {object[]} 피버 스테이지 사본 */
+    function getFeverStageDefinitions() {
+        return FEVER_STAGES.map((stage) => ({
+            stageData: { puyos: (stage.stageData.puyos || []).map((puyo) => ({ ...puyo })) },
+            targetCombo: stage.targetCombo,
+            suppliedNextPuyos: [...stage.suppliedNextPuyos],
+            difficulty: stage.difficulty,
+            usingColors: [...stage.usingColors]
+        }));
+    }
+
     /**
      * 2D 렌더러에 종속되지 않아 선택적 연출·외부 분석 도구도 읽기 전용으로 재사용할 수 있는 공통 함수 모음이다.
      * 모든 함수는 입력 보드를 직접 바꾸지 않으며, 선택적 연출·분석 도구에서 PuyoW.common으로 접근한다.
@@ -13360,6 +13403,7 @@
         formatPoint,
         collapseBoard,
         simulatePlacementBoard,
+        getFeverStageDefinitions,
         isAllClearBoard,
         estimateAttack,
         estimateCombo,
@@ -13436,6 +13480,7 @@
         formatPoint,
         collapseBoard,
         simulatePlacementBoard,
+        getFeverStageDefinitions,
         isAllClearBoard,
         estimateAttack,
         estimateCombo,

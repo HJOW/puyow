@@ -42,15 +42,16 @@ import urllib.request
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Deque, List, Optional, Tuple
+from typing import Any, Callable, Deque, List, Optional, Tuple
 
 import torch
 from torch import nn
 
 import bundledenemy
 from common import (
-	ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, COLORS, OBSERVATION_SIZE,
+	ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, COLORS, MODEL_VERSION, OBSERVATION_SIZE,
 	ROTATION_DOWN, ROTATION_LEFT, ROTATION_RIGHT, ROTATION_UP, action_to_placement,
+	encode_observation_values, is_legal_observation_action, validate_observation,
 )
 
 
@@ -107,24 +108,91 @@ class Transition:
 	done: bool
 
 
-def encode_observation(board: List[List[int]], current_pair: Tuple[int, int], attack: float, turn: int) -> torch.Tensor:
-	"""보드·현재 쌍·누적 ATTACK·턴 수를 common.OBSERVATION_SIZE 계약에 맞는 벡터로 인코딩한다.
+def encode_observation(
+	board: List[List[int]], current_pair: Tuple[int, int], attack: float, turn: int, *,
+	incoming_damage: float = 0.0, fever_rule: bool = False, all_clear_ticket: bool = False,
+	elapsed_ms: float = 0.0, margin_rate: float = 70.0, time_progress_multiplier: float = 1.0,
+	fever: Optional[dict[str, Any]] = None,
+) -> torch.Tensor:
+	"""보드·현재 쌍·전투/시간/피버 상태를 공통 DQN 관측 벡터로 인코딩한다."""
+	return torch.tensor(encode_observation_values(
+		board, current_pair, attack=attack, turn=turn, incoming_damage=incoming_damage,
+		fever_rule=fever_rule, all_clear_ticket=all_clear_ticket, elapsed_ms=elapsed_ms,
+		margin_rate=margin_rate, time_progress_multiplier=time_progress_multiplier, fever=fever,
+	), dtype=torch.float32)
 
-	PuyoEnvironment(단일 플레이어)와 PuyoDuelEnvironment(적 AI 대전) 양쪽이 이 함수를 공유한다.
-	빈 칸(-1)과 방해뿌요(bundledenemy.GARBAGE=-2)는 모두 `cell < 0`이라 같은 채널로 인코딩된다.
-	색상별 채널을 넘어 방해뿌요 전용 채널을 두는 일은 TODO.md에 있는 별도의 관측값 재설계
-	작업(common.py의 OBSERVATION_SIZE 계약 자체를 바꾸는 일) 범위이므로 이 변경에서는 다루지 않는다.
-	"""
-	values = []
-	for channel in range(COLORS + 1):
-		values.extend(
-			1.0 if (cell < 0 if channel == 0 else cell == channel - 1) else 0.0
-			for row in board for cell in row
+
+MARGIN_RATE_SCHEDULE = (
+	(0, 70), (96, 52), (112, 34), (128, 25), (144, 16), (160, 12),
+	(176, 8), (192, 6), (208, 4), (224, 3), (240, 2), (256, 1),
+)
+ALL_CLEAR_TICKET_ATTACK = 30.0
+FEVER_GAUGE_MAX = 7
+FEVER_INITIAL_TARGET_COMBO = 5
+FEVER_INITIAL_TIME = 15
+FEVER_MAX_TIME = 30
+FEVER_MIN_TARGET_COMBO = 4
+FEVER_MAX_TARGET_COMBO = 12
+FEVER_CHAIN_TIME_BONUS_MS = 2_000
+_FEVER_STAGES: Optional[list[dict[str, Any]]] = None
+
+
+def get_margin_rate(elapsed_ms: float) -> float:
+	"""puyow.js와 같은 경과 시간별 마진 레이트를 반환한다."""
+	elapsed_second = max(0, int(elapsed_ms // 1000))
+	return float(next(rate for start, rate in reversed(MARGIN_RATE_SCHEDULE) if elapsed_second >= start))
+
+
+def get_time_progress_multiplier(elapsed_ms: float) -> float:
+	"""300초 이후 20초마다 두 배, 최대 1024인 시간 진행 배율을 반환한다."""
+	elapsed_second = max(0, int(elapsed_ms // 1000))
+	increase_count = max(0, (elapsed_second - 300) // 20)
+	return float(min(1024, 2 ** increase_count))
+
+
+def calculate_fever_target(combo: int, all_clear: bool, previous_target: int) -> int:
+	"""실제 게임과 같은 다음 피버 목표 연쇄를 계산한다."""
+	next_target = max(FEVER_MIN_TARGET_COMBO, min(FEVER_MAX_TARGET_COMBO, combo + 1 + (2 if all_clear else 0)))
+	return max(next_target, previous_target - 1)
+
+
+def load_fever_stage_definitions() -> list[dict[str, Any]]:
+	"""puyow.js가 공개하는 실제 FEVER_STAGES 데이터를 Node로 한 번만 읽는다."""
+	global _FEVER_STAGES
+	if _FEVER_STAGES is not None:
+		return _FEVER_STAGES
+	game_source = Path(__file__).resolve().parents[1] / "src" / "js" / "puyow.js"
+	script = "const p=require(process.argv[1]);process.stdout.write(JSON.stringify(p.common.getFeverStageDefinitions()));"
+	try:
+		completed = subprocess.run(
+			["node", "-e", script, str(game_source)], check=True, capture_output=True, text=True, encoding="utf-8",
 		)
-	for color in current_pair:
-		values.extend(1.0 if color == candidate else 0.0 for candidate in range(COLORS))
-	values.extend((min(attack, 30) / 30.0, min(turn, 100) / 100.0))
-	return torch.tensor(values, dtype=torch.float32)
+		stages = json.loads(completed.stdout)
+	except (OSError, subprocess.CalledProcessError, json.JSONDecodeError) as error:
+		raise RuntimeError("실제 피버 스테이지를 src/js/puyow.js에서 읽지 못했습니다. Node.js와 게임 소스를 확인하세요.") from error
+	if not isinstance(stages, list) or not stages:
+		raise RuntimeError("src/js/puyow.js에 사용할 수 있는 피버 스테이지가 없습니다.")
+	_FEVER_STAGES = stages
+	return _FEVER_STAGES
+
+
+@dataclass
+class FeverState:
+	"""Puyo W 플레이어별 피버 룰 상태."""
+	active: bool = False
+	gauge: int = 0
+	next_time: int = FEVER_INITIAL_TIME
+	target_combo: int = FEVER_INITIAL_TARGET_COMBO
+	left_time_ms: float = 0.0
+	field: Optional[List[List[int]]] = None
+	damage: float = 0.0
+	turn: int = 0
+
+	def observation(self) -> dict[str, Any]:
+		return {
+			"active": self.active, "gauge": self.gauge, "nextTime": self.next_time,
+			"targetCombo": self.target_combo, "leftTime": self.left_time_ms, "damage": self.damage,
+		}
 
 
 class PuyoEnvironment:
@@ -272,6 +340,9 @@ class PuyoDuelEnvironment:
 	COLOR_COUNT_CHOICES: Tuple[int, ...] = (3, 4, 5)
 
 	MAX_TURNS_PER_EPISODE = 150
+	# 브라우저에서는 game.elapsed의 실제 밀리초를 관측한다. 오프라인 고속 학습에는 벽시계가
+	# 의미 없으므로 한 번의 양측 턴을 실제 플레이의 대표값인 3초로 진행시킨다.
+	DUEL_TURN_DURATION_MS = 3_000
 	WIN_REWARD = 50.0
 	LOSS_REWARD = -50.0
 	INVALID_ACTION_REWARD = -5.0
@@ -304,6 +375,13 @@ class PuyoDuelEnvironment:
 		self.enemy_damage = 0.0
 		self.agent_attack = 0.0
 		self.enemy_attack = 0.0
+		self.agent_all_clear_ticket = False
+		self.enemy_all_clear_ticket = False
+		self.agent_fever = FeverState()
+		self.enemy_fever = FeverState()
+		self.elapsed_ms = 0.0
+		self.margin_rate = 70.0
+		self.time_progress_multiplier = 1.0
 		self.turn = 0
 		self.reset()
 
@@ -333,6 +411,14 @@ class PuyoDuelEnvironment:
 		self.enemy_damage = 0.0
 		self.agent_attack = 0.0
 		self.enemy_attack = 0.0
+		self.agent_all_clear_ticket = False
+		self.enemy_all_clear_ticket = False
+		self.agent_fever = FeverState(field=bundledenemy.new_empty_board())
+		self.enemy_fever = FeverState(field=bundledenemy.new_empty_board())
+		self.elapsed_ms = 0.0
+		self.margin_rate = get_margin_rate(self.elapsed_ms)
+		self.time_progress_multiplier = get_time_progress_multiplier(self.elapsed_ms)
+		bundledenemy.configure_timing(self.margin_rate, self.time_progress_multiplier)
 		self.agent_pair = self._pair()
 		self.enemy_pair = self._pair()
 		self.agent_next_pairs = [self._pair() for _ in range(self.NEXT_PAIR_LOOKAHEAD)]
@@ -341,7 +427,52 @@ class PuyoDuelEnvironment:
 		return self.observe()
 
 	def observe(self) -> torch.Tensor:
-		return encode_observation(self.agent_board, self.agent_pair, self.agent_attack, self.turn)
+		return self._observe_side("agent")
+
+	def _fever(self, side: str) -> FeverState:
+		return self.agent_fever if side == "agent" else self.enemy_fever
+
+	def _board(self, side: str) -> List[List[int]]:
+		state = self._fever(side)
+		if self.fever_rule and state.active:
+			return state.field
+		return self.agent_board if side == "agent" else self.enemy_board
+
+	def _set_board(self, side: str, board: List[List[int]]) -> None:
+		state = self._fever(side)
+		if self.fever_rule and state.active:
+			state.field = board
+		elif side == "agent":
+			self.agent_board = board
+		else:
+			self.enemy_board = board
+
+	def _damage(self, side: str) -> float:
+		state = self._fever(side)
+		if self.fever_rule and state.active:
+			return state.damage
+		return self.agent_damage if side == "agent" else self.enemy_damage
+
+	def _set_damage(self, side: str, damage: float) -> None:
+		state = self._fever(side)
+		if self.fever_rule and state.active:
+			state.damage = damage
+		elif side == "agent":
+			self.agent_damage = damage
+		else:
+			self.enemy_damage = damage
+
+	def _observe_side(self, side: str) -> torch.Tensor:
+		pair = self.agent_pair if side == "agent" else self.enemy_pair
+		attack = self.agent_attack if side == "agent" else self.enemy_attack
+		ticket = self.agent_all_clear_ticket if side == "agent" else self.enemy_all_clear_ticket
+		state = self._fever(side)
+		return encode_observation(
+			self._board(side), pair, attack, self.turn, incoming_damage=self._damage(side),
+			fever_rule=self.fever_rule, all_clear_ticket=ticket, elapsed_ms=self.elapsed_ms,
+			margin_rate=self.margin_rate, time_progress_multiplier=self.time_progress_multiplier,
+			fever=state.observation() if self.fever_rule else None,
+		)
 
 	def _refill(self, pairs: List[Tuple[int, int]]) -> Tuple[int, int]:
 		pairs.append(self._pair())
@@ -350,42 +481,183 @@ class PuyoDuelEnvironment:
 	def _select_enemy_positions(self) -> Optional[List[Tuple[int, int]]]:
 		"""상대(적 AI 또는 self-play 정책)의 이번 수 착지 좌표를 정한다. 둘 곳이 없으면 None이다."""
 		if not self.is_self_play:
-			placement = self.opponent.decide(self.enemy_board, self.enemy_pair, self.enemy_next_pairs, self.enemy_damage)
+			bundledenemy.configure_rule(self.fever_rule, self.enemy_fever.active)
+			placement = self.opponent.decide(self._board("enemy"), self.enemy_pair, self.enemy_next_pairs, self._damage("enemy"))
 			return placement.positions if placement is not None else None
-		observation = encode_observation(self.enemy_board, self.enemy_pair, self.enemy_attack, self.turn)
+		observation = self._observe_side("enemy")
 		action = self.self_play_action_fn(observation) if self.self_play_action_fn else self.random.randrange(ACTION_COUNT)
 		column, rotation = action_to_placement(action)
-		landing = bundledenemy.find_landing_placement(self.enemy_board, column, rotation)
+		landing = bundledenemy.find_landing_placement(self._board("enemy"), column, rotation)
 		return [landing[0], landing[1]] if landing is not None else None
 
+	def _advance_time(self) -> None:
+		self.elapsed_ms += self.DUEL_TURN_DURATION_MS
+		self.margin_rate = get_margin_rate(self.elapsed_ms)
+		self.time_progress_multiplier = get_time_progress_multiplier(self.elapsed_ms)
+		bundledenemy.configure_timing(self.margin_rate, self.time_progress_multiplier)
+		if self.fever_rule:
+			for state in (self.agent_fever, self.enemy_fever):
+				if state.active:
+					state.left_time_ms = max(0.0, state.left_time_ms - self.DUEL_TURN_DURATION_MS)
+
+	def _select_fever_stage(self, target_combo: int, pair: Tuple[int, int]) -> tuple[dict[str, Any], dict[str, int]]:
+		stages = load_fever_stage_definitions()
+		same_pair = pair[0] == pair[1]
+		candidates = [stage for stage in stages if len(stage["usingColors"]) <= self.color_count
+			and stage["targetCombo"] == target_combo
+			and (stage["suppliedNextPuyos"][0] == stage["suppliedNextPuyos"][1]) == same_pair]
+		if not candidates:
+			raise RuntimeError(f"{self.color_count}색 {target_combo}연쇄 피버 스테이지를 찾지 못했습니다.")
+		stage = self.random.choice(candidates)
+		color_map: dict[str, int] = {}
+		used: set[int] = set()
+		for source, target in zip(stage["suppliedNextPuyos"], pair):
+			if source in color_map and color_map[source] != target:
+				raise RuntimeError("피버 스테이지 지급쌍의 색상 구성이 올바르지 않습니다.")
+			color_map[source] = target
+			used.add(target)
+		source_colors = list(dict.fromkeys(stage["usingColors"]))
+		for source in source_colors:
+			if source in color_map:
+				continue
+			preferred = ("red", "green", "yellow", "blue", "purple").index(source)
+			if preferred < self.color_count and preferred not in used:
+				color_map[source] = preferred
+				used.add(preferred)
+		remaining = [color for color in range(self.color_count) if color not in used]
+		self.random.shuffle(remaining)
+		for source in source_colors:
+			if source not in color_map:
+				color_map[source] = remaining.pop()
+		return stage, color_map
+
+	def _prepare_fever_stage(self, side: str, target_combo: int, count_turn: bool = True) -> None:
+		state = self._fever(side)
+		pair = self.agent_pair if side == "agent" else self.enemy_pair
+		stage, color_map = self._select_fever_stage(target_combo, pair)
+		board = bundledenemy.new_empty_board()
+		for puyo in stage["stageData"].get("puyos", []):
+			x, y = puyo.get("x"), puyo.get("y")
+			if not isinstance(x, int) or not isinstance(y, int) or not (0 <= x < BOARD_WIDTH and 0 <= y < BOARD_HEIGHT):
+				continue
+			board[y][x] = bundledenemy.GARBAGE if puyo.get("color") == "garbage" else color_map[puyo["color"]]
+		if state.active:
+			state.field = board
+		else:
+			self._set_board(side, board)
+		if count_turn:
+			state.turn += 1
+
+	def _activate_fever(self, side: str) -> None:
+		state = self._fever(side)
+		if not self.fever_rule or state.active:
+			return
+		state.active = True
+		state.field = bundledenemy.new_empty_board()
+		state.damage = 0.0
+		state.gauge = 0
+		state.left_time_ms = state.next_time * 1000.0
+		state.next_time = FEVER_INITIAL_TIME
+		self._prepare_fever_stage(side, state.target_combo)
+
+	def _finish_fever(self, side: str) -> None:
+		state = self._fever(side)
+		if not state.active:
+			return
+		if side == "agent":
+			self.agent_damage += state.damage
+		else:
+			self.enemy_damage += state.damage
+		state.active = False
+		state.field = bundledenemy.new_empty_board()
+		state.damage = 0.0
+		state.gauge = 0
+		state.left_time_ms = 0.0
+
+	def _register_offset(self, side: str, opponent_side: str) -> bool:
+		state = self._fever(side)
+		if not self.fever_rule or state.active:
+			return False
+		state.gauge = min(FEVER_GAUGE_MAX, state.gauge + 1)
+		opponent_state = self._fever(opponent_side)
+		opponent_state.next_time = min(FEVER_MAX_TIME, opponent_state.next_time + 1)
+		return state.gauge >= FEVER_GAUGE_MAX
+
+	def _apply_generated_attack(self, side: str, opponent_side: str, attack: float) -> bool:
+		before = self._damage(side)
+		after, defender = _apply_attack_exchange(before, attack, self._damage(opponent_side))
+		self._set_damage(side, after)
+		self._set_damage(opponent_side, defender)
+		return self._register_offset(side, opponent_side) if after < before else False
+
+	def _after_resolve(self, side: str, combo: int, all_clear: bool, activate_pending: bool) -> None:
+		state = self._fever(side)
+		if not self.fever_rule:
+			if all_clear:
+				if side == "agent": self.agent_all_clear_ticket = True
+				else: self.enemy_all_clear_ticket = True
+			return
+		if state.active:
+			if combo > 0:
+				previous_target = state.target_combo
+				state.target_combo = calculate_fever_target(combo, all_clear, previous_target)
+				if state.left_time_ms <= 0:
+					self._finish_fever(side)
+					return
+				if state.target_combo != previous_target:
+					state.left_time_ms += (combo // 2) * 1000 + FEVER_CHAIN_TIME_BONUS_MS
+				self._prepare_fever_stage(side, state.target_combo)
+			elif state.left_time_ms <= 0:
+				self._finish_fever(side)
+			return
+		if activate_pending:
+			if all_clear:
+				state.target_combo = min(FEVER_MAX_TARGET_COMBO, state.target_combo + 2)
+			self._activate_fever(side)
+		elif all_clear:
+			# 피버 비활성 일반 필드의 싹쓸이는 실제 게임처럼 4연쇄 패턴을 지급한다.
+			self._prepare_fever_stage(side, FEVER_MIN_TARGET_COMBO, count_turn=False)
+
 	def step(self, action: int) -> Tuple[torch.Tensor, float, bool, dict]:
-		# bundledenemy의 룰 전역 상태가 다른 곳에서 바뀌었을 가능성에 대비해 매 스텝 다시 확인한다.
-		bundledenemy.configure_rule(self.fever_rule)
+		self._advance_time()
+		bundledenemy.configure_rule(self.fever_rule, self.agent_fever.active)
 		column, rotation = action_to_placement(action)
-		landing = bundledenemy.find_landing_placement(self.agent_board, column, rotation)
+		landing = bundledenemy.find_landing_placement(self._board("agent"), column, rotation)
 		if landing is None:
 			return self.observe(), self.INVALID_ACTION_REWARD, True, {"invalid": True}
 		positions = [landing[0], landing[1]]
-		result_board, combo, attack = bundledenemy.resolve_placement(self.agent_board, self.agent_pair, positions)
-		self.agent_board = result_board
+		result_board, combo, attack = bundledenemy.resolve_placement(self._board("agent"), self.agent_pair, positions)
+		self._set_board("agent", result_board)
+		if self.fever_rule and combo > 0 and attack < 1 and self._damage("agent") >= 1:
+			attack = 1.0
+		if combo > 0 and not self.fever_rule and self.agent_all_clear_ticket:
+			attack += ALL_CLEAR_TICKET_ATTACK
+			self.agent_all_clear_ticket = False
 		self.agent_attack = attack
 		reward = attack + combo * combo
+		agent_all_clear = combo > 0 and all(cell == bundledenemy.EMPTY for row in result_board for cell in row)
 		info = {
 			"combo": combo, "attack": attack,
 			"opponent": self.SELF_PLAY_OPPONENT if self.is_self_play else self.opponent.get_class_type(),
 			"fever_rule": self.fever_rule, "color_count": self.color_count,
+			"elapsed_ms": self.elapsed_ms, "margin_rate": self.margin_rate,
+			"time_progress_multiplier": self.time_progress_multiplier,
 		}
 
+		agent_activation = False
 		if combo > 0:
-			self.agent_damage, self.enemy_damage = _apply_attack_exchange(self.agent_damage, attack, self.enemy_damage)
-		elif self.agent_damage > 0:
-			self.agent_board, dropped = bundledenemy.drop_garbage(self.agent_board, self.agent_damage, self.random)
-			self.agent_damage -= dropped
+			agent_activation = self._apply_generated_attack("agent", "enemy", attack)
+		elif self._damage("agent") > 0:
+			damage = self._damage("agent")
+			dropped_board, dropped = bundledenemy.drop_garbage(self._board("agent"), damage, self.random)
+			self._set_board("agent", dropped_board)
+			self._set_damage("agent", damage - dropped)
 
-		if bundledenemy.is_defeat_board(self.agent_board):
+		if bundledenemy.is_defeat_board(self._board("agent")):
 			return self.observe(), reward + self.LOSS_REWARD, True, {**info, "result": "agent_defeated"}
 
 		self.agent_pair = self._refill(self.agent_next_pairs)
+		self._after_resolve("agent", combo, agent_all_clear, agent_activation)
 
 		enemy_positions = self._select_enemy_positions()
 		if enemy_positions is None:
@@ -393,23 +665,34 @@ class PuyoDuelEnvironment:
 			result = "enemy_invalid_self_play" if self.is_self_play else "enemy_no_moves"
 			return self.observe(), reward + self.WIN_REWARD, True, {**info, "result": result}
 
-		enemy_result_board, enemy_combo, enemy_attack = bundledenemy.resolve_placement(self.enemy_board, self.enemy_pair, enemy_positions)
+		bundledenemy.configure_rule(self.fever_rule, self.enemy_fever.active)
+		enemy_result_board, enemy_combo, enemy_attack = bundledenemy.resolve_placement(self._board("enemy"), self.enemy_pair, enemy_positions)
 		if enemy_result_board is None:
 			# bundledenemy가 규칙을 벗어난 배치를 반환하지 않는 한 발생하지 않는다. 방어적으로만 처리한다.
-			enemy_result_board, enemy_combo, enemy_attack = self.enemy_board, 0, 0.0
-		self.enemy_board = enemy_result_board
+			enemy_result_board, enemy_combo, enemy_attack = self._board("enemy"), 0, 0.0
+		self._set_board("enemy", enemy_result_board)
+		if self.fever_rule and enemy_combo > 0 and enemy_attack < 1 and self._damage("enemy") >= 1:
+			enemy_attack = 1.0
+		if enemy_combo > 0 and not self.fever_rule and self.enemy_all_clear_ticket:
+			enemy_attack += ALL_CLEAR_TICKET_ATTACK
+			self.enemy_all_clear_ticket = False
 		self.enemy_attack = enemy_attack
+		enemy_all_clear = enemy_combo > 0 and all(cell == bundledenemy.EMPTY for row in enemy_result_board for cell in row)
 
+		enemy_activation = False
 		if enemy_combo > 0:
-			self.enemy_damage, self.agent_damage = _apply_attack_exchange(self.enemy_damage, enemy_attack, self.agent_damage)
-		elif self.enemy_damage > 0:
-			self.enemy_board, dropped = bundledenemy.drop_garbage(self.enemy_board, self.enemy_damage, self.random)
-			self.enemy_damage -= dropped
+			enemy_activation = self._apply_generated_attack("enemy", "agent", enemy_attack)
+		elif self._damage("enemy") > 0:
+			damage = self._damage("enemy")
+			dropped_board, dropped = bundledenemy.drop_garbage(self._board("enemy"), damage, self.random)
+			self._set_board("enemy", dropped_board)
+			self._set_damage("enemy", damage - dropped)
 
-		if bundledenemy.is_defeat_board(self.enemy_board):
+		if bundledenemy.is_defeat_board(self._board("enemy")):
 			return self.observe(), reward + self.WIN_REWARD, True, {**info, "result": "enemy_defeated"}
 
 		self.enemy_pair = self._refill(self.enemy_next_pairs)
+		self._after_resolve("enemy", enemy_combo, enemy_all_clear, enemy_activation)
 		self.turn += 1
 		if self.turn >= self.MAX_TURNS_PER_EPISODE:
 			return self.observe(), reward, True, {**info, "result": "timeout"}
@@ -440,9 +723,14 @@ def load_existing_policy(output: Path, policy: PolicyNetwork, device: torch.devi
 		checkpoint = torch.load(output, map_location=device, weights_only=True)
 	except Exception as error:
 		raise ValueError(f"기존 체크포인트를 읽을 수 없습니다: {output} ({error})") from error
-	# 서버 추론과 같은 444개 관측값·24개 행동 계약이 아니면 잘못된 모델을 이어 학습하지 않는다.
+	# 서버 추론과 같은 모델 버전·관측값·24개 행동 계약이 아니면 잘못된 모델을 이어 학습하지 않는다.
 	if not isinstance(checkpoint, dict):
 		raise ValueError(f"기존 체크포인트 형식이 올바르지 않습니다: {output}")
+	if checkpoint.get("model_version") != MODEL_VERSION:
+		raise ValueError(
+			f"기존 체크포인트 모델 버전이 현재 학습기와 다릅니다: {output} "
+			f"(필요: {MODEL_VERSION}, 실제: {checkpoint.get('model_version')})"
+		)
 	if checkpoint.get("observation_size") != OBSERVATION_SIZE or checkpoint.get("action_count") != ACTION_COUNT:
 		raise ValueError(
 			f"기존 체크포인트의 관측값 또는 행동 계약이 현재 학습기와 다릅니다: {output}"
@@ -455,6 +743,70 @@ def load_existing_policy(output: Path, policy: PolicyNetwork, device: torch.devi
 	except RuntimeError as error:
 		raise ValueError(f"기존 체크포인트 가중치를 복원할 수 없습니다: {output} ({error})") from error
 	return True
+
+
+def load_policy_checkpoint(checkpoint_path: Path, device: torch.device) -> PolicyNetwork:
+	"""평가·직접 추론용으로 버전 검증을 거친 정책 하나를 불러온다."""
+	policy = PolicyNetwork().to(device)
+	if not load_existing_policy(checkpoint_path, policy, device):
+		raise FileNotFoundError(f"체크포인트를 찾을 수 없습니다: {checkpoint_path}")
+	policy.eval()
+	return policy
+
+
+def choose_policy_action(policy: PolicyNetwork, observation: torch.Tensor, device: torch.device) -> int:
+	"""Q값 순서대로 보면서 현재 관측에서 착지 가능한 최선의 행동을 고른다."""
+	with torch.inference_mode():
+		q_values = policy(observation.to(device)).reshape(-1)
+	for action in torch.argsort(q_values, descending=True).tolist():
+		if is_legal_observation_action(observation, action):
+			return int(action)
+	raise RuntimeError("현재 필드에서 선택할 수 있는 DQN 행동이 없습니다.")
+
+
+def infer_observation(checkpoint_path: Path, observation_path: Path, device_name: str = "auto") -> dict[str, int]:
+	"""LM Studio나 HTTP 서버 없이 관측 JSON 파일을 정책에 직접 넣어 배치를 반환한다."""
+	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
+	try:
+		observation = json.loads(observation_path.read_text(encoding="utf-8"))
+	except (OSError, json.JSONDecodeError) as error:
+		raise ValueError(f"관측 JSON을 읽을 수 없습니다: {observation_path} ({error})") from error
+	validate_observation(observation)
+	policy = load_policy_checkpoint(checkpoint_path, device)
+	action = choose_policy_action(policy, torch.tensor(observation, dtype=torch.float32), device)
+	x, rotation = action_to_placement(action)
+	return {"action": action, "x": x, "rotation": rotation}
+
+
+def evaluate_policy(
+	checkpoint_path: Path, episodes: int, seed: int, device_name: str, opponent: str = "random",
+) -> dict[str, float | int]:
+	"""탐험 없이(epsilon=0) 대전하고 승·패·무승부와 승률을 집계한다."""
+	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
+	policy = load_policy_checkpoint(checkpoint_path, device)
+
+	def greedy_action(observation: torch.Tensor) -> int:
+		return choose_policy_action(policy, observation, device)
+
+	wins = losses = draws = 0
+	for episode in range(episodes):
+		environment = _make_environment(opponent, seed + episode, greedy_action)
+		state = environment.reset()
+		result = "timeout"
+		max_steps = 100 if opponent == "solo" else PuyoDuelEnvironment.MAX_TURNS_PER_EPISODE
+		for _ in range(max_steps):
+			action = greedy_action(state)
+			state, _reward, done, info = environment.step(action)
+			if done:
+				result = info.get("result", "invalid" if info.get("invalid") else "done")
+				break
+		if result in ("enemy_defeated", "enemy_no_moves", "enemy_invalid_self_play"):
+			wins += 1
+		elif result in ("agent_defeated", "invalid"):
+			losses += 1
+		else:
+			draws += 1
+	return {"episodes": episodes, "wins": wins, "losses": losses, "draws": draws, "win_rate": wins / episodes}
 
 
 def _make_environment(
@@ -508,8 +860,7 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 	def self_play_action(observation: torch.Tensor) -> int:
 		if random.random() < epsilon_holder[0]:
 			return random.randrange(ACTION_COUNT)
-		with torch.no_grad():
-			return int(policy(observation.to(device)).argmax().item())
+		return choose_policy_action(policy, observation, device)
 
 	for episode in range(episodes):
 		environment = _make_environment(opponent, seed + episode, self_play_action)
@@ -525,8 +876,7 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 			if random.random() < epsilon:
 				action = random.randrange(ACTION_COUNT)
 			else:
-				with torch.no_grad():
-					action = int(policy(state.to(device)).argmax().item())
+				action = choose_policy_action(policy, state, device)
 			next_state, reward, done, info = environment.step(action)
 			if api_client:
 				api_client.step(session_id, state, action, reward, next_state, done)
@@ -564,8 +914,8 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 				f"result={episode_result} wins={win_count} losses={loss_count}")
 
 	output.parent.mkdir(parents=True, exist_ok=True)
-	torch.save({"model": policy.state_dict(), "observation_size": OBSERVATION_SIZE, "action_count": ACTION_COUNT, "seed": seed}, output)
-	output.with_suffix(".json").write_text(json.dumps({"observation_size": OBSERVATION_SIZE, "action_count": ACTION_COUNT, "board": [BOARD_WIDTH, BOARD_HEIGHT]}, indent=2), encoding="utf-8")
+	torch.save({"model": policy.state_dict(), "model_version": MODEL_VERSION, "observation_size": OBSERVATION_SIZE, "action_count": ACTION_COUNT, "seed": seed}, output)
+	output.with_suffix(".json").write_text(json.dumps({"model_version": MODEL_VERSION, "observation_size": OBSERVATION_SIZE, "action_count": ACTION_COUNT, "board": [BOARD_WIDTH, BOARD_HEIGHT]}, indent=2), encoding="utf-8")
 	print(f"saved={output} device={device}")
 
 
@@ -596,6 +946,8 @@ def main() -> None:
 	parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
 	parser.add_argument("--server-url", default="", help="학습 이벤트를 전송할 pythonserver.py 주소(예: http://localhost:9891)")
 	parser.add_argument("--api-token", default="", help="pythonserver.py의 learning_token 값(미지정 시 PUYOW_AI_TOKEN 환경변수 사용)")
+	parser.add_argument("--evaluate-episodes", type=int, default=0, help="학습하지 않고 epsilon=0으로 평가할 에피소드 수")
+	parser.add_argument("--infer-observation", type=Path, metavar="JSON", help="서버 없이 공통 관측 JSON 하나를 직접 추론")
 	parser.add_argument("--export-gguf", type=Path, metavar="MODEL_DIR", help="Hugging Face Transformer 모델 디렉터리를 GGUF로 변환")
 	parser.add_argument("--gguf-output", type=Path, default=Path("python/model-f16.gguf"), help="GGUF 출력 경로")
 	parser.add_argument("--llama-cpp-converter", type=Path, default=Path("llama.cpp") / "convert_hf_to_gguf.py", help="llama.cpp의 convert_hf_to_gguf.py 경로")
@@ -610,19 +962,17 @@ def main() -> None:
 	if args.export_gguf:
 		export_gguf(args.export_gguf, args.gguf_output, args.llama_cpp_converter)
 		return
+	if args.infer_observation:
+		print(json.dumps(infer_observation(args.output, args.infer_observation, args.device), ensure_ascii=False))
+		return
+	if args.evaluate_episodes:
+		if args.evaluate_episodes < 1:
+			parser.error("--evaluate-episodes는 1 이상이어야 합니다.")
+		print(json.dumps(evaluate_policy(args.output, args.evaluate_episodes, args.seed, args.device, args.opponent), ensure_ascii=False))
+		return
 	if args.episodes < 1:
 		parser.error("--episodes는 1 이상이어야 합니다.")
 	train(args.episodes, args.seed, args.output, args.device, args.server_url, args.api_token, args.opponent)
-
-
-
-# TODO: 현재 DQN 정책을 LM Studio가 아닌 별도 게임 추론 런타임에서 실행하는 경로를 추가한다.
-# TODO: hardGarbage, fever, all-clear ticket, margin rate 시간 배율을 환경에 반영한다.
-#       (garbage/방해뿌요 교환은 PuyoDuelEnvironment에 구현되었다.)
-# TODO: PuyoW.common.simulatePlacementBoard()와 결과를 대조하는 회귀 테스트를 추가한다.
-# TODO: 평가 전용(입실론=0, 승률 집계) 에피소드와 모델 버전 호환 검증을 추가한다.
-
-
 if __name__ == "__main__":
 	main()
 

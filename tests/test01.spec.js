@@ -825,11 +825,11 @@ test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => {
-    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 6'].includes(call.text));
+    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 8'].includes(call.text));
       return {
       music: values.some((call) => call.text === '42' && call.x === 920 && call.y === 130),
       effects: values.some((call) => call.text === '73' && call.x === 920 && call.y === 174),
-      build: values.some((call) => call.text === 'Build 6' && call.x === 10 && call.y === 710),
+      build: values.some((call) => call.text === 'Build 8' && call.x === 10 && call.y === 710),
       };
   })).toEqual({ music: true, effects: true, build: true });
 });

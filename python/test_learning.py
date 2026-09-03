@@ -1,5 +1,8 @@
-"""learning.py의 체크포인트 자동 재개 동작을 확인하는 단위 테스트다."""
+"""learning.py의 모델 계약과 JS/Python 규칙 일치를 확인하는 단위 테스트다."""
 
+import json
+import shutil
+import subprocess
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -7,6 +10,7 @@ from unittest import mock
 import torch
 
 import learning as training
+import pythonserver
 
 
 class ExistingPolicyLoadTest(unittest.TestCase):
@@ -20,6 +24,7 @@ class ExistingPolicyLoadTest(unittest.TestCase):
 				parameter.fill_(0.25)
 		checkpoint = {
 			"model": saved_policy.state_dict(),
+			"model_version": training.MODEL_VERSION,
 			"observation_size": training.OBSERVATION_SIZE,
 			"action_count": training.ACTION_COUNT,
 			"seed": 2026,
@@ -47,6 +52,7 @@ class ExistingPolicyLoadTest(unittest.TestCase):
 		checkpoint_path = Path("incompatible.pt")
 		checkpoint = {
 			"model": training.PolicyNetwork().state_dict(),
+			"model_version": training.MODEL_VERSION,
 			"observation_size": training.OBSERVATION_SIZE - 1,
 			"action_count": training.ACTION_COUNT,
 		}
@@ -56,6 +62,93 @@ class ExistingPolicyLoadTest(unittest.TestCase):
 			mock.patch.object(training.torch, "load", return_value=checkpoint):
 			with self.assertRaisesRegex(ValueError, "관측값 또는 행동 계약"):
 				training.load_existing_policy(checkpoint_path, training.PolicyNetwork(), torch.device("cpu"))
+
+	def test_checkpoint_without_current_model_version_is_rejected(self) -> None:
+		checkpoint = {
+			"model": training.PolicyNetwork().state_dict(),
+			"observation_size": training.OBSERVATION_SIZE,
+			"action_count": training.ACTION_COUNT,
+		}
+		with mock.patch.object(Path, "exists", return_value=True), \
+			mock.patch.object(Path, "is_file", return_value=True), \
+			mock.patch.object(training.torch, "load", return_value=checkpoint):
+			with self.assertRaisesRegex(ValueError, "모델 버전"):
+				training.load_existing_policy(Path("old.pt"), training.PolicyNetwork(), torch.device("cpu"))
+
+
+class RuleStateTest(unittest.TestCase):
+	def test_observation_distinguishes_empty_and_garbage_and_contains_rule_state(self) -> None:
+		board = training.bundledenemy.new_empty_board()
+		board[0][0] = training.bundledenemy.GARBAGE
+		observation = training.encode_observation(
+			board, (0, 1), 2, 3, incoming_damage=4, fever_rule=True,
+			elapsed_ms=320_000, margin_rate=1, time_progress_multiplier=2,
+			fever={"active": True, "gauge": 6, "nextTime": 20, "targetCombo": 7, "leftTime": 10000, "damage": 5},
+		)
+		self.assertEqual(training.OBSERVATION_SIZE, len(observation))
+		self.assertEqual(0.0, observation[0].item())
+		self.assertEqual(1.0, observation[training.BOARD_WIDTH * training.BOARD_HEIGHT].item())
+
+	def test_margin_rate_and_time_multiplier_boundaries_match_game(self) -> None:
+		self.assertEqual(70, training.get_margin_rate(95_999))
+		self.assertEqual(52, training.get_margin_rate(96_000))
+		self.assertEqual(1, training.get_margin_rate(256_000))
+		self.assertEqual(1, training.get_time_progress_multiplier(319_999))
+		self.assertEqual(2, training.get_time_progress_multiplier(320_000))
+		self.assertEqual(1024, training.get_time_progress_multiplier(600_000))
+
+	def test_fever_uses_game_stage_and_separate_field(self) -> None:
+		environment = training.PuyoDuelEnvironment("self", seed=7, fever_rule=True, color_count=3)
+		environment.agent_board[0][0] = 0
+		environment._activate_fever("agent")
+		self.assertTrue(environment.agent_fever.active)
+		self.assertEqual(15_000, environment.agent_fever.left_time_ms)
+		self.assertEqual(0, environment.agent_board[0][0])
+		self.assertTrue(any(cell != training.bundledenemy.EMPTY for row in environment.agent_fever.field for cell in row))
+
+	def test_solomon_prompt_uses_same_time_and_fever_observation_contract(self) -> None:
+		prompt = {
+			"currentField": {"occupiedCells": [{"x": 0, "y": 0, "color": "garbage"}]},
+			"suppliedPuyos": [{"order": "current", "colors": ["red", "green"]}],
+			"currentState": {
+				"attack": 3, "placedPairCount": 4, "incomingDamage": 5, "feverRule": True,
+				"allClearTicket": False, "elapsedMs": 320000, "marginRate": 1,
+				"timeProgressMultiplier": 2,
+				"fever": {"active": True, "gauge": 7, "nextTime": 20, "targetCombo": 6, "leftTime": 9000, "damage": 2},
+			},
+		}
+		observation = pythonserver.build_dqn_observation(prompt)
+		self.assertEqual(training.OBSERVATION_SIZE, len(observation))
+		self.assertEqual(0.0, observation[0])
+		self.assertEqual(1.0, observation[training.BOARD_WIDTH * training.BOARD_HEIGHT])
+
+
+@unittest.skipUnless(shutil.which("node"), "Node.js가 없어 JS 회귀 비교를 건너뜁니다.")
+class JavascriptBoardRegressionTest(unittest.TestCase):
+	def test_simulate_placement_board_matches_javascript(self) -> None:
+		boards = []
+		plain = training.bundledenemy.new_empty_board()
+		boards.append((plain, (0, 1), [(0, 0), (0, 1)]))
+		garbage = training.bundledenemy.new_empty_board()
+		garbage[0][0] = garbage[1][0] = garbage[2][0] = 0
+		garbage[0][1] = training.bundledenemy.GARBAGE
+		boards.append((garbage, (0, 1), [(0, 3), (2, 0)]))
+		color_names = ("red", "green", "yellow", "blue", "purple")
+		payload = []
+		for board, pair, positions in boards:
+			js_board = [[None if cell == -1 else "garbage" if cell == -2 else color_names[cell] for cell in row] for row in board]
+			js_board.extend([[None] * training.BOARD_WIDTH for _ in range(13)])
+			payload.append({"board": js_board, "colors": [color_names[color] for color in pair], "positions": [{"x": x, "y": y} for x, y in positions]})
+		script = "const fs=require('fs'),p=require('./src/js/puyow.js');const c=JSON.parse(fs.readFileSync(0,'utf8'));process.stdout.write(JSON.stringify(c.map(v=>p.common.simulatePlacementBoard(v.board,v.colors,v.positions))));"
+		completed = subprocess.run(
+			["node", "-e", script], input=json.dumps(payload), capture_output=True, text=True,
+			cwd=Path(__file__).resolve().parents[1], check=True,
+		)
+		js_results = json.loads(completed.stdout)
+		for (board, pair, positions), js_result in zip(boards, js_results):
+			python_result = training.bundledenemy.simulate_placement_board(board, pair, positions)
+			normalized_js = [[-1 if cell is None else -2 if cell == "garbage" else color_names.index(cell) for cell in row] for row in js_result[:training.BOARD_HEIGHT]]
+			self.assertEqual(python_result, normalized_js)
 
 
 if __name__ == "__main__":

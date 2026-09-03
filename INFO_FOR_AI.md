@@ -143,7 +143,7 @@
 
 ## 공통 계산 함수
 
-현재 개발·유지보수 범위는 2D 버전이다. 게임 규칙 계산을 재사용할 때는 `PuyoW.common`(또는 `PuyoW.getCommonFunctions()`)을 사용한다. 이 객체의 함수는 입력 보드를 직접 변경하지 않는 공통 계산 함수다. 대표적으로 착지/폭발/점수/공격/중력/싱글 보드 시뮬레이션 함수가 있다.
+현재 개발·유지보수 범위는 2D 버전이다. 게임 규칙 계산을 재사용할 때는 `PuyoW.common`(또는 `PuyoW.getCommonFunctions()`)을 사용한다. 이 객체의 함수는 입력 보드를 직접 변경하지 않는 공통 계산 함수다. 대표적으로 착지/폭발/점수/공격/중력/싱글 보드 시뮬레이션 함수가 있으며, `getFeverStageDefinitions()`는 Python 학습 환경이 실제 `FEVER_STAGES`를 복제할 수 있도록 직렬화 가능한 사본을 반환한다.
 
 N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, turnCount)`와 `findBestNMovePlacement(player, targetCombo, turnCount)`로 재사용한다. 목표 연쇄 수는 두 번째 매개변수이며, 반환값은 이번 수의 `simulation`과 이후 경로·점수를 함께 가진다. 기본 룰·피버 룰 대전(구경 포함)은 각 플레이어의 내부 `nextPairs`에 현재 수 뒤 20쌍을 미리 확정해 유지한다. `getGameState()`는 브라우저 기반 학습 환경 확장과 적 AI에 모드와 룰, 양측 현재·일반·피버 필드, 피버 시간, 싹쓸이 티켓, 앞 두 쌍의 NEXT를 공통으로 제공하는 읽기 전용 snapshot이다. 현재 Python `PuyoDuelEnvironment`는 이 API를 호출하지 않고 Python 보드를 직접 시뮬레이션한다. 중앙 화면과 `getNextPairs()`는 대전에서 앞 두 쌍을 보이며, 단독 모드의 `getNextPairs()`는 기존 호환성을 위해 네 쌍을 보인다. 동기 N수 탐색과 Worker snapshot은 20쌍 전체를 사용한다. 3수 이상 비동기 탐색은 `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)`를 사용한다. 이 함수는 Blob Worker에 현재·상대 필드, 공격·피해, 피버 필드·상태, 예고뿌요, 룰 정보를 JSON snapshot으로 보내고, 깊이별 현재 1수 결과를 `onProgress`로 전달한다. 탐색량은 착지 후보 수에 따라 지수적으로 늘어나므로, 일반 실시간 적은 기존처럼 2수 수준을 사용한다.
 
@@ -159,9 +159,9 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 
 ## 머신러닝 작업 참고
 
-머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스이며, 솔로몬·안드로말리우스와 출시 예정인 플라우로스는 제외한다. `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 일곱 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/축소판 피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. `src/js/puyow.js`의 적 AI 판단 로직(`chooseTarget`/`chooseRotate`/`prepareTurn`, N수 탐색, Worker 반복 심화 등)을 바꾸면 `bundledenemy.py`도 함께 갱신해야 두 구현이 어긋나지 않는다. 이식 범위와 의도적으로 단순화한 부분(숨김 행 없는 12행 보드, 축소판 피버 룰 — `configure_rule()` 참고, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등)은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
+머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스이며, 솔로몬·안드로말리우스와 출시 예정인 플라우로스는 제외한다. `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 일곱 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. 피버 룰은 일반/피버 필드, 게이지, 제한 시간, 목표 연쇄 및 JS의 실제 피버 패턴을 사용한다. 브라우저 관측은 `game.elapsed`의 실제 시간을 쓰고, 벽시계와 무관하게 고속 실행되는 오프라인 학습은 양측 한 턴을 3초로 진행한다. `src/js/puyow.js`의 적 AI 판단 로직이나 피버 패턴을 바꾸면 `bundledenemy.py`와 학습 회귀 테스트를 함께 확인한다. 숨김 행 없는 12행 보드, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등 의도적인 제한은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
 
-`learning.py`의 `--output` 경로가 실제 체크포인트 파일이면 현재 `OBSERVATION_SIZE`·`ACTION_COUNT` 계약을 검증한 후 그 모델 가중치를 복원하여 추가 학습한다. 없는 경로일 때만 새 가중치로 시작한다. 현재 체크포인트에는 optimizer·replay buffer·epsilon 상태를 저장하지 않으므로, 추가 학습은 가중치만 이어받고 이 상태들은 새로 시작한다.
+모델 버전 2의 관측값은 528개다. 빈 칸·방해뿌요·5색 보드 채널 504개, 현재 쌍 10개, ATTACK/턴/DAMAGE/룰/티켓/경과시간/마진/시간 배율/피버 상태 14개 순서이며 JS 학습 전이, Python 환경, Solomon 서버가 `python/common.py`의 같은 계약을 사용한다. `learning.py`의 `--output` 경로가 실제 체크포인트 파일이면 `MODEL_VERSION`·`OBSERVATION_SIZE`·`ACTION_COUNT`를 검증한 후 가중치를 복원한다. 이전 444개 관측 모델은 호환하지 않으며 다시 학습해야 한다. `--evaluate-episodes`는 epsilon=0 승률을 집계하고, `--infer-observation`은 LM Studio/HTTP 없이 관측 JSON을 직접 추론한다. 체크포인트에는 optimizer·replay buffer·epsilon 상태를 저장하지 않는다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
