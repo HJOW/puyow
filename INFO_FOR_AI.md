@@ -154,4 +154,4 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 
 ## 머신러닝 작업 참고
 
-머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `learning/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `nodeserver.js`를 참고한다.
+머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `learning/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `learning/pythonserver.py`를 참고한다.

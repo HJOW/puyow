@@ -91,6 +91,12 @@ Bun (https://bun.com/) 을 사용하여 서버 구동을 더 빠르게 진행할
 공식 홈페이지에서 bun 을 설치한 후,    
 명령어 `npm start` 대신 `bun start` 를 이용하세요.
 
+## Python 호환성
+
+파이썬으로도 서버 구동이 가능합니다.
+공식 홈페이지에서 Python 을 설치 (3.10 이상 버전 필요) 후
+명령여 `python learning/pythonserver.py` 를 이용하세요.
+
 ## 개발 안내
 
 게임 설정, 라이브러리 사용법, 새 AI 상대 제작 방법은 [HOWTO.md](HOWTO.md)를 참고하세요.

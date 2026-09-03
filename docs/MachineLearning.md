@@ -1,6 +1,6 @@
 # Puyo W 머신러닝
 
-`learning/learning.py`는 PyTorch 기반의 self-play DQN 학습 스크립트다. 기본적으로 Puyo W의 핵심 보드 규칙을 간소화한 Python 환경에서 학습하며, 선택적으로 `nodeserver.js`의 인증된 학습 API에 각 에피소드의 관측값과 전이를 전송할 수 있다.
+`learning/learning.py`는 PyTorch 기반의 self-play DQN 학습 스크립트다. 기본적으로 Puyo W의 핵심 보드 규칙을 간소화한 Python 환경에서 학습하며, 선택적으로 `pythonserver.py`의 인증된 학습 API에 각 에피소드의 관측값과 전이를 전송할 수 있다.
 
 ## 사전 준비
 
@@ -29,7 +29,7 @@ python learning/learning.py --episodes 1000 --device auto
 | `--output` | `learning/puyow_dqn.pt` | 모델 체크포인트 저장 경로 |
 | `--device` | `auto` | `auto`, `cpu`, `cuda` 중 하나 |
 | `--server-url` | 빈 값 | 학습 API가 실행 중인 서버 주소 |
-| `--api-token` | 빈 값 | 서버의 `PUYOW_AI_TOKEN` 값 |
+| `--api-token` | 빈 값 | Python 서버의 `SERVER_CONFIG["learning_token"]` 값 |
 
 학습이 끝나면 지정한 경로에 PyTorch 체크포인트가 저장되고, 같은 위치의 확장자를 `.json`으로 바꾼 메타데이터 파일도 생성된다. 기본 출력은 다음 두 파일이다.
 
@@ -42,7 +42,7 @@ learning/puyow_dqn.json
 
 ## 서버 API와 함께 실행
 
-서버 전송 모드를 사용하면 먼저 `nodeserver.js` 또는 Python 포트인 `learning/pythonserver.py`를 실행한다. Python 서버를 사용할 때는 [learning/pythonserver.py](../learning/pythonserver.py) 상단의 `SERVER_CONFIG["learning_token"]` 값을 학습기와 같은 토큰으로 직접 설정한다. 이 값은 개발용 설정이며 공개 서버에는 토큰을 소스에 저장하지 않아야 한다.
+서버 전송 모드를 사용하면 먼저 [learning/pythonserver.py](../learning/pythonserver.py)를 실행한다. 실행 전에 파일 상단의 `SERVER_CONFIG["learning_token"]` 값을 학습기와 같은 토큰으로 직접 설정한다. 이 값은 개발용 설정이며 공개 서버에는 토큰을 소스에 저장하지 않아야 한다.
 
 Python 서버 실행:
 
@@ -52,30 +52,22 @@ python learning/pythonserver.py 9891
 
 포트 번호를 생략하면 `SERVER_CONFIG["port"]`의 기본값 `9891`을 사용한다.
 
-Node.js 서버 실행:
+서버가 실행된 상태에서 학습기를 실행한다.
 
 ```powershell
-$env:PUYOW_AI_TOKEN = "change-this-token"
-node nodeserver.js 9891
-```
-
-다른 PowerShell 창에서 학습기를 실행한다.
-
-```powershell
-$env:PUYOW_AI_TOKEN = "change-this-token"
 python learning/learning.py `
 	--episodes 1000 `
 	--server-url http://localhost:9891 `
 	--device auto
 ```
 
-`--api-token`을 지정하면 환경변수보다 우선한다.
+`--api-token`에는 Python 서버의 `SERVER_CONFIG["learning_token"]`과 같은 값을 지정한다.
 
 ```powershell
 python learning/learning.py `
 	--episodes 100 `
 	--server-url http://localhost:9891 `
-	--api-token "change-this-token" `
+	--api-token "SERVER_CONFIG에 설정한 토큰" `
 	--output learning/experiment.pt
 ```
 
@@ -88,7 +80,7 @@ python learning/learning.py `
 모든 요청에는 다음 인증 헤더가 포함된다.
 
 ```text
-Authorization: Bearer <PUYOW_AI_TOKEN>
+Authorization: Bearer <SERVER_CONFIG["learning_token"]>
 Content-Type: application/json
 ```
 
@@ -108,7 +100,7 @@ Content-Type: application/json
 - 회전: `0`~`3`
 - 전체 행동 수: `24`
 
-관측값과 행동 계약은 서버 API로 전송하는 데이터에도 그대로 사용된다.
+관측값과 행동 계약은 `pythonserver.py` API로 전송하는 데이터에도 그대로 사용된다.
 
 ## 현재 구현 범위
 
@@ -121,7 +113,7 @@ Content-Type: application/json
 - 실제 브라우저 게임 루프의 상태 수집 및 행동 주입
 - self-play 상대 정책과 평가 전용 에피소드
 
-현재 서버 API는 학습 이벤트를 수신하고 세션 통계를 보관하며, `src/js/puyow.js`는 사용자 게임의 실제 배치·정산 결과를 해당 API 계약으로 전송한다. 브라우저에서 `configureLearningApi()`를 호출해야 전송이 활성화된다.
+현재 `pythonserver.py` API는 학습 이벤트를 수신하고 세션 통계를 보관하며, `src/js/puyow.js`는 사용자 게임의 실제 배치·정산 결과를 해당 API 계약으로 전송한다. 브라우저에서 `configureLearningApi()`를 호출해야 전송이 활성화된다.
 
 브라우저 게임에서 실제 사용자 플레이의 전이를 전송하려면 게임 초기화 전에 공개 설정 함수를 호출한다. 토큰은 페이지 소스에 고정하지 말고 개발 환경에서 안전하게 주입해야 한다.
 
