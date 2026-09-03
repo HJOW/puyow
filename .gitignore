@@ -84,3 +84,4 @@ node_modules/
 # ETC
 puyow_sound_sample.html
 .tmp/**
+*.cpython-*.pyc

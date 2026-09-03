@@ -38,6 +38,7 @@ limitations under the License.
  */
 
 const http = require('http')
+const crypto = require('crypto');
 const fs   = require('fs');
 const path = require('path');
 
@@ -69,8 +70,161 @@ const blacklistFilePattern = [
     '/META-INF/'
 ];
 
-// 동적 URL (나중에 백엔드 구현 시 이 객체 안에 추가 예정)
-const apis = {};
+/**************************************** 학습 API 구현 시작 ***************************************/
+
+/** 학습 API가 허용하는 요청 본문의 최대 크기(바이트). */
+const LEARNING_MAX_BODY_SIZE = 1024 * 1024;
+/** 학습 API 인증에 사용할 Bearer 토큰. 서버 환경변수 PUYOW_AI_TOKEN에서 읽는다. */
+const LEARNING_TOKEN = process.env.PUYOW_AI_TOKEN || '';
+/** 학습 세션 ID별 마지막 관측값과 에피소드 누적 상태를 보관하는 메모리 저장소. */
+const learningSessions = new Map();
+
+/**
+ * HTTP 요청 본문을 UTF-8 JSON 객체로 읽는다.
+ * @param {import('http').IncomingMessage} req HTTP 요청 객체
+ * @returns {Promise<object>} 파싱된 JSON 본문
+ * @throws {Error} 본문이 너무 크거나 JSON 형식이 올바르지 않을 때 상태 코드를 가진 오류
+ */
+function readJsonBody(req) {
+    return new Promise((resolve, reject) => {
+        let body = '';
+        req.setEncoding('utf8');
+        req.on('data', (chunk) => {
+            body += chunk;
+            if (Buffer.byteLength(body, 'utf8') > LEARNING_MAX_BODY_SIZE) {
+                reject(Object.assign(new Error('요청 본문이 너무 큽니다.'), { statusCode: 413 }));
+                req.destroy();
+            }
+        });
+        req.on('end', () => {
+            try {
+                resolve(body ? JSON.parse(body) : {});
+            } catch (error) {
+                reject(Object.assign(new Error('JSON 요청 본문이 올바르지 않습니다.'), { statusCode: 400, cause: error }));
+            }
+        });
+        req.on('error', reject);
+    });
+}
+
+/**
+ * 학습 API 요청의 Bearer 토큰을 검증한다.
+ * 토큰이 설정되지 않은 서버에서는 모든 요청을 인증 실패로 처리한다.
+ * @param {import('http').IncomingMessage} req HTTP 요청 객체
+ * @returns {boolean} 설정된 서버 토큰과 요청 토큰이 일치하면 true
+ */
+function isLearningAuthorized(req) {
+    if (!LEARNING_TOKEN) return false;
+    const authorization = req.headers.authorization || '';
+    const prefix = 'Bearer ';
+    if (!authorization.startsWith(prefix)) return false;
+    const supplied = Buffer.from(authorization.substring(prefix.length));
+    const expected = Buffer.from(LEARNING_TOKEN);
+    return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+}
+
+/**
+ * 값이 유한한 숫자인지 검증한다.
+ * @param {*} value 검증할 값
+ * @param {string} name 오류 메시지에 사용할 필드명
+ * @param {boolean} [integer=false] 정수만 허용할지 여부
+ * @returns {void}
+ * @throws {Error} 값이 요구한 숫자 형식이 아닐 때 상태 코드 400을 가진 오류
+ */
+function requireNumber(value, name, integer = false) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || (integer && !Number.isInteger(value))) {
+        throw Object.assign(new Error(`${name}은(는) 유효한 숫자여야 합니다.`), { statusCode: 400 });
+    }
+}
+
+/**
+ * 관측값이 유한한 숫자로 구성된 제한된 길이의 배열인지 검증한다.
+ * @param {*} value 검증할 관측값
+ * @param {string} name 오류 메시지에 사용할 필드명
+ * @returns {void}
+ * @throws {Error} 관측값 형식이 올바르지 않을 때 상태 코드 400을 가진 오류
+ */
+function requireObservation(value, name) {
+    if (!Array.isArray(value) || value.length === 0 || value.length > 10000 || value.some((item) => typeof item !== 'number' || !Number.isFinite(item))) {
+        throw Object.assign(new Error(`${name}은(는) 유한한 숫자의 배열이어야 합니다.`), { statusCode: 400 });
+    }
+}
+
+/**
+ * 세션 ID에 해당하는 학습 세션을 조회하거나 새로 만든다.
+ * @param {*} sessionId 학습 세션 식별자
+ * @returns {{sequence:number, steps:number, reward:number, done:boolean, observation:number[]|null, updatedAt:string}} 학습 세션 상태
+ * @throws {Error} 세션 ID가 1~128자의 문자열이 아닐 때 상태 코드 400을 가진 오류
+ */
+function getLearningSession(sessionId) {
+    if (typeof sessionId !== 'string' || sessionId.length < 1 || sessionId.length > 128) {
+        throw Object.assign(new Error('sessionId는 1~128자의 문자열이어야 합니다.'), { statusCode: 400 });
+    }
+    let session = learningSessions.get(sessionId);
+    if (!session) {
+        session = { sequence: 0, steps: 0, reward: 0, done: false, observation: null, updatedAt: new Date().toISOString() };
+        learningSessions.set(sessionId, session);
+    }
+    return session;
+}
+
+/**
+ * 관측값과 행동 전이를 수신하는 학습 API 핸들러.
+ * reset, step, episode_end 이벤트를 세션별로 검증하고 누적한다.
+ * @param {import('http').IncomingMessage} req HTTP 요청 객체
+ * @param {import('http').ServerResponse} res HTTP 응답 객체
+ * @returns {object|Promise<object>} API 응답 또는 비동기 API 응답
+ */
+function learningApi(req, res) {
+    if (req.method !== 'POST') {
+        res.statusCode = 405;
+        res.setHeader('Allow', 'POST');
+        return { ok: false, error: 'POST만 지원합니다.' };
+    }
+    if (!isLearningAuthorized(req)) {
+        res.statusCode = LEARNING_TOKEN ? 401 : 503;
+        return { ok: false, error: LEARNING_TOKEN ? '인증이 필요합니다.' : 'PUYOW_AI_TOKEN이 설정되지 않았습니다.' };
+    }
+    return readJsonBody(req).then((payload) => {
+        const { event, sessionId } = payload;
+        const session = getLearningSession(sessionId);
+        if (!['reset', 'step', 'episode_end'].includes(event)) {
+            throw Object.assign(new Error('event는 reset, step, episode_end 중 하나여야 합니다.'), { statusCode: 400 });
+        }
+        if (event === 'reset') {
+            requireObservation(payload.observation, 'observation');
+            session.sequence = 0;
+            session.steps = 0;
+            session.reward = 0;
+            session.done = false;
+            session.observation = payload.observation;
+        } else if (event === 'step') {
+            requireObservation(payload.observation, 'observation');
+            requireObservation(payload.nextObservation, 'nextObservation');
+            requireNumber(payload.action, 'action', true);
+            requireNumber(payload.reward, 'reward');
+            if (typeof payload.done !== 'boolean') throw Object.assign(new Error('done은 boolean이어야 합니다.'), { statusCode: 400 });
+            session.steps += 1;
+            session.reward += payload.reward;
+            session.done = payload.done;
+            session.observation = payload.nextObservation;
+        } else {
+            if (typeof payload.done !== 'boolean' || !payload.done) throw Object.assign(new Error('episode_end의 done은 true여야 합니다.'), { statusCode: 400 });
+            session.done = true;
+        }
+        session.sequence += 1;
+        session.updatedAt = new Date().toISOString();
+        return { ok: true, event, sessionId, sequence: session.sequence, steps: session.steps, totalReward: session.reward, done: session.done };
+    }).catch((error) => {
+        res.statusCode = error.statusCode || 500;
+        return { ok: false, error: error.statusCode ? error.message : '학습 이벤트를 처리하지 못했습니다.' };
+    });
+}
+
+/**************************************** 학습 API 구현 끝 ***************************************/
+
+// 학습 클라이언트가 실제 게임의 관측값과 전이를 전달하는 API다.
+const apis = { learning: learningApi };
 
 // 서버 구동 시작 (종료 시에는 CTRL+C 단축키를 입력할 것)
 const server = http.createServer((req, res) => {
@@ -114,13 +268,18 @@ const server = http.createServer((req, res) => {
             return;
         }
 
-        let results = funcObj(req, res);
-        if(typeof(results) == 'undefined') return;
-        if(typeof(results) == 'object') results = JSON.stringify(results);
-        if(typeof(results) != 'string') results = String(results);
-
-        res.writeHead(200, {'Content-Type': 'application/json'});
-        res.end(results, 'utf-8');
+        Promise.resolve(funcObj(req, res)).then((results) => {
+            if(typeof(results) === 'undefined') return;
+            if(typeof(results) === 'object') results = JSON.stringify(results);
+            if(typeof(results) != 'string') results = String(results);
+            if (!res.headersSent) res.writeHead(res.statusCode >= 400 ? res.statusCode : 200, {'Content-Type': 'application/json'});
+            res.end(results, 'utf-8');
+        }).catch((error) => {
+            if (res.headersSent) return;
+            res.writeHead(500, {'Content-Type': 'application/json'});
+            res.end(JSON.stringify({ ok: false, error: 'API 처리 중 오류가 발생했습니다.' }), 'utf-8');
+            console.error(error);
+        });
         return;
     }
 
