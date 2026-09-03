@@ -1,10 +1,13 @@
 # Puyo W 머신러닝
 
-`learning/learning.py`는 PyTorch 기반 DQN 학습 스크립트다. 기본 `random` 상대 모드는 학습 중인 정책과의 self-play 및 Puyo W 기본 적 전략의 Python 포팅본을 섞어 대전한다. 학습은 Puyo W의 핵심 보드 규칙을 간소화한 Python 환경에서 진행하며, 선택적으로 `pythonserver.py`의 인증된 학습 API에 각 에피소드의 관측값과 전이를 전송할 수 있다. 학습·모델 서비스에는 `pythonserver.py`를 사용하며 `nodeserver.js`는 사용하지 않는다.
+`python/learning.py`는 PyTorch 기반 DQN 학습 스크립트다. 기본 `random` 상대 모드는 학습 중인 정책과의 self-play 및 Puyo W 기본 적 전략의 Python 포팅본을 섞어 대전한다. 학습은 Puyo W의 핵심 보드 규칙을 간소화한 Python 환경에서 진행하며, 선택적으로 `pythonserver.py`의 인증된 학습 API에 각 에피소드의 관측값과 전이를 전송할 수 있다. 학습·모델 서비스에는 `pythonserver.py`를 사용하며 `nodeserver.js`는 사용하지 않는다.
 
 ## 사전 준비
 
-저장소 루트에서 Python 3.10 이상과 PyTorch를 준비한다. Windows PowerShell에서는 다음처럼 설치할 수 있다.
+저장소 루트에서 Python 3.10 이상과 PyTorch를 준비한다. 
+[https://www.python.org/](https://www.python.org/)
+
+Python 설치 후 PyTorch 는 Windows PowerShell 에서 다음처럼 설치할 수 있다.
 
 ```powershell
 python -m pip install torch
@@ -17,7 +20,7 @@ VS Code에서 `torch`를 찾지 못하면 PyTorch를 설치한 Python 인터프�
 게임 서버 없이 독립 학습을 실행하려면 다음 명령을 사용한다.
 
 ```powershell
-python learning/learning.py --episodes 1000 --device auto
+python python/learning.py --episodes 1000 --device auto
 ```
 
 주요 옵션은 다음과 같다.
@@ -26,7 +29,7 @@ python learning/learning.py --episodes 1000 --device auto
 | --- | --- | --- |
 | `--episodes` | `1000` | 학습 에피소드 수. 1 이상이어야 한다. |
 | `--seed` | `2026` | Python과 PyTorch 난수 시드 |
-| `--output` | `learning/puyow_dqn.pt` | 모델 체크포인트 저장 경로. 실제 파일이 이미 있으면 해당 모델 가중치를 복원해 추가 학습한다. |
+| `--output` | `python/puyow_dqn.pt` | 모델 체크포인트 저장 경로. 실제 파일이 이미 있으면 해당 모델 가중치를 복원해 추가 학습한다. |
 | `--device` | `auto` | `auto`, `cpu`, `cuda` 중 하나 |
 | `--server-url` | 빈 값 | 학습 API가 실행 중인 서버 주소 |
 | `--api-token` | 빈 값 | Python 서버의 `SERVER_CONFIG["learning_token"]` 값 |
@@ -35,15 +38,15 @@ python learning/learning.py --episodes 1000 --device auto
 학습이 끝나면 지정한 경로에 PyTorch 체크포인트가 저장되고, 같은 위치의 확장자를 `.json`으로 바꾼 메타데이터 파일도 생성된다. `--output` 경로에 실제 파일이 있으면 새 모델을 만들지 않고 그 파일의 가중치를 복원해 추가 학습한 뒤 같은 파일에 저장한다. 관측 벡터 길이 또는 행동 수가 현재 계약과 다르면 오류로 중단하며 기존 파일을 덮어쓰지 않는다. optimizer·replay buffer·epsilon은 체크포인트에 저장하지 않으므로 추가 학습 실행마다 새로 시작한다. 기본 출력은 다음 두 파일이다.
 
 ```text
-learning/puyow_dqn.pt
-learning/puyow_dqn.json
+python/puyow_dqn.pt
+python/puyow_dqn.json
 ```
 
 체크포인트에는 모델 가중치, 관측 벡터 크기, 행동 개수, 학습 시드가 들어 있다.
 
 ## 적 AI와 대전하며 학습
 
-`learning/bundledenemy.py`는 `src/js/puyow.js`에 탑재된 기본 제공 적들(단탈리온, 세레, 데카라비아, 벨리알, 암두시아스, 키마리스, 안드레알푸스)의 판단 알고리즘을 Python으로 옮긴 모듈이다. 솔로몬(외부 AI API 전용)·안드로말리우스는 이식 대상에서 제외했고, 플라우로스(Flauros)는 클래스는 옮겨 두었지만 원작처럼 아직 판단 로직이 없는 출시 예정 상태라 대전 상대 목록에 넣지 않았다. `--opponent` 옵션으로 학습 중 대전할 상대를 고른다.
+`python/bundledenemy.py`는 `src/js/puyow.js`에 탑재된 기본 제공 적들(단탈리온, 세레, 데카라비아, 벨리알, 암두시아스, 키마리스, 안드레알푸스)의 판단 알고리즘을 Python으로 옮긴 모듈이다. 솔로몬(외부 AI API 전용)·안드로말리우스는 이식 대상에서 제외했고, 플라우로스(Flauros)는 클래스는 옮겨 두었지만 원작처럼 아직 판단 로직이 없는 출시 예정 상태라 대전 상대 목록에 넣지 않았다. `--opponent` 옵션으로 학습 중 대전할 상대를 고른다.
 
 | 값 | 동작 |
 | --- | --- |
@@ -53,7 +56,7 @@ learning/puyow_dqn.json
 | `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus` | 지정한 적 하나로 고정해 계속 대전한다. |
 
 ```powershell
-python learning/learning.py --episodes 1000 --opponent Kimaris
+python python/learning.py --episodes 1000 --opponent Kimaris
 ```
 
 `solo`가 아닌 경우 학습 환경은 `PuyoDuelEnvironment`이며, 에이전트가 한 수를 두고 판정할 때마다 곧바로 상대(적 AI 또는 self-play 정책)도 자신의 판단으로 한 수를 둔다. 두 필드 사이의 ATTACK·방해뿌요 교환도 함께 시뮬레이션하므로, 상대를 이기면(적 필드가 패배 칸에 닿거나 더 이상 둘 곳이 없으면) 큰 보상을, 지면 큰 페널티를 받는다.
@@ -67,12 +70,12 @@ python learning/learning.py --episodes 1000 --opponent Kimaris
 
 ## 서버 API와 함께 실행
 
-서버 전송 모드를 사용하면 먼저 [learning/pythonserver.py](../learning/pythonserver.py)를 실행한다. 실행 전에 파일 상단의 `SERVER_CONFIG["learning_token"]` 값을 학습기와 같은 토큰으로 직접 설정한다. 이 값은 개발용 설정이며 공개 서버에는 토큰을 소스에 저장하지 않아야 한다. 현재 구현은 단일 문자열 토큰만 검사한다. TODO에 적힌 여러 API 키의 OR 인증(토큰 컬렉션)은 아직 구현되어 있지 않다.
+서버 전송 모드를 사용하면 먼저 [python/pythonserver.py](../python/pythonserver.py)를 실행한다. 실행 전에 파일 상단의 `SERVER_CONFIG["learning_token"]` 값을 학습기와 같은 토큰으로 직접 설정한다. 이 값은 개발용 설정이며 공개 서버에는 토큰을 소스에 저장하지 않아야 한다. 현재 구현은 단일 문자열 토큰만 검사한다. TODO에 적힌 여러 API 키의 OR 인증(토큰 컬렉션)은 아직 구현되어 있지 않다.
 
 Python 서버 실행:
 
 ```powershell
-python learning/pythonserver.py 9891
+python python/pythonserver.py 9891
 ```
 
 포트 번호를 생략하면 `SERVER_CONFIG["port"]`의 기본값 `9891`을 사용한다.
@@ -80,7 +83,7 @@ python learning/pythonserver.py 9891
 서버가 실행된 상태에서 학습기를 실행한다.
 
 ```powershell
-python learning/learning.py `
+python python/learning.py `
 	--episodes 1000 `
 	--server-url http://localhost:9891 `
 	--device auto
@@ -89,11 +92,11 @@ python learning/learning.py `
 `--api-token`에는 Python 서버의 `SERVER_CONFIG["learning_token"]`과 같은 값을 지정한다.
 
 ```powershell
-python learning/learning.py `
+python python/learning.py `
 	--episodes 100 `
 	--server-url http://localhost:9891 `
 	--api-token "SERVER_CONFIG에 설정한 토큰" `
-	--output learning/experiment.pt
+	--output python/experiment.pt
 ```
 
 서버 URL을 지정하면 각 에피소드마다 다음 순서로 `POST /apis/learning` 요청을 보낸다.
@@ -183,8 +186,8 @@ const state = window.PuyoW.getGameState();
 
 `puyow_dqn.pt`를 게임의 AI 제공자로 쓰려면 실제 LM Studio 앱이 아니라, Chat Completions 형식만 흉내 내는 `pythonserver.py`를 실행한다.
 
-1. [learning/pythonserver.py](../learning/pythonserver.py)의 `SERVER_CONFIG`에서 `model_path`를 학습된 `.pt` 파일로, `learning_token`을 사용할 API 키 문자열로 설정한다. 기본 `model_path`는 `learning/puyow_dqn.pt`다.
-2. `python learning/pythonserver.py 9891`로 서버를 실행한다.
+1. [python/pythonserver.py](../python/pythonserver.py)의 `SERVER_CONFIG`에서 `model_path`를 학습된 `.pt` 파일로, `learning_token`을 사용할 API 키 문자열로 설정한다. 기본 `model_path`는 `python/puyow_dqn.pt`다.
+2. `python python/pythonserver.py 9891`로 서버를 실행한다.
 3. 게임 설정에서 AI 제공자로 **LM Studio**를 선택하고 URL에 `http://localhost:9891`, API 키에 `learning_token`과 같은 값을 넣는다. 모델명은 비어 있지 않은 임의 문자열(예: `puyow-dqn`)을 넣는다. 게임 클라이언트가 URL 뒤에 `/v1/chat/completions`를 붙여 요청한다.
 
 `model_path`가 비어 있거나 존재하지 않는 파일이면 `/v1/chat/completions`만 404를 반환한다. 이 경우에도 정적 파일 제공과 `/apis/learning` 학습 이벤트 API는 계속 실행된다.
@@ -194,7 +197,7 @@ const state = window.PuyoW.getGameState();
 전체 옵션은 다음 명령으로 확인할 수 있다.
 
 ```powershell
-python learning/learning.py --help
+python python/learning.py --help
 ```
 
 ## GGUF 변환
@@ -204,10 +207,10 @@ LM Studio에서 불러오는 GGUF는 일반 PyTorch 파일의 확장자를 바�
 `learning.py`에는 이 변환기를 호출하는 export 경로가 포함되어 있다.
 
 ```powershell
-python learning/learning.py `
+python python/learning.py `
 	--export-gguf models\my-transformer `
 	--llama-cpp-converter llama.cpp\convert_hf_to_gguf.py `
-	--gguf-output learning\my-model-f16.gguf
+	--gguf-output python\my-model-f16.gguf
 ```
 
 변환 대상 디렉터리에는 최소한 `config.json`과 해당 모델의 Transformer 가중치 파일이 있어야 한다. 기본 출력 형식은 `f16`이다. 이후 LM Studio에서 필요에 따라 지원되는 양자화 형식으로 추가 변환하거나, 이미 양자화된 GGUF를 직접 사용할 수 있다.

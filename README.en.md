@@ -66,6 +66,10 @@ The top center displays the player's and CPU's next two Puyo pairs. The selected
 3. Exit the game.
    Close the web browser, then press `CTRL + C` in Command Prompt (Windows) or the terminal (macOS/Linux).
 
+## Python Compatibility
+
+The server can also be run with Python 3.10 or later. After installing Python, run `python python/pythonserver.py`.
+
 ## Development Guide
 
 See [HOWTO.en.md](HOWTO.en.md) for information about game settings, library usage, and creating new AI opponents.

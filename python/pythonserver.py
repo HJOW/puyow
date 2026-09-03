@@ -4,10 +4,10 @@
 # 명령 프롬프트에서 프로젝트 폴더로 이동한 뒤 명령어를 실행하세요.
 #
 # 기본 포트(9891)로 실행:
-#     python learning/pythonserver.py
+#     python python/pythonserver.py
 #
 # 원하는 포트 번호로 실행(예: 8080):
-#     python learning/pythonserver.py 8080
+#     python python/pythonserver.py 8080
 #
 # 실행한 뒤 웹 브라우저에서 다음 주소를 열면 게임을 시작할 수 있습니다.
 #     http://localhost:9891/

@@ -16,7 +16,7 @@ mode, rule, 양측 board/normalBoard/fever.field 및 앞 두 nextPairs 계약을
 # 간단 사용법
 #     터미널로 프로젝트 최상위 디렉토리로 접근 후 다음 명령어 사용
 #
-#     python learning/learning.py --episodes 1000 --device auto --output learning/puyow_dqn.pt
+#     python python/learning.py --episodes 1000 --device auto --output python/puyow_dqn.pt
 #
 # 자세한 사용법은 docs/MachineLearning.md 참고
 #
@@ -591,12 +591,12 @@ def main() -> None:
 	parser = argparse.ArgumentParser(description="Puyo W DQN 학습")
 	parser.add_argument("--episodes", type=int, default=1000, help="학습 에피소드 수")
 	parser.add_argument("--seed", type=int, default=2026, help="재현 가능한 난수 시드")
-	parser.add_argument("--output", type=Path, default=Path("learning/puyow_dqn.pt"), help="체크포인트 경로(기존 파일이면 가중치를 복원해 추가 학습)")
+	parser.add_argument("--output", type=Path, default=Path("python/puyow_dqn.pt"), help="체크포인트 경로(기존 파일이면 가중치를 복원해 추가 학습)")
 	parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
 	parser.add_argument("--server-url", default="", help="학습 이벤트를 전송할 pythonserver.py 주소(예: http://localhost:9891)")
 	parser.add_argument("--api-token", default="", help="pythonserver.py의 learning_token 값(미지정 시 PUYOW_AI_TOKEN 환경변수 사용)")
 	parser.add_argument("--export-gguf", type=Path, metavar="MODEL_DIR", help="Hugging Face Transformer 모델 디렉터리를 GGUF로 변환")
-	parser.add_argument("--gguf-output", type=Path, default=Path("learning/model-f16.gguf"), help="GGUF 출력 경로")
+	parser.add_argument("--gguf-output", type=Path, default=Path("python/model-f16.gguf"), help="GGUF 출력 경로")
 	parser.add_argument("--llama-cpp-converter", type=Path, default=Path("llama.cpp") / "convert_hf_to_gguf.py", help="llama.cpp의 convert_hf_to_gguf.py 경로")
 	parser.add_argument(
 		"--opponent", default="random",

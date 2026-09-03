@@ -95,7 +95,7 @@ Bun (https://bun.com/) 을 사용하여 서버 구동을 더 빠르게 진행할
 
 파이썬으로도 서버 구동이 가능합니다.
 공식 홈페이지에서 Python 을 설치 (3.10 이상 버전 필요) 후
-명령어 `python learning/pythonserver.py` 를 이용하세요.
+명령어 `python python/pythonserver.py` 를 이용하세요.
 
 ## 개발 안내
 
