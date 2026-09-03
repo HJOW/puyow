@@ -9,7 +9,7 @@ nodeserver.js의 인증된 학습 이벤트 API를 선택적으로 사용한다.
 # Puyo W - AI 인공지능용 학습 모델 (LM Studio 호환) 개발 스크립트
 #
 # 이 스크립트에서는 PyTorch 를 이용해 Puyo W 학습 모델을 생성한다.
-#    이 스크립트 사용 전, 게임 서버 (nodeserver.js) 를 먼저 구동한다.
+#    이 스크립트 사용 전, 게임 서버 (nodeserver.js) 를 먼저 구동한다. (npm start 명령어 사용)
 #
 # 사용법은 docs/MachineLearning.md 참고
 #
@@ -295,7 +295,6 @@ def main() -> None:
 
 
 
-# TODO: 실행 환경에 PyTorch를 설치하고 VS Code의 Python 인터프리터를 같은 환경으로 선택한다.
 # TODO: 저장한 PyTorch 체크포인트를 LM Studio가 지원하는 배포 형식으로 변환하는 export 경로를 추가한다.
 # TODO: hardGarbage, garbage, fever, all-clear ticket, margin rate, time multiplier를 환경에 반영한다.
 # TODO: PuyoW.common.simulatePlacementBoard()와 결과를 대조하는 회귀 테스트를 추가한다.
