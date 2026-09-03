@@ -30,6 +30,7 @@ python learning/learning.py --episodes 1000 --device auto
 | `--device` | `auto` | `auto`, `cpu`, `cuda` 중 하나 |
 | `--server-url` | 빈 값 | 학습 API가 실행 중인 서버 주소 |
 | `--api-token` | 빈 값 | Python 서버의 `SERVER_CONFIG["learning_token"]` 값 |
+| `--opponent` | `random` | 대전 상대. 아래 "적 AI와 대전하며 학습" 참고 |
 
 학습이 끝나면 지정한 경로에 PyTorch 체크포인트가 저장되고, 같은 위치의 확장자를 `.json`으로 바꾼 메타데이터 파일도 생성된다. 기본 출력은 다음 두 파일이다.
 
@@ -39,6 +40,22 @@ learning/puyow_dqn.json
 ```
 
 체크포인트에는 모델 가중치, 관측 벡터 크기, 행동 개수, 학습 시드가 들어 있다.
+
+## 적 AI와 대전하며 학습
+
+`learning/bundledenemy.py`는 `src/js/puyow.js`에 탑재된 기본 제공 적들(단탈리온, 세레, 데카라비아, 벨리알, 암두시아스, 키마리스, 안드레알푸스, 플라우로스)의 판단 알고리즘을 Python으로 옮긴 모듈이다. 솔로몬(외부 AI API 전용)과 안드로말리우스는 이식 대상에서 제외했다. `--opponent` 옵션으로 학습 중 대전할 상대를 고른다.
+
+| 값 | 동작 |
+| --- | --- |
+| `random` (기본값) | 매 에피소드마다 이식된 적 중 하나를 무작위로 골라 대전한다. |
+| `solo` | 상대 없이 죽지 않고 버티는 것만 학습하는 옛 방식(`PuyoEnvironment`)을 쓴다. |
+| `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus`, `Flauros` | 지정한 적 하나로 고정해 계속 대전한다. |
+
+```powershell
+python learning/learning.py --episodes 1000 --opponent Kimaris
+```
+
+`solo`가 아닌 경우 학습 환경은 `PuyoDuelEnvironment`이며, 에이전트가 한 수를 두고 판정할 때마다 곧바로 지정한 적 AI도 자신의 판단으로 한 수를 둔다. 두 필드 사이의 ATTACK·방해뿌요 교환도 함께 시뮬레이션하므로, 상대를 이기면(적 필드가 패배 칸에 닿거나 더 이상 둘 곳이 없으면) 큰 보상을, 지면 큰 페널티를 받는다. 딱딱뿌요·피버 룰·마진 레이트 시간 배율처럼 이 대전 환경이 아직 다루지 않는 부분은 `bundledenemy.py` 모듈 docstring과 아래 "현재 구현 범위"에 정리되어 있다.
 
 ## 서버 API와 함께 실행
 
@@ -124,14 +141,13 @@ const state = window.PuyoW.getGameState();
 
 ## 현재 구현 범위
 
-현재 학습 환경에는 일반 색 뿌요의 연결 폭발, 연쇄, 중력, 기본 패배 위치가 구현되어 있다. 다음 Puyo W 규칙은 아직 간소화되어 있으므로 실제 게임 AI로 사용하기 전에 보완해야 한다.
+현재 학습 환경에는 일반 색 뿌요의 연결 폭발, 연쇄, 중력, 기본 패배 위치, 일반 방해뿌요 교환, `bundledenemy.py`로 이식한 적 AI와의 대전이 구현되어 있다. 다음 Puyo W 규칙은 아직 간소화되어 있으므로 실제 게임 AI로 사용하기 전에 보완해야 한다.
 
-- 일반 방해뿌요와 딱딱뿌요
-- 피버 룰과 연속 피버
-- 싹쓸이 티켓 및 실제 점수·ATTACK 계산
-- 마진 레이트와 시간 진행 배율
+- 딱딱뿌요(하드 방해뿌요)와 철구뿌요(시뮬레이터 전용)
+- 피버 룰과 연속 피버(및 두 번째 패배 칸)
+- 싹쓸이 티켓 및 마진 레이트·시간 진행 배율에 따른 실제 점수·ATTACK 계산(현재는 마진 레이트 70·시간 배율 1로 고정)
 - 실제 브라우저 게임 루프의 상태 수집 및 행동 주입
-- self-play 상대 정책과 평가 전용 에피소드
+- 평가 전용(입실론 0, 승률 집계) 에피소드와 안드레알푸스의 Worker 비동기 3수 탐색(현재는 동기 시간 제한 탐색으로 대체)
 
 현재 `pythonserver.py` API는 학습 이벤트를 수신하고 세션 통계를 보관하며, `src/js/puyow.js`는 사용자 게임의 실제 배치·정산 결과를 해당 API 계약으로 전송한다. 브라우저에서 `configureLearningApi()`를 호출해야 전송이 활성화된다.
 

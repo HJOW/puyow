@@ -154,4 +154,4 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 
 ## 머신러닝 작업 참고
 
-머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `learning/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `learning/pythonserver.py`를 참고한다.
+머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `learning/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `learning/pythonserver.py`를 참고한다. `learning/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI(솔로몬·안드로말리우스 제외)를 Python으로 옮긴 모듈이며, `learning.py`의 `PuyoDuelEnvironment`가 `--opponent` 옵션으로 이 적들과 대전하며 학습한다. `src/js/puyow.js`의 적 AI 판단 로직(`chooseTarget`/`chooseRotate`/`prepareTurn`, N수 탐색, Worker 반복 심화 등)을 바꾸면 `bundledenemy.py`도 함께 갱신해야 두 구현이 어긋나지 않는다. 이식 범위와 의도적으로 단순화한 부분(숨김 행 없는 12행 보드, 기본 룰만 지원, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등)은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
