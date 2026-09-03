@@ -404,6 +404,14 @@
     let webMcpAbortController = null;
     /** 현재 실행 중인 게임 상태다. @type {object|null} */
     let game = null;
+    /** (머신러닝 관련) 브라우저 게임 전이를 전송할 학습 API 설정이다. @type {{serverUrl:string,token:string}|null} */
+    let learningApiConfig = null;
+    /** (머신러닝 관련) 학습 API 요청을 게임 순서대로 처리하기 위한 Promise 체인이다. @type {Promise<void>} */
+    let learningApiQueue = Promise.resolve();
+    /** (머신러닝 관련) 현재 게임에서 학습 API reset을 보냈는지 여부다. @type {boolean} */
+    let learningEpisodeStarted = false;
+    /** (머신러닝 관련) 현재 게임의 마지막 뿌요 배치 전 관측과 보상 기준값이다. @type {object|null} */
+    let learningPendingTransition = null;
     /** 현재 재생 중인 배경음악이다. 화면 종류와 상관없이 한 개만 유지한다. @type {HTMLAudioElement|null} */
     let backgroundMusicAudio = null;
     /** 현재 배경음악 요소가 재생하는 음원 URL이다. @type {string|null} */
@@ -2065,6 +2073,8 @@
         resetVirtualControllerInput();
         const opponent = soloMode ? { createController: () => new PracticeEnemy() } : OPPONENTS[selectedOpponent];
         const controller = opponent.createController();
+        learningEpisodeStarted = false;
+        learningPendingTransition = null;
         const difficulty = selectedDifficulty;
         const colors = DIFFICULTIES[difficulty].colors;
         const pairQueue = Array.from({ length: INITIAL_PAIR_QUEUE_LENGTH }, () => createRandomPair(colors));
@@ -2127,6 +2137,87 @@
         syncBackgroundMusic();
     }
 
+    /**
+     * (머신러닝 관련)
+     * 브라우저 게임의 학습 API 전송 설정을 지정한다.
+     * 토큰은 저장하지 않으며 호출자가 현재 실행 중인 페이지에서 직접 제공해야 한다.
+     * @param {{serverUrl:string, token:string}} config nodeserver.js 주소와 인증 토큰
+     * @returns {void}
+     */
+    function configureLearningApi(config) {
+        if (!config || typeof config.serverUrl !== 'string' || !config.serverUrl.trim() || typeof config.token !== 'string' || !config.token) {
+            throw new TypeError('serverUrl과 token이 필요합니다.');
+        }
+        learningApiConfig = { serverUrl: config.serverUrl.trim().replace(/\/$/, ''), token: config.token };
+    }
+
+    /** 현재 사용자 게임이 API 학습 전송 대상인지 확인한다. @returns {boolean} 전송 대상이면 true */
+    function shouldSendLearningEvent() {
+        return Boolean(learningApiConfig && game && !game.tutorial && !game.watch && game.players?.[0]?.controller === null);
+    }
+
+    /** 실제 게임 보드와 현재 조작 쌍을 learning.py의 관측 벡터로 변환한다. @param {PlayerState} player 관측할 사용자 플레이어 @returns {number[]} 관측 벡터 */
+    function getLearningObservation(player) {
+        const values = [];
+        for (let channel = 0; channel <= COLORS.length; channel += 1) {
+            for (let y = 0; y < VISIBLE_ROWS; y += 1) {
+                for (let x = 0; x < COLUMNS; x += 1) {
+                    const color = player.board[y]?.[x] || null;
+                    values.push(channel === 0 ? Number(!color) : Number(color === COLORS[channel - 1]));
+                }
+            }
+        }
+        const activeColors = player.active?.colors || [];
+        for (const color of activeColors.slice(0, 2)) {
+            for (const candidate of COLORS) values.push(Number(color === candidate));
+        }
+        while (values.length < VISIBLE_ROWS * COLUMNS * (COLORS.length + 1) + COLORS.length * 2) values.push(0);
+        values.push(Math.min(player.attack, 30) / 30, Math.min(player.placedPairCount, 100) / 100);
+        return values;
+    }
+
+    /** 학습 API 요청을 순서대로 비동기 전송한다. @param {object} payload 학습 이벤트 본문 @returns {void} */
+    function queueLearningEvent(payload) {
+        if (!learningApiConfig) return;
+        learningApiQueue = learningApiQueue.then(async () => {
+            const response = await fetch(`${learningApiConfig.serverUrl}/apis/learning`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${learningApiConfig.token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok || !result.ok) throw new Error(result.error || `학습 API 요청 실패: ${response.status}`);
+        }).catch((error) => console.error('학습 API 전송 실패:', error));
+    }
+
+    /** 학습 API 세션을 시작한다. @param {PlayerState} player 사용자 플레이어 @returns {void} */
+    function startLearningEpisode(player) {
+        if (!shouldSendLearningEvent() || learningEpisodeStarted) return;
+        learningEpisodeStarted = true;
+        const sessionId = `browser-${Date.now()}-${randomFloat().toString(36).slice(2, 10)}`;
+        game.learningSessionId = sessionId;
+        queueLearningEvent({ event: 'reset', sessionId, observation: getLearningObservation(player) });
+    }
+
+    /** 마지막 배치의 정산 결과를 학습 API에 전송한다. @param {PlayerState} player 사용자 플레이어 @param {boolean} done 게임 종료 여부 @returns {void} */
+    function sendLearningStep(player, done = false) {
+        if (!shouldSendLearningEvent() || !learningPendingTransition || !game.learningSessionId) return;
+        const pending = learningPendingTransition;
+        learningPendingTransition = null;
+        const nextObservation = getLearningObservation(player);
+        const reward = (player.point - pending.point) + (player.attack - pending.attack);
+        queueLearningEvent({ event: 'step', sessionId: game.learningSessionId, observation: pending.observation, action: pending.action, reward, nextObservation, done });
+    }
+
+    /** (머신러닝 관련) 현재 학습 에피소드를 종료한다. @param {boolean} done 종료 상태 @returns {void} */
+    function finishLearningEpisode(done = true) {
+        if (!learningApiConfig || !learningEpisodeStarted || !game?.learningSessionId) return;
+        if (learningPendingTransition && game.players?.[0]) sendLearningStep(game.players[0], done);
+        queueLearningEvent({ event: 'episode_end', sessionId: game.learningSessionId, done: true });
+        learningEpisodeStarted = false;
+        learningPendingTransition = null;
+    }
+
     /** 데카라비아를 기본 룰 또는 피버 룰의 보통 이상 난이도에서 한 번이라도 이겼는지 확인한다. @returns {boolean} 구경 메뉴 해금 여부 */
     function isWatchModeUnlocked() {
         if (isObservationCodeApplied()) return true;
@@ -2168,6 +2259,8 @@
         resetVirtualControllerInput();
         watchSelectionOpen = false;
         const controllers = selectedEntries.map((entry) => entry.createController());
+        learningEpisodeStarted = false;
+        learningPendingTransition = null;
         const difficulty = watchDifficulty;
         const feverRule = watchRule !== 'standard';
         const relaxedFever = watchRule === 'relaxedFever';
@@ -2760,6 +2853,9 @@
             player.phase = 'idle';
             return;
         }
+        if (player === game?.players?.[0]) {
+            if (learningPendingTransition) sendLearningStep(player);
+        }
         player.phase = 'control';
         player.fallTimer = 0;
         // 플레이 방법 시연은 새 뿌요를 지급할 때마다 빠른 하강 상태를 초기화한다.
@@ -2904,6 +3000,17 @@
         // 비동기 판단을 기다리는 적은 뿌요가 실제 바닥이나 다른 뿌요에 닿는 즉시 요청을 취소한다.
         cancelPendingWorkerSearch(player.controller, player, 'contact');
         player.controller?.cancelPendingRequest?.(player, 'contact');
+        if (player === game?.players?.[0]) {
+            startLearningEpisode(player);
+            if (learningEpisodeStarted && game.learningSessionId) {
+                learningPendingTransition = {
+                    observation: getLearningObservation(player),
+                    action: player.active.x * 4 + player.active.rotation,
+                    point: player.point,
+                    attack: player.attack
+                };
+            }
+        }
         // 피버 룰의 방해뿌요 지연은 배치마다 새로 판정한다. 이번 배치가 폭발에 성공하면
         // resolveExplosions에서 다시 true가 되어 다음 컨트롤까지 DAMAGE 낙하를 미룬다.
         if (game?.feverRule && player.fever) player.fever.deferGarbage = false;
@@ -4643,6 +4750,7 @@
         game.winner = player;
         game.running = false;
         game.ending = null;
+        finishLearningEpisode(true);
         stopBackgroundMusic();
     }
 
@@ -4693,6 +4801,7 @@
             awardCurrentGameGold();
             game.running = false;
             game.ending = null;
+            finishLearningEpisode(true);
             stopBackgroundMusic();
         }
     }
@@ -13314,6 +13423,7 @@
         getSimulatorState,
         getGameState,
         getNextPairs,
+        configureLearningApi,
         playSound,
         showMessage,
         askConfirm,

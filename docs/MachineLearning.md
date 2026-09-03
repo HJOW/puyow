@@ -86,7 +86,7 @@ Content-Type: application/json
 
 ## 관측값과 행동
 
-현재 Python 환경의 관측 벡터는 길이 `442`다.
+현재 Python 환경의 관측 벡터는 길이 `444`다.
 
 - 6×12 보드의 빈 칸 및 5색 뿌요 원-핫 채널: `432`개
 - 현재 뿌요 쌍의 두 색 원-핫 정보: `10`개
@@ -111,7 +111,27 @@ Content-Type: application/json
 - 실제 브라우저 게임 루프의 상태 수집 및 행동 주입
 - self-play 상대 정책과 평가 전용 에피소드
 
-현재 서버 API는 학습 이벤트를 수신하고 세션 통계를 보관한다. 브라우저의 실제 게임을 자동 조작하려면 `src/js/puyow.js`에서 게임 상태를 관측하고 선택된 행동을 실제 배치로 적용하는 클라이언트 연결이 추가로 필요하다.
+현재 서버 API는 학습 이벤트를 수신하고 세션 통계를 보관하며, `src/js/puyow.js`는 사용자 게임의 실제 배치·정산 결과를 해당 API 계약으로 전송한다. 브라우저에서 `configureLearningApi()`를 호출해야 전송이 활성화된다.
+
+브라우저 게임에서 실제 사용자 플레이의 전이를 전송하려면 게임 초기화 전에 공개 설정 함수를 호출한다. 토큰은 페이지 소스에 고정하지 말고 개발 환경에서 안전하게 주입해야 한다.
+
+```html
+<script>
+	window.PuyoW.configureLearningApi({
+		serverUrl: "http://localhost:9891",
+		token: "change-this-token"
+	});
+	window.PuyoW.initialize(document.getElementById("puyow_target"));
+</script>
+```
+
+설정하면 일반 사용자 게임에서 다음 이벤트가 자동으로 전송된다.
+
+- 첫 뿌요 쌍이 고정될 때 `reset`
+- 뿌요 폭발·중력·피해 정산이 끝난 뒤 다음 조작 턴에 `step`
+- 승패 처리가 끝날 때 `episode_end`
+
+연습, 구경, 플레이 방법 모드는 학습 세션에서 제외된다.
 
 ## 도움말
 

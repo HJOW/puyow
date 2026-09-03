@@ -295,7 +295,6 @@ def main() -> None:
 
 
 
-# TODO: 브라우저의 실제 게임 루프가 이 클라이언트와 같은 API 계약으로 이벤트를 전송하도록 연결한다.
 # TODO: 실행 환경에 PyTorch를 설치하고 VS Code의 Python 인터프리터를 같은 환경으로 선택한다.
 # TODO: 저장한 PyTorch 체크포인트를 LM Studio가 지원하는 배포 형식으로 변환하는 export 경로를 추가한다.
 # TODO: hardGarbage, garbage, fever, all-clear ticket, margin rate, time multiplier를 환경에 반영한다.
