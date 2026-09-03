@@ -37,8 +37,10 @@
 import queue
 import threading
 import tkinter as tk
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+from urllib.parse import urlsplit
 
 import learning
 import pythonserver
@@ -46,6 +48,25 @@ import pythonserver
 # GUI 전용 기본값이다. learning.py 자체의 --episodes 기본값(1000)과는 별개로, 요구 사항에 따라
 # 창을 열면 5000이 입력된 상태여야 한다.
 DEFAULT_EPISODES = 5000
+
+# 서버 주소 입력란의 호스트가 이 목록에 있을 때만 GUI가 직접 pythonserver.py를 띄우고 끈다.
+# 원격 주소라면 이미 다른 곳에서 서버를 운영 중이라고 보고 건드리지 않는다.
+LOCAL_SERVER_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _parse_local_server_port(server_url: str) -> int | None:
+	"""server_url이 로컬 주소를 가리키면 그 포트를, 아니면 None을 반환한다."""
+	if not server_url:
+		return None
+	try:
+		parsed = urlsplit(server_url)
+	except ValueError:
+		return None
+	if (parsed.hostname or "").lower() not in LOCAL_SERVER_HOSTS:
+		return None
+	if parsed.port is not None:
+		return parsed.port
+	return 443 if parsed.scheme == "https" else 80
 
 
 class TrainerApp:
@@ -60,6 +81,8 @@ class TrainerApp:
 		self.log_queue: "queue.Queue[tuple]" = queue.Queue()
 		self.control: learning.TrainingControl | None = None
 		self.thread: threading.Thread | None = None
+		self.server: ThreadingHTTPServer | None = None
+		self.server_thread: threading.Thread | None = None
 		self._closed = False
 
 		self._build_widgets()
@@ -148,6 +171,32 @@ class TrainerApp:
 		self.server_url_entry.configure(state=state)
 
 	# ------------------------------------------------------------------
+	# 로컬 pythonserver.py 수명주기
+	# ------------------------------------------------------------------
+	def _start_local_server(self, port: int) -> None:
+		"""이 포트에 pythonserver.py를 백그라운드 쓰레드로 띄운다.
+
+		ThreadingHTTPServer 생성자가 소켓 바인딩까지 동기적으로 수행하므로, 이미 다른
+		프로세스가 그 포트를 점유하고 있으면 학습 쓰레드를 시작하기 전에 OSError가 그대로
+		올라온다. 호출부(_on_start)는 이를 잡아 학습 시작 자체를 취소한다.
+		"""
+		server = ThreadingHTTPServer(("", port), pythonserver.PuyoRequestHandler)
+		thread = threading.Thread(target=server.serve_forever, daemon=True)
+		thread.start()
+		self.server = server
+		self.server_thread = thread
+
+	def _stop_local_server(self) -> None:
+		"""GUI가 띄운 로컬 서버가 있으면 멈추고 소켓을 닫는다. 없으면 아무 일도 하지 않는다."""
+		if self.server is None:
+			return
+		self._append_log("Stopping local pythonserver.py...")
+		self.server.shutdown()
+		self.server.server_close()
+		self.server = None
+		self.server_thread = None
+
+	# ------------------------------------------------------------------
 	# 학습 시작/일시정지/재개/중단
 	# ------------------------------------------------------------------
 	def _on_start(self) -> None:
@@ -165,6 +214,19 @@ class TrainerApp:
 
 		output_path = Path(output_text)
 		server_url = self.server_url_var.get().strip()
+
+		local_port = _parse_local_server_port(server_url)
+		if local_port is not None:
+			try:
+				self._start_local_server(local_port)
+			except OSError as error:
+				messagebox.showerror(
+					"Puyo W DQN Trainer",
+					f"Could not start pythonserver.py on port {local_port}.\n"
+					f"The port may already be in use by another process.\n\n{error}",
+				)
+				return
+			self._append_log(f"Started local pythonserver.py on port {local_port}.")
 
 		self.control = learning.TrainingControl()
 		self.progress.configure(maximum=episodes, value=0)
@@ -245,6 +307,11 @@ class TrainerApp:
 			# 즉시 포기: learning.train()이 저장 코드에 닿기 전에 TrainingAbort로 빠져나간다.
 			# 학습 쓰레드는 데몬 쓰레드라 창을 닫아도 프로세스 종료를 막지 않는다.
 			self.control.request_abort()
+		if self.server is not None:
+			self.server.shutdown()
+			self.server.server_close()
+			self.server = None
+			self.server_thread = None
 		self.root.destroy()
 
 	# ------------------------------------------------------------------
@@ -278,6 +345,7 @@ class TrainerApp:
 		self.root.after(100, self._poll_queue)
 
 	def _reset_controls(self) -> None:
+		self._stop_local_server()
 		self.start_button.configure(state="normal")
 		self.pause_button.configure(text="Pause", state="disabled")
 		self.stop_button.configure(state="disabled")
