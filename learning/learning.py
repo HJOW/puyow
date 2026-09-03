@@ -37,7 +37,7 @@ import urllib.request
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Deque, List, Optional, Tuple
+from typing import Callable, Deque, List, Optional, Tuple
 
 import torch
 from torch import nn
@@ -244,11 +244,16 @@ def _apply_attack_exchange(attacker_pending_damage: float, attack_generated: flo
 
 
 class PuyoDuelEnvironment:
-	"""puyow.js에 탑재된 적 AI(bundledenemy)와 실제로 대전하며 학습하는 2인용 환경이다.
+	"""puyow.js에 탑재된 적 AI(bundledenemy) 또는 학습 중인 정책 자신과 실제로 대전하며 학습하는 2인용 환경이다.
 
-	매 step()은 학습 중인 에이전트가 한 수를 두고 판정한 뒤, 곧바로 적 AI(bundledenemy의
-	Enemy 하위 클래스)가 자신의 판단으로 한 수를 두는 것까지 함께 처리한다. 관측값은
-	PuyoEnvironment와 같은 계약(encode_observation)을 쓰며 에이전트 자신의 보드만 담는다.
+	매 step()은 학습 중인 에이전트가 한 수를 두고 판정한 뒤, 곧바로 상대가 자신의 판단으로
+	한 수를 두는 것까지 함께 처리한다. 상대는 bundledenemy의 Enemy 하위 클래스이거나(적 AI
+	대전), 그 자리에 SELF_PLAY_OPPONENT를 골랐다면 `self_play_action_fn`으로 전달받은 학습
+	중인 정책 자신이다(self-play). 관측값은 PuyoEnvironment와 같은 계약(encode_observation)을
+	쓰며 에이전트 자신의 보드만 담는다.
+
+	기본 룰/피버 룰, 색상 수(3~5색)는 에피소드(대전)마다 무작위로 정해진다. 이 포팅의 피버
+	룰이 실제로 얼마나 단순화되어 있는지는 bundledenemy.py 모듈 docstring을 참고한다.
 
 	보상은 이번 수의 ATTACK(연쇄가 클수록, 많이 지울수록 커진다)과 연쇄 수 제곱에 비례하는
 	보너스를 기본으로 하고, 상대를 이기거나 지면 WIN_REWARD/LOSS_REWARD를 더한다. TODO.md가
@@ -256,16 +261,34 @@ class PuyoDuelEnvironment:
 	한 수의 전형적인 ATTACK 보상보다 훨씬 크게 잡았다.
 	"""
 
+	# 학습 중인 정책이 자기 자신과 대전하는 self-play를 나타내는 opponent_type 값이다.
+	# bundledenemy에는 대응하는 클래스가 없으므로(신경망 기반 결정이라) 이 모듈에서만 쓴다.
+	SELF_PLAY_OPPONENT = "self"
+	COLOR_COUNT_CHOICES: Tuple[int, ...] = (3, 4, 5)
+
 	MAX_TURNS_PER_EPISODE = 150
 	WIN_REWARD = 50.0
 	LOSS_REWARD = -50.0
 	INVALID_ACTION_REWARD = -5.0
 	NEXT_PAIR_LOOKAHEAD = 8
 
-	def __init__(self, opponent_type: Optional[str] = None, seed: Optional[int] = None) -> None:
+	def __init__(
+		self,
+		opponent_type: Optional[str] = None,
+		seed: Optional[int] = None,
+		fever_rule: Optional[bool] = None,
+		color_count: Optional[int] = None,
+		self_play_action_fn: Optional[Callable[[torch.Tensor], int]] = None,
+	) -> None:
 		self.random = random.Random(seed)
 		self.opponent_type = opponent_type
-		self.opponent: bundledenemy.BaseEnemy
+		self._fever_rule_setting = fever_rule
+		self._color_count_setting = color_count
+		self.self_play_action_fn = self_play_action_fn
+		self.opponent: Optional[bundledenemy.BaseEnemy] = None
+		self.is_self_play = False
+		self.fever_rule = False
+		self.color_count = COLORS
 		self.agent_board: List[List[int]] = []
 		self.enemy_board: List[List[int]] = []
 		self.agent_pair: Tuple[int, int] = (0, 0)
@@ -275,24 +298,36 @@ class PuyoDuelEnvironment:
 		self.agent_damage = 0.0
 		self.enemy_damage = 0.0
 		self.agent_attack = 0.0
+		self.enemy_attack = 0.0
 		self.turn = 0
 		self.reset()
 
 	def _pair(self) -> Tuple[int, int]:
-		return self.random.randrange(COLORS), self.random.randrange(COLORS)
+		return self.random.randrange(self.color_count), self.random.randrange(self.color_count)
 
 	def _select_opponent_type(self) -> str:
-		return self.opponent_type or self.random.choice(bundledenemy.TRAINABLE_ENEMY_TYPES)
+		if self.opponent_type:
+			return self.opponent_type
+		pool = (self.SELF_PLAY_OPPONENT,) + bundledenemy.TRAINABLE_ENEMY_TYPES
+		return self.random.choice(pool)
 
 	def reset(self) -> torch.Tensor:
+		selected_opponent = self._select_opponent_type()
+		self.is_self_play = selected_opponent == self.SELF_PLAY_OPPONENT
 		# 적 인스턴스는 단탈리온의 진행 단계, 세레의 공격 시뮬레이션 주기처럼 턴을 넘나드는
 		# 상태를 인스턴스에 보관하므로, 매 에피소드(=매 대전)마다 새로 만들어야 한다.
-		self.opponent = bundledenemy.create_enemy(self._select_opponent_type(), random.Random(self.random.randrange(2 ** 30)))
+		self.opponent = None if self.is_self_play else bundledenemy.create_enemy(selected_opponent, random.Random(self.random.randrange(2 ** 30)))
+		self.fever_rule = self._fever_rule_setting if self._fever_rule_setting is not None else self.random.random() < 0.5
+		# bundledenemy는 프로세스 전역 상태 하나로 현재 룰을 추적한다(모듈의 configure_rule
+		# docstring 참고). 이 학습 스크립트는 한 번에 환경 하나만 순차로 진행하므로 안전하다.
+		bundledenemy.configure_rule(self.fever_rule)
+		self.color_count = self._color_count_setting or self.random.choice(self.COLOR_COUNT_CHOICES)
 		self.agent_board = bundledenemy.new_empty_board()
 		self.enemy_board = bundledenemy.new_empty_board()
 		self.agent_damage = 0.0
 		self.enemy_damage = 0.0
 		self.agent_attack = 0.0
+		self.enemy_attack = 0.0
 		self.agent_pair = self._pair()
 		self.enemy_pair = self._pair()
 		self.agent_next_pairs = [self._pair() for _ in range(self.NEXT_PAIR_LOOKAHEAD)]
@@ -307,7 +342,20 @@ class PuyoDuelEnvironment:
 		pairs.append(self._pair())
 		return pairs.pop(0)
 
+	def _select_enemy_positions(self) -> Optional[List[Tuple[int, int]]]:
+		"""상대(적 AI 또는 self-play 정책)의 이번 수 착지 좌표를 정한다. 둘 곳이 없으면 None이다."""
+		if not self.is_self_play:
+			placement = self.opponent.decide(self.enemy_board, self.enemy_pair, self.enemy_next_pairs, self.enemy_damage)
+			return placement.positions if placement is not None else None
+		observation = encode_observation(self.enemy_board, self.enemy_pair, self.enemy_attack, self.turn)
+		action = self.self_play_action_fn(observation) if self.self_play_action_fn else self.random.randrange(ACTION_COUNT)
+		column, rotation = action_to_placement(action)
+		landing = bundledenemy.find_landing_placement(self.enemy_board, column, rotation)
+		return [landing[0], landing[1]] if landing is not None else None
+
 	def step(self, action: int) -> Tuple[torch.Tensor, float, bool, dict]:
+		# bundledenemy의 룰 전역 상태가 다른 곳에서 바뀌었을 가능성에 대비해 매 스텝 다시 확인한다.
+		bundledenemy.configure_rule(self.fever_rule)
 		column, rotation = action_to_placement(action)
 		landing = bundledenemy.find_landing_placement(self.agent_board, column, rotation)
 		if landing is None:
@@ -317,7 +365,11 @@ class PuyoDuelEnvironment:
 		self.agent_board = result_board
 		self.agent_attack = attack
 		reward = attack + combo * combo
-		info = {"combo": combo, "attack": attack, "opponent": self.opponent.get_class_type()}
+		info = {
+			"combo": combo, "attack": attack,
+			"opponent": self.SELF_PLAY_OPPONENT if self.is_self_play else self.opponent.get_class_type(),
+			"fever_rule": self.fever_rule, "color_count": self.color_count,
+		}
 
 		if combo > 0:
 			self.agent_damage, self.enemy_damage = _apply_attack_exchange(self.agent_damage, attack, self.enemy_damage)
@@ -330,16 +382,18 @@ class PuyoDuelEnvironment:
 
 		self.agent_pair = self._refill(self.agent_next_pairs)
 
-		enemy_placement = self.opponent.decide(self.enemy_board, self.enemy_pair, self.enemy_next_pairs, self.enemy_damage)
-		if enemy_placement is None:
-			# 적 필드에 더 이상 둘 곳이 없다: 상대의 패배로 처리한다.
-			return self.observe(), reward + self.WIN_REWARD, True, {**info, "result": "enemy_no_moves"}
+		enemy_positions = self._select_enemy_positions()
+		if enemy_positions is None:
+			# 상대 필드에 더 이상 둘 곳이 없다: 상대의 패배로 처리한다.
+			result = "enemy_invalid_self_play" if self.is_self_play else "enemy_no_moves"
+			return self.observe(), reward + self.WIN_REWARD, True, {**info, "result": result}
 
-		enemy_result_board, enemy_combo, enemy_attack = bundledenemy.resolve_placement(self.enemy_board, self.enemy_pair, enemy_placement.positions)
+		enemy_result_board, enemy_combo, enemy_attack = bundledenemy.resolve_placement(self.enemy_board, self.enemy_pair, enemy_positions)
 		if enemy_result_board is None:
 			# bundledenemy가 규칙을 벗어난 배치를 반환하지 않는 한 발생하지 않는다. 방어적으로만 처리한다.
 			enemy_result_board, enemy_combo, enemy_attack = self.enemy_board, 0, 0.0
 		self.enemy_board = enemy_result_board
+		self.enemy_attack = enemy_attack
 
 		if enemy_combo > 0:
 			self.enemy_damage, self.agent_damage = _apply_attack_exchange(self.enemy_damage, enemy_attack, self.agent_damage)
@@ -369,16 +423,21 @@ class PolicyNetwork(nn.Module):
 		return self.layers(state)
 
 
-def _make_environment(opponent: str, seed: int) -> "PuyoEnvironment | PuyoDuelEnvironment":
+def _make_environment(
+	opponent: str, seed: int, self_play_action_fn: Optional[Callable[[torch.Tensor], int]] = None,
+) -> "PuyoEnvironment | PuyoDuelEnvironment":
 	"""--opponent 선택에 맞는 학습 환경을 만든다.
 
-	'solo'는 상대 없이 버티기만 학습하는 옛 PuyoEnvironment, 'random'은 매 에피소드
-	bundledenemy.TRAINABLE_ENEMY_TYPES 중 하나를 무작위로 골라 대전하는 PuyoDuelEnvironment,
-	그 밖의 값은 해당 적 하나로 고정해 계속 대전하는 PuyoDuelEnvironment를 만든다.
+	'solo'는 상대 없이 버티기만 학습하는 옛 PuyoEnvironment다. 'random'은 매 에피소드
+	self-play(자기 자신과 대전)와 bundledenemy.TRAINABLE_ENEMY_TYPES 중 하나를 무작위로
+	골라 대전하는 PuyoDuelEnvironment를 만들고, 'self'는 항상 self-play, 그 밖의 값은
+	해당 적 하나로 고정해 계속 대전하는 PuyoDuelEnvironment를 만든다. 기본 룰/피버 룰과
+	색상 수(3~5색)는 PuyoDuelEnvironment가 에피소드마다 알아서 무작위로 고른다.
 	"""
 	if opponent == "solo":
 		return PuyoEnvironment(seed)
-	return PuyoDuelEnvironment(None if opponent == "random" else opponent, seed)
+	resolved_opponent = None if opponent == "random" else opponent
+	return PuyoDuelEnvironment(resolved_opponent, seed, self_play_action_fn=self_play_action_fn)
 
 
 def train(episodes: int, seed: int, output: Path, device_name: str, server_url: str = "", api_token: str = "", opponent: str = "random") -> None:
@@ -399,8 +458,19 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 	win_count = 0
 	loss_count = 0
 
+	# self-play(PuyoDuelEnvironment.SELF_PLAY_OPPONENT) 에피소드에서 상대측 행동을 고르는
+	# 콜백이다. 매 스텝 최신 epsilon으로 갱신되는 epsilon_holder를 통해, 학습 중인 에이전트와
+	# 같은 epsilon-greedy 탐험 규칙을 상대측에도 그대로 적용한다.
+	epsilon_holder = [epsilon_start]
+
+	def self_play_action(observation: torch.Tensor) -> int:
+		if random.random() < epsilon_holder[0]:
+			return random.randrange(ACTION_COUNT)
+		with torch.no_grad():
+			return int(policy(observation.to(device)).argmax().item())
+
 	for episode in range(episodes):
-		environment = _make_environment(opponent, seed + episode)
+		environment = _make_environment(opponent, seed + episode, self_play_action)
 		state = environment.reset()
 		session_id = f"puyow-training-{seed}-{episode}"
 		if api_client:
@@ -409,6 +479,7 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 		episode_result = "timeout"
 		for _ in range(max_steps_per_episode):
 			epsilon = max(epsilon_end, epsilon_start - (epsilon_start - epsilon_end) * steps / total_steps)
+			epsilon_holder[0] = epsilon
 			if random.random() < epsilon:
 				action = random.randrange(ACTION_COUNT)
 			else:
@@ -440,7 +511,7 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 			if done:
 				episode_result = info.get("result", "invalid" if info.get("invalid") else "done")
 				break
-		if episode_result == "enemy_defeated" or episode_result == "enemy_no_moves":
+		if episode_result in ("enemy_defeated", "enemy_no_moves", "enemy_invalid_self_play"):
 			win_count += 1
 		elif episode_result in ("agent_defeated", "invalid"):
 			loss_count += 1
@@ -488,9 +559,10 @@ def main() -> None:
 	parser.add_argument("--llama-cpp-converter", type=Path, default=Path("llama.cpp") / "convert_hf_to_gguf.py", help="llama.cpp의 convert_hf_to_gguf.py 경로")
 	parser.add_argument(
 		"--opponent", default="random",
-		choices=("random", "solo") + bundledenemy.TRAINABLE_ENEMY_TYPES,
-		help="대전 상대. 'random'은 매 에피소드 bundledenemy의 적 중 하나를 무작위로 고르고(기본값), "
-			"'solo'는 상대 없이 버티기만 학습하는 옛 방식이며, 그 밖에는 지정한 적 하나로 고정한다.",
+		choices=("random", "solo", PuyoDuelEnvironment.SELF_PLAY_OPPONENT) + bundledenemy.TRAINABLE_ENEMY_TYPES,
+		help="대전 상대. 'random'은 매 에피소드 self-play(자기 자신과 대전) 또는 bundledenemy의 적 "
+			"중 하나를 무작위로 고르고(기본값), 'self'는 항상 self-play, 'solo'는 상대 없이 "
+			"버티기만 학습하는 옛 방식이며, 그 밖에는 지정한 적 하나로 고정한다.",
 	)
 	args = parser.parse_args()
 	if args.export_gguf:

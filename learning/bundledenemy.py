@@ -11,7 +11,10 @@
 learning.py의 self-play 학습에서 "빈 상대" 대신 실제 게임에 탑재된 적들과 대전하며
 학습할 수 있도록, 각 적의 판단 알고리즘(chooseTarget/chooseRotate/prepareTurn)을
 puyow.js와 최대한 같은 결과가 나오도록 옮겼다. 사용자 요청에 따라 솔로몬(외부 AI
-API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다.
+API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다. 플라우로스(Flauros)는
+클래스 자체는 옮겨 두었지만(원작과 같은 구조를 유지하기 위해), 원작에서도 아직
+`notAvail`(출시 예정) 상태라 실제 판단 로직이 없으므로 ENEMY_FACTORIES/
+TRAINABLE_ENEMY_TYPES에는 넣지 않았다 — 즉 대전 상대로는 뽑히지 않는다.
 
 ## 이식 범위와 단순화한 부분
 
@@ -21,8 +24,12 @@ API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다.
 아닌 열을 화면 밖 높이까지 쌓아 올리는 극단적인 경우의 동작은 원작과 다를 수 있다.
 그 밖에 다음도 학습 환경의 범위 밖이라 이식하지 않았다:
 
-* 피버 룰/연속 피버 전용 분기(`game.feverRule`, `player.fever`)와 두 번째 죽음 칸(X=3).
-  이 모듈은 기본 룰만 다루므로 관련 분기는 모두 "피버 아님"으로 고정된 경우와 동일하다.
+* `configure_rule(fever_rule)`로 기본 룰/피버 룰을 고를 수 있지만, 이는 축소판이다.
+  실제로 바뀌는 것은 죽음 칸(피버 룰은 X=2·X=3 둘 다 검사)과 세레·암두시아스의
+  "피버 룰이 선택되어 있을 때"의 쌓기·공격 우선순위 분기뿐이다. puyow.js처럼 일반
+  필드와 별도의 피버 필드를 오가거나, 피버 게이지·제한 시간·목표 연쇄 상승, 연속
+  피버는 재현하지 않는다. `player.fever?.active`를 조건으로 쓰는 원작 분기(Enemy의
+  공통 피버 연쇄 최적화 등)는 이 축소판에 "활성 피버 상태"가 없으므로 계속 빠져 있다.
 * 딱딱뿌요(hardGarbage)·철구뿌요(iron)는 시뮬레이터 전용이므로 제외했다. 방해뿌요
   (GARBAGE)는 지원한다.
 * `shouldCounterPlayerChain`(상대가 실시간으로 연쇄를 진행 중일 때 끼어드는 판단)은
@@ -60,9 +67,30 @@ VISIBLE_ROWS = BOARD_HEIGHT
 SPAWN_X = 2
 
 # 패배 칸(기본 룰 기준 X=2, Y=11)과 적 AI가 미리 피하는 경고 행(Y=8)이다.
+# 피버 룰은 X=3도 패배 칸으로 함께 쓴다(SECOND_DEFEAT_COLUMN, configure_rule() 참고).
 DEFEAT_COLUMN = 2
+SECOND_DEFEAT_COLUMN = 3
 DEFEAT_ROW = BOARD_HEIGHT - 1
 AVOIDANCE_WARNING_ROW = 8
+
+# 현재 대전에 적용 중인 룰이다. True면 피버 룰(죽음 칸 X=2·X=3, 세레·암두시아스의 피버 전용
+# 분기), False면 기본 룰(죽음 칸 X=2 하나)이다. 학습 스크립트는 한 번에 하나의 대전만
+# 동기적으로 진행하므로 이 모듈 전역 상태만으로 충분하며, configure_rule()로 에피소드마다
+# 갱신한다. 이 값이 True여도 puyow.js처럼 일반 필드와 별도의 피버 필드·게이지·제한 시간을
+# 오가는 동작은 재현하지 않는다(모듈 docstring의 "이식 범위와 단순화한 부분" 참고). 즉 여기서
+# 말하는 "피버 룰"은 단일 필드 위에서 죽음 칸과 일부 적 AI 분기만 바뀌는 축소판이다.
+FEVER_RULE_ACTIVE = False
+
+
+def configure_rule(fever_rule: bool) -> None:
+    """이번 대전에 적용할 룰을 설정한다. 이후 이 모듈의 모든 패배 판정·적 AI 판단이 이 값을 따른다."""
+    global FEVER_RULE_ACTIVE
+    FEVER_RULE_ACTIVE = bool(fever_rule)
+
+
+def _active_defeat_columns() -> Tuple[int, ...]:
+    """현재 룰에서 패배 칸으로 취급하는 열 목록을 구한다."""
+    return (DEFEAT_COLUMN, SECOND_DEFEAT_COLUMN) if FEVER_RULE_ACTIVE else (DEFEAT_COLUMN,)
 # 공격 시뮬레이션을 우선하게 만드는 트리거 칸이다(puyow.js attackSimulationTriggerPosition).
 ATTACK_TRIGGER_X = 2
 ATTACK_TRIGGER_Y = 8
@@ -144,8 +172,8 @@ def is_all_clear_board(board: Sequence[Sequence[int]]) -> bool:
 
 
 def is_defeat_board(board: Sequence[Sequence[int]]) -> bool:
-    """기본 룰의 패배 칸(X=2, Y=11)만 검사한다. 피버 룰의 두 번째 죽음 칸(X=3)은 이 포팅의 범위 밖이다."""
-    return board[DEFEAT_ROW][DEFEAT_COLUMN] != EMPTY
+    """현재 configure_rule()로 설정된 룰의 패배 칸(기본 룰은 X=2, 피버 룰은 X=2·X=3)에 뿌요가 있는지 확인한다."""
+    return any(board[DEFEAT_ROW][column] != EMPTY for column in _active_defeat_columns())
 
 
 def collapse_board(board: Sequence[Sequence[int]]) -> List[List[int]]:
@@ -398,9 +426,10 @@ def find_best_attack_placement(board, colors, simulations: Sequence[Placement], 
 
 
 def get_ai_defeat_position_avoidance_columns(board: Sequence[Sequence[int]], force: bool = False) -> List[int]:
-    """패배 위치 경고로 피해야 할 열 목록을 구한다. puyow.js의 getAiDefeatPositionAvoidanceColumns에 대응한다(기본 룰만 다루므로 항상 X=2 하나뿐이다)."""
-    if force or board[AVOIDANCE_WARNING_ROW][DEFEAT_COLUMN] != EMPTY:
-        return [DEFEAT_COLUMN]
+    """패배 위치 경고로 피해야 할 열 목록을 구한다. puyow.js의 getAiDefeatPositionAvoidanceColumns에 대응한다(기본 룰은 X=2, 피버 룰은 X=2·X=3)."""
+    columns = list(_active_defeat_columns())
+    if force or any(board[AVOIDANCE_WARNING_ROW][column] != EMPTY for column in columns):
+        return columns
     return []
 
 
@@ -485,7 +514,7 @@ def get_n_move_board_score(board: Sequence[Sequence[int]]) -> float:
                 score += 80
             if y < BOARD_HEIGHT - 1 and board[y + 1][x] == color:
                 score += 55
-            if y >= AVOIDANCE_WARNING_ROW and x == DEFEAT_COLUMN:
+            if y >= AVOIDANCE_WARNING_ROW and x in _active_defeat_columns():
                 score -= 180
     return score
 
@@ -598,7 +627,12 @@ class BaseEnemy:
         return 'Enemy'
 
     def decide(self, board, colors, next_pairs, incoming_garbage: float = 0.0) -> Optional[Placement]:
-        """이번 수의 배치를 결정한다. 착지 가능한 후보가 하나도 없으면 None(필드가 가득 참)을 반환한다."""
+        """이번 수의 배치를 결정한다. 착지 가능한 후보가 하나도 없으면 None(필드가 가득 참)을 반환한다.
+
+        `incoming_garbage`는 puyow.js의 player.damage(자신의 미정산 피해)와 opponent.attack
+        (상대의 미도착 ATTACK)을 합친 하나의 값이다. 원작 일부 분기(예: Amdusias의 피버 전용
+        분기)는 이 둘을 따로 쓰지만, 이 포팅은 호출부 단순화를 위해 합계 하나만 받는다.
+        """
         simulations = prepare_simulations(board, colors)
         if not simulations:
             return None
@@ -861,8 +895,12 @@ class Amdusias(Belial):
             return s.attack + (s.preview_attack or 0) + (s.preview_combo or 0) * 1000
 
         selected = self.select_simulation(pool, lambda s: s.all_clear is True, score)
-        # 원작의 "피버 룰이고 DAMAGE가 있으면 즉시 공격" 분기는 기본 룰만 다루는 이 포팅에서는 적용되지 않는다.
-        if not selected and occupancy >= 0.8:
+        # 원작은 "피버 룰이고 자신의 DAMAGE(player.damage)가 있으면" 생존 다음으로 공격을 우선한다.
+        # 이 포팅의 decide()는 상대 ATTACK까지 합친 값만 받으므로(decide() 문서 참고),
+        # incoming_garbage > 0을 player.damage > 0의 근사값으로 쓴다.
+        if not selected and FEVER_RULE_ACTIVE and incoming_garbage > 0:
+            selected = self.select_simulation(pool, lambda s: True, score)
+        elif not selected and occupancy >= 0.8:
             selected = self.select_simulation(pool, lambda s: s.combo >= 1, score)
         elif not selected and occupancy >= 0.5:
             selected = self.select_simulation(pool, lambda s: s.combo == 2, score)
@@ -1080,7 +1118,7 @@ class Seere(BundledEnemy):
         return selected
 
     def _select_standard_build(self, board, colors, simulations):
-        """오른쪽 두 열 → X=3의 화면 절반 → 왼쪽 열 순서로 다음 쌓기 단계를 골라 배치를 정한다."""
+        """오른쪽 두 열 → X=3의 화면 절반 → 왼쪽 열 순서로 다음 쌓기 단계를 골라 배치를 정한다(피버 룰이 아닐 때)."""
         right_filled = (self._is_column_filled_to_height(board, BOARD_WIDTH - 2, VISIBLE_ROWS)
                         and self._is_column_filled_to_height(board, BOARD_WIDTH - 1, VISIBLE_ROWS))
         if not right_filled:
@@ -1089,13 +1127,56 @@ class Seere(BundledEnemy):
             return self._select_third_column_build(board, colors, simulations)
         return self._select_left_build(board, colors, simulations)
 
+    @staticmethod
+    def _select_fever_third_column_build(board, colors, simulations):
+        """피버 룰에서는 오른쪽에서 세 번째 열(X=3)을 10단까지만 쌓는다(화면 절반이 아니라 고정 높이)."""
+        selected, best_score = None, float('-inf')
+        target_column = BOARD_WIDTH - 3
+        for sim in simulations:
+            if sim.combo != 0 or causes_immediate_defeat(board, colors, sim.positions):
+                continue
+            if not all(x == target_column and y < 10 for x, y in sim.positions):
+                continue
+            score = sum(1000 - y for _x, y in sim.positions)
+            if score >= best_score:
+                selected, best_score = sim, score
+        return selected
+
+    @staticmethod
+    def _select_fever_left_build(board, colors, simulations):
+        """피버 룰에서는 왼쪽 두 열(X=0, X=1)을 순서 없이 낮은 열 위주로 균형 있게 채운다."""
+        selected, best_score = None, float('-inf')
+        for sim in simulations:
+            if sim.combo != 0 or causes_immediate_defeat(board, colors, sim.positions):
+                continue
+            if not all(x < 2 for x, _y in sim.positions):
+                continue
+            score = 0.0
+            for x, y in sim.positions:
+                filled_height = sum(1 for row in board if row[x] != EMPTY)
+                score += 1000 - filled_height * 10 - y
+            if score >= best_score:
+                selected, best_score = sim, score
+        return selected
+
+    def _select_fever_rule_build(self, board, colors, simulations):
+        """오른쪽 두 열 → X=3을 10단까지 → 왼쪽 두 열(균형) 순서로 쌓기 단계를 고른다(피버 룰일 때)."""
+        right_filled = (self._is_column_filled_to_height(board, BOARD_WIDTH - 2, VISIBLE_ROWS)
+                        and self._is_column_filled_to_height(board, BOARD_WIDTH - 1, VISIBLE_ROWS))
+        if not right_filled:
+            return self._select_right_two_build(board, colors, simulations)
+        if not self._is_column_filled_to_height(board, BOARD_WIDTH - 3, 10):
+            return self._select_fever_third_column_build(board, colors, simulations)
+        return self._select_fever_left_build(board, colors, simulations)
+
     def _choose(self, board, colors, simulations, next_pairs, incoming_garbage):
-        """트리거 칸이 찼거나 방해뿌요가 많으면 즉시 공격하고, 그 밖에는 표준 순서로 쌓다가 주기적으로 공격 시뮬레이션을 수행한다."""
+        """트리거 칸이 찼거나 방해뿌요가 많으면 즉시 공격하고, 그 밖에는 (피버 룰 여부에 맞는) 순서로 쌓다가 주기적으로 공격 시뮬레이션을 수행한다."""
         trigger_occupied = board[ATTACK_TRIGGER_Y][ATTACK_TRIGGER_X] != EMPTY
         if trigger_occupied or incoming_garbage >= AI_ATTACK_SIMULATION_DAMAGE_THRESHOLD:
             return find_best_attack_placement(board, colors, simulations, 0, ATTACK_TRIGGER_X if trigger_occupied else None, True)
 
-        build = self._select_standard_build(board, colors, simulations)
+        build = (self._select_fever_rule_build(board, colors, simulations) if FEVER_RULE_ACTIVE
+                 else self._select_standard_build(board, colors, simulations))
         safe_fallback = next((s for s in simulations if not causes_immediate_defeat(board, colors, s.positions)), None)
         basic = build or safe_fallback
 
@@ -1137,6 +1218,7 @@ class PracticeEnemy(BundledEnemy):
 
 # 학습에서 대전 상대로 고를 수 있는 적 목록이다. puyow.js OPPONENTS 등록 순서에서
 # 솔로몬·안드로말리우스(사용자 요청으로 제외)와 연습 상대(PracticeEnemy, 비경쟁 상대)를 뺐다.
+# 플라우로스(Flauros)도 원작처럼 판단 로직이 없는 출시 예정 상태라 대전 상대 목록에서 뺐다.
 ENEMY_FACTORIES = {
     'Dantalion': Dantalion,
     'Seere': Seere,
@@ -1145,7 +1227,6 @@ ENEMY_FACTORIES = {
     'Amdusias': Amdusias,
     'Kimaris': Kimaris,
     'Andrealphus': Andrealphus,
-    'Flauros': Flauros,
 }
 
 TRAINABLE_ENEMY_TYPES: Tuple[str, ...] = tuple(ENEMY_FACTORIES.keys())

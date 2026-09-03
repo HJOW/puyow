@@ -1,6 +1,6 @@
 # Puyo W 머신러닝
 
-`learning/learning.py`는 PyTorch 기반의 self-play DQN 학습 스크립트다. 기본적으로 Puyo W의 핵심 보드 규칙을 간소화한 Python 환경에서 학습하며, 선택적으로 `pythonserver.py`의 인증된 학습 API에 각 에피소드의 관측값과 전이를 전송할 수 있다. 학습·모델 서비스에는 `pythonserver.py`를 사용하며 `nodeserver.js`는 사용하지 않는다.
+`learning/learning.py`는 PyTorch 기반 DQN 학습 스크립트다. 기본 `random` 상대 모드는 학습 중인 정책과의 self-play 및 Puyo W 기본 적 전략의 Python 포팅본을 섞어 대전한다. 학습은 Puyo W의 핵심 보드 규칙을 간소화한 Python 환경에서 진행하며, 선택적으로 `pythonserver.py`의 인증된 학습 API에 각 에피소드의 관측값과 전이를 전송할 수 있다. 학습·모델 서비스에는 `pythonserver.py`를 사용하며 `nodeserver.js`는 사용하지 않는다.
 
 ## 사전 준비
 
@@ -24,7 +24,7 @@ python learning/learning.py --episodes 1000 --device auto
 
 | 옵션 | 기본값 | 설명 |
 | --- | --- | --- |
-| `--episodes` | `1000` | self-play 에피소드 수. 1 이상이어야 한다. |
+| `--episodes` | `1000` | 학습 에피소드 수. 1 이상이어야 한다. |
 | `--seed` | `2026` | Python과 PyTorch 난수 시드 |
 | `--output` | `learning/puyow_dqn.pt` | 모델 체크포인트 저장 경로 |
 | `--device` | `auto` | `auto`, `cpu`, `cuda` 중 하나 |
@@ -43,23 +43,31 @@ learning/puyow_dqn.json
 
 ## 적 AI와 대전하며 학습
 
-`learning/bundledenemy.py`는 `src/js/puyow.js`에 탑재된 기본 제공 적들(단탈리온, 세레, 데카라비아, 벨리알, 암두시아스, 키마리스, 안드레알푸스, 플라우로스)의 판단 알고리즘을 Python으로 옮긴 모듈이다. 솔로몬(외부 AI API 전용)과 안드로말리우스는 이식 대상에서 제외했다. `--opponent` 옵션으로 학습 중 대전할 상대를 고른다.
+`learning/bundledenemy.py`는 `src/js/puyow.js`에 탑재된 기본 제공 적들(단탈리온, 세레, 데카라비아, 벨리알, 암두시아스, 키마리스, 안드레알푸스)의 판단 알고리즘을 Python으로 옮긴 모듈이다. 솔로몬(외부 AI API 전용)·안드로말리우스는 이식 대상에서 제외했고, 플라우로스(Flauros)는 클래스는 옮겨 두었지만 원작처럼 아직 판단 로직이 없는 출시 예정 상태라 대전 상대 목록에 넣지 않았다. `--opponent` 옵션으로 학습 중 대전할 상대를 고른다.
 
 | 값 | 동작 |
 | --- | --- |
-| `random` (기본값) | 매 에피소드마다 이식된 적 중 하나를 무작위로 골라 대전한다. |
+| `random` (기본값) | 매 에피소드마다 self-play(자기 자신과 대전) 또는 이식된 적 중 하나를 무작위로 골라 대전한다. |
+| `self` | 항상 self-play로 대전한다. 상대측도 학습 중인 정책으로 행동을 고르므로(같은 epsilon-greedy 탐험을 그대로 적용), 상대가 이기면 곧 이번 정책이 스스로에게 진 것과 같다. |
 | `solo` | 상대 없이 죽지 않고 버티는 것만 학습하는 옛 방식(`PuyoEnvironment`)을 쓴다. |
-| `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus`, `Flauros` | 지정한 적 하나로 고정해 계속 대전한다. |
+| `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus` | 지정한 적 하나로 고정해 계속 대전한다. |
 
 ```powershell
 python learning/learning.py --episodes 1000 --opponent Kimaris
 ```
 
-`solo`가 아닌 경우 학습 환경은 `PuyoDuelEnvironment`이며, 에이전트가 한 수를 두고 판정할 때마다 곧바로 지정한 적 AI도 자신의 판단으로 한 수를 둔다. 두 필드 사이의 ATTACK·방해뿌요 교환도 함께 시뮬레이션하므로, 상대를 이기면(적 필드가 패배 칸에 닿거나 더 이상 둘 곳이 없으면) 큰 보상을, 지면 큰 페널티를 받는다. 딱딱뿌요·피버 룰·마진 레이트 시간 배율처럼 이 대전 환경이 아직 다루지 않는 부분은 `bundledenemy.py` 모듈 docstring과 아래 "현재 구현 범위"에 정리되어 있다.
+`solo`가 아닌 경우 학습 환경은 `PuyoDuelEnvironment`이며, 에이전트가 한 수를 두고 판정할 때마다 곧바로 상대(적 AI 또는 self-play 정책)도 자신의 판단으로 한 수를 둔다. 두 필드 사이의 ATTACK·방해뿌요 교환도 함께 시뮬레이션하므로, 상대를 이기면(적 필드가 패배 칸에 닿거나 더 이상 둘 곳이 없으면) 큰 보상을, 지면 큰 페널티를 받는다.
+
+`solo` 이외의 대전 모드에서는 상대 선택과 별개로 다음 값도 매 에피소드마다 무작위로 정해진다.
+
+- **룰**: 기본 룰과 피버 룰 중 하나를 50%씩 고른다. 다만 이 환경의 피버 룰은 축소판이다 — 실제로 바뀌는 것은 죽음 칸(X=2·X=3 둘 다 검사)과 세레·암두시아스의 피버 전용 쌓기·공격 우선순위 분기뿐이며, puyow.js처럼 일반 필드와 별도의 피버 필드를 오가거나 피버 게이지·제한 시간·목표 연쇄 상승을 재현하지는 않는다. 자세한 내용은 `bundledenemy.py`의 `configure_rule()` 문서를 참고한다.
+- **색상 수**: 3색, 4색, 5색 중 하나를 무작위로 골라 그 수만큼의 색으로만 뿌요 쌍을 생성한다(관측 벡터 채널 수 자체는 항상 5색 기준으로 고정이며, 쓰지 않는 채널은 0으로 남는다).
+
+딱딱뿌요·연속 피버·마진 레이트 시간 배율처럼 이 대전 환경이 아직 다루지 않는 부분은 `bundledenemy.py` 모듈 docstring과 아래 "현재 구현 범위"에 정리되어 있다.
 
 ## 서버 API와 함께 실행
 
-서버 전송 모드를 사용하면 먼저 [learning/pythonserver.py](../learning/pythonserver.py)를 실행한다. 실행 전에 파일 상단의 `SERVER_CONFIG["learning_token"]` 값을 학습기와 같은 토큰으로 직접 설정한다. 이 값은 개발용 설정이며 공개 서버에는 토큰을 소스에 저장하지 않아야 한다.
+서버 전송 모드를 사용하면 먼저 [learning/pythonserver.py](../learning/pythonserver.py)를 실행한다. 실행 전에 파일 상단의 `SERVER_CONFIG["learning_token"]` 값을 학습기와 같은 토큰으로 직접 설정한다. 이 값은 개발용 설정이며 공개 서버에는 토큰을 소스에 저장하지 않아야 한다. 현재 구현은 단일 문자열 토큰만 검사한다. TODO에 적힌 여러 API 키의 OR 인증(토큰 컬렉션)은 아직 구현되어 있지 않다.
 
 Python 서버 실행:
 
@@ -109,7 +117,7 @@ Content-Type: application/json
 
 - 6×12 보드의 빈 칸 및 5색 뿌요 원-핫 채널: `432`개
 - 현재 뿌요 쌍의 두 색 원-핫 정보: `10`개
-- 누적 공격량과 턴 수: `2`개
+- 공격 상태 값과 턴 수: `2`개. 단일 `PuyoEnvironment`에서는 누적 ATTACK, 대전 `PuyoDuelEnvironment`에서는 에이전트가 직전 수에 만든 ATTACK을 사용한다.
 
 보드 좌표는 `board[y][x]`이며 `y=0`이 바닥이다. 행동 번호는 `열 * 4 + 회전`으로 계산한다.
 
@@ -121,7 +129,7 @@ Content-Type: application/json
 
 ## 브라우저 게임 상세 상태
 
-학습 환경 확장과 적 인공지능 개발에는 별도 학습 전용 API 대신 `PuyoW.getGameState()`를 사용한다. 이 함수는 반환 객체를 변경해도 게임 내부 상태가 바뀌지 않는 읽기 전용 스냅샷이며, 게임이 없거나 튜토리얼 중이면 `null`을 반환한다.
+브라우저 기반 학습 환경 확장과 적 인공지능 개발에는 별도 학습 전용 API 대신 `PuyoW.getGameState()`를 사용한다. 이 함수는 반환 객체를 변경해도 게임 내부 상태가 바뀌지 않는 읽기 전용 스냅샷이며, 게임이 없거나 튜토리얼 중이면 `null`을 반환한다. 현재 `learning.py`의 독립 `PuyoDuelEnvironment`는 이 API를 호출하지 않고 Python 보드를 직접 시뮬레이션하며, 아래 상태는 브라우저 측 기능을 확장할 때의 공통 조회 계약이다.
 
 ```js
 const state = window.PuyoW.getGameState();
@@ -141,10 +149,10 @@ const state = window.PuyoW.getGameState();
 
 ## 현재 구현 범위
 
-현재 학습 환경에는 일반 색 뿌요의 연결 폭발, 연쇄, 중력, 기본 패배 위치, 일반 방해뿌요 교환, `bundledenemy.py`로 이식한 적 AI와의 대전이 구현되어 있다. 다음 Puyo W 규칙은 아직 간소화되어 있으므로 실제 게임 AI로 사용하기 전에 보완해야 한다.
+현재 학습 환경에는 일반 색 뿌요의 연결 폭발, 연쇄, 중력, 패배 위치(기본 룰 X=2, 피버 룰은 X=2·X=3), 일반 방해뿌요 교환, `bundledenemy.py`로 이식한 적 AI 또는 self-play와의 대전, 룰(기본/피버)·색상 수(3~5색)의 에피소드별 무작위 선택이 구현되어 있다. 다음 Puyo W 규칙은 아직 간소화되어 있으므로 실제 게임 AI로 사용하기 전에 보완해야 한다.
 
 - 딱딱뿌요(하드 방해뿌요)와 철구뿌요(시뮬레이터 전용)
-- 피버 룰과 연속 피버(및 두 번째 패배 칸)
+- 피버 룰의 일반 필드/피버 필드 이원화, 피버 게이지·제한 시간·목표 연쇄 상승, 연속 피버(현재 피버 룰은 죽음 칸과 일부 적 AI 분기만 반영하는 축소판이다)
 - 싹쓸이 티켓 및 마진 레이트·시간 진행 배율에 따른 실제 점수·ATTACK 계산(현재는 마진 레이트 70·시간 배율 1로 고정)
 - 실제 브라우저 게임 루프의 상태 수집 및 행동 주입
 - 평가 전용(입실론 0, 승률 집계) 에피소드와 안드레알푸스의 Worker 비동기 3수 탐색(현재는 동기 시간 제한 탐색으로 대체)
@@ -171,6 +179,16 @@ const state = window.PuyoW.getGameState();
 
 연습, 구경, 플레이 방법 모드는 학습 세션에서 제외된다.
 
+## 학습한 모델로 게임과 대전
+
+`puyow_dqn.pt`를 게임의 AI 제공자로 쓰려면 실제 LM Studio 앱이 아니라, Chat Completions 형식만 흉내 내는 `pythonserver.py`를 실행한다.
+
+1. [learning/pythonserver.py](../learning/pythonserver.py)의 `SERVER_CONFIG`에서 `model_path`를 학습된 `.pt` 파일로, `learning_token`을 사용할 API 키 문자열로 설정한다. 기본 `model_path`는 `learning/puyow_dqn.pt`다.
+2. `python learning/pythonserver.py 9891`로 서버를 실행한다.
+3. 게임 설정에서 AI 제공자로 **LM Studio**를 선택하고 URL에 `http://localhost:9891`, API 키에 `learning_token`과 같은 값을 넣는다. 모델명은 비어 있지 않은 임의 문자열(예: `puyow-dqn`)을 넣는다. 게임 클라이언트가 URL 뒤에 `/v1/chat/completions`를 붙여 요청한다.
+
+`model_path`가 비어 있거나 존재하지 않는 파일이면 `/v1/chat/completions`만 404를 반환한다. 이 경우에도 정적 파일 제공과 `/apis/learning` 학습 이벤트 API는 계속 실행된다.
+
 ## 도움말
 
 전체 옵션은 다음 명령으로 확인할 수 있다.
@@ -194,4 +212,4 @@ python learning/learning.py `
 
 변환 대상 디렉터리에는 최소한 `config.json`과 해당 모델의 Transformer 가중치 파일이 있어야 한다. 기본 출력 형식은 `f16`이다. 이후 LM Studio에서 필요에 따라 지원되는 양자화 형식으로 추가 변환하거나, 이미 양자화된 GGUF를 직접 사용할 수 있다.
 
-현재 `learning.py`가 학습하는 `puyow_dqn.pt`는 `PolicyNetwork`라는 사용자 정의 DQN MLP 체크포인트다. 이는 Llama 등의 언어 모델 구조가 아니므로 `convert_hf_to_gguf.py`나 LM Studio에서 직접 사용할 수 없다. 현재 DQN은 Python/PyTorch 게임 정책용으로 사용하며, LM Studio에 넣으려면 별도의 Transformer 기반 모델과 그에 맞는 학습·변환 파이프라인이 필요하다.
+현재 `learning.py`가 학습하는 `puyow_dqn.pt`는 `PolicyNetwork`라는 사용자 정의 DQN MLP 체크포인트다. 이는 Llama 등의 언어 모델 구조가 아니므로 `convert_hf_to_gguf.py`나 실제 LM Studio 앱에서 직접 사용할 수 없다. 다만 게임 설정에서 LM Studio 제공자를 선택해도 URL을 `pythonserver.py`로 지정하면, 이 서버가 Chat Completions 규격만 맞춰 DQN을 그대로 서비스할 수 있다. 실제 LM Studio 앱에 넣으려면 별도의 Transformer 기반 모델과 그에 맞는 학습·변환 파이프라인이 필요하다.
