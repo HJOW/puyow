@@ -151,3 +151,7 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 3. 캔버스 UI는 키보드, Enter, 마우스, ESC, 외부 클릭, 잠긴 항목을 함께 확인한다.
 4. `node --check src/js/puyow.js`, `npm.cmd test`, 관련 Playwright 테스트를 실행한다.
 5. 최종 보고에는 변경 파일, 실행한 검증, 실행하지 못한 검증의 이유를 간단히 적는다.
+
+## 머신러닝 작업 참고
+
+머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `learning/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `nodeserver.js`를 참고한다.
