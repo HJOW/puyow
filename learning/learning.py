@@ -11,6 +11,8 @@ nodeserver.js의 인증된 학습 이벤트 API를 선택적으로 사용한다.
 # 이 스크립트에서는 PyTorch 를 이용해 Puyo W 학습 모델을 생성한다.
 #    이 스크립트 사용 전, 게임 서버 (nodeserver.js) 를 먼저 구동한다.
 #
+# 사용법은 docs/MachineLearning.md 참고
+#
 # Copyright 2026 HJOW
 # Licensed under the Apache License, Version 2.0.
 # 
