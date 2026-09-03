@@ -34,12 +34,7 @@ from typing import Deque, List, Tuple
 import torch
 from torch import nn
 
-
-BOARD_WIDTH = 6
-BOARD_HEIGHT = 12
-COLORS = 5
-ACTION_COUNT = BOARD_WIDTH * 4
-OBSERVATION_SIZE = BOARD_WIDTH * BOARD_HEIGHT * (COLORS + 1) + COLORS * 2 + 2
+from common import ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, COLORS, OBSERVATION_SIZE
 
 
 class LearningApiClient:

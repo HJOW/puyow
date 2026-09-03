@@ -22,12 +22,16 @@
 # Apache License 2.0
 # 이 프로그램은 Apache License 2.0에 따라 사용할 수 있습니다.
 # 라이선스 전문은 프로젝트 루트의 LICENSE 파일을 확인하세요.
+# 
+# 의존성
+#     common.py
 
 # Puyo W 웹 서버 역할 뿐 아니라 학습 API 서버 역할도 수행한다.
 
 import argparse
 import hmac
 import json
+import math
 import mimetypes
 import threading
 import traceback
@@ -37,6 +41,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import unquote, urlsplit
+
+from common import action_to_placement, validate_observation
 
 
 # 서버 운영자가 이 컬렉션의 값을 수정해 포트와 인증 토큰을 설정한다.
@@ -95,7 +101,7 @@ def is_learning_authorized(handler: BaseHTTPRequestHandler) -> bool:
 
 def require_number(value: Any, name: str, integer: bool = False) -> None:
 	"""값이 유한한 숫자인지 검증한다."""
-	if isinstance(value, bool) or not isinstance(value, (int, float)):
+	if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
 		raise ApiError(f"{name}은(는) 유효한 숫자여야 합니다.")
 	if integer and not isinstance(value, int):
 		raise ApiError(f"{name}은(는) 정수여야 합니다.")
@@ -103,10 +109,10 @@ def require_number(value: Any, name: str, integer: bool = False) -> None:
 
 def require_observation(value: Any, name: str) -> None:
 	"""관측값이 제한된 길이의 유한한 숫자 배열인지 검증한다."""
-	if not isinstance(value, list) or not value or len(value) > 10000:
-		raise ApiError(f"{name}은(는) 유한한 숫자의 배열이어야 합니다.")
-	for item in value:
-		require_number(item, name)
+	try:
+		validate_observation(value, name)
+	except ValueError as error:
+		raise ApiError(str(error)) from error
 
 
 def get_learning_session(session_id: Any) -> dict[str, Any]:
@@ -145,6 +151,10 @@ def learning_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str, Any]]:
 			require_observation(payload.get("observation"), "observation")
 			require_observation(payload.get("nextObservation"), "nextObservation")
 			require_number(payload.get("action"), "action", integer=True)
+			try:
+				action_to_placement(payload.get("action"))
+			except ValueError as error:
+				raise ApiError(str(error)) from error
 			require_number(payload.get("reward"), "reward")
 			if not isinstance(payload.get("done"), bool):
 				raise ApiError("done은 boolean이어야 합니다.")
