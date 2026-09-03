@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 6;
+    const BUILDNO = 7;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -9377,23 +9377,28 @@
         return { screen: 'playing', playerCanControl: !game.watch && game.players[0].controller === null && game.players[0].phase === 'control' && game.players[0].active !== null };
     }
 
-    /** @returns {number} 현재 화면·상태 API에 노출할 다음 뿌요 쌍 수 */
+    /** @returns {number} 중앙 NEXT 영역과 getNextPairs() API에 노출할 다음 뿌요 쌍 수 */
     function getExposedNextPairCount() {
         // 기본·피버 대전(구경 포함)은 AI 내부 20쌍과 별개로 두 쌍만 보이며, 단독 모드의 기존 네 쌍 계약은 유지한다.
         return usesSoloPlayLayout() ? 4 : 2;
+    }
+
+    /** 현재·일반·피버 필드에 공통으로 쓰는 보드를 JSON 직렬화 가능한 상태로 만든다. @param {(string|null)[][]} board 복사할 보드 @returns {{columns:number,rows:number,visibleRows:number,puyos:{x:number,y:number,color:string}[]}} 보드 상태 */
+    function getBoardGameStatus(board) {
+        const puyos = [];
+        board.forEach((row, y) => row.forEach((color, x) => {
+            if (color) puyos.push({ x, y, color });
+        }));
+        return { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos };
     }
 
     /**
      * 한 플레이어의 보드와 대기열을 JSON으로 직렬화 가능한 상태로 만든다.
      * @param {PlayerState} player 상태를 읽을 플레이어
      * @param {PlayerState} opponent 상대 플레이어
-     * @returns {{name:string, isCpu:boolean, phase:string, point:number, attack:number, damage:number, normalDamage:number, combo:number, placedPairCount:number, allClearTicket:boolean, board:{columns:number, rows:number, visibleRows:number, puyos:{x:number,y:number,color:string}[]}, nextPairs:string[][], warningPuyos:string[], active:{x:number,y:number,rotation:number,colors:string[],cells:{x:number,y:number,color:string}[]}|null}}
+     * @returns {{name:string, isCpu:boolean, phase:string, point:number, attack:number, damage:number, normalDamage:number, combo:number, placedPairCount:number, allClearTicket:boolean, board:{columns:number, rows:number, visibleRows:number, puyos:{x:number,y:number,color:string}[]}, normalBoard:{columns:number, rows:number, visibleRows:number, puyos:{x:number,y:number,color:string}[]}, nextPairs:string[][], warningPuyos:string[], fever:object|null, active:{x:number,y:number,rotation:number,colors:string[],cells:{x:number,y:number,color:string}[]}|null}}
      */
     function getPlayerGameStatus(player, opponent) {
-        const puyos = [];
-        player.board.forEach((row, y) => row.forEach((color, x) => {
-            if (color) puyos.push({ x, y, color });
-        }));
         const active = player.active ? {
             x: player.active.x,
             y: player.active.y,
@@ -9412,8 +9417,12 @@
             combo: player.combo,
             placedPairCount: player.placedPairCount,
             allClearTicket: player.allClearTicket,
-            board: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, puyos },
-            nextPairs: player.nextPairs.slice(0, getExposedNextPairCount()).map((pair) => [...pair]),
+            // board는 현재 조작 대상이며, 피버 중이면 fever.field와 같은 필드다.
+            board: getBoardGameStatus(player.board),
+            // 피버에 들어가도 일반 필드 진행도를 잃지 않도록 항상 함께 제공한다.
+            normalBoard: getBoardGameStatus(player.normalBoard),
+            // 외부 AI·학습기는 게임 모드와 무관하게 다음 두 쌍까지만 사용한다.
+            nextPairs: player.nextPairs.slice(0, 2).map((pair) => [...pair]),
             warningPuyos: warningUnits(warningAmount(player, opponent)).map((unit) => unit.type),
             fever: player.fever ? {
                 active: player.fever.active,
@@ -9425,7 +9434,11 @@
                 turn: player.fever.turn,
                 selectedStageTarget: player.fever.selectedStageTarget,
                 stageSuppliedPair: [...player.fever.stageSuppliedPair],
-                field: player.fever.active ? { columns: COLUMNS, rows: ROWS, cells: player.board.map((row) => [...row]) } : null
+                // 비활성 중에도 피버 전용 필드의 배치 정보를 보관해 학습 입력을 일정하게 만든다.
+                field: {
+                    ...getBoardGameStatus(player.fever.field),
+                    cells: player.fever.field.map((row) => [...row])
+                }
             } : null,
             active
         };
@@ -9566,19 +9579,26 @@
     }
 
     /**
-     * 현재 일반 대전의 읽기 전용 상태 스냅샷을 반환한다.
+     * 현재 대전의 읽기 전용 상태 스냅샷을 반환한다.
+     * 일반·피버 규칙과 학습·적 AI가 필요한 양측 일반/현재/피버 필드 및 앞 두 NEXT를 함께 제공한다.
      * 반환된 객체와 그 안의 배열을 변경해도 실제 게임 상태에는 영향을 주지 않는다.
      * 메뉴, 튜토리얼 또는 초기화 전 상태에서는 null을 반환한다.
-     * @returns {{screen:string, playerCanControl:boolean, running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, timeProgressMultiplier:number, practice:boolean, watch:boolean, continuousFever:boolean, feverRule:boolean, feverStart:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
+     * @returns {{screen:string, playerCanControl:boolean, mode:'versus'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'continuous_fever', running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, timeProgressMultiplier:number, practice:boolean, watch:boolean, continuousFever:boolean, feverRule:boolean, feverStart:boolean, allClearTicketEnabled:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
      */
     function getGameState() {
         if (!game || game.tutorial) return null;
         const screen = getNowScreen();
         const [player, opponent] = game.players;
         const getRole = (target) => target === player ? 'player' : target === opponent ? 'opponent' : null;
+        const mode = game.watch !== undefined ? 'watch'
+            : (game.continuousFever ? 'continuous_fever' : (game.puzzle ? 'puzzle' : (game.practice ? 'practice' : 'versus')));
+        const rule = game.continuousFever ? 'continuous_fever'
+            : (game.feverStart ? 'fever_start' : (game.feverRule ? 'fever' : 'standard'));
         return {
             screen: screen.screen,
             playerCanControl: screen.playerCanControl,
+            mode,
+            rule,
             running: game.running,
             paused: game.paused,
             countdown: game.countdown,
@@ -9590,6 +9610,8 @@
             continuousFever: game.continuousFever === true,
             feverRule: game.feverRule === true,
             feverStart: game.feverStart === true,
+            // 싹쓸이 티켓은 기본 룰에서만 소비되는 값임을 명시한다.
+            allClearTicketEnabled: rule === 'standard',
             puzzle: game.puzzle ? {
                 stageIndex: game.puzzle.stageIndex,
                 turn: game.puzzle.turn,
@@ -9700,6 +9722,10 @@
                     columns: { type: 'integer', const: COLUMNS }, rows: { type: 'integer', const: ROWS }, visibleRows: { type: 'integer', const: VISIBLE_ROWS },
                     puyos: { type: 'array', items: puyoSchema, description: 'All fixed puyos, including hidden rows.' }
                 }, required: ['columns', 'rows', 'visibleRows', 'puyos'] },
+                normalBoard: { type: 'object', properties: {
+                    columns: { type: 'integer', const: COLUMNS }, rows: { type: 'integer', const: ROWS }, visibleRows: { type: 'integer', const: VISIBLE_ROWS },
+                    puyos: { type: 'array', items: puyoSchema, description: 'Fixed puyos in the normal field, including while FEVER is active.' }
+                }, required: ['columns', 'rows', 'visibleRows', 'puyos'] },
                 nextPairs: { type: 'array', items: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 2, maxItems: 2 } },
                 warningPuyos: { type: 'array', items: { type: 'string' } },
                 fever: { type: ['object', 'null'], properties: {
@@ -9710,11 +9736,12 @@
                     selectedStageTarget: { type: ['integer', 'null'], minimum: FEVER_MIN_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO },
                     stageSuppliedPair: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 0, maxItems: 2 },
                     field: { type: ['object', 'null'], properties: {
-                        columns: { type: 'integer', const: COLUMNS }, rows: { type: 'integer', const: ROWS },
-                        cells: { type: 'array', items: { type: 'array', items: boardCellSchema, minItems: COLUMNS, maxItems: COLUMNS }, minItems: ROWS, maxItems: ROWS }
-                    }, required: ['columns', 'rows', 'cells'] }
+                        columns: { type: 'integer', const: COLUMNS }, rows: { type: 'integer', const: ROWS }, visibleRows: { type: 'integer', const: VISIBLE_ROWS },
+                        cells: { type: 'array', items: { type: 'array', items: boardCellSchema, minItems: COLUMNS, maxItems: COLUMNS }, minItems: ROWS, maxItems: ROWS },
+                        puyos: { type: 'array', items: puyoSchema, description: 'Fixed puyos in the dedicated FEVER field.' }
+                    }, required: ['columns', 'rows', 'visibleRows', 'cells', 'puyos'] }
                 }, required: ['active', 'gauge', 'nextTime', 'targetCombo', 'leftTime', 'damage', 'turn', 'selectedStageTarget', 'stageSuppliedPair', 'field'] }, active: activeSchema
-            }, required: ['name', 'isCpu', 'phase', 'point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount', 'allClearTicket', 'board', 'nextPairs', 'warningPuyos', 'fever', 'active']
+            }, required: ['name', 'isCpu', 'phase', 'point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount', 'allClearTicket', 'board', 'normalBoard', 'nextPairs', 'warningPuyos', 'fever', 'active']
         };
         const puzzleSchema = {
             type: ['object', 'null'], properties: {

@@ -1,15 +1,17 @@
 """Puyo W용 self-play DQN 학습기.
 
-nodeserver.js의 인증된 학습 이벤트 API를 선택적으로 사용한다. 서버 URL을
+pythonserver.py의 인증된 학습 이벤트 API를 선택적으로 사용한다. 서버 URL을
 지정하지 않으면 Puyo W의 핵심 보드 규칙을 작은 독립 환경으로 실행하고,
 지정하면 매 에피소드의 관측값·행동·보상·종료 상태를 서버로 전달한다.
+브라우저·적 AI가 추가 학습 상태를 읽어야 할 때는 PuyoW.getGameState()의
+mode, rule, 양측 board/normalBoard/fever.field 및 앞 두 nextPairs 계약을 사용한다.
 학습된 가중치는 PyTorch 체크포인트로 저장된다.
 """
 
 # Puyo W - AI 인공지능용 학습 모델 (LM Studio 호환) 개발 스크립트
 #
 # 이 스크립트에서는 PyTorch 를 이용해 Puyo W 학습 모델을 생성한다.
-#    이 스크립트 사용 전, 게임 서버 (nodeserver.js) 를 먼저 구동한다. (npm start 명령어 사용)
+#    브라우저 전이 전송을 사용할 때는 pythonserver.py를 먼저 구동한다.
 #
 # 사용법은 docs/MachineLearning.md 참고
 #
@@ -34,11 +36,14 @@ from typing import Deque, List, Tuple
 import torch
 from torch import nn
 
-from common import ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, COLORS, OBSERVATION_SIZE
+from common import (
+	ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, COLORS, OBSERVATION_SIZE,
+	ROTATION_DOWN, ROTATION_LEFT, ROTATION_RIGHT, ROTATION_UP, action_to_placement,
+)
 
 
 class LearningApiClient:
-	"""nodeserver.js의 인증된 학습 이벤트 API 클라이언트."""
+	"""pythonserver.py의 인증된 학습 이벤트 API 클라이언트."""
 
 	def __init__(self, server_url: str, token: str, timeout: float = 10.0) -> None:
 		if not token:
@@ -126,27 +131,26 @@ class PuyoEnvironment:
 		return torch.tensor(values, dtype=torch.float32)
 
 	def _cells_for_action(self, action: int) -> List[Tuple[int, int, int]] | None:
-		column, rotation = divmod(action, 4)
+		"""공통 회전 계약으로 현재 쌍이 착지할 두 칸을 계산한다."""
+		column, rotation = action_to_placement(action)
 		first, second = self.current_pair
-		if rotation == 0:
-			cells = [(column, 0, first), (column + 1, 0, second)]
-		elif rotation == 1:
-			cells = [(column, 0, first), (column, 1, second)]
-		elif rotation == 2:
-			cells = [(column, 0, first), (column - 1, 0, second)]
-		else:
-			cells = [(column, 1, first), (column, 0, second)]
-		if any(x < 0 or x >= BOARD_WIDTH for x, _, _ in cells):
-			return None
 		heights = [sum(self.board[y][x] >= 0 for y in range(BOARD_HEIGHT)) for x in range(BOARD_WIDTH)]
-		result = []
-		for x, offset, color in cells:
-			y = heights[x] + offset
-			if y >= BOARD_HEIGHT:
+		# 위·아래 회전은 같은 열에 두 칸을 사용하며, 회전축 뿌요의 높이만 서로 다르다.
+		if rotation == ROTATION_UP:
+			if heights[column] + 1 >= BOARD_HEIGHT:
 				return None
-			result.append((x, y, color))
-			heights[x] += 1
-		return result
+			return [(column, heights[column], first), (column, heights[column] + 1, second)]
+		if rotation == ROTATION_DOWN:
+			if heights[column] + 1 >= BOARD_HEIGHT:
+				return None
+			return [(column, heights[column] + 1, first), (column, heights[column], second)]
+		# 오른쪽·왼쪽 회전은 회전축 열과 인접 열에 각각 한 칸씩 착지한다.
+		second_column = column + 1 if rotation == ROTATION_RIGHT else column - 1
+		if second_column < 0 or second_column >= BOARD_WIDTH:
+			return None
+		if heights[column] >= BOARD_HEIGHT or heights[second_column] >= BOARD_HEIGHT:
+			return None
+		return [(column, heights[column], first), (second_column, heights[second_column], second)]
 
 	def _resolve(self) -> Tuple[int, int]:
 		chain = 0

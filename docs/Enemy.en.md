@@ -222,7 +222,7 @@ The returned `nextPairs` are copies, so changing them does not affect the game's
 
 `PuyoW.getScreenState()` returns the current screen, including menus, tutorial, and matches, as `{ screen, playerCanControl }`. `screen` identifies the displayed state such as `main_menu`, `opponent_select`, `countdown`, `playing`, `paused`, `ending`, or `game_over`. `playerCanControl` is `true` only while the player can move an active pair. In Playwright, it can be used to wait for a screen transition or an input-ready moment.
 
-`PuyoW.getGameState()` returns a read-only state snapshot for regular and practice matches. It returns `null` for menus, tutorial, and before initialization. It can also be read during countdown, play, pause, ending animation, and game-over states. Returned objects and arrays are copies, so AI or tests cannot alter the actual game by changing them.
+`PuyoW.getGameState()` returns a read-only state snapshot for regular, Fever, Continuous Fever, practice, watch, and puzzle matches. It returns `null` for menus, tutorial, and before initialization. It can also be read during countdown, play, pause, ending animation, and game-over states. Returned objects and arrays are copies, so AI or tests cannot alter the actual game by changing them. Learning environments and external enemy AI use this shared snapshot contract instead of a learning-only API.
 
 ```js
 const screen = PuyoW.getScreenState();
@@ -233,11 +233,13 @@ if (screen.playerCanControl) {
 }
 ```
 
-`getGameState()` has top-level `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, and `ending`. Both `player` and `opponent` contain:
+`getGameState()` has top-level `mode`, `rule`, `allClearTicketEnabled`, `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, and `ending`. `mode` is one of `versus`, `practice`, `watch`, `continuous_fever`, or `puzzle`; `rule` is one of `standard`, `fever`, `fever_start`, or `continuous_fever`. Both `player` and `opponent` contain:
 
 - `isCpu`, `phase`, `point`, `attack`, `damage`, `combo`, `placedPairCount`
-- `board.columns`, `board.rows`, `board.visibleRows`, `board.puyos`: fixed puyos as `{ x, y, color }` entries, with the origin at lower left.
-- `nextPairs`, `warningPuyos`, `active`: `active` is `null` without an active pair; otherwise it contains `x`, `y`, `rotation`, `colors`, and `cells`.
+- `board.columns`, `board.rows`, `board.visibleRows`, `board.puyos`: fixed puyos in the current play field as `{ x, y, color }` entries. This is the Fever field while Fever is active; the origin is lower left.
+- `normalBoard`: a same-shaped copy of the normal field, retained whether or not Fever is active.
+- `fever`: under Fever rules, `{ active, gauge, nextTime, targetCombo, leftTime, damage, turn, field }`; `field.puyos` and compatibility matrix `field.cells` provide the Fever-only field. It is `null` outside Fever rules.
+- `allClearTicket`, `nextPairs`, `warningPuyos`, `active`: `nextPairs` always has the first two pairs for enemy AI and learning. `active` is `null` without an active pair; otherwise it contains `x`, `y`, `rotation`, `colors`, and `cells`.
 
 Playwright can inspect the browser's actual game state directly:
 

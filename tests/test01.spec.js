@@ -375,6 +375,44 @@ test('피버 룰도 AI용 다음 20쌍을 유지한다', async ({ page }) => {
   })), { timeout: 10000 }).toEqual({ queuedPairCount: 20, statePairCount: 2, apiPairCount: 2 });
 });
 
+test('게임 상태 조회는 양쪽 일반·피버 필드와 앞 두 NEXT를 분리해 반환한다', async ({ page }) => {
+  expect(await page.evaluate(() => window.WebPuyo.getGameState())).toBeNull();
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState())).toMatchObject({
+    mode: 'versus', rule: 'standard', allClearTicketEnabled: true,
+    player: { fever: null, board: { columns: 6, rows: 25, visibleRows: 12 }, normalBoard: { columns: 6, rows: 25, visibleRows: 12 } },
+    opponent: { fever: null, board: { columns: 6, rows: 25, visibleRows: 12 }, normalBoard: { columns: 6, rows: 25, visibleRows: 12 } },
+  });
+  expect(await page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return [state.player.nextPairs.length, state.opponent.nextPairs.length];
+  })).toEqual([2, 2]);
+
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState())).toMatchObject({
+    mode: 'versus', rule: 'fever', allClearTicketEnabled: false,
+    player: { fever: { active: false, leftTime: 0, field: { columns: 6, rows: 25, visibleRows: 12, puyos: [] } } },
+    opponent: { fever: { active: false, leftTime: 0, field: { columns: 6, rows: 25, visibleRows: 12, puyos: [] } } },
+  });
+  expect(await page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return [state.player.nextPairs.length, state.opponent.nextPairs.length];
+  })).toEqual([2, 2]);
+});
+
 test('구경 모드는 양쪽 AI에 다음 20쌍을 제공한다', async ({ page }) => {
   await page.evaluate(() => {
     class WatchNextPairQueueEnemy extends window.WebPuyo.Enemy {
@@ -3632,7 +3670,7 @@ test('퍼즐뿌요는 스테이지 선택, 잠금 해제, 5색 지급과 두 번
 
 test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 표시하고 연습 상대 문구를 숨긴다', async ({ page }) => {
   async function expectSoloNextLayout() {
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.player.nextPairs.length), { timeout: 5000 }).toBe(4);
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getNextPairs()?.player.nextPairs.length), { timeout: 5000 }).toBe(4);
     expect(await page.evaluate(() => window.testCanvasTextCalls.some(({ text, x, y }) => {
       const practiceNames = ['연습 상대', 'Practice Opponent', '練習相手', '练习对手'];
       return practiceNames.some((name) => text === `${name} NEXT` || (text === name && x >= 850 && y <= 60));

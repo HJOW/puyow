@@ -276,7 +276,7 @@ if (next) {
 
 `PuyoW.getScreenState()`는 메뉴, 튜토리얼, 대전을 포함해 현재 화면을 `{ screen, playerCanControl }` 형태로 반환합니다. `screen`은 `main_menu`, `opponent_select`, `countdown`, `playing`, `paused`, `ending`, `game_over` 등 현재 표시 화면을 나타내며, `playerCanControl`은 플레이어가 실제로 조작 중인 뿌요 쌍을 움직일 수 있을 때만 `true`입니다. Playwright에서는 화면 전환이나 입력 가능 시점을 기다리는 조건으로 사용할 수 있습니다.
 
-`PuyoW.getGameState()`는 일반 대전과 연습전의 읽기 전용 상태 스냅샷을 반환합니다. 메뉴, 튜토리얼, 초기화 전에는 `null`을 반환합니다. 카운트다운, 진행 중, 일시정지, 종료 연출, 게임 오버 상태도 조회할 수 있습니다. 반환된 객체와 배열은 내부 상태의 복사본이므로 AI나 테스트 코드에서 바꿔도 실제 게임에는 영향을 주지 않습니다.
+`PuyoW.getGameState()`는 일반·피버·연속 피버·연습·구경·퍼즐 대전의 읽기 전용 상태 스냅샷을 반환합니다. 메뉴, 튜토리얼, 초기화 전에는 `null`을 반환합니다. 카운트다운, 진행 중, 일시정지, 종료 연출, 게임 오버 상태도 조회할 수 있습니다. 반환된 객체와 배열은 내부 상태의 복사본이므로 AI나 테스트 코드에서 바꿔도 실제 게임에는 영향을 주지 않습니다. 학습 환경과 외부 적 AI는 별도 학습 전용 API 없이 이 같은 스냅샷 계약을 사용합니다.
 
 ```js
 const screen = PuyoW.getScreenState();
@@ -287,11 +287,13 @@ if (screen.playerCanControl) {
 }
 ```
 
-`getGameState()`의 최상위에는 `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, `ending`이 있습니다. `player`와 `opponent`에는 다음 정보가 각각 들어 있습니다.
+`getGameState()`의 최상위에는 `mode`, `rule`, `allClearTicketEnabled`, `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, `ending`이 있습니다. `mode`는 `versus`, `practice`, `watch`, `continuous_fever`, `puzzle` 중 하나이고, `rule`은 `standard`, `fever`, `fever_start`, `continuous_fever` 중 하나입니다. `player`와 `opponent`에는 다음 정보가 각각 들어 있습니다.
 
 - `isCpu`, `phase`, `point`, `attack`, `damage`, `combo`, `placedPairCount`
-- `board.columns`, `board.rows`, `board.visibleRows`, `board.puyos` — 고정된 뿌요를 `{ x, y, color }` 목록으로 반환합니다. 좌표의 원점은 왼쪽 아래입니다.
-- `nextPairs`, `warningPuyos`, `active` — `active`는 조작 중인 쌍이 없으면 `null`이며, 있을 때는 `x`, `y`, `rotation`, `colors`, `cells`를 포함합니다.
+- `board.columns`, `board.rows`, `board.visibleRows`, `board.puyos` — 현재 조작 필드의 고정 뿌요를 `{ x, y, color }` 목록으로 반환합니다. 피버 중에는 피버 필드이며, 좌표의 원점은 왼쪽 아래입니다.
+- `normalBoard` — 피버 활성 여부와 관계없이 보관한 일반 필드의 같은 형식 복사본입니다.
+- `fever` — 피버 룰에서는 `{ active, gauge, nextTime, targetCombo, leftTime, damage, turn, field }`이며, `field.puyos`와 호환용 행렬 `field.cells`로 피버 전용 필드를 제공합니다. 피버 룰이 아니면 `null`입니다.
+- `allClearTicket`, `nextPairs`, `warningPuyos`, `active` — `nextPairs`는 적 AI·학습용으로 항상 앞 두 쌍입니다. `active`는 조작 중인 쌍이 없으면 `null`이며, 있을 때는 `x`, `y`, `rotation`, `colors`, `cells`를 포함합니다.
 
 Playwright에서는 다음처럼 브라우저의 실제 게임 상태를 직접 검증할 수 있습니다.
 

@@ -3,7 +3,7 @@
 ### PuyoW 머신러닝 인공지능 개발 프로젝트로 아래 4가지를 마저 진행할 거야.
 
 * learning.py 를 이용해 학습시켜 DQN 모델 생성 (학습은 로컬에서 구동)
-* pythonserver.py 로 서버 구동 
+* pythonserver.py 로 서버 구동 (학습 및 모델 사용 시 nodeserver.js 는 사용하지 않음)
   이 서버에서 LM Studio 의 API규격을 흉내내어 DQN 모델 서비스까지 제공
 * 게임 내에서 AI 서비스 제공자로 LM Studio 선택, URL로 localhost 와 포트 지정
 * 학습된 모델과 대전 진행
@@ -20,6 +20,8 @@
 5. pythonserver.py 에서 SERVER_CONFIG 에 model_path 키로 DQN 모델 파일이 지정되어 있는 경우
    이 python 동작 서버에서 LM Studio 의 API 규격을 흉내내어 DQN 모델 서비스 제공
    DQN 모델 파일이 없거나 값이 null 혹은 지정이 안되어 있는 경우, LM Studio API 흉내 서비스만 제외하고 다른 웹 서비스나 API 는 동작해야 함.
+   API키는 pythonserver.py 파일 내에 하드코딩하고, 게임 내 설정 화면에서도 동일한 값을 입력하도록 하여 사용하려고 해. (일단은 로컬에서만 구동할 예정.)
+   단, API키는 여러개가 될 수 있으니 (or조건) API키가 들어갈 필드는 컬렉션으로 만들어줘.
 6. MachineLearning.md 에 사용 방법 설명 및 변경 사항 반영
 
 필요 시 puyow.js 및 pythonserver.py, common.py 를 수정해줘.

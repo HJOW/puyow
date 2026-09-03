@@ -17,8 +17,18 @@ BOARD_WIDTH = 6
 BOARD_HEIGHT = 12
 # 현재 학습 환경에서 사용하는 일반 뿌요 색상 수다.
 COLORS = 5
+# puyow.js의 회전 계약: 두 번째 뿌요가 회전축 뿌요의 위에 있는 상태다.
+ROTATION_UP = 0
+# puyow.js의 회전 계약: 두 번째 뿌요가 회전축 뿌요의 오른쪽에 있는 상태다.
+ROTATION_RIGHT = 1
+# puyow.js의 회전 계약: 두 번째 뿌요가 회전축 뿌요의 아래에 있는 상태다.
+ROTATION_DOWN = 2
+# puyow.js의 회전 계약: 두 번째 뿌요가 회전축 뿌요의 왼쪽에 있는 상태다.
+ROTATION_LEFT = 3
+# 한 쌍에 가능한 회전 상태 수다. 행동 번호의 나머지 연산에도 사용한다.
+ROTATION_COUNT = 4
 # 한 열과 회전 조합으로 표현할 수 있는 전체 행동 수다.
-ACTION_COUNT = BOARD_WIDTH * 4
+ACTION_COUNT = BOARD_WIDTH * ROTATION_COUNT
 # 빈 칸·색상 채널, 현재 쌍, 공격량·턴을 합친 관측 벡터 길이다.
 OBSERVATION_SIZE = BOARD_WIDTH * BOARD_HEIGHT * (COLORS + 1) + COLORS * 2 + 2
 
@@ -35,4 +45,4 @@ def action_to_placement(action: Any) -> tuple[int, int]:
 	"""DQN 행동 번호를 게임의 열과 회전값으로 변환한다."""
 	if isinstance(action, bool) or not isinstance(action, int) or not 0 <= action < ACTION_COUNT:
 		raise ValueError(f"action은(는) 0부터 {ACTION_COUNT - 1} 사이의 정수여야 합니다.")
-	return divmod(action, 4)
+	return divmod(action, ROTATION_COUNT)

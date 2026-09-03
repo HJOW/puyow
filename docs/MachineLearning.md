@@ -1,6 +1,6 @@
 # Puyo W 머신러닝
 
-`learning/learning.py`는 PyTorch 기반의 self-play DQN 학습 스크립트다. 기본적으로 Puyo W의 핵심 보드 규칙을 간소화한 Python 환경에서 학습하며, 선택적으로 `pythonserver.py`의 인증된 학습 API에 각 에피소드의 관측값과 전이를 전송할 수 있다.
+`learning/learning.py`는 PyTorch 기반의 self-play DQN 학습 스크립트다. 기본적으로 Puyo W의 핵심 보드 규칙을 간소화한 Python 환경에서 학습하며, 선택적으로 `pythonserver.py`의 인증된 학습 API에 각 에피소드의 관측값과 전이를 전송할 수 있다. 학습·모델 서비스에는 `pythonserver.py`를 사용하며 `nodeserver.js`는 사용하지 않는다.
 
 ## 사전 준비
 
@@ -101,6 +101,26 @@ Content-Type: application/json
 - 전체 행동 수: `24`
 
 관측값과 행동 계약은 `pythonserver.py` API로 전송하는 데이터에도 그대로 사용된다.
+
+## 브라우저 게임 상세 상태
+
+학습 환경 확장과 적 인공지능 개발에는 별도 학습 전용 API 대신 `PuyoW.getGameState()`를 사용한다. 이 함수는 반환 객체를 변경해도 게임 내부 상태가 바뀌지 않는 읽기 전용 스냅샷이며, 게임이 없거나 튜토리얼 중이면 `null`을 반환한다.
+
+```js
+const state = window.PuyoW.getGameState();
+```
+
+최상위 `mode`는 `versus`, `practice`, `watch`, `continuous_fever`, `puzzle` 중 하나이고, `rule`은 `standard`, `fever`, `fever_start`, `continuous_fever` 중 하나다. `allClearTicketEnabled`는 싹쓸이 티켓이 기본 룰 전용임을 나타낸다.
+
+`player`와 `opponent`에는 같은 형식으로 다음 상태가 들어 있다.
+
+- `board`: 현재 조작 필드의 배치 뿌요 목록. 피버 중에는 피버 필드다.
+- `normalBoard`: 피버 활성 여부와 관계없이 보관하는 일반 필드의 배치 뿌요 목록.
+- `fever`: 양측 피버 상태. `leftTime`은 해당 플레이어의 피버 남은 시간이며, `field.puyos`는 활성 여부와 관계없이 피버 전용 필드의 배치 뿌요 목록이다. 호환성을 위해 `field.cells`도 제공한다.
+- `allClearTicket`: 기본 룰에서 다음 색 뿌요 폭발에 쓸 싹쓸이 티켓 보유 여부.
+- `nextPairs`: 양측 모두 현재 수 뒤의 앞 두 쌍만 제공한다. 내부 CPU 탐색용 대기열 전체를 노출하지 않는다.
+
+연속 피버의 남은 시간과 목표 상태는 기존 최상위 `fever.leftTime`, `fever.targetCombo` 등에 들어 있다. 현재 `/apis/learning` 전이의 444개 관측 벡터 계약은 그대로 유지되며, 위 상세 상태는 이후 피버·상대·승패 상태를 포함하는 학습 환경과 적 AI가 공통으로 조회하는 기준이다.
 
 ## 현재 구현 범위
 
