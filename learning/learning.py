@@ -22,6 +22,8 @@ import argparse
 import json
 import random
 import os
+import subprocess
+import sys
 import urllib.error
 import urllib.request
 from collections import deque
@@ -280,6 +282,25 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 	print(f"saved={output} device={device}")
 
 
+def export_gguf(source: Path, output: Path, converter: Path) -> None:
+	"""llama.cpp 변환기로 Hugging Face Transformer 모델을 GGUF로 변환한다."""
+	if source.is_file() or not (source / "config.json").is_file():
+		raise ValueError(
+			"현재 puyow_dqn.pt는 사용자 정의 DQN 체크포인트라 LM Studio용 GGUF로 변환할 수 없습니다. "
+			"--export-gguf에는 config.json을 포함한 Hugging Face Transformer 모델 디렉터리를 지정하세요."
+		)
+	if not converter.is_file():
+		raise FileNotFoundError(f"llama.cpp 변환기를 찾을 수 없습니다: {converter}")
+	output.parent.mkdir(parents=True, exist_ok=True)
+	command = [sys.executable, str(converter), str(source), "--outfile", str(output), "--outtype", "f16"]
+	print("GGUF 변환 시작:", " ".join(f'"{part}"' if " " in part else part for part in command))
+	try:
+		subprocess.run(command, check=True)
+	except subprocess.CalledProcessError as error:
+		raise RuntimeError(f"llama.cpp GGUF 변환 실패 (종료 코드: {error.returncode})") from error
+	print(f"GGUF 저장 완료: {output}")
+
+
 def main() -> None:
 	parser = argparse.ArgumentParser(description="Puyo W self-play DQN 학습")
 	parser.add_argument("--episodes", type=int, default=1000, help="self-play 에피소드 수")
@@ -288,14 +309,20 @@ def main() -> None:
 	parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
 	parser.add_argument("--server-url", default="", help="학습 이벤트를 전송할 nodeserver.js 주소(예: http://localhost:9891)")
 	parser.add_argument("--api-token", default="", help="nodeserver.js의 PUYOW_AI_TOKEN 값(미지정 시 환경변수 사용)")
+	parser.add_argument("--export-gguf", type=Path, metavar="MODEL_DIR", help="Hugging Face Transformer 모델 디렉터리를 GGUF로 변환")
+	parser.add_argument("--gguf-output", type=Path, default=Path("learning/model-f16.gguf"), help="GGUF 출력 경로")
+	parser.add_argument("--llama-cpp-converter", type=Path, default=Path("llama.cpp") / "convert_hf_to_gguf.py", help="llama.cpp의 convert_hf_to_gguf.py 경로")
 	args = parser.parse_args()
+	if args.export_gguf:
+		export_gguf(args.export_gguf, args.gguf_output, args.llama_cpp_converter)
+		return
 	if args.episodes < 1:
 		parser.error("--episodes는 1 이상이어야 합니다.")
 	train(args.episodes, args.seed, args.output, args.device, args.server_url, args.api_token)
 
 
 
-# TODO: 저장한 PyTorch 체크포인트를 LM Studio가 지원하는 배포 형식으로 변환하는 export 경로를 추가한다.
+# TODO: 현재 DQN 정책을 LM Studio가 아닌 별도 게임 추론 런타임에서 실행하는 경로를 추가한다.
 # TODO: hardGarbage, garbage, fever, all-clear ticket, margin rate, time multiplier를 환경에 반영한다.
 # TODO: PuyoW.common.simulatePlacementBoard()와 결과를 대조하는 회귀 테스트를 추가한다.
 # TODO: self-play 상대 정책, 평가 전용 에피소드, 모델 버전 호환 검증을 추가한다.

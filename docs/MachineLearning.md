@@ -42,7 +42,17 @@ learning/puyow_dqn.json
 
 ## 서버 API와 함께 실행
 
-서버 전송 모드를 사용하면 먼저 토큰을 설정해 `nodeserver.js`를 실행한다.
+서버 전송 모드를 사용하면 먼저 `nodeserver.js` 또는 Python 포트인 `learning/pythonserver.py`를 실행한다. Python 서버를 사용할 때는 [learning/pythonserver.py](../learning/pythonserver.py) 상단의 `SERVER_CONFIG["learning_token"]` 값을 학습기와 같은 토큰으로 직접 설정한다. 이 값은 개발용 설정이며 공개 서버에는 토큰을 소스에 저장하지 않아야 한다.
+
+Python 서버 실행:
+
+```powershell
+python learning/pythonserver.py 9891
+```
+
+포트 번호를 생략하면 `SERVER_CONFIG["port"]`의 기본값 `9891`을 사용한다.
+
+Node.js 서버 실행:
 
 ```powershell
 $env:PUYOW_AI_TOKEN = "change-this-token"
@@ -140,3 +150,20 @@ Content-Type: application/json
 ```powershell
 python learning/learning.py --help
 ```
+
+## GGUF 변환
+
+LM Studio에서 불러오는 GGUF는 일반 PyTorch 파일의 확장자를 바꿔서 만드는 형식이 아니다. 지정한 글의 방식처럼 `llama.cpp` 도구의 `convert_hf_to_gguf.py`를 사용해 `config.json`과 Transformer 가중치를 가진 Hugging Face 모델 디렉터리를 변환해야 한다.
+
+`learning.py`에는 이 변환기를 호출하는 export 경로가 포함되어 있다.
+
+```powershell
+python learning/learning.py `
+	--export-gguf models\my-transformer `
+	--llama-cpp-converter llama.cpp\convert_hf_to_gguf.py `
+	--gguf-output learning\my-model-f16.gguf
+```
+
+변환 대상 디렉터리에는 최소한 `config.json`과 해당 모델의 Transformer 가중치 파일이 있어야 한다. 기본 출력 형식은 `f16`이다. 이후 LM Studio에서 필요에 따라 지원되는 양자화 형식으로 추가 변환하거나, 이미 양자화된 GGUF를 직접 사용할 수 있다.
+
+현재 `learning.py`가 학습하는 `puyow_dqn.pt`는 `PolicyNetwork`라는 사용자 정의 DQN MLP 체크포인트다. 이는 Llama 등의 언어 모델 구조가 아니므로 `convert_hf_to_gguf.py`나 LM Studio에서 직접 사용할 수 없다. 현재 DQN은 Python/PyTorch 게임 정책용으로 사용하며, LM Studio에 넣으려면 별도의 Transformer 기반 모델과 그에 맞는 학습·변환 파이프라인이 필요하다.

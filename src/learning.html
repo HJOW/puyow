@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <link rel="icon" type="image/png" sizes="45x45" href="./img/icon45.png"/>
+        <title>Puyo W</title>
+
+        <!--
+        뿌요 W 머신러닝 학습 세팅을 위한 페이지
+
+            Copyright 2026 HJOW
+
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+     
+            http://www.apache.org/licenses/LICENSE-2.0
+     
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+        -->
+
+        <!-- Google Ads 관련 (없어도 게임은 동작함) -->
+        <script src="//imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
+        <!-- // Google Ads 관련 -->
+
+        <!-- manifest (이 webmanifest 가 있어야 PWA 앱으로도 설치할 수 있음, 없어도 게임 자체는 동작함) -->
+        <link rel="manifest" href="manifest.webmanifest"/>
+
+        <!-- Game 관련 (선택) -->
+        <script defer src="./js/three.min.js"></script>
+        <script defer src="./js/json5.min.js"></script>
+        <!-- // Game 관련 (선택) -->
+
+        <!-- Game 관련 (필수) -->
+        <link rel="stylesheet" href="./css/puyow.css"/>
+        <script defer src="./js/puyow.js"></script>
+        <!--<script defer src="./bundle/puyow.bundle.js"></script>-->
+        <!-- // Game 관련 (필수) -->
+
+        <!-- 게임 로딩 스크립트 -->
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const divTarget = document.getElementById("puyow_target");
+                const token = new URLSearchParams(window.location.search).get("token");
+                if (token) window.PuyoW.configureLearningApi({
+                    serverUrl: "http://localhost:9891",
+                    token
+                });
+                window.PuyoW.initialize(divTarget); // 게임 구동
+            });
+        </script>
+    </head>
+    <body class="webpuyo">
+        <div id="puyow_target" width="1280" height="720" aria-label="Web Puyo puzzle game"></div>
+    </body>
+</html>
