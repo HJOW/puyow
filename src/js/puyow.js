@@ -6,7 +6,9 @@
  * 
  * 뿌요 W 2D 버전 스크립트
  *     의존성
- *         puyow.css  (캔버스 영역이 화면 100%를 차지하게 만들고, 기본 뒷배경 색 변경)
+ *         three.min.js (선택사항, 3D 효과를 위해 사용)
+ *         json5.min.js (선택사항, JSON5 형식 사용을 위함)
+ *         puyow.css  (선택사항, 캔버스 영역이 화면 100%를 차지하게 만들고, 기본 뒷배경 색 변경)
  *         notice_ko.txt, notice_en.txt (선택사항으로 공지사항 존재 시 이 곳에 기재)
  *     html 예제
  *         puyow.html

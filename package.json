@@ -5,15 +5,26 @@
   "license": "Apache-2.0",
   "author": "HJOW",
   "type": "commonjs",
-  "main": "src/puyow.js",
+  "main": "src/js/puyow.js",
   "scripts": {
-    "start": "npm run test && node nodeserver.js",
+    "start": "npm run test && npm run build && node nodeserver.js",
     "test": "eslint",
-    "test:playwright": "playwright test --project=chromium --project=firefox --project=webkit"
+    "test:playwright": "playwright test --project=chromium --project=firefox --project=webkit",
+    "upload:only": "firebase deploy",
+    "webpack": "webpack",
+    "build": "npm run webpack"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
     "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
-    "eslint": "^9.39.5"
+    "babel-loader": "^10.1.1",
+    "clean-webpack-plugin": "^4.0.0",
+    "eslint": "^9.39.5",
+    "eslint-webpack-plugin": "^6.0.0",
+    "jsdoc": "^4.0.5",
+    "terser-webpack-plugin": "^5.6.1",
+    "webpack": "^5.110.3",
+    "webpack-cli": "^7.2.3"
   }
 }
