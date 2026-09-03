@@ -9,7 +9,7 @@
 * 학습된 모델과 대전 진행
 
 위 4가지를 마저 진행할 거야.
-INFO_FOR_AI.md 와 MachineLEarning.md 파일을 참고해줘.
+INFO_FOR_AI.md 와 MachineLearning.md 파일을 참고해줘.
    
    
 ----------------------------------------------------------
