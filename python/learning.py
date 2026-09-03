@@ -478,6 +478,7 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 	random.seed(seed)
 	torch.manual_seed(seed)
 	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
+	log_interval = 500 if device.type == "cpu" else max(1, episodes // 100)
 	api_client = LearningApiClient(server_url, api_token or os.environ.get("PUYOW_AI_TOKEN", "")) if server_url else None
 	policy = PolicyNetwork().to(device)
 	# --output 파일이 실제로 있으면 새 초기 가중치를 버리고 그 모델부터 추가 학습을 시작한다.
@@ -558,7 +559,7 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 			loss_count += 1
 		if api_client:
 			api_client.episode_end(session_id)
-		if (episode + 1) % max(1, episodes // 10) == 0 or episode == 0:
+		if (episode + 1) % log_interval == 0 or episode == 0:
 			print(f"episode={episode + 1}/{episodes} reward={episode_reward:.1f} epsilon={epsilon:.3f} "
 				f"result={episode_result} wins={win_count} losses={loss_count}")
 
