@@ -26,13 +26,13 @@ python learning/learning.py --episodes 1000 --device auto
 | --- | --- | --- |
 | `--episodes` | `1000` | 학습 에피소드 수. 1 이상이어야 한다. |
 | `--seed` | `2026` | Python과 PyTorch 난수 시드 |
-| `--output` | `learning/puyow_dqn.pt` | 모델 체크포인트 저장 경로 |
+| `--output` | `learning/puyow_dqn.pt` | 모델 체크포인트 저장 경로. 실제 파일이 이미 있으면 해당 모델 가중치를 복원해 추가 학습한다. |
 | `--device` | `auto` | `auto`, `cpu`, `cuda` 중 하나 |
 | `--server-url` | 빈 값 | 학습 API가 실행 중인 서버 주소 |
 | `--api-token` | 빈 값 | Python 서버의 `SERVER_CONFIG["learning_token"]` 값 |
 | `--opponent` | `random` | 대전 상대. 아래 "적 AI와 대전하며 학습" 참고 |
 
-학습이 끝나면 지정한 경로에 PyTorch 체크포인트가 저장되고, 같은 위치의 확장자를 `.json`으로 바꾼 메타데이터 파일도 생성된다. 기본 출력은 다음 두 파일이다.
+학습이 끝나면 지정한 경로에 PyTorch 체크포인트가 저장되고, 같은 위치의 확장자를 `.json`으로 바꾼 메타데이터 파일도 생성된다. `--output` 경로에 실제 파일이 있으면 새 모델을 만들지 않고 그 파일의 가중치를 복원해 추가 학습한 뒤 같은 파일에 저장한다. 관측 벡터 길이 또는 행동 수가 현재 계약과 다르면 오류로 중단하며 기존 파일을 덮어쓰지 않는다. optimizer·replay buffer·epsilon은 체크포인트에 저장하지 않으므로 추가 학습 실행마다 새로 시작한다. 기본 출력은 다음 두 파일이다.
 
 ```text
 learning/puyow_dqn.pt

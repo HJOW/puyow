@@ -423,6 +423,35 @@ class PolicyNetwork(nn.Module):
 		return self.layers(state)
 
 
+def load_existing_policy(output: Path, policy: PolicyNetwork, device: torch.device) -> bool:
+	"""--output 체크포인트가 있으면 현재 관측·행동 계약을 확인한 뒤 가중치를 복원한다."""
+	# 존재하지 않는 출력 경로는 이번 실행에서 새 가중치로 학습해야 하는 정상적인 경우다.
+	if not output.exists():
+		return False
+	# 디렉터리 등 파일이 아닌 대상을 덮어쓰면 사용자의 결과물을 손상할 수 있으므로 중단한다.
+	if not output.is_file():
+		raise ValueError(f"--output 경로는 체크포인트 파일이어야 합니다: {output}")
+	try:
+		checkpoint = torch.load(output, map_location=device, weights_only=True)
+	except Exception as error:
+		raise ValueError(f"기존 체크포인트를 읽을 수 없습니다: {output} ({error})") from error
+	# 서버 추론과 같은 444개 관측값·24개 행동 계약이 아니면 잘못된 모델을 이어 학습하지 않는다.
+	if not isinstance(checkpoint, dict):
+		raise ValueError(f"기존 체크포인트 형식이 올바르지 않습니다: {output}")
+	if checkpoint.get("observation_size") != OBSERVATION_SIZE or checkpoint.get("action_count") != ACTION_COUNT:
+		raise ValueError(
+			f"기존 체크포인트의 관측값 또는 행동 계약이 현재 학습기와 다릅니다: {output}"
+		)
+	state_dict = checkpoint.get("model")
+	if not isinstance(state_dict, dict):
+		raise ValueError(f"기존 체크포인트에 model 가중치가 없습니다: {output}")
+	try:
+		policy.load_state_dict(state_dict)
+	except RuntimeError as error:
+		raise ValueError(f"기존 체크포인트 가중치를 복원할 수 없습니다: {output} ({error})") from error
+	return True
+
+
 def _make_environment(
 	opponent: str, seed: int, self_play_action_fn: Optional[Callable[[torch.Tensor], int]] = None,
 ) -> "PuyoEnvironment | PuyoDuelEnvironment":
@@ -446,6 +475,8 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
 	api_client = LearningApiClient(server_url, api_token or os.environ.get("PUYOW_AI_TOKEN", "")) if server_url else None
 	policy = PolicyNetwork().to(device)
+	# --output 파일이 실제로 있으면 새 초기 가중치를 버리고 그 모델부터 추가 학습을 시작한다.
+	resumed = load_existing_policy(output, policy, device)
 	target = PolicyNetwork().to(device)
 	target.load_state_dict(policy.state_dict())
 	optimizer = torch.optim.Adam(policy.parameters(), lr=1e-3)
@@ -457,6 +488,11 @@ def train(episodes: int, seed: int, output: Path, device_name: str, server_url: 
 	steps = 0
 	win_count = 0
 	loss_count = 0
+	if resumed:
+		# 기존 형식은 model 가중치만 저장했으므로 optimizer·replay buffer·epsilon은 이번 실행에서 새로 시작한다.
+		print(f"resume={output} 기존 모델 가중치로 추가 학습을 시작합니다.")
+	else:
+		print(f"new_model={output} 새 모델 가중치로 학습을 시작합니다.")
 
 	# self-play(PuyoDuelEnvironment.SELF_PLAY_OPPONENT) 에피소드에서 상대측 행동을 고르는
 	# 콜백이다. 매 스텝 최신 epsilon으로 갱신되는 epsilon_holder를 통해, 학습 중인 에이전트와
@@ -547,13 +583,13 @@ def export_gguf(source: Path, output: Path, converter: Path) -> None:
 
 
 def main() -> None:
-	parser = argparse.ArgumentParser(description="Puyo W self-play DQN 학습")
-	parser.add_argument("--episodes", type=int, default=1000, help="self-play 에피소드 수")
+	parser = argparse.ArgumentParser(description="Puyo W DQN 학습")
+	parser.add_argument("--episodes", type=int, default=1000, help="학습 에피소드 수")
 	parser.add_argument("--seed", type=int, default=2026, help="재현 가능한 난수 시드")
-	parser.add_argument("--output", type=Path, default=Path("learning/puyow_dqn.pt"), help="체크포인트 경로")
+	parser.add_argument("--output", type=Path, default=Path("learning/puyow_dqn.pt"), help="체크포인트 경로(기존 파일이면 가중치를 복원해 추가 학습)")
 	parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
-	parser.add_argument("--server-url", default="", help="학습 이벤트를 전송할 nodeserver.js 주소(예: http://localhost:9891)")
-	parser.add_argument("--api-token", default="", help="nodeserver.js의 PUYOW_AI_TOKEN 값(미지정 시 환경변수 사용)")
+	parser.add_argument("--server-url", default="", help="학습 이벤트를 전송할 pythonserver.py 주소(예: http://localhost:9891)")
+	parser.add_argument("--api-token", default="", help="pythonserver.py의 learning_token 값(미지정 시 PUYOW_AI_TOKEN 환경변수 사용)")
 	parser.add_argument("--export-gguf", type=Path, metavar="MODEL_DIR", help="Hugging Face Transformer 모델 디렉터리를 GGUF로 변환")
 	parser.add_argument("--gguf-output", type=Path, default=Path("learning/model-f16.gguf"), help="GGUF 출력 경로")
 	parser.add_argument("--llama-cpp-converter", type=Path, default=Path("llama.cpp") / "convert_hf_to_gguf.py", help="llama.cpp의 convert_hf_to_gguf.py 경로")
