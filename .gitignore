@@ -85,3 +85,4 @@ node_modules/
 puyow_sound_sample.html
 .tmp/**
 *.cpython-*.pyc
+__pycache__/**

@@ -1,0 +1,8 @@
+{
+  "observation_size": 444,
+  "action_count": 24,
+  "board": [
+    6,
+    12
+  ]
+}

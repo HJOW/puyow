@@ -13,7 +13,12 @@ mode, rule, 양측 board/normalBoard/fever.field 및 앞 두 nextPairs 계약을
 # 이 스크립트에서는 PyTorch 를 이용해 Puyo W 학습 모델을 생성한다.
 #    브라우저 전이 전송을 사용할 때는 pythonserver.py를 먼저 구동한다.
 #
-# 사용법은 docs/MachineLearning.md 참고
+# 간단 사용법
+#     터미널로 프로젝트 최상위 디렉토리로 접근 후 다음 명령어 사용
+#
+#     python learning/learning.py --episodes 1000 --device auto --output learning/puyow_dqn.pt
+#
+# 자세한 사용법은 docs/MachineLearning.md 참고
 #
 # 의존성
 #    common.py
