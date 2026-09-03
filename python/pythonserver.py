@@ -50,7 +50,7 @@ SERVER_CONFIG = {
 	"port": 9891, # 포트 번호
 	"web_root": Path(__file__).resolve().parent.parent / "src",
 	"learning_token": "change-this-token",
-	"model_path": Path(__file__).resolve().parent / "puyow_dqn.pt", # 실제 모델 파일을 지정
+	"model_path": Path(__file__).resolve().parent / "puyow" / "default.pt", # 실제 모델 파일을 지정
 	"max_body_size": 1024 * 1024,
 }
 

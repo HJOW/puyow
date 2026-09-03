@@ -29,7 +29,7 @@ python python/learning.py --episodes 1000 --device auto
 | --- | --- | --- |
 | `--episodes` | `1000` | 학습 에피소드 수. 1 이상이어야 한다. |
 | `--seed` | `2026` | Python과 PyTorch 난수 시드 |
-| `--output` | `python/puyow_dqn.pt` | 모델 체크포인트 저장 경로. 실제 파일이 이미 있으면 해당 모델 가중치를 복원해 추가 학습한다. |
+| `--output` | `python/puyow/default.pt` | 모델 체크포인트 저장 경로. 실제 파일이 이미 있으면 해당 모델 가중치를 복원해 추가 학습한다. |
 | `--device` | `auto` | `auto`, `cpu`, `cuda` 중 하나 |
 | `--server-url` | 빈 값 | 학습 API가 실행 중인 서버 주소 |
 | `--api-token` | 빈 값 | Python 서버의 `SERVER_CONFIG["learning_token"]` 값 |
@@ -38,8 +38,8 @@ python python/learning.py --episodes 1000 --device auto
 학습이 끝나면 지정한 경로에 PyTorch 체크포인트가 저장되고, 같은 위치의 확장자를 `.json`으로 바꾼 메타데이터 파일도 생성된다. `--output` 경로에 실제 파일이 있으면 새 모델을 만들지 않고 그 파일의 가중치를 복원해 추가 학습한 뒤 같은 파일에 저장한다. 관측 벡터 길이 또는 행동 수가 현재 계약과 다르면 오류로 중단하며 기존 파일을 덮어쓰지 않는다. optimizer·replay buffer·epsilon은 체크포인트에 저장하지 않으므로 추가 학습 실행마다 새로 시작한다. 기본 출력은 다음 두 파일이다.
 
 ```text
-python/puyow_dqn.pt
-python/puyow_dqn.json
+python/puyow/default.pt
+python/puyow/default.json
 ```
 
 체크포인트에는 모델 가중치, 관측 벡터 크기, 행동 개수, 학습 시드가 들어 있다.
@@ -184,9 +184,9 @@ const state = window.PuyoW.getGameState();
 
 ## 학습한 모델로 게임과 대전
 
-`puyow_dqn.pt`를 게임의 AI 제공자로 쓰려면 실제 LM Studio 앱이 아니라, Chat Completions 형식만 흉내 내는 `pythonserver.py`를 실행한다.
+`default.pt`를 게임의 AI 제공자로 쓰려면 실제 LM Studio 앱이 아니라, Chat Completions 형식만 흉내 내는 `pythonserver.py`를 실행한다.
 
-1. [python/pythonserver.py](../python/pythonserver.py)의 `SERVER_CONFIG`에서 `model_path`를 학습된 `.pt` 파일로, `learning_token`을 사용할 API 키 문자열로 설정한다. 기본 `model_path`는 `python/puyow_dqn.pt`다.
+1. [python/pythonserver.py](../python/pythonserver.py)의 `SERVER_CONFIG`에서 `model_path`를 학습된 `.pt` 파일로, `learning_token`을 사용할 API 키 문자열로 설정한다. 기본 `model_path`는 `python/puyow/default.pt`다.
 2. `python python/pythonserver.py 9891`로 서버를 실행한다.
 3. 게임 설정에서 AI 제공자로 **LM Studio**를 선택하고 URL에 `http://localhost:9891`, API 키에 `learning_token`과 같은 값을 넣는다. 모델명은 비어 있지 않은 임의 문자열(예: `puyow-dqn`)을 넣는다. 게임 클라이언트가 URL 뒤에 `/v1/chat/completions`를 붙여 요청한다.
 
@@ -215,4 +215,4 @@ python python/learning.py `
 
 변환 대상 디렉터리에는 최소한 `config.json`과 해당 모델의 Transformer 가중치 파일이 있어야 한다. 기본 출력 형식은 `f16`이다. 이후 LM Studio에서 필요에 따라 지원되는 양자화 형식으로 추가 변환하거나, 이미 양자화된 GGUF를 직접 사용할 수 있다.
 
-현재 `learning.py`가 학습하는 `puyow_dqn.pt`는 `PolicyNetwork`라는 사용자 정의 DQN MLP 체크포인트다. 이는 Llama 등의 언어 모델 구조가 아니므로 `convert_hf_to_gguf.py`나 실제 LM Studio 앱에서 직접 사용할 수 없다. 다만 게임 설정에서 LM Studio 제공자를 선택해도 URL을 `pythonserver.py`로 지정하면, 이 서버가 Chat Completions 규격만 맞춰 DQN을 그대로 서비스할 수 있다. 실제 LM Studio 앱에 넣으려면 별도의 Transformer 기반 모델과 그에 맞는 학습·변환 파이프라인이 필요하다.
+현재 `learning.py`가 학습하는 `default.pt`는 `PolicyNetwork`라는 사용자 정의 DQN MLP 체크포인트다. 이는 Llama 등의 언어 모델 구조가 아니므로 `convert_hf_to_gguf.py`나 실제 LM Studio 앱에서 직접 사용할 수 없다. 다만 게임 설정에서 LM Studio 제공자를 선택해도 URL을 `pythonserver.py`로 지정하면, 이 서버가 Chat Completions 규격만 맞춰 DQN을 그대로 서비스할 수 있다. 실제 LM Studio 앱에 넣으려면 별도의 Transformer 기반 모델과 그에 맞는 학습·변환 파이프라인이 필요하다.

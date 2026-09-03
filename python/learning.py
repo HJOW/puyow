@@ -16,7 +16,7 @@ mode, rule, 양측 board/normalBoard/fever.field 및 앞 두 nextPairs 계약을
 # 간단 사용법
 #     터미널로 프로젝트 최상위 디렉토리로 접근 후 다음 명령어 사용
 #
-#     python python/learning.py --episodes 1000 --device auto --output python/puyow_dqn.pt
+#     python python/learning.py --episodes 1000 --device auto --output python/puyow/default.pt
 #
 # 자세한 사용법은 docs/MachineLearning.md 참고
 #
@@ -572,7 +572,7 @@ def export_gguf(source: Path, output: Path, converter: Path) -> None:
 	"""llama.cpp 변환기로 Hugging Face Transformer 모델을 GGUF로 변환한다."""
 	if source.is_file() or not (source / "config.json").is_file():
 		raise ValueError(
-			"현재 puyow_dqn.pt는 사용자 정의 DQN 체크포인트라 LM Studio용 GGUF로 변환할 수 없습니다. "
+			"현재 default.pt는 사용자 정의 DQN 체크포인트라 LM Studio용 GGUF로 변환할 수 없습니다. "
 			"--export-gguf에는 config.json을 포함한 Hugging Face Transformer 모델 디렉터리를 지정하세요."
 		)
 	if not converter.is_file():
@@ -591,7 +591,7 @@ def main() -> None:
 	parser = argparse.ArgumentParser(description="Puyo W DQN 학습")
 	parser.add_argument("--episodes", type=int, default=1000, help="학습 에피소드 수")
 	parser.add_argument("--seed", type=int, default=2026, help="재현 가능한 난수 시드")
-	parser.add_argument("--output", type=Path, default=Path("python/puyow_dqn.pt"), help="체크포인트 경로(기존 파일이면 가중치를 복원해 추가 학습)")
+	parser.add_argument("--output", type=Path, default=Path("python/puyow/default.pt"), help="체크포인트 경로(기존 파일이면 가중치를 복원해 추가 학습)")
 	parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
 	parser.add_argument("--server-url", default="", help="학습 이벤트를 전송할 pythonserver.py 주소(예: http://localhost:9891)")
 	parser.add_argument("--api-token", default="", help="pythonserver.py의 learning_token 값(미지정 시 PUYOW_AI_TOKEN 환경변수 사용)")

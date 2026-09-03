@@ -5,10 +5,9 @@
 * learning.py 를 이용해 학습시켜 DQN 모델 생성 (학습은 로컬에서 구동)
 * pythonserver.py 로 서버 구동 (학습 및 모델 사용 시 nodeserver.js 는 사용하지 않음)
   이 서버에서 LM Studio 의 API규격을 흉내내어 DQN 모델 서비스까지 제공
-* 게임 내에서 AI 서비스 제공자로 LM Studio 선택, URL로 localhost 와 포트 지정
-* 학습된 모델과 대전 진행
+* 게임 내에서 사용자가 설정 화면에서 AI 서비스 제공자로 LM Studio 선택, URL로 localhost 와 포트 지정, AI API 테스트 수행,
+  적 "솔로몬"을 선택하여 학습된 모델과 대전 진행
 
-위 4가지를 마저 진행할 거야.
 INFO_FOR_AI.md 와 MachineLearning.md 파일을 참고해줘.
    
    
