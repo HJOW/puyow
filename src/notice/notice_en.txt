@@ -1,8 +1,21 @@
-Even if you enter AI service information in the settings screen, 
-there is no place to use it within the game yet, so please do not enter the AI ​​service information.
+Sound playback is implemented, but the sound files
+cannot be provided directly due to copyright issues.
+Please refer to the following document.
+https://github.com/HJOW/puyow/blob/main/docs/Sound.md
 
-Sound has been implemented, but due to copyright issues, 
-we are unable to provide the sound files directly.
+Once you have entered your AI service information on the
+settings screen and the connection test succeeds, you can
+choose "Solomon" as your opponent in battle modes such as
+"Basic Rule" and "Fever Rule" to play against the AI.
 
-Please refer to the document at 
-https://github.com/HJOW/puyow/blob/main/docs/Sound.md.
+However, commercial LLMs such as OpenAI take a long time
+to respond, so the game is practically unplayable with them
+for now. Please do not use them.
+
+If you download the project, run the local Python server,
+and connect to that local server to play the game,
+you can choose "Local AI" in the AI service provider field
+on the settings screen.
+
+This Local AI has almost no delay, so you can choose
+"Solomon" as your opponent and actually play the game.
