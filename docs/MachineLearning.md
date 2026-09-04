@@ -216,6 +216,16 @@ const state = window.PuyoW.getGameState();
 1. [python/pythonserver.py](../python/pythonserver.py)의 `SERVER_CONFIG`에서 `model_path`를 학습된 `.pt` 파일로, `learning_token`을 사용할 API 키 문자열로 설정한다. 기본 `model_path`는 `python/puyow/default.pt`다.
 2. `python python/pythonserver.py 9891`로 서버를 실행한다.
 3. 게임 설정에서 AI 제공자로 **LM Studio**를 선택하고 URL에 `http://localhost:9891`, API 키에 `learning_token`과 같은 값을 넣는다. 모델명은 비어 있지 않은 임의 문자열(예: `puyow-dqn`)을 넣는다. 게임 클라이언트가 URL 뒤에 `/v1/chat/completions`를 붙여 요청한다.
+(로컬에서 플레이하는 경우, API 키에는 `localhost` 를 입력해도 된다.)
+4. 설정을 저장 후, 다시 설정 화면에 들어와 "AI API 테스트" 버튼을 클릭한다. 몇초 후 테스트 결과가 메시지로 나타나면, 메인 메뉴를 거쳐 게임으로 들어가 적 "솔로몬"을 선택한다.
+
+```
+로컬에서 플레이 시 설정의 예
+AI 서비스 제공자 : LM Studio
+AI API URL : http://localhost:9891
+AI API KEY : localhost
+사용 모델명 : puyow-dqn
+```
 
 `model_path`가 비어 있거나 존재하지 않는 파일이면 `/v1/chat/completions`만 404를 반환한다. 이 경우에도 정적 파일 제공과 `/apis/learning` 학습 이벤트 API는 계속 실행된다.
 
