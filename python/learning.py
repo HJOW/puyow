@@ -775,7 +775,9 @@ def choose_policy_action(policy: PolicyNetwork, observation: torch.Tensor, devic
 	for action in torch.argsort(q_values, descending=True).tolist():
 		if is_legal_observation_action(observation, action):
 			return int(action)
-	raise RuntimeError("현재 필드에서 선택할 수 있는 DQN 행동이 없습니다.")
+	# No two-puyo placement fits. Use the game's X=2 fallback so the
+	# environment can terminate this top-out as a normal episode result.
+	return 2 * 4
 
 
 def infer_observation(checkpoint_path: Path, observation_path: Path, device_name: str = "auto") -> dict[str, int]:

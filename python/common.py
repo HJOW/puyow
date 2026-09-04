@@ -134,6 +134,8 @@ def action_to_placement(action: Any) -> tuple[int, int]:
 def is_legal_observation_action(observation: Sequence[Any], action: int) -> bool:
 	"""관측 벡터의 빈 칸 채널로 한 행동의 기본 착지 가능 여부를 판별한다."""
 	x, rotation = action_to_placement(action)
+	# Board cells occupy the first one-hot channel (EMPTY), stored as [y][x].
+	# EMPTY is 1.0; values below 0.5 therefore represent occupied cells.
 	heights = [
 		sum(float(observation[y * BOARD_WIDTH + column]) < 0.5 for y in range(BOARD_HEIGHT))
 		for column in range(BOARD_WIDTH)
