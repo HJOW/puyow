@@ -223,8 +223,17 @@ function learningApi(req, res) {
 
 /**************************************** 학습 API 구현 끝 ***************************************/
 
-// 학습 클라이언트가 실제 게임의 관측값과 전이를 전달하는 API다.
-const apis = { learning: learningApi };
+/**
+ * 이 서버가 로컬 모델로 /v1/chat/completions 를 제공할 수 있는지 알려 주는 API 핸들러.
+ * 이 Node 서버는 아직 /v1/chat/completions 를 구현하지 않으므로 항상 사용 불가로 응답한다.
+ * @returns {{available:boolean}} 로컬 모델 사용 가능 여부
+ */
+function localModelInfoApi() {
+    return { available: false };
+}
+
+// 학습 클라이언트가 실제 게임의 관측값과 전이를 전달하는 API와, 게임이 로컬 모델 사용 가능 여부를 확인하는 API다.
+const apis = { learning: learningApi, localmodelinfo: localModelInfoApi };
 
 // 서버 구동 시작 (종료 시에는 CTRL+C 단축키를 입력할 것)
 const server = http.createServer((req, res) => {

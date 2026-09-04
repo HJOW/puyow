@@ -817,6 +817,91 @@ test('Prompt API는 API 테스트와 솔로몬 배치에서 JSON Schema 제약 p
   });
 });
 
+test('Local AI는 서버가 사용 가능이라고 응답할 때만 나타나고 선택 시 서버 주소·고정 키·모델명을 채운다', async ({ page }) => {
+  await page.route('**/apis/localmodelinfo', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ available: true }) });
+  });
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { aiProvider: 'OpenAI', aiApiKey: 'openai-key', aiModel: 'gpt-5.6-luna' } }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Local AI'))).toBe(true);
+
+  // 라디오 선택지 라벨은 선택지 상자 가운데에 그리므로 그려진 좌표에서 클릭 위치를 얻는다.
+  const localAiLabelX = await page.evaluate(() => {
+    const call = window.testCanvasTextCalls.find((entry) => entry.text === 'Local AI' && entry.y === 350);
+    return call ? call.x : null;
+  });
+  expect(localAiLabelX).not.toBeNull();
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: localAiLabelX, y: 346 } });
+
+  // Local AI에서는 URL·키·모델명 입력을 건너뛰고 아래 이동 한 번에 AI API 테스트 버튼으로 간다.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Save your settings and try again.'))).toBe(true);
+
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings)).toMatchObject({
+    aiProvider: 'Local AI', aiApiURL: 'http://localhost:9891', aiApiKey: 'localhost', aiModel: 'puyow',
+  });
+
+  // Local AI 저장은 AI API 테스트를 마친 것으로 취급하므로 솔로몬이 곧바로 나타난다.
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(true);
+});
+
+test('Local AI는 현재 서버의 Chat Completions로 AI API 테스트를 보낸다', async ({ page }) => {
+  await page.route('**/apis/localmodelinfo', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ available: true }) });
+  });
+  let request = null;
+  await page.route('http://localhost:9891/v1/chat/completions', async (route) => {
+    request = { body: route.request().postDataJSON(), authorization: route.request().headers().authorization };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ choices: [{ message: { content: '{"success":true}' } }] }),
+    });
+  });
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'Local AI', aiApiURL: 'http://localhost:9891', aiApiKey: 'localhost', aiModel: 'puyow' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Local AI'))).toBe(true);
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => request).not.toBeNull();
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('AI API test succeeded (JSON schema: passed).'))).toBe(true);
+  expect(request.authorization).toBe('Bearer localhost');
+  expect(request.body).toMatchObject({
+    model: 'puyow',
+    messages: [{ role: 'user' }],
+    response_format: { type: 'json_schema', json_schema: { name: 'ai_api_test_result', strict: true } },
+    stream: false,
+  });
+});
+
+test('로컬 모델을 사용할 수 없으면 Local AI 선택지를 숨기고 저장된 Local AI 설정을 LM Studio로 이관한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { aiProvider: 'Local AI' } }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('LM Studio');
+  expect(await page.evaluate(() => window.testCanvasTextCalls.some((call) => call.text === 'Local AI' && call.y === 350))).toBe(false);
+});
+
 test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여백에 표시한다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { musicVolume: 42, effectsVolume: 73 } }));
@@ -825,11 +910,11 @@ test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => {
-    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 8'].includes(call.text));
+    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 9'].includes(call.text));
       return {
       music: values.some((call) => call.text === '42' && call.x === 920 && call.y === 130),
       effects: values.some((call) => call.text === '73' && call.x === 920 && call.y === 174),
-      build: values.some((call) => call.text === 'Build 8' && call.x === 10 && call.y === 710),
+      build: values.some((call) => call.text === 'Build 9' && call.x === 10 && call.y === 710),
       };
   })).toEqual({ music: true, effects: true, build: true });
 });

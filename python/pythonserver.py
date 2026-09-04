@@ -420,8 +420,23 @@ def chat_completions_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 	}
 
 
+# 게임 클라이언트가 이 서버의 로컬 모델 사용 가능 여부를 먼저 확인하기 위한 HTTP API다.
+def local_model_info_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str, Any]]:
+	"""SERVER_CONFIG의 model_path로 /v1/chat/completions를 제공할 수 있는지 알려 준다."""
+	# 인증 없이 호출하는 확인용 API이므로 사용 가능 여부만 boolean으로 응답한다.
+	if get_configured_model_path() is None:
+		return HTTPStatus.OK, {"available": False}
+	try:
+		# 실제 서비스와 같은 지연 로더를 사용해 체크포인트 호환성까지 확인한다.
+		get_dqn_model()
+	except Exception:
+		# 모델을 읽지 못하면 게임이 Local AI를 선택하지 못하도록 사용 불가로 응답한다.
+		return HTTPStatus.OK, {"available": False}
+	return HTTPStatus.OK, {"available": True}
+
+
 # nodeserver.js의 apis 객체와 같은 역할을 하는 동적 API 등록 컬렉션이다.
-apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple[int, dict[str, Any]]]] = {"learning": learning_api}
+apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple[int, dict[str, Any]]]] = {"learning": learning_api, "localmodelinfo": local_model_info_api}
 
 
 class PuyoRequestHandler(BaseHTTPRequestHandler):

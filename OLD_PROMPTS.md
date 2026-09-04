@@ -1,7 +1,39 @@
 
 
+아래 내용은 100차 수정요청한 내용이야. 참고만 해줘.
+----------------------------------------------------------
 
 
+1. pythonserver.py 및 nodeserver.js 에 구현된 웹 서버 모두에 API를 추가하려고 해.
+   이 API 의 URL 은 "/apis/localmodelinfo" 로 하자. ( 예: http://localhost:9891/apis/localmodelinfo )
+   이 API 호출 시, SERVER_CONFIG 의 model_path 에 지정된 모델이 유효하고 지금 /v1/chat/completions 서비스도 가능한지를 응답해야 해.
+   응답은 JSON 타입으로 하며, JSON 리터럴 객체 안에 available 키로 boolean 타입을 응답해야 해.
+       예: { "available" : true }
+   단, nodeserver.js 의 경우 아직 /v1/chat/completions 서비스를 할 수 없으니 "/apis/localmodelinfo" 의 응답은 무조건 { "available" : false } 로 해야 해.
+
+2. puyow.js 게임 내에서, 설정 화면 내 AI 서비스 제공자에 선택지 "Local AI" 을 추가해줘.
+   AI 서비스 제공자의 다른 선택지와 마찬가지로 라디오 버튼이어야 하겠지.
+   키보드로 포커스/선택 및 마우스 클릭으로도 선택이 가능해야 해.
+   
+   이 "Local AI" 선택지는 기본으로 숨겨줘.
+   게임 초기화 시 위 1번의 "/apis/localmodelinfo" 를 호출하여 available 이 true 인 경우 이 "Local AI" 선택지를 숨김 해제해 줘.
+   
+   "Local AI" 이 선택된 경우 AI API URL 및 AI API 키, 사용 모델명 입력 컴포넌트 모두 비활성화해 준 뒤,
+   "AI API URL" 입력 컴포넌트에는 현재 서버 주소 (예: http://localhost:9891 ) 가 입력해주고
+   "AI API 키" 입력 컴포넌트에는 localhost 라고 입력해주고
+   "사용 모델명" 입력 컴포넌트에는 puyow 라고 입력해줘.
+
+   "Local AI"이 아닌 다른 AI 서비스 제공자를 선택 시 기존과 동일한 활성/비활성 상태가 되어야 해. (값까지 바꿀 필요는 없고)
+   이를테면 "Local AI" 선택된 상태에서 "Open AI" 로 변경 시, 
+   "Open AI" 사용 시에는 AI API URL 컴포넌트를 사용하지 않으니, AI API URL 컴포넌트는 여전히 비활성화되어 있어야 하고
+   "AI API 키" 와 "사용 모델명" 이 활성화디어야 하지.
+   이를테면 "Local AI" 선택된 상태에서 "LM Studio" 를 선택 시에는, AI API URL과 AI API 키, 사용 모델명 모두 활성화되어야 하고.
+
+3. AI 서비스 제공자를 "Local AI" 선택 후 AI API 테스트 혹은 솔로몬 적과 대전 시, 로컬 서버의 /v1/chat/completions 를 이용해야 해.
+   LM Studio 의 경우와 동일하게 동작하면 돼. (pythonserver.py 의 /v1/chat/completions 가 LM Studio 의 API를 흉내내기 때문)
+   
+4. AI 서비스 제공자를 "Local AI" 선택 후 설정 저장 시, 예외적으로 "AI API 테스트" 를 하지 않고도 적 선택 화면에서 "솔로몬"을 고를 수 있도록 잠금 해제해 줘.
+   (AI API 테스트를 이미 한 것으로 취급해줘.)
 
 
 아래 내용은 99차 수정요청한 내용이야. 참고만 해줘.
