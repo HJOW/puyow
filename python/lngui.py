@@ -15,6 +15,7 @@
 #    bundledenemy.py
 #    learning.py
 #    torch
+#    psutil
 #
 # Copyright 2026 HJOW
 # Licensed under the Apache License, Version 2.0.
@@ -32,6 +33,11 @@
 창을 닫아 학습을 포기하는 경우에만 learning.TrainingAbort로 즉시 중단되며 이때는 어떤 파일도
 저장하지 않는다. CLI에서 `python python/learning.py ...`로 직접 학습하는 기존 방식은 이 GUI와
 무관하게 그대로 동작한다.
+
+창이 뜬 뒤에는 학습 쓰레드와 별개로 시스템 자원 감시용 데몬 쓰레드도 하나 돌아간다. 이 쓰레드는
+psutil로 1초에 한 번 CPU·RAM 점유율만 재서 같은 log_queue에 적재하고, 위젯은 여느 학습 로그와
+마찬가지로 _poll_queue가 메인 쓰레드에서만 갱신한다. 창을 닫으면 _closed 플래그로 다음 측정 뒤
+루프를 빠져나가며, 데몬 쓰레드라 프로세스 종료를 막지 않는다.
 """
 
 import queue
@@ -42,8 +48,14 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from urllib.parse import urlsplit
 
+import psutil
+
 import learning
 import pythonserver
+
+# 시스템 자원 게이지를 몇 초에 한 번 갱신할지를 결정한다. psutil.cpu_percent(interval=...)가
+# 이 시간만큼 블로킹하면서 직접 측정하므로 별도 sleep 없이 정확히 이 주기로 갱신된다.
+SYSINFO_POLL_INTERVAL_SEC = 1.0
 
 # GUI 전용 기본값이다. learning.py 자체의 --episodes 기본값(1000)과는 별개로, 요구 사항에 따라
 # 창을 열면 5000이 입력된 상태여야 한다.
@@ -83,11 +95,13 @@ class TrainerApp:
 		self.thread: threading.Thread | None = None
 		self.server: ThreadingHTTPServer | None = None
 		self.server_thread: threading.Thread | None = None
+		self.sysinfo_thread: threading.Thread | None = None
 		self._closed = False
 
 		self._build_widgets()
 		self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 		self.root.after(100, self._poll_queue)
+		self._start_sysinfo_monitor()
 
 	# ------------------------------------------------------------------
 	# 화면 구성
@@ -144,6 +158,22 @@ class TrainerApp:
 		self.log_text.pack(side="left", fill="both", expand=True)
 		scrollbar.config(command=self.log_text.yview)
 
+		sysinfo_frame = ttk.Frame(self.root)
+		sysinfo_frame.grid(row=5, column=0, sticky="ew", **padding)
+		sysinfo_frame.columnconfigure(1, weight=1)
+
+		ttk.Label(sysinfo_frame, text="CPU:").grid(row=0, column=0, sticky="w", padx=(0, 4))
+		self.cpu_gauge = ttk.Progressbar(sysinfo_frame, orient="horizontal", mode="determinate", maximum=100)
+		self.cpu_gauge.grid(row=0, column=1, sticky="ew", padx=4)
+		self.cpu_var = tk.StringVar(value="0.0%")
+		ttk.Label(sysinfo_frame, textvariable=self.cpu_var, width=6, anchor="e").grid(row=0, column=2, sticky="e")
+
+		ttk.Label(sysinfo_frame, text="RAM:").grid(row=1, column=0, sticky="w", padx=(0, 4))
+		self.ram_gauge = ttk.Progressbar(sysinfo_frame, orient="horizontal", mode="determinate", maximum=100)
+		self.ram_gauge.grid(row=1, column=1, sticky="ew", padx=4)
+		self.ram_var = tk.StringVar(value="0.0%")
+		ttk.Label(sysinfo_frame, textvariable=self.ram_var, width=6, anchor="e").grid(row=1, column=2, sticky="e")
+
 	# ------------------------------------------------------------------
 	# 입력 도우미
 	# ------------------------------------------------------------------
@@ -197,6 +227,23 @@ class TrainerApp:
 		self.server.server_close()
 		self.server = None
 		self.server_thread = None
+
+	# ------------------------------------------------------------------
+	# CPU/RAM 점유율 감시
+	# ------------------------------------------------------------------
+	def _start_sysinfo_monitor(self) -> None:
+		"""CPU·RAM 점유율을 1초마다 재는 데몬 쓰레드를 시작한다. 위젯은 직접 건드리지 않는다."""
+		thread = threading.Thread(target=self._sysinfo_loop, daemon=True)
+		thread.start()
+		self.sysinfo_thread = thread
+
+	def _sysinfo_loop(self) -> None:
+		while not self._closed:
+			cpu_percent = psutil.cpu_percent(interval=SYSINFO_POLL_INTERVAL_SEC)
+			ram_percent = psutil.virtual_memory().percent
+			if self._closed:
+				return
+			self.log_queue.put(("sysinfo", cpu_percent, ram_percent))
 
 	# ------------------------------------------------------------------
 	# 학습 시작/일시정지/재개/중단
@@ -342,6 +389,12 @@ class TrainerApp:
 					self._append_log("Training finished and checkpoint saved.")
 					self.status_var.set("Idle.")
 					self._reset_controls()
+				elif kind == "sysinfo":
+					_, cpu_percent, ram_percent = item
+					self.cpu_gauge.configure(value=cpu_percent)
+					self.cpu_var.set(f"{cpu_percent:.1f}%")
+					self.ram_gauge.configure(value=ram_percent)
+					self.ram_var.set(f"{ram_percent:.1f}%")
 		except queue.Empty:
 			pass
 		self.root.after(100, self._poll_queue)
