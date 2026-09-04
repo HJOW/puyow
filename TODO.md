@@ -11,5 +11,5 @@
 모든 파일은 UTF-8 인코딩을 사용하고, 기본 언어는 한국어야.
 INFO_FOR_AI.md 파일을 참고 후 작업해줘. 게임 룰 설명도 이 안에 기재되어 있어. 
 (작업 후 다음 작업에 참고할 수 있도록 INFO_FOR_AI.md 파일을 업데이트해줘.)
-puyow.js 를 수정한 경우, 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
+puyow.js 를 수정한 경우, 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘. (이 버전값은 테스트는 하지 말아줘.)
 주석 및 채팅창 답변은 모두 한국어로 해줘.

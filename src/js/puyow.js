@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 9;
+    const BUILDNO = 10;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -221,6 +221,11 @@
     const AI_SERVICE_PROVIDERS = ['OpenAI', 'LM Studio'];
     /** 브라우저 내장 AI 기반의 선택적 제공자 이름이다. @type {string} */
     const PROMPT_API_PROVIDER = 'Prompt API';
+    /** Prompt API에서 솔로몬이 사용하는 구조화 JSON 텍스트 출력 옵션이다. @type {object} */
+    const PROMPT_API_LANGUAGE_OPTIONS = {
+        expectedInputs: [{ type: 'text', languages: ['en'] }],
+        expectedOutputs: [{ type: 'text', languages: ['en'] }]
+    };
     /** 게임을 제공하는 서버가 직접 모델을 서비스할 때만 나타나는 선택적 제공자 이름이다. @type {string} */
     const LOCAL_AI_PROVIDER = 'Local AI';
     /** Local AI 선택 시 AI API 키 입력란에 채울 고정값이다. @type {string} */
@@ -740,6 +745,20 @@
     function checkPromptApiSupport() {
         const languageModel = typeof globalThis !== 'undefined' ? globalThis.LanguageModel : undefined;
         return typeof languageModel !== 'undefined' && typeof languageModel.create === 'function';
+    }
+
+    /** Prompt API 모델이 다운로드 중이면 초기화와 동시에 모델 준비를 시작한다. @returns {void} */
+    function startPromptApiDownloadIfNeeded() {
+        const languageModel = typeof globalThis !== 'undefined' ? globalThis.LanguageModel : undefined;
+        if (!languageModel || typeof languageModel.availability !== 'function' || typeof languageModel.create !== 'function') return;
+        // availability()와 create()는 초기화 흐름을 막지 않도록 기다리지 않고 실행한다.
+        Promise.resolve().then(() => languageModel.availability(PROMPT_API_LANGUAGE_OPTIONS)).then((availability) => {
+            if (availability !== 'downloading') return;
+            return languageModel.create(PROMPT_API_LANGUAGE_OPTIONS);
+        }).catch((error) => {
+            // 모델 다운로드를 시작하지 못해도 게임 초기화와 다른 AI 제공자는 계속 사용할 수 있다.
+            console.info('Puyo W Prompt API 모델 준비를 시작하지 못했습니다.', error);
+        });
     }
 
     /** 현재 설정 화면에서 선택할 수 있는 AI 제공자 목록을 반환한다. @returns {string[]} 제공자 목록 */
@@ -6797,7 +6816,7 @@
         if (isPromptApiProvider(settings)) {
             if (!promptApiSupported) throw new Error('Prompt API를 지원하지 않는 브라우저입니다.');
             const languageModel = globalThis.LanguageModel;
-            const session = await languageModel.create({ signal });
+            const session = await languageModel.create({ ...PROMPT_API_LANGUAGE_OPTIONS, signal });
             try {
                 return await session.prompt(prompt, { responseConstraint: schema, signal });
             } finally {
@@ -6832,14 +6851,37 @@
             const outputText = await requestStructuredAiOutput(settings, 'Return only JSON matching the supplied schema, with success set to true.', 'ai_api_test_result', AI_API_TEST_JSON_SCHEMA, 64);
             if (requestId !== settingsApiTestRequestId) return;
             let result;
-            try { result = outputText ? parseJSON(outputText) : null; } catch (error) { result = null; }
+            let parseError = null;
+            try { result = outputText ? parseJSON(outputText) : null; } catch (error) {
+                result = null;
+                parseError = error instanceof Error ? error.message : String(error);
+            }
             const testSucceeded = isAiApiTestResult(result);
+            console.log('Puyo W AI API 테스트 결과', {
+                provider: settings.aiProvider,
+                model: settings.aiModel,
+                success: testSucceeded,
+                schemaValid: testSucceeded,
+                responseText: outputText,
+                parsedResult: result,
+                parseError
+            });
             if (testSucceeded) unlockSolomonForSession();
             showSettingsApiTestMessage(testSucceeded
                 ? 'AI API 테스트 성공 (JSON 스키마 검사: 통과)'
                 : 'AI API 테스트 실패 (JSON 스키마 검사: 실패)');
         } catch (error) {
             console.error('Puyo W AI API 테스트 요청에 실패했습니다.', error);
+            console.log('Puyo W AI API 테스트 결과', {
+                provider: settings.aiProvider,
+                model: settings.aiModel,
+                success: false,
+                schemaValid: false,
+                responseText: null,
+                parsedResult: null,
+                parseError: null,
+                requestError: error instanceof Error ? error.message : String(error)
+            });
             showSettingsApiTestMessage('AI API 테스트 실패 (JSON 스키마 검사: 미실시)');
         } finally {
             if (requestId === settingsApiTestRequestId) settingsApiTestPending = false;
@@ -10135,6 +10177,7 @@
             throw new Error('Web Puyo 초기화에는 브라우저 DOM 환경이 필요합니다.');
         }
         promptApiSupported = checkPromptApiSupport();
+        startPromptApiDownloadIfNeeded();
         prepareFontImportStyle();
         prepareRuntimeLayoutStyle();
         languageCode = navigator.language || navigator.userLanguage || 'ko';

@@ -817,6 +817,37 @@ test('Prompt API는 API 테스트와 솔로몬 배치에서 JSON Schema 제약 p
   });
 });
 
+test('Prompt API 모델이 다운로드 중이면 초기화를 기다리지 않고 create를 호출한다', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.promptApiAvailabilityCalls = 0;
+    window.promptApiAvailabilityOptions = null;
+    window.promptApiCreateCalls = [];
+    window.LanguageModel = {
+      availability: async (options) => {
+        window.promptApiAvailabilityCalls += 1;
+        window.promptApiAvailabilityOptions = options;
+        return 'downloading';
+      },
+      create: (options) => {
+        window.promptApiCreateCalls.push(options);
+        return new Promise(() => {});
+      },
+    };
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.promptApiAvailabilityCalls)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.promptApiCreateCalls.length)).toBe(1);
+  expect(await page.evaluate(() => window.promptApiAvailabilityOptions)).toEqual({
+    expectedInputs: [{ type: 'text', languages: ['en'] }],
+    expectedOutputs: [{ type: 'text', languages: ['en'] }]
+  });
+  expect(await page.evaluate(() => window.promptApiCreateCalls[0])).toEqual({
+    expectedInputs: [{ type: 'text', languages: ['en'] }],
+    expectedOutputs: [{ type: 'text', languages: ['en'] }]
+  });
+});
+
 test('Local AI는 서버가 사용 가능이라고 응답할 때만 나타나고 선택 시 서버 주소·고정 키·모델명을 채운다', async ({ page }) => {
   await page.route('**/apis/localmodelinfo', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ available: true }) });
