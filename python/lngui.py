@@ -3,6 +3,12 @@
 # 이 스크립트에서는 PyTorch 를 이용해 Puyo W 학습 모델을 생성한다.
 #    GUI 인터페이스를 제공한다.
 #
+# 이용을 위한 사전 설치 필요
+#
+#    python 3.10 이상 버전 (python.org 에서 다운로드)
+#    torch, torchvision  ( pip3 install torch torchvision )
+#    psutil              ( pip3 install psutil )
+#
 # 간단 사용법
 #     터미널로 프로젝트 최상위 디렉토리로 접근 후 다음 명령어 사용
 #
