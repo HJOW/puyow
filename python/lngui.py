@@ -112,11 +112,13 @@ class TrainerApp:
 		self.episodes_entry = ttk.Entry(form, textvariable=self.episodes_var)
 		self.episodes_entry.grid(row=1, column=1, sticky="ew", **padding)
 
-		ttk.Label(form, text="Server URL:").grid(row=2, column=0, sticky="w", **padding)
-		default_port = pythonserver.SERVER_CONFIG["port"]
-		self.server_url_var = tk.StringVar(value=f"http://localhost:{default_port}")
+		server_url_label = ttk.Label(form, text="Server URL:")
+		server_url_label.grid(row=2, column=0, sticky="w", **padding)
+		self.server_url_var = tk.StringVar(value="")
 		self.server_url_entry = ttk.Entry(form, textvariable=self.server_url_var)
 		self.server_url_entry.grid(row=2, column=1, columnspan=2, sticky="ew", **padding)
+		server_url_label.grid_remove()
+		self.server_url_entry.grid_remove()
 
 		buttons = ttk.Frame(self.root)
 		buttons.grid(row=1, column=0, sticky="ew", **padding)
