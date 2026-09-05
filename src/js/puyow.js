@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 13;
+    const BUILDNO = 15;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -2405,6 +2405,64 @@
         queueLearningEvent({ event: 'episode_end', sessionId: game.learningSessionId, done: true });
         learningEpisodeStarted = false;
         learningPendingTransition = null;
+    }
+
+    /**
+     * (머신러닝 관련)
+     * 이번 대전이 로컬 AI 서버의 모델을 솔로몬의 수로 추가 학습할 대상인지 확인한다.
+     * 색상 수와 룰은 가리지 않고, AI 제공자가 Local AI이며 극한 난이도로 솔로몬과 대전할 때만 대상이다.
+     * @returns {boolean} 학습 대상이면 true
+     */
+    function shouldTrainLocalAiWithSolomon() {
+        if (!game || !isLocalAiProvider(store?.settings)) return false;
+        if (AI_DIFFICULTIES[game.aiDifficulty]?.key !== 'extreme') return false;
+        return game.players?.[1]?.controller?.getClassType?.() === 'Solomon';
+    }
+
+    /**
+     * (머신러닝 관련)
+     * 이번 대전의 솔로몬 학습 세션 ID를 만들거나 이미 만든 값을 반환한다.
+     * 이 값을 솔로몬 배치 요청에 함께 보내면 서버가 그 대전의 추론 결과를 세션에 모은다.
+     * @returns {string|null} 학습 대상이 아니면 null
+     */
+    function getSolomonLearningSessionId() {
+        if (!shouldTrainLocalAiWithSolomon()) return null;
+        if (!game.solomonLearningSessionId) {
+            game.solomonLearningSessionId = `solomon-${Date.now()}-${randomFloat().toString(36).slice(2, 10)}`;
+        }
+        return game.solomonLearningSessionId;
+    }
+
+    /**
+     * (머신러닝 관련)
+     * 대전이 끝나고 결과 화면으로 넘어갈 때, 이번 대전에서 모은 솔로몬의 수를 모델에 반영하도록 요청한다.
+     * 학습은 서버에서 진행하며, 실패하더라도 게임 진행에는 영향을 주지 않는다.
+     * @param {PlayerState|null} winner 이번 대전의 승자
+     * @returns {void}
+     */
+    function requestSolomonLearningFinish(winner) {
+        const sessionId = game?.solomonLearningSessionId;
+        if (!sessionId || !shouldTrainLocalAiWithSolomon()) return;
+        // 같은 대전에서 두 번 요청하지 않도록 세션 ID를 먼저 비운다.
+        game.solomonLearningSessionId = null;
+        const solomon = game.players[1];
+        const result = winner === solomon ? 'win' : winner ? 'loss' : 'draw';
+        const settings = store.settings;
+        // 이 함수는 게임 루프의 승패 처리 중에 호출되므로, 저장된 주소가 잘못돼 URL을 만들지 못하더라도
+        // 예외가 루프로 번지지 않도록 여기서 막는다.
+        try {
+            window.fetch(getAiServerURL(settings.aiApiURL, 'apis/solomonlearning'), {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event: 'finish', sessionId, result })
+            }).then(async (response) => {
+                const payload = await response.json();
+                if (!response.ok || !payload.ok) throw new Error(payload.error || `솔로몬 학습 요청 실패: ${response.status}`);
+                console.log('솔로몬 학습 적용 결과', payload);
+            }).catch((error) => console.error('솔로몬 학습 적용 요청에 실패했습니다.', error));
+        } catch (error) {
+            console.error('솔로몬 학습 적용 요청을 보낼 수 없습니다.', error);
+        }
     }
 
     /** 데카라비아를 기본 룰 또는 피버 룰의 보통 이상 난이도에서 한 번이라도 이겼는지 확인한다. @returns {boolean} 구경 메뉴 해금 여부 */
@@ -5002,6 +5060,8 @@
             // 승패가 확정된 마지막 상태까지 담아 리플레이 기록을 닫는다.
             finishReplayRecording();
             finishLearningEpisode(true);
+            // 결과 화면으로 넘어가는 이 시점에 이번 대전의 솔로몬 학습을 서버에 적용한다.
+            requestSolomonLearningFinish(game.winner);
             stopBackgroundMusic();
         }
     }
@@ -7642,9 +7702,14 @@
 
     /** 사용자가 입력한 LM Studio 서버 주소에 구조화 출력 엔드포인트를 결합한다. @param {string} baseURL 서버 기본 주소 @returns {string} Chat Completions 주소 */
     function getLmStudioChatCompletionsURL(baseURL) {
+        return getAiServerURL(baseURL, 'v1/chat/completions');
+    }
+
+    /** 저장된 AI 서버 기본 URL 아래의 경로 URL을 만든다. @param {string} baseURL AI 서버 기본 URL @param {string} path 기본 URL 아래의 경로 @returns {string} 완성된 URL */
+    function getAiServerURL(baseURL, path) {
         const convertedBaseURL = convertURL(baseURL.trim());
         const directoryBaseURL = convertedBaseURL.endsWith('/') ? convertedBaseURL : `${convertedBaseURL}/`;
-        return new URL('v1/chat/completions', directoryBaseURL).href;
+        return new URL(path, directoryBaseURL).href;
     }
 
     /** HTTP 기반 제공자에 맞는 구조화 JSON 생성 요청을 만든다. @param {object} settings 저장 설정 @param {string} prompt 사용자 프롬프트 @param {string} schemaName 스키마 이름 @param {object} schema JSON Schema @param {number} maxTokens 최대 출력 토큰 @returns {{url:string,options:object,readOutputText:(response:object)=>string|null}} 요청 정보 */
@@ -12414,6 +12479,12 @@
             }));
             const feverRule = game?.feverRule === true;
             const dangerCells = feverRule ? [{ x: 2, y: 5 }, { x: 3, y: 5 }] : [{ x: 2, y: 5 }];
+            // 로컬 AI 서버로 극한 난이도 대전을 할 때만 학습 세션 ID가 붙는다. 다른 제공자와 난이도의
+            // 프롬프트는 이 항목 없이 기존과 완전히 같은 내용으로 유지된다.
+            const learningSessionId = getSolomonLearningSessionId();
+            // 로컬 AI 서버는 화면 12줄 관측값만 받으므로 가로 이동 경로·회전 킥·숨김 행을 알 수 없다.
+            // 게임이 실제로 받아들일 후보를 함께 보내 그 안에서만 고르게 한다.
+            const usablePlacements = isLocalAiProvider(store?.settings) ? this.getUsablePlacements(player) : [];
             return JSON.stringify({
                 task: 'Choose one legal and strategically optimal landing for the current falling puyo pair.',
                 rules: {
@@ -12446,7 +12517,9 @@
                     dangerousCells: dangerCells,
                     instruction: 'Avoid placements that occupy or further endanger these cells. If any dangerous cell is already occupied, the local fallback AI is used instead of this request.'
                 },
-                responseSchema: SOLOMON_PLACEMENT_JSON_SCHEMA
+                responseSchema: SOLOMON_PLACEMENT_JSON_SCHEMA,
+                ...(usablePlacements.length ? { usablePlacements } : {}),
+                ...(learningSessionId ? { learningSessionId } : {})
             });
         }
 
@@ -12480,6 +12553,18 @@
                 simulated = flipped;
             }
             return simulated.x === result.x;
+        }
+
+        /**
+         * 이번 턴에 실제로 사용할 수 있는 배치 후보만 추린다.
+         * 응답 검증과 같은 canUsePlacement()로 거르므로, 이 목록에서 고른 배치는 항상 검증을 통과한다.
+         * @param {PlayerState} player CPU 플레이어
+         * @returns {{x:number, rotation:number}[]} 사용 가능한 배치 목록
+         */
+        getUsablePlacements(player) {
+            return player.aiSimulations
+                .filter((simulation) => this.canUsePlacement(player, simulation))
+                .map(({ x, rotation }) => ({ x, rotation }));
         }
 
         /** 응답·파싱·배치 검증 오류를 알리고 게임을 멈춘 뒤 현재 턴을 대체 AI로 준비한다. @param {PlayerState} player CPU 플레이어 @param {unknown} error 오류 @returns {void} */

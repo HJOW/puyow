@@ -39,6 +39,25 @@ OBSERVATION_SCALAR_COUNT = 14
 # 보드 채널, 현재 쌍, 전투/시간/피버 상태를 합친 관측 벡터 길이다.
 OBSERVATION_SIZE = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS + COLORS * 2 + OBSERVATION_SCALAR_COUNT
 
+# 스칼라 관측값을 0~1로 정규화할 때 쓰는 기준값이다. encode_observation_values와
+# decode_observation_scalars가 같은 값을 써야 하므로 한 곳에 모아 둔다. 이 값을 바꾸면 관측
+# 계약 자체가 달라지므로 MODEL_VERSION도 함께 올려야 한다.
+ATTACK_SCALE = 30.0
+TURN_SCALE = 100.0
+DAMAGE_SCALE = 30.0
+ELAPSED_MS_SCALE = 600_000.0
+MARGIN_RATE_SCALE = 70.0
+TIME_MULTIPLIER_LOG2_SCALE = 10.0
+FEVER_GAUGE_SCALE = 7.0
+FEVER_NEXT_TIME_SCALE = 30.0
+FEVER_TARGET_COMBO_SCALE = 12.0
+FEVER_LEFT_TIME_SCALE = 60_000.0
+
+# 대전 한 판의 승·패에 주는 보상이다. 오프라인 학습(learning.PuyoDuelEnvironment)과 실제 대전에서
+# 모은 전이로 추가 학습하는 서버가 같은 크기를 써야 Q값의 기준이 흔들리지 않는다.
+WIN_REWARD = 50.0
+LOSS_REWARD = -50.0
+
 
 def _clamp_ratio(value: Any, maximum: float) -> float:
 	"""숫자 상태를 0~1 범위로 정규화한다."""
@@ -96,24 +115,80 @@ def encode_observation_values(
 	fever_state = fever if isinstance(fever, dict) else {}
 	multiplier = max(1.0, float(time_progress_multiplier or 1.0))
 	values.extend((
-		_clamp_ratio(attack, 30.0),
-		_clamp_ratio(turn, 100.0),
-		_clamp_ratio(incoming_damage, 30.0),
+		_clamp_ratio(attack, ATTACK_SCALE),
+		_clamp_ratio(turn, TURN_SCALE),
+		_clamp_ratio(incoming_damage, DAMAGE_SCALE),
 		float(bool(fever_rule)),
 		float(bool(all_clear_ticket)),
-		_clamp_ratio(elapsed_ms, 600_000.0),
-		_clamp_ratio(margin_rate, 70.0),
-		_clamp_ratio(log2(multiplier), 10.0),
+		_clamp_ratio(elapsed_ms, ELAPSED_MS_SCALE),
+		_clamp_ratio(margin_rate, MARGIN_RATE_SCALE),
+		_clamp_ratio(log2(multiplier), TIME_MULTIPLIER_LOG2_SCALE),
 		float(bool(fever_state.get("active", False))),
-		_clamp_ratio(fever_state.get("gauge", 0), 7.0),
-		_clamp_ratio(fever_state.get("nextTime", fever_state.get("next_time", 15)), 30.0),
-		_clamp_ratio(fever_state.get("targetCombo", fever_state.get("target_combo", 5)), 12.0),
-		_clamp_ratio(fever_state.get("leftTime", fever_state.get("left_time_ms", 0)), 60_000.0),
-		_clamp_ratio(fever_state.get("damage", 0), 30.0),
+		_clamp_ratio(fever_state.get("gauge", 0), FEVER_GAUGE_SCALE),
+		_clamp_ratio(fever_state.get("nextTime", fever_state.get("next_time", 15)), FEVER_NEXT_TIME_SCALE),
+		_clamp_ratio(fever_state.get("targetCombo", fever_state.get("target_combo", 5)), FEVER_TARGET_COMBO_SCALE),
+		_clamp_ratio(fever_state.get("leftTime", fever_state.get("left_time_ms", 0)), FEVER_LEFT_TIME_SCALE),
+		_clamp_ratio(fever_state.get("damage", 0), DAMAGE_SCALE),
 	))
 	if len(values) != OBSERVATION_SIZE:
 		raise AssertionError(f"관측값 길이 오류: {len(values)} != {OBSERVATION_SIZE}")
 	return values
+
+
+def decode_observation_board(observation: Sequence[Any]) -> list[list[int]]:
+	"""관측 벡터의 보드 채널을 학습 환경과 같은 정수 보드로 되돌린다.
+
+	반환하는 칸 값은 bundledenemy와 같은 계약이다. 빈 칸은 -1, 방해뿌요는 -2, 일반 색은 0~4다.
+	"""
+	cells = BOARD_WIDTH * BOARD_HEIGHT
+	board: list[list[int]] = []
+	for y in range(BOARD_HEIGHT):
+		row: list[int] = []
+		for x in range(BOARD_WIDTH):
+			index = y * BOARD_WIDTH + x
+			# 원-핫이므로 값이 가장 큰 채널 하나가 그 칸의 내용이다.
+			channel = max(range(BOARD_CHANNELS), key=lambda candidate: float(observation[candidate * cells + index]))
+			row.append(-1 if channel == 0 else -2 if channel == 1 else channel - 2)
+		board.append(row)
+	return board
+
+
+def decode_observation_pair(observation: Sequence[Any]) -> tuple[int, int]:
+	"""관측 벡터의 현재 쌍 원-핫 두 묶음을 색 번호 쌍으로 되돌린다."""
+	base = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS
+	colors: list[int] = []
+	for order in range(2):
+		offset = base + order * COLORS
+		values = [float(observation[offset + color]) for color in range(COLORS)]
+		best = max(range(COLORS), key=lambda color: values[color])
+		# 조작 쌍이 없는 상태로 만든 관측값은 모든 채널이 0이다. 이 경우 첫 색으로 되돌린다.
+		colors.append(best if values[best] > 0.5 else 0)
+	return colors[0], colors[1]
+
+
+def decode_observation_scalars(observation: Sequence[Any]) -> dict[str, Any]:
+	"""관측 벡터 끝의 14개 정규화 스칼라를 원래 단위로 되돌린다.
+
+	정규화 때 상한을 넘겨 잘린 값(clamp)은 그 상한으로만 복원된다.
+	"""
+	base = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS + COLORS * 2
+	values = [float(observation[base + index]) for index in range(OBSERVATION_SCALAR_COUNT)]
+	return {
+		"attack": values[0] * ATTACK_SCALE,
+		"turn": values[1] * TURN_SCALE,
+		"incoming_damage": values[2] * DAMAGE_SCALE,
+		"fever_rule": values[3] >= 0.5,
+		"all_clear_ticket": values[4] >= 0.5,
+		"elapsed_ms": values[5] * ELAPSED_MS_SCALE,
+		"margin_rate": values[6] * MARGIN_RATE_SCALE,
+		"time_progress_multiplier": 2.0 ** (values[7] * TIME_MULTIPLIER_LOG2_SCALE),
+		"fever_active": values[8] >= 0.5,
+		"fever_gauge": values[9] * FEVER_GAUGE_SCALE,
+		"fever_next_time": values[10] * FEVER_NEXT_TIME_SCALE,
+		"fever_target_combo": values[11] * FEVER_TARGET_COMBO_SCALE,
+		"fever_left_time": values[12] * FEVER_LEFT_TIME_SCALE,
+		"fever_damage": values[13] * DAMAGE_SCALE,
+	}
 
 
 def validate_observation(value: Any, name: str = "observation") -> None:

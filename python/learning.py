@@ -54,6 +54,7 @@ from common import (
 	ROTATION_DOWN, ROTATION_LEFT, ROTATION_RIGHT, ROTATION_UP, action_to_placement,
 	encode_observation_values, is_legal_observation_action, validate_observation,
 )
+from common import LOSS_REWARD as DUEL_LOSS_REWARD, WIN_REWARD as DUEL_WIN_REWARD
 
 # CLI(main())와 GUI 학습기(lngui.py)가 함께 참조하는 기본값이다. GUI는 시드·디바이스·상대는
 # 이 값을 그대로 쓰고, 모델 경로·에피소드 수·서버 주소만 사용자 입력으로 받는다.
@@ -370,8 +371,10 @@ class PuyoDuelEnvironment:
 	# 브라우저에서는 game.elapsed의 실제 밀리초를 관측한다. 오프라인 고속 학습에는 벽시계가
 	# 의미 없으므로 한 번의 양측 턴을 실제 플레이의 대표값인 3초로 진행시킨다.
 	DUEL_TURN_DURATION_MS = 3_000
-	WIN_REWARD = 50.0
-	LOSS_REWARD = -50.0
+	# 승패 보상은 common.py의 공통 계약을 그대로 쓴다. pythonserver.py가 실제 대전에서 모은
+	# 전이로 같은 체크포인트를 추가 학습하므로 양쪽 보상 크기가 같아야 한다.
+	WIN_REWARD = DUEL_WIN_REWARD
+	LOSS_REWARD = DUEL_LOSS_REWARD
 	INVALID_ACTION_REWARD = -5.0
 	NEXT_PAIR_LOOKAHEAD = 8
 

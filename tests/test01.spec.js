@@ -1438,6 +1438,116 @@ test('솔로몬은 LM Studio 선택 시 저장된 서버와 토큰으로 Chat Co
   expect(prompt.currentField).toMatchObject({ columns: 6, visibleRows: 12 });
 });
 
+test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 대전이 끝나면 학습 적용을 요청한다', async ({ page }) => {
+  await page.route('**/apis/localmodelinfo', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ available: true }) });
+  });
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'Local AI', aiApiURL: 'http://localhost:9891', aiApiKey: 'localhost', aiModel: 'puyow' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  const prompts = [];
+  await page.route('http://localhost:9891/v1/chat/completions', async (route) => {
+    const prompt = JSON.parse(route.request().postDataJSON().messages[0].content);
+    prompts.push(prompt);
+    // 실제 서버와 같이 게임이 보낸 사용 가능한 배치 안에서만 고른다.
+    const placements = prompt.usablePlacements;
+    const content = JSON.stringify(placements[prompts.length % placements.length]);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content } }] }) });
+  });
+  const learningRequests = [];
+  await page.route('http://localhost:9891/apis/solomonlearning', async (route) => {
+    learningRequests.push({ body: route.request().postDataJSON(), authorization: route.request().headers().authorization });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, trained: true, transitions: 3 }) });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty().key)).toBe('extreme');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+
+  await expect.poll(() => prompts.length, { timeout: 10000 }).toBeGreaterThanOrEqual(1);
+  const sessionId = prompts[0].learningSessionId;
+  expect(typeof sessionId).toBe('string');
+  expect(sessionId.startsWith('solomon-')).toBe(true);
+  // 같은 대전의 모든 요청은 하나의 세션으로 묶여야 서버가 앞뒤 수를 이어 붙일 수 있다.
+  expect(prompts.every((prompt) => prompt.learningSessionId === sessionId)).toBe(true);
+  // 서버는 화면 12줄 관측값만으로 가로 이동 경로·회전 킥을 알 수 없으므로 게임이 후보를 함께 보낸다.
+  expect(prompts[0].usablePlacements.length).toBeGreaterThan(0);
+  expect(prompts[0].usablePlacements.every(({ x, rotation }) => (
+    Number.isInteger(x) && x >= 0 && x < 6 && Number.isInteger(rotation) && rotation >= 0 && rotation < 4
+  ))).toBe(true);
+
+  // 조작 없이 계속 내리면 스폰 열이 쌓여 사용자가 먼저 패배하고 결과 화면으로 넘어간다.
+  await page.keyboard.down('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 60000 }).toBe('game_over');
+  await page.keyboard.up('ArrowDown');
+
+  await expect.poll(() => learningRequests.length, { timeout: 5000 }).toBe(1);
+  expect(learningRequests[0].authorization).toBe('Bearer localhost');
+  // result는 학습 대상인 솔로몬 기준이므로, 사용자가 패배한 이번 대전은 승리로 전달된다.
+  expect(learningRequests[0].body).toEqual({ event: 'finish', sessionId, result: 'win' });
+  // 후보 안에서 고른 배치는 항상 사용할 수 있어야 하므로 배치 검증 오류가 나면 안 된다.
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => [
+    '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.',
+    'Solomon AI response error: continuing with the fallback AI.',
+  ].includes(text)))).toBe(false);
+});
+
+test('LM Studio 제공자와 극한이 아닌 난이도의 솔로몬 프롬프트에는 학습 세션을 넣지 않는다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'LM Studio', aiApiURL: 'http://lmstudio.local/', aiApiKey: 'lm-solomon-token', aiModel: 'local-puyo-model' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  const prompts = [];
+  await page.route('http://lmstudio.local/v1/chat/completions', async (route) => {
+    const body = route.request().postDataJSON();
+    prompts.push(body.messages[0].content);
+    const content = prompts.length === 1 ? '{"success":true}' : '{"x":4,"rotation":1}';
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content } }] }) });
+  });
+
+  await openSettings(page);
+  for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => prompts.length).toBe(1);
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
+  await page.keyboard.press('Enter');
+  // 극한 난이도로 시작하더라도 Local AI 제공자가 아니면 학습 세션을 만들지 않는다.
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty().key)).toBe('extreme');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => prompts.length, { timeout: 10000 }).toBeGreaterThanOrEqual(2);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty.key)).toBe('extreme');
+
+  expect(JSON.parse(prompts[1]).learningSessionId).toBeUndefined();
+  // 배치 후보 목록도 Local AI 서버 전용이므로 다른 제공자의 프롬프트에는 넣지 않는다.
+  expect(JSON.parse(prompts[1]).usablePlacements).toBeUndefined();
+});
+
 test('솔로몬의 잘못된 API 배치는 게임을 일시정지하고 현재 턴을 대체 AI로 전환한다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({
