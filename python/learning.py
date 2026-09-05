@@ -73,6 +73,7 @@ class LearningApiClient:
 	"""
 
 	def __init__(self, server_url: str, token: str, timeout: float = 10.0) -> None:
+		"""서버 주소와 토큰으로 클라이언트를 초기화한다. 토큰이 없으면 예외를 올린다."""
 		if not token:
 			raise ValueError("API를 사용할 때는 --api-token 또는 PUYOW_AI_TOKEN이 필요합니다.")
 		self.endpoint = server_url.rstrip("/") + "/apis/learning"
@@ -80,6 +81,7 @@ class LearningApiClient:
 		self.timeout = timeout
 
 	def send(self, payload: dict) -> dict:
+		"""페이로드를 학습 API에 POST하고, 실패나 서버 거부 시 예외를 올린다."""
 		request = urllib.request.Request(
 			self.endpoint,
 			data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
@@ -96,9 +98,11 @@ class LearningApiClient:
 		return result
 
 	def reset(self, session_id: str, observation: torch.Tensor) -> dict:
+		"""에피소드 시작(reset) 이벤트를 서버로 전달한다."""
 		return self.send({"event": "reset", "sessionId": session_id, "observation": observation.tolist()})
 
 	def step(self, session_id: str, state: torch.Tensor, action: int, reward: float, next_state: torch.Tensor, done: bool) -> dict:
+		"""한 스텝의 상태·행동·보상·다음 상태·종료 여부를 서버로 전달한다."""
 		return self.send({
 			"event": "step",
 			"sessionId": session_id,
@@ -110,11 +114,13 @@ class LearningApiClient:
 		})
 
 	def episode_end(self, session_id: str) -> dict:
+		"""에피소드 종료 이벤트를 서버로 전달한다."""
 		return self.send({"event": "episode_end", "sessionId": session_id, "done": True})
 
 
 @dataclass
 class Transition:
+	"""리플레이 버퍼에 저장하는 한 스텝 분의 전이(상태·행동·보상·다음 상태·종료 여부)."""
 	state: torch.Tensor
 	action: int
 	reward: float
@@ -203,6 +209,7 @@ class FeverState:
 	turn: int = 0
 
 	def observation(self) -> dict[str, Any]:
+		"""이 피버 상태를 관측 인코딩용 딕셔너리로 변환한다."""
 		return {
 			"active": self.active, "gauge": self.gauge, "nextTime": self.next_time,
 			"targetCombo": self.target_combo, "leftTime": self.left_time_ms, "damage": self.damage,
@@ -217,6 +224,7 @@ class PuyoEnvironment:
 	"""
 
 	def __init__(self, seed: int | None = None) -> None:
+		"""시드로 난수 생성기를 만들고 초기 상태로 리셋한다."""
 		self.random = random.Random(seed)
 		self.board: List[List[int]] = []
 		self.current_pair: Tuple[int, int] = (0, 0)
@@ -226,9 +234,11 @@ class PuyoEnvironment:
 		self.reset()
 
 	def _pair(self) -> Tuple[int, int]:
+		"""무작위 색상 두 개로 이루어진 새 뿌요 쌍을 만든다."""
 		return self.random.randrange(COLORS), self.random.randrange(COLORS)
 
 	def reset(self) -> torch.Tensor:
+		"""보드와 상태를 비우고 새 에피소드를 시작한다."""
 		self.board = [[-1 for _ in range(BOARD_WIDTH)] for _ in range(BOARD_HEIGHT)]
 		self.current_pair = self._pair()
 		self.next_pair = self._pair()
@@ -237,6 +247,7 @@ class PuyoEnvironment:
 		return self.observe()
 
 	def observe(self) -> torch.Tensor:
+		"""현재 보드·쌍·공격력·턴을 관측 벡터로 인코딩한다."""
 		return encode_observation(self.board, self.current_pair, self.attack, self.turn)
 
 	def _cells_for_action(self, action: int) -> List[Tuple[int, int, int]] | None:
@@ -262,6 +273,7 @@ class PuyoEnvironment:
 		return [(column, heights[column], first), (second_column, heights[second_column], second)]
 
 	def _resolve(self) -> Tuple[int, int]:
+		"""4개 이상 뭉친 그룹을 연쇄가 끝날 때까지 반복해서 제거하고, 지운 칸 수와 연쇄 수를 반환한다."""
 		chain = 0
 		cleared = 0
 		while True:
@@ -298,6 +310,7 @@ class PuyoEnvironment:
 		return cleared, chain
 
 	def step(self, action: int) -> Tuple[torch.Tensor, float, bool, dict]:
+		"""행동을 착지시키고 연쇄를 해소한 뒤, 다음 관측·보상·종료 여부·정보를 반환한다."""
 		cells = self._cells_for_action(action)
 		if cells is None:
 			return self.observe(), -2.0, True, {"invalid": True}
@@ -370,6 +383,7 @@ class PuyoDuelEnvironment:
 		color_count: Optional[int] = None,
 		self_play_action_fn: Optional[Callable[[torch.Tensor], int]] = None,
 	) -> None:
+		"""대전 설정(상대·시드·피버 룰·색상 수·self-play 콜백)을 받아 초기 상태로 리셋한다."""
 		self.random = random.Random(seed)
 		self.opponent_type = opponent_type
 		self._fever_rule_setting = fever_rule
@@ -400,15 +414,18 @@ class PuyoDuelEnvironment:
 		self.reset()
 
 	def _pair(self) -> Tuple[int, int]:
+		"""현재 색상 수 범위에서 무작위 뿌요 쌍을 만든다."""
 		return self.random.randrange(self.color_count), self.random.randrange(self.color_count)
 
 	def _select_opponent_type(self) -> str:
+		"""지정된 상대가 없으면 self-play와 학습 가능한 적 유형 중 하나를 무작위로 고른다."""
 		if self.opponent_type:
 			return self.opponent_type
 		pool = (self.SELF_PLAY_OPPONENT,) + bundledenemy.TRAINABLE_ENEMY_TYPES
 		return self.random.choice(pool)
 
 	def reset(self) -> torch.Tensor:
+		"""상대·룰·색상 수·양측 보드와 다음 쌍을 새로 뽑아 에피소드를 시작한다."""
 		selected_opponent = self._select_opponent_type()
 		self.is_self_play = selected_opponent == self.SELF_PLAY_OPPONENT
 		# 적 인스턴스는 단탈리온의 진행 단계, 세레의 공격 시뮬레이션 주기처럼 턴을 넘나드는
@@ -441,18 +458,22 @@ class PuyoDuelEnvironment:
 		return self.observe()
 
 	def observe(self) -> torch.Tensor:
+		"""학습 중인 에이전트(agent) 쪽 관측값을 반환한다."""
 		return self._observe_side("agent")
 
 	def _fever(self, side: str) -> FeverState:
+		"""side에 해당하는 피버 상태 객체를 반환한다."""
 		return self.agent_fever if side == "agent" else self.enemy_fever
 
 	def _board(self, side: str) -> List[List[int]]:
+		"""side가 피버 중이면 피버 필드를, 아니면 평소 보드를 반환한다."""
 		state = self._fever(side)
 		if self.fever_rule and state.active:
 			return state.field
 		return self.agent_board if side == "agent" else self.enemy_board
 
 	def _set_board(self, side: str, board: List[List[int]]) -> None:
+		"""side가 피버 중이면 피버 필드를, 아니면 평소 보드를 갱신한다."""
 		state = self._fever(side)
 		if self.fever_rule and state.active:
 			state.field = board
@@ -462,12 +483,14 @@ class PuyoDuelEnvironment:
 			self.enemy_board = board
 
 	def _damage(self, side: str) -> float:
+		"""side가 피버 중이면 피버 전용 미정산 피해를, 아니면 평소 미정산 피해를 반환한다."""
 		state = self._fever(side)
 		if self.fever_rule and state.active:
 			return state.damage
 		return self.agent_damage if side == "agent" else self.enemy_damage
 
 	def _set_damage(self, side: str, damage: float) -> None:
+		"""side가 피버 중이면 피버 전용 미정산 피해를, 아니면 평소 미정산 피해를 갱신한다."""
 		state = self._fever(side)
 		if self.fever_rule and state.active:
 			state.damage = damage
@@ -477,6 +500,7 @@ class PuyoDuelEnvironment:
 			self.enemy_damage = damage
 
 	def _observe_side(self, side: str) -> torch.Tensor:
+		"""지정한 side의 보드·쌍·공격력·피버 상태 등을 관측 벡터로 인코딩한다."""
 		pair = self.agent_pair if side == "agent" else self.enemy_pair
 		attack = self.agent_attack if side == "agent" else self.enemy_attack
 		ticket = self.agent_all_clear_ticket if side == "agent" else self.enemy_all_clear_ticket
@@ -489,6 +513,7 @@ class PuyoDuelEnvironment:
 		)
 
 	def _refill(self, pairs: List[Tuple[int, int]]) -> Tuple[int, int]:
+		"""다음 쌍 목록 끝에 새 쌍을 채우고, 맨 앞의 쌍을 꺼내 반환한다."""
 		pairs.append(self._pair())
 		return pairs.pop(0)
 
@@ -505,6 +530,7 @@ class PuyoDuelEnvironment:
 		return [landing[0], landing[1]] if landing is not None else None
 
 	def _advance_time(self) -> None:
+		"""경과 시간을 한 턴만큼 진행시키고 마진 레이트·시간 배율·피버 남은 시간을 갱신한다."""
 		self.elapsed_ms += self.DUEL_TURN_DURATION_MS
 		self.margin_rate = get_margin_rate(self.elapsed_ms)
 		self.time_progress_multiplier = get_time_progress_multiplier(self.elapsed_ms)
@@ -515,6 +541,7 @@ class PuyoDuelEnvironment:
 					state.left_time_ms = max(0.0, state.left_time_ms - self.DUEL_TURN_DURATION_MS)
 
 	def _select_fever_stage(self, target_combo: int, pair: Tuple[int, int]) -> tuple[dict[str, Any], dict[str, int]]:
+		"""목표 연쇄·색상 수·지급쌍 조건에 맞는 피버 스테이지를 고르고 실제 색상으로 매핑한다."""
 		stages = load_fever_stage_definitions()
 		same_pair = pair[0] == pair[1]
 		candidates = [stage for stage in stages if len(stage["usingColors"]) <= self.color_count
@@ -546,6 +573,7 @@ class PuyoDuelEnvironment:
 		return stage, color_map
 
 	def _prepare_fever_stage(self, side: str, target_combo: int, count_turn: bool = True) -> None:
+		"""선택한 피버 스테이지를 필드에 배치하고 필요하면 피버 턴 수를 올린다."""
 		state = self._fever(side)
 		pair = self.agent_pair if side == "agent" else self.enemy_pair
 		stage, color_map = self._select_fever_stage(target_combo, pair)
@@ -563,6 +591,7 @@ class PuyoDuelEnvironment:
 			state.turn += 1
 
 	def _activate_fever(self, side: str) -> None:
+		"""피버 룰이 켜져 있고 아직 비활성 상태면 side의 피버를 시작한다."""
 		state = self._fever(side)
 		if not self.fever_rule or state.active:
 			return
@@ -575,6 +604,7 @@ class PuyoDuelEnvironment:
 		self._prepare_fever_stage(side, state.target_combo)
 
 	def _finish_fever(self, side: str) -> None:
+		"""side의 피버를 종료하고 누적된 피버 피해를 평소 미정산 피해로 합산한다."""
 		state = self._fever(side)
 		if not state.active:
 			return
@@ -589,6 +619,7 @@ class PuyoDuelEnvironment:
 		state.left_time_ms = 0.0
 
 	def _register_offset(self, side: str, opponent_side: str) -> bool:
+		"""상쇄 1회를 피버 게이지에 반영하고, 게이지가 가득 차 피버 발동 조건을 채웠는지 반환한다."""
 		state = self._fever(side)
 		if not self.fever_rule or state.active:
 			return False
@@ -598,6 +629,7 @@ class PuyoDuelEnvironment:
 		return state.gauge >= FEVER_GAUGE_MAX
 
 	def _apply_generated_attack(self, side: str, opponent_side: str, attack: float) -> bool:
+		"""side가 만든 공격을 상쇄·전달하고, 상쇄가 발생했다면 피버 게이지 등록 결과를 반환한다."""
 		before = self._damage(side)
 		after, defender = _apply_attack_exchange(before, attack, self._damage(opponent_side))
 		self._set_damage(side, after)
@@ -605,6 +637,7 @@ class PuyoDuelEnvironment:
 		return self._register_offset(side, opponent_side) if after < before else False
 
 	def _after_resolve(self, side: str, combo: int, all_clear: bool, activate_pending: bool) -> None:
+		"""연쇄 해소 이후 싹쓸이 티켓·피버 목표/발동/종료 상태를 갱신한다."""
 		state = self._fever(side)
 		if not self.fever_rule:
 			if all_clear:
@@ -633,6 +666,7 @@ class PuyoDuelEnvironment:
 			self._prepare_fever_stage(side, FEVER_MIN_TARGET_COMBO, count_turn=False)
 
 	def step(self, action: int) -> Tuple[torch.Tensor, float, bool, dict]:
+		"""에이전트가 한 수를 두고 판정한 뒤 상대의 수까지 처리해, 다음 관측·보상·종료 여부·정보를 반환한다."""
 		self._advance_time()
 		bundledenemy.configure_rule(self.fever_rule, self.agent_fever.active)
 		column, rotation = action_to_placement(action)
@@ -714,7 +748,10 @@ class PuyoDuelEnvironment:
 
 
 class PolicyNetwork(nn.Module):
+	"""관측 벡터를 입력받아 각 행동의 Q값을 출력하는 완전연결 DQN 신경망."""
+
 	def __init__(self) -> None:
+		"""256-128 은닉층을 갖는 완전연결 계층들을 구성한다."""
 		super().__init__()
 		self.layers = nn.Sequential(
 			nn.Linear(OBSERVATION_SIZE, 256), nn.ReLU(),
@@ -722,6 +759,7 @@ class PolicyNetwork(nn.Module):
 		)
 
 	def forward(self, state: torch.Tensor) -> torch.Tensor:
+		"""상태를 받아 행동별 Q값을 계산한다."""
 		return self.layers(state)
 
 
@@ -802,6 +840,7 @@ def evaluate_policy(
 	policy = load_policy_checkpoint(checkpoint_path, device)
 
 	def greedy_action(observation: torch.Tensor) -> int:
+		"""탐험 없이 정책이 고르는 최선의 행동을 반환한다."""
 		return choose_policy_action(policy, observation, device)
 
 	wins = losses = draws = 0
@@ -859,6 +898,7 @@ class TrainingControl:
 	"""
 
 	def __init__(self) -> None:
+		"""실행 중 상태로 초기화하고 일시정지·중단·포기 이벤트 플래그를 만든다."""
 		self._running = threading.Event()
 		self._running.set()
 		self._paused = threading.Event()
@@ -951,6 +991,7 @@ def train(
 	epsilon_holder = [epsilon_start]
 
 	def self_play_action(observation: torch.Tensor) -> int:
+		"""self-play 상대측 행동을, 학습 중인 에이전트와 같은 epsilon-greedy 규칙으로 고른다."""
 		if random.random() < epsilon_holder[0]:
 			return random.randrange(ACTION_COUNT)
 		return choose_policy_action(policy, observation, device)
@@ -1044,6 +1085,7 @@ def export_gguf(source: Path, output: Path, converter: Path) -> None:
 
 
 def main() -> None:
+	"""CLI 인자를 파싱해 GGUF 변환·직접 추론·평가·학습 중 하나를 실행한다."""
 	parser = argparse.ArgumentParser(description="Puyo W DQN 학습")
 	parser.add_argument("--episodes", type=int, default=1000, help="학습 에피소드 수")
 	parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="재현 가능한 난수 시드")
