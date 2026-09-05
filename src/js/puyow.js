@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 11;
+    const BUILDNO = 12;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -387,6 +387,47 @@
     Object.assign(stringTable.de, { '피버 룰 (시작)': 'FEVER-Regeln (Start)' });
     Object.assign(stringTable.fr, { '피버 룰 (시작)': 'Règles FEVER (Début)' });
 
+    // 리플레이 기록·재생 관련 문구다. 독일어·프랑스어 표는 위에서 영어 표를 복사한 뒤이므로 언어별로 각각 추가한다.
+    Object.assign(stringTable.en, {
+        '리플레이 재생': 'Play Replay', '리플레이 복사': 'Copy Replay',
+        '리플레이가 클립보드에 복사됨': 'Replay copied to clipboard', '리플레이 복사 실패': 'Replay copy failed',
+        '리플레이 JSON코드를 붙여넣어 주세요.': 'Paste the replay JSON code.',
+        '리플레이 데이터가 올바르지 않습니다.': 'The replay data is not valid.',
+        '리플레이 재현 중 오류가 발생했습니다.': 'An error occurred while playing the replay.'
+    });
+    Object.assign(stringTable.ja, {
+        '리플레이 재생': 'リプレイ再生', '리플레이 복사': 'リプレイをコピー',
+        '리플레이가 클립보드에 복사됨': 'リプレイをクリップボードにコピーしました', '리플레이 복사 실패': 'リプレイのコピーに失敗しました',
+        '리플레이 JSON코드를 붙여넣어 주세요.': 'リプレイのJSONコードを貼り付けてください。',
+        '리플레이 데이터가 올바르지 않습니다.': 'リプレイデータが正しくありません。',
+        '리플레이 재현 중 오류가 발생했습니다.': 'リプレイの再現中にエラーが発生しました。'
+    });
+    Object.assign(stringTable.zh, {
+        '리플레이 재생': '播放回放', '리플레이 복사': '复制回放',
+        '리플레이가 클립보드에 복사됨': '回放已复制到剪贴板', '리플레이 복사 실패': '复制回放失败',
+        '리플레이 JSON코드를 붙여넣어 주세요.': '请粘贴回放 JSON 代码。',
+        '리플레이 데이터가 올바르지 않습니다.': '回放数据无效。',
+        '리플레이 재현 중 오류가 발생했습니다.': '回放播放过程中发生错误。'
+    });
+    Object.assign(stringTable.de, {
+        '리플레이 재생': 'Wiederholung abspielen', '리플레이 복사': 'Wiederholung kopieren',
+        '리플레이가 클립보드에 복사됨': 'Wiederholung in die Zwischenablage kopiert', '리플레이 복사 실패': 'Kopieren der Wiederholung fehlgeschlagen',
+        '리플레이 JSON코드를 붙여넣어 주세요.': 'Füge den Wiederholungs-JSON-Code ein.',
+        '리플레이 데이터가 올바르지 않습니다.': 'Die Wiederholungsdaten sind ungültig.',
+        '리플레이 재현 중 오류가 발생했습니다.': 'Beim Abspielen der Wiederholung ist ein Fehler aufgetreten.',
+        '리플레이 사용': 'Wiederholung verwenden'
+    });
+    Object.assign(stringTable.fr, {
+        '리플레이 재생': 'Lire la reprise', '리플레이 복사': 'Copier la reprise',
+        '리플레이가 클립보드에 복사됨': 'Reprise copiée dans le presse-papiers', '리플레이 복사 실패': 'Échec de la copie de la reprise',
+        '리플레이 JSON코드를 붙여넣어 주세요.': 'Colle le code JSON de la reprise.',
+        '리플레이 데이터가 올바르지 않습니다.': 'Les données de reprise ne sont pas valides.',
+        '리플레이 재현 중 오류가 발생했습니다.': 'Une erreur est survenue pendant la lecture de la reprise.',
+        '리플레이 사용': 'Utiliser la reprise'
+    });
+    Object.assign(stringTable.ja, { '리플레이 사용': 'リプレイを使用' });
+    Object.assign(stringTable.zh, { '리플레이 사용': '使用回放功能' });
+
     /** 현재 최상위 게임 영역이다. @type {HTMLDivElement|null} */
     let puyowRoot = null;
     /** 현재 연결된 2D 게임 캔버스 요소다. @type {HTMLCanvasElement|null} */
@@ -517,6 +558,12 @@
     let opponentMenuRule = 'standard';
     /** 메인 메뉴에서 포커스된 항목이다. @type {number} */
     let titleMenuFocus = 0;
+    /** 메인 메뉴 리플레이 재생 버튼의 포커스 순번이다. @type {number} */
+    const TITLE_REPLAY_FOCUS_INDEX = 8;
+    /** 메인 메뉴 좌측 하단 리플레이 재생 버튼의 위치와 크기다. GitHub 버튼 바로 위에 둔다. @type {{x:number,y:number,width:number,height:number}} */
+    const TITLE_REPLAY_BUTTON = { x: 32, y: 634, width: 85, height: 23 };
+    /** 메인 메뉴 방향키 포커스 이동 순서다. 목록 항목 뒤에 리플레이 재생, GitHub, 음소거 버튼이 온다. @type {number[]} */
+    const TITLE_MENU_FOCUS_ORDER = [0, 1, 2, 3, 4, 5, TITLE_REPLAY_FOCUS_INDEX, 6, 7];
     /** 메인 메뉴의 게임 규칙 선택 오버레이가 열려 있는지 여부다. @type {boolean} */
     let ruleSelectionOpen = false;
     /** 메인 메뉴의 구경 설정 오버레이가 열려 있는지 여부다. @type {boolean} */
@@ -537,6 +584,8 @@
     let ruleSelectionFocus = 0;
     /** 일시정지 메뉴에서 포커스된 항목이다. @type {number} */
     let pauseMenuFocus = 0;
+    /** 결과 화면에서 포커스된 버튼 순번이다. 0번은 항상 종료 버튼이다. @type {number} */
+    let resultScreenFocus = 0;
     /** 직전 애니메이션 프레임의 시각이다. @type {number} */
     let lastTime = 0;
     /** 아래 방향키가 눌린 상태인지 여부다. @type {boolean} */
@@ -1087,7 +1136,7 @@
 
     /** 현재 실제 플레이가 갤러리 예고뿌요 해금을 허용하는 모드인지 판별한다. 피버 룰 (시작)은 예외적으로 허용한다. @returns {boolean} 해금 가능 여부 */
     function canUnlockGalleryWarningInCurrentGame() {
-        return Boolean(game && !game.watch && (!game.feverRule || game.feverStart) && game.running && game.countdown <= 0 && !game.paused && !game.ending && !game.tutorial);
+        return Boolean(game && !game.watch && !game.replayPlayback && (!game.feverRule || game.feverStart) && game.running && game.countdown <= 0 && !game.paused && !game.ending && !game.tutorial);
     }
 
     /** 초기 타이틀 중앙에 그릴, 잠금 해제된 갤러리 대상 목록을 만든다. @returns {{draw:()=>void}[]} */
@@ -2244,6 +2293,8 @@
             players
         };
         players.filter((player) => player.receivesPuyos).forEach(updateNextPairs);
+        // 리플레이는 기본 룰·피버 룰·피버 룰 (시작) 대전에서만 기록한다. 연습과 연속 피버는 대상이 아니다.
+        if (!soloMode) beginReplayRecording();
         syncBackgroundMusic();
     }
 
@@ -2442,6 +2493,8 @@
             players
         };
         players.forEach(updateNextPairs);
+        // 구경 모드의 모든 규칙도 리플레이 기록 대상이다.
+        beginReplayRecording();
         syncBackgroundMusic();
         return true;
     }
@@ -3086,6 +3139,7 @@
         // 이동 목적지가 경계 또는 다른 뿌요와 겹치면 이동하지 않는다.
         if (!canPlace(player, candidate)) return false;
         player.active = candidate;
+        recordReplayInput(player, REPLAY_INPUT.move, horizontal);
         return true;
     }
 
@@ -3103,6 +3157,7 @@
         if (canPlace(player, candidate)) {
             player.active = candidate;
             playSound(commonSoundPool?.puyoRotate, 'effects', '뿌요 회전 효과음');
+            recordReplayInput(player, REPLAY_INPUT.rotate, direction);
             return true;
         }
         const horizontalKick = candidate.rotation === 1 ? -1 : candidate.rotation === 3 ? 1 : 0;
@@ -3111,6 +3166,7 @@
         if (horizontalKick && canPlace(player, kicked)) {
             player.active = kicked;
             playSound(commonSoundPool?.puyoRotate, 'effects', '뿌요 회전 효과음');
+            recordReplayInput(player, REPLAY_INPUT.rotate, direction);
             return true;
         }
         const flipped = { ...player.active, rotation: (player.active.rotation + direction * 2 + 4) % 4 };
@@ -3118,6 +3174,7 @@
         if (canPlace(player, flipped)) {
             player.active = flipped;
             playSound(commonSoundPool?.puyoRotate, 'effects', '뿌요 회전 효과음');
+            recordReplayInput(player, REPLAY_INPUT.rotate, direction * 2);
             return true;
         }
         return false;
@@ -3129,6 +3186,7 @@
      * @returns {void}
      */
     function lockActive(player) {
+        recordReplayInput(player, REPLAY_INPUT.lock, player.active ? player.active.x * 4 + player.active.rotation : -1);
         // 비동기 판단을 기다리는 적은 뿌요가 실제 바닥이나 다른 뿌요에 닿는 즉시 요청을 취소한다.
         cancelPendingWorkerSearch(player.controller, player, 'contact');
         player.controller?.cancelPendingRequest?.(player, 'contact');
@@ -4882,6 +4940,7 @@
         game.winner = player;
         game.running = false;
         game.ending = null;
+        resultScreenFocus = 0;
         finishLearningEpisode(true);
         stopBackgroundMusic();
     }
@@ -4933,6 +4992,9 @@
             awardCurrentGameGold();
             game.running = false;
             game.ending = null;
+            resultScreenFocus = 0;
+            // 승패가 확정된 마지막 상태까지 담아 리플레이 기록을 닫는다.
+            finishReplayRecording();
             finishLearningEpisode(true);
             stopBackgroundMusic();
         }
@@ -6033,7 +6095,7 @@
 
     /** 가상 컨트롤러를 표시할 수 있는 게임 진행 상태인지 확인한다. @returns {boolean} */
     function shouldShowVirtualController() {
-        return Boolean(game && !game.tutorial && game.running && !game.paused && !game.ending && game.countdown <= 0 && store.settings.virtualController !== 'none');
+        return Boolean(game && !game.tutorial && !game.replayPlayback && game.running && !game.paused && !game.ending && game.countdown <= 0 && store.settings.virtualController !== 'none');
     }
 
     /** 선택된 가상 컨트롤러의 렌더링·입력 배율을 반환한다. @returns {number} */
@@ -6330,10 +6392,12 @@
         if (!game.puzzle && enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
         context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
         context.fillText(translate('게임 시간 %1초', Math.floor(game.elapsed / 1000)), WIDTH / 2, 145);
-        if (game.watch) {
+        const resultButtons = getResultScreenButtons();
+        // 구경 대전의 자동 재시작 안내는 버튼이 두 개일 때 두 번째 버튼과 겹치지 않도록 초상화 아래로 내린다.
+        if (game.watch && !game.replayPlayback) {
             const seconds = Math.max(0, Math.ceil((WATCH_AUTO_RESTART_DELAY - game.watch.resultElapsed) / 1000));
             context.fillStyle = '#b8dbe2'; context.font = `16px ${MESSAGE_FONT}`;
-            context.fillText(translate('다음 대전까지 %1초', seconds), WIDTH / 2, 260);
+            context.fillText(translate('다음 대전까지 %1초', seconds), WIDTH / 2, resultButtons.length > 1 ? 470 : 260);
         }
         if (game.puzzle) {
             const cleared = game.winner === game.players[0];
@@ -6341,9 +6405,737 @@
             context.fillText(translate(cleared ? '스테이지 클리어' : '패배'), WIDTH / 2, 380);
         }
         if (showExitButton) {
-            context.fillStyle = '#ef5350'; context.fillRect(515, 165, 250, 64);
-            context.fillStyle = '#ffffff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('종료'), WIDTH / 2, 207);
+            resultButtons.forEach((button, index) => {
+                context.fillStyle = button.color;
+                context.fillRect(button.x, button.y, button.width, button.height);
+                // 선택지가 하나뿐이면 포커스 테두리를 그리지 않아 기존 결과 화면과 같은 모습을 유지한다.
+                if (resultButtons.length > 1) {
+                    context.strokeStyle = resultScreenFocus === index ? '#f7c843' : button.color;
+                    context.lineWidth = resultScreenFocus === index ? 4 : 2;
+                    context.strokeRect(button.x, button.y, button.width, button.height);
+                }
+                context.fillStyle = '#ffffff'; context.font = `22px ${BUTTON_FONT}`; context.textAlign = 'center';
+                context.fillText(translate(button.label), WIDTH / 2, button.y + 42);
+            });
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 리플레이 기록·재생
+    //
+    // 기록은 매 프레임의 화면 상태를 일정 간격으로 표본화한 뒤, 직전 표본과
+    // 달라진 항목만 담는 델타 프레임으로 저장한다. 보드는 칸마다 한 글자인
+    // 문자열로 접어 두고, 시간이 흐르는 연출(폭발·중력·연쇄 표시·싹쓸이·패배)은
+    // 매 프레임 변하는 경과 시간 대신 시작 시각만 저장한다. 덕분에 대부분의
+    // 프레임에는 조작 중인 뿌요 좌표 정도만 남아 메모리 사용량이 크게 줄어든다.
+    // 재생은 같은 상태를 실제 PlayerState와 game 객체에 되돌려 넣어, 평소의
+    // 렌더링 경로를 그대로 사용한다.
+    // ------------------------------------------------------------------
+
+    /** 리플레이 데이터 형식 버전이다. 저장 구조를 바꾸면 이 값을 올린다. @type {number} */
+    const REPLAY_FORMAT_VERSION = 1;
+    /** 리플레이 프레임을 기록하는 간격(ms)이다. 초당 30프레임으로 표본화한다. @type {number} */
+    const REPLAY_SAMPLE_INTERVAL = 1000 / 30;
+    /** 한 리플레이가 보관할 최대 프레임 수다. 약 30분 분량이며, 넘어서면 더 기록하지 않는다. @type {number} */
+    const REPLAY_MAX_FRAMES = 54000;
+    /** 한 리플레이가 보관할 최대 조작 기록 수다. @type {number} */
+    const REPLAY_MAX_INPUTS = 60000;
+    /** 리플레이 재생을 시작하기 전에 보여 줄 카운트다운 시간(ms)이다. @type {number} */
+    const REPLAY_COUNTDOWN_DURATION = 3000;
+    /** 리플레이 재현 오류 안내 후 결과 화면으로 넘어가기까지의 시간(ms)이다. @type {number} */
+    const REPLAY_ERROR_EXIT_DELAY = 2000;
+    /** 조작 기록의 종류다. 0: 좌우 이동, 1: 회전, 2: 빠른 하강, 3: 고정. @type {Record<string,number>} */
+    const REPLAY_INPUT = { move: 0, rotate: 1, fastDown: 2, lock: 3 };
+    /** 리플레이 보드 문자열에 사용할 뿌요 종류별 한 글자 표기다. @type {Record<string,string>} */
+    const REPLAY_PUYO_CHARS = {
+        red: 'r', green: 'g', yellow: 'y', blue: 'b', purple: 'p',
+        garbage: 'G', hardGarbage: 'H', iron: 'I', warningInk: 'W'
+    };
+    /** 리플레이 보드 문자에서 뿌요 종류를 되찾는 역방향 표다. @type {Record<string,string>} */
+    const REPLAY_PUYO_TYPES = Object.fromEntries(Object.entries(REPLAY_PUYO_CHARS).map(([type, char]) => [char, type]));
+    /** 결과 화면 버튼의 세로 간격(px)이다. @type {number} */
+    const RESULT_BUTTON_GAP = 12;
+
+    /** 리플레이 저장에 쓸 자릿수로 반올림한다. @param {number} value 원본 값 @param {number} [digits=0] 소수점 자릿수 @returns {number} 반올림한 값 */
+    function roundReplayNumber(value, digits = 0) {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+        const factor = 10 ** digits;
+        return Math.round(value * factor) / factor;
+    }
+
+    /** 보드를 칸마다 한 글자인 문자열로 접는다. 뒤쪽 빈 칸은 잘라내 길이를 줄인다. @param {(string|null)[][]} board 접을 보드 @returns {string} 보드 문자열 */
+    function encodeReplayBoard(board) {
+        let text = '';
+        for (let y = 0; y < ROWS; y += 1) {
+            for (let x = 0; x < COLUMNS; x += 1) {
+                const cell = board?.[y]?.[x];
+                text += cell ? (REPLAY_PUYO_CHARS[cell] || '.') : '.';
+            }
+        }
+        return text.replace(/\.+$/, '');
+    }
+
+    /** 보드 문자열을 다시 보드 배열로 편다. @param {string} text 보드 문자열 @returns {(string|null)[][]} 복원한 보드 */
+    function decodeReplayBoard(text) {
+        const board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+        if (typeof text !== 'string') throw new TypeError('리플레이 보드 값이 문자열이 아닙니다.');
+        const length = Math.min(text.length, ROWS * COLUMNS);
+        for (let index = 0; index < length; index += 1) {
+            const char = text[index];
+            if (char === '.') continue;
+            const type = REPLAY_PUYO_TYPES[char];
+            if (!type) throw new TypeError('리플레이 보드에 알 수 없는 뿌요 문자가 있습니다.');
+            board[Math.floor(index / COLUMNS)][index % COLUMNS] = type;
+        }
+        return board;
+    }
+
+    /** 뿌요 쌍 목록을 색상당 한 글자인 문자열로 접는다. @param {string[][]} pairs 뿌요 쌍 목록 @returns {string} 쌍 문자열 */
+    function encodeReplayPairs(pairs) {
+        return (pairs || []).map((pair) => `${REPLAY_PUYO_CHARS[pair?.[0]] || '.'}${REPLAY_PUYO_CHARS[pair?.[1]] || '.'}`).join('');
+    }
+
+    /** 쌍 문자열을 다시 뿌요 쌍 목록으로 편다. @param {string} text 쌍 문자열 @returns {string[][]} 복원한 뿌요 쌍 목록 */
+    function decodeReplayPairs(text) {
+        if (typeof text !== 'string') throw new TypeError('리플레이 뿌요 쌍 값이 문자열이 아닙니다.');
+        const pairs = [];
+        for (let index = 0; index + 1 < text.length; index += 2) {
+            const first = REPLAY_PUYO_TYPES[text[index]];
+            const second = REPLAY_PUYO_TYPES[text[index + 1]];
+            if (!first || !second) throw new TypeError('리플레이 뿌요 쌍에 알 수 없는 문자가 있습니다.');
+            pairs.push([first, second]);
+        }
+        return pairs;
+    }
+
+    /** 좌표 목록을 [x, y, 뿌요문자] 형태로 접는다. @param {{x:number,y:number,color:string}[]} cells 대상 목록 @returns {(number|string)[][]} 접은 목록 */
+    function encodeReplayCells(cells) {
+        return (cells || []).map((cell) => [cell.x, cell.y, REPLAY_PUYO_CHARS[cell.color] || '.']);
+    }
+
+    /** 접은 좌표 목록을 다시 뿌요 좌표 객체 목록으로 편다. @param {(number|string)[][]} cells 접은 목록 @returns {{x:number,y:number,color:string}[]} 복원한 목록 */
+    function decodeReplayCells(cells) {
+        if (!Array.isArray(cells)) throw new TypeError('리플레이 좌표 목록이 배열이 아닙니다.');
+        return cells.map((cell) => {
+            if (!Array.isArray(cell) || cell.length < 3) throw new TypeError('리플레이 좌표 항목 형식이 올바르지 않습니다.');
+            const color = REPLAY_PUYO_TYPES[cell[2]];
+            if (!color) throw new TypeError('리플레이 좌표 항목에 알 수 없는 뿌요 문자가 있습니다.');
+            return { x: Number(cell[0]), y: Number(cell[1]), color };
+        });
+    }
+
+    /**
+     * 직전 표본과 달라진 값만 이번 델타 프레임에 담는다.
+     * 배열·객체 값은 JSON 문자열로 비교하고, 프레임에는 원래 값을 그대로 넣는다.
+     * @param {object} frame 기록할 델타 프레임
+     * @param {string} group 프레임 안의 묶음 이름 (g: 전역, a: 왼쪽, b: 오른쪽)
+     * @param {Record<string,*>} previous 이 묶음의 직전 표본 값
+     * @param {string} name 항목 이름
+     * @param {*} value 이번 표본 값
+     * @returns {void}
+     */
+    function assignReplayField(frame, group, previous, name, value) {
+        const token = value !== null && typeof value === 'object' ? JSON.stringify(value) : value;
+        if (Object.prototype.hasOwnProperty.call(previous, name) && previous[name] === token) return;
+        previous[name] = token;
+        if (!frame[group]) frame[group] = {};
+        frame[group][name] = value;
+    }
+
+    /** 현재 설정이 리플레이를 기록하도록 되어 있는지 확인한다. @returns {boolean} 기록 여부 */
+    function shouldRecordReplay() {
+        return store?.settings?.useReplayFeature === true;
+    }
+
+    /** 이번 게임의 규칙·적·플레이어 정보를 리플레이 머리말로 만든다. @returns {object} 리플레이 머리말 */
+    function createReplayMeta() {
+        return {
+            rule: game.watch ? (game.watch.rule || 'standard') : game.feverStart ? 'feverStart' : game.feverRule ? 'fever' : 'standard',
+            watch: Boolean(game.watch),
+            feverRule: Boolean(game.feverRule),
+            feverStart: Boolean(game.feverStart),
+            feverLightStart: game.players[0]?.fever?.lightStart ?? FEVER_LIGHT_STARTS,
+            difficulty: game.difficulty,
+            aiDifficulty: game.aiDifficulty,
+            colors: [...(game.pairQueueColors || COLORS)],
+            players: game.players.map((player) => ({
+                name: player.name,
+                controller: player.controller ? player.controller.getClassType() : null
+            }))
+        };
+    }
+
+    /** 이번 게임의 리플레이 기록기를 만든다. @returns {object} 리플레이 기록기 */
+    function createReplayRecorder() {
+        return {
+            meta: createReplayMeta(),
+            frames: [],
+            inputs: [],
+            deck: null,
+            result: null,
+            previous: { g: {}, a: {}, b: {} },
+            fastDown: [false, false],
+            elapsed: 0,
+            sampleElapsed: 0,
+            finished: false
+        };
+    }
+
+    /** 설정이 켜져 있으면 이번 대전·구경 게임의 리플레이 기록을 시작한다. @returns {void} */
+    function beginReplayRecording() {
+        if (!game || !shouldRecordReplay()) return;
+        game.replay = createReplayRecorder();
+    }
+
+    /**
+     * 시간대별 컨트롤 조작을 기록한다.
+     * @param {PlayerState} player 조작한 플레이어
+     * @param {number} action REPLAY_INPUT의 조작 종류
+     * @param {number} value 이동 방향·회전 방향 등 조작 값
+     * @returns {void}
+     */
+    function recordReplayInput(player, action, value) {
+        const recorder = game?.replay;
+        if (!recorder || recorder.finished || !game.running || game.countdown > 0) return;
+        if (recorder.inputs.length >= REPLAY_MAX_INPUTS) return;
+        const index = game.players.indexOf(player);
+        if (index < 0) return;
+        recorder.inputs.push([Math.round(recorder.elapsed), index, action, value]);
+    }
+
+    /** 현재 이동 중인 공격 에너지의 표시 좌표와 투명도만 추려 낸다. @returns {number[][]|null} 에너지 표시 정보 */
+    function captureReplayEnergies() {
+        const transfers = game?.energyTransfers;
+        if (!transfers?.length) return null;
+        return transfers.map((energy) => {
+            const segment = energy.route[energy.routeIndex] || energy.route[energy.route.length - 1];
+            if (energy.fading) {
+                const progress = Math.min(1, energy.elapsed / 150);
+                return [roundReplayNumber(energy.position.x, 1), roundReplayNumber(energy.position.y, 1), roundReplayNumber(1 - progress, 3)];
+            }
+            const progress = Math.min(1, energy.elapsed / 250);
+            const arc = segment.arcDirection === 'down' ? CELL * 3 : -CELL * 0.7;
+            const inverse = 1 - progress;
+            const x = inverse * energy.position.x + progress * segment.target.x;
+            const y = inverse * energy.position.y + progress * segment.target.y + 4 * inverse * progress * arc;
+            return [roundReplayNumber(x, 1), roundReplayNumber(y, 1), 1];
+        });
+    }
+
+    /** 진행 중인 패배 연출을 시작 시각 기준으로 접는다. @param {object} recorder 리플레이 기록기 @returns {Array|null} 패배 연출 정보 */
+    function captureReplayEnding(recorder) {
+        const ending = game?.ending;
+        if (!ending) return null;
+        return [
+            game.players.indexOf(ending.loser),
+            Math.round(recorder.elapsed - ending.elapsed),
+            Math.round(ending.duration),
+            encodeReplayCells(ending.fallingPuyos)
+        ];
+    }
+
+    /**
+     * 한 플레이어의 이번 표본을 델타 프레임에 담는다.
+     * @param {object} frame 기록할 델타 프레임
+     * @param {string} group 프레임 안의 묶음 이름
+     * @param {object} recorder 리플레이 기록기
+     * @param {PlayerState} player 대상 플레이어
+     * @returns {void}
+     */
+    function captureReplayPlayer(frame, group, recorder, player) {
+        const previous = recorder.previous[group];
+        const fever = player.fever;
+        assignReplayField(frame, group, previous, 'nb', encodeReplayBoard(player.normalBoard));
+        assignReplayField(frame, group, previous, 'fb', fever ? encodeReplayBoard(fever.field) : '');
+        assignReplayField(frame, group, previous, 'ac', player.active
+            ? [player.active.x, roundReplayNumber(player.active.y, 2), player.active.rotation,
+                REPLAY_PUYO_CHARS[player.active.colors[0]] || '.', REPLAY_PUYO_CHARS[player.active.colors[1]] || '.']
+            : null);
+        assignReplayField(frame, group, previous, 'pt', Math.round(player.point));
+        assignReplayField(frame, group, previous, 'at', roundReplayNumber(player.attack, 3));
+        assignReplayField(frame, group, previous, 'nd', roundReplayNumber(player.normalDamage, 3));
+        assignReplayField(frame, group, previous, 'fd', fever ? roundReplayNumber(fever.damage, 3) : 0);
+        assignReplayField(frame, group, previous, 'cb', player.combo);
+        assignReplayField(frame, group, previous, 'ph', player.phase);
+        assignReplayField(frame, group, previous, 'tk', player.allClearTicket ? 1 : 0);
+        assignReplayField(frame, group, previous, 'ae', player.allClearEffectElapsed > 0 ? Math.round(recorder.elapsed + player.allClearEffectElapsed) : 0);
+        assignReplayField(frame, group, previous, 'aa', roundReplayNumber(player.announcedAttack, 3));
+        assignReplayField(frame, group, previous, 'wr', roundReplayNumber(player.warningReductionDelay, 3));
+        assignReplayField(frame, group, previous, 'np', encodeReplayPairs(player.nextPairs.slice(0, getExposedNextPairCount())));
+        assignReplayField(frame, group, previous, 'ef', player.effects
+            ? [Math.round(recorder.elapsed - player.effects.elapsed), Math.round(player.effects.duration), encodeReplayCells(player.effects.cells)]
+            : null);
+        assignReplayField(frame, group, previous, 'gv', player.gravityAnimation
+            ? [Math.round(recorder.elapsed - player.gravityAnimation.elapsed), Math.round(player.gravityAnimation.duration),
+                player.gravityAnimation.falling.map((puyo) => [puyo.x, puyo.fromY, puyo.toY, REPLAY_PUYO_CHARS[puyo.color] || '.'])]
+            : null);
+        assignReplayField(frame, group, previous, 'cp', player.comboPopups.length
+            ? player.comboPopups.map((popup) => [roundReplayNumber(popup.x, 2), roundReplayNumber(popup.y, 2), popup.combo, Math.round(recorder.elapsed - popup.elapsed)])
+            : null);
+        assignReplayField(frame, group, previous, 'fv', fever
+            ? [fever.active ? 1 : 0, fever.gauge, fever.nextTime, fever.targetCombo, fever.lightStart, fever.turn]
+            : null);
+        assignReplayField(frame, group, previous, 'fl', fever ? Math.round(fever.leftTime / 50) * 50 : 0);
+    }
+
+    /** 현재 화면 상태를 델타 프레임 한 장으로 기록한다. @param {object} recorder 리플레이 기록기 @returns {void} */
+    function writeReplayFrame(recorder) {
+        const frame = { t: Math.round(recorder.elapsed) };
+        assignReplayField(frame, 'g', recorder.previous.g, 'el', Math.round(game.elapsed));
+        assignReplayField(frame, 'g', recorder.previous.g, 'et', captureReplayEnergies());
+        assignReplayField(frame, 'g', recorder.previous.g, 'en', captureReplayEnding(recorder));
+        captureReplayPlayer(frame, 'a', recorder, game.players[0]);
+        captureReplayPlayer(frame, 'b', recorder, game.players[1]);
+        recorder.frames.push(frame);
+    }
+
+    /** 표본 간격이 지났으면 이번 프레임의 상태와 빠른 하강 변화를 기록한다. @param {number} delta 직전 프레임 후 경과한 밀리초 @returns {void} */
+    function recordReplayFrame(delta) {
+        const recorder = game?.replay;
+        if (!recorder || recorder.finished) return;
+        recorder.elapsed += delta;
+        recorder.sampleElapsed += delta;
+        game.players.forEach((player, index) => {
+            const fastDown = player.controller ? player.aiFastDown === true : (isDownKeyPressed || virtualDirectionInput.arrowdown === true);
+            if (recorder.fastDown[index] === fastDown) return;
+            recorder.fastDown[index] = fastDown;
+            recordReplayInput(player, REPLAY_INPUT.fastDown, fastDown ? 1 : 0);
+        });
+        if (recorder.frames.length && recorder.sampleElapsed < REPLAY_SAMPLE_INTERVAL) return;
+        if (recorder.frames.length >= REPLAY_MAX_FRAMES) return;
+        recorder.sampleElapsed = 0;
+        writeReplayFrame(recorder);
+    }
+
+    /** 게임이 끝난 시점의 마지막 상태와 뿌요 지급 덱·승패를 기록하고 리플레이를 닫는다. @returns {void} */
+    function finishReplayRecording() {
+        const recorder = game?.replay;
+        if (!recorder || recorder.finished) return;
+        if (recorder.frames.length < REPLAY_MAX_FRAMES) writeReplayFrame(recorder);
+        recorder.deck = {
+            colors: [...(game.pairQueueColors || [])],
+            pairs: encodeReplayPairs(game.pairQueue || []),
+            positions: game.players.map((player) => player.pairQueuePosition),
+            placed: game.players.map((player) => player.placedPairCount)
+        };
+        recorder.result = { winner: game.players.indexOf(game.winner), elapsed: Math.round(game.elapsed) };
+        recorder.finished = true;
+    }
+
+    /** 기록기를 외부에 전달할 리플레이 데이터 객체로 만든다. @param {object} recorder 리플레이 기록기 @returns {object} 리플레이 데이터 */
+    function buildReplayData(recorder) {
+        return {
+            version: REPLAY_FORMAT_VERSION,
+            build: BUILDNO,
+            meta: recorder.meta,
+            deck: recorder.deck,
+            inputs: recorder.inputs,
+            result: recorder.result,
+            frames: recorder.frames
+        };
+    }
+
+    /**
+     * 현재 게임에서 기록 중이거나 기록을 마친 리플레이 데이터를 반환한다.
+     * 설정에서 리플레이를 사용하지 않거나 기록 대상이 아닌 모드면 null을 반환한다.
+     * @returns {object|null} JSON으로 변환할 수 있는 리플레이 데이터
+     */
+    function getReplayData() {
+        const recorder = game?.replay;
+        return recorder ? buildReplayData(recorder) : null;
+    }
+
+    /** 결과 화면에 리플레이 복사 버튼을 보여 줄 수 있는 상태인지 확인한다. @returns {boolean} 복사 가능 여부 */
+    function hasCopyableReplay() {
+        return Boolean(game?.replay?.frames?.length);
+    }
+
+    /** 현재 게임의 리플레이 기록을 JSON 문자열로 클립보드에 복사한다. @returns {void} */
+    function copyReplayToClipboard() {
+        const recorder = game?.replay;
+        if (!recorder) return;
+        playMenuSelectSound();
+        let serialized = null;
+        try {
+            serialized = JSON.stringify(buildReplayData(recorder));
+        } catch (error) {
+            console.error('리플레이 데이터를 JSON으로 변환하지 못했습니다.', error);
+            showMessage(translate('리플레이 복사 실패'), '#ef5350', 3500);
+            return;
+        }
+        if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+            console.error('리플레이를 클립보드에 복사할 수 없습니다.');
+            showMessage(translate('클립보드 복사 실패'), '#ef5350', 3500);
+            return;
+        }
+        navigator.clipboard.writeText(serialized).then(() => {
+            showMessage(translate('리플레이가 클립보드에 복사됨'), '#f7c843', 3500);
+        }).catch((error) => {
+            console.error('리플레이 클립보드 복사에 실패했습니다.', error);
+            showMessage(translate('클립보드 복사 실패'), '#ef5350', 3500);
+        });
+    }
+
+    /** 리플레이 색상 목록이 현재 게임에서 쓸 수 있는 형태인지 확인한다. @param {unknown} value 검사할 값 @returns {boolean} 사용 가능 여부 */
+    function isReplayColorList(value) {
+        return Array.isArray(value) && value.length > 0 && value.every((color) => COLORS.includes(color));
+    }
+
+    /**
+     * 입력받은 값이 리플레이 데이터와 호환되는지 검사하고, 재생에 쓸 형태로 정리한다.
+     * @param {unknown} data 검사할 값
+     * @returns {object|null} 정리한 리플레이 데이터. 호환되지 않으면 null
+     */
+    function normalizeReplayData(data) {
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+        if (data.version !== REPLAY_FORMAT_VERSION) return null;
+        const meta = data.meta;
+        if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return null;
+        if (!isReplayColorList(meta.colors)) return null;
+        if (!Array.isArray(meta.players) || meta.players.length !== 2) return null;
+        if (!meta.players.every((info) => info && typeof info === 'object' && typeof info.name === 'string')) return null;
+        if (!Array.isArray(data.frames) || !data.frames.length) return null;
+        if (!data.frames.every((frame) => frame && typeof frame === 'object' && !Array.isArray(frame) && Number.isFinite(frame.t))) return null;
+        const result = data.result && typeof data.result === 'object' && !Array.isArray(data.result) ? data.result : null;
+        return {
+            version: data.version,
+            meta: {
+                rule: typeof meta.rule === 'string' ? meta.rule : 'standard',
+                watch: meta.watch === true,
+                feverRule: meta.feverRule === true,
+                feverStart: meta.feverStart === true,
+                feverLightStart: Number.isInteger(meta.feverLightStart) ? Math.max(0, Math.min(6, meta.feverLightStart)) : FEVER_LIGHT_STARTS,
+                difficulty: DIFFICULTIES[meta.difficulty] ? meta.difficulty : 1,
+                aiDifficulty: AI_DIFFICULTIES[meta.aiDifficulty] ? meta.aiDifficulty : 1,
+                colors: [...meta.colors],
+                players: meta.players.map((info) => ({
+                    name: info.name,
+                    controller: typeof info.controller === 'string' ? info.controller : null
+                }))
+            },
+            result: result ? { winner: Number.isInteger(result.winner) ? result.winner : -1 } : null,
+            frames: data.frames
+        };
+    }
+
+    /** 저장된 적 클래스 타입으로 리플레이 표시용 컨트롤러를 만든다. @param {string|null} classType 적 클래스 타입 @returns {Enemy} 표시용 적 인스턴스 */
+    function createReplayController(classType) {
+        const entry = OPPONENTS.find((candidate) => candidate.classType === classType);
+        return entry ? entry.createController() : new PracticeEnemy();
+    }
+
+    /** 메인 메뉴에서 리플레이 JSON을 입력받아 재생을 시작한다. @returns {void} */
+    function openReplayPlaybackPrompt() {
+        const serialized = window.prompt(translate('리플레이 JSON코드를 붙여넣어 주세요.'));
+        if (serialized === null || serialized.trim() === '') return;
+        const replay = normalizeReplayData(parseJSON(serialized));
+        if (!replay) {
+            showMessage(translate('리플레이 데이터가 올바르지 않습니다.'), '#ef5350', 3500);
+            return;
+        }
+        startReplayPlayback(replay);
+    }
+
+    /**
+     * 리플레이 데이터로 재생용 게임 화면을 구성하고 카운트다운을 시작한다.
+     * @param {object} replay normalizeReplayData()로 정리한 리플레이 데이터
+     * @returns {void}
+     */
+    function startReplayPlayback(replay) {
+        const meta = replay.meta;
+        const colors = meta.colors;
+        const controllers = meta.players.map((info) => createReplayController(info.controller));
+        const players = [
+            new PlayerState(meta.players[0].name, FIELD_LEFT, meta.watch ? controllers[0] : null, colors),
+            new PlayerState(meta.players[1].name, FIELD_RIGHT, controllers[1], colors)
+        ];
+        if (meta.feverRule) players.forEach((player) => { player.fever = createFeverRuleState(meta.feverLightStart); });
+        // 재생은 기록된 프레임만 반영하므로 플레이어의 자체 진행 단계는 멈춰 둔다.
+        players.forEach((player) => { player.phase = 'idle'; player.nextPairs = []; });
+        resetKeyboardDirectionInput();
+        resetVirtualControllerInput();
+        resultScreenFocus = 0;
+        game = {
+            running: true,
+            paused: false,
+            winner: null,
+            goldAwarded: true,
+            ending: null,
+            countdown: REPLAY_COUNTDOWN_DURATION,
+            countdownStartsGame: false,
+            elapsed: 0,
+            marginRate: MARGIN_RATE_SCHEDULE[0].rate,
+            timeProgressMultiplier: 1,
+            practice: false,
+            continuousFever: false,
+            feverRule: meta.feverRule,
+            feverStart: meta.feverStart,
+            fever: null,
+            // 구경 리플레이만 watch 속성을 갖는다. 일반 대전 리플레이에서는 속성 자체를 만들지 않아야
+            // getGameState()가 구경 모드로 잘못 보고하지 않는다.
+            ...(meta.watch ? {
+                watch: {
+                    difficulty: meta.difficulty,
+                    feverRule: meta.feverRule,
+                    rule: meta.rule,
+                    relaxedFever: meta.rule === 'relaxedFever',
+                    resultElapsed: 0,
+                    opponentTypes: meta.players.map((info) => info.controller),
+                    openingPlacementColumns: []
+                }
+            } : {}),
+            difficulty: meta.difficulty,
+            aiDifficulty: meta.aiDifficulty,
+            opponentIndex: null,
+            themeController: controllers[1],
+            pairQueueColors: colors,
+            pairQueue: [],
+            energyTransfers: [],
+            players,
+            replay: null,
+            replayPlayback: {
+                replay,
+                frames: replay.frames,
+                index: 0,
+                time: 0,
+                errorElapsed: null,
+                allClearEnd: [0, 0]
+            }
+        };
+        syncBackgroundMusic();
+    }
+
+    /** 현재 재생 중이던 리플레이를 처음부터 다시 재현한다. @returns {void} */
+    function restartReplayPlayback() {
+        const playback = game?.replayPlayback;
+        if (!playback) return;
+        playMenuSelectSound();
+        startReplayPlayback(playback.replay);
+    }
+
+    /** 리플레이 재현을 끝내고 결과 화면으로 넘어간다. @returns {void} */
+    function finishReplayPlayback() {
+        const playback = game?.replayPlayback;
+        if (!playback || !game.running) return;
+        const winnerIndex = playback.replay.result?.winner;
+        game.winner = Number.isInteger(winnerIndex) && game.players[winnerIndex] ? game.players[winnerIndex] : null;
+        game.running = false;
+        game.ending = null;
+        resultScreenFocus = 0;
+        syncBackgroundMusic();
+    }
+
+    /**
+     * 델타 프레임의 전역 항목을 현재 게임 상태에 반영한다.
+     * @param {object} playback 재생 상태
+     * @param {Record<string,*>} fields 이번 프레임의 전역 항목
+     * @returns {void}
+     */
+    function applyReplayGlobalFields(playback, fields) {
+        if ('el' in fields) game.elapsed = Number(fields.el) || 0;
+        if ('et' in fields) {
+            // 기록해 둔 표시 좌표·투명도를 그대로 그리도록, 소멸 연출 형태의 표시 전용 에너지로 되돌린다.
+            game.energyTransfers = (fields.et || []).map((energy) => {
+                if (!Array.isArray(energy) || energy.length < 3) throw new TypeError('리플레이 에너지 항목 형식이 올바르지 않습니다.');
+                const position = { x: Number(energy[0]), y: Number(energy[1]) };
+                return {
+                    fading: true,
+                    elapsed: (1 - Number(energy[2])) * 150,
+                    position,
+                    route: [{ target: position }],
+                    routeIndex: 0
+                };
+            });
+        }
+        if ('en' in fields) {
+            const ending = fields.en;
+            if (!ending) game.ending = null;
+            else {
+                if (!Array.isArray(ending) || ending.length < 4) throw new TypeError('리플레이 패배 연출 형식이 올바르지 않습니다.');
+                const loserIndex = Number(ending[0]);
+                const loser = game.players[loserIndex];
+                if (!loser) throw new TypeError('리플레이 패배 연출의 플레이어 번호가 올바르지 않습니다.');
+                game.ending = {
+                    loser,
+                    winner: game.players[1 - loserIndex],
+                    elapsed: Math.max(0, playback.time - Number(ending[1])),
+                    duration: Number(ending[2]),
+                    fallingPuyos: decodeReplayCells(ending[3]),
+                    replayStart: Number(ending[1])
+                };
+            }
+        }
+    }
+
+    /**
+     * 델타 프레임의 한 플레이어 항목을 현재 게임 상태에 반영한다.
+     * @param {object} playback 재생 상태
+     * @param {number} index 플레이어 번호
+     * @param {Record<string,*>} fields 이번 프레임의 플레이어 항목
+     * @returns {void}
+     */
+    function applyReplayPlayerFields(playback, index, fields) {
+        const player = game.players[index];
+        const fever = player.fever;
+        if ('nb' in fields) player.normalBoard = decodeReplayBoard(fields.nb);
+        if ('fb' in fields && fever) fever.field = decodeReplayBoard(fields.fb);
+        if ('ac' in fields) {
+            const active = fields.ac;
+            if (!active) player.active = null;
+            else {
+                if (!Array.isArray(active) || active.length < 5) throw new TypeError('리플레이 조작 뿌요 형식이 올바르지 않습니다.');
+                const first = REPLAY_PUYO_TYPES[active[3]];
+                const second = REPLAY_PUYO_TYPES[active[4]];
+                if (!first || !second) throw new TypeError('리플레이 조작 뿌요에 알 수 없는 색상이 있습니다.');
+                player.active = { x: Number(active[0]), y: Number(active[1]), rotation: Number(active[2]), colors: [first, second] };
+            }
+        }
+        if ('pt' in fields) player.point = Number(fields.pt) || 0;
+        if ('at' in fields) player.attack = Number(fields.at) || 0;
+        if ('nd' in fields) player.normalDamage = Number(fields.nd) || 0;
+        if ('fd' in fields && fever) fever.damage = Number(fields.fd) || 0;
+        if ('cb' in fields) player.combo = Number(fields.cb) || 0;
+        if ('ph' in fields) player.phase = String(fields.ph);
+        if ('tk' in fields) player.allClearTicket = fields.tk === 1;
+        if ('ae' in fields) playback.allClearEnd[index] = Number(fields.ae) || 0;
+        if ('aa' in fields) player.announcedAttack = Number(fields.aa) || 0;
+        if ('wr' in fields) player.warningReductionDelay = Number(fields.wr) || 0;
+        if ('np' in fields) player.nextPairs = decodeReplayPairs(fields.np);
+        if ('ef' in fields) {
+            const effects = fields.ef;
+            if (!effects) player.effects = null;
+            else {
+                if (!Array.isArray(effects) || effects.length < 3) throw new TypeError('리플레이 폭발 연출 형식이 올바르지 않습니다.');
+                player.effects = { cells: decodeReplayCells(effects[2]), duration: Number(effects[1]), elapsed: 0, replayStart: Number(effects[0]) };
+            }
+        }
+        if ('gv' in fields) {
+            const gravity = fields.gv;
+            if (!gravity) player.gravityAnimation = null;
+            else {
+                if (!Array.isArray(gravity) || gravity.length < 3 || !Array.isArray(gravity[2])) throw new TypeError('리플레이 중력 연출 형식이 올바르지 않습니다.');
+                player.gravityAnimation = {
+                    falling: gravity[2].map((puyo) => {
+                        const color = REPLAY_PUYO_TYPES[puyo?.[3]];
+                        if (!color) throw new TypeError('리플레이 중력 연출에 알 수 없는 뿌요 문자가 있습니다.');
+                        return { x: Number(puyo[0]), fromY: Number(puyo[1]), toY: Number(puyo[2]), color };
+                    }),
+                    duration: Number(gravity[1]),
+                    elapsed: 0,
+                    replayStart: Number(gravity[0])
+                };
+            }
+        }
+        if ('cp' in fields) {
+            const popups = fields.cp;
+            if (!popups) player.comboPopups = [];
+            else {
+                if (!Array.isArray(popups)) throw new TypeError('리플레이 연쇄 표시 형식이 올바르지 않습니다.');
+                player.comboPopups = popups.map((popup) => {
+                    if (!Array.isArray(popup) || popup.length < 4) throw new TypeError('리플레이 연쇄 표시 항목 형식이 올바르지 않습니다.');
+                    return { x: Number(popup[0]), y: Number(popup[1]), combo: Number(popup[2]), elapsed: 0, replayStart: Number(popup[3]) };
+                });
+            }
+        }
+        if ('fv' in fields && fever) {
+            const state = fields.fv;
+            if (Array.isArray(state) && state.length >= 6) {
+                fever.active = state[0] === 1;
+                fever.gauge = Number(state[1]) || 0;
+                fever.nextTime = Number(state[2]) || 0;
+                fever.targetCombo = Number(state[3]) || 0;
+                fever.lightStart = Number(state[4]) || 0;
+                fever.turn = Number(state[5]) || 0;
+            }
+        }
+        if ('fl' in fields && fever) fever.leftTime = Number(fields.fl) || 0;
+    }
+
+    /**
+     * 한 델타 프레임을 현재 게임 상태에 반영한다.
+     * @param {object} playback 재생 상태
+     * @param {object} frame 반영할 델타 프레임
+     * @returns {void}
+     */
+    function applyReplayFrame(playback, frame) {
+        if (frame.g) applyReplayGlobalFields(playback, frame.g);
+        if (frame.a) applyReplayPlayerFields(playback, 0, frame.a);
+        if (frame.b) applyReplayPlayerFields(playback, 1, frame.b);
+    }
+
+    /** 시작 시각만 저장한 연출들의 경과 시간을 현재 재생 시각으로 다시 계산한다. @param {object} playback 재생 상태 @returns {void} */
+    function refreshReplayAnimationTimers(playback) {
+        const time = playback.time;
+        game.players.forEach((player, index) => {
+            if (player.effects) player.effects.elapsed = Math.max(0, time - player.effects.replayStart);
+            if (player.gravityAnimation) player.gravityAnimation.elapsed = Math.max(0, time - player.gravityAnimation.replayStart);
+            player.comboPopups.forEach((popup) => { popup.elapsed = Math.max(0, time - popup.replayStart); });
+            const allClearEnd = playback.allClearEnd[index];
+            player.allClearEffectElapsed = allClearEnd > 0 ? Math.max(0, allClearEnd - time) : 0;
+        });
+        if (game.ending) game.ending.elapsed = Math.max(0, time - game.ending.replayStart);
+    }
+
+    /**
+     * 리플레이 재생을 시간만큼 진행한다. 카운트다운, 프레임 반영, 오류 처리, 종료를 함께 다룬다.
+     * @param {number} delta 직전 프레임 후 경과한 밀리초
+     * @returns {void}
+     */
+    function updateReplayPlayback(delta) {
+        const playback = game.replayPlayback;
+        if (!game.running || game.paused) return;
+        if (game.countdown > 0) {
+            game.countdown = Math.max(0, game.countdown - delta);
+            return;
+        }
+        if (playback.errorElapsed !== null) {
+            playback.errorElapsed += delta;
+            if (playback.errorElapsed >= REPLAY_ERROR_EXIT_DELAY) finishReplayPlayback();
+            return;
+        }
+        playback.time += delta;
+        try {
+            while (playback.index < playback.frames.length && playback.frames[playback.index].t <= playback.time) {
+                applyReplayFrame(playback, playback.frames[playback.index]);
+                playback.index += 1;
+            }
+            refreshReplayAnimationTimers(playback);
+        } catch (error) {
+            console.error('리플레이를 재현하는 중 오류가 발생했습니다.', error);
+            showMessage(translate('리플레이 재현 중 오류가 발생했습니다.'), '#ef5350', REPLAY_ERROR_EXIT_DELAY);
+            playback.errorElapsed = 0;
+            return;
+        }
+        if (playback.index >= playback.frames.length) finishReplayPlayback();
+    }
+
+    /**
+     * 결과 화면에 표시할 버튼 목록과 위치를 반환한다.
+     * 리플레이 재생 결과에는 다시보기를, 리플레이가 기록된 대전 결과에는 리플레이 복사를 종료 버튼 아래에 둔다.
+     * @returns {{key:string,label:string,color:string,x:number,y:number,width:number,height:number}[]} 결과 화면 버튼 목록
+     */
+    function getResultScreenButtons() {
+        if (!game || game.running) return [];
+        const buttons = [{ key: 'exit', label: '종료', color: '#ef5350' }];
+        if (game.replayPlayback) buttons.push({ key: 'replayAgain', label: '다시보기', color: '#34556b' });
+        else if (hasCopyableReplay()) buttons.push({ key: 'copyReplay', label: '리플레이 복사', color: '#34556b' });
+        return buttons.map((button, index) => ({ ...button, x: 515, y: 165 + index * (64 + RESULT_BUTTON_GAP), width: 250, height: 64 }));
+    }
+
+    /** 결과 화면에서 포커스된 버튼을 실행한다. @param {number} index 버튼 순번 @returns {void} */
+    function activateResultScreenButton(index) {
+        const button = getResultScreenButtons()[index];
+        if (!button) return;
+        if (button.key === 'copyReplay') copyReplayToClipboard();
+        else if (button.key === 'replayAgain') restartReplayPlayback();
+        else closeResultScreen();
+    }
+
+    /** 결과 화면의 버튼 포커스를 이동한다. @param {number} direction 이전 -1 또는 다음 1 @returns {void} */
+    function moveResultScreenFocus(direction) {
+        const buttons = getResultScreenButtons();
+        if (buttons.length < 2) return;
+        resultScreenFocus = (resultScreenFocus + direction + buttons.length) % buttons.length;
     }
 
     /** 시뮬레이터를 빈 그리기 보드와 첫 팔레트 포커스로 연다. @returns {void} */
@@ -8257,6 +9049,11 @@
             context.fillStyle = locked ? '#c4cbd0' : '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`;
             context.fillText(locked ? `${translate(option.label)} (${translate('잠김')})` : translate(option.label), WIDTH / 2, y + 30);
         });
+        context.fillStyle = '#34556b'; context.fillRect(TITLE_REPLAY_BUTTON.x, TITLE_REPLAY_BUTTON.y, TITLE_REPLAY_BUTTON.width, TITLE_REPLAY_BUTTON.height);
+        context.strokeStyle = titleMenuFocus === TITLE_REPLAY_FOCUS_INDEX ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === TITLE_REPLAY_FOCUS_INDEX ? 2 : 1;
+        context.strokeRect(TITLE_REPLAY_BUTTON.x, TITLE_REPLAY_BUTTON.y, TITLE_REPLAY_BUTTON.width, TITLE_REPLAY_BUTTON.height);
+        context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`;
+        context.fillText(translate('리플레이 재생'), TITLE_REPLAY_BUTTON.x + TITLE_REPLAY_BUTTON.width / 2, TITLE_REPLAY_BUTTON.y + 16);
         context.fillStyle = '#24292f'; context.fillRect(32, 665, 85, 23);
         context.strokeStyle = titleMenuFocus === 6 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 6 ? 2 : 1; context.strokeRect(32, 665, 85, 23);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 74.5, 681);
@@ -8515,6 +9312,9 @@
                 refreshGameMarginRate();
             }
             updateTutorial(delta);
+        } else if (game?.replayPlayback) {
+            // 리플레이 재생은 기록된 프레임만 반영하므로 일반 진행 로직을 사용하지 않는다.
+            updateReplayPlayback(delta);
         } else if (game && game.running && !game.paused) {
             // 카운트다운이 끝나면 양쪽 플레이어의 첫 턴을 시작한다.
             if (game.countdown > 0) {
@@ -8538,8 +9338,10 @@
                 updatePlayer(game.players[1], game.players[0], delta);
             }
         }
-        if (game?.watch && !game.running) updateWatchAutoRestart(delta);
-        if (game?.running && !game.paused) updateEnergyTransfers(delta);
+        if (game?.watch && !game.running && !game.replayPlayback) updateWatchAutoRestart(delta);
+        if (game?.running && !game.paused && !game.replayPlayback) updateEnergyTransfers(delta);
+        // 카운트다운이 끝난 실제 대전 진행만 리플레이 프레임으로 남긴다.
+        if (game?.replay && game.running && !game.paused && game.countdown <= 0) recordReplayFrame(delta);
         if (!game && menuScreen === 'simulator') { updateSimulator(delta); updateEnergyTransfers(delta); }
         if (!game && menuScreen === 'gallery' && gallery) gallery.portraitElapsed += delta;
         if (!game && menuScreen === 'initialTitle' && initialGalleryPreview.loaded) initialGalleryPreview.elapsed += delta;
@@ -8835,7 +9637,8 @@
         if (!game || game.running) return;
         playMenuCancelSound();
         const finishedGame = game;
-        const returnToTitle = finishedGame.practice || finishedGame.watch;
+        // 리플레이 재생 결과는 항상 메인 메뉴로 돌아간다.
+        const returnToTitle = finishedGame.practice || finishedGame.watch || finishedGame.replayPlayback;
         const returnToPuzzleStages = finishedGame.puzzle !== undefined && finishedGame.puzzle !== null;
         const puzzleFocusIndex = returnToPuzzleStages && finishedGame.winner === finishedGame.players[0]
             ? finishedGame.puzzle.returnFocusIndex
@@ -8902,9 +9705,13 @@
             }
             return;
         }
-        // 결과 화면에서는 Enter 또는 ESC로 연습은 메인, 대전은 적 선택 화면으로 돌아간다.
-        if (game && !game.running && (key === 'enter' || key === 'escape')) {
-            closeResultScreen();
+        // 결과 화면에서는 ESC로 바로 나가고, 방향키로 버튼을 옮긴 뒤 Enter로 실행한다.
+        // 기본 포커스는 종료 버튼이므로 Enter만 눌러도 기존처럼 이전 화면으로 돌아간다.
+        if (game && !game.running) {
+            if (key === 'escape') closeResultScreen();
+            else if (['arrowup', 'arrowleft'].includes(key)) moveResultScreenFocus(-1);
+            else if (['arrowdown', 'arrowright'].includes(key)) moveResultScreenFocus(1);
+            else if (key === 'enter' || key === ' ') activateResultScreenButton(resultScreenFocus);
             return;
         }
         // 게임이 없으면 키 입력을 제목 또는 상대 선택 메뉴로 전달한다.
@@ -8995,8 +9802,9 @@
             } else if (key === 'escape' && menuScreen === 'opponent') { playMenuCancelSound(); menuScreen = 'title'; loadNotice(); }
             return;
         }
-        // 결과 화면에서는 위에서 처리한 메뉴 복귀 외 입력을 무시한다.
-        if (!game.running) {
+        // 리플레이 재현 중에는 ESC로 결과 화면으로 넘어가는 입력만 받는다.
+        if (game.replayPlayback) {
+            if (key === 'escape') finishReplayPlayback();
             return;
         }
         // 시작 또는 재개 카운트다운 중에는 일시정지를 포함한 게임 조작을 받지 않는다.
@@ -9063,8 +9871,11 @@
 
     /** 잠긴 항목을 건너뛰어 메인 메뉴 포커스를 이동한다. @param {number} direction 이전 -1 또는 다음 1 @returns {void} */
     function moveTitleMenuFocus(direction) {
-        for (let offset = 1; offset <= 8; offset += 1) {
-            const index = (titleMenuFocus + direction * offset + 8) % 8;
+        const order = TITLE_MENU_FOCUS_ORDER;
+        const current = Math.max(0, order.indexOf(titleMenuFocus));
+        for (let offset = 1; offset <= order.length; offset += 1) {
+            const position = ((current + direction * offset) % order.length + order.length) % order.length;
+            const index = order[position];
             if (!isTitleMenuItemLocked(index)) {
                 titleMenuFocus = index;
                 return;
@@ -9085,6 +9896,7 @@
         else if (titleMenuFocus === 3) openWatchSelection();
         else if (titleMenuFocus === 4) openGallery();
         else if (titleMenuFocus === 5) openSettings();
+        else if (titleMenuFocus === TITLE_REPLAY_FOCUS_INDEX) openReplayPlaybackPrompt();
         else if (titleMenuFocus === 6) {
             const githubWindow = window.open(convertURL('https://github.com/HJOW/puyow'), '_blank');
             if (githubWindow) githubWindow.opener = null;
@@ -9184,11 +9996,14 @@
             }
             return;
         }
-        // 결과 화면에서는 종료 버튼 영역 클릭만 메뉴 복귀로 처리한다.
+        // 결과 화면에서는 표시 중인 버튼 영역 클릭만 처리한다.
         if (game && !game.running) {
             const { x, y } = getCanvasEventCoordinates(event);
-            if (x >= 515 && x <= 765 && y >= 165 && y <= 229) {
-                closeResultScreen();
+            const buttons = getResultScreenButtons();
+            const buttonIndex = buttons.findIndex((button) => x >= button.x && x <= button.x + button.width && y >= button.y && y <= button.y + button.height);
+            if (buttonIndex >= 0) {
+                resultScreenFocus = buttonIndex;
+                activateResultScreenButton(buttonIndex);
             }
             return;
         }
@@ -9390,6 +10205,9 @@
                 toggleMuted();
             } else if (x >= 32 && x <= 117 && y >= 665 && y <= 688) {
                 titleMenuFocus = 6;
+                activateTitleMenu();
+            } else if (x >= TITLE_REPLAY_BUTTON.x && x <= TITLE_REPLAY_BUTTON.x + TITLE_REPLAY_BUTTON.width && y >= TITLE_REPLAY_BUTTON.y && y <= TITLE_REPLAY_BUTTON.y + TITLE_REPLAY_BUTTON.height) {
+                titleMenuFocus = TITLE_REPLAY_FOCUS_INDEX;
                 activateTitleMenu();
             }
         } else if (menuScreen === 'settings') {
@@ -13647,6 +14465,7 @@
         getScreenState,
         getSimulatorState,
         getGameState,
+        getReplayData,
         getNextPairs,
         configureLearningApi,
         playSound,

@@ -5073,3 +5073,258 @@ test('구경 모드 좌측 적은 고유 주문 효과음이 없으면 플레이
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.some((audio) => audio.src === 'sounds/watch-left-player-spell.ogg')), { timeout: 10000 }).toBe(true);
   expect(await page.evaluate(() => window.testAudioInstances.some((audio) => audio.src === 'sounds/watch-enemy-spell.ogg'))).toBe(false);
 });
+
+/** 현재 브라우저 언어로 번역된 문구를 얻는다. 테스트 실행 언어가 달라도 같은 버튼을 찾을 수 있다. */
+function translated(page, korean) {
+  return page.evaluate((text) => window.WebPuyo.translate(text), korean);
+}
+
+/** 리플레이 설정을 켠 상태로 저장 데이터를 다시 읽는다. */
+async function enableReplayFeature(page) {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { useReplayFeature: true } }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+}
+
+/** 첫 적과의 대전을 시작하고 가운데 열을 채워 빠르게 결과 화면까지 진행한다. */
+async function playQuickMatch(page, ruleKeys = []) {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  for (const key of ruleKeys) await page.keyboard.press(key);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toMatch(/^(fever_)?opponent_select$/);
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
+  await page.keyboard.down('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 120000 }).toBe('game_over');
+  await page.keyboard.up('ArrowDown');
+}
+
+/** 결과 화면 비교에 사용할 양측 상태 요약을 만든다. */
+function readMatchSummary(page) {
+  return page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    const cells = (board) => board.puyos.map((puyo) => `${puyo.x},${puyo.y},${puyo.color}`).sort().join('|');
+    const describe = (side) => ({
+      point: Math.round(side.point),
+      phase: side.phase,
+      allClearTicket: side.allClearTicket,
+      board: cells(side.board),
+      normalBoard: cells(side.normalBoard),
+      feverField: side.fever ? cells(side.fever.field) : null,
+      fever: side.fever ? { active: side.fever.active, gauge: side.fever.gauge, targetCombo: side.fever.targetCombo, damage: side.fever.damage } : null,
+      warningPuyos: side.warningPuyos.join(','),
+      nextPairs: JSON.stringify(side.nextPairs),
+    });
+    return { winner: state.winner, mode: state.mode, rule: state.rule, player: describe(state.player), opponent: describe(state.opponent) };
+  });
+}
+
+/** 결과 화면 버튼 영역에 그려진 문구와 Y 좌표를 모은다. */
+async function readResultButtonLabels(page) {
+  await page.evaluate(() => { window.testCanvasTextCalls = []; });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.length)).toBeGreaterThan(0);
+  return page.evaluate(() => window.testCanvasTextCalls
+    .filter(({ y }) => y > 150 && y < 330)
+    .map(({ text, y }) => ({ text, y })));
+}
+
+/** 메인 메뉴 좌측 하단의 리플레이 재생 버튼을 마우스로 누른다. */
+async function clickReplayPlaybackButton(page) {
+  const bounds = await page.locator('[data-puyow-canvas="2d"]').boundingBox();
+  const scale = bounds.width / 1280;
+  await page.mouse.click(bounds.x + 74 * scale, bounds.y + 645 * scale);
+}
+
+test('리플레이 설정이 꺼져 있으면 대전을 기록하지 않고 결과 화면에도 복사 버튼이 없다', async ({ page }) => {
+  test.setTimeout(180000);
+  await playQuickMatch(page);
+  expect(await page.evaluate(() => window.WebPuyo.getReplayData())).toBeNull();
+  const labels = await readResultButtonLabels(page);
+  expect(labels.some(({ text }) => text === '종료' || text === 'Exit')).toBe(true);
+  expect(labels.some(({ text }) => text.includes('리플레이') || text.includes('Replay'))).toBe(false);
+});
+
+test('리플레이 설정을 켜면 기본 룰 대전을 기록하고 결과 화면에 리플레이 복사 버튼을 보여 준다', async ({ page }) => {
+  test.setTimeout(180000);
+  await enableReplayFeature(page);
+  await playQuickMatch(page);
+
+  const replay = await page.evaluate(() => window.WebPuyo.getReplayData());
+  expect(replay.version).toBe(1);
+  expect(replay.meta.rule).toBe('standard');
+  expect(replay.meta.watch).toBe(false);
+  expect(replay.meta.players).toHaveLength(2);
+  expect(replay.meta.players[0].controller).toBeNull();
+  expect(typeof replay.meta.players[1].controller).toBe('string');
+  expect(replay.frames.length).toBeGreaterThan(1);
+  expect(replay.inputs.length).toBeGreaterThan(0);
+  expect(replay.deck.pairs.length).toBeGreaterThan(0);
+  expect(replay.result.winner).toBe(1);
+  // 첫 프레임은 전체 상태를, 이후 프레임은 달라진 항목만 담아 메모리 사용량을 줄인다.
+  expect(Object.keys(replay.frames[0].a).length).toBeGreaterThan(10);
+  expect(JSON.stringify(replay.frames[replay.frames.length - 1]).length)
+    .toBeLessThan(JSON.stringify(replay.frames[0]).length);
+
+  const exitLabel = await translated(page, '종료');
+  const copyLabel = await translated(page, '리플레이 복사');
+  const labels = await readResultButtonLabels(page);
+  expect(labels.some(({ text, y }) => text === exitLabel && y < 240)).toBe(true);
+  expect(labels.some(({ text, y }) => text === copyLabel && y > 240)).toBe(true);
+});
+
+test('기록한 기본 룰 리플레이를 재생하면 마지막 상태가 원래 대전과 같아진다', async ({ page }) => {
+  test.setTimeout(420000);
+  await enableReplayFeature(page);
+  await playQuickMatch(page);
+  const recorded = await readMatchSummary(page);
+  const replayJson = await page.evaluate(() => JSON.stringify(window.WebPuyo.getReplayData()));
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  await page.evaluate((json) => { window.prompt = () => json; }, replayJson);
+  await clickReplayPlaybackButton(page);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('playing');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().mode)).toBe('versus');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 240000 }).toBe('game_over');
+  expect(await readMatchSummary(page)).toEqual(recorded);
+
+  const exitLabel = await translated(page, '종료');
+  const againLabel = await translated(page, '다시보기');
+  const labels = await readResultButtonLabels(page);
+  expect(labels.some(({ text, y }) => text === exitLabel && y < 240)).toBe(true);
+  expect(labels.some(({ text, y }) => text === againLabel && y > 240)).toBe(true);
+
+  // 아래 방향키로 다시보기 버튼을 고르면 처음부터 다시 재현한다.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('countdown');
+  // 재현 중 ESC는 결과 화면으로, 결과 화면의 종료는 메인 메뉴로 돌아간다.
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('game_over');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});
+
+test('기록한 피버 룰 리플레이도 피버 필드와 게이지까지 같은 상태로 재현한다', async ({ page }) => {
+  test.setTimeout(420000);
+  await enableReplayFeature(page);
+  await playQuickMatch(page, ['ArrowRight']);
+  const recorded = await readMatchSummary(page);
+  expect(recorded.rule).toBe('fever');
+  expect(recorded.player.fever).not.toBeNull();
+  const replayJson = await page.evaluate(() => JSON.stringify(window.WebPuyo.getReplayData()));
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  await page.evaluate((json) => { window.prompt = () => json; }, replayJson);
+  await clickReplayPlaybackButton(page);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 240000 }).toBe('game_over');
+  expect(await readMatchSummary(page)).toEqual(recorded);
+});
+
+test('구경 대전도 리플레이로 기록하며 재생 중에는 자동 재시작을 하지 않는다', async ({ page }) => {
+  test.setTimeout(600000);
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { useReplayFeature: true } }));
+    localStorage.setItem('puyow_code', JSON.stringify(['observation']));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 240000 }).toBe('game_over');
+
+  const replay = await page.evaluate(() => window.WebPuyo.getReplayData());
+  expect(replay.meta.watch).toBe(true);
+  expect(replay.meta.players.every((info) => typeof info.controller === 'string')).toBe(true);
+  expect(replay.frames.length).toBeGreaterThan(1);
+
+  const replayJson = await page.evaluate(() => JSON.stringify(window.WebPuyo.getReplayData()));
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await page.evaluate((json) => { window.prompt = () => json; }, replayJson);
+  await clickReplayPlaybackButton(page);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 300000 }).toBe('game_over');
+  // 구경 결과 화면의 5초 자동 재시작은 리플레이 재생 결과에서 동작하지 않는다.
+  await page.waitForTimeout(6500);
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('game_over');
+});
+
+test('리플레이 재생 버튼은 취소·잘못된 데이터·재현 오류를 각각 안내한다', async ({ page }) => {
+  test.setTimeout(120000);
+  await enterMainMenu(page);
+  const invalidMessage = await translated(page, '리플레이 데이터가 올바르지 않습니다.');
+  const errorMessage = await translated(page, '리플레이 재현 중 오류가 발생했습니다.');
+
+  // 공란 입력은 취소로 처리한다.
+  await page.evaluate(() => { window.prompt = () => '   '; window.testCanvasTextCalls = []; });
+  await clickReplayPlaybackButton(page);
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  expect(await page.evaluate((message) => window.testCanvasTextCalls.some(({ text }) => text === message), invalidMessage)).toBe(false);
+
+  // 형식이 맞지 않는 입력은 안내 문구를 표시하고 화면을 바꾸지 않는다.
+  await page.evaluate(() => { window.prompt = () => 'not json at all {{{'; window.testCanvasTextCalls = []; });
+  await clickReplayPlaybackButton(page);
+  await expect.poll(() => page.evaluate((message) => window.testCanvasTextCalls.some(({ text }) => text === message), invalidMessage)).toBe(true);
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  // 프레임이 손상된 리플레이는 재현 중 오류를 알리고 2초 뒤 결과 화면으로 넘어간다.
+  await page.evaluate(() => {
+    window.prompt = () => JSON.stringify({
+      version: 1,
+      meta: {
+        rule: 'standard', watch: false, feverRule: false, feverStart: false, feverLightStart: 0,
+        difficulty: 1, aiDifficulty: 1, colors: ['red', 'green', 'yellow', 'blue'],
+        players: [{ name: 'PLAYER 1', controller: null }, { name: 'CPU', controller: 'Andromalius' }],
+      },
+      frames: [{ t: 0, a: { nb: '' } }, { t: 100, a: { nb: '@@@@' } }],
+      result: { winner: 1 },
+    });
+    window.testCanvasTextCalls = [];
+  });
+  await clickReplayPlaybackButton(page);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('playing');
+  await expect.poll(() => page.evaluate((message) => window.testCanvasTextCalls.some(({ text }) => text === message), errorMessage)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('game_over');
+});
+
+test('메인 메뉴 리플레이 재생 버튼은 GitHub 버튼 위에 있고 방향키 포커스 순서에 들어간다', async ({ page }) => {
+  await enterMainMenu(page);
+  const replayLabel = await translated(page, '리플레이 재생');
+  await page.evaluate(() => { window.testCanvasTextCalls = []; window.open = () => null; });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.length)).toBeGreaterThan(0);
+  const buttons = await page.evaluate((label) => window.testCanvasTextCalls
+    .filter(({ text }) => text === label || text === 'GitHub')
+    .map(({ text, x, y }) => ({ text, x, y })), replayLabel);
+  const replayButton = buttons.find(({ text }) => text === replayLabel);
+  const githubButton = buttons.find(({ text }) => text === 'GitHub');
+  expect(replayButton).toBeTruthy();
+  expect(githubButton).toBeTruthy();
+  expect(replayButton.x).toBeCloseTo(githubButton.x, 0);
+  expect(replayButton.y).toBeLessThan(githubButton.y);
+
+  // 목록 항목 다음 순서가 리플레이 재생 버튼이다. 잠긴 구경 항목은 건너뛴다.
+  await page.evaluate(() => { window.replayPromptCount = 0; window.prompt = () => { window.replayPromptCount += 1; return ''; }; });
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.replayPromptCount)).toBe(1);
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});

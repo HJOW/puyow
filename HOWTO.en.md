@@ -84,7 +84,7 @@ PuyoW.initialize('puyow_target');
 In Node.js CommonJS, load the library as follows. A DOM-free Node.js process cannot call `initialize()`, but can use controller classes and opponent-registration APIs.
 
 ```js
-const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, askConfirm, initialize } = require('./src/js/puyow.js');
+const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, getReplayData, showMessage, askConfirm, initialize } = require('./src/js/puyow.js');
 ```
 
 `initialize(target)` accepts the game-root `div` element or its `id` string. The library adds the `div_puyow_root` class and creates `div_puyow_2d_<number>` and `div_puyow_3d_<number>` canvases with the same random eight-digit suffix. The 2D canvas is the default display and input layer; the transparent 3D canvas is reserved for optional Three.js effects. Without `three.min.js`, the 3D canvas is still created, but the renderer and layer switching are skipped while the 2D game continues. If the argument is omitted, `null`, `undefined`, or an empty string, the library creates a game-root div directly under `body`. The former canvas-element and canvas-ID initialization forms are not supported.
@@ -196,6 +196,19 @@ await page.addInitScript(() => {
 });
 await page.goto('/puyow.html');
 ```
+
+### Reading replay data
+
+`PuyoW.getReplayData()` returns the replay that the current game is recording, or has finished recording, as a JSON-serializable object. It returns `null` when the `Use replay feature` setting is off, when the current mode is not recorded (practice, continuous FEVER, puzzle puyo, how to play and the simulator), or when no game exists. Standard, FEVER and FEVER (Start) matches plus every watch-mode rule are recorded.
+
+The object has the shape `{ version, build, meta, deck, inputs, result, frames }`. `meta` holds the match rule, the color list and both player names with their enemy class types, `deck` holds the whole puyo supply deck with each side's consumed position, and `inputs` holds control records shaped as `[time in ms, player index, action kind, value]`. `frames` samples the screen state 30 times per second and stores only the values that changed since the previous sample, which keeps memory use low.
+
+```js
+const replay = PuyoW.getReplayData();
+if (replay) navigator.clipboard.writeText(JSON.stringify(replay));
+```
+
+That string is exactly what the `Play Replay` button in the lower left of the main menu expects. Playback is refused when `version` does not match the replay format of the running game.
 
 ### Common functions
 

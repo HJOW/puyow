@@ -84,7 +84,7 @@ PuyoW.initialize('puyow_target');
 Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, showMessage, askConfirm, initialize } = require('./src/js/puyow.js');
+const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, getReplayData, showMessage, askConfirm, initialize } = require('./src/js/puyow.js');
 ```
 
 `initialize(target)`의 `target`은 게임 최상위 `div` 요소 또는 그 `id` 문자열입니다. 라이브러리는 이 div에 `div_puyow_root` 클래스를 붙이고, 같은 8자리 난수 접미사를 가진 `div_puyow_2d_<번호>`·`div_puyow_3d_<번호>` canvas를 생성합니다. 2D canvas가 기본 입력·표시 레이어이며, 3D canvas는 투명한 선택적 Three.js 연출용 레이어입니다. `three.min.js`가 없으면 3D canvas는 그대로 만들되 renderer·레이어 전환을 하지 않고 2D 게임을 계속합니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달하면 `body` 바로 아래에 최상위 div를 만듭니다. canvas 요소나 canvas ID를 전달하는 이전 초기화 방식은 지원하지 않습니다.
@@ -196,6 +196,19 @@ await page.addInitScript(() => {
 });
 await page.goto('/puyow.html');
 ```
+
+### 리플레이 데이터 읽기
+
+`PuyoW.getReplayData()`는 현재 게임에서 기록 중이거나 기록을 마친 리플레이를 JSON으로 변환할 수 있는 객체로 반환합니다. 설정의 `리플레이 사용`이 꺼져 있거나, 기록 대상이 아닌 모드(연습·연속 피버·퍼즐뿌요·플레이 방법·시뮬레이터)이거나, 게임이 없으면 `null`을 반환합니다. 기록 대상은 기본 룰·피버 룰·피버 룰 (시작) 대전과 구경 모드의 모든 규칙입니다.
+
+반환 객체는 `{ version, build, meta, deck, inputs, result, frames }` 구조입니다. `meta`에는 대전 규칙·색상 목록·양측 이름과 적 클래스 타입이, `deck`에는 뿌요 지급 덱 전체와 양측 소비 위치가, `inputs`에는 `[시각(ms), 플레이어 번호, 조작 종류, 값]` 형태의 조작 기록이 담깁니다. `frames`는 초당 30장으로 표본화한 화면 상태이며, 직전 표본과 달라진 항목만 담아 메모리 사용량을 줄입니다.
+
+```js
+const replay = PuyoW.getReplayData();
+if (replay) navigator.clipboard.writeText(JSON.stringify(replay));
+```
+
+이 문자열은 메인 메뉴 좌측 하단의 `리플레이 재생` 버튼이 요구하는 입력 형식과 같습니다. `version` 값이 현재 게임의 리플레이 형식과 다르면 재생을 거부합니다.
 
 ### 공통 함수
 
