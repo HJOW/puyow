@@ -201,7 +201,7 @@ await page.goto('/puyow.html');
 
 `PuyoW.getReplayData()` returns the replay that the current game is recording, or has finished recording, as a JSON-serializable object. It returns `null` when the `Use replay feature` setting is off, when the current mode is not recorded (practice, continuous FEVER, puzzle puyo, how to play and the simulator), or when no game exists. Standard, FEVER and FEVER (Start) matches plus every watch-mode rule are recorded.
 
-The object has the shape `{ version, build, meta, deck, inputs, result, frames }`. `meta` holds the match rule, the color list and both player names with their enemy class types, `deck` holds the whole puyo supply deck with each side's consumed position, and `inputs` holds control records shaped as `[time in ms, player index, action kind, value]`. `frames` samples the screen state 30 times per second and stores only the values that changed since the previous sample, which keeps memory use low.
+The object has the shape `{ version, build, meta, deck, inputs, sounds, result, frames }`. `meta` holds the match rule, the color list and both player names with their enemy class types, `deck` holds the whole puyo supply deck with each side's consumed position, and `inputs` holds control records shaped as `[time in ms, player index, action kind, value]`. `sounds` holds the effects played during the match as `[time in ms, source, sound pool property name]`, so playback replays the same effects in the same order. `frames` samples the screen state 30 times per second and stores only the values that changed since the previous sample, which keeps memory use low.
 
 ```js
 const replay = PuyoW.getReplayData();

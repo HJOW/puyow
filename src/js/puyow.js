@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 12;
+    const BUILDNO = 13;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -1639,7 +1639,10 @@
 
     /** 음원 URL을 일회성 효과음으로 재생한다. 재생 실패는 기록하고 게임은 계속 진행한다. @param {string|null|undefined} url 음원 URL @param {'music'|'effects'} type 음량 종류 @param {string} label 로그용 설명 @returns {void} */
     function playSound(url, type, label) {
-        if (url === null || url === undefined || url === '' || typeof Audio === 'undefined' || getAudioVolume(type) <= 0) return;
+        if (url === null || url === undefined || url === '') return;
+        // 현재 음량이나 Audio 지원 여부와 무관하게 리플레이에는 재생 요청을 남긴다.
+        recordReplaySound(url);
+        if (typeof Audio === 'undefined' || getAudioVolume(type) <= 0) return;
         try {
             const audio = new Audio(convertURL(url));
             audio.volume = getAudioVolume(type);
@@ -1690,8 +1693,11 @@
 
     /** 대량 방해뿌요 착지음이 아직 재생 중이면 중복 재생하지 않는다. @param {string|null|undefined} url 음원 URL @returns {void} */
     function playGarbageFallLotSound(url) {
-        if (url === null || url === undefined || url === '' || typeof Audio === 'undefined' || getAudioVolume('effects') <= 0) return;
+        if (url === null || url === undefined || url === '') return;
         if (garbageFallLotAudio && !garbageFallLotAudio.paused && !garbageFallLotAudio.ended) return;
+        // 중복 재생 판정을 통과한 요청만 리플레이에 남긴다.
+        recordReplaySound(url, true);
+        if (typeof Audio === 'undefined' || getAudioVolume('effects') <= 0) return;
         try {
             const audio = new Audio(convertURL(url));
             audio.volume = getAudioVolume('effects');
@@ -1711,7 +1717,7 @@
 
     /** 일반 뿌요 착지음은 너무 짧은 간격으로 반복되지 않게 재생한다. @param {string|null|undefined} url 음원 URL @returns {void} */
     function playPuyoFallSound(url) {
-        if (url === null || url === undefined || url === '' || typeof Audio === 'undefined' || getAudioVolume('effects') <= 0) return;
+        if (url === null || url === undefined || url === '') return;
         const now = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
         if (now - puyoFallLastPlayedAt < PUYO_FALL_SOUND_COOLDOWN) return;
         puyoFallLastPlayedAt = now;
@@ -6433,13 +6439,17 @@
     // ------------------------------------------------------------------
 
     /** 리플레이 데이터 형식 버전이다. 저장 구조를 바꾸면 이 값을 올린다. @type {number} */
-    const REPLAY_FORMAT_VERSION = 1;
+    const REPLAY_FORMAT_VERSION = 2;
     /** 리플레이 프레임을 기록하는 간격(ms)이다. 초당 30프레임으로 표본화한다. @type {number} */
     const REPLAY_SAMPLE_INTERVAL = 1000 / 30;
     /** 한 리플레이가 보관할 최대 프레임 수다. 약 30분 분량이며, 넘어서면 더 기록하지 않는다. @type {number} */
     const REPLAY_MAX_FRAMES = 54000;
     /** 한 리플레이가 보관할 최대 조작 기록 수다. @type {number} */
     const REPLAY_MAX_INPUTS = 60000;
+    /** 한 리플레이가 보관할 최대 효과음 기록 수다. @type {number} */
+    const REPLAY_MAX_SOUNDS = 20000;
+    /** 사운드 풀에서 찾지 못한 음원 URL을 그대로 보관할 최대 길이다. 데이터 URL처럼 긴 값은 담지 않는다. @type {number} */
+    const REPLAY_SOUND_URL_MAX_LENGTH = 200;
     /** 리플레이 재생을 시작하기 전에 보여 줄 카운트다운 시간(ms)이다. @type {number} */
     const REPLAY_COUNTDOWN_DURATION = 3000;
     /** 리플레이 재현 오류 안내 후 결과 화면으로 넘어가기까지의 시간(ms)이다. @type {number} */
@@ -6571,6 +6581,7 @@
             meta: createReplayMeta(),
             frames: [],
             inputs: [],
+            sounds: [],
             deck: null,
             result: null,
             previous: { g: {}, a: {}, b: {} },
@@ -6601,6 +6612,74 @@
         const index = game.players.indexOf(player);
         if (index < 0) return;
         recorder.inputs.push([Math.round(recorder.elapsed), index, action, value]);
+    }
+
+    /**
+     * 재생 요청된 음원 URL을 사운드 풀 항목 참조로 바꾼다.
+     * 데이터 URL처럼 긴 값을 그대로 담지 않도록 공통 풀과 양측 적 풀의 속성 이름을 먼저 찾고,
+     * 어느 풀에도 없으면 짧은 URL만 그대로 보관한다.
+     * @param {string} url 음원 URL
+     * @returns {[string|number, string]|null} [출처, 속성 이름] 참조. 담을 수 없으면 null
+     */
+    function findReplaySoundReference(url) {
+        const sources = [
+            ['c', commonSoundPool],
+            [0, game.players[0]?.controller?.soundPool],
+            [1, game.players[1]?.controller?.soundPool]
+        ];
+        for (let index = 0; index < sources.length; index += 1) {
+            const pool = sources[index][1];
+            if (!pool) continue;
+            const key = Object.keys(pool).find((name) => pool[name] === url);
+            if (key) return [sources[index][0], key];
+        }
+        if (url.length <= REPLAY_SOUND_URL_MAX_LENGTH && !url.startsWith('data:')) return ['u', url];
+        return null;
+    }
+
+    /**
+     * 게임 중 재생된 효과음을 시각과 함께 기록한다.
+     * @param {string} url 음원 URL
+     * @param {boolean} [lot=false] 대량 방해뿌요 착지음처럼 중복 재생을 막는 경로인지 여부
+     * @returns {void}
+     */
+    function recordReplaySound(url, lot = false) {
+        const recorder = game?.replay;
+        if (!recorder || recorder.finished || !game.running || game.paused || game.countdown > 0) return;
+        if (recorder.sounds.length >= REPLAY_MAX_SOUNDS) return;
+        const reference = findReplaySoundReference(url);
+        if (!reference) return;
+        const event = [Math.round(recorder.elapsed), reference[0], reference[1]];
+        if (lot) event.push(1);
+        recorder.sounds.push(event);
+    }
+
+    /**
+     * 기록된 효과음 참조를 현재 사운드 풀의 음원 URL로 되돌린다.
+     * @param {string|number} source 기록 당시의 출처
+     * @param {string} key 사운드 풀 속성 이름 또는 URL
+     * @returns {string|null} 재생할 음원 URL
+     */
+    function resolveReplaySoundUrl(source, key) {
+        if (typeof key !== 'string' || !key) return null;
+        if (source === 'u') return key;
+        if (source === 'c') return commonSoundPool?.[key] ?? null;
+        return game.players[Number(source)]?.controller?.soundPool?.[key] ?? null;
+    }
+
+    /** 현재 재생 시각까지의 기록된 효과음을 순서대로 재생한다. @param {object} playback 재생 상태 @returns {void} */
+    function playReplaySounds(playback) {
+        const sounds = playback.sounds;
+        while (playback.soundIndex < sounds.length) {
+            const event = sounds[playback.soundIndex];
+            if (!Array.isArray(event) || !(Number(event[0]) <= playback.time)) break;
+            playback.soundIndex += 1;
+            const url = resolveReplaySoundUrl(event[1], event[2]);
+            if (!url) continue;
+            // 대량 방해뿌요 착지음은 재생 쪽에서도 같은 중복 방지 경로를 사용한다.
+            if (event[3] === 1) playGarbageFallLotSound(url);
+            else playSound(url, 'effects', '리플레이 효과음');
+        }
     }
 
     /** 현재 이동 중인 공격 에너지의 표시 좌표와 투명도만 추려 낸다. @returns {number[][]|null} 에너지 표시 정보 */
@@ -6730,6 +6809,7 @@
             meta: recorder.meta,
             deck: recorder.deck,
             inputs: recorder.inputs,
+            sounds: recorder.sounds,
             result: recorder.result,
             frames: recorder.frames
         };
@@ -6814,6 +6894,7 @@
                 }))
             },
             result: result ? { winner: Number.isInteger(result.winner) ? result.winner : -1 } : null,
+            sounds: Array.isArray(data.sounds) ? data.sounds : [],
             frames: data.frames
         };
     }
@@ -6896,7 +6977,9 @@
             replayPlayback: {
                 replay,
                 frames: replay.frames,
+                sounds: replay.sounds,
                 index: 0,
+                soundIndex: 0,
                 time: 0,
                 errorElapsed: null,
                 allClearEnd: [0, 0]
@@ -7086,6 +7169,8 @@
         if (!game.running || game.paused) return;
         if (game.countdown > 0) {
             game.countdown = Math.max(0, game.countdown - delta);
+            // 카운트다운이 끝나는 순간의 시작 연출은 원래 대전과 같게 보여 준다. 시작 효과음은 기록된 첫 효과음으로 재생된다.
+            if (game.countdown <= 0) startGameStartFirework();
             return;
         }
         if (playback.errorElapsed !== null) {
@@ -7100,6 +7185,7 @@
                 playback.index += 1;
             }
             refreshReplayAnimationTimers(playback);
+            playReplaySounds(playback);
         } catch (error) {
             console.error('리플레이를 재현하는 중 오류가 발생했습니다.', error);
             showMessage(translate('리플레이 재현 중 오류가 발생했습니다.'), '#ef5350', REPLAY_ERROR_EXIT_DELAY);

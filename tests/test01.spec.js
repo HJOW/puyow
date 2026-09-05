@@ -5154,7 +5154,7 @@ test('리플레이 설정을 켜면 기본 룰 대전을 기록하고 결과 화
   await playQuickMatch(page);
 
   const replay = await page.evaluate(() => window.WebPuyo.getReplayData());
-  expect(replay.version).toBe(1);
+  expect(replay.version).toBe(2);
   expect(replay.meta.rule).toBe('standard');
   expect(replay.meta.watch).toBe(false);
   expect(replay.meta.players).toHaveLength(2);
@@ -5289,7 +5289,7 @@ test('리플레이 재생 버튼은 취소·잘못된 데이터·재현 오류�
   // 프레임이 손상된 리플레이는 재현 중 오류를 알리고 2초 뒤 결과 화면으로 넘어간다.
   await page.evaluate(() => {
     window.prompt = () => JSON.stringify({
-      version: 1,
+      version: 2,
       meta: {
         rule: 'standard', watch: false, feverRule: false, feverStart: false, feverLightStart: 0,
         difficulty: 1, aiDifficulty: 1, colors: ['red', 'green', 'yellow', 'blue'],
@@ -5327,4 +5327,125 @@ test('메인 메뉴 리플레이 재생 버튼은 GitHub 버튼 위에 있고 �
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => window.replayPromptCount)).toBe(1);
   expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});
+
+/** 테스트용 식별 URL을 공통 사운드 풀과 적 사운드 풀에 채운다. */
+async function installReplaySoundUrls(page) {
+  await page.evaluate(() => {
+    const common = window.WebPuyo.commonSoundPool;
+    common.puyoRotate = 'replaysfx/rotate.ogg';
+    common.puyoFall = 'replaysfx/fall.ogg';
+    common.garbageFallLittle = 'replaysfx/garbage-little.ogg';
+    common.garbageFallLot = 'replaysfx/garbage-lot.ogg';
+    common.gameStarts = 'replaysfx/start.ogg';
+    common.loose = 'replaysfx/loose.ogg';
+    common.clears = 'replaysfx/clears.ogg';
+    for (let index = 1; index <= 7; index += 1) common[`puyoBurstCombo${index}`] = `replaysfx/burst${index}.ogg`;
+  });
+}
+
+/** 지금까지 재생된 테스트용 효과음의 URL별 횟수를 센다. */
+function countReplaySounds(page, fromIndex) {
+  return page.evaluate((start) => {
+    const counts = {};
+    window.testAudioInstances.slice(start)
+      .map((audio) => String(audio.src))
+      .filter((src) => src.startsWith('replaysfx/'))
+      .forEach((src) => { counts[src] = (counts[src] || 0) + 1; });
+    return counts;
+  }, fromIndex);
+}
+
+test('리플레이는 게임 중 효과음을 기록하고 재생할 때 같은 효과음을 같은 횟수로 낸다', async ({ page }) => {
+  test.setTimeout(420000);
+  await enableReplayFeature(page);
+  await installReplaySoundUrls(page);
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+  // 게임 시작 효과음까지 포함하도록 카운트다운 시점부터 센다.
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('countdown');
+  const recordStart = await page.evaluate(() => window.testAudioInstances.length);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
+
+  // 회전 입력으로 회전 효과음을 남기면서 가운데 열을 채워 결과 화면까지 진행한다.
+  await page.keyboard.down('ArrowDown');
+  for (let index = 0; index < 12; index += 1) {
+    await page.keyboard.press('KeyZ');
+    await page.waitForTimeout(120);
+  }
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 120000 }).toBe('game_over');
+  await page.keyboard.up('ArrowDown');
+
+  const recorded = await countReplaySounds(page, recordStart);
+  expect(recorded['replaysfx/start.ogg']).toBe(1);
+  expect(recorded['replaysfx/rotate.ogg']).toBeGreaterThan(0);
+  expect(recorded['replaysfx/loose.ogg']).toBe(1);
+
+  const replay = await page.evaluate(() => window.WebPuyo.getReplayData());
+  expect(replay.sounds.length).toBeGreaterThan(0);
+  // 효과음은 URL 대신 사운드 풀 속성 이름으로 저장한다.
+  expect(replay.sounds[0]).toEqual([expect.any(Number), 'c', 'gameStarts']);
+  expect(replay.sounds.every((event) => !String(event[2]).includes('replaysfx/'))).toBe(true);
+
+  const replayJson = await page.evaluate(() => JSON.stringify(window.WebPuyo.getReplayData()));
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  await page.evaluate((json) => { window.prompt = () => json; }, replayJson);
+  await clickReplayPlaybackButton(page);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('countdown');
+  const playbackStart = await page.evaluate(() => window.testAudioInstances.length);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 240000 }).toBe('game_over');
+
+  expect(await countReplaySounds(page, playbackStart)).toEqual(recorded);
+});
+
+test('기록된 효과음 참조는 공통 풀·적 풀·원문 URL을 되살리고 없는 항목은 건너뛴다', async ({ page }) => {
+  test.setTimeout(120000);
+  await page.evaluate(() => {
+    window.WebPuyo.commonSoundPool.puyoBurstCombo1 = 'replaysfx/burst1.ogg';
+    const enemyPool = window.WebPuyo.createSoundPool(false);
+    enemyPool.spellCombo3 = 'replaysfx/andromalius-spell3.ogg';
+    window.WebPuyo.setEnemySoundPool('Andromalius', enemyPool);
+  });
+  await enterMainMenu(page);
+  await page.evaluate(() => {
+    window.prompt = () => JSON.stringify({
+      version: 2,
+      meta: {
+        rule: 'standard', watch: false, feverRule: false, feverStart: false, feverLightStart: 0,
+        difficulty: 1, aiDifficulty: 1, colors: ['red', 'green', 'yellow', 'blue'],
+        players: [{ name: 'PLAYER 1', controller: null }, { name: 'CPU', controller: 'Andromalius' }],
+      },
+      sounds: [
+        [50, 'c', 'puyoBurstCombo1'],
+        [80, 1, 'spellCombo3'],
+        [110, 'u', 'replaysfx/raw-url.ogg'],
+        [140, 'c', 'nonexistentSoundKey'],
+        [170, 1, 'spellCombo7'],
+      ],
+      frames: [{ t: 0, a: { nb: '' } }, { t: 400, a: { nb: 'rr' } }],
+      result: { winner: 1 },
+    });
+  });
+  await clickReplayPlaybackButton(page);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('countdown');
+  const playbackStart = await page.evaluate(() => window.testAudioInstances.length);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 30000 }).toBe('game_over');
+
+  const played = await page.evaluate((start) => window.testAudioInstances.slice(start)
+    .map((audio) => String(audio.src))
+    .filter((src) => src.startsWith('replaysfx/')), playbackStart);
+  expect(played).toEqual([
+    'replaysfx/burst1.ogg',
+    'replaysfx/andromalius-spell3.ogg',
+    'replaysfx/raw-url.ogg',
+  ]);
 });
