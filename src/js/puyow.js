@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 10;
+    const BUILDNO = 11;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -297,7 +297,7 @@
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': 'An all clear makes your next attack much stronger.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
             '은하': 'Galaxy',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)',
-            '화면 가로방향 고정': 'Lock landscape orientation',
+            '화면 가로방향 고정': 'Lock landscape orientation', '리플레이 사용': 'Use replay feature',
             '피버 (완화)': 'FEVER (Relaxed)',
             '카드': 'Cards', '1장 뽑기': 'Draw 1', '10장 뽑기': 'Draw 10', '합성': 'Synthesize', '카드 5장': '5 Cards', '확인': 'Confirm', '이용에 필요한 GOLD 가 부족합니다.': 'Not enough GOLD.', '카드 5장을 선택하고 이용해 주세요.': 'Select cards in groups of 5.', '1장 뽑기를 진행할까요?': 'Draw 1 card?', '10장 뽑기를 진행할까요?': 'Draw 10 cards?', '선택한 카드 %1장을 합성할까요?': 'Synthesize the %1 selected cards?',
         },
@@ -860,7 +860,7 @@
             puzzleGoldClearStages: [],
             puzzleGoldStarStages: [],
             gold: 0,
-            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, soundDataURL: '', aiProvider: 'OpenAI', aiApiURL: '', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
+            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, useReplayFeature: false, soundDataURL: '', aiProvider: 'OpenAI', aiApiURL: '', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
     }
@@ -947,6 +947,11 @@
 
     /** 가로 방향 고정 저장값을 불리언으로 정규화한다. @param {unknown} value 저장값 @returns {boolean} 가로 방향 고정 여부 */
     function normalizeLandscapeOrientationLocked(value) {
+        return value === true;
+    }
+
+    /** 리플레이 기능 사용 저장값을 불리언으로 정규화한다. @param {unknown} value 저장값 @returns {boolean} 리플레이 기능 사용 여부 */
+    function normalizeUseReplayFeature(value) {
         return value === true;
     }
 
@@ -1347,6 +1352,7 @@
                 virtualController: getVirtualControllerOption(settings.virtualController),
                 graphicsQuality: getGraphicsQualityOption(settings.graphicsQuality).key,
                 landscapeOrientationLocked: normalizeLandscapeOrientationLocked(settings.landscapeOrientationLocked),
+                useReplayFeature: normalizeUseReplayFeature(settings.useReplayFeature),
                 soundDataURL: normalizeSoundDataURL(settings.soundDataURL),
                 // Prompt API를 지원하지 않는 브라우저에서는 기존 Prompt API 설정을 LM Studio로 이관한다.
                 // Local AI는 서버 확인이 끝나기 전이므로 여기서는 유지하고, 사용할 수 없으면 applyLocalAiAvailability()가 이관한다.
@@ -6717,7 +6723,7 @@
         const aiSettingFocuses = isPromptApiProvider(settingsDraft) || isLocalAiProvider(settingsDraft) ? [] : [
             ...(isLmStudioProvider(settingsDraft) ? [7] : []), 8, 9
         ];
-        return [0, 1, 2, 3, 4, 5, 6, ...aiSettingFocuses, ...(canRunAiApiTest() ? [10] : []), 11, 12, 13, 14];
+        return [0, 1, 2, 3, 4, 5, 6, ...aiSettingFocuses, ...(canRunAiApiTest() ? [10] : []), 11, 12, 13, 14, 15];
     }
 
     /** 설정 화면에서 다음 또는 이전 포커스로 이동한다. @param {number} direction 이동 방향 @returns {void} */
@@ -6906,9 +6912,10 @@
             setSettingsDraftProvider(providers[(currentIndex + 1) % providers.length]);
         } else if (settingsFocus === 10 && canRunAiApiTest()) { playMenuSelectSound(); runAiApiTest(); }
         else if (settingsFocus === 11) { playMenuSelectSound(); settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
-        else if (settingsFocus === 12) saveSettings();
-        else if (settingsFocus === 13) cancelSettings();
-        else if (settingsFocus === 14) resetAllSettings();
+        else if (settingsFocus === 12) { playMenuSelectSound(); settingsDraft.useReplayFeature = !settingsDraft.useReplayFeature; }
+        else if (settingsFocus === 13) saveSettings();
+        else if (settingsFocus === 14) cancelSettings();
+        else if (settingsFocus === 15) resetAllSettings();
     }
 
     /** 코드 버튼을 제외하고 축소한 설정 화면의 공통 논리 좌표다. 그리기와 마우스 판정이 함께 사용한다. */
@@ -6924,6 +6931,7 @@
         testY: 502,
         testHeight: 32,
         checkboxY: 568,
+        replayCheckboxX: 790,
         checkboxSize: 18,
         actionY: 652,
         actionWidth: 140,
@@ -6950,7 +6958,7 @@
 
     /** 저장·취소·초기화 버튼 정보를 반환한다. @returns {object[]} 동작 버튼 */
     function getSettingsActionButtons() {
-        return [{ label: '저장', x: 410, focus: 12, color: '#4cc9b0' }, { label: '취소', x: 570, focus: 13, color: '#ef5350' }, { label: '초기화', x: 730, focus: 14, color: '#7e6bc4' }];
+        return [{ label: '저장', x: 410, focus: 13, color: '#4cc9b0' }, { label: '취소', x: 570, focus: 14, color: '#ef5350' }, { label: '초기화', x: 730, focus: 15, color: '#7e6bc4' }];
     }
 
     /** 설정 화면을 그린다. @returns {void} */
@@ -7007,14 +7015,19 @@
         context.strokeStyle = settingsFocus === 10 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 10 && apiTestEnabled ? 3 : 2; context.strokeRect(layout.controlX, layout.testY, layout.controlWidth, layout.testHeight);
         context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), layout.controlX + layout.controlWidth / 2, layout.testY + 21);
         context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `10px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), layout.controlX, 552);
-        const checkboxX = layout.controlX;
         const checkboxY = layout.checkboxY;
-        context.fillStyle = '#0b202c'; context.fillRect(checkboxX, checkboxY, layout.checkboxSize, layout.checkboxSize);
-        context.strokeStyle = settingsFocus === 11 ? '#ffd54f' : '#426474'; context.lineWidth = settingsFocus === 11 ? 3 : 2; context.strokeRect(checkboxX, checkboxY, layout.checkboxSize, layout.checkboxSize);
-        if (settingsDraft.landscapeOrientationLocked) {
-            context.strokeStyle = '#4cc9b0'; context.lineWidth = 3; context.beginPath(); context.moveTo(checkboxX + 3, checkboxY + 9); context.lineTo(checkboxX + 7, checkboxY + 14); context.lineTo(checkboxX + 16, checkboxY + 4); context.stroke();
-        }
-        context.fillStyle = '#f5fbfc'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'left'; context.fillText(translate('화면 가로방향 고정'), checkboxX + 27, checkboxY + 15);
+        const checkboxes = [
+            { x: layout.controlX, focus: 11, checked: settingsDraft.landscapeOrientationLocked, label: '화면 가로방향 고정' },
+            { x: layout.replayCheckboxX, focus: 12, checked: settingsDraft.useReplayFeature, label: '리플레이 사용' }
+        ];
+        checkboxes.forEach((checkbox) => {
+            context.fillStyle = '#0b202c'; context.fillRect(checkbox.x, checkboxY, layout.checkboxSize, layout.checkboxSize);
+            context.strokeStyle = settingsFocus === checkbox.focus ? '#ffd54f' : '#426474'; context.lineWidth = settingsFocus === checkbox.focus ? 3 : 2; context.strokeRect(checkbox.x, checkboxY, layout.checkboxSize, layout.checkboxSize);
+            if (checkbox.checked) {
+                context.strokeStyle = '#4cc9b0'; context.lineWidth = 3; context.beginPath(); context.moveTo(checkbox.x + 3, checkboxY + 9); context.lineTo(checkbox.x + 7, checkboxY + 14); context.lineTo(checkbox.x + 16, checkboxY + 4); context.stroke();
+            }
+            context.fillStyle = '#f5fbfc'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'left'; context.fillText(translate(checkbox.label), checkbox.x + 27, checkboxY + 15);
+        });
         getSettingsActionButtons().forEach((button) => {
             context.fillStyle = button.color; context.fillRect(button.x, layout.actionY, layout.actionWidth, layout.actionHeight); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, layout.actionY, layout.actionWidth, layout.actionHeight); context.fillStyle = '#fff'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + layout.actionWidth / 2, layout.actionY + 24);
         });
@@ -8763,8 +8776,10 @@
                 const providers = getAiServiceProviders();
                 const currentIndex = providers.indexOf(settingsDraft.aiProvider);
                 setSettingsDraftProvider(providers[(currentIndex + direction + providers.length) % providers.length]);
-            } else if (settingsFocus === 11) settingsDraft.landscapeOrientationLocked = direction > 0;
-            else if (settingsFocus >= 12) settingsFocus = 12 + (settingsFocus - 12 + (direction < 0 ? 2 : 1)) % 3;
+            } else if (settingsFocus === 11 || settingsFocus === 12) {
+                settingsFocus = settingsFocus === 11 && direction > 0 ? 12 : (settingsFocus === 12 && direction < 0 ? 11 : settingsFocus);
+            }
+            else if (settingsFocus >= 13) settingsFocus = 13 + (settingsFocus - 13 + (direction < 0 ? 2 : 1)) % 3;
         }
     }
 
@@ -9381,13 +9396,19 @@
             const layout = SETTINGS_UI_LAYOUT;
             if (x >= SETTINGS_CODE_BUTTON.x && x <= SETTINGS_CODE_BUTTON.x + SETTINGS_CODE_BUTTON.width && y >= SETTINGS_CODE_BUTTON.y && y <= SETTINGS_CODE_BUTTON.y + SETTINGS_CODE_BUTTON.height) enterSettingsCode();
             else if (y >= layout.testY && y <= layout.testY + layout.testHeight && x >= layout.controlX && x <= layout.controlX + layout.controlWidth && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 10; runAiApiTest(); }
-            else if (y >= layout.checkboxY && y <= layout.checkboxY + layout.checkboxSize && x >= layout.controlX && x <= layout.controlX + layout.controlWidth) { playMenuSelectSound(); settingsFocus = 11; settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
+            else if (y >= layout.checkboxY && y <= layout.checkboxY + layout.checkboxSize && x >= layout.controlX && x <= layout.controlX + layout.controlWidth) {
+                const checkboxX = x >= layout.replayCheckboxX ? layout.replayCheckboxX : layout.controlX;
+                playMenuSelectSound();
+                settingsFocus = checkboxX === layout.replayCheckboxX ? 12 : 11;
+                if (checkboxX === layout.replayCheckboxX) settingsDraft.useReplayFeature = !settingsDraft.useReplayFeature;
+                else settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked;
+            }
             else {
                 const action = getSettingsActionButtons().find((button) => x >= button.x && x <= button.x + layout.actionWidth && y >= layout.actionY && y <= layout.actionY + layout.actionHeight);
                 if (action) {
                     settingsFocus = action.focus;
-                    if (action.focus === 12) saveSettings();
-                    else if (action.focus === 13) cancelSettings();
+                    if (action.focus === 13) saveSettings();
+                    else if (action.focus === 14) cancelSettings();
                     else resetAllSettings();
                     return;
                 }
