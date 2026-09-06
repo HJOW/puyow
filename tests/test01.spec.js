@@ -1521,7 +1521,7 @@ test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 �
   ].includes(text)))).toBe(false);
 });
 
-test('역으로 모델 학습이 꺼져 있으면 사람이 둔 수를 학습 서버로 보내지 않는다', async ({ page }) => {
+test('역으로 모델 학습이 꺼져 있으면 대전이 끝나도 솔로몬 학습 서버를 호출하지 않는다', async ({ page }) => {
   await page.route('**/apis/localmodelinfo', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ available: true }) });
   });
@@ -1561,15 +1561,16 @@ test('역으로 모델 학습이 꺼져 있으면 사람이 둔 수를 학습 �
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
 
-  // 사람이 여러 수를 두는 동안에도 사람 쪽 수는 한 번도 전송되지 않아야 한다.
+  // 조작 없이 계속 내리면 스폰 열이 쌓여 사용자가 먼저 패배하고 대전이 끝까지 진행된다.
   await page.keyboard.down('ArrowDown');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.player.placedPairCount || 0), { timeout: 20000 }).toBeGreaterThanOrEqual(3);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 60000 }).toBe('game_over');
   await page.keyboard.up('ArrowDown');
 
-  expect(learningRequests).toEqual([]);
-  // 솔로몬 자신의 수로 하는 기존 학습은 이 설정과 무관하게 그대로 유지된다.
+  // `역으로 모델 학습`이 꺼져 있으면 솔로몬 자신의 수를 포함해 이 기능 전체가 대상에서 빠져야 하므로,
+  // 배치 프롬프트에 학습 세션 ID가 실리지 않고, 대전이 끝나도 /apis/solomonlearning이 호출되지 않는다.
   expect(prompts.length).toBeGreaterThan(0);
-  expect(prompts.every((prompt) => typeof prompt.learningSessionId === 'string')).toBe(true);
+  expect(prompts.every((prompt) => prompt.learningSessionId === undefined)).toBe(true);
+  expect(learningRequests).toEqual([]);
 });
 
 test('LM Studio 제공자와 극한이 아닌 난이도의 솔로몬 프롬프트에는 학습 세션을 넣지 않는다', async ({ page }) => {

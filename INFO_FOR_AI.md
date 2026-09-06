@@ -205,7 +205,9 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 
 ### 솔로몬 온라인 학습 (Local AI + 극한 난이도)
 
-AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대전할 때만(색상 수·룰은 가리지 않는다) 그 대전에서 나온 수로 로컬 서버의 모델을 추가 학습한다. 판정 함수는 `shouldTrainLocalAiWithSolomon()`이며 `game.players[1].controller`가 솔로몬인지까지 확인하므로, 연습·퍼즐·구경처럼 솔로몬이 나올 수 없는 모드는 자연히 제외된다. 이미 끝난 대전을 다시 보여 줄 뿐인 리플레이 재생(`game.replayPlayback`)도 제외한다.
+AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대전하며, 설정의 `역으로 모델 학습`(`store.settings.reverseLearning`)이 켜져 있을 때만(색상 수·룰은 가리지 않는다) 그 대전에서 나온 수로 로컬 서버의 모델을 추가 학습한다. 판정 함수는 `shouldTrainLocalAiWithSolomon()`이며 `game.players[1].controller`가 솔로몬인지, `isReverseLearningEnabled()`가 켜져 있는지까지 확인하므로, 연습·퍼즐·구경처럼 솔로몬이 나올 수 없는 모드와 이 설정을 꺼 둔 대전은 자연히 제외된다. 이미 끝난 대전을 다시 보여 줄 뿐인 리플레이 재생(`game.replayPlayback`)도 제외한다.
+
+`역으로 모델 학습`은 솔로몬 자신의 수로 하는 학습을 포함해 이 온라인 학습 기능 전체를 켜고 끈다(체크박스 이름의 "역으로"는 `learning.py`로 하는 평소의 오프라인 일괄 학습과 반대로, 실제 서비스 중인 모델을 대전 도중 그 자리에서 갱신한다는 뜻이다). 이 설정이 꺼져 있으면 `shouldTrainLocalAiWithSolomon()`이 곧바로 `false`를 반환하므로 `getSolomonLearningSessionId()`가 세션 ID 자체를 만들지 않는다. 그 결과 솔로몬 배치 프롬프트에 `learningSessionId`가 실리지 않아 서버가 그 수를 학습 세션에 쌓지 않고, 대전이 끝나도 `requestSolomonLearningFinish()`가 아예 호출되지 않아 `/apis/solomonlearning`으로 어떤 요청도 나가지 않는다.
 
 - `getSolomonLearningSessionId()`가 대전마다 `solomon-<시각>-<난수>` 세션 ID를 만들어 `game.solomonLearningSessionId`에 보관하고, `Solomon.buildPlacementPrompt()`가 이 값을 프롬프트의 `learningSessionId` 항목으로 함께 보낸다. 학습 대상이 아니면 이 항목 자체를 넣지 않으므로 다른 제공자·난이도의 프롬프트는 기존과 완전히 같다.
 - 서버의 `chat_completions_api()`는 `learningSessionId`가 있는 배치 요청마다 `record_solomon_step()`으로 이번 수의 애프터스테이트와 즉시 보상을 세션에 순서대로 담아 둔다. 애프터스테이트는 학습기의 `build_afterstate()`를 그대로 호출해 만들므로 오프라인 학습과 형식·보상 계약이 같다.
@@ -217,7 +219,7 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 
 같은 대전에서 **사람이 조작한 플레이어 쪽 수**도 함께 모아 두었다가, 사람이 이겼을 때만 "모델이 플레이어 쪽을 조작해 이긴 수순"으로 보고 함께 학습한다. 관측 벡터(528개)와 행동 번호(`열*4+회전`)는 어느 쪽이 두었는지 구분하는 값이 없는 자기중심 표현이므로, 사람의 수도 솔로몬의 수와 같은 전이 구조로 그대로 쓸 수 있다.
 
-이 동작은 설정의 `역으로 모델 학습`(`store.settings.reverseLearning`)이 켜져 있을 때만 한다. `isReverseLearningEnabled()`가 꺼짐을 반환하면 사람의 수를 서버로 아예 보내지 않으므로, 솔로몬 자신이 둔 수로 하는 기존 학습만 그대로 남는다.
+이 하위 기능도 위 절의 `역으로 모델 학습` 설정 하나로 온라인 학습 전체와 함께 켜지고 꺼진다. 별도의 조건 분기는 없으며, `sendSolomonPlayerLearningStep()`이 부르는 `getSolomonLearningSessionId()`가 `shouldTrainLocalAiWithSolomon()`을 그대로 재사용하기 때문이다.
 
 - `lockActive()`에서 사람이 뿌요를 확정할 때마다 `sendSolomonPlayerLearningStep()`이 `POST /apis/solomonlearning`(`{event:'step', sessionId, observation, action, nextPair}`)을 보낸다. 관측은 기존 `/apis/learning` 경로와 같은 `getLearningObservation()`으로 만들며, 배치 직전(=`placedPairCount` 증가 전) 상태라서 솔로몬 프롬프트와 시점 계약이 같다. `nextPair`는 `player.nextPairs[0]`이고 서버가 애프터스테이트의 조작 쌍 자리에 넣는다(솔로몬 프롬프트의 `suppliedPuyos` `next_1`과 같은 값이다). 항목이 없으면 서버는 색을 비운 쌍으로 본다.
 - 솔로몬 학습 요청은 모두 `queueSolomonLearningRequest()`의 단일 Promise 큐로 보낸다. 서버가 앞 요청의 관측값을 그 수의 다음 상태로 이어 붙이므로 순서가 뒤바뀌면 안 되고, `finish`는 반드시 그 대전의 마지막 `step` 뒤에 도착해야 한다.

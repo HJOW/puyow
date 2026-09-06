@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 19;
+    const BUILDNO = 20;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -2419,11 +2419,13 @@
      * (머신러닝 관련)
      * 이번 대전이 로컬 AI 서버의 모델을 이 대전의 수로 추가 학습할 대상인지 확인한다.
      * 색상 수와 룰은 가리지 않고, AI 제공자가 Local AI이며 극한 난이도로 솔로몬과 대전할 때만 대상이다.
-     * 리플레이 재생은 이미 끝난 대전을 다시 보여 줄 뿐이므로 학습 대상에서 제외한다.
+     * 리플레이 재생은 이미 끝난 대전을 다시 보여 줄 뿐이므로 학습 대상에서 제외한다. 서버가 실제로
+     * 학습(모델 가중치 갱신)을 수행하는 유일한 경로이므로, 설정의 `역으로 모델 학습`이 꺼져 있으면
+     * 솔로몬 자신의 수를 포함해 이 전체 기능을 대상에서 제외한다.
      * @returns {boolean} 학습 대상이면 true
      */
     function shouldTrainLocalAiWithSolomon() {
-        if (!game || game.replayPlayback || !isLocalAiProvider(store?.settings)) return false;
+        if (!game || game.replayPlayback || !isLocalAiProvider(store?.settings) || !isReverseLearningEnabled()) return false;
         if (AI_DIFFICULTIES[game.aiDifficulty]?.key !== 'extreme') return false;
         return game.players?.[1]?.controller?.getClassType?.() === 'Solomon';
     }
@@ -2455,11 +2457,13 @@
      * 사람이 방금 확정한 배치를 이번 대전의 학습 세션에 플레이어 쪽 수로 기록하도록 요청한다.
      * 관측·행동 계약이 솔로몬과 완전히 같으므로, 사람이 이 대전을 이기면 서버가 이 수순을 모델이
      * 플레이어 쪽을 조작해 이긴 것처럼 학습에 사용한다. 이기지 못한 대전의 수는 서버가 그대로 버린다.
+     * `역으로 모델 학습`이 꺼져 있으면 `getSolomonLearningSessionId()`가 이미 null을 반환하므로
+     * 별도로 다시 확인하지 않는다.
      * @param {PlayerState} player 사람이 조작하는 플레이어
      * @returns {void}
      */
     function sendSolomonPlayerLearningStep(player) {
-        if (!player.active || !isReverseLearningEnabled()) return;
+        if (!player.active) return;
         const sessionId = getSolomonLearningSessionId();
         if (!sessionId) return;
         // 서버 모델은 한 수를 둔 직후 상태의 가치를 학습하며, 그 상태의 조작 쌍은 이번 수의 다음 쌍이다.
@@ -2478,6 +2482,9 @@
      * (머신러닝 관련)
      * 이번 대전의 솔로몬 학습 세션 ID를 만들거나 이미 만든 값을 반환한다.
      * 이 값을 솔로몬 배치 요청에 함께 보내면 서버가 그 대전의 추론 결과를 세션에 모은다.
+     * `shouldTrainLocalAiWithSolomon()`이 `역으로 모델 학습` 설정을 함께 확인하므로, 이 설정이
+     * 꺼져 있으면 세션 ID 자체를 만들지 않아 솔로몬 프롬프트에 `learningSessionId`가 실리지 않고,
+     * 서버도 그 수를 학습 세션에 쌓지 않는다.
      * @returns {string|null} 학습 대상이 아니면 null
      */
     function getSolomonLearningSessionId() {
