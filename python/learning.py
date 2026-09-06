@@ -38,6 +38,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 from collections import deque
@@ -951,6 +952,14 @@ class TrainingControl:
 		return self._stop_requested.is_set()
 
 
+def _format_eta(seconds: float) -> str:
+	"""남은 시간을(초) H:MM:SS 형태의 문자열로 바꾼다."""
+	total_seconds = max(0, int(seconds))
+	hours, remainder = divmod(total_seconds, 3600)
+	minutes, seconds_part = divmod(remainder, 60)
+	return f"{hours}:{minutes:02d}:{seconds_part:02d}"
+
+
 def train(
 	episodes: int, seed: int, output: Path, device_name: str, server_url: str = "", api_token: str = "", opponent: str = "random", *,
 	control: Optional[TrainingControl] = None, log: Callable[[str], None] = print,
@@ -982,6 +991,8 @@ def train(
 	steps = 0
 	win_count = 0
 	loss_count = 0
+	training_start_time = time.monotonic()
+	progress_log_count = 0
 	if resumed:
 		# 기존 형식은 model 가중치만 저장했으므로 optimizer·replay buffer·epsilon은 이번 실행에서 새로 시작한다.
 		log(f"resume={output} 기존 모델 가중치로 추가 학습을 시작합니다.")
@@ -1056,8 +1067,15 @@ def train(
 				"wins": win_count, "losses": loss_count,
 			})
 		if (episode + 1) % log_interval == 0 or episode == 0:
+			progress_log_count += 1
+			eta_text = ""
+			if progress_log_count >= 2:
+				elapsed = time.monotonic() - training_start_time
+				remaining_episodes = episodes - (episode + 1)
+				eta_seconds = elapsed / (episode + 1) * remaining_episodes
+				eta_text = f" eta={_format_eta(eta_seconds)}"
 			log(f"episode={episode + 1}/{episodes} reward={episode_reward:.1f} epsilon={epsilon:.3f} "
-				f"result={episode_result} wins={win_count} losses={loss_count}")
+				f"result={episode_result} wins={win_count} losses={loss_count}{eta_text}")
 		if control is not None and control.check_at_episode_boundary():
 			log(f"stopped_by_user episode={episode + 1}/{episodes}")
 			break
