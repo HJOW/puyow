@@ -100,7 +100,7 @@ SOLOMON_TRAINING_GAMMA = 0.99
 # 사람이 이긴 대전에서 그 사람의 수를 "모델이 플레이어 쪽을 조작해 이긴 것"으로 보고 학습할 때
 # 적용하는 비중이다. 솔로몬 자신이 둔 수의 비중은 항상 1이므로 이 값이 클수록 사람의 승리 수순을
 # 더 강하게 따라 배운다. 1로 두면 양쪽을 같은 비중으로 학습한다.
-SOLOMON_PLAYER_WIN_TRAINING_WEIGHT = 100.0
+SOLOMON_PLAYER_WIN_TRAINING_WEIGHT = 1000.0
 # 비중을 적용하지 않는 전이의 기본값이다.
 SOLOMON_DEFAULT_TRAINING_WEIGHT = 1.0
 
