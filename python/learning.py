@@ -1,4 +1,14 @@
-"""Puyo W용 self-play DQN 학습기.
+"""Puyo W용 self-play 애프터스테이트 가치 학습기.
+
+이 게임은 한 수를 두었을 때 어떤 보드가 되는지(착지·폭발·연쇄·ATTACK)를 규칙만으로 정확히
+계산할 수 있다. 그래서 24개 행동마다 Q값을 따로 외우는 대신, **한 수를 둔 직후의 보드 상태
+(애프터스테이트)** 하나의 가치 V(x)만 학습하고, 실제 배치는 후보마다 규칙으로 결과를 미리
+계산해 `즉시 보상 + 감가된 V(애프터스테이트)`가 가장 큰 것을 고른다. 규칙으로 알 수 있는 부분을
+신경망이 다시 배우지 않아도 되고, 24개 행동이 하나의 가치 함수를 공유하므로 같은 대전 수로도
+훨씬 빨리 는다. 놓을 수 없는 자리는 후보를 만들 때 빠지므로 불가능한 행동을 배우는 일도 없다.
+
+가치망은 6×12 보드를 1차원으로 펴지 않고 채널 7개의 2차원 평면 그대로 합성곱에 넣는다.
+같은 색이 붙어 있는지, 어느 열이 높은지 같은 연쇄의 근거가 위치를 옮겨도 같은 특징이기 때문이다.
 
 pythonserver.py의 인증된 학습 이벤트 API를 선택적으로 사용한다. 서버 URL을
 지정하지 않으면 Puyo W의 핵심 보드 규칙을 작은 독립 환경으로 실행하고,
@@ -44,16 +54,17 @@ import urllib.request
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Deque, List, Optional, Tuple
+from typing import Any, Callable, Deque, List, Optional, Sequence, Tuple
 
 import torch
 from torch import nn
 
 import bundledenemy
 from common import (
-	ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, COLORS, MODEL_VERSION, OBSERVATION_SIZE,
-	ROTATION_DOWN, ROTATION_LEFT, ROTATION_RIGHT, ROTATION_UP, action_to_placement,
-	encode_observation_values, is_legal_observation_action, validate_observation,
+	ACTION_COUNT, BOARD_CHANNELS, BOARD_HEIGHT, BOARD_WIDTH, COLORS, DISCOUNT_GAMMA, MODEL_VERSION,
+	OBSERVATION_EXTRA_SIZE, OBSERVATION_SIZE, ROTATION_COUNT, ROTATION_UP, action_to_placement,
+	decode_observation_board, decode_observation_pair, decode_observation_scalars,
+	encode_observation_values, is_legal_observation_action, move_reward, validate_observation,
 )
 from common import LOSS_REWARD as DUEL_LOSS_REWARD, WIN_REWARD as DUEL_WIN_REWARD
 
@@ -121,13 +132,16 @@ class LearningApiClient:
 
 
 @dataclass
-class Transition:
-	"""리플레이 버퍼에 저장하는 한 스텝 분의 전이(상태·행동·보상·다음 상태·종료 여부)."""
+class ValueSample:
+	"""리플레이 버퍼에 저장하는 가치 회귀 한 건이다.
+
+	`state`(애프터스테이트)의 목표값은 `partial_return + discount * V(bootstrap)`이다. 에피소드가
+	n스텝 안에 끝나 더 볼 상태가 없으면 `discount`가 0이라 남은 보상 합만 목표가 된다.
+	"""
 	state: torch.Tensor
-	action: int
-	reward: float
-	next_state: torch.Tensor
-	done: bool
+	partial_return: float
+	bootstrap: torch.Tensor
+	discount: float
 
 
 def encode_observation(
@@ -136,7 +150,7 @@ def encode_observation(
 	elapsed_ms: float = 0.0, margin_rate: float = 70.0, time_progress_multiplier: float = 1.0,
 	fever: Optional[dict[str, Any]] = None,
 ) -> torch.Tensor:
-	"""보드·현재 쌍·전투/시간/피버 상태를 공통 DQN 관측 벡터로 인코딩한다."""
+	"""보드·현재 쌍·전투/시간/피버 상태를 공통 관측 벡터로 인코딩한다."""
 	return torch.tensor(encode_observation_values(
 		board, current_pair, attack=attack, turn=turn, incoming_damage=incoming_damage,
 		fever_rule=fever_rule, all_clear_ticket=all_clear_ticket, elapsed_ms=elapsed_ms,
@@ -223,7 +237,13 @@ class PuyoEnvironment:
 
 	상대 없이 "죽지 않고 버티기"만 학습하는 구모드다. 기본값은 PuyoDuelEnvironment(적 AI와
 	실제로 대전하며 학습)이며, 이 클래스는 --opponent solo로 선택했을 때만 쓰인다.
+
+	착지·연쇄 해소·패배 판정은 대전 환경, 서버 추론과 같은 bundledenemy 함수를 그대로 쓴다.
+	가치망이 보는 애프터스테이트와 학습에 쓰는 보상이 어느 모드에서든 같은 규칙이어야 하기 때문이다.
 	"""
+
+	# 상대가 없어 승패 보상이 없으므로, 패배만 대전과 같은 크기로 벌한다.
+	DEFEAT_REWARD = DUEL_LOSS_REWARD
 
 	def __init__(self, seed: int | None = None) -> None:
 		"""시드로 난수 생성기를 만들고 초기 상태로 리셋한다."""
@@ -231,7 +251,7 @@ class PuyoEnvironment:
 		self.board: List[List[int]] = []
 		self.current_pair: Tuple[int, int] = (0, 0)
 		self.next_pair: Tuple[int, int] = (0, 0)
-		self.attack = 0
+		self.attack = 0.0
 		self.turn = 0
 		self.reset()
 
@@ -241,10 +261,12 @@ class PuyoEnvironment:
 
 	def reset(self) -> torch.Tensor:
 		"""보드와 상태를 비우고 새 에피소드를 시작한다."""
-		self.board = [[-1 for _ in range(BOARD_WIDTH)] for _ in range(BOARD_HEIGHT)]
+		bundledenemy.configure_rule(False)
+		bundledenemy.configure_timing(get_margin_rate(0), get_time_progress_multiplier(0))
+		self.board = bundledenemy.new_empty_board()
 		self.current_pair = self._pair()
 		self.next_pair = self._pair()
-		self.attack = 0
+		self.attack = 0.0
 		self.turn = 0
 		return self.observe()
 
@@ -252,80 +274,31 @@ class PuyoEnvironment:
 		"""현재 보드·쌍·공격력·턴을 관측 벡터로 인코딩한다."""
 		return encode_observation(self.board, self.current_pair, self.attack, self.turn)
 
-	def _cells_for_action(self, action: int) -> List[Tuple[int, int, int]] | None:
-		"""공통 회전 계약으로 현재 쌍이 착지할 두 칸을 계산한다."""
-		column, rotation = action_to_placement(action)
-		first, second = self.current_pair
-		heights = [sum(self.board[y][x] >= 0 for y in range(BOARD_HEIGHT)) for x in range(BOARD_WIDTH)]
-		# 위·아래 회전은 같은 열에 두 칸을 사용하며, 회전축 뿌요의 높이만 서로 다르다.
-		if rotation == ROTATION_UP:
-			if heights[column] + 1 >= BOARD_HEIGHT:
-				return None
-			return [(column, heights[column], first), (column, heights[column] + 1, second)]
-		if rotation == ROTATION_DOWN:
-			if heights[column] + 1 >= BOARD_HEIGHT:
-				return None
-			return [(column, heights[column] + 1, first), (column, heights[column], second)]
-		# 오른쪽·왼쪽 회전은 회전축 열과 인접 열에 각각 한 칸씩 착지한다.
-		second_column = column + 1 if rotation == ROTATION_RIGHT else column - 1
-		if second_column < 0 or second_column >= BOARD_WIDTH:
-			return None
-		if heights[column] >= BOARD_HEIGHT or heights[second_column] >= BOARD_HEIGHT:
-			return None
-		return [(column, heights[column], first), (second_column, heights[second_column], second)]
-
-	def _resolve(self) -> Tuple[int, int]:
-		"""4개 이상 뭉친 그룹을 연쇄가 끝날 때까지 반복해서 제거하고, 지운 칸 수와 연쇄 수를 반환한다."""
-		chain = 0
-		cleared = 0
-		while True:
-			visited = set()
-			groups = []
-			for y in range(BOARD_HEIGHT):
-				for x in range(BOARD_WIDTH):
-					if (x, y) in visited or self.board[y][x] < 0:
-						continue
-					color = self.board[y][x]
-					stack = [(x, y)]
-					group = []
-					visited.add((x, y))
-					while stack:
-						cx, cy = stack.pop()
-						group.append((cx, cy))
-						for nx, ny in ((cx - 1, cy), (cx + 1, cy), (cx, cy - 1), (cx, cy + 1)):
-							if 0 <= nx < BOARD_WIDTH and 0 <= ny < BOARD_HEIGHT and (nx, ny) not in visited and self.board[ny][nx] == color:
-								visited.add((nx, ny))
-								stack.append((nx, ny))
-					if len(group) >= 4:
-						groups.append(group)
-			if not groups:
-				break
-			chain += 1
-			removed = {cell for group in groups for cell in group}
-			cleared += len(removed)
-			for x, y in removed:
-				self.board[y][x] = -1
-			for x in range(BOARD_WIDTH):
-				remaining = [self.board[y][x] for y in range(BOARD_HEIGHT) if self.board[y][x] >= 0]
-				for y in range(BOARD_HEIGHT):
-					self.board[y][x] = remaining[y] if y < len(remaining) else -1
-		return cleared, chain
+	def next_pair_for_agent(self) -> Tuple[int, int]:
+		"""애프터스테이트에 담을 다음 턴의 조작 쌍을 알려 준다."""
+		return self.next_pair
 
 	def step(self, action: int) -> Tuple[torch.Tensor, float, bool, dict]:
 		"""행동을 착지시키고 연쇄를 해소한 뒤, 다음 관측·보상·종료 여부·정보를 반환한다."""
-		cells = self._cells_for_action(action)
-		if cells is None:
-			return self.observe(), -2.0, True, {"invalid": True}
-		for x, y, color in cells:
-			self.board[y][x] = color
-		cleared, chain = self._resolve()
-		reward = float(cleared + chain * chain * 3)
-		self.attack += max(0, chain - 1) + cleared // 4
+		bundledenemy.configure_rule(False)
+		bundledenemy.configure_timing(get_margin_rate(0), get_time_progress_multiplier(0))
+		landing = bundledenemy.find_landing_placement(self.board, *action_to_placement(action))
+		if landing is None:
+			return self.observe(), self.DEFEAT_REWARD, True, {"invalid": True, "terminal_value": self.DEFEAT_REWARD}
+		result_board, combo, attack = bundledenemy.resolve_placement(self.board, self.current_pair, [landing[0], landing[1]])
+		self.board = result_board
+		self.attack = attack
 		self.current_pair = self.next_pair
 		self.next_pair = self._pair()
 		self.turn += 1
-		defeated = self.board[BOARD_HEIGHT - 1][2] >= 0
-		return self.observe(), reward - (20.0 if defeated else 0.0), defeated, {"cleared": cleared, "chain": chain}
+		reward = move_reward(attack, combo)
+		defeated = bundledenemy.is_defeat_board(self.board)
+		info = {"combo": combo, "attack": attack}
+		if defeated:
+			return self.observe(), reward + self.DEFEAT_REWARD, True, {
+				**info, "result": "agent_defeated", "terminal_value": self.DEFEAT_REWARD,
+			}
+		return self.observe(), reward, False, info
 
 
 def _apply_attack_exchange(attacker_pending_damage: float, attack_generated: float, defender_pending_damage: float) -> Tuple[float, float]:
@@ -376,7 +349,6 @@ class PuyoDuelEnvironment:
 	# 전이로 같은 체크포인트를 추가 학습하므로 양쪽 보상 크기가 같아야 한다.
 	WIN_REWARD = DUEL_WIN_REWARD
 	LOSS_REWARD = DUEL_LOSS_REWARD
-	INVALID_ACTION_REWARD = -5.0
 	NEXT_PAIR_LOOKAHEAD = 8
 
 	def __init__(
@@ -385,7 +357,7 @@ class PuyoDuelEnvironment:
 		seed: Optional[int] = None,
 		fever_rule: Optional[bool] = None,
 		color_count: Optional[int] = None,
-		self_play_action_fn: Optional[Callable[[torch.Tensor], int]] = None,
+		self_play_action_fn: Optional[Callable[[torch.Tensor, Sequence[Any]], int]] = None,
 	) -> None:
 		"""대전 설정(상대·시드·피버 룰·색상 수·self-play 콜백)을 받아 초기 상태로 리셋한다."""
 		self.random = random.Random(seed)
@@ -465,6 +437,10 @@ class PuyoDuelEnvironment:
 		"""학습 중인 에이전트(agent) 쪽 관측값을 반환한다."""
 		return self._observe_side("agent")
 
+	def next_pair_for_agent(self) -> Tuple[int, int]:
+		"""애프터스테이트에 담을 다음 턴의 조작 쌍을 알려 준다."""
+		return self.agent_next_pairs[0]
+
 	def _fever(self, side: str) -> FeverState:
 		"""side에 해당하는 피버 상태 객체를 반환한다."""
 		return self.agent_fever if side == "agent" else self.enemy_fever
@@ -528,7 +504,10 @@ class PuyoDuelEnvironment:
 			placement = self.opponent.decide(self._board("enemy"), self.enemy_pair, self.enemy_next_pairs, self._damage("enemy"))
 			return placement.positions if placement is not None else None
 		observation = self._observe_side("enemy")
-		action = self.self_play_action_fn(observation) if self.self_play_action_fn else self.random.randrange(ACTION_COUNT)
+		action = (
+			self.self_play_action_fn(observation, self.enemy_next_pairs[0])
+			if self.self_play_action_fn else self.random.randrange(ACTION_COUNT)
+		)
 		column, rotation = action_to_placement(action)
 		landing = bundledenemy.find_landing_placement(self._board("enemy"), column, rotation)
 		return [landing[0], landing[1]] if landing is not None else None
@@ -676,7 +655,8 @@ class PuyoDuelEnvironment:
 		column, rotation = action_to_placement(action)
 		landing = bundledenemy.find_landing_placement(self._board("agent"), column, rotation)
 		if landing is None:
-			return self.observe(), self.INVALID_ACTION_REWARD, True, {"invalid": True}
+			# 놓을 자리가 하나도 없는 상태는 실제 게임의 패배와 같다.
+			return self.observe(), self.LOSS_REWARD, True, {"invalid": True, "terminal_value": self.LOSS_REWARD}
 		positions = [landing[0], landing[1]]
 		result_board, combo, attack = bundledenemy.resolve_placement(self._board("agent"), self.agent_pair, positions)
 		self._set_board("agent", result_board)
@@ -686,7 +666,7 @@ class PuyoDuelEnvironment:
 			attack += ALL_CLEAR_TICKET_ATTACK
 			self.agent_all_clear_ticket = False
 		self.agent_attack = attack
-		reward = attack + combo * combo
+		reward = move_reward(attack, combo)
 		agent_all_clear = combo > 0 and all(cell == bundledenemy.EMPTY for row in result_board for cell in row)
 		info = {
 			"combo": combo, "attack": attack,
@@ -706,7 +686,9 @@ class PuyoDuelEnvironment:
 			self._set_damage("agent", damage - dropped)
 
 		if bundledenemy.is_defeat_board(self._board("agent")):
-			return self.observe(), reward + self.LOSS_REWARD, True, {**info, "result": "agent_defeated"}
+			return self.observe(), reward + self.LOSS_REWARD, True, {
+				**info, "result": "agent_defeated", "terminal_value": self.LOSS_REWARD,
+			}
 
 		self.agent_pair = self._refill(self.agent_next_pairs)
 		self._after_resolve("agent", combo, agent_all_clear, agent_activation)
@@ -715,7 +697,7 @@ class PuyoDuelEnvironment:
 		if enemy_positions is None:
 			# 상대 필드에 더 이상 둘 곳이 없다: 상대의 패배로 처리한다.
 			result = "enemy_invalid_self_play" if self.is_self_play else "enemy_no_moves"
-			return self.observe(), reward + self.WIN_REWARD, True, {**info, "result": result}
+			return self.observe(), reward + self.WIN_REWARD, True, {**info, "result": result, "terminal_value": self.WIN_REWARD}
 
 		bundledenemy.configure_rule(self.fever_rule, self.enemy_fever.active)
 		enemy_result_board, enemy_combo, enemy_attack = bundledenemy.resolve_placement(self._board("enemy"), self.enemy_pair, enemy_positions)
@@ -741,7 +723,9 @@ class PuyoDuelEnvironment:
 			self._set_damage("enemy", damage - dropped)
 
 		if bundledenemy.is_defeat_board(self._board("enemy")):
-			return self.observe(), reward + self.WIN_REWARD, True, {**info, "result": "enemy_defeated"}
+			return self.observe(), reward + self.WIN_REWARD, True, {
+				**info, "result": "enemy_defeated", "terminal_value": self.WIN_REWARD,
+			}
 
 		self.enemy_pair = self._refill(self.enemy_next_pairs)
 		self._after_resolve("enemy", enemy_combo, enemy_all_clear, enemy_activation)
@@ -751,23 +735,121 @@ class PuyoDuelEnvironment:
 		return self.observe(), reward, False, info
 
 
-class PolicyNetwork(nn.Module):
-	"""관측 벡터를 입력받아 각 행동의 Q값을 출력하는 완전연결 DQN 신경망."""
+@dataclass
+class Afterstate:
+	"""한 수를 두고 연쇄까지 끝난 직후의 상태와, 그 수가 만든 즉시 보상."""
+	action: int
+	reward: float
+	observation: List[float]
+
+
+def observation_values(observation: Any) -> List[float]:
+	"""텐서·리스트 어느 쪽으로 들어와도 같은 float 목록으로 만든다."""
+	return observation.tolist() if isinstance(observation, torch.Tensor) else [float(value) for value in observation]
+
+
+def _build_afterstate(
+	board: List[List[int]], pair: Tuple[int, int], scalars: dict[str, Any], action: int, next_pair: Sequence[Any],
+) -> Optional[Afterstate]:
+	"""이미 디코딩한 관측 상태에서 한 행동의 애프터스테이트와 즉시 보상을 만든다.
+
+	호출 전에 bundledenemy의 룰·시간 설정을 이 관측값에 맞춰 두어야 ATTACK 계산이 실제 게임과 같다.
+	방해뿌요 낙하는 무작위라 애프터스테이트에 반영하지 않고, 상쇄하고 남은 피해량만 상태에 남긴다.
+	"""
+	landing = bundledenemy.find_landing_placement(board, *action_to_placement(action))
+	if landing is None:
+		return None
+	result_board, combo, attack = bundledenemy.resolve_placement(board, pair, [landing[0], landing[1]])
+	if result_board is None:
+		return None
+	fever_rule = scalars["fever_rule"]
+	fever_active = fever_rule and scalars["fever_active"]
+	# 피버 중에는 피버 필드 전용 미정산 피해가 그 시점의 실제 피해량이다.
+	damage = scalars["fever_damage"] if fever_active else scalars["incoming_damage"]
+	ticket = scalars["all_clear_ticket"]
+	# 아래 세 보정은 PuyoDuelEnvironment.step()과 같은 순서·계약이어야 보상이 어긋나지 않는다.
+	if fever_rule and combo > 0 and attack < 1 and damage >= 1:
+		attack = 1.0
+	if combo > 0 and not fever_rule and ticket:
+		attack += ALL_CLEAR_TICKET_ATTACK
+		ticket = False
+	if combo > 0 and not fever_rule and bundledenemy.is_all_clear_board(result_board):
+		ticket = True
+	remaining_damage = damage - min(math.floor(attack), math.floor(damage))
+	fever = {
+		"active": fever_active, "gauge": scalars["fever_gauge"], "nextTime": scalars["fever_next_time"],
+		"targetCombo": scalars["fever_target_combo"], "leftTime": scalars["fever_left_time"],
+		"damage": remaining_damage if fever_active else scalars["fever_damage"],
+	}
+	observation = encode_observation_values(
+		result_board, next_pair, attack=attack, turn=scalars["turn"] + 1, incoming_damage=remaining_damage,
+		fever_rule=fever_rule, all_clear_ticket=ticket, elapsed_ms=scalars["elapsed_ms"],
+		margin_rate=scalars["margin_rate"], time_progress_multiplier=scalars["time_progress_multiplier"],
+		fever=fever if fever_rule else None,
+	)
+	return Afterstate(action, move_reward(attack, combo), observation)
+
+
+def enumerate_afterstates(
+	observation: Any, next_pair: Sequence[Any], usable_actions: Optional[set[int]] = None,
+) -> List[Afterstate]:
+	"""이번 수로 놓을 수 있는 모든 배치의 애프터스테이트를 계산한다.
+
+	`usable_actions`를 주면 그 후보만 본다. 게임(솔로몬)은 가로 이동 경로·회전 킥·숨김 행까지
+	보고 실제로 쓸 수 있는 배치를 따로 알려 주므로, 그 목록이 오면 관측값의 높이 조건 대신 쓴다.
+	`next_pair`는 이 수 다음에 조작할 쌍이며, 애프터스테이트의 조작 쌍 자리에 들어간다.
+	"""
+	values = observation_values(observation)
+	board = decode_observation_board(values)
+	pair = decode_observation_pair(values)
+	scalars = decode_observation_scalars(values)
+	# bundledenemy는 룰·시간 배율을 모듈 전역으로 관리한다. 관측값에서 되살려 두어야 ATTACK이 맞는다.
+	bundledenemy.configure_rule(scalars["fever_rule"], scalars["fever_active"])
+	bundledenemy.configure_timing(scalars["margin_rate"], scalars["time_progress_multiplier"])
+	candidates = sorted(usable_actions) if usable_actions is not None else [
+		action for action in range(ACTION_COUNT) if is_legal_observation_action(values, action)
+	]
+	afterstates = [_build_afterstate(board, pair, scalars, action, next_pair) for action in candidates]
+	return [afterstate for afterstate in afterstates if afterstate is not None]
+
+
+def build_afterstate(observation: Any, action: int, next_pair: Sequence[Any]) -> Optional[Afterstate]:
+	"""이미 둔 수 하나의 애프터스테이트를 되살린다. 서버의 온라인 학습이 사용한다."""
+	afterstates = enumerate_afterstates(observation, next_pair, {int(action)})
+	return afterstates[0] if afterstates else None
+
+
+class ValueNetwork(nn.Module):
+	"""애프터스테이트 하나의 가치를 출력하는 합성곱 신경망.
+
+	보드는 6×12 위에 빈 칸·방해뿌요·5색을 나눈 7채널 평면으로 그대로 넣고, 조작 쌍과 스칼라 상태는
+	합성곱을 지난 특징 뒤에 이어 붙인다. 출력은 행동 수와 무관한 스칼라 하나다.
+	"""
+
+	CONV_CHANNELS = 32
 
 	def __init__(self) -> None:
-		"""256-128 은닉층을 갖는 완전연결 계층들을 구성한다."""
+		"""보드 합성곱 두 단과 256-128 은닉층의 가치 헤드를 구성한다."""
 		super().__init__()
-		self.layers = nn.Sequential(
-			nn.Linear(OBSERVATION_SIZE, 256), nn.ReLU(),
-			nn.Linear(256, 128), nn.ReLU(), nn.Linear(128, ACTION_COUNT)
+		self.board = nn.Sequential(
+			nn.Conv2d(BOARD_CHANNELS, self.CONV_CHANNELS, kernel_size=3, padding=1), nn.ReLU(),
+			nn.Conv2d(self.CONV_CHANNELS, self.CONV_CHANNELS, kernel_size=3, padding=1), nn.ReLU(),
+		)
+		self.head = nn.Sequential(
+			nn.Linear(self.CONV_CHANNELS * BOARD_HEIGHT * BOARD_WIDTH + OBSERVATION_EXTRA_SIZE, 256), nn.ReLU(),
+			nn.Linear(256, 128), nn.ReLU(), nn.Linear(128, 1),
 		)
 
-	def forward(self, state: torch.Tensor) -> torch.Tensor:
-		"""상태를 받아 행동별 Q값을 계산한다."""
-		return self.layers(state)
+	def forward(self, observation: torch.Tensor) -> torch.Tensor:
+		"""관측 벡터(한 개 또는 배치)를 받아 상태 가치를 계산한다."""
+		flat = observation.reshape(-1, OBSERVATION_SIZE)
+		cells = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS
+		# 관측 벡터의 보드 구간은 채널→y→x 순서라 그대로 (채널, 높이, 너비)로 볼 수 있다.
+		planes = flat[:, :cells].reshape(-1, BOARD_CHANNELS, BOARD_HEIGHT, BOARD_WIDTH)
+		return self.head(torch.cat([self.board(planes).flatten(1), flat[:, cells:]], dim=1)).reshape(-1)
 
 
-def load_existing_policy(output: Path, policy: PolicyNetwork, device: torch.device) -> bool:
+def load_existing_policy(output: Path, policy: ValueNetwork, device: torch.device) -> bool:
 	"""--output 체크포인트가 있으면 현재 관측·행동 계약을 확인한 뒤 가중치를 복원한다."""
 	# 존재하지 않는 출력 경로는 이번 실행에서 새 가중치로 학습해야 하는 정상적인 경우다.
 	if not output.exists():
@@ -801,37 +883,73 @@ def load_existing_policy(output: Path, policy: PolicyNetwork, device: torch.devi
 	return True
 
 
-def load_policy_checkpoint(checkpoint_path: Path, device: torch.device) -> PolicyNetwork:
-	"""평가·직접 추론용으로 버전 검증을 거친 정책 하나를 불러온다."""
-	policy = PolicyNetwork().to(device)
+def load_policy_checkpoint(checkpoint_path: Path, device: torch.device) -> ValueNetwork:
+	"""평가·직접 추론용으로 버전 검증을 거친 가치망 하나를 불러온다."""
+	policy = ValueNetwork().to(device)
 	if not load_existing_policy(checkpoint_path, policy, device):
 		raise FileNotFoundError(f"체크포인트를 찾을 수 없습니다: {checkpoint_path}")
 	policy.eval()
 	return policy
 
 
-def choose_policy_action(policy: PolicyNetwork, observation: torch.Tensor, device: torch.device) -> int:
-	"""Q값 순서대로 보면서 현재 관측에서 착지 가능한 최선의 행동을 고른다."""
+def score_afterstates(
+	policy: ValueNetwork, afterstates: Sequence[Afterstate], device: torch.device, gamma: float = DISCOUNT_GAMMA,
+) -> torch.Tensor:
+	"""후보마다 `즉시 보상 + 감가된 애프터스테이트 가치`를 한 번에 계산한다."""
+	states = torch.tensor([afterstate.observation for afterstate in afterstates], dtype=torch.float32, device=device)
 	with torch.inference_mode():
-		q_values = policy(observation.to(device)).reshape(-1)
-	for action in torch.argsort(q_values, descending=True).tolist():
-		if is_legal_observation_action(observation, action):
-			return int(action)
-	# No two-puyo placement fits. Use the game's X=2 fallback so the
-	# environment can terminate this top-out as a normal episode result.
-	return 2 * 4
+		values = policy(states)
+	rewards = torch.tensor([afterstate.reward for afterstate in afterstates], dtype=torch.float32, device=device)
+	return rewards + gamma * values
+
+
+def select_afterstate(
+	policy: ValueNetwork, observation: Any, next_pair: Sequence[Any], device: torch.device, *,
+	usable_actions: Optional[set[int]] = None, epsilon: float = 0.0,
+) -> Tuple[int, Optional[Afterstate]]:
+	"""이번 수의 배치를 고르고, 고른 수의 애프터스테이트를 함께 돌려준다.
+
+	`epsilon`이 0보다 크면 그 확률로 놓을 수 있는 후보 중 하나를 무작위로 고른다(탐험).
+	놓을 자리가 하나도 없으면 애프터스테이트 없이 게임의 스폰 위치(X=2)를 돌려주어, 환경이 이
+	턴을 평소와 같은 패배 결과로 끝내게 한다.
+	"""
+	afterstates = enumerate_afterstates(observation, next_pair, usable_actions)
+	if not afterstates:
+		return (min(usable_actions) if usable_actions else 2 * ROTATION_COUNT + ROTATION_UP), None
+	if epsilon > 0.0 and random.random() < epsilon:
+		chosen = random.choice(afterstates)
+		return chosen.action, chosen
+	scores = score_afterstates(policy, afterstates, device)
+	chosen = afterstates[int(torch.argmax(scores).item())]
+	return chosen.action, chosen
+
+
+def choose_policy_action(
+	policy: ValueNetwork, observation: Any, device: torch.device, next_pair: Sequence[Any] = (None, None),
+	usable_actions: Optional[set[int]] = None,
+) -> int:
+	"""탐험 없이 이번 수의 최선 배치 행동 번호만 고른다. 서버 추론과 평가가 함께 쓴다."""
+	return select_afterstate(policy, observation, next_pair, device, usable_actions=usable_actions)[0]
 
 
 def infer_observation(checkpoint_path: Path, observation_path: Path, device_name: str = "auto") -> dict[str, int]:
-	"""LM Studio나 HTTP 서버 없이 관측 JSON 파일을 정책에 직접 넣어 배치를 반환한다."""
+	"""LM Studio나 HTTP 서버 없이 관측 JSON 파일을 모델에 직접 넣어 배치를 반환한다.
+
+	JSON은 관측 벡터 배열이거나 `{"observation": [...], "nextPair": [...]}` 객체다. 다음 쌍을 함께
+	주면 실제 대전과 같은 기준으로 애프터스테이트를 평가한다.
+	"""
 	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
 	try:
-		observation = json.loads(observation_path.read_text(encoding="utf-8"))
+		document = json.loads(observation_path.read_text(encoding="utf-8"))
 	except (OSError, json.JSONDecodeError) as error:
 		raise ValueError(f"관측 JSON을 읽을 수 없습니다: {observation_path} ({error})") from error
+	observation = document.get("observation") if isinstance(document, dict) else document
+	next_pair = document.get("nextPair", (None, None)) if isinstance(document, dict) else (None, None)
+	if not isinstance(next_pair, (list, tuple)) or len(next_pair) != 2:
+		raise ValueError("nextPair는 두 색으로 이루어진 배열이어야 합니다.")
 	validate_observation(observation)
 	policy = load_policy_checkpoint(checkpoint_path, device)
-	action = choose_policy_action(policy, torch.tensor(observation, dtype=torch.float32), device)
+	action = choose_policy_action(policy, torch.tensor(observation, dtype=torch.float32), device, next_pair)
 	x, rotation = action_to_placement(action)
 	return {"action": action, "x": x, "rotation": rotation}
 
@@ -843,9 +961,9 @@ def evaluate_policy(
 	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
 	policy = load_policy_checkpoint(checkpoint_path, device)
 
-	def greedy_action(observation: torch.Tensor) -> int:
-		"""탐험 없이 정책이 고르는 최선의 행동을 반환한다."""
-		return choose_policy_action(policy, observation, device)
+	def greedy_action(observation: torch.Tensor, next_pair: Sequence[Any]) -> int:
+		"""탐험 없이 모델이 고르는 최선의 행동을 반환한다."""
+		return choose_policy_action(policy, observation, device, next_pair)
 
 	wins = losses = draws = 0
 	for episode in range(episodes):
@@ -854,7 +972,7 @@ def evaluate_policy(
 		result = "timeout"
 		max_steps = 100 if opponent == "solo" else PuyoDuelEnvironment.MAX_TURNS_PER_EPISODE
 		for _ in range(max_steps):
-			action = greedy_action(state)
+			action = greedy_action(state, environment.next_pair_for_agent())
 			state, _reward, done, info = environment.step(action)
 			if done:
 				result = info.get("result", "invalid" if info.get("invalid") else "done")
@@ -869,7 +987,7 @@ def evaluate_policy(
 
 
 def _make_environment(
-	opponent: str, seed: int, self_play_action_fn: Optional[Callable[[torch.Tensor], int]] = None,
+	opponent: str, seed: int, self_play_action_fn: Optional[Callable[[torch.Tensor, Sequence[Any]], int]] = None,
 ) -> "PuyoEnvironment | PuyoDuelEnvironment":
 	"""--opponent 선택에 맞는 학습 환경을 만든다.
 
@@ -952,6 +1070,58 @@ class TrainingControl:
 		return self._stop_requested.is_set()
 
 
+# 한 애프터스테이트의 목표값을 만들 때 실제 보상을 몇 수까지 이어 볼지 정한다. 연쇄는 여러 수에
+# 걸쳐 쌓았다가 한 번에 터지므로, 한 수만 보고 배우는 것보다 보상이 앞 수까지 빨리 전달된다.
+N_STEP_RETURN = 3
+
+
+def build_value_samples(
+	trajectory: Sequence[Tuple[Optional[List[float]], float]], terminal_value: Optional[float],
+	zero_state: torch.Tensor, *, n_step: int = N_STEP_RETURN, gamma: float = DISCOUNT_GAMMA,
+) -> List[ValueSample]:
+	"""한 에피소드의 (애프터스테이트, 그 수의 보상) 기록을 n스텝 목표값 표본으로 바꾼다.
+
+	애프터스테이트 x의 가치는 그 뒤에 이어지는 보상들의 합이다. 그래서 목표값은 다음 수부터 n개의
+	보상을 감가해 더하고, 거기까지 진행한 상태의 가치를 감가해 붙인 값이 된다.
+
+	`terminal_value`는 승부가 난 에피소드의 **마지막 애프터스테이트 자체의 가치**(승리 +50, 패배
+	-50)이며, 승부가 나지 않고 최대 턴에서 잘렸으면 None이다. 승패를 그 앞 수의 보상이 아니라 이
+	상태의 가치로 두어야, 배치 후보 중 두는 순간 패배하는 수의 가치도 -50으로 평가된다. 승패를
+	보상으로만 주면 죽은 보드의 가치가 0이 되어 "지금 죽는 수"가 오히려 좋아 보이게 된다.
+	"""
+	samples: List[ValueSample] = []
+	length = len(trajectory)
+	# 같은 애프터스테이트가 자기 표본과 앞 수의 부트스트랩으로 두 번 쓰이므로 텐서는 한 번만 만든다.
+	states = [
+		torch.tensor(observation, dtype=torch.float32) if observation is not None else None
+		for observation, _reward in trajectory
+	]
+	for index in range(length):
+		# 놓을 자리가 없어 애프터스테이트를 만들지 못한 수는 배울 상태 자체가 없다.
+		if states[index] is None:
+			continue
+		if index == length - 1:
+			# 승부가 난 마지막 상태의 가치는 승패 보상 그 자체다. 잘린 에피소드의 마지막 상태는
+			# 뒤가 비어 목표값을 만들 수 없으므로 표본으로 쓰지 않는다.
+			if terminal_value is not None:
+				samples.append(ValueSample(states[index], terminal_value, zero_state, 0.0))
+			continue
+		partial_return = 0.0
+		discount = 1.0
+		last_index = index
+		for step_index in range(index + 1, min(index + n_step, length - 1) + 1):
+			partial_return += discount * trajectory[step_index][1]
+			discount *= gamma
+			last_index = step_index
+		bootstrap = states[last_index]
+		if bootstrap is not None:
+			samples.append(ValueSample(states[index], partial_return, bootstrap, discount))
+		else:
+			# 마지막 수에 놓을 자리가 없어 상태가 없다. 그 자리의 종료 가치를 대신 더한다.
+			samples.append(ValueSample(states[index], partial_return + discount * (terminal_value or 0.0), zero_state, 0.0))
+	return samples
+
+
 def _format_eta(seconds: float) -> str:
 	"""남은 시간을(초) H:MM:SS 형태의 문자열로 바꾼다."""
 	total_seconds = max(0, int(seconds))
@@ -965,7 +1135,7 @@ def train(
 	control: Optional[TrainingControl] = None, log: Callable[[str], None] = print,
 	on_progress: Optional[Callable[[int, int, dict], None]] = None,
 ) -> None:
-	"""DQN 정책을 학습하고 체크포인트를 저장한다.
+	"""애프터스테이트 가치망을 학습하고 체크포인트를 저장한다.
 
 	`control`을 넘기면 lngui.py 같은 GUI가 별도 쓰레드에서 일시정지·중단·강제 포기를 요청할 수
 	있다. `log`는 기본이 `print`라 CLI 동작은 그대로이며, GUI는 큐에 적재하는 콜백을 넘겨 로그
@@ -977,24 +1147,28 @@ def train(
 	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
 	log_interval = 500 if device.type == "cpu" else max(1, episodes // 100)
 	api_client = LearningApiClient(server_url, api_token or os.environ.get("PUYOW_AI_TOKEN", "")) if server_url else None
-	policy = PolicyNetwork().to(device)
+	policy = ValueNetwork().to(device)
 	# --output 파일이 실제로 있으면 새 초기 가중치를 버리고 그 모델부터 추가 학습을 시작한다.
 	resumed = load_existing_policy(output, policy, device)
-	target = PolicyNetwork().to(device)
+	target = ValueNetwork().to(device)
 	target.load_state_dict(policy.state_dict())
 	optimizer = torch.optim.Adam(policy.parameters(), lr=1e-3)
-	replay: Deque[Transition] = deque(maxlen=50_000)
-	gamma, batch_size = 0.99, 128
+	replay: Deque[ValueSample] = deque(maxlen=50_000)
+	batch_size = 128
 	epsilon_start, epsilon_end = 1.0, 0.05
+	# 전체 에피소드의 절반을 지나면 탐험 비율이 최저가 되고, 남은 절반은 거의 자기 판단으로 둔다.
+	exploration_episodes = max(1, episodes // 2)
 	max_steps_per_episode = 100 if opponent == "solo" else PuyoDuelEnvironment.MAX_TURNS_PER_EPISODE
-	total_steps = max(1, episodes * max_steps_per_episode)
+	# 애프터스테이트가 그대로 다음 학습 입력이 되므로, 부트스트랩할 상태가 없을 때 쓸 0 벡터 하나만
+	# 만들어 두고 모든 표본이 나눠 쓴다(가중치 0으로 곱해져 목표값에 영향을 주지 않는다).
+	zero_state = torch.zeros(OBSERVATION_SIZE, dtype=torch.float32)
 	steps = 0
 	win_count = 0
 	loss_count = 0
 	training_start_time = time.monotonic()
 	progress_log_count = 0
 	if resumed:
-		# 기존 형식은 model 가중치만 저장했으므로 optimizer·replay buffer·epsilon은 이번 실행에서 새로 시작한다.
+		# 체크포인트에는 가중치만 있으므로 optimizer·replay buffer·epsilon은 이번 실행에서 새로 시작한다.
 		log(f"resume={output} 기존 모델 가중치로 추가 학습을 시작합니다.")
 	else:
 		log(f"new_model={output} 새 모델 가중치로 학습을 시작합니다.")
@@ -1004,11 +1178,9 @@ def train(
 	# 같은 epsilon-greedy 탐험 규칙을 상대측에도 그대로 적용한다.
 	epsilon_holder = [epsilon_start]
 
-	def self_play_action(observation: torch.Tensor) -> int:
+	def self_play_action(observation: torch.Tensor, next_pair: Sequence[Any]) -> int:
 		"""self-play 상대측 행동을, 학습 중인 에이전트와 같은 epsilon-greedy 규칙으로 고른다."""
-		if random.random() < epsilon_holder[0]:
-			return random.randrange(ACTION_COUNT)
-		return choose_policy_action(policy, observation, device)
+		return select_afterstate(policy, observation, next_pair, device, epsilon=epsilon_holder[0])[0]
 
 	for episode in range(episodes):
 		if control is not None:
@@ -1020,32 +1192,38 @@ def train(
 			api_client.reset(session_id, state)
 		episode_reward = 0.0
 		episode_result = "timeout"
+		# 승부가 난 에피소드의 마지막 애프터스테이트 가치다. 최대 턴에서 잘리면 None으로 남는다.
+		terminal_value: Optional[float] = None
+		# 이번 에피소드에서 지나온 (애프터스테이트, 그 수가 만든 보상) 기록이다. 에피소드가 끝난 뒤
+		# n스텝 목표값을 만들어 리플레이에 넣는다.
+		trajectory: List[Tuple[Optional[List[float]], float]] = []
+		# 탐험 비율은 스텝이 아니라 에피소드 기준으로 줄인다. 에피소드마다 실제 수 개수가 크게
+		# 달라서 스텝 기준으로는 학습이 끝날 때까지 탐험 비율이 거의 내려가지 않기 때문이다.
+		epsilon = max(epsilon_end, epsilon_start - (epsilon_start - epsilon_end) * episode / exploration_episodes)
+		epsilon_holder[0] = epsilon
 		for _ in range(max_steps_per_episode):
 			if control is not None:
 				control.check_abort()
-			epsilon = max(epsilon_end, epsilon_start - (epsilon_start - epsilon_end) * steps / total_steps)
-			epsilon_holder[0] = epsilon
-			if random.random() < epsilon:
-				action = random.randrange(ACTION_COUNT)
-			else:
-				action = choose_policy_action(policy, state, device)
+			action, afterstate = select_afterstate(policy, state, environment.next_pair_for_agent(), device, epsilon=epsilon)
 			next_state, reward, done, info = environment.step(action)
 			if api_client:
 				api_client.step(session_id, state, action, reward, next_state, done)
-			replay.append(Transition(state, action, reward, next_state, done))
+			# 승패 보상은 마지막 상태의 가치로 따로 쓰므로, 기록에는 이 수가 만든 보상만 남긴다.
+			step_terminal_value = info.get("terminal_value")
+			trajectory.append((
+				afterstate.observation if afterstate is not None else None,
+				reward - (step_terminal_value if step_terminal_value is not None else 0.0),
+			))
 			state, episode_reward, steps = next_state, episode_reward + reward, steps + 1
 			if len(replay) >= batch_size:
 				batch = random.sample(replay, batch_size)
 				states = torch.stack([item.state for item in batch]).to(device)
-				actions = torch.tensor([item.action for item in batch], device=device)
-				rewards = torch.tensor([item.reward for item in batch], device=device)
-				next_states = torch.stack([item.next_state for item in batch]).to(device)
-				dones = torch.tensor([item.done for item in batch], dtype=torch.float32, device=device)
-				current = policy(states).gather(1, actions.unsqueeze(1)).squeeze(1)
+				returns = torch.tensor([item.partial_return for item in batch], dtype=torch.float32, device=device)
+				bootstraps = torch.stack([item.bootstrap for item in batch]).to(device)
+				discounts = torch.tensor([item.discount for item in batch], dtype=torch.float32, device=device)
 				with torch.no_grad():
-					future = target(next_states).max(1).values
-					expected = rewards + gamma * future * (1.0 - dones)
-				loss = nn.functional.smooth_l1_loss(current, expected)
+					expected = returns + discounts * target(bootstraps)
+				loss = nn.functional.smooth_l1_loss(policy(states), expected)
 				optimizer.zero_grad()
 				loss.backward()
 				nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
@@ -1053,8 +1231,10 @@ def train(
 			if steps % 250 == 0:
 				target.load_state_dict(policy.state_dict())
 			if done:
+				terminal_value = step_terminal_value
 				episode_result = info.get("result", "invalid" if info.get("invalid") else "done")
 				break
+		replay.extend(build_value_samples(trajectory, terminal_value, zero_state))
 		if episode_result in ("enemy_defeated", "enemy_no_moves", "enemy_invalid_self_play"):
 			win_count += 1
 		elif episode_result in ("agent_defeated", "invalid"):
@@ -1090,7 +1270,7 @@ def export_gguf(source: Path, output: Path, converter: Path) -> None:
 	"""llama.cpp 변환기로 Hugging Face Transformer 모델을 GGUF로 변환한다."""
 	if source.is_file() or not (source / "config.json").is_file():
 		raise ValueError(
-			"현재 default.pt는 사용자 정의 DQN 체크포인트라 LM Studio용 GGUF로 변환할 수 없습니다. "
+			"현재 default.pt는 사용자 정의 가치망 체크포인트라 LM Studio용 GGUF로 변환할 수 없습니다. "
 			"--export-gguf에는 config.json을 포함한 Hugging Face Transformer 모델 디렉터리를 지정하세요."
 		)
 	if not converter.is_file():
@@ -1107,7 +1287,7 @@ def export_gguf(source: Path, output: Path, converter: Path) -> None:
 
 def main() -> None:
 	"""CLI 인자를 파싱해 GGUF 변환·직접 추론·평가·학습 중 하나를 실행한다."""
-	parser = argparse.ArgumentParser(description="Puyo W DQN 학습")
+	parser = argparse.ArgumentParser(description="Puyo W 애프터스테이트 가치망 학습")
 	parser.add_argument("--episodes", type=int, default=1000, help="학습 에피소드 수")
 	parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="재현 가능한 난수 시드")
 	parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="체크포인트 경로(기존 파일이면 가중치를 복원해 추가 학습)")

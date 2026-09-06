@@ -92,7 +92,7 @@ class TrainerApp:
 
 	def __init__(self, root: tk.Tk) -> None:
 		self.root = root
-		self.root.title("Puyo W DQN Trainer")
+		self.root.title("Puyo W Model Trainer")
 		self.root.geometry("720x520")
 		self.root.minsize(560, 420)
 
@@ -260,11 +260,11 @@ class TrainerApp:
 			if episodes < 1:
 				raise ValueError
 		except ValueError:
-			messagebox.showerror("Puyo W DQN Trainer", "Episodes must be a positive integer.")
+			messagebox.showerror("Puyo W Model Trainer", "Episodes must be a positive integer.")
 			return
 		output_text = self.output_var.get().strip()
 		if not output_text:
-			messagebox.showerror("Puyo W DQN Trainer", "Please choose a model output path.")
+			messagebox.showerror("Puyo W Model Trainer", "Please choose a model output path.")
 			return
 
 		output_path = Path(output_text)
@@ -276,7 +276,7 @@ class TrainerApp:
 				self._start_local_server(local_port)
 			except OSError as error:
 				messagebox.showerror(
-					"Puyo W DQN Trainer",
+					"Puyo W Model Trainer",
 					f"Could not start pythonserver.py on port {local_port}.\n"
 					f"The port may already be in use by another process.\n\n{error}",
 				)

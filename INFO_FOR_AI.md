@@ -179,15 +179,27 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 
 ## 머신러닝 작업 참고
 
-머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. 승·패 보상(`WIN_REWARD`, `LOSS_REWARD`)과 스칼라 관측값의 정규화 기준(`ATTACK_SCALE` 등), 관측 벡터를 보드·쌍·상태로 되돌리는 `decode_observation_board()`·`decode_observation_pair()`·`decode_observation_scalars()`는 `python/common.py`에 있다. 오프라인 학습과 서버의 온라인 학습이 같은 보상 크기를 써야 하므로 `PuyoDuelEnvironment.WIN_REWARD`도 이 공통 상수를 그대로 참조한다. `pythonserver.py`와 `nodeserver.js`는 모두 `/apis/localmodelinfo`를 제공하며 `{ "available": boolean }`만 응답한다. `pythonserver.py`는 `SERVER_CONFIG['model_path']`가 실제 파일이고 `get_dqn_model()` 로드까지 성공할 때만 `true`이며, `/v1/chat/completions`를 구현하지 않은 `nodeserver.js`는 항상 `false`다. `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스이며, 솔로몬·안드로말리우스와 출시 예정인 플라우로스는 제외한다. `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 일곱 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. 피버 룰은 일반/피버 필드, 게이지, 제한 시간, 목표 연쇄 및 JS의 실제 피버 패턴을 사용한다. 브라우저 관측은 `game.elapsed`의 실제 시간을 쓰고, 벽시계와 무관하게 고속 실행되는 오프라인 학습은 양측 한 턴을 3초로 진행한다. `src/js/puyow.js`의 적 AI 판단 로직이나 피버 패턴을 바꾸면 `bundledenemy.py`와 학습 회귀 테스트를 함께 확인한다. 숨김 행 없는 12행 보드, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등 의도적인 제한은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
+머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. 승·패 보상(`WIN_REWARD`, `LOSS_REWARD`), 한 수의 즉시 보상 계약 `move_reward()`(= `ATTACK + 연쇄^2`), 감가율 `DISCOUNT_GAMMA`(0.99)와 스칼라 관측값의 정규화 기준(`ATTACK_SCALE` 등), 관측 벡터를 보드·쌍·상태로 되돌리는 `decode_observation_board()`·`decode_observation_pair()`·`decode_observation_scalars()`는 `python/common.py`에 있다. 오프라인 학습과 서버의 온라인 학습이 같은 보상 크기를 써야 하므로 `PuyoDuelEnvironment.WIN_REWARD`도 이 공통 상수를 그대로 참조한다. `pythonserver.py`와 `nodeserver.js`는 모두 `/apis/localmodelinfo`를 제공하며 `{ "available": boolean }`만 응답한다. `pythonserver.py`는 `SERVER_CONFIG['model_path']`가 실제 파일이고 `get_value_model()` 로드까지 성공할 때만 `true`이며, `/v1/chat/completions`를 구현하지 않은 `nodeserver.js`는 항상 `false`다. `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스이며, 솔로몬·안드로말리우스와 출시 예정인 플라우로스는 제외한다. `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 일곱 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. 피버 룰은 일반/피버 필드, 게이지, 제한 시간, 목표 연쇄 및 JS의 실제 피버 패턴을 사용한다. 브라우저 관측은 `game.elapsed`의 실제 시간을 쓰고, 벽시계와 무관하게 고속 실행되는 오프라인 학습은 양측 한 턴을 3초로 진행한다. `src/js/puyow.js`의 적 AI 판단 로직이나 피버 패턴을 바꾸면 `bundledenemy.py`와 학습 회귀 테스트를 함께 확인한다. 숨김 행 없는 12행 보드, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등 의도적인 제한은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
 
-모델 버전 2의 관측값은 528개다. 빈 칸·방해뿌요·5색 보드 채널 504개, 현재 쌍 10개, ATTACK/턴/DAMAGE/룰/티켓/경과시간/마진/시간 배율/피버 상태 14개 순서이며 JS 학습 전이, Python 환경, Solomon 서버가 `python/common.py`의 같은 계약을 사용한다. `learning.py`의 `--output` 경로가 실제 체크포인트 파일이면 `MODEL_VERSION`·`OBSERVATION_SIZE`·`ACTION_COUNT`를 검증한 후 가중치를 복원한다. 이전 444개 관측 모델은 호환하지 않으며 다시 학습해야 한다. `--evaluate-episodes`는 epsilon=0 승률을 집계하고, `--infer-observation`은 LM Studio/HTTP 없이 관측 JSON을 직접 추론한다. 체크포인트에는 optimizer·replay buffer·epsilon 상태를 저장하지 않는다.
+모델 버전 3의 관측값은 528개다. 빈 칸·방해뿌요·5색 보드 채널 504개, 현재 쌍 10개, ATTACK/턴/DAMAGE/룰/티켓/경과시간/마진/시간 배율/피버 상태 14개 순서이며 JS 학습 전이, Python 환경, Solomon 서버가 `python/common.py`의 같은 계약을 사용한다. `learning.py`의 `--output` 경로가 실제 체크포인트 파일이면 `MODEL_VERSION`·`OBSERVATION_SIZE`·`ACTION_COUNT`를 검증한 후 가중치를 복원한다. 관측 계약은 버전 2와 같지만 신경망 종류가 달라 버전 2 이하 체크포인트는 호환하지 않으며 다시 학습해야 한다. `--evaluate-episodes`는 탐험 없이 승률을 집계하고, `--infer-observation`은 LM Studio/HTTP 없이 관측 JSON을 직접 추론한다(숫자 배열 또는 `{observation, nextPair}` 객체). 체크포인트에는 optimizer·replay buffer·epsilon 상태를 저장하지 않는다.
+
+### 애프터스테이트 가치 학습 (모델 버전 3)
+
+24개 행동의 Q값을 내던 DQN(`PolicyNetwork`)을 버리고, 한 수를 둔 직후 상태의 가치 하나를 내는 `learning.ValueNetwork`를 쓴다. 이 게임은 착지·폭발·연쇄·ATTACK을 `bundledenemy`의 규칙만으로 정확히 계산할 수 있으므로, 규칙으로 알 수 있는 부분을 신경망이 다시 배울 이유가 없다.
+
+- **선택 규칙**: `learning.enumerate_afterstates(observation, next_pair, usable_actions)`가 놓을 수 있는 배치마다 결과 보드를 만들고, `learning.select_afterstate()`가 `move_reward + DISCOUNT_GAMMA * V(애프터스테이트)`가 가장 큰 후보를 고른다. 놓을 수 없는 배치는 후보에서 아예 빠지므로 불가능한 행동을 고르는 경로가 없다. 후보가 하나도 없으면 애프터스테이트 없이 스폰 위치(X=2)를 돌려준다.
+- **애프터스테이트 인코딩**: 결과 보드를 같은 528개 관측 계약으로 인코딩하되, **조작 쌍 자리에는 이번 수의 다음 쌍**을 넣는다(= 다음 턴이 시작될 때의 내 상태). ATTACK·싹쓸이 티켓·피버 보정은 `PuyoDuelEnvironment.step()`과 같은 순서로 적용하고, 무작위인 방해뿌요 낙하는 반영하지 않은 채 상쇄하고 남은 피해량만 스칼라로 남긴다. 학습기·서버 추론·서버 온라인 학습이 모두 이 함수 하나를 쓰므로 가치망이 보는 입력 분포가 어긋나지 않는다.
+- **신경망**: 보드 구간(채널→y→x 순서)을 7×12×6 평면 그대로 3×3 합성곱 두 단(32채널)에 넣고, 조작 쌍 10개와 스칼라 14개(`OBSERVATION_EXTRA_SIZE`)를 이어 붙여 256-128 은닉층을 지나 스칼라 하나를 출력한다.
+- **학습 목표값**: `learning.build_value_samples()`가 에피소드가 끝난 뒤 (애프터스테이트, 그 수의 보상) 기록을 n스텝(`N_STEP_RETURN`, 기본 3) 목표값 표본으로 바꾼다. 리플레이 표본은 `ValueSample(state, partial_return, bootstrap, discount)`이며 목표값은 `partial_return + discount * V_target(bootstrap)`이다. 최대 턴에서 잘린 에피소드의 마지막 상태는 뒤가 비어 표본으로 쓰지 않는다.
+- **승패는 보상이 아니라 마지막 애프터스테이트의 가치다**: 환경은 `info["terminal_value"]`로 승리 `+WIN_REWARD`·패배 `LOSS_REWARD`를 알려 주고(잘린 에피소드는 이 값이 없다), 학습기는 그 값을 보상에서 빼 낸 뒤 **마지막 애프터스테이트의 목표값 자체**로 쓴다. 승패를 그 앞 수의 보상으로만 주면 죽은 보드의 가치가 0이 되어, 배치 후보 중 "두는 순간 지는 수"가 안전한 수보다 좋아 보이는 문제가 생긴다. 서버의 `_close_solomon_side()`도 같은 계약이다. 놓을 자리가 아예 없어 끝난 수(`invalid`)도 패배로 보고 `LOSS_REWARD`를 쓴다.
+- **탐험**: epsilon은 스텝이 아니라 **에피소드 기준**으로 줄여 전체의 절반(`episodes // 2`)에서 최저값 0.05에 닿는다. 에피소드마다 실제 수 개수가 크게 달라 스텝 기준으로는 학습이 끝날 때까지 탐험 비율이 거의 내려가지 않기 때문이다. 탐험도 무작위 행동 번호가 아니라 **놓을 수 있는 후보 중 하나**를 고른다.
+- `--opponent solo`의 `PuyoEnvironment`도 자체 보드 로직을 버리고 `bundledenemy`의 착지·연쇄·패배 판정을 그대로 쓴다. 보상 계약이 대전 환경과 같아야 하기 때문이다.
 
 ### Local AI 서버에 보내는 배치 후보 목록
 
 서버의 `is_legal_observation_action()`은 관측 벡터에 담긴 **화면 12줄의 목적지 열 높이**만 본다. 반면 게임의 `Solomon.canUsePlacement()`는 뿌요의 현재 낙하 Y에서의 가로 이동 경로, 회전 킥으로 X가 밀리는지, 숨김 행까지 포함한 25줄 보드의 `aiSimulations` 포함 여부를 함께 본다. 그래서 필드가 높아지면 서버가 "합법"이라고 답한 배치를 게임이 거부해 `handleRequestFailure()`로 일시정지되는 일이 생겼다.
 
-이를 막기 위해 AI 제공자가 `Local AI`일 때만 `Solomon.getUsablePlacements()`가 `player.aiSimulations`를 응답 검증과 **같은 `canUsePlacement()`로 걸러** `usablePlacements`(`{x, rotation}` 배열)로 프롬프트에 함께 보낸다. 서버의 `parse_usable_actions()`가 이를 행동 번호 집합으로 바꾸고, `choose_dqn_action()`은 이 목록이 오면 관측값의 높이 조건 대신 **그 목록 안에서만** Q값이 가장 높은 행동을 고른다. 목록을 보내지 않는 요청(다른 제공자·예전 클라이언트)에서는 기존 높이 조건을 그대로 쓴다. 스폰 상태 `{x:2, rotation:0}`은 항상 이 목록에 들어가므로 목록이 비는 일은 사실상 없지만, 비면 항목 자체를 넣지 않아 기존 동작으로 되돌아간다.
+이를 막기 위해 AI 제공자가 `Local AI`일 때만 `Solomon.getUsablePlacements()`가 `player.aiSimulations`를 응답 검증과 **같은 `canUsePlacement()`로 걸러** `usablePlacements`(`{x, rotation}` 배열)로 프롬프트에 함께 보낸다. 서버의 `parse_usable_actions()`가 이를 행동 번호 집합으로 바꾸고, `choose_model_action()`은 이 목록이 오면 관측값의 높이 조건 대신 **그 목록 안에서만** 가치가 가장 높은 배치를 고른다. 목록을 보내지 않는 요청(다른 제공자·예전 클라이언트)에서는 기존 높이 조건을 그대로 쓴다. 스폰 상태 `{x:2, rotation:0}`은 항상 이 목록에 들어가므로 목록이 비는 일은 사실상 없지만, 비면 항목 자체를 넣지 않아 기존 동작으로 되돌아간다. 화면 12줄만으로는 어떤 후보도 착지시킬 수 없어 애프터스테이트를 만들지 못한 경우에는, 목록이 왔다면 그중 가장 작은 행동 번호를 돌려주어 게임이 대체 AI로 넘어가지 않게 한다.
 
 `SOLOMON_PLACEMENT_JSON_SCHEMA`(응답 형식)는 바꾸지 않았다. 이 항목은 요청 프롬프트에만 추가된다.
 
@@ -196,10 +208,10 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대전할 때만(색상 수·룰은 가리지 않는다) 그 대전에서 나온 수로 로컬 서버의 모델을 추가 학습한다. 판정 함수는 `shouldTrainLocalAiWithSolomon()`이며 `game.players[1].controller`가 솔로몬인지까지 확인하므로, 연습·퍼즐·구경처럼 솔로몬이 나올 수 없는 모드는 자연히 제외된다. 이미 끝난 대전을 다시 보여 줄 뿐인 리플레이 재생(`game.replayPlayback`)도 제외한다.
 
 - `getSolomonLearningSessionId()`가 대전마다 `solomon-<시각>-<난수>` 세션 ID를 만들어 `game.solomonLearningSessionId`에 보관하고, `Solomon.buildPlacementPrompt()`가 이 값을 프롬프트의 `learningSessionId` 항목으로 함께 보낸다. 학습 대상이 아니면 이 항목 자체를 넣지 않으므로 다른 제공자·난이도의 프롬프트는 기존과 완전히 같다.
-- 서버의 `chat_completions_api()`는 `learningSessionId`가 있는 배치 요청마다 `record_solomon_step()`으로 이번 관측값과 고른 행동을 세션에 담아 둔다. 그 수의 보상은 **다음 요청이 왔을 때** `compute_solomon_reward()`가 계산하며, 학습 환경과 같은 `bundledenemy.resolve_placement()`로 `ATTACK + 연쇄^2`를 구한다. 다음 요청의 관측값이 그 전이의 다음 상태가 된다.
-- 위험 높이·응답 오류로 솔로몬이 대체 AI를 쓴 턴은 요청이 오지 않는다. 관측값의 `placedPairCount`가 두 턴 이상 건너뛴 전이는 모델이 고른 수 하나의 결과가 아니므로 학습에서 제외한다.
+- 서버의 `chat_completions_api()`는 `learningSessionId`가 있는 배치 요청마다 `record_solomon_step()`으로 이번 수의 애프터스테이트와 즉시 보상을 세션에 순서대로 담아 둔다. 애프터스테이트는 학습기의 `build_afterstate()`를 그대로 호출해 만들므로 오프라인 학습과 형식·보상 계약이 같다.
+- 위험 높이·응답 오류로 솔로몬이 대체 AI를 쓴 턴은 요청이 오지 않는다. 관측값의 `placedPairCount`가 두 턴 이상 건너뛴 수는 `linked`가 false로 기록되고, 그 앞 수는 다음 상태를 알 수 없으므로 표본으로 만들지 않는다.
 - 학습은 매 수마다 하지 않고, 승패가 확정되어 결과 화면으로 넘어가는 `updateDefeatSequence()` 시점에 `requestSolomonLearningFinish()`가 `POST /apis/solomonlearning`(`{event:'finish', sessionId, result}`)을 한 번 보낼 때 수행한다. `result`는 학습 대상인 **솔로몬 기준**의 `win`/`loss`/`draw`다. 이 요청이 실패해도 게임 진행에는 영향을 주지 않는다.
-- `finish_solomon_session()`은 양쪽의 마지막 수를 승패 보상(`WIN_REWARD`/`LOSS_REWARD`)과 함께 `done` 전이로 닫은 뒤 `train_solomon_transitions()`를 호출한다. 목표 Q값은 갱신 전 가중치로 한 번만 계산하고(별도 target 네트워크 대신), `learning.train()`과 같은 학습률 `1e-3`·감가율 `0.99`·smooth L1 손실·그래디언트 노름 1.0 클리핑을 사용한다.
+- `finish_solomon_session()`은 `_close_solomon_side()`로 양쪽의 수를 학습 표본으로 바꾼 뒤 `train_solomon_samples()`를 호출한다. 한 수의 목표값은 `다음 수의 보상 + 감가된 다음 애프터스테이트의 가치`이고, 대전의 마지막 수는 더 진행할 상태가 없어 승패 보상(`WIN_REWARD`/`LOSS_REWARD`)만 목표가 된다. 목표값은 갱신 전 가중치로 한 번만 계산하고(별도 target 네트워크 대신), `learning.train()`과 같은 학습률 `1e-3`·감가율 `DISCOUNT_GAMMA`·smooth L1 손실·그래디언트 노름 1.0 클리핑을 사용한다.
 
 #### 사람이 이긴 대전의 수순 학습
 
@@ -207,14 +219,14 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 
 이 동작은 설정의 `역으로 모델 학습`(`store.settings.reverseLearning`)이 켜져 있을 때만 한다. `isReverseLearningEnabled()`가 꺼짐을 반환하면 사람의 수를 서버로 아예 보내지 않으므로, 솔로몬 자신이 둔 수로 하는 기존 학습만 그대로 남는다.
 
-- `lockActive()`에서 사람이 뿌요를 확정할 때마다 `sendSolomonPlayerLearningStep()`이 `POST /apis/solomonlearning`(`{event:'step', sessionId, observation, action}`)을 보낸다. 관측은 기존 `/apis/learning` 경로와 같은 `getLearningObservation()`으로 만들며, 배치 직전(=`placedPairCount` 증가 전) 상태라서 솔로몬 프롬프트와 시점 계약이 같다.
+- `lockActive()`에서 사람이 뿌요를 확정할 때마다 `sendSolomonPlayerLearningStep()`이 `POST /apis/solomonlearning`(`{event:'step', sessionId, observation, action, nextPair}`)을 보낸다. 관측은 기존 `/apis/learning` 경로와 같은 `getLearningObservation()`으로 만들며, 배치 직전(=`placedPairCount` 증가 전) 상태라서 솔로몬 프롬프트와 시점 계약이 같다. `nextPair`는 `player.nextPairs[0]`이고 서버가 애프터스테이트의 조작 쌍 자리에 넣는다(솔로몬 프롬프트의 `suppliedPuyos` `next_1`과 같은 값이다). 항목이 없으면 서버는 색을 비운 쌍으로 본다.
 - 솔로몬 학습 요청은 모두 `queueSolomonLearningRequest()`의 단일 Promise 큐로 보낸다. 서버가 앞 요청의 관측값을 그 수의 다음 상태로 이어 붙이므로 순서가 뒤바뀌면 안 되고, `finish`는 반드시 그 대전의 마지막 `step` 뒤에 도착해야 한다.
-- 서버 세션은 `{"solomon": {...}, "player": {...}}`처럼 쪽별로 나뉘며(`SOLOMON_SESSION_SIDES`), `record_solomon_step(..., side=...)`이 해당 쪽에만 전이를 쌓는다. 두 쪽을 한 목록에 섞으면 상대의 관측이 다음 상태가 되어 전이가 망가진다. `/apis/solomonlearning`의 `step`은 항상 사람 쪽이고, 솔로몬 쪽은 `/v1/chat/completions` 경로에서만 쌓인다.
-- `finish_solomon_session()`은 `result`가 `loss`(=사람 승리)일 때만 사람 쪽 전이를 `WIN_REWARD`로 닫아 학습에 넣는다. 사람이 이기지 못한 대전의 사람 쪽 수는 그대로 버린다. 사람 쪽 수의 스텝 보상도 솔로몬과 같은 `compute_solomon_reward()`로 서버가 다시 계산하므로, 클라이언트가 `/apis/learning`에 보내는 `점수 증가분 + ATTACK 증가분` 보상과 섞이지 않는다.
-- 학습 비중은 `SOLOMON_PLAYER_WIN_TRAINING_WEIGHT`(기본 3.0)로 조절한다. 솔로몬 자신의 수는 항상 `SOLOMON_DEFAULT_TRAINING_WEIGHT`(1.0)이므로 이 값이 클수록 사람의 승리 수순을 더 강하게 따라 배우며, 1로 두면 양쪽을 같은 비중으로 학습한다. `train_solomon_transitions()`는 전이별 비중을 **평균이 1이 되도록 정규화**한 뒤 `smooth_l1_loss(..., reduction='none')`에 곱한다. 이렇게 해야 비중을 바꿔도 손실 크기가 예전과 같은 수준으로 유지되어 학습률을 다시 맞출 필요가 없고, 사람 쪽 전이가 없는 대전에서는 모든 비중이 1이라 기존 학습과 완전히 동일하게 동작한다.
-- 이 기능은 관측·행동·체크포인트 계약을 전혀 바꾸지 않는다. `MODEL_VERSION`·`OBSERVATION_SIZE`·`ACTION_COUNT`가 그대로이므로 기존 `default.pt`를 이어서 학습·추론할 수 있다.
-- 갱신한 가중치는 `save_dqn_checkpoint()`가 `learning.py`와 같은 체크포인트 형식(`model`, `model_version`, `observation_size`, `action_count`, `seed`)으로 저장한다. `seed`는 로드 시 보관해 둔 `dqn_model_seed`를 그대로 유지하며, 임시 파일에 쓴 뒤 교체해 저장 중 중단되어도 기존 모델이 깨지지 않게 한다. 관측·행동 계약을 바꾸지 않으므로 갱신된 파일은 `learning.py`의 추가 학습과 다른 게임 세션에서 계속 그대로 쓸 수 있다.
-- 학습이 가중치를 바꾸는 동안 추론이 겹치지 않도록 `choose_dqn_action()`의 추론과 `train_solomon_transitions()`의 갱신·저장은 모두 `dqn_model_lock` 안에서 실행한다. 세션 상태와 `bundledenemy`의 전역 룰·시간 설정을 함께 쓰는 보상 계산은 `solomon_sessions_lock`으로 직렬화한다. 결과 화면까지 가지 못하고 끝난 세션은 `SOLOMON_SESSION_LIMIT`(8)을 넘길 때 오래된 순서로 버린다.
+- 서버 세션은 `{"solomon": {...}, "player": {...}}`처럼 쪽별로 나뉘며(`SOLOMON_SESSION_SIDES`), `record_solomon_step(..., side=...)`이 해당 쪽에만 수를 쌓는다. 두 쪽을 한 목록에 섞으면 상대의 상태가 다음 상태가 되어 표본이 망가진다. `/apis/solomonlearning`의 `step`은 항상 사람 쪽이고, 솔로몬 쪽은 `/v1/chat/completions` 경로에서만 쌓인다.
+- `finish_solomon_session()`은 `result`가 `loss`(=사람 승리)일 때만 사람 쪽 표본을 `WIN_REWARD`로 닫아 학습에 넣는다. 사람이 이기지 못한 대전의 사람 쪽 수는 그대로 버린다. 사람 쪽 수의 보상도 솔로몬과 같은 `build_afterstate()`로 서버가 다시 계산하므로, 클라이언트가 `/apis/learning`에 보내는 `점수 증가분 + ATTACK 증가분` 보상과 섞이지 않는다.
+- 학습 비중은 `SOLOMON_PLAYER_WIN_TRAINING_WEIGHT`(기본 1000.0)로 조절한다. 솔로몬 자신의 수는 항상 `SOLOMON_DEFAULT_TRAINING_WEIGHT`(1.0)이므로 이 값이 클수록 사람의 승리 수순을 더 강하게 따라 배우며, 1로 두면 양쪽을 같은 비중으로 학습한다. `train_solomon_samples()`는 표본별 비중을 **평균이 1이 되도록 정규화**한 뒤 `smooth_l1_loss(..., reduction='none')`에 곱한다. 이렇게 해야 비중을 바꿔도 손실 크기가 같은 수준으로 유지되어 학습률을 다시 맞출 필요가 없고, 사람 쪽 표본이 없는 대전에서는 모든 비중이 1이라 그대로 동작한다.
+- 이 기능이 쓰는 관측·행동·체크포인트 계약은 서버의 다른 경로와 완전히 같다. 요청에 `nextPair`를 더한 것 외에 프로토콜도 그대로다.
+- 갱신한 가중치는 `save_value_checkpoint()`가 `learning.py`와 같은 체크포인트 형식(`model`, `model_version`, `observation_size`, `action_count`, `seed`)으로 저장한다. `seed`는 로드 시 보관해 둔 `value_model_seed`를 그대로 유지하며, 임시 파일에 쓴 뒤 교체해 저장 중 중단되어도 기존 모델이 깨지지 않게 한다. 관측·행동 계약을 바꾸지 않으므로 갱신된 파일은 `learning.py`의 추가 학습과 다른 게임 세션에서 계속 그대로 쓸 수 있다.
+- 학습이 가중치를 바꾸는 동안 추론이 겹치지 않도록 `choose_model_action()`의 추론과 `train_solomon_samples()`의 갱신·저장은 모두 `value_model_lock` 안에서 실행한다. 세션 상태는 `solomon_sessions_lock`으로, `bundledenemy`의 전역 룰·시간 설정을 쓰는 애프터스테이트 계산은 배치 추론과 온라인 학습 양쪽에서 `simulation_lock`으로 직렬화한다(항상 가장 안쪽에서만 잡으므로 교착되지 않는다). 결과 화면까지 가지 못하고 끝난 세션은 `SOLOMON_SESSION_LIMIT`(8)을 넘길 때 오래된 순서로 버린다.
 
 `python/lngui.py`는 `learning.py`를 감싼 Tkinter GUI 학습기다. 학습은 별도 쓰레드에서 돌리고 로그·진행 상황은 큐로 메인 쓰레드에 전달해 화면이 멈추지 않게 한다. GUI 제어는 `learning.TrainingControl`(일시정지·중단은 에피소드 경계에서만 반영, 강제 포기는 `TrainingAbort` 예외로 즉시 반영해 저장을 건너뜀)과 `train()`의 `control`·`log`·`on_progress` 키워드 인자로 구현했으며, 이 인자들을 생략하는 기존 CLI 호출은 그대로 동작한다. `learning.DEFAULT_SEED`·`DEFAULT_DEVICE`·`DEFAULT_OPPONENT`·`DEFAULT_OUTPUT`은 CLI `argparse` 기본값과 GUI 초기값이 공유하는 단일 출처다. 서버 주소 입력란이 `localhost`/`127.0.0.1`/`::1`을 가리키면 Start 클릭 시 `_start_local_server()`가 그 포트로 `pythonserver.py`(`ThreadingHTTPServer` + `PuyoRequestHandler`)를 GUI 프로세스 안에서 직접 띄운다. 생성자가 소켓 바인딩까지 동기 수행하므로 다른 프로세스가 이미 그 포트를 쓰고 있으면 `OSError`가 그대로 올라오고, `_on_start()`는 이를 잡아 학습 자체를 시작하지 않는다(서버 주소를 원격으로 바꾸면 이 자동 기동을 건드리지 않는다). `_stop_local_server()`는 Stop 완료·정상 종료·오류(`_reset_controls()`)와 창 닫기(`_on_close()`) 모두에서 호출해 GUI가 띄운 서버를 남겨 두지 않는다. `pythonserver.py`의 `is_learning_authorized()`는 토큰이 정확히 `LOOPBACK_BYPASS_TOKEN`("localhost")이고 호출자가 실제 localhost/루프백 주소(`_is_loopback_client()`)일 때만 서버 설정 토큰과 무관하게 허용한다. 빈 문자열 토큰은 이 예외 대상이 아니라서 루프백에서도 거부되며, `LearningApiClient`도 빈 토큰이면 즉시 `ValueError`를 올린다. GUI 학습기는 이 때문에 항상 `"localhost"`를 토큰으로 보낸다. 원격 서버이거나 `"localhost"`가 아닌 틀린 토큰에는 이 예외가 적용되지 않는다. `lngui.py`는 창이 뜨면 학습 쓰레드와 별개로 `psutil` 기반 시스템 자원 감시 데몬 쓰레드도 시작한다. 1초 간격으로 CPU·RAM 점유율만 재서 같은 `log_queue`에 적재하며, 창 최하단의 라벨·게이지바는 다른 로그와 마찬가지로 `_poll_queue`가 메인 쓰레드에서만 갱신한다.
 
@@ -223,3 +235,49 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.
 주석 및 채팅창 답변은 모두 한국어로 해줘.
+
+## 진행 중인 작업 인수인계 (모델 버전 3 전환)
+
+> 이 절은 작업을 다른 환경에서 이어서 하기 위한 임시 기록이다. 아래 "남은 작업"이 모두 끝나면 이 절 전체를 지운다.
+
+### 1. 지금까지 한 일 (코드 변경은 모두 커밋되지 않은 작업 트리 상태다)
+
+학습 방식을 **24개 행동의 Q값을 내는 DQN**에서 **애프터스테이트 가치망**으로 바꿨다. 자세한 계약은 위의 "애프터스테이트 가치 학습 (모델 버전 3)" 절에 정리해 두었으며, 아래는 변경한 파일 목록이다.
+
+| 파일 | 변경 내용 |
+| --- | --- |
+| `python/common.py` | `MODEL_VERSION` 2→3, 공용 `move_reward()`(= `ATTACK + 연쇄^2`)와 `DISCOUNT_GAMMA`(0.99), `OBSERVATION_EXTRA_SIZE` 추가. 관측 벡터 528개 계약 자체는 그대로다. |
+| `python/learning.py` | `PolicyNetwork` → 합성곱 `ValueNetwork`. 애프터스테이트 생성·선택(`_build_afterstate`, `enumerate_afterstates`, `build_afterstate`, `select_afterstate`, `score_afterstates`), n스텝 표본 생성(`ValueSample`, `build_value_samples`, `N_STEP_RETURN`)을 추가하고 `train()`을 가치 회귀로 다시 썼다. 환경은 `info["terminal_value"]`와 `next_pair_for_agent()`를 제공하며, `--opponent solo`의 `PuyoEnvironment`도 `bundledenemy` 규칙을 쓰도록 바꿨다. epsilon 감쇠를 에피소드 기준으로 바꿨다. |
+| `python/pythonserver.py` | `dqn_*` 식별자를 `value_*`로 정리하고, 배치 추론을 애프터스테이트 선택으로 교체했다. 솔로몬 온라인 학습 세션은 전이 대신 (애프터스테이트, 보상) 목록을 쌓고 `train_solomon_samples()`로 학습한다. `build_model_next_pair()`·`parse_next_pair()`·`simulation_lock`을 추가했다. |
+| `src/js/puyow.js` | `sendSolomonPlayerLearningStep()`에 `nextPair` 항목만 추가했다(BUILDNO 19). 그 외 게임 로직 변경 없음. |
+| `python/test_learning.py` | 새 계약에 맞춰 갱신하고 애프터스테이트·n스텝 목표값 테스트를 추가했다(총 46개). |
+| `python/lngui.py` | 창 제목 문구만 바꿨다. `train()` 시그니처가 그대로여서 그 외 수정은 필요 없었다. |
+| `INFO_FOR_AI.md`, `docs/MachineLearning.md` | 새 학습 방식과 서버 흐름을 반영했다. |
+
+검증 상태: `python -m unittest test_learning` 46개 통과, `node --check src/js/puyow.js`·`npm.cmd test`(eslint) 통과, Playwright chromium 167개 통과(4 skip).
+
+기존 `python/puyow/default.pt`는 모델 버전 2라 더 이상 읽히지 않는다(서버 `/apis/localmodelinfo`가 `available: false`를 응답한다). 다시 학습해야 한다.
+
+### 2. 반드시 알아야 할 문제 — 학습할수록 승률이 떨어진다
+
+`Dantalion` 상대 100판 평가(`--evaluate-episodes 100 --opponent Dantalion`) 결과다.
+
+| 모델 | 승률 |
+| --- | --- |
+| 거의 학습하지 않은 가치망(사실상 `move_reward`만 보고 고름) | **51%** |
+| 800 에피소드 학습 | 15% (20판 평가) |
+| 3000 에피소드 학습 | **25%** |
+
+가치망 자체는 정상적으로 배우고 있다. 학습된 모델의 V값을 직접 찍어 보면 빈 보드 `+16`, 두 줄 쌓임 `-16`, 열 줄 쌓임 `-35`, 패배 보드 `-41`, 대기 피해 30 `-31`, ATTACK 30 보유 `+57`로 방향이 모두 맞다. 그런데도 승률은 학습 전보다 낮다.
+
+**현재 가설**: `DISCOUNT_GAMMA`가 0.99라 승패 보상(±50)이 한 수의 보상(보통 0~10)을 압도한다. 한 판이 25~40수라 `0.99^30 ≈ 0.74`로 승패 항이 거의 그대로 모든 상태에 퍼지고, 그 결과 가치망이 "공격해서 이기기"가 아니라 "보드를 비워 오래 버티기"를 학습한다. 실제로 학습된 정책은 작은 폭발을 즉시 소비해 연쇄를 쌓지 못한다. 반면 학습 전 모델은 `ATTACK + 연쇄^2`만 보고 고르므로 큰 폭발을 우선해 오히려 더 잘 이긴다.
+
+### 3. 남은 작업
+
+1. **감가율 실험(중단된 상태에서 이어서)**: γ = 0.90 / 0.97로 1500 에피소드씩 학습해 100판 승률을 비교한다. 목표는 학습 후 승률이 학습 전 51%를 넘기는 것이다. γ는 `common.DISCOUNT_GAMMA` 하나만 바꾸면 학습기·서버가 함께 따라간다. 다만 `build_value_samples()`와 `score_afterstates()`가 이 값을 **함수 기본 인자**로 굳혀 두므로, 파일을 고치지 않고 실험만 할 때는 `learning.build_value_samples.__kwdefaults__["gamma"]`와 `learning.score_afterstates.__defaults__`를 함께 바꿔야 한다.
+2. 감가율로 해결되지 않으면 다음 후보를 검토한다.
+   - 승패 보상 크기(`WIN_REWARD`/`LOSS_REWARD` ±50)와 한 수 보상의 균형 조정. 단 이 값은 서버 온라인 학습과 공유하므로 함께 바꿔야 한다.
+   - 학습량 부족 여부 확인(10000 에피소드 이상으로 장기 학습해 승률 추세를 본다). 현재 CPU 기준 한 에피소드는 약 0.65초다.
+   - 리플레이 버퍼(5만)에 남는 초기 무작위 플레이 표본 비중 조정.
+3. 결론이 난 뒤 `docs/MachineLearning.md`의 "학습 방식" 절과 위 "애프터스테이트 가치 학습" 절의 감가율·탐험 설명을 실제 값으로 맞춘다.
+4. 위 검증(테스트·eslint·Playwright)을 다시 실행하고, 이 인수인계 절을 삭제한다.

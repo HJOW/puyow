@@ -30,14 +30,18 @@ ROTATION_COUNT = 4
 # 한 열과 회전 조합으로 표현할 수 있는 전체 행동 수다.
 ACTION_COUNT = BOARD_WIDTH * ROTATION_COUNT
 # 체크포인트와 관측 계약을 함께 식별한다. 이전 모델과의 묵시적 혼용을 막기 위해
-# 관측 구조가 바뀔 때 반드시 이 값도 올린다.
-MODEL_VERSION = 2
+# 관측 구조나 모델 종류가 바뀔 때 반드시 이 값도 올린다. 버전 3부터는 24개 행동의 Q값을 내는
+# DQN 대신, 한 수를 둔 직후 상태(애프터스테이트) 하나의 가치를 내는 가치망을 사용한다.
+MODEL_VERSION = 3
 # 빈 칸, 방해뿌요, 5색을 서로 구분하는 보드 채널 수다.
 BOARD_CHANNELS = COLORS + 2
 # 공격·룰·실제 경과 시간·피버 상태를 담는 스칼라 수다.
 OBSERVATION_SCALAR_COUNT = 14
+# 보드 채널 뒤에 붙는 값(현재 쌍 원-핫 + 스칼라)의 수다. 가치망은 보드를 2차원 그대로 합성곱에
+# 넣고 이 부분만 따로 이어 붙이므로, 두 구간의 경계를 한 곳에서 정의해 둔다.
+OBSERVATION_EXTRA_SIZE = COLORS * 2 + OBSERVATION_SCALAR_COUNT
 # 보드 채널, 현재 쌍, 전투/시간/피버 상태를 합친 관측 벡터 길이다.
-OBSERVATION_SIZE = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS + COLORS * 2 + OBSERVATION_SCALAR_COUNT
+OBSERVATION_SIZE = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS + OBSERVATION_EXTRA_SIZE
 
 # 스칼라 관측값을 0~1로 정규화할 때 쓰는 기준값이다. encode_observation_values와
 # decode_observation_scalars가 같은 값을 써야 하므로 한 곳에 모아 둔다. 이 값을 바꾸면 관측
@@ -54,9 +58,22 @@ FEVER_TARGET_COMBO_SCALE = 12.0
 FEVER_LEFT_TIME_SCALE = 60_000.0
 
 # 대전 한 판의 승·패에 주는 보상이다. 오프라인 학습(learning.PuyoDuelEnvironment)과 실제 대전에서
-# 모은 전이로 추가 학습하는 서버가 같은 크기를 써야 Q값의 기준이 흔들리지 않는다.
+# 모은 전이로 추가 학습하는 서버가 같은 크기를 써야 가치의 기준이 흔들리지 않는다.
 WIN_REWARD = 50.0
 LOSS_REWARD = -50.0
+
+# 한 수의 가치를 미래 보상까지 합산할 때 쓰는 감가율이다. 오프라인 학습과 서버 추론(즉시 보상 +
+# 감가된 애프터스테이트 가치로 배치를 고른다)이 같은 값을 써야 같은 기준으로 수를 비교한다.
+DISCOUNT_GAMMA = 0.99
+
+
+def move_reward(attack: float, combo: int) -> float:
+	"""한 수가 만든 ATTACK과 연쇄로 그 수의 즉시 보상을 계산한다.
+
+	오프라인 학습 환경, 서버의 온라인 학습, 서버 추론의 배치 비교가 모두 이 계약 하나를 쓴다.
+	연쇄 수의 제곱을 더해 같은 ATTACK이라도 더 긴 연쇄를 높게 본다.
+	"""
+	return float(attack) + float(combo) * float(combo)
 
 
 def _clamp_ratio(value: Any, maximum: float) -> float:
@@ -93,7 +110,7 @@ def encode_observation_values(
 	all_clear_ticket: bool = False, elapsed_ms: float = 0.0, margin_rate: float = 70.0,
 	time_progress_multiplier: float = 1.0, fever: Any = None,
 ) -> list[float]:
-	"""학습기·Python 서버가 공유하는 528개 DQN 관측 벡터를 만든다.
+	"""학습기·Python 서버가 공유하는 528개 관측 벡터를 만든다.
 
 	보드는 y=0이 바닥인 6×12이며, 채널 순서는 빈 칸·방해뿌요·red·green·yellow·blue·purple다.
 	"""
@@ -200,7 +217,7 @@ def validate_observation(value: Any, name: str = "observation") -> None:
 
 
 def action_to_placement(action: Any) -> tuple[int, int]:
-	"""DQN 행동 번호를 게임의 열과 회전값으로 변환한다."""
+	"""행동 번호를 게임의 열과 회전값으로 변환한다."""
 	if isinstance(action, bool) or not isinstance(action, int) or not 0 <= action < ACTION_COUNT:
 		raise ValueError(f"action은(는) 0부터 {ACTION_COUNT - 1} 사이의 정수여야 합니다.")
 	return divmod(action, ROTATION_COUNT)

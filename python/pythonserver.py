@@ -40,13 +40,13 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 from urllib.parse import unquote, urlsplit
 
 from common import (
-	ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, LOSS_REWARD, MODEL_VERSION, OBSERVATION_SIZE,
-	ROTATION_COUNT, WIN_REWARD, action_to_placement, decode_observation_board, decode_observation_pair,
-	decode_observation_scalars, encode_observation_values, is_legal_observation_action, validate_observation,
+	ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, DISCOUNT_GAMMA, LOSS_REWARD, MODEL_VERSION, OBSERVATION_SIZE,
+	ROTATION_COUNT, WIN_REWARD, action_to_placement, decode_observation_scalars, encode_observation_values,
+	is_legal_observation_action, validate_observation,
 )
 
 
@@ -69,33 +69,37 @@ LOOPBACK_BYPASS_TOKEN = "localhost"
 # 세션 데이터는 프로세스 메모리에만 보관하며, 여러 HTTP 스레드의 접근을 보호한다.
 learning_sessions: dict[str, dict[str, Any]] = {}
 learning_sessions_lock = threading.Lock()
-# DQN 모델은 실제 파일이 설정된 경우에만 첫 요청에서 로드한다. 모델이 없는 개발 환경에서도
+# 모델은 실제 파일이 설정된 경우에만 첫 요청에서 로드한다. 모델이 없는 개발 환경에서도
 # 정적 파일 및 학습 이벤트 API가 torch 설치 여부와 관계없이 동작하게 하기 위한 캐시다.
-dqn_model: Any = None
-dqn_model_path: Path | None = None
+value_model: Any = None
+value_model_path: Path | None = None
 # 체크포인트를 다시 저장할 때 원래 seed 값을 그대로 유지하기 위해 로드 시점에 보관해 둔다.
-dqn_model_seed: Any = None
-dqn_model_lock = threading.Lock()
+value_model_seed: Any = None
+value_model_lock = threading.Lock()
+# bundledenemy는 룰·시간 배율을 모듈 전역으로 관리한다. 배치 추론(애프터스테이트 계산)과 솔로몬
+# 온라인 학습이 서로 다른 잠금 아래에서 이 전역을 함께 쓰므로, 실제 계산 구간만 이 잠금으로
+# 직렬화한다. 항상 가장 안쪽에서만 잡으므로 다른 잠금과 교착되지 않는다.
+simulation_lock = threading.Lock()
 
 # 솔로몬 온라인 학습 세션이다. 게임이 Local AI 제공자로 극한 난이도 솔로몬과 대전할 때만 만들어지며,
-# 이번 추론 결과를 담아 두었다가 다음 요청에서 그 수의 보상과 다음 상태를 확정한다.
+# 대전 중에 둔 수의 애프터스테이트와 보상을 순서대로 담아 두었다가 판이 끝날 때 학습에 사용한다.
 solomon_sessions: dict[str, dict[str, Any]] = {}
 solomon_sessions_lock = threading.Lock()
 
-# 한 대전에서 모을 전이 수와 동시에 유지할 세션 수의 상한이다. 결과 화면까지 가지 못하고 끝난
+# 한 대전에서 모을 수의 개수와 동시에 유지할 세션 수의 상한이다. 결과 화면까지 가지 못하고 끝난
 # 세션(브라우저 종료 등)이 메모리에 계속 쌓이지 않도록 오래된 세션부터 버린다.
 SOLOMON_SESSION_MAX_TRANSITIONS = 500
 SOLOMON_SESSION_LIMIT = 8
 
 # 한 세션에서 따로 모으는 수의 주체다. 솔로몬(모델)이 둔 수와 사람이 둔 수는 서로 다음 상태가
-# 이어지지 않으므로, 같은 대전이라도 전이를 만들 때는 반드시 나누어 쌓아야 한다.
+# 이어지지 않으므로, 같은 대전이라도 표본을 만들 때는 반드시 나누어 쌓아야 한다.
 SOLOMON_SESSION_SIDES = ("solomon", "player")
 
-# 대전이 끝난 뒤 한 번에 적용할 DQN 업데이트 설정이다. 학습률·감가율은 learning.train()과 같다.
+# 대전이 끝난 뒤 한 번에 적용할 가치망 업데이트 설정이다. 학습률·감가율은 learning.train()과 같다.
 SOLOMON_TRAINING_EPOCHS = 4
 SOLOMON_TRAINING_BATCH_SIZE = 32
 SOLOMON_TRAINING_LEARNING_RATE = 1e-3
-SOLOMON_TRAINING_GAMMA = 0.99
+SOLOMON_TRAINING_GAMMA = DISCOUNT_GAMMA
 
 # 사람이 이긴 대전에서 그 사람의 수를 "모델이 플레이어 쪽을 조작해 이긴 것"으로 보고 학습할 때
 # 적용하는 비중이다. 솔로몬 자신이 둔 수의 비중은 항상 1이므로 이 값이 클수록 사람의 승리 수순을
@@ -148,7 +152,7 @@ def _is_loopback_client(handler: BaseHTTPRequestHandler) -> bool:
 		return False
 
 
-# 학습 API와 DQN Chat Completions API가 동일하게 사용하는 Bearer 토큰 검증 함수다.
+# 학습 API와 모델 Chat Completions API가 동일하게 사용하는 Bearer 토큰 검증 함수다.
 def is_learning_authorized(handler: BaseHTTPRequestHandler) -> bool:
 	"""요청의 Bearer 토큰을 상수시간 비교로 검증한다.
 
@@ -255,9 +259,9 @@ def learning_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str, Any]]:
 		return HTTPStatus.OK, {"ok": True, "event": event, "sessionId": payload["sessionId"], "sequence": session["sequence"], "steps": session["steps"], "totalReward": session["reward"], "done": session["done"]}
 
 
-# model_path가 비어 있거나 파일이 없으면 DQN API를 노출하지 않기 위한 경로 확인 함수다.
+# model_path가 비어 있거나 파일이 없으면 모델 API를 노출하지 않기 위한 경로 확인 함수다.
 def get_configured_model_path() -> Path | None:
-	"""설정된 DQN 체크포인트가 실제 파일일 때만 그 경로를 반환한다."""
+	"""설정된 체크포인트가 실제 파일일 때만 그 경로를 반환한다."""
 	value = SERVER_CONFIG.get("model_path")
 	# 설정 키 누락·null·공백 문자열은 모두 "모델 서비스 사용 안 함"으로 해석한다.
 	if value is None or (isinstance(value, str) and not value.strip()):
@@ -271,21 +275,21 @@ def get_configured_model_path() -> Path | None:
 
 
 # 체크포인트를 한 번만 읽고, 설정 경로가 바뀌면 새 모델을 다시 읽는 지연 로더다.
-def get_dqn_model() -> Any:
-	"""현재 설정 경로의 호환 가능한 DQN 정책을 지연 로드한다."""
-	global dqn_model, dqn_model_path, dqn_model_seed
+def get_value_model() -> Any:
+	"""현재 설정 경로의 호환 가능한 가치망을 지연 로드한다."""
+	global value_model, value_model_path, value_model_seed
 	model_path = get_configured_model_path()
 	if model_path is None:
-		raise ApiError("DQN 모델이 설정되지 않았거나 모델 파일을 찾을 수 없습니다.", HTTPStatus.NOT_FOUND)
+		raise ApiError("모델이 설정되지 않았거나 모델 파일을 찾을 수 없습니다.", HTTPStatus.NOT_FOUND)
 	resolved_path = model_path.resolve()
-	with dqn_model_lock:
+	with value_model_lock:
 		# 동시 요청이 와도 이미 같은 경로를 읽었다면 캐시된 모델을 재사용한다.
-		if dqn_model is not None and dqn_model_path == resolved_path:
-			return dqn_model
+		if value_model is not None and value_model_path == resolved_path:
+			return value_model
 		try:
 			# model_path가 없을 때는 이 import를 수행하지 않아 기존 웹 서버 기능을 보존한다.
 			import torch
-			from learning import PolicyNetwork
+			from learning import ValueNetwork
 			checkpoint = torch.load(resolved_path, map_location="cpu", weights_only=True)
 			# 학습 당시의 관측·행동 수가 현재 common.py 계약과 다르면 추론을 막는다.
 			if not isinstance(checkpoint, dict):
@@ -297,19 +301,19 @@ def get_dqn_model() -> Any:
 			state_dict = checkpoint.get("model")
 			if not isinstance(state_dict, dict):
 				raise ValueError("체크포인트에 model 가중치가 없습니다.")
-			model = PolicyNetwork()
+			model = ValueNetwork()
 			model.load_state_dict(state_dict)
 			model.eval()
 		except Exception as error:
 			# 모델 로드 실패는 정적 웹 서비스까지 중단시키지 않고 이 API에만 503으로 노출한다.
-			raise ApiError(f"DQN 모델을 불러올 수 없습니다: {error}", HTTPStatus.SERVICE_UNAVAILABLE) from error
-		dqn_model = model
-		dqn_model_path = resolved_path
-		dqn_model_seed = checkpoint.get("seed")
-		return dqn_model
+			raise ApiError(f"모델을 불러올 수 없습니다: {error}", HTTPStatus.SERVICE_UNAVAILABLE) from error
+		value_model = model
+		value_model_path = resolved_path
+		value_model_seed = checkpoint.get("seed")
+		return value_model
 
 
-def save_dqn_checkpoint(model: Any, model_path: Path) -> None:
+def save_value_checkpoint(model: Any, model_path: Path) -> None:
 	"""현재 가중치를 learning.py와 같은 체크포인트 형식으로 저장한다.
 
 	모델 버전·관측값·행동 계약과 seed를 그대로 유지하므로 저장된 파일은 learning.py의 추가 학습과
@@ -323,7 +327,7 @@ def save_dqn_checkpoint(model: Any, model_path: Path) -> None:
 		"model_version": MODEL_VERSION,
 		"observation_size": OBSERVATION_SIZE,
 		"action_count": ACTION_COUNT,
-		"seed": dqn_model_seed,
+		"seed": value_model_seed,
 	}, temporary_path)
 	temporary_path.replace(model_path)
 
@@ -353,8 +357,8 @@ def get_latest_user_message(payload: dict[str, Any]) -> str:
 	raise ApiError("문자열 content를 가진 user 메시지가 필요합니다.")
 
 
-# Solomon 프롬프트의 게임 상태를 현재 DQN 체크포인트가 요구하는 고정 길이 벡터로 바꾼다.
-def build_dqn_observation(prompt: dict[str, Any]) -> list[float]:
+# Solomon 프롬프트의 게임 상태를 현재 체크포인트가 요구하는 고정 길이 벡터로 바꾼다.
+def build_model_observation(prompt: dict[str, Any]) -> list[float]:
 	"""Solomon 프롬프트의 필드·현재 쌍·실제 시간·피버 상태를 공통 관측으로 변환한다."""
 	field = prompt.get("currentField")
 	supplied = prompt.get("suppliedPuyos")
@@ -375,7 +379,7 @@ def build_dqn_observation(prompt: dict[str, Any]) -> list[float]:
 			raise ApiError("occupiedCells.y가 올바르지 않습니다.")
 		if not isinstance(color, str) or not color:
 			raise ApiError("occupiedCells.color가 올바르지 않습니다.")
-		# DQN의 현재 관측 계약은 puyow.js와 같이 표시 영역 12행만 사용한다.
+		# 현재 관측 계약은 puyow.js와 같이 표시 영역 12행만 사용한다.
 		if y < BOARD_HEIGHT:
 			board[y][x] = color
 	current_pair = next((entry.get("colors") for entry in supplied if isinstance(entry, dict) and entry.get("order") == "current"), None)
@@ -397,12 +401,38 @@ def build_dqn_observation(prompt: dict[str, Any]) -> list[float]:
 			fever=current_state.get("fever"),
 		)
 	except (TypeError, ValueError) as error:
-		raise ApiError(f"DQN 관측 상태가 올바르지 않습니다: {error}") from error
+		raise ApiError(f"관측 상태가 올바르지 않습니다: {error}") from error
+
+
+# 애프터스테이트의 조작 쌍 자리에 넣을 "이 수 다음에 내려올 쌍"을 프롬프트에서 읽는다.
+def build_model_next_pair(prompt: dict[str, Any]) -> tuple[Any, Any]:
+	"""Solomon 프롬프트의 next_1 쌍을 반환한다. 없으면 색이 정해지지 않은 쌍으로 본다.
+
+	가치망은 한 수를 둔 직후 상태를 "다음 턴 시작 상태"로 보고 평가하므로, 그 상태의 조작 쌍은
+	이번 수의 다음 쌍이다. 이 항목을 보내지 않는 요청에서는 색을 비운 쌍으로 인코딩한다.
+	"""
+	supplied = prompt.get("suppliedPuyos")
+	if not isinstance(supplied, list):
+		return (None, None)
+	colors = next((entry.get("colors") for entry in supplied if isinstance(entry, dict) and entry.get("order") == "next_1"), None)
+	if not isinstance(colors, list) or len(colors) != 2 or any(color not in PUYO_COLORS for color in colors):
+		return (None, None)
+	return (colors[0], colors[1])
+
+
+# 사람이 둔 수를 보내는 학습 API의 nextPair 항목을 검증한다.
+def parse_next_pair(value: Any) -> tuple[Any, Any]:
+	"""학습 API가 보낸 nextPair를 색 쌍으로 바꾼다. 항목이 없으면 색이 정해지지 않은 쌍으로 본다."""
+	if value is None:
+		return (None, None)
+	if not isinstance(value, list) or len(value) != 2 or any(color not in PUYO_COLORS for color in value):
+		raise ApiError("nextPair는 두 개의 색 이름으로 이루어진 배열이어야 합니다.")
+	return (value[0], value[1])
 
 
 # 모델이 고른 행동이 현재 보드의 기본 높이 조건에서 가능한지 빠르게 거른다.
-def is_legal_dqn_placement(observation: list[float], action: int) -> bool:
-	"""표시 영역의 현재 적재 높이를 기준으로 DQN 행동의 기본 배치 가능 여부를 판별한다."""
+def is_legal_model_placement(observation: list[float], action: int) -> bool:
+	"""표시 영역의 현재 적재 높이를 기준으로 행동의 기본 배치 가능 여부를 판별한다."""
 	return is_legal_observation_action(observation, action)
 
 
@@ -426,34 +456,37 @@ def parse_usable_actions(value: Any) -> set[int] | None:
 	return actions
 
 
-# Q값 내림차순으로 후보를 보면서 처음 발견한 사용 가능한 행동 번호를 반환한다.
-def choose_dqn_action(model: Any, observation: list[float], usable_actions: set[int] | None = None) -> int:
-	"""Q값이 높은 순서로 이번 턴에 실제로 놓을 수 있는 행동 하나를 고른다.
+# 놓을 수 있는 배치마다 결과 보드를 규칙으로 만들어 보고, 가치가 가장 높은 배치를 고른다.
+def choose_model_action(
+	model: Any, observation: list[float], usable_actions: set[int] | None = None,
+	next_pair: Sequence[Any] = (None, None),
+) -> int:
+	"""이번 턴에 실제로 놓을 수 있는 배치 중 `즉시 보상 + 감가된 가치`가 가장 큰 하나를 고른다.
 
 	`usable_actions`는 게임이 직접 계산해 보낸 배치 후보다. 게임은 뿌요의 현재 낙하 위치에서의
 	가로 이동 경로와 회전 킥, 화면 밖 숨김 행까지 보고 판단하지만 서버의 관측값에는 화면 12줄만
 	담기므로, 이 목록이 오면 관측값의 높이 조건 대신 이 목록만 믿고 고른다. 목록을 보내지 않는
-	요청에서는 예전처럼 관측값의 열 높이로만 거른다.
+	요청에서는 관측값의 열 높이로만 거른다.
 
 	솔로몬 학습이 켜진 대전에서는 판이 끝날 때 같은 모델의 가중치를 갱신하므로, 그 갱신과 겹치지
-	않도록 추론도 dqn_model_lock 안에서 수행한다.
+	않도록 추론도 value_model_lock 안에서 수행한다.
 	"""
 	try:
 		import torch
-		with dqn_model_lock, torch.inference_mode():
-			q_values = model(torch.tensor(observation, dtype=torch.float32).unsqueeze(0)).squeeze(0)
-		if q_values.numel() != ACTION_COUNT:
-			raise ValueError("DQN 출력 행동 수가 공통 계약과 다릅니다.")
-		# 최고 Q값이 벽·높이 조건에 막힐 수 있으므로 낮은 후보까지 순서대로 검사한다.
-		for action in torch.argsort(q_values, descending=True).tolist():
-			usable = int(action) in usable_actions if usable_actions is not None else is_legal_dqn_placement(observation, action)
-			if usable:
-				return int(action)
+		from learning import select_afterstate
+		with value_model_lock, simulation_lock:
+			action, afterstate = select_afterstate(
+				model, observation, next_pair, torch.device("cpu"), usable_actions=usable_actions,
+			)
 	except ApiError:
 		raise
 	except Exception as error:
-		raise ApiError(f"DQN 추론에 실패했습니다: {error}", HTTPStatus.SERVICE_UNAVAILABLE) from error
-	raise ApiError("현재 필드에서 선택할 수 있는 DQN 행동이 없습니다.", HTTPStatus.UNPROCESSABLE_ENTITY)
+		raise ApiError(f"모델 추론에 실패했습니다: {error}", HTTPStatus.SERVICE_UNAVAILABLE) from error
+	# 관측값의 12줄만으로는 어떤 후보도 착지시킬 수 없는 경우다. 게임이 쓸 수 있다고 알려 준 배치가
+	# 있으면 그중 하나라도 돌려주어야 게임이 대체 AI로 넘어가지 않는다.
+	if afterstate is None and usable_actions is None:
+		raise ApiError("현재 필드에서 선택할 수 있는 행동이 없습니다.", HTTPStatus.UNPROCESSABLE_ENTITY)
+	return action
 
 
 def require_solomon_session_id(session_id: Any) -> str:
@@ -471,126 +504,124 @@ def _get_or_create_solomon_session(session_id: str) -> dict[str, Any]:
 	# 결과 화면까지 가지 못하고 끝난 예전 대전의 세션을 오래된(먼저 만든) 순서로 버린다.
 	while len(solomon_sessions) >= SOLOMON_SESSION_LIMIT:
 		solomon_sessions.pop(next(iter(solomon_sessions)))
-	session = {side: {"transitions": [], "pending": None} for side in SOLOMON_SESSION_SIDES}
+	session = {side: {"moves": [], "linked": False} for side in SOLOMON_SESSION_SIDES}
 	solomon_sessions[session_id] = session
 	return session
 
 
-def compute_solomon_reward(observation: list[float], action: int) -> float:
-	"""직전 요청에서 고른 배치가 실제로 만들어 내는 ATTACK과 연쇄로 그 수의 보상을 계산한다.
+def build_solomon_afterstate(observation: list[float], action: int, next_pair: Sequence[Any]) -> Any:
+	"""이번에 둔 수의 애프터스테이트와 즉시 보상을 오프라인 학습과 같은 규칙으로 만든다.
 
-	learning.PuyoDuelEnvironment.step()과 같은 `ATTACK + 연쇄^2` 계약을 쓰기 위해, 그 환경이
-	사용하는 bundledenemy의 착지·연쇄 해소 함수를 그대로 호출한다. 오프라인 학습과 보상 크기가
-	같아야 같은 체크포인트를 이어서 학습해도 Q값의 기준이 흔들리지 않는다.
-
-	bundledenemy는 룰·시간 상태를 모듈 전역으로 관리하므로, 호출자가 solomon_sessions_lock을 잡아
-	여러 요청이 이 계산에 동시에 들어오지 않도록 해야 한다.
+	learning.PuyoDuelEnvironment.step()과 같은 `ATTACK + 연쇄^2` 보상 계약과 같은 애프터스테이트
+	인코딩을 쓰기 위해 학습기의 공용 함수를 그대로 호출한다. 오프라인 학습과 계약이 같아야 같은
+	체크포인트를 이어서 학습해도 가치의 기준이 흔들리지 않는다. 놓을 자리가 없으면 None이다.
 	"""
 	# 모델 파일이 없는 환경에서도 정적 웹 서비스가 동작하도록 학습 관련 모듈은 필요할 때만 읽는다.
-	import bundledenemy
-	scalars = decode_observation_scalars(observation)
-	bundledenemy.configure_rule(scalars["fever_rule"], scalars["fever_active"])
-	bundledenemy.configure_timing(scalars["margin_rate"], scalars["time_progress_multiplier"])
-	board = decode_observation_board(observation)
-	x, rotation = action_to_placement(action)
-	landing = bundledenemy.find_landing_placement(board, x, rotation)
-	# 착지할 자리가 없는 배치는 추론 단계에서 이미 걸러지므로, 여기서는 보상 없이 넘어간다.
-	if landing is None:
-		return 0.0
-	_result_board, combo, attack = bundledenemy.resolve_placement(board, decode_observation_pair(observation), [landing[0], landing[1]])
-	return attack + combo * combo
+	from learning import build_afterstate
+	with simulation_lock:
+		return build_afterstate(observation, action, next_pair)
 
 
-def record_solomon_step(session_id: str, observation: list[float], action: int, side: str = "solomon") -> None:
-	"""이번 수를 세션의 해당 쪽에 담고, 직전 수가 있으면 그 보상과 다음 상태를 확정한다.
+def record_solomon_step(
+	session_id: str, observation: list[float], action: int, next_pair: Sequence[Any] = (None, None),
+	side: str = "solomon",
+) -> None:
+	"""이번에 둔 수의 애프터스테이트와 보상을 세션의 해당 쪽에 순서대로 담는다.
 
 	`side`가 `player`이면 사람이 직접 둔 수다. 관측·행동 계약이 솔로몬과 완전히 같으므로 같은 방식으로
-	전이를 만들 수 있으며, 실제로 학습에 넣을지는 대전이 끝난 뒤 승패를 보고 결정한다.
+	학습 표본을 만들 수 있으며, 실제로 학습에 넣을지는 대전이 끝난 뒤 승패를 보고 결정한다.
+
+	앞 수와 이어지는 수인지(`linked`)를 함께 적어 둔다. 위험 높이·응답 오류로 솔로몬이 대체 AI를 쓴
+	턴은 요청이 오지 않는데, 그런 턴이 사이에 끼면 앞 수의 다음 상태가 그 수 하나만의 결과가 아니라
+	목표값을 만들 수 없기 때문이다. placedPairCount는 상한(100)에서 잘리므로 두 턴 이상 건너뛴
+	경우만 확실히 걸러 낸다.
 	"""
 	with solomon_sessions_lock:
 		session_side = _get_or_create_solomon_session(session_id)[side]
-		pending = session_side["pending"]
-		if pending is not None and len(session_side["transitions"]) < SOLOMON_SESSION_MAX_TRANSITIONS:
-			# 위험 높이·응답 오류로 솔로몬이 대체 AI를 쓴 턴은 요청이 오지 않는다. 그런 턴이 사이에
-			# 끼면 다음 상태가 모델이 고른 수 하나만의 결과가 아니므로 그 전이는 학습에서 뺀다.
-			# placedPairCount는 상한(100)에서 잘리므로 두 턴 이상 건너뛴 경우만 확실히 걸러 낸다.
-			turn_advance = round(decode_observation_scalars(observation)["turn"]) - round(decode_observation_scalars(pending["observation"])["turn"])
-			if turn_advance < 2:
-				session_side["transitions"].append({
-					"observation": pending["observation"],
-					"action": pending["action"],
-					"reward": compute_solomon_reward(pending["observation"], pending["action"]),
-					"next_observation": observation,
-					"done": False,
-				})
-		session_side["pending"] = {"observation": observation, "action": action}
+		moves = session_side["moves"]
+		turn = round(decode_observation_scalars(observation)["turn"])
+		linked = bool(moves) and session_side["linked"] and turn - moves[-1]["turn"] < 2
+		afterstate = build_solomon_afterstate(observation, action, next_pair)
+		# 착지할 자리가 없는 배치는 추론 단계에서 이미 걸러지므로 사실상 오지 않는다. 그래도 이런 수가
+		# 오면 표본을 만들 수 없으므로 건너뛰고, 다음 수도 앞 수와 이어지지 않은 것으로 본다.
+		if afterstate is None or len(moves) >= SOLOMON_SESSION_MAX_TRANSITIONS:
+			session_side["linked"] = False
+			return
+		moves.append({"afterstate": afterstate.observation, "reward": afterstate.reward, "turn": turn, "linked": linked})
+		session_side["linked"] = True
 
 
-def train_solomon_transitions(transitions: list[dict[str, Any]]) -> float:
-	"""한 대전에서 모은 전이로 현재 로드된 DQN을 추가 학습하고 체크포인트에 저장한다."""
+def train_solomon_samples(samples: list[dict[str, Any]]) -> float:
+	"""한 대전에서 모은 표본으로 현재 로드된 가치망을 추가 학습하고 체크포인트에 저장한다."""
 	import torch
 	from torch import nn
-	model = get_dqn_model()
+	model = get_value_model()
 	model_path = get_configured_model_path()
 	if model_path is None:
-		raise ApiError("DQN 모델이 설정되지 않았거나 모델 파일을 찾을 수 없습니다.", HTTPStatus.NOT_FOUND)
-	states = torch.tensor([item["observation"] for item in transitions], dtype=torch.float32)
-	actions = torch.tensor([item["action"] for item in transitions], dtype=torch.int64)
-	rewards = torch.tensor([item["reward"] for item in transitions], dtype=torch.float32)
-	next_states = torch.tensor([item["next_observation"] for item in transitions], dtype=torch.float32)
-	dones = torch.tensor([float(item["done"]) for item in transitions], dtype=torch.float32)
-	# 전이별 학습 비중은 평균이 1이 되도록 정규화한다. 이렇게 해야 어떤 비중을 쓰더라도 손실 크기가
+		raise ApiError("모델이 설정되지 않았거나 모델 파일을 찾을 수 없습니다.", HTTPStatus.NOT_FOUND)
+	states = torch.tensor([item["afterstate"] for item in samples], dtype=torch.float32)
+	rewards = torch.tensor([item["reward"] for item in samples], dtype=torch.float32)
+	# 부트스트랩할 상태가 없는 표본(대전의 마지막 수)은 0 벡터와 감가율 0을 넣어 목표값에서 지운다.
+	bootstraps = torch.tensor(
+		[item["bootstrap"] if item["bootstrap"] is not None else [0.0] * OBSERVATION_SIZE for item in samples],
+		dtype=torch.float32,
+	)
+	discounts = torch.tensor(
+		[0.0 if item["bootstrap"] is None else SOLOMON_TRAINING_GAMMA for item in samples], dtype=torch.float32,
+	)
+	# 표본별 학습 비중은 평균이 1이 되도록 정규화한다. 이렇게 해야 어떤 비중을 쓰더라도 손실 크기가
 	# 예전과 같은 수준으로 유지되어, 학습률을 그대로 두고도 상대적인 비중만 반영할 수 있다.
-	weights = torch.tensor([float(item.get("weight", SOLOMON_DEFAULT_TRAINING_WEIGHT)) for item in transitions], dtype=torch.float32)
+	weights = torch.tensor([float(item.get("weight", SOLOMON_DEFAULT_TRAINING_WEIGHT)) for item in samples], dtype=torch.float32)
 	weights = weights / weights.mean().clamp(min=1e-6)
 	# 갱신 중에는 추론도 같은 잠금을 기다린다. 학습이 끝나고 저장까지 마친 뒤에야 다음 추론이 이어진다.
-	with dqn_model_lock:
-		# 목표 Q값은 학습을 시작하기 전 가중치로 한 번만 계산한다. learning.train()이 별도 target
+	with value_model_lock:
+		# 목표값은 학습을 시작하기 전 가중치로 한 번만 계산한다. learning.train()이 별도 target
 		# 네트워크를 두는 것과 같은 이유로, 갱신하는 동안 목표까지 함께 움직이지 않게 하기 위함이다.
 		with torch.no_grad():
-			expected = rewards + SOLOMON_TRAINING_GAMMA * model(next_states).max(1).values * (1.0 - dones)
+			expected = rewards + discounts * model(bootstraps)
 		optimizer = torch.optim.Adam(model.parameters(), lr=SOLOMON_TRAINING_LEARNING_RATE)
-		count = len(transitions)
+		count = len(samples)
 		last_loss = 0.0
 		for _ in range(SOLOMON_TRAINING_EPOCHS):
 			order = torch.randperm(count)
 			for start in range(0, count, SOLOMON_TRAINING_BATCH_SIZE):
 				batch = order[start:start + SOLOMON_TRAINING_BATCH_SIZE]
-				current = model(states[batch]).gather(1, actions[batch].unsqueeze(1)).squeeze(1)
-				loss = (nn.functional.smooth_l1_loss(current, expected[batch], reduction="none") * weights[batch]).mean()
+				loss = (nn.functional.smooth_l1_loss(model(states[batch]), expected[batch], reduction="none") * weights[batch]).mean()
 				optimizer.zero_grad()
 				loss.backward()
 				nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 				optimizer.step()
 				last_loss = float(loss.item())
-		save_dqn_checkpoint(model, model_path)
+		save_value_checkpoint(model, model_path)
 	return last_loss
 
 
 def _close_solomon_side(session_side: dict[str, Any], terminal_reward: float, weight: float) -> list[dict[str, Any]]:
-	"""한쪽이 둔 수의 마지막 전이를 승패 보상으로 닫고 모든 전이에 학습 비중을 매긴다.
+	"""한쪽이 둔 수들을 가치망 학습 표본으로 바꾸고 학습 비중을 매긴다.
 
-	호출자가 solomon_sessions_lock을 잡은 상태여야 한다. compute_solomon_reward()가 bundledenemy의
-	모듈 전역 룰·시간 설정을 사용하기 때문이다.
+	애프터스테이트 하나의 가치는 그 뒤에 이어지는 보상의 합이므로, 목표값은 바로 다음 수의 보상과
+	감가한 다음 애프터스테이트의 가치다. 대전의 마지막 수 뒤에는 승패 보상만 남고 더 진행할 상태가
+	없으므로 부트스트랩 없이 승패 보상만 목표로 쓴다. 앞뒤가 끊긴(`linked`가 아닌) 수는 다음 상태를
+	알 수 없어 표본으로 만들지 않는다.
 	"""
-	pending = session_side["pending"]
-	if pending is not None and len(session_side["transitions"]) < SOLOMON_SESSION_MAX_TRANSITIONS:
-		# 마지막 수는 다음 요청이 오지 않으므로 여기서 닫는다. 종료 전이의 다음 상태는 목표
-		# Q값 계산에서 (1 - done)으로 지워지므로 같은 관측값을 그대로 넣어 둔다.
-		session_side["transitions"].append({
-			"observation": pending["observation"],
-			"action": pending["action"],
-			"reward": compute_solomon_reward(pending["observation"], pending["action"]) + terminal_reward,
-			"next_observation": pending["observation"],
-			"done": True,
-		})
-	for transition in session_side["transitions"]:
-		transition["weight"] = weight
-	return session_side["transitions"]
+	moves = session_side["moves"]
+	samples: list[dict[str, Any]] = []
+	for index, move in enumerate(moves):
+		following = moves[index + 1] if index + 1 < len(moves) else None
+		if following is not None and following["linked"]:
+			samples.append({
+				"afterstate": move["afterstate"], "reward": following["reward"],
+				"bootstrap": following["afterstate"], "weight": weight,
+			})
+		elif following is None:
+			samples.append({
+				"afterstate": move["afterstate"], "reward": terminal_reward, "bootstrap": None, "weight": weight,
+			})
+	return samples
 
 
 def finish_solomon_session(session_id: str, result: str) -> dict[str, Any]:
-	"""대전이 끝난 세션의 마지막 전이를 승패 보상으로 닫고 모아 둔 전이를 모델에 반영한다.
+	"""대전이 끝난 세션의 수들을 승패 보상까지 반영한 학습 표본으로 바꿔 모델에 반영한다.
 
 	`result`는 솔로몬 기준의 승패다. 솔로몬이 진 대전(`loss`)에서는 사람이 이겼다는 뜻이므로, 그 사람이
 	둔 수도 "모델이 플레이어 쪽을 조작해 이긴 수순"으로 보고 SOLOMON_PLAYER_WIN_TRAINING_WEIGHT의
@@ -601,19 +632,19 @@ def finish_solomon_session(session_id: str, result: str) -> dict[str, Any]:
 		if session is None:
 			return {"trained": False, "transitions": 0, "reason": "해당 세션의 학습 데이터가 없습니다."}
 		terminal_reward = WIN_REWARD if result == "win" else LOSS_REWARD if result == "loss" else 0.0
-		solomon_transitions = _close_solomon_side(session["solomon"], terminal_reward, SOLOMON_DEFAULT_TRAINING_WEIGHT)
-		player_transitions = (
+		solomon_samples = _close_solomon_side(session["solomon"], terminal_reward, SOLOMON_DEFAULT_TRAINING_WEIGHT)
+		player_samples = (
 			_close_solomon_side(session["player"], WIN_REWARD, SOLOMON_PLAYER_WIN_TRAINING_WEIGHT)
 			if result == "loss" else []
 		)
-		transitions = solomon_transitions + player_transitions
-	if not transitions:
+		samples = solomon_samples + player_samples
+	if not samples:
 		return {"trained": False, "transitions": 0, "reason": "이번 대전에서 모은 학습 데이터가 없습니다."}
 	return {
 		"trained": True,
-		"transitions": len(transitions),
-		"playerTransitions": len(player_transitions),
-		"loss": train_solomon_transitions(transitions),
+		"transitions": len(samples),
+		"playerTransitions": len(player_samples),
+		"loss": train_solomon_samples(samples),
 	}
 
 
@@ -642,7 +673,9 @@ def solomon_learning_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 			action_to_placement(payload["action"])
 		except ValueError as error:
 			raise ApiError(str(error)) from error
-		record_solomon_step(session_id, payload["observation"], payload["action"], side="player")
+		record_solomon_step(
+			session_id, payload["observation"], payload["action"], parse_next_pair(payload.get("nextPair")), side="player",
+		)
 		return HTTPStatus.OK, {"ok": True, "sessionId": session_id, "event": "step"}
 	result = payload.get("result")
 	if result not in {"win", "loss", "draw"}:
@@ -652,13 +685,13 @@ def solomon_learning_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 
 # Puyo W가 LM Studio에 보내는 두 종류의 구조화 출력 요청을 처리하는 HTTP API다.
 def chat_completions_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str, Any]]:
-	"""Puyo W의 LM Studio 호환 구조화 출력 요청을 DQN 정책으로 처리한다."""
+	"""Puyo W의 LM Studio 호환 구조화 출력 요청을 가치망으로 처리한다."""
 	# Chat Completions는 생성 요청만 지원하므로 POST 외 요청은 메서드 오류다.
 	if handler.command != "POST":
 		return HTTPStatus.METHOD_NOT_ALLOWED, {"error": {"message": "POST만 지원합니다.", "type": "invalid_request_error"}}
 	# 모델이 비활성화된 경우에는 다른 웹 API와 달리 이 엔드포인트만 404로 숨긴다.
 	if get_configured_model_path() is None:
-		return HTTPStatus.NOT_FOUND, {"error": {"message": "DQN 모델이 설정되지 않았거나 모델 파일을 찾을 수 없습니다.", "type": "not_found_error"}}
+		return HTTPStatus.NOT_FOUND, {"error": {"message": "모델이 설정되지 않았거나 모델 파일을 찾을 수 없습니다.", "type": "not_found_error"}}
 	# 브라우저 설정의 AI API 키는 learning_token과 같은 Bearer 토큰이어야 한다.
 	if not is_learning_authorized(handler):
 		return HTTPStatus.UNAUTHORIZED, {"error": {"message": "인증이 필요합니다.", "type": "authentication_error"}}
@@ -667,12 +700,12 @@ def chat_completions_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 	model_name = payload.get("model")
 	if not isinstance(model_name, str) or not model_name.strip():
 		raise ApiError("model은 비어 있지 않은 문자열이어야 합니다.")
-	model = get_dqn_model()
+	model = get_value_model()
 	schema_name = get_chat_request_schema_name(payload)
 	# 설정 화면의 연결 테스트는 모델을 정상 로드한 뒤 성공 JSON만 반환한다.
 	if schema_name == "ai_api_test_result":
 		content = json.dumps({"success": True}, separators=(",", ":"))
-	# 실제 대전에서는 Solomon 프롬프트를 DQN 관측값으로 바꿔 배치를 추론한다.
+	# 실제 대전에서는 Solomon 프롬프트를 관측값으로 바꿔 배치를 추론한다.
 	elif schema_name == "solomon_puyo_placement":
 		try:
 			prompt = json.loads(get_latest_user_message(payload))
@@ -680,12 +713,13 @@ def chat_completions_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 			raise ApiError("Solomon user 메시지는 JSON 객체여야 합니다.") from error
 		if not isinstance(prompt, dict):
 			raise ApiError("Solomon user 메시지는 JSON 객체여야 합니다.")
-		observation = build_dqn_observation(prompt)
-		action = choose_dqn_action(model, observation, parse_usable_actions(prompt.get("usablePlacements")))
+		observation = build_model_observation(prompt)
+		next_pair = build_model_next_pair(prompt)
+		action = choose_model_action(model, observation, parse_usable_actions(prompt.get("usablePlacements")), next_pair)
 		# 게임은 Local AI 제공자로 극한 난이도 솔로몬과 대전할 때만 학습 세션 ID를 함께 보낸다.
-		# 그 대전에서만 이번 추론을 담아 두고, 다음 요청에서 이 수의 보상과 다음 상태를 확정한다.
+		# 그 대전에서만 이번 수의 애프터스테이트를 담아 두고, 판이 끝날 때 학습에 사용한다.
 		if prompt.get("learningSessionId") is not None:
-			record_solomon_step(require_solomon_session_id(prompt.get("learningSessionId")), observation, action)
+			record_solomon_step(require_solomon_session_id(prompt.get("learningSessionId")), observation, action, next_pair)
 		x, rotation = action_to_placement(action)
 		content = json.dumps({"x": x, "rotation": rotation}, separators=(",", ":"))
 	else:
@@ -708,7 +742,7 @@ def local_model_info_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 		return HTTPStatus.OK, {"available": False}
 	try:
 		# 실제 서비스와 같은 지연 로더를 사용해 체크포인트 호환성까지 확인한다.
-		get_dqn_model()
+		get_value_model()
 	except Exception:
 		# 모델을 읽지 못하면 게임이 Local AI를 선택하지 못하도록 사용 불가로 응답한다.
 		return HTTPStatus.OK, {"available": False}
@@ -753,14 +787,14 @@ class PuyoRequestHandler(BaseHTTPRequestHandler):
 	def do_POST(self) -> None:
 		self._handle_request()
 
-	# 차단 경로, DQN 서비스, 학습 API, 정적 파일 순서로 URL을 판별하는 요청 라우터다.
+	# 차단 경로, 모델 서비스, 학습 API, 정적 파일 순서로 URL을 판별하는 요청 라우터다.
 	def _handle_request(self) -> None:
 		path = unquote(urlsplit(self.path).path)
 		# 웹 루트 안에 있더라도 서버 내부 설정 경로는 직접 제공하지 않는다.
 		if any(pattern in path for pattern in BLACKLIST_FILE_PATTERNS):
 			self._send_json(HTTPStatus.FORBIDDEN, {"ok": False, "error": "403 Forbidden"})
 			return
-		# model_path가 유효할 때만 동작하는 LM Studio 호환 DQN 서비스다.
+		# model_path가 유효할 때만 동작하는 LM Studio 호환 모델 서비스다.
 		if path == "/v1/chat/completions":
 			try:
 				status, payload = chat_completions_api(self)

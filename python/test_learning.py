@@ -23,7 +23,7 @@ class ExistingPolicyLoadTest(unittest.TestCase):
 
 	def test_existing_checkpoint_restores_policy_weights(self) -> None:
 		checkpoint_path = Path("resume.pt")
-		saved_policy = training.PolicyNetwork()
+		saved_policy = training.ValueNetwork()
 		with torch.no_grad():
 			for parameter in saved_policy.parameters():
 				parameter.fill_(0.25)
@@ -35,7 +35,7 @@ class ExistingPolicyLoadTest(unittest.TestCase):
 			"seed": 2026,
 		}
 
-		loaded_policy = training.PolicyNetwork()
+		loaded_policy = training.ValueNetwork()
 		with mock.patch.object(Path, "exists", return_value=True), \
 			mock.patch.object(Path, "is_file", return_value=True), \
 			mock.patch.object(training.torch, "load", return_value=checkpoint) as load_mock:
@@ -48,7 +48,7 @@ class ExistingPolicyLoadTest(unittest.TestCase):
 
 	def test_missing_checkpoint_keeps_new_policy(self) -> None:
 		checkpoint_path = Path("new.pt")
-		policy = training.PolicyNetwork()
+		policy = training.ValueNetwork()
 
 		with mock.patch.object(Path, "exists", return_value=False):
 			self.assertFalse(training.load_existing_policy(checkpoint_path, policy, torch.device("cpu")))
@@ -56,7 +56,7 @@ class ExistingPolicyLoadTest(unittest.TestCase):
 	def test_incompatible_checkpoint_is_rejected(self) -> None:
 		checkpoint_path = Path("incompatible.pt")
 		checkpoint = {
-			"model": training.PolicyNetwork().state_dict(),
+			"model": training.ValueNetwork().state_dict(),
 			"model_version": training.MODEL_VERSION,
 			"observation_size": training.OBSERVATION_SIZE - 1,
 			"action_count": training.ACTION_COUNT,
@@ -66,11 +66,11 @@ class ExistingPolicyLoadTest(unittest.TestCase):
 			mock.patch.object(Path, "is_file", return_value=True), \
 			mock.patch.object(training.torch, "load", return_value=checkpoint):
 			with self.assertRaisesRegex(ValueError, "관측값 또는 행동 계약"):
-				training.load_existing_policy(checkpoint_path, training.PolicyNetwork(), torch.device("cpu"))
+				training.load_existing_policy(checkpoint_path, training.ValueNetwork(), torch.device("cpu"))
 
 	def test_checkpoint_without_current_model_version_is_rejected(self) -> None:
 		checkpoint = {
-			"model": training.PolicyNetwork().state_dict(),
+			"model": training.ValueNetwork().state_dict(),
 			"observation_size": training.OBSERVATION_SIZE,
 			"action_count": training.ACTION_COUNT,
 		}
@@ -78,7 +78,7 @@ class ExistingPolicyLoadTest(unittest.TestCase):
 			mock.patch.object(Path, "is_file", return_value=True), \
 			mock.patch.object(training.torch, "load", return_value=checkpoint):
 			with self.assertRaisesRegex(ValueError, "모델 버전"):
-				training.load_existing_policy(Path("old.pt"), training.PolicyNetwork(), torch.device("cpu"))
+				training.load_existing_policy(Path("old.pt"), training.ValueNetwork(), torch.device("cpu"))
 
 
 class RuleStateTest(unittest.TestCase):
@@ -122,7 +122,7 @@ class RuleStateTest(unittest.TestCase):
 				"fever": {"active": True, "gauge": 7, "nextTime": 20, "targetCombo": 6, "leftTime": 9000, "damage": 2},
 			},
 		}
-		observation = pythonserver.build_dqn_observation(prompt)
+		observation = pythonserver.build_model_observation(prompt)
 		self.assertEqual(training.OBSERVATION_SIZE, len(observation))
 		self.assertEqual(0.0, observation[0])
 		self.assertEqual(1.0, observation[training.BOARD_WIDTH * training.BOARD_HEIGHT])
@@ -268,14 +268,96 @@ class ObservationDecodeTest(unittest.TestCase):
 		self.assertTrue(scalars["fever_active"])
 
 
+class AfterstateValueTest(unittest.TestCase):
+	"""한 수를 둔 직후 상태를 만들고, 그 가치로 배치를 고르고, 목표값을 만드는 계약을 확인한다."""
+
+	class _ZeroValueNetwork:
+		"""모든 상태의 가치를 0으로 보는 스텁이다. 이때 선택은 즉시 보상만으로 결정된다."""
+
+		def __call__(self, states: torch.Tensor) -> torch.Tensor:
+			return torch.zeros(states.reshape(-1, common.OBSERVATION_SIZE).shape[0])
+
+	def test_illegal_placements_are_not_candidates(self) -> None:
+		board = training.bundledenemy.new_empty_board()
+		for y in range(training.BOARD_HEIGHT):
+			board[y][0] = 0
+		observation = training.encode_observation_values(board, (1, 2))
+		actions = {afterstate.action for afterstate in training.enumerate_afterstates(observation, (0, 1))}
+
+		# 가득 찬 X=0 열에는 어떤 회전으로도 놓을 수 없고, X=1의 왼쪽 회전도 그 열을 쓴다.
+		self.assertNotIn(0, actions)
+		self.assertNotIn(1 * 4 + training.bundledenemy.ROTATION_COUNT - 1, actions)
+		self.assertTrue(all(training.action_to_placement(action)[0] > 0 for action in actions))
+
+	def test_greedy_choice_takes_the_placement_that_pops(self) -> None:
+		board = training.bundledenemy.new_empty_board()
+		for x in range(3):
+			board[0][x] = 0
+		observation = training.encode_observation_values(board, (0, 0))
+
+		action, afterstate = training.select_afterstate(
+			self._ZeroValueNetwork(), observation, (1, 2), torch.device("cpu"),
+		)
+
+		# 가치가 모두 같으면 즉시 보상이 가장 큰 수, 즉 실제로 폭발하는 배치를 골라야 한다.
+		self.assertGreater(afterstate.reward, 0.0)
+		self.assertEqual(action, afterstate.action)
+		self.assertTrue(all(cell == training.bundledenemy.EMPTY for row in common.decode_observation_board(afterstate.observation) for cell in row))
+
+	def test_n_step_targets_sum_the_following_rewards(self) -> None:
+		zero_state = torch.zeros(common.OBSERVATION_SIZE)
+		states = [[float(index)] * common.OBSERVATION_SIZE for index in range(3)]
+		trajectory = [(states[0], 1.0), (states[1], 2.0), (states[2], 3.0)]
+
+		samples = training.build_value_samples(trajectory, common.LOSS_REWARD, zero_state, n_step=2, gamma=0.5)
+
+		self.assertEqual(3, len(samples))
+		# 다음 두 수의 보상을 감가해 더하고, 거기까지 진행한 상태의 가치를 감가해 붙인다.
+		self.assertAlmostEqual(2.0 + 0.5 * 3.0, samples[0].partial_return, places=6)
+		self.assertAlmostEqual(0.25, samples[0].discount, places=6)
+		self.assertTrue(torch.equal(torch.tensor(states[2], dtype=torch.float32), samples[0].bootstrap))
+		self.assertAlmostEqual(3.0, samples[1].partial_return, places=6)
+		# 승부가 난 마지막 상태의 목표값은 승패 보상 자체다. 이래야 두는 순간 지는 수도 -50으로 평가된다.
+		self.assertAlmostEqual(common.LOSS_REWARD, samples[2].partial_return, places=6)
+		self.assertEqual(0.0, samples[2].discount)
+
+	def test_unfinished_episode_bootstraps_from_the_last_state(self) -> None:
+		zero_state = torch.zeros(common.OBSERVATION_SIZE)
+		states = [[float(index)] * common.OBSERVATION_SIZE for index in range(3)]
+		trajectory = [(states[0], 1.0), (states[1], 2.0), (states[2], 3.0)]
+
+		samples = training.build_value_samples(trajectory, None, zero_state, n_step=2, gamma=0.5)
+
+		# 최대 턴에서 잘린 에피소드의 마지막 상태는 뒤가 비어 표본으로 쓰지 않는다.
+		self.assertEqual(2, len(samples))
+		self.assertAlmostEqual(0.5, samples[1].discount, places=6)
+		self.assertTrue(torch.equal(torch.tensor(states[2], dtype=torch.float32), samples[1].bootstrap))
+
+	def test_last_move_without_a_landing_folds_the_terminal_value_into_the_target(self) -> None:
+		zero_state = torch.zeros(common.OBSERVATION_SIZE)
+		state = [1.0] * common.OBSERVATION_SIZE
+		# 놓을 자리가 없어 끝난 마지막 수는 애프터스테이트가 없으므로 앞 수의 목표값에 종료 가치를 넣는다.
+		trajectory = [(state, 2.0), (None, 0.0)]
+
+		samples = training.build_value_samples(trajectory, common.LOSS_REWARD, zero_state, n_step=2, gamma=0.5)
+
+		self.assertEqual(1, len(samples))
+		self.assertAlmostEqual(0.5 * common.LOSS_REWARD, samples[0].partial_return, places=6)
+		self.assertEqual(0.0, samples[0].discount)
+
+
 class UsablePlacementTest(unittest.TestCase):
 	"""게임이 보낸 배치 후보 안에서만 행동을 고르는지 확인한다."""
 
-	class _FixedQNetwork:
-		"""행동 번호가 클수록 Q값이 큰 고정 신경망 스텁이다."""
+	class _RightmostValueNetwork:
+		"""오른쪽에 쌓은 애프터스테이트일수록 높은 가치를 돌려주는 고정 가치망 스텁이다."""
 
-		def __call__(self, state: torch.Tensor) -> torch.Tensor:
-			return torch.arange(training.ACTION_COUNT, dtype=torch.float32).unsqueeze(0)
+		def __call__(self, states: torch.Tensor) -> torch.Tensor:
+			boards = [common.decode_observation_board(state.tolist()) for state in states.reshape(-1, common.OBSERVATION_SIZE)]
+			return torch.tensor([
+				float(sum(x for row in board for x, cell in enumerate(row) if cell != training.bundledenemy.EMPTY))
+				for board in boards
+			])
 
 	def test_parses_placements_into_action_numbers(self) -> None:
 		self.assertIsNone(pythonserver.parse_usable_actions(None))
@@ -291,9 +373,10 @@ class UsablePlacementTest(unittest.TestCase):
 	def test_action_is_chosen_from_the_supplied_placements_only(self) -> None:
 		board = training.bundledenemy.new_empty_board()
 		observation = training.encode_observation_values(board, (0, 1))
-		# 빈 보드에서는 관측값 기준으로 23번이 가장 높은 Q값이지만, 게임이 보낸 후보에는 없다.
-		self.assertEqual(23, pythonserver.choose_dqn_action(self._FixedQNetwork(), observation))
-		self.assertEqual(9, pythonserver.choose_dqn_action(self._FixedQNetwork(), observation, {4, 9}))
+		# 빈 보드에서 가치가 가장 높은 배치는 맨 오른쪽 열(X=5)이지만, 게임이 보낸 후보에는 없다.
+		self.assertEqual(20, pythonserver.choose_model_action(self._RightmostValueNetwork(), observation))
+		# 후보가 오면 그 안에서만 고른다. 9번(X=2, 오른쪽 회전)이 4번(X=1, 위 회전)보다 오른쪽이다.
+		self.assertEqual(9, pythonserver.choose_model_action(self._RightmostValueNetwork(), observation, {4, 9}))
 
 	def test_supplied_placements_win_over_the_observation_height_check(self) -> None:
 		board = training.bundledenemy.new_empty_board()
@@ -301,9 +384,18 @@ class UsablePlacementTest(unittest.TestCase):
 		for y in range(training.BOARD_HEIGHT):
 			board[y][5] = 0
 		observation = training.encode_observation_values(board, (0, 1))
-		self.assertFalse(pythonserver.is_legal_dqn_placement(observation, 20))
-		# 게임이 숨김 행까지 보고 사용 가능하다고 알려 주면 그 판단을 따른다.
-		self.assertEqual(20, pythonserver.choose_dqn_action(self._FixedQNetwork(), observation, {20}))
+		self.assertFalse(pythonserver.is_legal_model_placement(observation, 20))
+		# 게임이 숨김 행까지 보고 사용 가능하다고 알려 주면, 12줄로는 결과를 만들 수 없어도 그 판단을 따른다.
+		self.assertEqual(20, pythonserver.choose_model_action(self._RightmostValueNetwork(), observation, {20}))
+
+	def test_next_pair_of_the_prompt_becomes_the_afterstate_pair(self) -> None:
+		prompt = {"suppliedPuyos": [
+			{"order": "current", "colors": ["red", "green"]},
+			{"order": "next_1", "colors": ["blue", "purple"]},
+		]}
+		self.assertEqual(("blue", "purple"), pythonserver.build_model_next_pair(prompt))
+		# 예전 클라이언트처럼 다음 쌍을 보내지 않으면 색을 비운 쌍으로 본다.
+		self.assertEqual((None, None), pythonserver.build_model_next_pair({"suppliedPuyos": []}))
 
 
 class SolomonOnlineLearningTest(unittest.TestCase):
@@ -327,26 +419,28 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 		landing = training.bundledenemy.find_landing_placement(board, 3, training.ROTATION_UP)
 		_result, combo, attack = training.bundledenemy.resolve_placement(board, (0, 0), [landing[0], landing[1]])
 
-		reward = pythonserver.compute_solomon_reward(self._observation(board, (0, 0), 5), action)
+		afterstate = pythonserver.build_solomon_afterstate(self._observation(board, (0, 0), 5), action, (1, 2))
 
 		self.assertGreater(combo, 0)
-		self.assertAlmostEqual(attack + combo * combo, reward, places=6)
+		self.assertAlmostEqual(common.move_reward(attack, combo), afterstate.reward, places=6)
+		# 애프터스테이트의 조작 쌍은 이번 수가 아니라 다음 수에 내려올 쌍이다.
+		self.assertEqual((1, 2), common.decode_observation_pair(afterstate.observation))
 
 	def test_reward_is_zero_when_the_placement_pops_nothing(self) -> None:
 		board = training.bundledenemy.new_empty_board()
-		self.assertEqual(0.0, pythonserver.compute_solomon_reward(self._observation(board, (0, 1), 0), 0))
+		self.assertEqual(0.0, pythonserver.build_solomon_afterstate(self._observation(board, (0, 1), 0), 0, (0, 1)).reward)
 
-	def test_consecutive_requests_close_the_previous_transition(self) -> None:
+	def test_consecutive_requests_are_recorded_as_linked_moves(self) -> None:
 		board = training.bundledenemy.new_empty_board()
 
 		pythonserver.record_solomon_step("session", self._observation(board, (0, 1), 0), 0)
 		pythonserver.record_solomon_step("session", self._observation(board, (1, 2), 1), 4)
-		session_side = pythonserver.solomon_sessions["session"]["solomon"]
+		moves = pythonserver.solomon_sessions["session"]["solomon"]["moves"]
 
-		self.assertEqual(1, len(session_side["transitions"]))
-		self.assertEqual(0, session_side["transitions"][0]["action"])
-		self.assertFalse(session_side["transitions"][0]["done"])
-		self.assertEqual(4, session_side["pending"]["action"])
+		self.assertEqual(2, len(moves))
+		self.assertFalse(moves[0]["linked"])
+		# 앞 수와 이어지는 수여야 앞 수의 목표값을 만들 수 있다.
+		self.assertTrue(moves[1]["linked"])
 
 	def test_player_moves_are_collected_separately_from_the_solomon_moves(self) -> None:
 		board = training.bundledenemy.new_empty_board()
@@ -357,26 +451,32 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 		pythonserver.record_solomon_step("session", self._observation(board, (2, 3), 1), 8, side="player")
 		session = pythonserver.solomon_sessions["session"]
 
-		self.assertEqual([], session["solomon"]["transitions"])
-		self.assertEqual(0, session["solomon"]["pending"]["action"])
-		self.assertEqual(1, len(session["player"]["transitions"]))
-		self.assertEqual(4, session["player"]["transitions"][0]["action"])
+		self.assertEqual(1, len(session["solomon"]["moves"]))
+		self.assertEqual(2, len(session["player"]["moves"]))
+		self.assertTrue(session["player"]["moves"][1]["linked"])
 
-	def test_turns_played_by_the_fallback_ai_are_not_recorded(self) -> None:
+	def test_turns_played_by_the_fallback_ai_break_the_move_chain(self) -> None:
 		board = training.bundledenemy.new_empty_board()
 
 		pythonserver.record_solomon_step("session", self._observation(board, (0, 1), 0), 0)
 		# 대체 AI가 두 턴을 대신 두면 그동안 요청이 오지 않아 placedPairCount가 건너뛴다.
 		pythonserver.record_solomon_step("session", self._observation(board, (1, 2), 3), 4)
+		moves = pythonserver.solomon_sessions["session"]["solomon"]["moves"]
 
-		self.assertEqual([], pythonserver.solomon_sessions["session"]["solomon"]["transitions"])
+		self.assertFalse(moves[1]["linked"])
+		# 앞뒤가 끊긴 수는 다음 상태를 알 수 없으므로 표본으로 만들지 않는다.
+		samples = pythonserver._close_solomon_side(
+			pythonserver.solomon_sessions["session"]["solomon"], common.WIN_REWARD, 1.0,
+		)
+		self.assertEqual(1, len(samples))
+		self.assertIsNone(samples[0]["bootstrap"])
 
 	def test_finish_closes_the_last_move_with_the_win_reward_and_drops_the_session(self) -> None:
 		board = training.bundledenemy.new_empty_board()
 		pythonserver.record_solomon_step("session", self._observation(board, (0, 1), 0), 0)
 		captured: list[list[dict]] = []
 
-		with mock.patch.object(pythonserver, "train_solomon_transitions", side_effect=lambda items: captured.append(items) or 0.5):
+		with mock.patch.object(pythonserver, "train_solomon_samples", side_effect=lambda items: captured.append(items) or 0.5):
 			result = pythonserver.finish_solomon_session("session", "win")
 
 		self.assertTrue(result["trained"])
@@ -384,7 +484,8 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 		self.assertEqual(0, result["playerTransitions"])
 		self.assertNotIn("session", pythonserver.solomon_sessions)
 		terminal = captured[0][0]
-		self.assertTrue(terminal["done"])
+		# 마지막 수 뒤에는 더 진행할 상태가 없으므로 승패 보상만 목표값이 된다.
+		self.assertIsNone(terminal["bootstrap"])
 		self.assertAlmostEqual(common.WIN_REWARD, terminal["reward"], places=6)
 		self.assertAlmostEqual(pythonserver.SOLOMON_DEFAULT_TRAINING_WEIGHT, terminal["weight"], places=6)
 
@@ -395,16 +496,16 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 		captured: list[list[dict]] = []
 
 		# 솔로몬 기준 loss는 사람이 이겼다는 뜻이므로 사람의 수도 승리 수순으로 학습에 들어간다.
-		with mock.patch.object(pythonserver, "train_solomon_transitions", side_effect=lambda items: captured.append(items) or 0.5):
+		with mock.patch.object(pythonserver, "train_solomon_samples", side_effect=lambda items: captured.append(items) or 0.5):
 			result = pythonserver.finish_solomon_session("session", "loss")
 
 		self.assertEqual(2, result["transitions"])
 		self.assertEqual(1, result["playerTransitions"])
-		solomon_transition, player_transition = captured[0]
-		self.assertAlmostEqual(common.LOSS_REWARD, solomon_transition["reward"], places=6)
-		self.assertAlmostEqual(pythonserver.SOLOMON_DEFAULT_TRAINING_WEIGHT, solomon_transition["weight"], places=6)
-		self.assertAlmostEqual(common.WIN_REWARD, player_transition["reward"], places=6)
-		self.assertAlmostEqual(pythonserver.SOLOMON_PLAYER_WIN_TRAINING_WEIGHT, player_transition["weight"], places=6)
+		solomon_sample, player_sample = captured[0]
+		self.assertAlmostEqual(common.LOSS_REWARD, solomon_sample["reward"], places=6)
+		self.assertAlmostEqual(pythonserver.SOLOMON_DEFAULT_TRAINING_WEIGHT, solomon_sample["weight"], places=6)
+		self.assertAlmostEqual(common.WIN_REWARD, player_sample["reward"], places=6)
+		self.assertAlmostEqual(pythonserver.SOLOMON_PLAYER_WIN_TRAINING_WEIGHT, player_sample["weight"], places=6)
 
 	def test_player_moves_are_dropped_when_the_player_did_not_win(self) -> None:
 		board = training.bundledenemy.new_empty_board()
@@ -412,7 +513,7 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 		pythonserver.record_solomon_step("session", self._observation(board, (1, 2), 0), 4, side="player")
 		captured: list[list[dict]] = []
 
-		with mock.patch.object(pythonserver, "train_solomon_transitions", side_effect=lambda items: captured.append(items) or 0.5):
+		with mock.patch.object(pythonserver, "train_solomon_samples", side_effect=lambda items: captured.append(items) or 0.5):
 			result = pythonserver.finish_solomon_session("session", "win")
 
 		self.assertEqual(1, result["transitions"])
@@ -475,8 +576,26 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 		self.assertEqual(200, status)
 		self.assertEqual({"ok": True, "sessionId": "session", "event": "step"}, payload)
 		# 이 API의 step은 항상 사람이 둔 수이므로 솔로몬 쪽에는 아무것도 쌓이지 않아야 한다.
-		self.assertEqual(7, pythonserver.solomon_sessions["session"]["player"]["pending"]["action"])
-		self.assertIsNone(pythonserver.solomon_sessions["session"]["solomon"]["pending"])
+		self.assertEqual(1, len(pythonserver.solomon_sessions["session"]["player"]["moves"]))
+		self.assertEqual([], pythonserver.solomon_sessions["session"]["solomon"]["moves"])
+
+	def test_api_uses_the_next_pair_of_a_player_step_for_the_afterstate(self) -> None:
+		original_token = pythonserver.SERVER_CONFIG["learning_token"]
+		pythonserver.SERVER_CONFIG["learning_token"] = "secret-token"
+		board = training.bundledenemy.new_empty_board()
+		body = {
+			"event": "step", "sessionId": "session", "observation": self._observation(board, (0, 1), 0),
+			"action": 0, "nextPair": ["blue", "purple"],
+		}
+		try:
+			pythonserver.solomon_learning_api(_FakeHandler("Bearer secret-token", "203.0.113.5", body=body))
+			with self.assertRaisesRegex(pythonserver.ApiError, "nextPair"):
+				pythonserver.solomon_learning_api(_FakeHandler("Bearer secret-token", "203.0.113.5", body={**body, "nextPair": ["red"]}))
+		finally:
+			pythonserver.SERVER_CONFIG["learning_token"] = original_token
+
+		move = pythonserver.solomon_sessions["session"]["player"]["moves"][0]
+		self.assertEqual((3, 4), common.decode_observation_pair(move["afterstate"]))
 
 	def test_finish_without_any_request_reports_no_training_data(self) -> None:
 		result = pythonserver.finish_solomon_session("missing-session", "loss")
@@ -488,25 +607,28 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 		with tempfile.TemporaryDirectory() as directory:
 			checkpoint_path = Path(directory) / "online.pt"
 			torch.save({
-				"model": training.PolicyNetwork().state_dict(), "model_version": training.MODEL_VERSION,
+				"model": training.ValueNetwork().state_dict(), "model_version": training.MODEL_VERSION,
 				"observation_size": training.OBSERVATION_SIZE, "action_count": training.ACTION_COUNT, "seed": 1234,
 			}, checkpoint_path)
 			original_path, original_model, original_seed = (
-				pythonserver.SERVER_CONFIG["model_path"], pythonserver.dqn_model, pythonserver.dqn_model_seed,
+				pythonserver.SERVER_CONFIG["model_path"], pythonserver.value_model, pythonserver.value_model_seed,
 			)
 			pythonserver.SERVER_CONFIG["model_path"] = checkpoint_path
-			pythonserver.dqn_model = None
+			pythonserver.value_model = None
 			board = training.bundledenemy.new_empty_board()
-			transitions = [{
-				"observation": self._observation(board, (0, 1), 0), "action": 0, "reward": 1.0,
-				"next_observation": self._observation(board, (1, 2), 1), "done": True,
-			}]
+			samples = [
+				{"afterstate": self._observation(board, (0, 1), 0), "reward": 1.0, "bootstrap": None, "weight": 1.0},
+				{
+					"afterstate": self._observation(board, (1, 2), 1), "reward": 2.0,
+					"bootstrap": self._observation(board, (2, 3), 2), "weight": 1.0,
+				},
+			]
 			try:
-				pythonserver.train_solomon_transitions(transitions)
+				pythonserver.train_solomon_samples(samples)
 			finally:
 				pythonserver.SERVER_CONFIG["model_path"] = original_path
-				pythonserver.dqn_model = original_model
-				pythonserver.dqn_model_seed = original_seed
+				pythonserver.value_model = original_model
+				pythonserver.value_model_seed = original_seed
 
 			saved = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
 			self.assertEqual(training.MODEL_VERSION, saved["model_version"])
@@ -514,7 +636,7 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 			self.assertEqual(training.ACTION_COUNT, saved["action_count"])
 			self.assertEqual(1234, saved["seed"])
 			# 갱신한 파일을 기존 학습기가 그대로 이어받을 수 있어야 한다.
-			self.assertTrue(training.load_existing_policy(checkpoint_path, training.PolicyNetwork(), torch.device("cpu")))
+			self.assertTrue(training.load_existing_policy(checkpoint_path, training.ValueNetwork(), torch.device("cpu")))
 			self.assertFalse(checkpoint_path.with_name(checkpoint_path.name + ".tmp").exists())
 
 

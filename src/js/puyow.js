@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 18;
+    const BUILDNO = 19;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -2462,11 +2462,15 @@
         if (!player.active || !isReverseLearningEnabled()) return;
         const sessionId = getSolomonLearningSessionId();
         if (!sessionId) return;
+        // 서버 모델은 한 수를 둔 직후 상태의 가치를 학습하며, 그 상태의 조작 쌍은 이번 수의 다음 쌍이다.
+        // 솔로몬 배치 요청의 suppliedPuyos next_1과 같은 값이라 두 경로의 학습 표본 형식이 같아진다.
+        const nextPair = player.nextPairs?.[0];
         queueSolomonLearningRequest({
             event: 'step',
             sessionId,
             observation: getLearningObservation(player),
-            action: player.active.x * 4 + player.active.rotation
+            action: player.active.x * 4 + player.active.rotation,
+            ...(nextPair ? { nextPair: [...nextPair] } : {})
         });
     }
 
