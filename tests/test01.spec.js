@@ -4954,7 +4954,7 @@ test('역으로 모델 학습 체크박스는 키보드와 마우스로 토글�
   // 마우스로 같은 체크박스를 눌러 끄고 저장하면 false로 되돌아간다.
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1039, y: 577 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 789, y: 577 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.reverseLearning)).toBe(false);
 });

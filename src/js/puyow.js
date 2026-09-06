@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 20;
+    const BUILDNO = 21;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -7959,8 +7959,11 @@
         testY: 502,
         testHeight: 32,
         checkboxY: 568,
-        replayCheckboxX: 790,
-        reverseLearningCheckboxX: 1030,
+        // 체크박스 줄은 다른 행과 달리 왼쪽에 별도 라벨 열이 필요 없으므로, controlX(550)가 아니라
+        // 라벨 열의 시작 좌표(labelX)부터 시작해 그만큼 왼쪽 공간을 더 쓴다.
+        landscapeCheckboxX: 300,
+        replayCheckboxX: 540,
+        reverseLearningCheckboxX: 780,
         // 체크박스 하나가 클릭을 받는 가로 폭이다. 체크박스 사이 간격과 같아 라벨을 눌러도 토글된다.
         checkboxHitWidth: 240,
         checkboxSize: 18,
@@ -7999,7 +8002,7 @@
      */
     function getSettingsCheckboxes() {
         return [
-            { x: SETTINGS_UI_LAYOUT.controlX, focus: 11, key: 'landscapeOrientationLocked', label: '화면 가로방향 고정' },
+            { x: SETTINGS_UI_LAYOUT.landscapeCheckboxX, focus: 11, key: 'landscapeOrientationLocked', label: '화면 가로방향 고정' },
             { x: SETTINGS_UI_LAYOUT.replayCheckboxX, focus: 12, key: 'useReplayFeature', label: '리플레이 사용' },
             { x: SETTINGS_UI_LAYOUT.reverseLearningCheckboxX, focus: 13, key: 'reverseLearning', label: '역으로 모델 학습' }
         ];
@@ -10463,7 +10466,7 @@
             const layout = SETTINGS_UI_LAYOUT;
             if (x >= SETTINGS_CODE_BUTTON.x && x <= SETTINGS_CODE_BUTTON.x + SETTINGS_CODE_BUTTON.width && y >= SETTINGS_CODE_BUTTON.y && y <= SETTINGS_CODE_BUTTON.y + SETTINGS_CODE_BUTTON.height) enterSettingsCode();
             else if (y >= layout.testY && y <= layout.testY + layout.testHeight && x >= layout.controlX && x <= layout.controlX + layout.controlWidth && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 10; runAiApiTest(); }
-            else if (y >= layout.checkboxY && y <= layout.checkboxY + layout.checkboxSize && x >= layout.controlX && x <= layout.reverseLearningCheckboxX + layout.checkboxHitWidth) {
+            else if (y >= layout.checkboxY && y <= layout.checkboxY + layout.checkboxSize && x >= layout.landscapeCheckboxX && x <= layout.reverseLearningCheckboxX + layout.checkboxHitWidth) {
                 // 각 체크박스는 자기 위치부터 다음 체크박스 직전까지를 클릭 범위로 가진다.
                 const checkbox = getSettingsCheckboxes().filter((candidate) => x >= candidate.x).pop();
                 if (checkbox) toggleSettingsCheckbox(checkbox);
