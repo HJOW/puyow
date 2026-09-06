@@ -10,7 +10,7 @@
 Python 설치 후 PyTorch 는 Windows PowerShell 에서 다음처럼 설치할 수 있다.
 
 ```powershell
-python -m pip install torch
+python -m pip install torch torchvision psutil onnx onnxscript
 ```
 
 VS Code에서 `torch`를 찾지 못하면 PyTorch를 설치한 Python 인터프리터를 선택한다. CUDA를 사용할 경우 설치된 PyTorch가 해당 CUDA 환경을 지원해야 한다.

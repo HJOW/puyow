@@ -8,6 +8,8 @@
 #    python 3.10 이상 버전 (python.org 에서 다운로드)
 #    torch, torchvision  ( pip3 install torch torchvision )
 #    psutil              ( pip3 install psutil )
+#    onnx, onnxscript    ( pip3 install onnx onnxscript )
+#    
 #
 # 간단 사용법
 #     터미널로 프로젝트 최상위 디렉토리로 접근 후 다음 명령어 사용
@@ -22,6 +24,7 @@
 #    learning.py
 #    torch
 #    psutil
+#    onnx
 #
 # Copyright 2026 HJOW
 # Licensed under the Apache License, Version 2.0.
