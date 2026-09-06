@@ -85,17 +85,23 @@
    명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 창에서    
    단축키 CTRL + C 입력    
 
-## Bun 호환성
+## Bun 으로 서버 구동
 
 Bun (https://bun.com/) 을 사용하여 서버 구동을 더 빠르게 진행할 수 있습니다.    
 공식 홈페이지에서 bun 을 설치한 후,    
 명령어 `npm start` 대신 `bun start` 를 이용하세요.
+    
+웹 브라우저로 주소 `localhost:9891` 입력해 접속해 즐기고, 
+명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 창에서 단축키 CTRL + C 입력해 서버를 종료할 수 있습니다.
 
-## Python 호환성
+## Python 으로 서버 구동
 
 파이썬으로도 서버 구동이 가능합니다.
 공식 홈페이지에서 Python 을 설치 (3.10 이상 버전 필요) 후
 명령어 `python python/pythonserver.py` 를 이용하세요.
+
+웹 브라우저로 주소 `localhost:9891` 입력해 접속해 즐기고, 
+명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 창에서 단축키 CTRL + C 입력해 서버를 종료할 수 있습니다.
 
 ## 개발 안내
 
