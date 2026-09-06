@@ -18,6 +18,9 @@
 #
 #     GUI 창이 뜨면, 모델을 저장할 파일 경로를 입력하고, 에피소드 수를 지정한 후 "Start" 버튼을 클릭한다.
 #
+#     학습한 모델을 다른 이름이나 ONNX 형식으로 내보내려면 File > Save As... 메뉴를 사용한다.
+#     프로그램을 끝낼 때는 File > Exit 메뉴를 쓰면 학습 중이라도 마지막 에피소드까지 저장한 뒤 종료한다.
+#
 # 의존성
 #    common.py
 #    bundledenemy.py
@@ -43,21 +46,31 @@
 저장하지 않는다. CLI에서 `python python/learning.py ...`로 직접 학습하는 기존 방식은 이 GUI와
 무관하게 그대로 동작한다.
 
+메뉴바에는 File 그룹 하나가 있고 그 안에 Save As...와 Exit 두 항목이 있다. Save As...는 학습
+중·일시정지 중에는 잠기며, Model output path의 체크포인트를 .pt로 그대로 복사하거나 .onnx로
+변환해 내보낸다. Exit는 상태와 무관하게 언제나 누를 수 있고, 학습 중이면 Stop 버튼과 같은 중단
+예약을 걸어 마지막 에피소드까지의 결과를 체크포인트에 저장한 뒤 창을 닫는다. 창 오른쪽 위의 닫기
+버튼(_on_close)은 예전처럼 저장 없이 즉시 포기하는 경로라서 Exit와 의미가 다르다.
+
 창이 뜬 뒤에는 학습 쓰레드와 별개로 시스템 자원 감시용 데몬 쓰레드도 하나 돌아간다. 이 쓰레드는
 psutil로 1초에 한 번 CPU·RAM 점유율만 재서 같은 log_queue에 적재하고, 위젯은 여느 학습 로그와
 마찬가지로 _poll_queue가 메인 쓰레드에서만 갱신한다. 창을 닫으면 _closed 플래그로 다음 측정 뒤
 루프를 빠져나가며, 데몬 쓰레드라 프로세스 종료를 막지 않는다.
 """
 
+import importlib.util
 import queue
+import shutil
 import threading
 import tkinter as tk
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+from typing import Callable
 from urllib.parse import urlsplit
 
 import psutil
+import torch
 
 import learning
 import pythonserver
@@ -73,6 +86,102 @@ DEFAULT_EPISODES = 5000
 # 서버 주소 입력란의 호스트가 이 목록에 있을 때만 GUI가 직접 pythonserver.py를 띄우고 끈다.
 # 원격 주소라면 이미 다른 곳에서 서버를 운영 중이라고 보고 건드리지 않는다.
 LOCAL_SERVER_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+# File 메뉴 항목의 라벨이다. 메뉴 항목을 켜고 끌 때 인덱스 대신 이 라벨로 지정하므로, 항목 순서가
+# 바뀌어도 상태 처리 코드를 함께 고칠 필요가 없다.
+SAVE_AS_MENU_LABEL = "Save As..."
+EXIT_MENU_LABEL = "Exit"
+
+# Save As... 대화상자에서 고를 수 있는 형식이다. 어느 쪽을 골랐는지는 결과 경로의 확장자로
+# 판별하므로, 여기에 형식을 더할 때는 _on_save_as의 확장자 분기도 함께 넓혀야 한다.
+SAVE_AS_FILETYPES = [("PyTorch checkpoint", "*.pt"), ("ONNX model", "*.onnx")]
+
+# 내보낸 ONNX 모델에서 배치 축에 붙일 이름이다. 입력과 출력 모두 이 이름으로 열어 두어, 한 번에
+# 여러 애프터스테이트를 넣어 평가하는 사용처가 그대로 쓸 수 있게 한다.
+ONNX_BATCH_AXIS_NAME = "batch"
+
+# ONNX 변환에 필요한 파이썬 패키지를 찾지 못했을 때 로그에 보여 줄 안내다.
+ONNX_REQUIREMENT_MESSAGE = (
+	"ONNX export requires the onnx package (and onnxscript for the torch.export based exporter). "
+	"Install them with: pip3 install onnx onnxscript"
+)
+
+
+def _report_progress(progress: Callable[[int, str], None] | None, percent: int, message: str) -> None:
+	"""진행 콜백이 있으면 (진행률, 상태 문구)를 전달한다. 콜백이 없으면 아무 일도 하지 않는다."""
+	if progress is not None:
+		progress(percent, message)
+
+
+def save_checkpoint_copy(
+	source: Path, destination: Path, progress: Callable[[int, str], None] | None = None,
+) -> None:
+	"""학습 체크포인트를 그대로 다른 경로에 복사한다.
+
+	파일 내용을 전혀 손대지 않으므로 복사본도 learning.py·pythonserver.py가 읽는 기존 체크포인트
+	형식 그대로다. 원본 파일도 읽기만 한다.
+	"""
+	_report_progress(progress, 10, f"Copying checkpoint to {destination}...")
+	destination.parent.mkdir(parents=True, exist_ok=True)
+	shutil.copy2(source, destination)
+	_report_progress(progress, 100, f"Saved checkpoint to {destination}")
+
+
+def export_checkpoint_to_onnx(
+	source: Path, destination: Path, progress: Callable[[int, str], None] | None = None,
+) -> None:
+	"""학습 체크포인트를 ONNX 모델로 변환해 저장한다.
+
+	원본 체크포인트는 읽기만 하고 형식도 바꾸지 않으므로, 기존 모델 호환성에는 영향이 없다.
+	`progress`는 (0~100 진행률, 상태 문구)를 받는 콜백이며 GUI가 게이지바와 로그를 갱신하는 데
+	쓴다. 변환 자체는 한 번의 torch.onnx.export 호출이라 중간 진행률을 물어볼 수 없어서, 실제로
+	시간을 쓰는 단계(체크포인트 로드 → 변환 → 검증)의 경계마다 진행률을 올린다.
+	"""
+	# onnx는 두 내보내기 방식 모두가 요구한다. 없으면 변환을 시작하기 전에 설치 방법을 알린다.
+	if importlib.util.find_spec("onnx") is None:
+		raise RuntimeError(ONNX_REQUIREMENT_MESSAGE)
+	_report_progress(progress, 5, f"Loading checkpoint from {source}...")
+	# load_policy_checkpoint()가 모델 버전·관측값·행동 계약까지 검증하므로, 형식이 다른 파일은
+	# 여기서 걸러져 어중간한 ONNX 파일이 만들어지지 않는다.
+	policy = learning.load_policy_checkpoint(source, torch.device("cpu"))
+	_report_progress(progress, 30, "Preparing sample input...")
+	# ValueNetwork.forward()는 (배치, OBSERVATION_SIZE) 모양을 받는다. 배치 축만 동적으로 열어 둔다.
+	sample = torch.zeros(1, learning.OBSERVATION_SIZE, dtype=torch.float32)
+	_report_progress(progress, 45, "Converting to ONNX...")
+	destination.parent.mkdir(parents=True, exist_ok=True)
+	if importlib.util.find_spec("onnxscript") is not None:
+		# torch 2.9부터 기본이 된 torch.export 기반 내보내기다. external_data를 끄지 않으면 가중치를
+		# 옆의 .onnx.data 파일로 빼기 때문에, 고른 위치의 파일 하나만 옮기면 모델이 깨진다.
+		export_options = {
+			"dynamo": True, "external_data": False,
+			"dynamic_shapes": ({0: ONNX_BATCH_AXIS_NAME},),
+		}
+	else:
+		# onnxscript가 없는 환경에서는 예전 TorchScript 방식으로 같은 그래프를 내보낸다.
+		export_options = {
+			"dynamo": False,
+			"dynamic_axes": {
+				"observation": {0: ONNX_BATCH_AXIS_NAME}, "value": {0: ONNX_BATCH_AXIS_NAME},
+			},
+		}
+	torch.onnx.export(
+		policy, (sample,), str(destination),
+		input_names=["observation"], output_names=["value"], **export_options,
+	)
+	_report_progress(progress, 85, "Verifying exported model...")
+	# 선택 의존성이라 모듈 최상단이 아니라 설치 여부를 확인한 뒤 여기서만 불러온다.
+	import onnx
+
+	model = onnx.load(str(destination))
+	# ValueNetwork.forward()가 마지막에 reshape(-1)로 1차원을 만들기 때문에, torch.export 기반
+	# 내보내기는 출력 축을 견본 배치 크기인 1로 고정해 적는다. 그래프 자체는 배치를 그대로 흘려
+	# 보내므로, 입력과 같은 동적 축 이름으로 고쳐 적어 사용처가 배치 추론을 거부하지 않게 한다.
+	output_dimension = model.graph.output[0].type.tensor_type.shape.dim[0]
+	if not output_dimension.dim_param:
+		output_dimension.dim_param = ONNX_BATCH_AXIS_NAME
+		onnx.save(model, str(destination))
+	onnx.checker.check_model(model)
+	_report_progress(progress, 100, f"Saved ONNX model to {destination}")
 
 
 def _parse_local_server_port(server_url: str) -> int | None:
@@ -105,8 +214,17 @@ class TrainerApp:
 		self.server: ThreadingHTTPServer | None = None
 		self.server_thread: threading.Thread | None = None
 		self.sysinfo_thread: threading.Thread | None = None
+		# Save As...가 띄우는 저장·변환 쓰레드다. 한 번에 하나만 돌고, 끝나면 큐로 결과를 알린다.
+		self.save_thread: threading.Thread | None = None
+		# File > Exit로 종료 절차에 들어갔는지를 나타낸다. 학습·저장이 끝나기를 기다리는 동안
+		# 켜져 있으며, 이 값이 켜져 있으면 완료 처리에서 잠근 버튼을 다시 살리지 않는다.
+		self._exit_pending = False
+		# ONNX 변환에 게이지바를 잠시 빌려 쓰기 전의 (maximum, value)를 담아 둔다. 변환이 끝나면
+		# 이 값으로 되돌려, 직전 학습 진행 표시가 그대로 남아 있게 한다.
+		self._progress_backup: tuple | None = None
 		self._closed = False
 
+		self._build_menu()
 		self._build_widgets()
 		self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 		self.root.after(100, self._poll_queue)
@@ -115,6 +233,19 @@ class TrainerApp:
 	# ------------------------------------------------------------------
 	# 화면 구성
 	# ------------------------------------------------------------------
+	def _build_menu(self) -> None:
+		"""File 그룹 하나만 있는 메뉴바를 만든다.
+
+		Save As...는 학습 중·일시정지 중에 잠기고, Exit는 상태 변화로는 잠기지 않는다(종료 절차
+		자체를 시작한 뒤에만 _disable_all_controls가 함께 잠근다).
+		"""
+		menubar = tk.Menu(self.root)
+		self.file_menu = tk.Menu(menubar, tearoff=0)
+		self.file_menu.add_command(label=SAVE_AS_MENU_LABEL, command=self._on_save_as)
+		self.file_menu.add_command(label=EXIT_MENU_LABEL, command=self._on_exit_menu)
+		menubar.add_cascade(label="File", menu=self.file_menu)
+		self.root.configure(menu=menubar)
+
 	def _build_widgets(self) -> None:
 		padding = {"padx": 8, "pady": 4}
 
@@ -211,6 +342,29 @@ class TrainerApp:
 		self.episodes_entry.configure(state=state)
 		self.server_url_entry.configure(state=state)
 
+	def _set_save_as_enabled(self, enabled: bool) -> None:
+		"""File > Save As... 항목만 켜고 끈다. 학습 중·일시정지 중과 저장 작업 중에는 꺼 둔다."""
+		self.file_menu.entryconfigure(SAVE_AS_MENU_LABEL, state="normal" if enabled else "disabled")
+
+	def _disable_all_controls(self) -> None:
+		"""종료 절차에 들어갈 때 모든 버튼·입력·메뉴를 잠가 추가 조작을 막는다.
+
+		Exit는 평소 상태 변화로는 잠기지 않지만, 종료 절차가 두 번 겹쳐 돌지 않도록 여기서만
+		함께 잠근다. 어차피 이 시점 이후에는 창이 닫히는 것 외에 할 일이 없다.
+		"""
+		self.start_button.configure(state="disabled")
+		self.pause_button.configure(state="disabled")
+		self.stop_button.configure(state="disabled")
+		self._set_inputs_enabled(False)
+		self._set_save_as_enabled(False)
+		self.file_menu.entryconfigure(EXIT_MENU_LABEL, state="disabled")
+
+	def _is_busy(self) -> bool:
+		"""학습 쓰레드나 저장·변환 쓰레드가 아직 돌고 있는지 확인한다."""
+		return any(
+			thread is not None and thread.is_alive() for thread in (self.thread, self.save_thread)
+		)
+
 	# ------------------------------------------------------------------
 	# 로컬 pythonserver.py 수명주기
 	# ------------------------------------------------------------------
@@ -255,6 +409,124 @@ class TrainerApp:
 			self.log_queue.put(("sysinfo", cpu_percent, ram_percent))
 
 	# ------------------------------------------------------------------
+	# File 메뉴 (다른 이름으로 저장 / 종료)
+	# ------------------------------------------------------------------
+	def _on_save_as(self) -> None:
+		"""File > Save As... : 현재 체크포인트를 다른 이름(.pt) 또는 ONNX(.onnx)로 내보낸다.
+
+		Model output path의 파일이 실제로 있어야만 대화상자를 연다. 대화상자를 취소하거나 그냥
+		닫으면 아무 일도 하지 않는다. 실제 저장·변환은 창이 멈추지 않도록 별도 쓰레드에서 한다.
+		"""
+		source_text = self.output_var.get().strip()
+		source = Path(source_text) if source_text else learning.DEFAULT_OUTPUT
+		if not source.is_file():
+			# 아직 한 번도 학습하지 않았거나 경로를 잘못 적은 경우다. 로그로만 알리고 끝낸다.
+			self._append_log(f"Save As failed: no model file at {source}")
+			return
+
+		destination_text = filedialog.asksaveasfilename(
+			# parent를 지정해야 이 창에 묶인 모달 대화상자로 뜬다.
+			parent=self.root,
+			title="Save model as",
+			defaultextension=".pt",
+			filetypes=SAVE_AS_FILETYPES,
+			initialdir=str(source.parent) if str(source.parent) else None,
+			initialfile=source.name,
+		)
+		if not destination_text:
+			# 취소했거나 대화상자를 그냥 닫았다.
+			return
+
+		destination = Path(destination_text)
+		suffix = destination.suffix.lower()
+		if suffix not in (".pt", ".onnx"):
+			self._append_log(
+				f"Save As failed: unsupported extension '{destination.suffix}'. Choose .pt or .onnx."
+			)
+			return
+		if destination.resolve() == source.resolve():
+			# 원본과 같은 파일로 저장하면 복사가 실패한다. 미리 걸러 안내한다.
+			self._append_log("Save As failed: the destination is the same file as the model output path.")
+			return
+
+		as_onnx = suffix == ".onnx"
+		self.start_button.configure(state="disabled")
+		# 변환이 끝나기 전에 같은 메뉴가 다시 열려 두 작업이 같은 파일에 겹쳐 쓰지 않도록 막는다.
+		self._set_save_as_enabled(False)
+		if as_onnx:
+			# 변환 진행률을 보여 주려고 게이지바를 잠시 빌린다. 끝나면 원래 표시로 되돌린다.
+			self._progress_backup = (self.progress.cget("maximum"), self.progress.cget("value"))
+			self.progress.configure(maximum=100, value=0)
+		self.status_var.set("Saving model...")
+		self._append_log(f"Save As started: {source} -> {destination}")
+
+		self.save_thread = threading.Thread(
+			target=self._run_save_as, args=(source, destination, as_onnx), daemon=True,
+		)
+		self.save_thread.start()
+
+	def _run_save_as(self, source: Path, destination: Path, as_onnx: bool) -> None:
+		"""백그라운드 저장·변환 쓰레드. 위젯을 직접 건드리지 않고 큐에만 결과를 적재한다."""
+
+		def report(percent: int, message: str) -> None:
+			self.log_queue.put(("saveas_progress", percent, message))
+
+		try:
+			if as_onnx:
+				export_checkpoint_to_onnx(source, destination, report)
+			else:
+				save_checkpoint_copy(source, destination, report)
+		except Exception as error:
+			self.log_queue.put(("saveas_error", str(error)))
+			return
+		self.log_queue.put(("saveas_done", str(destination)))
+
+	def _finish_save_as(self) -> None:
+		"""저장·변환이 끝난 뒤 게이지바를 원래대로 돌리고 잠갔던 조작을 되살린다."""
+		if self._progress_backup is not None:
+			maximum, value = self._progress_backup
+			self.progress.configure(maximum=maximum, value=value)
+			self._progress_backup = None
+		self.save_thread = None
+		if self._exit_pending:
+			# 종료 절차 중이면 잠긴 상태를 그대로 두고, _poll_queue가 창을 닫게 맡긴다.
+			return
+		self.start_button.configure(state="normal")
+		self._set_save_as_enabled(True)
+
+	def _on_exit_menu(self) -> None:
+		"""File > Exit : 학습 중이면 마지막 에피소드까지 저장한 뒤 프로그램을 끝낸다.
+
+		Stop 버튼과 같은 중단 예약을 걸어 learning.train()이 체크포인트를 저장하고 정상적으로
+		빠져나오게 한 다음, 그 완료 신호를 _poll_queue에서 받아 창을 닫는다. 창 오른쪽 위의 닫기
+		버튼(_on_close)이 하는 강제 포기와 달리 학습 결과를 버리지 않는다.
+		"""
+		# 종료를 시작하면 되돌릴 수 없으므로 먼저 모든 버튼과 메뉴를 잠가 추가 조작을 막는다.
+		self._disable_all_controls()
+		self._exit_pending = True
+		if self.control is not None and self.thread is not None and self.thread.is_alive():
+			# 일시정지 중이어도 request_stop()이 대기를 함께 풀어 주므로 그대로 예약하면 된다.
+			self.status_var.set("Stopping (finishing current episode) before exit...")
+			self._append_log("Exit requested. Saving progress after the current episode...")
+			self.control.request_stop()
+			return
+		if self._is_busy():
+			# 학습은 아니지만 Save As 작업이 남아 있으면 파일이 깨지지 않게 끝날 때까지 기다린다.
+			self.status_var.set("Finishing the current task before exit...")
+			return
+		self._shutdown()
+
+	def _shutdown(self) -> None:
+		"""로컬 서버를 정리하고 창을 닫아 프로그램을 끝낸다."""
+		self._closed = True
+		if self.server is not None:
+			self.server.shutdown()
+			self.server.server_close()
+			self.server = None
+			self.server_thread = None
+		self.root.destroy()
+
+	# ------------------------------------------------------------------
 	# 학습 시작/일시정지/재개/중단
 	# ------------------------------------------------------------------
 	def _on_start(self) -> None:
@@ -294,6 +566,7 @@ class TrainerApp:
 		self.pause_button.configure(text="Pause", state="normal")
 		self.stop_button.configure(state="normal")
 		self._set_inputs_enabled(False)
+		self._set_save_as_enabled(False)
 
 		self.thread = threading.Thread(
 			target=self._run_training, args=(episodes, output_path, server_url, self.control), daemon=True,
@@ -360,17 +633,11 @@ class TrainerApp:
 		self.control.request_stop()
 
 	def _on_close(self) -> None:
-		self._closed = True
 		if self.control is not None and self.thread is not None and self.thread.is_alive():
 			# 즉시 포기: learning.train()이 저장 코드에 닿기 전에 TrainingAbort로 빠져나간다.
 			# 학습 쓰레드는 데몬 쓰레드라 창을 닫아도 프로세스 종료를 막지 않는다.
 			self.control.request_abort()
-		if self.server is not None:
-			self.server.shutdown()
-			self.server.server_close()
-			self.server = None
-			self.server_thread = None
-		self.root.destroy()
+		self._shutdown()
 
 	# ------------------------------------------------------------------
 	# 학습 쓰레드 -> GUI 쓰레드 큐 처리
@@ -398,6 +665,21 @@ class TrainerApp:
 					self._append_log("Training finished and checkpoint saved.")
 					self.status_var.set("Idle.")
 					self._reset_controls()
+				elif kind == "saveas_progress":
+					_, percent, message = item
+					# ONNX 변환일 때만 게이지바를 빌려 쓴 상태다(_progress_backup이 있을 때).
+					if self._progress_backup is not None:
+						self.progress.configure(maximum=100, value=percent)
+					self.status_var.set(message)
+					self._append_log(message)
+				elif kind == "saveas_error":
+					self._append_log(f"Save As failed: {item[1]}")
+					self.status_var.set("Idle.")
+					self._finish_save_as()
+				elif kind == "saveas_done":
+					self._append_log(f"Save As finished: {item[1]}")
+					self.status_var.set("Idle.")
+					self._finish_save_as()
 				elif kind == "sysinfo":
 					_, cpu_percent, ram_percent = item
 					self.cpu_gauge.configure(value=cpu_percent)
@@ -406,16 +688,25 @@ class TrainerApp:
 					self.ram_var.set(f"{ram_percent:.1f}%")
 		except queue.Empty:
 			pass
+		# File > Exit로 종료를 예약했다면, 학습·저장 쓰레드가 모두 끝난 뒤에 창을 닫는다.
+		if self._exit_pending and not self._is_busy():
+			self._shutdown()
+			return
 		self.root.after(100, self._poll_queue)
 
 	def _reset_controls(self) -> None:
 		self._stop_local_server()
+		self.control = None
+		self.thread = None
+		if self._exit_pending:
+			# File > Exit로 종료하는 중이다. 잠가 둔 버튼·메뉴를 되살리지 않고, 창을 닫는 일은
+			# _poll_queue가 쓰레드 종료를 확인한 뒤에 맡는다.
+			return
 		self.start_button.configure(state="normal")
 		self.pause_button.configure(text="Pause", state="disabled")
 		self.stop_button.configure(state="disabled")
 		self._set_inputs_enabled(True)
-		self.control = None
-		self.thread = None
+		self._set_save_as_enabled(True)
 
 
 def main() -> None:

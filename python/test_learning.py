@@ -1,5 +1,6 @@
 """learning.py의 모델 계약과 JS/Python 규칙 일치를 확인하는 단위 테스트다."""
 
+import importlib.util
 import io
 import json
 import shutil
@@ -15,7 +16,18 @@ import torch
 
 import common
 import learning as training
+import lngui
 import pythonserver
+
+# lngui.py의 메뉴 테스트는 실제 Tk 창을 만들어 위젯 상태를 확인한다. 화면이 없는 환경(CI 등)에서는
+# Tk 초기화 자체가 실패하므로, 여기서 한 번만 확인해 두고 해당 테스트를 통째로 건너뛴다.
+try:
+	_probe_root = lngui.tk.Tk()
+except Exception:
+	_TK_AVAILABLE = False
+else:
+	_TK_AVAILABLE = True
+	_probe_root.destroy()
 
 
 class ExistingPolicyLoadTest(unittest.TestCase):
@@ -666,6 +678,251 @@ class JavascriptBoardRegressionTest(unittest.TestCase):
 			python_result = training.bundledenemy.simulate_placement_board(board, pair, positions)
 			normalized_js = [[-1 if cell is None else -2 if cell == "garbage" else color_names.index(cell) for cell in row] for row in js_result[:training.BOARD_HEIGHT]]
 			self.assertEqual(python_result, normalized_js)
+
+
+class _StubThread:
+	"""살아 있는지 여부만 흉내내는 쓰레드 대역이다. 실제 학습을 돌리지 않고 상태 전이만 확인한다."""
+
+	def __init__(self) -> None:
+		self.alive = True
+
+	def is_alive(self) -> bool:
+		return self.alive
+
+
+@unittest.skipUnless(_TK_AVAILABLE, "화면이 없는 환경에서는 Tk 창을 만들 수 없다.")
+class TrainerMenuTest(unittest.TestCase):
+	"""lngui.py의 File 메뉴(Save As.../Exit) 동작 계약을 확인한다."""
+
+	def setUp(self) -> None:
+		self.root = lngui.tk.Tk()
+		self.root.withdraw()
+		self.app = lngui.TrainerApp(self.root)
+		self.directory = Path(tempfile.mkdtemp())
+		self.source = self.directory / "model.pt"
+		# 실제로 다시 불러올 수 있는 체크포인트를 만들어 둔다.
+		torch.save({
+			"model": training.ValueNetwork().state_dict(),
+			"model_version": training.MODEL_VERSION,
+			"observation_size": training.OBSERVATION_SIZE,
+			"action_count": training.ACTION_COUNT,
+			"seed": 2026,
+		}, self.source)
+		self.app.output_var.set(str(self.source))
+
+	def tearDown(self) -> None:
+		self.app._closed = True
+		try:
+			self.root.destroy()
+		except lngui.tk.TclError:
+			# Exit 메뉴를 확인한 테스트는 이미 창을 닫은 뒤다.
+			pass
+		shutil.rmtree(self.directory, ignore_errors=True)
+
+	def _menu_state(self, label: str) -> str:
+		return str(self.app.file_menu.entrycget(label, "state"))
+
+	def _drain_queue(self, timeout: float = 30.0) -> None:
+		"""저장 쓰레드가 끝나 큐가 비고 잠금이 풀릴 때까지 _poll_queue를 직접 돌린다."""
+		deadline = time.monotonic() + timeout
+		while time.monotonic() < deadline:
+			self.app._poll_queue()
+			if self.app.save_thread is None and self.app.log_queue.empty():
+				return
+			time.sleep(0.02)
+		self.fail("저장 작업이 제한 시간 안에 끝나지 않았다.")
+
+	def test_file_menu_has_save_as_and_exit(self) -> None:
+		"""File 메뉴에 요구한 두 항목만 있고, 처음에는 둘 다 쓸 수 있어야 한다."""
+		labels = [self.app.file_menu.entrycget(index, "label") for index in range(self.app.file_menu.index("end") + 1)]
+		self.assertEqual([lngui.SAVE_AS_MENU_LABEL, lngui.EXIT_MENU_LABEL], labels)
+		self.assertEqual("normal", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+		self.assertEqual("normal", self._menu_state(lngui.EXIT_MENU_LABEL))
+
+	def test_save_as_locks_while_training_and_unlocks_after(self) -> None:
+		"""Save As...는 학습 중에 잠기고 학습이 끝나면 다시 열려야 한다."""
+		self.app._set_save_as_enabled(False)
+		self.assertEqual("disabled", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+		self.app._reset_controls()
+		self.assertEqual("normal", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+		# Exit는 학습 상태와 무관하게 항상 활성 상태를 유지한다.
+		self.assertEqual("normal", self._menu_state(lngui.EXIT_MENU_LABEL))
+
+	def test_save_as_without_model_file_only_logs(self) -> None:
+		"""Model output path에 파일이 없으면 대화상자를 열지 않고 안내만 남긴다."""
+		self.app.output_var.set(str(self.directory / "missing.pt"))
+		with mock.patch.object(lngui.filedialog, "asksaveasfilename", side_effect=AssertionError("대화상자를 열면 안 된다")):
+			self.app._on_save_as()
+		self.assertIn("no model file", self.app.log_text.get("1.0", "end"))
+		self.assertIsNone(self.app.save_thread)
+
+	def test_save_as_cancelled_dialog_does_nothing(self) -> None:
+		"""대화상자를 취소하면 아무 작업도 시작하지 않는다."""
+		with mock.patch.object(lngui.filedialog, "asksaveasfilename", return_value=""):
+			self.app._on_save_as()
+		self.assertIsNone(self.app.save_thread)
+		self.assertEqual("normal", str(self.app.start_button["state"]))
+
+	def test_save_as_rejects_other_extensions(self) -> None:
+		"""pt·onnx가 아닌 확장자는 저장하지 않고 안내만 남긴다."""
+		with mock.patch.object(lngui.filedialog, "asksaveasfilename", return_value=str(self.directory / "model.bin")):
+			self.app._on_save_as()
+		self.assertIn("unsupported extension", self.app.log_text.get("1.0", "end"))
+		self.assertIsNone(self.app.save_thread)
+		self.assertFalse((self.directory / "model.bin").exists())
+
+	def test_save_as_rejects_same_path(self) -> None:
+		"""원본과 같은 파일로 저장하려 하면 복사를 시도하지 않는다."""
+		with mock.patch.object(lngui.filedialog, "asksaveasfilename", return_value=str(self.source)):
+			self.app._on_save_as()
+		self.assertIn("same file", self.app.log_text.get("1.0", "end"))
+		self.assertIsNone(self.app.save_thread)
+
+	def test_save_as_pt_copies_checkpoint_and_restores_controls(self) -> None:
+		"""pt를 고르면 체크포인트를 그대로 복사하고 Start 버튼을 되살린다."""
+		destination = self.directory / "copied.pt"
+		with mock.patch.object(lngui.filedialog, "asksaveasfilename", return_value=str(destination)):
+			self.app._on_save_as()
+		# 저장이 도는 동안에는 Start와 Save As...가 모두 잠겨 있어야 한다.
+		self.assertEqual("disabled", str(self.app.start_button["state"]))
+		self.assertEqual("disabled", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+		self._drain_queue()
+		self.assertEqual(self.source.read_bytes(), destination.read_bytes())
+		# 복사본도 기존 체크포인트 형식 그대로라 다시 불러올 수 있어야 한다.
+		training.load_policy_checkpoint(destination, torch.device("cpu"))
+		self.assertEqual("normal", str(self.app.start_button["state"]))
+		self.assertEqual("normal", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+
+	def test_save_as_onnx_uses_progress_bar_and_restores_it(self) -> None:
+		"""onnx를 고르면 게이지바로 진행률을 보여 주고, 끝나면 원래 표시로 되돌린다."""
+		destination = self.directory / "model.onnx"
+		self.app.progress.configure(maximum=5000, value=1234)
+		with mock.patch.object(lngui.filedialog, "asksaveasfilename", return_value=str(destination)), \
+			mock.patch.object(lngui, "export_checkpoint_to_onnx") as export:
+			# 실제 변환은 onnx 패키지가 있어야 하므로, 여기서는 진행 콜백 계약만 확인한다.
+			export.side_effect = lambda source, target, progress: [progress(45, "Converting..."), progress(100, "done")]
+			self.app._on_save_as()
+			self.assertEqual((5000.0, 1234.0), self.app._progress_backup)
+			self._drain_queue()
+		export.assert_called_once()
+		self.assertEqual(self.source, export.call_args.args[0])
+		self.assertEqual(destination, export.call_args.args[1])
+		self.assertIsNone(self.app._progress_backup)
+		self.assertEqual(5000.0, float(self.app.progress.cget("maximum")))
+		self.assertEqual(1234.0, float(self.app.progress.cget("value")))
+		self.assertEqual("normal", str(self.app.start_button["state"]))
+
+	def test_save_as_failure_restores_controls(self) -> None:
+		"""변환이 실패해도 잠갔던 Start·Save As...를 반드시 되살린다."""
+		destination = self.directory / "model.onnx"
+		with mock.patch.object(lngui.filedialog, "asksaveasfilename", return_value=str(destination)), \
+			mock.patch.object(lngui, "export_checkpoint_to_onnx", side_effect=RuntimeError("boom")):
+			self.app._on_save_as()
+			self._drain_queue()
+		self.assertIn("Save As failed: boom", self.app.log_text.get("1.0", "end"))
+		self.assertEqual("normal", str(self.app.start_button["state"]))
+		self.assertEqual("normal", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+
+	def test_exit_while_idle_closes_immediately(self) -> None:
+		"""학습 중이 아니면 Exit는 곧바로 창을 닫는다."""
+		with mock.patch.object(self.app.root, "destroy") as destroy:
+			self.app._on_exit_menu()
+		destroy.assert_called_once()
+		self.assertTrue(self.app._closed)
+
+	def test_exit_while_training_saves_before_closing(self) -> None:
+		"""학습 중이면 중단 예약만 걸고, 저장이 끝난 뒤에 창을 닫는다."""
+		control = training.TrainingControl()
+		control.request_pause()
+		self.app.control = control
+		self.app.thread = _StubThread()
+
+		with mock.patch.object(self.app.root, "destroy") as destroy:
+			self.app._on_exit_menu()
+			# 이 시점에는 아직 닫히지 않고 중단만 예약되어야 한다.
+			destroy.assert_not_called()
+			self.assertTrue(control.check_at_episode_boundary(), "중단 예약이 학습 쓰레드에 전달되지 않았다")
+			# 종료 절차에 들어가면 모든 버튼과 메뉴가 잠긴다.
+			self.assertEqual("disabled", str(self.app.start_button["state"]))
+			self.assertEqual("disabled", str(self.app.stop_button["state"]))
+			self.assertEqual("disabled", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+			self.assertEqual("disabled", self._menu_state(lngui.EXIT_MENU_LABEL))
+
+			# learning.train()이 체크포인트를 저장하고 끝난 상황을 재현한다.
+			self.app.thread.alive = False
+			self.app.log_queue.put(("done", None))
+			self.app._poll_queue()
+			destroy.assert_called_once()
+		# 완료 처리가 잠근 버튼을 다시 살리지 않아야 한다.
+		self.assertEqual("disabled", str(self.app.start_button["state"]))
+
+	def test_exit_waits_for_running_save(self) -> None:
+		"""저장 작업이 남아 있으면 그 작업이 끝난 뒤에 창을 닫는다."""
+		self.app.save_thread = _StubThread()
+		with mock.patch.object(self.app.root, "destroy") as destroy:
+			self.app._on_exit_menu()
+			destroy.assert_not_called()
+			self.app.save_thread.alive = False
+			self.app._poll_queue()
+			destroy.assert_called_once()
+
+
+class OnnxExportTest(unittest.TestCase):
+	"""lngui.py의 체크포인트 복사·ONNX 변환 함수를 확인한다."""
+
+	def setUp(self) -> None:
+		self.directory = Path(tempfile.mkdtemp())
+		self.source = self.directory / "model.pt"
+		torch.save({
+			"model": training.ValueNetwork().state_dict(),
+			"model_version": training.MODEL_VERSION,
+			"observation_size": training.OBSERVATION_SIZE,
+			"action_count": training.ACTION_COUNT,
+			"seed": 2026,
+		}, self.source)
+
+	def tearDown(self) -> None:
+		shutil.rmtree(self.directory, ignore_errors=True)
+
+	def test_copy_keeps_bytes_and_reports_progress(self) -> None:
+		"""복사본은 원본과 바이트까지 같아야 기존 모델 호환성이 유지된다."""
+		destination = self.directory / "nested" / "copy.pt"
+		reported: list[int] = []
+		lngui.save_checkpoint_copy(self.source, destination, lambda percent, message: reported.append(percent))
+		self.assertEqual(self.source.read_bytes(), destination.read_bytes())
+		self.assertEqual(100, reported[-1])
+		self.assertEqual(sorted(reported), reported, "진행률은 줄어들지 않아야 한다")
+
+	@unittest.skipIf(importlib.util.find_spec("onnx") is not None, "onnx가 설치된 환경에서는 안내 경로를 확인할 수 없다.")
+	def test_onnx_export_without_package_explains_installation(self) -> None:
+		"""onnx가 없으면 변환을 시작하지 않고 설치 방법을 알린다."""
+		with self.assertRaises(RuntimeError) as raised:
+			lngui.export_checkpoint_to_onnx(self.source, self.directory / "model.onnx")
+		self.assertIn("pip3 install onnx", str(raised.exception))
+		self.assertFalse((self.directory / "model.onnx").exists())
+
+	@unittest.skipIf(importlib.util.find_spec("onnx") is None, "onnx 패키지가 없으면 변환을 확인할 수 없다.")
+	def test_onnx_export_writes_single_file_with_dynamic_batch(self) -> None:
+		"""변환 결과는 파일 하나로 완성되고, 배치 축이 열려 있어야 한다."""
+		import onnx
+
+		destination = self.directory / "nested" / "model.onnx"
+		reported: list[int] = []
+		lngui.export_checkpoint_to_onnx(self.source, destination, lambda percent, message: reported.append(percent))
+		# 가중치를 옆 파일로 빼면 고른 위치의 파일만 옮겼을 때 모델이 깨진다.
+		self.assertEqual(["model.onnx"], [entry.name for entry in destination.parent.iterdir()])
+		self.assertEqual(100, reported[-1])
+		model = onnx.load(str(destination))
+		dimension = lambda value: [d.dim_param or d.dim_value for d in value.type.tensor_type.shape.dim]
+		self.assertEqual([lngui.ONNX_BATCH_AXIS_NAME, training.OBSERVATION_SIZE], dimension(model.graph.input[0]))
+		self.assertEqual([lngui.ONNX_BATCH_AXIS_NAME], dimension(model.graph.output[0]))
+
+	def test_onnx_export_rejects_incompatible_checkpoint(self) -> None:
+		"""모델 버전이 다른 체크포인트는 변환하지 않는다(기존 계약 검증을 그대로 쓴다)."""
+		broken = self.directory / "old.pt"
+		torch.save({"model": {}, "model_version": training.MODEL_VERSION - 1}, broken)
+		with self.assertRaises((ValueError, RuntimeError)):
+			lngui.export_checkpoint_to_onnx(broken, self.directory / "old.onnx")
 
 
 if __name__ == "__main__":
