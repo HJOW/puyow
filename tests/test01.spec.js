@@ -787,7 +787,8 @@ test('Prompt API는 API 테스트와 솔로몬 배치에서 JSON Schema 제약 p
   for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  // Prompt API는 AI URL·키·모델 행을 건너뛰므로 AI 제공자 행에서 API 테스트, 체크박스 세 개를 지나 저장에 닿는다.
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 
@@ -940,12 +941,14 @@ test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
+  // 빌드 번호는 작업마다 올라가므로 표시 문구를 고정하지 않고 현재 BUILDNO와 비교한다.
   await expect.poll(() => page.evaluate(() => {
-    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', 'Build 9'].includes(call.text));
+    const buildText = `Build ${window.WebPuyo.BUILDNO}`;
+    const values = window.testCanvasTextCalls.filter((call) => ['42', '73', buildText].includes(call.text));
       return {
       music: values.some((call) => call.text === '42' && call.x === 920 && call.y === 130),
       effects: values.some((call) => call.text === '73' && call.x === 920 && call.y === 174),
-      build: values.some((call) => call.text === 'Build 9' && call.x === 10 && call.y === 710),
+      build: values.some((call) => call.text === buildText && call.x === 10 && call.y === 710),
       };
   })).toEqual({ music: true, effects: true, build: true });
 });
@@ -1172,7 +1175,8 @@ test('그래픽 설정은 키보드와 마우스로 저장되며 캔버스 출�
   await openSettings(page);
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
-  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
+  // 그래픽 설정 행에서 사운드·AI 행과 체크박스 세 개를 지나 저장 버튼까지 내려간다.
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => [document.querySelector('[data-puyow-canvas="2d"]').width, document.querySelector('[data-puyow-canvas="2d"]').height])).toEqual([1920, 1080]);
   expect(await page.evaluate(() => ({
@@ -1203,7 +1207,8 @@ test('가상 컨트롤러 크기는 이전 저장값을 호환하고 키보드�
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  // 가상 컨트롤러 행에서 그래픽·사운드·AI 행과 체크박스 세 개를 지나 저장 버튼까지 내려간다.
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.virtualController)).toBe('large');
 
@@ -1211,7 +1216,7 @@ test('가상 컨트롤러 크기는 이전 저장값을 호환하고 키보드�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 595, y: 214 } });
-  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.virtualController)).toBe('none');
 });
@@ -1445,7 +1450,7 @@ test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 �
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({
       clearList: [],
-      settings: { aiProvider: 'Local AI', aiApiURL: 'http://localhost:9891', aiApiKey: 'localhost', aiModel: 'puyow' },
+      settings: { aiProvider: 'Local AI', aiApiURL: 'http://localhost:9891', aiApiKey: 'localhost', aiModel: 'puyow', reverseLearning: true },
     }));
   });
   await page.reload();
@@ -1514,6 +1519,57 @@ test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 �
     '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.',
     'Solomon AI response error: continuing with the fallback AI.',
   ].includes(text)))).toBe(false);
+});
+
+test('역으로 모델 학습이 꺼져 있으면 사람이 둔 수를 학습 서버로 보내지 않는다', async ({ page }) => {
+  await page.route('**/apis/localmodelinfo', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ available: true }) });
+  });
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      // reverseLearning을 저장하지 않은 기존 저장은 꺼짐으로 보정된다.
+      settings: { aiProvider: 'Local AI', aiApiURL: 'http://localhost:9891', aiApiKey: 'localhost', aiModel: 'puyow' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  const prompts = [];
+  await page.route('http://localhost:9891/v1/chat/completions', async (route) => {
+    const prompt = JSON.parse(route.request().postDataJSON().messages[0].content);
+    prompts.push(prompt);
+    const placements = prompt.usablePlacements;
+    const content = JSON.stringify(placements[prompts.length % placements.length]);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content } }] }) });
+  });
+  const learningRequests = [];
+  await page.route('http://localhost:9891/apis/solomonlearning', async (route) => {
+    learningRequests.push(route.request().postDataJSON());
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, trained: true, transitions: 3 }) });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+
+  // 사람이 여러 수를 두는 동안에도 사람 쪽 수는 한 번도 전송되지 않아야 한다.
+  await page.keyboard.down('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.player.placedPairCount || 0), { timeout: 20000 }).toBeGreaterThanOrEqual(3);
+  await page.keyboard.up('ArrowDown');
+
+  expect(learningRequests).toEqual([]);
+  // 솔로몬 자신의 수로 하는 기존 학습은 이 설정과 무관하게 그대로 유지된다.
+  expect(prompts.length).toBeGreaterThan(0);
+  expect(prompts.every((prompt) => typeof prompt.learningSessionId === 'string')).toBe(true);
 });
 
 test('LM Studio 제공자와 극한이 아닌 난이도의 솔로몬 프롬프트에는 학습 세션을 넣지 않는다', async ({ page }) => {
@@ -1611,11 +1667,13 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
   await page.evaluate(() => {
     window.testSolomonRequestCount = 0;
     window.testSolomonAbortCount = 0;
+    window.testSolomonAbortReasons = [];
     window.fetch = (_url, options = {}) => {
       window.testSolomonRequestCount += 1;
       return new Promise((_resolve, reject) => {
         options.signal.addEventListener('abort', () => {
           window.testSolomonAbortCount += 1;
+          window.testSolomonAbortReasons.push(options.signal.reason);
           reject(new DOMException('Aborted', 'AbortError'));
         }, { once: true });
       });
@@ -1626,8 +1684,19 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+
+  // 기본 낙하 속도로는 뿌요가 바닥까지 24초쯤 걸려 6초짜리 API 타임아웃이 먼저 터진다. 경과 시간을
+  // 75분으로 옮겨 낙하 속도를 최대(16배)로 만들어야 응답 대기 중 착지가 실제로 일어난다.
+  const maxFallSpeedElapsed = await page.evaluate(() => {
+    window.WebPuyo.setGameElapsed(75 * 60000);
+    return window.WebPuyo.common.getPlayerFallSpeedMultiplier(window.WebPuyo.getGameState().elapsed);
+  });
+  expect(maxFallSpeedElapsed).toBe(16);
 
   await expect.poll(() => page.evaluate(() => window.testSolomonAbortCount), { timeout: 8000 }).toBeGreaterThanOrEqual(1);
+  // 타임아웃이 아니라 뿌요 착지(contact)로 취소되어야 이 테스트가 의도한 경로를 지난 것이다.
+  expect(await page.evaluate(() => window.testSolomonAbortReasons)).toContain('contact');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.placedPairCount), { timeout: 3000 }).toBeGreaterThanOrEqual(1);
   expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).not.toBe('paused');
   await expect.poll(() => page.evaluate(() => window.testSolomonRequestCount), { timeout: 5000 }).toBeGreaterThanOrEqual(2);
@@ -4807,7 +4876,8 @@ test('화면 가로방향 고정은 저장되며 세로 화면 입력도 회전�
   await openSettings(page);
   for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  // 가로방향 고정 체크박스에서 리플레이·역학습 체크박스를 지나 저장 버튼까지 내려간다.
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
 
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
@@ -4848,6 +4918,51 @@ test('화면 가로방향 고정 문구는 지원 언어별로 번역된다', as
     ['en-US', 'Lock landscape orientation'],
     ['ja-JP', '画面を横向きに固定'],
     ['zh-CN', '锁定横屏'],
+  ];
+
+  for (const [language, translation] of translations) {
+    await page.addInitScript((locale) => {
+      Object.defineProperty(navigator, 'language', { configurable: true, value: locale });
+    }, language);
+    await page.reload();
+    await openSettings(page);
+    await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), translation)).toBe(true);
+  }
+});
+
+test('역으로 모델 학습 체크박스는 키보드와 마우스로 토글되며 settings.reverseLearning으로 저장된다', async ({ page }) => {
+  await openSettings(page);
+  // 저장값이 없으면 꺼진 상태로 시작한다.
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+
+  // 가로방향 고정까지 내려간 뒤 오른쪽 방향키로 리플레이 사용을 거쳐 역학습 체크박스에 닿는다.
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  // 체크박스 줄의 오른쪽 끝이므로 더 눌러도 저장 버튼으로 넘어가지 않는다.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings)).toMatchObject({
+    reverseLearning: true, useReplayFeature: false, landscapeOrientationLocked: false,
+  });
+
+  // 마우스로 같은 체크박스를 눌러 끄고 저장하면 false로 되돌아간다.
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1039, y: 577 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.reverseLearning)).toBe(false);
+});
+
+test('역으로 모델 학습 문구는 지원 언어별로 번역된다', async ({ page }) => {
+  const translations = [
+    ['en-US', 'Reverse model learning'],
+    ['ja-JP', 'モデルを逆学習'],
+    ['zh-CN', '反向训练模型'],
   ];
 
   for (const [language, translation] of translations) {

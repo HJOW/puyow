@@ -124,6 +124,8 @@
 - 메인 메뉴 좌측 하단 GitHub 버튼 바로 위 (32, 634, 85, 23)에 `리플레이 재생` 버튼이 있다. 포커스 순번은 8이며 이동 순서는 `TITLE_MENU_FOCUS_ORDER`가 정한다(목록 0~5 → 리플레이 8 → GitHub 6 → 음소거 7).
 - 가상 컨트롤러는 표시 레이아웃과 히트 테스트에 같은 레이아웃 함수를 사용해야 한다. 크기 옵션/대형 배치 변경은 둘을 함께 수정한다.
 - 시뮬레이터 그리기 모드의 우측 버튼은 재생·JSON복사·JSON넣기·초기화·종료 순서다. 초기화는 좌측 플레이 영역의 모든 배치를 제거하며, 버튼 라벨은 `translate('초기화')`를 사용한다.
+- 공개 `setGameElapsed(elapsed)`는 진행 중인 게임의 경과 시간을 지정한 값으로 옮기고 마진 레이트·시간 진행 배율을 다시 계산한다. 조작 뿌요의 자연 낙하 속도(`getPlayerFallSpeedMultiplier()`, 75분 경과 시 최대 16배)도 경과 시간에서 파생되므로, 긴 대전의 후반 상황을 실제로 기다리지 않고 재현할 때 사용한다. 진행 중인 게임이 없거나 0 미만·유한하지 않은 값이면 예외를 던진다.
+- 솔로몬이 AI API 요청을 취소할 때는 `abort(reason)`으로 사유(`contact`·`replaced`·`timeout`)를 신호에 함께 싣는다. 요청을 받은 쪽은 `signal.reason`으로 착지·턴 교체·타임아웃을 구분할 수 있으며, 회귀 테스트가 어느 경로로 취소됐는지 확인하는 근거다.
 - 공개 `askConfirm(message)`는 메시지를 그대로 표시하고 번역된 확인·취소 버튼으로 `Promise<boolean>`을 완료한다. 키보드·게임패드·마우스를 지원하며, 게임 중 호출 시 자동 일시정지하고 원래 실행 중이었던 게임만 응답 뒤 재개한다. 동시 요청은 순서대로 표시한다. 카드 뽑기·합성 확인도 이 공용 함수를 사용한다.
 
 ### 리플레이
@@ -141,8 +143,9 @@
 
 ## 저장소·다국어·외부 확장
 
-- 진행도·설정·GOLD는 `localStorage`의 `puyow_store`, 카드 인스턴스 배열은 `puyow_cards`, 갤러리 잠금은 `puyow_gallery`, 테스트 기능 코드 배열은 `puyow_code`에 저장된다. 초기화 시 `puyow_code`를 JSON 배열로 복원하며, 파싱 실패는 오류를 기록한 뒤 빈 배열로 계속한다. 읽을 때 이전 형식을 보정하므로 새 필드는 기본값·마이그레이션을 함께 설계한다. 설정의 `useReplayFeature`는 리플레이 기능 사용 여부를 저장하는 boolean이며, 기존 저장에 값이 없으면 `false`로 보정한다.
-- 설정 화면의 `화면 가로방향 고정`·`리플레이 사용` 체크박스는 마우스 클릭 또는 Enter·Space·Z(해당 게임패드 확인 입력 포함)로만 토글한다. 체크박스에 포커스가 있을 때 좌우 방향키는 두 체크박스 사이의 포커스 이동에 사용한다.
+- 진행도·설정·GOLD는 `localStorage`의 `puyow_store`, 카드 인스턴스 배열은 `puyow_cards`, 갤러리 잠금은 `puyow_gallery`, 테스트 기능 코드 배열은 `puyow_code`에 저장된다. 초기화 시 `puyow_code`를 JSON 배열로 복원하며, 파싱 실패는 오류를 기록한 뒤 빈 배열로 계속한다. 읽을 때 이전 형식을 보정하므로 새 필드는 기본값·마이그레이션을 함께 설계한다. 설정의 `useReplayFeature`는 리플레이 기능 사용 여부를, `reverseLearning`은 역방향 모델 학습 사용 여부를 저장하는 boolean이며, 기존 저장에 값이 없으면 둘 다 `false`로 보정한다.
+- 설정 화면의 `화면 가로방향 고정`·`리플레이 사용`·`역으로 모델 학습` 체크박스는 마우스 클릭 또는 Enter·Space·Z(해당 게임패드 확인 입력 포함)로만 토글한다. 체크박스에 포커스가 있을 때 좌우 방향키는 세 체크박스 사이의 포커스 이동에 쓰며, 양 끝에서는 더 이동하지 않는다. 위치·포커스 순번·저장 키는 `getSettingsCheckboxes()` 한 곳에서 정의하고 그리기·키보드 토글·마우스 판정이 모두 이 목록을 사용하므로, 체크박스를 더할 때는 이 함수와 `SETTINGS_UI_LAYOUT`의 가로 좌표만 추가하면 된다.
+- 설정 화면 포커스 순번은 0~9 설정 행, 10 AI API 테스트, 11~13 체크박스, 14 저장, 15 취소, 16 초기화다. `getSelectableSettingsFocuses()`가 제공자·API 테스트 가능 여부에 따라 7·10을 빼므로, 키보드 이동 횟수를 검증하는 테스트는 이 목록을 기준으로 계산한다.
 - `registerLanguage()`, `registerOpponent()`, `registerWarningPuyo()`, `registerFeverStageState()`, `registerPuzzleStage()`가 주요 확장 지점이다. 입력 검증과 중복 처리 방식은 기존 등록 함수에 맞춘다.
 - 적은 `Enemy` 또는 `BundledEnemy` 계열이다. `getClassType()`의 안정성은 저장 진행도·사운드 연결에 중요하므로 기존 클래스 타입을 바꾸지 않는다.
 - 적의 위치·회전 결정은 게임 루프 밖의 별도 보정 함수가 아니라 `prepareTurn()`, `chooseTarget()`, `chooseRotate()` 안에서 끝낸다. 기본 `Enemy.prepareTurn()`은 피버 연쇄 최적화와 패배 위치 회피 후보를 `preparedPlacement`로 준비하고, 기본 제공 적은 `BundledEnemy`에서 연쇄 대응·즉시 패배 보호를 추가한다. 외부 적이 이 공통 규칙을 유지하려면 세 메서드에서 `super` 구현을 호출하고, 완전히 독자적인 AI라면 세 메서드를 재정의하면 된다.
@@ -201,6 +204,8 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 #### 사람이 이긴 대전의 수순 학습
 
 같은 대전에서 **사람이 조작한 플레이어 쪽 수**도 함께 모아 두었다가, 사람이 이겼을 때만 "모델이 플레이어 쪽을 조작해 이긴 수순"으로 보고 함께 학습한다. 관측 벡터(528개)와 행동 번호(`열*4+회전`)는 어느 쪽이 두었는지 구분하는 값이 없는 자기중심 표현이므로, 사람의 수도 솔로몬의 수와 같은 전이 구조로 그대로 쓸 수 있다.
+
+이 동작은 설정의 `역으로 모델 학습`(`store.settings.reverseLearning`)이 켜져 있을 때만 한다. `isReverseLearningEnabled()`가 꺼짐을 반환하면 사람의 수를 서버로 아예 보내지 않으므로, 솔로몬 자신이 둔 수로 하는 기존 학습만 그대로 남는다.
 
 - `lockActive()`에서 사람이 뿌요를 확정할 때마다 `sendSolomonPlayerLearningStep()`이 `POST /apis/solomonlearning`(`{event:'step', sessionId, observation, action}`)을 보낸다. 관측은 기존 `/apis/learning` 경로와 같은 `getLearningObservation()`으로 만들며, 배치 직전(=`placedPairCount` 증가 전) 상태라서 솔로몬 프롬프트와 시점 계약이 같다.
 - 솔로몬 학습 요청은 모두 `queueSolomonLearningRequest()`의 단일 Promise 큐로 보낸다. 서버가 앞 요청의 관측값을 그 수의 다음 상태로 이어 붙이므로 순서가 뒤바뀌면 안 되고, `finish`는 반드시 그 대전의 마지막 `step` 뒤에 도착해야 한다.

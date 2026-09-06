@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 16;
+    const BUILDNO = 18;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -297,7 +297,7 @@
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': 'An all clear makes your next attack much stronger.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
             '은하': 'Galaxy',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)',
-            '화면 가로방향 고정': 'Lock landscape orientation', '리플레이 사용': 'Use replay feature',
+            '화면 가로방향 고정': 'Lock landscape orientation', '리플레이 사용': 'Use replay feature', '역으로 모델 학습': 'Reverse model learning',
             '피버 (완화)': 'FEVER (Relaxed)',
             '카드': 'Cards', '1장 뽑기': 'Draw 1', '10장 뽑기': 'Draw 10', '합성': 'Synthesize', '카드 5장': '5 Cards', '확인': 'Confirm', '이용에 필요한 GOLD 가 부족합니다.': 'Not enough GOLD.', '카드 5장을 선택하고 이용해 주세요.': 'Select cards in groups of 5.', '1장 뽑기를 진행할까요?': 'Draw 1 card?', '10장 뽑기를 진행할까요?': 'Draw 10 cards?', '선택한 카드 %1장을 합성할까요?': 'Synthesize the %1 selected cards?',
         },
@@ -415,7 +415,7 @@
         '리플레이 JSON코드를 붙여넣어 주세요.': 'Füge den Wiederholungs-JSON-Code ein.',
         '리플레이 데이터가 올바르지 않습니다.': 'Die Wiederholungsdaten sind ungültig.',
         '리플레이 재현 중 오류가 발생했습니다.': 'Beim Abspielen der Wiederholung ist ein Fehler aufgetreten.',
-        '리플레이 사용': 'Wiederholung verwenden'
+        '리플레이 사용': 'Wiederholung verwenden', '역으로 모델 학습': 'Modell umgekehrt lernen'
     });
     Object.assign(stringTable.fr, {
         '리플레이 재생': 'Lire la reprise', '리플레이 복사': 'Copier la reprise',
@@ -423,10 +423,10 @@
         '리플레이 JSON코드를 붙여넣어 주세요.': 'Colle le code JSON de la reprise.',
         '리플레이 데이터가 올바르지 않습니다.': 'Les données de reprise ne sont pas valides.',
         '리플레이 재현 중 오류가 발생했습니다.': 'Une erreur est survenue pendant la lecture de la reprise.',
-        '리플레이 사용': 'Utiliser la reprise'
+        '리플레이 사용': 'Utiliser la reprise', '역으로 모델 학습': 'Apprentissage inversé'
     });
-    Object.assign(stringTable.ja, { '리플레이 사용': 'リプレイを使用' });
-    Object.assign(stringTable.zh, { '리플레이 사용': '使用回放功能' });
+    Object.assign(stringTable.ja, { '리플레이 사용': 'リプレイを使用', '역으로 모델 학습': 'モデルを逆学習' });
+    Object.assign(stringTable.zh, { '리플레이 사용': '使用回放功能', '역으로 모델 학습': '反向训练模型' });
 
     /** 현재 최상위 게임 영역이다. @type {HTMLDivElement|null} */
     let puyowRoot = null;
@@ -911,7 +911,7 @@
             puzzleGoldClearStages: [],
             puzzleGoldStarStages: [],
             gold: 0,
-            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, useReplayFeature: false, soundDataURL: '', aiProvider: 'OpenAI', aiApiURL: '', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
+            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, useReplayFeature: false, reverseLearning: false, soundDataURL: '', aiProvider: 'OpenAI', aiApiURL: '', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
             muted: false
         };
     }
@@ -1003,6 +1003,11 @@
 
     /** 리플레이 기능 사용 저장값을 불리언으로 정규화한다. @param {unknown} value 저장값 @returns {boolean} 리플레이 기능 사용 여부 */
     function normalizeUseReplayFeature(value) {
+        return value === true;
+    }
+
+    /** 역으로 모델 학습 저장값을 불리언으로 정규화한다. @param {unknown} value 저장값 @returns {boolean} 역방향 학습 사용 여부 */
+    function normalizeReverseLearning(value) {
         return value === true;
     }
 
@@ -1404,6 +1409,7 @@
                 graphicsQuality: getGraphicsQualityOption(settings.graphicsQuality).key,
                 landscapeOrientationLocked: normalizeLandscapeOrientationLocked(settings.landscapeOrientationLocked),
                 useReplayFeature: normalizeUseReplayFeature(settings.useReplayFeature),
+                reverseLearning: normalizeReverseLearning(settings.reverseLearning),
                 soundDataURL: normalizeSoundDataURL(settings.soundDataURL),
                 // Prompt API를 지원하지 않는 브라우저에서는 기존 Prompt API 설정을 LM Studio로 이관한다.
                 // Local AI는 서버 확인이 끝나기 전이므로 여기서는 유지하고, 사용할 수 없으면 applyLocalAiAvailability()가 이관한다.
@@ -2453,7 +2459,7 @@
      * @returns {void}
      */
     function sendSolomonPlayerLearningStep(player) {
-        if (!player.active) return;
+        if (!player.active || !isReverseLearningEnabled()) return;
         const sessionId = getSolomonLearningSessionId();
         if (!sessionId) return;
         queueSolomonLearningRequest({
@@ -3538,6 +3544,21 @@
         if (!game) return;
         game.marginRate = getMarginRate(game.elapsed);
         game.timeProgressMultiplier = getTimeProgressMultiplier(game.elapsed);
+    }
+
+    /**
+     * 진행 중인 게임의 경과 시간을 지정한 값으로 옮긴다.
+     * 마진 레이트·시간 진행 배율·조작 뿌요 자연 낙하 속도는 모두 경과 시간에서 파생되므로,
+     * 테스트나 외부 도구가 긴 대전의 후반 상황을 실제로 기다리지 않고 재현할 때 사용한다.
+     * @param {number} elapsed 적용할 경과 시간(밀리초, 0 이상)
+     * @returns {number} 적용한 경과 시간
+     */
+    function setGameElapsed(elapsed) {
+        if (typeof elapsed !== 'number' || !Number.isFinite(elapsed) || elapsed < 0) throw new RangeError('elapsed는 0 이상의 유한한 숫자여야 합니다.');
+        if (!game) throw new Error('진행 중인 게임이 없습니다.');
+        game.elapsed = elapsed;
+        refreshGameMarginRate();
+        return game.elapsed;
     }
 
     /**
@@ -6650,6 +6671,17 @@
         return store?.settings?.useReplayFeature === true;
     }
 
+    /**
+     * (머신러닝 관련)
+     * 설정의 `역으로 모델 학습`이 켜져 있는지 확인한다.
+     * 꺼져 있으면 사람이 둔 수를 서버로 보내지 않으므로, 사람이 이겨도 그 수순으로는 학습하지 않는다.
+     * 솔로몬 자신이 둔 수로 하는 기존 학습은 이 설정과 무관하게 그대로 유지된다.
+     * @returns {boolean} 역방향 학습 사용 여부
+     */
+    function isReverseLearningEnabled() {
+        return store?.settings?.reverseLearning === true;
+    }
+
     /** 이번 게임의 규칙·적·플레이어 정보를 리플레이 머리말로 만든다. @returns {object} 리플레이 머리말 */
     function createReplayMeta() {
         return {
@@ -7694,7 +7726,7 @@
         const aiSettingFocuses = isPromptApiProvider(settingsDraft) || isLocalAiProvider(settingsDraft) ? [] : [
             ...(isLmStudioProvider(settingsDraft) ? [7] : []), 8, 9
         ];
-        return [0, 1, 2, 3, 4, 5, 6, ...aiSettingFocuses, ...(canRunAiApiTest() ? [10] : []), 11, 12, 13, 14, 15];
+        return [0, 1, 2, 3, 4, 5, 6, ...aiSettingFocuses, ...(canRunAiApiTest() ? [10] : []), 11, 12, 13, 14, 15, 16];
     }
 
     /** 설정 화면에서 다음 또는 이전 포커스로 이동한다. @param {number} direction 이동 방향 @returns {void} */
@@ -7887,11 +7919,20 @@
             const currentIndex = providers.indexOf(settingsDraft.aiProvider);
             setSettingsDraftProvider(providers[(currentIndex + 1) % providers.length]);
         } else if (settingsFocus === 10 && canRunAiApiTest()) { playMenuSelectSound(); runAiApiTest(); }
-        else if (settingsFocus === 11) { playMenuSelectSound(); settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked; }
-        else if (settingsFocus === 12) { playMenuSelectSound(); settingsDraft.useReplayFeature = !settingsDraft.useReplayFeature; }
-        else if (settingsFocus === 13) saveSettings();
-        else if (settingsFocus === 14) cancelSettings();
-        else if (settingsFocus === 15) resetAllSettings();
+        else if (settingsFocus === 14) saveSettings();
+        else if (settingsFocus === 15) cancelSettings();
+        else if (settingsFocus === 16) resetAllSettings();
+        else {
+            const checkbox = getSettingsCheckboxes().find((candidate) => candidate.focus === settingsFocus);
+            if (checkbox) toggleSettingsCheckbox(checkbox);
+        }
+    }
+
+    /** 설정 화면 체크박스 하나를 켜고 끈다. @param {{key:string, focus:number}} checkbox 대상 체크박스 @returns {void} */
+    function toggleSettingsCheckbox(checkbox) {
+        playMenuSelectSound();
+        settingsFocus = checkbox.focus;
+        settingsDraft[checkbox.key] = !settingsDraft[checkbox.key];
     }
 
     /** 코드 버튼을 제외하고 축소한 설정 화면의 공통 논리 좌표다. 그리기와 마우스 판정이 함께 사용한다. */
@@ -7908,6 +7949,9 @@
         testHeight: 32,
         checkboxY: 568,
         replayCheckboxX: 790,
+        reverseLearningCheckboxX: 1030,
+        // 체크박스 하나가 클릭을 받는 가로 폭이다. 체크박스 사이 간격과 같아 라벨을 눌러도 토글된다.
+        checkboxHitWidth: 240,
         checkboxSize: 18,
         actionY: 652,
         actionWidth: 140,
@@ -7934,7 +7978,20 @@
 
     /** 저장·취소·초기화 버튼 정보를 반환한다. @returns {object[]} 동작 버튼 */
     function getSettingsActionButtons() {
-        return [{ label: '저장', x: 410, focus: 13, color: '#4cc9b0' }, { label: '취소', x: 570, focus: 14, color: '#ef5350' }, { label: '초기화', x: 730, focus: 15, color: '#7e6bc4' }];
+        return [{ label: '저장', x: 410, focus: 14, color: '#4cc9b0' }, { label: '취소', x: 570, focus: 15, color: '#ef5350' }, { label: '초기화', x: 730, focus: 16, color: '#7e6bc4' }];
+    }
+
+    /**
+     * 설정 화면 체크박스의 가로 위치·포커스 순번·저장 키를 한 곳에서 정의한다.
+     * 그리기, 키보드 토글, 마우스 판정이 모두 이 목록을 사용하므로 순서와 위치가 어긋나지 않는다.
+     * @returns {{x:number, focus:number, key:string, label:string}[]} 체크박스 목록
+     */
+    function getSettingsCheckboxes() {
+        return [
+            { x: SETTINGS_UI_LAYOUT.controlX, focus: 11, key: 'landscapeOrientationLocked', label: '화면 가로방향 고정' },
+            { x: SETTINGS_UI_LAYOUT.replayCheckboxX, focus: 12, key: 'useReplayFeature', label: '리플레이 사용' },
+            { x: SETTINGS_UI_LAYOUT.reverseLearningCheckboxX, focus: 13, key: 'reverseLearning', label: '역으로 모델 학습' }
+        ];
     }
 
     /** 설정 화면을 그린다. @returns {void} */
@@ -7992,14 +8049,10 @@
         context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), layout.controlX + layout.controlWidth / 2, layout.testY + 21);
         context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `10px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), layout.controlX, 552);
         const checkboxY = layout.checkboxY;
-        const checkboxes = [
-            { x: layout.controlX, focus: 11, checked: settingsDraft.landscapeOrientationLocked, label: '화면 가로방향 고정' },
-            { x: layout.replayCheckboxX, focus: 12, checked: settingsDraft.useReplayFeature, label: '리플레이 사용' }
-        ];
-        checkboxes.forEach((checkbox) => {
+        getSettingsCheckboxes().forEach((checkbox) => {
             context.fillStyle = '#0b202c'; context.fillRect(checkbox.x, checkboxY, layout.checkboxSize, layout.checkboxSize);
             context.strokeStyle = settingsFocus === checkbox.focus ? '#ffd54f' : '#426474'; context.lineWidth = settingsFocus === checkbox.focus ? 3 : 2; context.strokeRect(checkbox.x, checkboxY, layout.checkboxSize, layout.checkboxSize);
-            if (checkbox.checked) {
+            if (settingsDraft[checkbox.key]) {
                 context.strokeStyle = '#4cc9b0'; context.lineWidth = 3; context.beginPath(); context.moveTo(checkbox.x + 3, checkboxY + 9); context.lineTo(checkbox.x + 7, checkboxY + 14); context.lineTo(checkbox.x + 16, checkboxY + 4); context.stroke();
             }
             context.fillStyle = '#f5fbfc'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'left'; context.fillText(translate(checkbox.label), checkbox.x + 27, checkboxY + 15);
@@ -9762,10 +9815,11 @@
                 const providers = getAiServiceProviders();
                 const currentIndex = providers.indexOf(settingsDraft.aiProvider);
                 setSettingsDraftProvider(providers[(currentIndex + direction + providers.length) % providers.length]);
-            } else if (settingsFocus === 11 || settingsFocus === 12) {
-                settingsFocus = settingsFocus === 11 && direction > 0 ? 12 : (settingsFocus === 12 && direction < 0 ? 11 : settingsFocus);
+            } else if (settingsFocus >= 11 && settingsFocus <= 13) {
+                // 체크박스 사이 좌우 이동은 양 끝에서 멈추고 저장·취소 버튼으로 넘어가지 않는다.
+                settingsFocus = Math.max(11, Math.min(13, settingsFocus + direction));
             }
-            else if (settingsFocus >= 13) settingsFocus = 13 + (settingsFocus - 13 + (direction < 0 ? 2 : 1)) % 3;
+            else if (settingsFocus >= 14) settingsFocus = 14 + (settingsFocus - 14 + (direction < 0 ? 2 : 1)) % 3;
         }
     }
 
@@ -10398,19 +10452,17 @@
             const layout = SETTINGS_UI_LAYOUT;
             if (x >= SETTINGS_CODE_BUTTON.x && x <= SETTINGS_CODE_BUTTON.x + SETTINGS_CODE_BUTTON.width && y >= SETTINGS_CODE_BUTTON.y && y <= SETTINGS_CODE_BUTTON.y + SETTINGS_CODE_BUTTON.height) enterSettingsCode();
             else if (y >= layout.testY && y <= layout.testY + layout.testHeight && x >= layout.controlX && x <= layout.controlX + layout.controlWidth && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 10; runAiApiTest(); }
-            else if (y >= layout.checkboxY && y <= layout.checkboxY + layout.checkboxSize && x >= layout.controlX && x <= layout.controlX + layout.controlWidth) {
-                const checkboxX = x >= layout.replayCheckboxX ? layout.replayCheckboxX : layout.controlX;
-                playMenuSelectSound();
-                settingsFocus = checkboxX === layout.replayCheckboxX ? 12 : 11;
-                if (checkboxX === layout.replayCheckboxX) settingsDraft.useReplayFeature = !settingsDraft.useReplayFeature;
-                else settingsDraft.landscapeOrientationLocked = !settingsDraft.landscapeOrientationLocked;
+            else if (y >= layout.checkboxY && y <= layout.checkboxY + layout.checkboxSize && x >= layout.controlX && x <= layout.reverseLearningCheckboxX + layout.checkboxHitWidth) {
+                // 각 체크박스는 자기 위치부터 다음 체크박스 직전까지를 클릭 범위로 가진다.
+                const checkbox = getSettingsCheckboxes().filter((candidate) => x >= candidate.x).pop();
+                if (checkbox) toggleSettingsCheckbox(checkbox);
             }
             else {
                 const action = getSettingsActionButtons().find((button) => x >= button.x && x <= button.x + layout.actionWidth && y >= layout.actionY && y <= layout.actionY + layout.actionHeight);
                 if (action) {
                     settingsFocus = action.focus;
-                    if (action.focus === 13) saveSettings();
-                    else if (action.focus === 14) cancelSettings();
+                    if (action.focus === 14) saveSettings();
+                    else if (action.focus === 15) cancelSettings();
                     else resetAllSettings();
                     return;
                 }
@@ -12625,7 +12677,7 @@
                 if (this.requestController !== abortController || !this.isCurrentTurn(player)) return;
                 abortController.puyowCancelReason = 'timeout';
                 this.applyFallback(player);
-                abortController.abort();
+                abortController.abort('timeout');
             }, SOLOMON_API_TIMEOUT);
             try {
                 const outputText = await requestStructuredAiOutput(store.settings, this.buildPlacementPrompt(player), 'solomon_puyo_placement', SOLOMON_PLACEMENT_JSON_SCHEMA, 128, abortController.signal);
@@ -12709,7 +12761,8 @@
             this.requestController.puyowCancelReason = reason;
             if (this.requestTimeoutId !== null) clearTimeout(this.requestTimeoutId);
             this.requestTimeoutId = null;
-            this.requestController.abort();
+            // 취소 사유를 신호에 함께 실어 요청을 받은 쪽도 착지·턴 교체·타임아웃을 구분할 수 있게 한다.
+            this.requestController.abort(reason);
             this.requestController = null;
             if (reason === 'contact') this.decisionState = 'cancelled';
         }
@@ -14669,6 +14722,7 @@
         getScreenState,
         getSimulatorState,
         getGameState,
+        setGameElapsed,
         getReplayData,
         getNextPairs,
         configureLearningApi,
