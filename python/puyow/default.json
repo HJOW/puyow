@@ -1,5 +1,5 @@
 {
-  "model_version": 2,
+  "model_version": 3,
   "observation_size": 528,
   "action_count": 24,
   "board": [

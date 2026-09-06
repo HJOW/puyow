@@ -179,7 +179,7 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 
 ## 머신러닝 작업 참고
 
-머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. 승·패 보상(`WIN_REWARD`, `LOSS_REWARD`), 한 수의 즉시 보상 계약 `move_reward()`(= `ATTACK + 연쇄^2`), 감가율 `DISCOUNT_GAMMA`(0.80)와 스칼라 관측값의 정규화 기준(`ATTACK_SCALE` 등), 관측 벡터를 보드·쌍·상태로 되돌리는 `decode_observation_board()`·`decode_observation_pair()`·`decode_observation_scalars()`는 `python/common.py`에 있다. 오프라인 학습과 서버의 온라인 학습이 같은 보상 크기를 써야 하므로 `PuyoDuelEnvironment.WIN_REWARD`도 이 공통 상수를 그대로 참조한다. `pythonserver.py`와 `nodeserver.js`는 모두 `/apis/localmodelinfo`를 제공하며 `{ "available": boolean }`만 응답한다. `pythonserver.py`는 `SERVER_CONFIG['model_path']`가 실제 파일이고 `get_value_model()` 로드까지 성공할 때만 `true`이며, `/v1/chat/completions`를 구현하지 않은 `nodeserver.js`는 항상 `false`다. `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스이며, 솔로몬·안드로말리우스와 출시 예정인 플라우로스는 제외한다. `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 일곱 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. 피버 룰은 일반/피버 필드, 게이지, 제한 시간, 목표 연쇄 및 JS의 실제 피버 패턴을 사용한다. 브라우저 관측은 `game.elapsed`의 실제 시간을 쓰고, 벽시계와 무관하게 고속 실행되는 오프라인 학습은 양측 한 턴을 3초로 진행한다. `src/js/puyow.js`의 적 AI 판단 로직이나 피버 패턴을 바꾸면 `bundledenemy.py`와 학습 회귀 테스트를 함께 확인한다. 숨김 행 없는 12행 보드, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등 의도적인 제한은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
+머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. 승·패 보상(`WIN_REWARD`, `LOSS_REWARD`), 한 수의 즉시 보상 계약 `move_reward()`(= `ATTACK + 연쇄^2`), 감가율 `DISCOUNT_GAMMA`(0.70)와 스칼라 관측값의 정규화 기준(`ATTACK_SCALE` 등), 관측 벡터를 보드·쌍·상태로 되돌리는 `decode_observation_board()`·`decode_observation_pair()`·`decode_observation_scalars()`는 `python/common.py`에 있다. 오프라인 학습과 서버의 온라인 학습이 같은 보상 크기를 써야 하므로 `PuyoDuelEnvironment.WIN_REWARD`도 이 공통 상수를 그대로 참조한다. `pythonserver.py`와 `nodeserver.js`는 모두 `/apis/localmodelinfo`를 제공하며 `{ "available": boolean }`만 응답한다. `pythonserver.py`는 `SERVER_CONFIG['model_path']`가 실제 파일이고 `get_value_model()` 로드까지 성공할 때만 `true`이며, `/v1/chat/completions`를 구현하지 않은 `nodeserver.js`는 항상 `false`다. `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스이며, 솔로몬·안드로말리우스와 출시 예정인 플라우로스는 제외한다. `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 일곱 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. 피버 룰은 일반/피버 필드, 게이지, 제한 시간, 목표 연쇄 및 JS의 실제 피버 패턴을 사용한다. 브라우저 관측은 `game.elapsed`의 실제 시간을 쓰고, 벽시계와 무관하게 고속 실행되는 오프라인 학습은 양측 한 턴을 3초로 진행한다. `src/js/puyow.js`의 적 AI 판단 로직이나 피버 패턴을 바꾸면 `bundledenemy.py`와 학습 회귀 테스트를 함께 확인한다. 숨김 행 없는 12행 보드, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등 의도적인 제한은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
 
 모델 버전 3의 관측값은 528개다. 빈 칸·방해뿌요·5색 보드 채널 504개, 현재 쌍 10개, ATTACK/턴/DAMAGE/룰/티켓/경과시간/마진/시간 배율/피버 상태 14개 순서이며 JS 학습 전이, Python 환경, Solomon 서버가 `python/common.py`의 같은 계약을 사용한다. `learning.py`의 `--output` 경로가 실제 체크포인트 파일이면 `MODEL_VERSION`·`OBSERVATION_SIZE`·`ACTION_COUNT`를 검증한 후 가중치를 복원한다. 관측 계약은 버전 2와 같지만 신경망 종류가 달라 버전 2 이하 체크포인트는 호환하지 않으며 다시 학습해야 한다. `--evaluate-episodes`는 탐험 없이 승률을 집계하고, `--infer-observation`은 LM Studio/HTTP 없이 관측 JSON을 직접 추론한다(숫자 배열 또는 `{observation, nextPair}` 객체). 체크포인트에는 optimizer·replay buffer·epsilon 상태를 저장하지 않는다.
 
@@ -236,69 +236,3 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.
 주석 및 채팅창 답변은 모두 한국어로 해줘.
 
-## 진행 중인 작업 인수인계 (모델 버전 3 전환)
-
-> 이 절은 작업을 다른 환경에서 이어서 하기 위한 임시 기록이다. 아래 "남은 작업"이 모두 끝나면 이 절 전체를 지운다.
-
-### 1. 지금까지 한 일
-
-학습 방식을 **24개 행동의 Q값을 내는 DQN**에서 **애프터스테이트 가치망**으로 바꿨다. 자세한 계약은 위의 "애프터스테이트 가치 학습 (모델 버전 3)" 절에 정리해 두었으며, 이 전환은 커밋 `86e024f AI 재구축 1차`로 이미 저장소에 들어가 있다(작업 트리는 깨끗하다). 변경한 파일은 다음과 같다.
-
-| 파일 | 변경 내용 |
-| --- | --- |
-| `python/common.py` | `MODEL_VERSION` 2→3, 공용 `move_reward()`(= `ATTACK + 연쇄^2`)와 `DISCOUNT_GAMMA`, `OBSERVATION_EXTRA_SIZE` 추가. 관측 벡터 528개 계약 자체는 그대로다. |
-| `python/learning.py` | `PolicyNetwork` → 합성곱 `ValueNetwork`. 애프터스테이트 생성·선택(`_build_afterstate`, `enumerate_afterstates`, `build_afterstate`, `select_afterstate`, `score_afterstates`), n스텝 표본 생성(`ValueSample`, `build_value_samples`, `N_STEP_RETURN`)을 추가하고 `train()`을 가치 회귀로 다시 썼다. 환경은 `info["terminal_value"]`와 `next_pair_for_agent()`를 제공하며, `--opponent solo`의 `PuyoEnvironment`도 `bundledenemy` 규칙을 쓴다. epsilon 감쇠는 에피소드 기준이다. |
-| `python/pythonserver.py` | `dqn_*` 식별자를 `value_*`로 정리하고, 배치 추론을 애프터스테이트 선택으로 교체했다. 솔로몬 온라인 학습 세션은 전이 대신 (애프터스테이트, 보상) 목록을 쌓고 `train_solomon_samples()`로 학습한다. |
-| `src/js/puyow.js` | `sendSolomonPlayerLearningStep()`에 `nextPair` 항목만 추가했다(BUILDNO 19). 그 외 게임 로직 변경 없음. |
-| `python/test_learning.py` | 새 계약에 맞춰 갱신하고 애프터스테이트·n스텝 목표값 테스트를 추가했다(총 46개, 현재 통과). |
-| `python/lngui.py` | 창 제목 문구만 바꿨다. `train()` 시그니처가 그대로여서 그 외 수정은 필요 없었다. |
-
-기존 `python/puyow/default.pt`는 모델 버전 2라 더 이상 읽히지 않아 삭제했다(서버 `/apis/localmodelinfo`가 `available: false`를 응답한다). 함께 남아 있는 `python/puyow/default.json`은 버전 2 시절의 메타데이터라 내용이 낡았지만, 서버는 `.pt`만 보므로 동작에는 영향이 없다. 다음 학습이 같은 경로에 저장될 때 자동으로 덮어써진다.
-
-### 2. 원인 규명 완료 — 감가율(`DISCOUNT_GAMMA`)이 너무 높았다
-
-"학습할수록 승률이 떨어진다"는 이전 기록의 문제를 감가율 실험으로 재현하고 원인을 확인했다.
-
-**측정 조건**: 학습 `--opponent random` 1500 에피소드(학습 시드 표기), 평가는 탐험 없이(`evaluate_policy`, epsilon=0) 평가 시드 777000으로 상대별 200판이다. 1차 실험만 Dantalion 100판이라 아래 표에서 제외했다. CPU 1스레드 기준 학습은 에피소드당 약 0.65초다.
-
-| 모델 | 학습 시드 | vs Dantalion | vs Kimaris | vs random |
-| --- | --- | --- | --- | --- |
-| 규칙 그리디(가치망 무시, `move_reward`만 비교) | — | 21.0% | 30.5% | 15.5% |
-| 학습하지 않은 초기 가치망 | — | 31.0% | 35.0% | 21.5% |
-| γ = 0.95 | 20260202 | 32.0% | 33.5% | 28.5% |
-| γ = 0.90 | 20260202 | 40.0% | 43.5% | 36.5% |
-| γ = 0.85 | 20260101 | 47.0% | 49.0% | 34.5% |
-| **γ = 0.80** | 20260101 | **54.0%** | **56.5%** | **35.5%** |
-| γ = 0.90 + 승패 보상 ±10 | 20260101 | 46.0% | 49.5% | 33.5% |
-| γ = 0.90 + 승리 표본 제외(패배 −50만) | 20260101 | 47.5% | 48.5% | 32.0% |
-| γ = 0.90 + n스텝 1 | 20260101 | 42.0% | 41.0% | 32.0% |
-| γ = 0.90 + n스텝 5 | 20260101 | 45.5% | 38.0% | 28.5% |
-
-같은 조건을 학습 시드만 바꿔 돌리면 승률이 5~10%p 흔들리므로, 표에서 5%p 안쪽 차이는 유의미하지 않다. 그래도 결론은 분명하다.
-
-- **감가율이 지배적인 변수다.** γ 0.99(이전 기록의 23~25%) → 0.95 → 0.90 → 0.85 → 0.80으로 낮출수록 승률이 단조 증가하며, γ = 0.80은 학습하지 않은 가치망(31%)과 규칙 그리디(21%)를 모두 크게 넘어선다. 즉 "학습할수록 나빠지는" 문제 자체는 감가율만 낮춰도 사라진다.
-- **n스텝(`N_STEP_RETURN`) 값은 유의미한 차이를 만들지 않았다.** 현재 값 3을 유지해도 된다.
-- **승패 보상 처리 변형은 방향이 맞지만 감가율만큼 크지 않다.** ±50을 ±10으로 줄이거나 승리 표본을 아예 버리는 두 변형 모두 같은 γ = 0.90 대비 6~8%p 올랐다. 감가율을 낮추면 같은 문제를 다른 방식으로 완화하는 셈이라 효과가 겹칠 가능성이 높다.
-
-**왜 이런 일이 생기는가**(다음 작업의 판단 근거이므로 남긴다): 관측 벡터 528개는 **자기 필드만** 담고 상대 보드·상대 예고를 전혀 담지 않는다. 그런데 마지막 애프터스테이트의 목표값으로 승리 `+50`을 붙이면, 그 보드는 승리를 설명하는 정보가 아니므로 사실상 ±50짜리 라벨 잡음이 된다. 반면 패배 `−50`은 실제로 "죽은 보드"에 붙어 학습이 된다. γ가 0.99면 한 판 25~40수 동안(`0.99^30 ≈ 0.74`) 이 항이 거의 감쇠하지 않고 모든 상태로 퍼져, 가치망이 "공격해서 이기기"가 아니라 "보드를 낮게 유지해 오래 버티기"를 배운다. 실제로 이전 기록의 학습된 정책은 작은 폭발을 즉시 소비해 연쇄를 쌓지 못했다. γ를 낮추면 이 항의 전파 거리가 짧아져 한 수의 `ATTACK + 연쇄^2` 보상이 다시 지배하게 된다.
-
-### 3. 실험 재현 방법
-
-`learning.py`를 고치지 않고 감가율만 바꾸려면 `common.DISCOUNT_GAMMA`뿐 아니라 **함수 기본 인자에 굳어 있는 값도 함께** 바꿔야 한다.
-
-```python
-common.DISCOUNT_GAMMA = gamma
-learning.DISCOUNT_GAMMA = gamma
-learning.build_value_samples.__kwdefaults__["gamma"] = gamma
-learning.score_afterstates.__defaults__ = (gamma,)
-```
-
-승패 보상 크기는 `learning.PuyoDuelEnvironment.WIN_REWARD` / `LOSS_REWARD` 클래스 속성으로 바꾼다. "승리 표본 제외" 변형은 `WIN_REWARD = 0.0`으로 두고 `step()`이 돌려주는 `info`에서 `terminal_value` 키를 지워, `build_value_samples()`가 그 에피소드를 잘린 것으로 보고 마지막 표본을 버리게 만들면 된다. 학습·평가 프로세스는 `torch.set_num_threads(1)`로 두고 여러 설정을 병렬로 돌리는 편이 빠르다.
-
-### 4. 남은 작업
-
-1. **감가율 최적값 마무리**: 측정 결과 중 가장 좋았던 γ = 0.80을 `python/common.py`의 `DISCOUNT_GAMMA`에 **이미 반영했다**(주석과 `docs/MachineLearning.md`·이 문서의 값 표기도 함께 고쳤다). 서버(`SOLOMON_TRAINING_GAMMA`)와 `learning.py`가 모두 이 상수를 참조하므로 다른 파일은 손대지 않아도 되고, `python/test_learning.py`는 감가율을 인자로 직접 넘기므로 영향을 받지 않는다(46개 통과 확인). 다만 더 낮은 값(0.70 / 0.75)은 아직 시험하지 않았으므로, 이 구간까지 확인해 0.80보다 나으면 같은 한 줄을 다시 바꾼다.
-2. **장기 학습 확인**: 위 표는 모두 1500 에피소드 결과다. 확정한 γ로 10000 에피소드 이상 학습해 승률이 계속 오르는지, 순위가 뒤집히지 않는지 확인한다.
-3. **선택 사항 — 승패 보상 구조**: 1에서 정한 γ 위에 승패 보상 축소(±10) 또는 승리 표본 제외를 얹어 추가 이득이 있는지 확인한다. 이 값은 서버 온라인 학습(`pythonserver.py`)과 공유하므로 바꾸면 양쪽을 함께 봐야 한다. 근본적으로는 관측 벡터에 상대 필드를 넣는 방법이 있지만, 관측 계약(`MODEL_VERSION` 4)과 `puyow.js`의 `getLearningObservation()`까지 바뀌므로 "게임 쪽 수정 최소화" 요구와 충돌한다. 먼저 위 두 방법을 우선한다.
-4. 결론이 난 뒤 `docs/MachineLearning.md`의 "학습 방식" 절(153행 근처의 감가율 설명)과 위 "애프터스테이트 가치 학습" 절의 감가율 설명을 실제 값으로 맞춘다.
-5. `python -m unittest test_learning`, `node --check src/js/puyow.js`, `npm.cmd test`, Playwright를 다시 실행하고 이 인수인계 절을 삭제한다. (이번 실험은 Python 학습 코드만 건드렸고 저장소 파일은 바꾸지 않았으므로, 현재 트리의 마지막 검증 상태는 커밋 `86e024f` 시점 그대로다: unittest 46개 통과, eslint 통과, Playwright chromium 167개 통과·4 skip.)
