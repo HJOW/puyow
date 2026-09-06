@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 15;
+    const BUILDNO = 16;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -466,6 +466,8 @@
     let learningEpisodeStarted = false;
     /** (머신러닝 관련) 현재 게임의 마지막 뿌요 배치 전 관측과 보상 기준값이다. @type {object|null} */
     let learningPendingTransition = null;
+    /** (머신러닝 관련) 솔로몬 학습 API 요청을 대전에서 일어난 순서대로 보내기 위한 Promise 체인이다. @type {Promise<void>} */
+    let solomonLearningQueue = Promise.resolve();
     /** 현재 재생 중인 배경음악이다. 화면 종류와 상관없이 한 개만 유지한다. @type {HTMLAudioElement|null} */
     let backgroundMusicAudio = null;
     /** 현재 배경음악 요소가 재생하는 음원 URL이다. @type {string|null} */
@@ -2409,14 +2411,57 @@
 
     /**
      * (머신러닝 관련)
-     * 이번 대전이 로컬 AI 서버의 모델을 솔로몬의 수로 추가 학습할 대상인지 확인한다.
+     * 이번 대전이 로컬 AI 서버의 모델을 이 대전의 수로 추가 학습할 대상인지 확인한다.
      * 색상 수와 룰은 가리지 않고, AI 제공자가 Local AI이며 극한 난이도로 솔로몬과 대전할 때만 대상이다.
+     * 리플레이 재생은 이미 끝난 대전을 다시 보여 줄 뿐이므로 학습 대상에서 제외한다.
      * @returns {boolean} 학습 대상이면 true
      */
     function shouldTrainLocalAiWithSolomon() {
-        if (!game || !isLocalAiProvider(store?.settings)) return false;
+        if (!game || game.replayPlayback || !isLocalAiProvider(store?.settings)) return false;
         if (AI_DIFFICULTIES[game.aiDifficulty]?.key !== 'extreme') return false;
         return game.players?.[1]?.controller?.getClassType?.() === 'Solomon';
+    }
+
+    /**
+     * (머신러닝 관련)
+     * 솔로몬 학습 API 요청을 대전에서 일어난 순서대로 하나씩 보낸다.
+     * 서버는 앞 요청의 관측값을 그 수의 다음 상태로 이어 붙이므로 순서가 뒤바뀌면 전이가 어긋난다.
+     * 실패는 기록만 남기고 넘어가며, 게임 진행에는 영향을 주지 않는다.
+     * @param {object} payload 학습 API 요청 본문
+     * @returns {void}
+     */
+    function queueSolomonLearningRequest(payload) {
+        const settings = store.settings;
+        solomonLearningQueue = solomonLearningQueue.then(async () => {
+            const response = await window.fetch(getAiServerURL(settings.aiApiURL, 'apis/solomonlearning'), {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok || !result.ok) throw new Error(result.error || `솔로몬 학습 요청 실패: ${response.status}`);
+            if (payload.event === 'finish') console.log('솔로몬 학습 적용 결과', result);
+        }).catch((error) => console.error('솔로몬 학습 요청에 실패했습니다.', error));
+    }
+
+    /**
+     * (머신러닝 관련)
+     * 사람이 방금 확정한 배치를 이번 대전의 학습 세션에 플레이어 쪽 수로 기록하도록 요청한다.
+     * 관측·행동 계약이 솔로몬과 완전히 같으므로, 사람이 이 대전을 이기면 서버가 이 수순을 모델이
+     * 플레이어 쪽을 조작해 이긴 것처럼 학습에 사용한다. 이기지 못한 대전의 수는 서버가 그대로 버린다.
+     * @param {PlayerState} player 사람이 조작하는 플레이어
+     * @returns {void}
+     */
+    function sendSolomonPlayerLearningStep(player) {
+        if (!player.active) return;
+        const sessionId = getSolomonLearningSessionId();
+        if (!sessionId) return;
+        queueSolomonLearningRequest({
+            event: 'step',
+            sessionId,
+            observation: getLearningObservation(player),
+            action: player.active.x * 4 + player.active.rotation
+        });
     }
 
     /**
@@ -2435,7 +2480,8 @@
 
     /**
      * (머신러닝 관련)
-     * 대전이 끝나고 결과 화면으로 넘어갈 때, 이번 대전에서 모은 솔로몬의 수를 모델에 반영하도록 요청한다.
+     * 대전이 끝나고 결과 화면으로 넘어갈 때, 이번 대전에서 모은 수를 모델에 반영하도록 요청한다.
+     * 앞서 보낸 플레이어 쪽 수보다 반드시 늦게 도착해야 하므로 같은 요청 큐로 보낸다.
      * 학습은 서버에서 진행하며, 실패하더라도 게임 진행에는 영향을 주지 않는다.
      * @param {PlayerState|null} winner 이번 대전의 승자
      * @returns {void}
@@ -2447,22 +2493,7 @@
         game.solomonLearningSessionId = null;
         const solomon = game.players[1];
         const result = winner === solomon ? 'win' : winner ? 'loss' : 'draw';
-        const settings = store.settings;
-        // 이 함수는 게임 루프의 승패 처리 중에 호출되므로, 저장된 주소가 잘못돼 URL을 만들지 못하더라도
-        // 예외가 루프로 번지지 않도록 여기서 막는다.
-        try {
-            window.fetch(getAiServerURL(settings.aiApiURL, 'apis/solomonlearning'), {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ event: 'finish', sessionId, result })
-            }).then(async (response) => {
-                const payload = await response.json();
-                if (!response.ok || !payload.ok) throw new Error(payload.error || `솔로몬 학습 요청 실패: ${response.status}`);
-                console.log('솔로몬 학습 적용 결과', payload);
-            }).catch((error) => console.error('솔로몬 학습 적용 요청에 실패했습니다.', error));
-        } catch (error) {
-            console.error('솔로몬 학습 적용 요청을 보낼 수 없습니다.', error);
-        }
+        queueSolomonLearningRequest({ event: 'finish', sessionId, result });
     }
 
     /** 데카라비아를 기본 룰 또는 피버 룰의 보통 이상 난이도에서 한 번이라도 이겼는지 확인한다. @returns {boolean} 구경 메뉴 해금 여부 */
@@ -3264,6 +3295,8 @@
                     attack: player.attack
                 };
             }
+            // 사람이 이 대전을 이기면 이 수순을 모델 자신의 수처럼 학습하므로, 배치 직전 상태를 남긴다.
+            sendSolomonPlayerLearningStep(player);
         }
         // 피버 룰의 방해뿌요 지연은 배치마다 새로 판정한다. 이번 배치가 폭발에 성공하면
         // resolveExplosions에서 다시 true가 되어 다음 컨트롤까지 DAMAGE 낙하를 미룬다.

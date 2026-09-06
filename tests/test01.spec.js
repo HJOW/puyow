@@ -1496,10 +1496,19 @@ test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 60000 }).toBe('game_over');
   await page.keyboard.up('ArrowDown');
 
-  await expect.poll(() => learningRequests.length, { timeout: 5000 }).toBe(1);
-  expect(learningRequests[0].authorization).toBe('Bearer localhost');
+  await expect.poll(() => learningRequests.filter(({ body }) => body.event === 'finish').length, { timeout: 5000 }).toBe(1);
+  // 학습 요청은 대전 순서대로 한 줄로 보내므로 finish는 반드시 마지막이어야 한다.
+  const finishRequest = learningRequests[learningRequests.length - 1];
+  expect(finishRequest.authorization).toBe('Bearer localhost');
   // result는 학습 대상인 솔로몬 기준이므로, 사용자가 패배한 이번 대전은 승리로 전달된다.
-  expect(learningRequests[0].body).toEqual({ event: 'finish', sessionId, result: 'win' });
+  expect(finishRequest.body).toEqual({ event: 'finish', sessionId, result: 'win' });
+  // 사람이 둔 수도 같은 세션으로 모아 둔다. 사람이 이긴 대전에서만 서버가 이 수를 학습에 사용한다.
+  const stepRequests = learningRequests.filter(({ body }) => body.event === 'step');
+  expect(stepRequests.length).toBeGreaterThan(0);
+  expect(stepRequests.every(({ body }) => (
+    body.sessionId === sessionId && Array.isArray(body.observation) && body.observation.length === 528
+    && Number.isInteger(body.action) && body.action >= 0 && body.action < 24
+  ))).toBe(true);
   // 후보 안에서 고른 배치는 항상 사용할 수 있어야 하므로 배치 검증 오류가 나면 안 된다.
   expect(await page.evaluate(() => window.testCanvasTexts.some((text) => [
     '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.',

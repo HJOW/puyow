@@ -87,11 +87,22 @@ solomon_sessions_lock = threading.Lock()
 SOLOMON_SESSION_MAX_TRANSITIONS = 500
 SOLOMON_SESSION_LIMIT = 8
 
+# 한 세션에서 따로 모으는 수의 주체다. 솔로몬(모델)이 둔 수와 사람이 둔 수는 서로 다음 상태가
+# 이어지지 않으므로, 같은 대전이라도 전이를 만들 때는 반드시 나누어 쌓아야 한다.
+SOLOMON_SESSION_SIDES = ("solomon", "player")
+
 # 대전이 끝난 뒤 한 번에 적용할 DQN 업데이트 설정이다. 학습률·감가율은 learning.train()과 같다.
 SOLOMON_TRAINING_EPOCHS = 4
 SOLOMON_TRAINING_BATCH_SIZE = 32
 SOLOMON_TRAINING_LEARNING_RATE = 1e-3
 SOLOMON_TRAINING_GAMMA = 0.99
+
+# 사람이 이긴 대전에서 그 사람의 수를 "모델이 플레이어 쪽을 조작해 이긴 것"으로 보고 학습할 때
+# 적용하는 비중이다. 솔로몬 자신이 둔 수의 비중은 항상 1이므로 이 값이 클수록 사람의 승리 수순을
+# 더 강하게 따라 배운다. 1로 두면 양쪽을 같은 비중으로 학습한다.
+SOLOMON_PLAYER_WIN_TRAINING_WEIGHT = 100.0
+# 비중을 적용하지 않는 전이의 기본값이다.
+SOLOMON_DEFAULT_TRAINING_WEIGHT = 1.0
 
 # puyow.js의 COLORS 순서와 관측 벡터의 색상 채널 순서다.
 PUYO_COLORS = ("red", "green", "yellow", "blue", "purple")
@@ -460,7 +471,7 @@ def _get_or_create_solomon_session(session_id: str) -> dict[str, Any]:
 	# 결과 화면까지 가지 못하고 끝난 예전 대전의 세션을 오래된(먼저 만든) 순서로 버린다.
 	while len(solomon_sessions) >= SOLOMON_SESSION_LIMIT:
 		solomon_sessions.pop(next(iter(solomon_sessions)))
-	session = {"transitions": [], "pending": None}
+	session = {side: {"transitions": [], "pending": None} for side in SOLOMON_SESSION_SIDES}
 	solomon_sessions[session_id] = session
 	return session
 
@@ -490,25 +501,29 @@ def compute_solomon_reward(observation: list[float], action: int) -> float:
 	return attack + combo * combo
 
 
-def record_solomon_step(session_id: str, observation: list[float], action: int) -> None:
-	"""이번 추론 결과를 세션에 담고, 직전 추론이 있으면 그 보상과 다음 상태를 확정한다."""
+def record_solomon_step(session_id: str, observation: list[float], action: int, side: str = "solomon") -> None:
+	"""이번 수를 세션의 해당 쪽에 담고, 직전 수가 있으면 그 보상과 다음 상태를 확정한다.
+
+	`side`가 `player`이면 사람이 직접 둔 수다. 관측·행동 계약이 솔로몬과 완전히 같으므로 같은 방식으로
+	전이를 만들 수 있으며, 실제로 학습에 넣을지는 대전이 끝난 뒤 승패를 보고 결정한다.
+	"""
 	with solomon_sessions_lock:
-		session = _get_or_create_solomon_session(session_id)
-		pending = session["pending"]
-		if pending is not None and len(session["transitions"]) < SOLOMON_SESSION_MAX_TRANSITIONS:
+		session_side = _get_or_create_solomon_session(session_id)[side]
+		pending = session_side["pending"]
+		if pending is not None and len(session_side["transitions"]) < SOLOMON_SESSION_MAX_TRANSITIONS:
 			# 위험 높이·응답 오류로 솔로몬이 대체 AI를 쓴 턴은 요청이 오지 않는다. 그런 턴이 사이에
 			# 끼면 다음 상태가 모델이 고른 수 하나만의 결과가 아니므로 그 전이는 학습에서 뺀다.
 			# placedPairCount는 상한(100)에서 잘리므로 두 턴 이상 건너뛴 경우만 확실히 걸러 낸다.
 			turn_advance = round(decode_observation_scalars(observation)["turn"]) - round(decode_observation_scalars(pending["observation"])["turn"])
 			if turn_advance < 2:
-				session["transitions"].append({
+				session_side["transitions"].append({
 					"observation": pending["observation"],
 					"action": pending["action"],
 					"reward": compute_solomon_reward(pending["observation"], pending["action"]),
 					"next_observation": observation,
 					"done": False,
 				})
-		session["pending"] = {"observation": observation, "action": action}
+		session_side["pending"] = {"observation": observation, "action": action}
 
 
 def train_solomon_transitions(transitions: list[dict[str, Any]]) -> float:
@@ -524,6 +539,10 @@ def train_solomon_transitions(transitions: list[dict[str, Any]]) -> float:
 	rewards = torch.tensor([item["reward"] for item in transitions], dtype=torch.float32)
 	next_states = torch.tensor([item["next_observation"] for item in transitions], dtype=torch.float32)
 	dones = torch.tensor([float(item["done"]) for item in transitions], dtype=torch.float32)
+	# 전이별 학습 비중은 평균이 1이 되도록 정규화한다. 이렇게 해야 어떤 비중을 쓰더라도 손실 크기가
+	# 예전과 같은 수준으로 유지되어, 학습률을 그대로 두고도 상대적인 비중만 반영할 수 있다.
+	weights = torch.tensor([float(item.get("weight", SOLOMON_DEFAULT_TRAINING_WEIGHT)) for item in transitions], dtype=torch.float32)
+	weights = weights / weights.mean().clamp(min=1e-6)
 	# 갱신 중에는 추론도 같은 잠금을 기다린다. 학습이 끝나고 저장까지 마친 뒤에야 다음 추론이 이어진다.
 	with dqn_model_lock:
 		# 목표 Q값은 학습을 시작하기 전 가중치로 한 번만 계산한다. learning.train()이 별도 target
@@ -538,7 +557,7 @@ def train_solomon_transitions(transitions: list[dict[str, Any]]) -> float:
 			for start in range(0, count, SOLOMON_TRAINING_BATCH_SIZE):
 				batch = order[start:start + SOLOMON_TRAINING_BATCH_SIZE]
 				current = model(states[batch]).gather(1, actions[batch].unsqueeze(1)).squeeze(1)
-				loss = nn.functional.smooth_l1_loss(current, expected[batch])
+				loss = (nn.functional.smooth_l1_loss(current, expected[batch], reduction="none") * weights[batch]).mean()
 				optimizer.zero_grad()
 				loss.backward()
 				nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -548,33 +567,63 @@ def train_solomon_transitions(transitions: list[dict[str, Any]]) -> float:
 	return last_loss
 
 
+def _close_solomon_side(session_side: dict[str, Any], terminal_reward: float, weight: float) -> list[dict[str, Any]]:
+	"""한쪽이 둔 수의 마지막 전이를 승패 보상으로 닫고 모든 전이에 학습 비중을 매긴다.
+
+	호출자가 solomon_sessions_lock을 잡은 상태여야 한다. compute_solomon_reward()가 bundledenemy의
+	모듈 전역 룰·시간 설정을 사용하기 때문이다.
+	"""
+	pending = session_side["pending"]
+	if pending is not None and len(session_side["transitions"]) < SOLOMON_SESSION_MAX_TRANSITIONS:
+		# 마지막 수는 다음 요청이 오지 않으므로 여기서 닫는다. 종료 전이의 다음 상태는 목표
+		# Q값 계산에서 (1 - done)으로 지워지므로 같은 관측값을 그대로 넣어 둔다.
+		session_side["transitions"].append({
+			"observation": pending["observation"],
+			"action": pending["action"],
+			"reward": compute_solomon_reward(pending["observation"], pending["action"]) + terminal_reward,
+			"next_observation": pending["observation"],
+			"done": True,
+		})
+	for transition in session_side["transitions"]:
+		transition["weight"] = weight
+	return session_side["transitions"]
+
+
 def finish_solomon_session(session_id: str, result: str) -> dict[str, Any]:
-	"""대전이 끝난 세션의 마지막 전이를 승패 보상으로 닫고 모아 둔 전이를 모델에 반영한다."""
+	"""대전이 끝난 세션의 마지막 전이를 승패 보상으로 닫고 모아 둔 전이를 모델에 반영한다.
+
+	`result`는 솔로몬 기준의 승패다. 솔로몬이 진 대전(`loss`)에서는 사람이 이겼다는 뜻이므로, 그 사람이
+	둔 수도 "모델이 플레이어 쪽을 조작해 이긴 수순"으로 보고 SOLOMON_PLAYER_WIN_TRAINING_WEIGHT의
+	비중으로 함께 학습한다. 사람이 이기지 못한 대전의 사람 쪽 수는 그대로 버린다.
+	"""
 	with solomon_sessions_lock:
 		session = solomon_sessions.pop(session_id, None)
 		if session is None:
 			return {"trained": False, "transitions": 0, "reason": "해당 세션의 학습 데이터가 없습니다."}
-		pending = session["pending"]
-		if pending is not None and len(session["transitions"]) < SOLOMON_SESSION_MAX_TRANSITIONS:
-			# 마지막 수는 다음 요청이 오지 않으므로 여기서 닫는다. 종료 전이의 다음 상태는 목표
-			# Q값 계산에서 (1 - done)으로 지워지므로 같은 관측값을 그대로 넣어 둔다.
-			terminal_reward = WIN_REWARD if result == "win" else LOSS_REWARD if result == "loss" else 0.0
-			session["transitions"].append({
-				"observation": pending["observation"],
-				"action": pending["action"],
-				"reward": compute_solomon_reward(pending["observation"], pending["action"]) + terminal_reward,
-				"next_observation": pending["observation"],
-				"done": True,
-			})
-		transitions = session["transitions"]
+		terminal_reward = WIN_REWARD if result == "win" else LOSS_REWARD if result == "loss" else 0.0
+		solomon_transitions = _close_solomon_side(session["solomon"], terminal_reward, SOLOMON_DEFAULT_TRAINING_WEIGHT)
+		player_transitions = (
+			_close_solomon_side(session["player"], WIN_REWARD, SOLOMON_PLAYER_WIN_TRAINING_WEIGHT)
+			if result == "loss" else []
+		)
+		transitions = solomon_transitions + player_transitions
 	if not transitions:
 		return {"trained": False, "transitions": 0, "reason": "이번 대전에서 모은 학습 데이터가 없습니다."}
-	return {"trained": True, "transitions": len(transitions), "loss": train_solomon_transitions(transitions)}
+	return {
+		"trained": True,
+		"transitions": len(transitions),
+		"playerTransitions": len(player_transitions),
+		"loss": train_solomon_transitions(transitions),
+	}
 
 
-# 대전이 끝난 뒤 그 판에서 모은 솔로몬의 수를 모델에 반영하는 HTTP API다.
+# 대전 중 사람이 둔 수를 모으고, 대전이 끝나면 그 판의 학습 세션을 모델에 반영하는 HTTP API다.
 def solomon_learning_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str, Any]]:
-	"""게임 종료 화면 시점에 호출되어 이번 대전의 솔로몬 학습 세션을 모델에 적용한다."""
+	"""사람이 둔 수(`step`)를 세션에 모으고, 종료 화면 시점의 `finish`로 학습을 적용한다.
+
+	솔로몬 자신의 수는 배치를 추론하는 /v1/chat/completions 요청에서 이미 세션에 쌓이므로, 이 API의
+	`step`은 항상 사람이 조작한 플레이어 쪽 수다.
+	"""
 	if handler.command != "POST":
 		return HTTPStatus.METHOD_NOT_ALLOWED, {"ok": False, "error": "POST만 지원합니다."}
 	if not is_learning_authorized(handler):
@@ -582,12 +631,22 @@ def solomon_learning_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 		message = "SERVER_CONFIG['learning_token']이 설정되지 않았습니다." if not SERVER_CONFIG["learning_token"] else "인증이 필요합니다."
 		return status, {"ok": False, "error": message}
 	payload = read_json_body(handler)
-	if payload.get("event") != "finish":
-		raise ApiError("event는 finish여야 합니다.")
+	event = payload.get("event")
+	if event not in {"step", "finish"}:
+		raise ApiError("event는 step 또는 finish여야 합니다.")
+	session_id = require_solomon_session_id(payload.get("sessionId"))
+	if event == "step":
+		require_observation(payload.get("observation"), "observation")
+		require_number(payload.get("action"), "action", integer=True)
+		try:
+			action_to_placement(payload["action"])
+		except ValueError as error:
+			raise ApiError(str(error)) from error
+		record_solomon_step(session_id, payload["observation"], payload["action"], side="player")
+		return HTTPStatus.OK, {"ok": True, "sessionId": session_id, "event": "step"}
 	result = payload.get("result")
 	if result not in {"win", "loss", "draw"}:
 		raise ApiError("result는 win, loss, draw 중 하나여야 합니다.")
-	session_id = require_solomon_session_id(payload.get("sessionId"))
 	return HTTPStatus.OK, {"ok": True, "sessionId": session_id, **finish_solomon_session(session_id, result)}
 
 

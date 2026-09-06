@@ -190,13 +190,24 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 
 ### 솔로몬 온라인 학습 (Local AI + 극한 난이도)
 
-AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대전할 때만(색상 수·룰은 가리지 않는다) 그 대전에서 솔로몬이 둔 수로 로컬 서버의 모델을 추가 학습한다. 판정 함수는 `shouldTrainLocalAiWithSolomon()`이며 `game.players[1].controller`가 솔로몬인지까지 확인하므로, 연습·퍼즐·구경처럼 솔로몬이 나올 수 없는 모드는 자연히 제외된다.
+AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대전할 때만(색상 수·룰은 가리지 않는다) 그 대전에서 나온 수로 로컬 서버의 모델을 추가 학습한다. 판정 함수는 `shouldTrainLocalAiWithSolomon()`이며 `game.players[1].controller`가 솔로몬인지까지 확인하므로, 연습·퍼즐·구경처럼 솔로몬이 나올 수 없는 모드는 자연히 제외된다. 이미 끝난 대전을 다시 보여 줄 뿐인 리플레이 재생(`game.replayPlayback`)도 제외한다.
 
 - `getSolomonLearningSessionId()`가 대전마다 `solomon-<시각>-<난수>` 세션 ID를 만들어 `game.solomonLearningSessionId`에 보관하고, `Solomon.buildPlacementPrompt()`가 이 값을 프롬프트의 `learningSessionId` 항목으로 함께 보낸다. 학습 대상이 아니면 이 항목 자체를 넣지 않으므로 다른 제공자·난이도의 프롬프트는 기존과 완전히 같다.
 - 서버의 `chat_completions_api()`는 `learningSessionId`가 있는 배치 요청마다 `record_solomon_step()`으로 이번 관측값과 고른 행동을 세션에 담아 둔다. 그 수의 보상은 **다음 요청이 왔을 때** `compute_solomon_reward()`가 계산하며, 학습 환경과 같은 `bundledenemy.resolve_placement()`로 `ATTACK + 연쇄^2`를 구한다. 다음 요청의 관측값이 그 전이의 다음 상태가 된다.
 - 위험 높이·응답 오류로 솔로몬이 대체 AI를 쓴 턴은 요청이 오지 않는다. 관측값의 `placedPairCount`가 두 턴 이상 건너뛴 전이는 모델이 고른 수 하나의 결과가 아니므로 학습에서 제외한다.
 - 학습은 매 수마다 하지 않고, 승패가 확정되어 결과 화면으로 넘어가는 `updateDefeatSequence()` 시점에 `requestSolomonLearningFinish()`가 `POST /apis/solomonlearning`(`{event:'finish', sessionId, result}`)을 한 번 보낼 때 수행한다. `result`는 학습 대상인 **솔로몬 기준**의 `win`/`loss`/`draw`다. 이 요청이 실패해도 게임 진행에는 영향을 주지 않는다.
-- `finish_solomon_session()`은 마지막 수를 승패 보상(`WIN_REWARD`/`LOSS_REWARD`)과 함께 `done` 전이로 닫은 뒤 `train_solomon_transitions()`를 호출한다. 목표 Q값은 갱신 전 가중치로 한 번만 계산하고(별도 target 네트워크 대신), `learning.train()`과 같은 학습률 `1e-3`·감가율 `0.99`·smooth L1 손실·그래디언트 노름 1.0 클리핑을 사용한다.
+- `finish_solomon_session()`은 양쪽의 마지막 수를 승패 보상(`WIN_REWARD`/`LOSS_REWARD`)과 함께 `done` 전이로 닫은 뒤 `train_solomon_transitions()`를 호출한다. 목표 Q값은 갱신 전 가중치로 한 번만 계산하고(별도 target 네트워크 대신), `learning.train()`과 같은 학습률 `1e-3`·감가율 `0.99`·smooth L1 손실·그래디언트 노름 1.0 클리핑을 사용한다.
+
+#### 사람이 이긴 대전의 수순 학습
+
+같은 대전에서 **사람이 조작한 플레이어 쪽 수**도 함께 모아 두었다가, 사람이 이겼을 때만 "모델이 플레이어 쪽을 조작해 이긴 수순"으로 보고 함께 학습한다. 관측 벡터(528개)와 행동 번호(`열*4+회전`)는 어느 쪽이 두었는지 구분하는 값이 없는 자기중심 표현이므로, 사람의 수도 솔로몬의 수와 같은 전이 구조로 그대로 쓸 수 있다.
+
+- `lockActive()`에서 사람이 뿌요를 확정할 때마다 `sendSolomonPlayerLearningStep()`이 `POST /apis/solomonlearning`(`{event:'step', sessionId, observation, action}`)을 보낸다. 관측은 기존 `/apis/learning` 경로와 같은 `getLearningObservation()`으로 만들며, 배치 직전(=`placedPairCount` 증가 전) 상태라서 솔로몬 프롬프트와 시점 계약이 같다.
+- 솔로몬 학습 요청은 모두 `queueSolomonLearningRequest()`의 단일 Promise 큐로 보낸다. 서버가 앞 요청의 관측값을 그 수의 다음 상태로 이어 붙이므로 순서가 뒤바뀌면 안 되고, `finish`는 반드시 그 대전의 마지막 `step` 뒤에 도착해야 한다.
+- 서버 세션은 `{"solomon": {...}, "player": {...}}`처럼 쪽별로 나뉘며(`SOLOMON_SESSION_SIDES`), `record_solomon_step(..., side=...)`이 해당 쪽에만 전이를 쌓는다. 두 쪽을 한 목록에 섞으면 상대의 관측이 다음 상태가 되어 전이가 망가진다. `/apis/solomonlearning`의 `step`은 항상 사람 쪽이고, 솔로몬 쪽은 `/v1/chat/completions` 경로에서만 쌓인다.
+- `finish_solomon_session()`은 `result`가 `loss`(=사람 승리)일 때만 사람 쪽 전이를 `WIN_REWARD`로 닫아 학습에 넣는다. 사람이 이기지 못한 대전의 사람 쪽 수는 그대로 버린다. 사람 쪽 수의 스텝 보상도 솔로몬과 같은 `compute_solomon_reward()`로 서버가 다시 계산하므로, 클라이언트가 `/apis/learning`에 보내는 `점수 증가분 + ATTACK 증가분` 보상과 섞이지 않는다.
+- 학습 비중은 `SOLOMON_PLAYER_WIN_TRAINING_WEIGHT`(기본 3.0)로 조절한다. 솔로몬 자신의 수는 항상 `SOLOMON_DEFAULT_TRAINING_WEIGHT`(1.0)이므로 이 값이 클수록 사람의 승리 수순을 더 강하게 따라 배우며, 1로 두면 양쪽을 같은 비중으로 학습한다. `train_solomon_transitions()`는 전이별 비중을 **평균이 1이 되도록 정규화**한 뒤 `smooth_l1_loss(..., reduction='none')`에 곱한다. 이렇게 해야 비중을 바꿔도 손실 크기가 예전과 같은 수준으로 유지되어 학습률을 다시 맞출 필요가 없고, 사람 쪽 전이가 없는 대전에서는 모든 비중이 1이라 기존 학습과 완전히 동일하게 동작한다.
+- 이 기능은 관측·행동·체크포인트 계약을 전혀 바꾸지 않는다. `MODEL_VERSION`·`OBSERVATION_SIZE`·`ACTION_COUNT`가 그대로이므로 기존 `default.pt`를 이어서 학습·추론할 수 있다.
 - 갱신한 가중치는 `save_dqn_checkpoint()`가 `learning.py`와 같은 체크포인트 형식(`model`, `model_version`, `observation_size`, `action_count`, `seed`)으로 저장한다. `seed`는 로드 시 보관해 둔 `dqn_model_seed`를 그대로 유지하며, 임시 파일에 쓴 뒤 교체해 저장 중 중단되어도 기존 모델이 깨지지 않게 한다. 관측·행동 계약을 바꾸지 않으므로 갱신된 파일은 `learning.py`의 추가 학습과 다른 게임 세션에서 계속 그대로 쓸 수 있다.
 - 학습이 가중치를 바꾸는 동안 추론이 겹치지 않도록 `choose_dqn_action()`의 추론과 `train_solomon_transitions()`의 갱신·저장은 모두 `dqn_model_lock` 안에서 실행한다. 세션 상태와 `bundledenemy`의 전역 룰·시간 설정을 함께 쓰는 보상 계산은 `solomon_sessions_lock`으로 직렬화한다. 결과 화면까지 가지 못하고 끝난 세션은 `SOLOMON_SESSION_LIMIT`(8)을 넘길 때 오래된 순서로 버린다.
 

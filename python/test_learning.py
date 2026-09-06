@@ -341,12 +341,26 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 
 		pythonserver.record_solomon_step("session", self._observation(board, (0, 1), 0), 0)
 		pythonserver.record_solomon_step("session", self._observation(board, (1, 2), 1), 4)
+		session_side = pythonserver.solomon_sessions["session"]["solomon"]
+
+		self.assertEqual(1, len(session_side["transitions"]))
+		self.assertEqual(0, session_side["transitions"][0]["action"])
+		self.assertFalse(session_side["transitions"][0]["done"])
+		self.assertEqual(4, session_side["pending"]["action"])
+
+	def test_player_moves_are_collected_separately_from_the_solomon_moves(self) -> None:
+		board = training.bundledenemy.new_empty_board()
+
+		# 솔로몬과 사람은 서로 다음 상태가 이어지지 않으므로 같은 세션에서도 따로 쌓여야 한다.
+		pythonserver.record_solomon_step("session", self._observation(board, (0, 1), 0), 0)
+		pythonserver.record_solomon_step("session", self._observation(board, (1, 2), 0), 4, side="player")
+		pythonserver.record_solomon_step("session", self._observation(board, (2, 3), 1), 8, side="player")
 		session = pythonserver.solomon_sessions["session"]
 
-		self.assertEqual(1, len(session["transitions"]))
-		self.assertEqual(0, session["transitions"][0]["action"])
-		self.assertFalse(session["transitions"][0]["done"])
-		self.assertEqual(4, session["pending"]["action"])
+		self.assertEqual([], session["solomon"]["transitions"])
+		self.assertEqual(0, session["solomon"]["pending"]["action"])
+		self.assertEqual(1, len(session["player"]["transitions"]))
+		self.assertEqual(4, session["player"]["transitions"][0]["action"])
 
 	def test_turns_played_by_the_fallback_ai_are_not_recorded(self) -> None:
 		board = training.bundledenemy.new_empty_board()
@@ -355,7 +369,7 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 		# 대체 AI가 두 턴을 대신 두면 그동안 요청이 오지 않아 placedPairCount가 건너뛴다.
 		pythonserver.record_solomon_step("session", self._observation(board, (1, 2), 3), 4)
 
-		self.assertEqual([], pythonserver.solomon_sessions["session"]["transitions"])
+		self.assertEqual([], pythonserver.solomon_sessions["session"]["solomon"]["transitions"])
 
 	def test_finish_closes_the_last_move_with_the_win_reward_and_drops_the_session(self) -> None:
 		board = training.bundledenemy.new_empty_board()
@@ -367,10 +381,43 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 
 		self.assertTrue(result["trained"])
 		self.assertEqual(1, result["transitions"])
+		self.assertEqual(0, result["playerTransitions"])
 		self.assertNotIn("session", pythonserver.solomon_sessions)
 		terminal = captured[0][0]
 		self.assertTrue(terminal["done"])
 		self.assertAlmostEqual(common.WIN_REWARD, terminal["reward"], places=6)
+		self.assertAlmostEqual(pythonserver.SOLOMON_DEFAULT_TRAINING_WEIGHT, terminal["weight"], places=6)
+
+	def test_player_moves_are_trained_with_the_win_reward_and_a_higher_weight(self) -> None:
+		board = training.bundledenemy.new_empty_board()
+		pythonserver.record_solomon_step("session", self._observation(board, (0, 1), 0), 0)
+		pythonserver.record_solomon_step("session", self._observation(board, (1, 2), 0), 4, side="player")
+		captured: list[list[dict]] = []
+
+		# 솔로몬 기준 loss는 사람이 이겼다는 뜻이므로 사람의 수도 승리 수순으로 학습에 들어간다.
+		with mock.patch.object(pythonserver, "train_solomon_transitions", side_effect=lambda items: captured.append(items) or 0.5):
+			result = pythonserver.finish_solomon_session("session", "loss")
+
+		self.assertEqual(2, result["transitions"])
+		self.assertEqual(1, result["playerTransitions"])
+		solomon_transition, player_transition = captured[0]
+		self.assertAlmostEqual(common.LOSS_REWARD, solomon_transition["reward"], places=6)
+		self.assertAlmostEqual(pythonserver.SOLOMON_DEFAULT_TRAINING_WEIGHT, solomon_transition["weight"], places=6)
+		self.assertAlmostEqual(common.WIN_REWARD, player_transition["reward"], places=6)
+		self.assertAlmostEqual(pythonserver.SOLOMON_PLAYER_WIN_TRAINING_WEIGHT, player_transition["weight"], places=6)
+
+	def test_player_moves_are_dropped_when_the_player_did_not_win(self) -> None:
+		board = training.bundledenemy.new_empty_board()
+		pythonserver.record_solomon_step("session", self._observation(board, (0, 1), 0), 0)
+		pythonserver.record_solomon_step("session", self._observation(board, (1, 2), 0), 4, side="player")
+		captured: list[list[dict]] = []
+
+		with mock.patch.object(pythonserver, "train_solomon_transitions", side_effect=lambda items: captured.append(items) or 0.5):
+			result = pythonserver.finish_solomon_session("session", "win")
+
+		self.assertEqual(1, result["transitions"])
+		self.assertEqual(0, result["playerTransitions"])
+		self.assertEqual(1, len(captured[0]))
 
 	def test_api_rejects_unauthorized_and_malformed_finish_requests(self) -> None:
 		original_token = pythonserver.SERVER_CONFIG["learning_token"]
@@ -385,7 +432,11 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 			self.assertEqual(405, status)
 
 			with self.assertRaisesRegex(pythonserver.ApiError, "event"):
-				pythonserver.solomon_learning_api(_FakeHandler("Bearer secret-token", "203.0.113.5", body={"event": "step"}))
+				pythonserver.solomon_learning_api(_FakeHandler("Bearer secret-token", "203.0.113.5", body={"event": "reset"}))
+			with self.assertRaisesRegex(pythonserver.ApiError, "observation"):
+				pythonserver.solomon_learning_api(_FakeHandler(
+					"Bearer secret-token", "203.0.113.5", body={"event": "step", "sessionId": "session", "action": 0},
+				))
 			with self.assertRaisesRegex(pythonserver.ApiError, "result"):
 				pythonserver.solomon_learning_api(_FakeHandler(
 					"Bearer secret-token", "203.0.113.5", body={"event": "finish", "sessionId": "session", "result": "tie"},
@@ -410,6 +461,22 @@ class SolomonOnlineLearningTest(unittest.TestCase):
 		self.assertEqual(200, status)
 		finish.assert_called_once_with("session", "loss")
 		self.assertEqual({"ok": True, "sessionId": "session", "trained": True, "transitions": 3}, payload)
+
+	def test_api_records_a_step_request_as_a_player_move(self) -> None:
+		original_token = pythonserver.SERVER_CONFIG["learning_token"]
+		pythonserver.SERVER_CONFIG["learning_token"] = "secret-token"
+		board = training.bundledenemy.new_empty_board()
+		body = {"event": "step", "sessionId": "session", "observation": self._observation(board, (0, 1), 0), "action": 7}
+		try:
+			status, payload = pythonserver.solomon_learning_api(_FakeHandler("Bearer secret-token", "203.0.113.5", body=body))
+		finally:
+			pythonserver.SERVER_CONFIG["learning_token"] = original_token
+
+		self.assertEqual(200, status)
+		self.assertEqual({"ok": True, "sessionId": "session", "event": "step"}, payload)
+		# 이 API의 step은 항상 사람이 둔 수이므로 솔로몬 쪽에는 아무것도 쌓이지 않아야 한다.
+		self.assertEqual(7, pythonserver.solomon_sessions["session"]["player"]["pending"]["action"])
+		self.assertIsNone(pythonserver.solomon_sessions["session"]["solomon"]["pending"])
 
 	def test_finish_without_any_request_reports_no_training_data(self) -> None:
 		result = pythonserver.finish_solomon_session("missing-session", "loss")
