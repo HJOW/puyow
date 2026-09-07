@@ -17,8 +17,13 @@ getVisibleOpponents 함수는 갤러리용과 적 선택 화면용으로 분리�
 ONNX 기반 모델을 이용할 거야.
 
 일단 적 "플라우로스" 구현을 위해 src/onnx/model01.onnx 를 준비해놨어. (lngui.py 로 변환한 파일)
-puyow.html 에도 ort.all.min.js, ort.webgl.min.js, ort.wasm.min.js 스크립트를 넣어놨어.
+puyow.html 에도 ort.all.min.js, ort-wasm-simd-threaded.jsep.wasm, ort-wasm-simd-threaded.jsep 스크립트를 넣어놨어.
 (더 필요한 라이브러리가 있으면, 작업 후 puyow.html 에 TODO로 명시해줘. npm 설치 대신 되도록이면 CDN을 사용할 거야.)
+
+파일 용량이 큰데, 
+적 선택 화면에서 ONNX 기반 모델 사용 적 선택 시, 
+게임 화면으로 넘어간 후, 라이브러리 로딩이 끝나고 ONNX 모델 로딩이 끝난 이후 카운트다운이 시작되어야 해.
+중간에, 라이브러리 로딩에 실패하거나, ONNX 모델 로딩에 실패한 경우 메시지 띄우고 적 선택 화면으로 돌아가야 해.
 
 적 "플라우로스" 선택해 대전 시, 플라우로스의 플레이 알고리즘은 이 모델을 추론하여 동작하여야 해.
 동작 자체는 기존 "솔로몬"의 경우처럼 동작해야 하지만
