@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 28;
+    const BUILDNO = 29;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -321,7 +321,7 @@
             '뿌요 W': 'Puyo W',
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '구경': 'Watch', '모드': 'Mode', '색상 수': 'Colors', '다음 대전까지 %1초': 'Next match in %1 sec', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Pop %1 colors at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
-            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '안드레알푸스': 'Andrealphus', '플라우로스': 'Flauros', '시작': 'Start', '이전': 'Back',
+            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '안드레알푸스': 'Andrealphus', '플라우로스': 'Flauros', '안드라스': 'Andras', '시작': 'Start', '이전': 'Back',
             '극한': 'Extreme',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -332,7 +332,7 @@
             '설정': 'Settings', '이름': 'Name', '코드': 'Code', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '없음': 'None', '크게': 'Large', '그래픽 설정': 'Graphics quality', '사운드 데이터 URL': 'Sound data URL', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
             '플레이 방법': 'How to Play', '갤러리': 'Gallery', '대상 유형': 'Category', '대상': 'Item', '일반뿌요': 'Puyos', '예고뿌요': 'Warning Puyos', '적': 'Enemies', '빨강뿌요': 'Red Puyo', '초록뿌요': 'Green Puyo', '노랑뿌요': 'Yellow Puyo', '파랑뿌요': 'Blue Puyo', '보라뿌요': 'Purple Puyo', '방해뿌요': 'Garbage Puyo', '딱딱뿌요': 'Hard Puyo', '작은 예고뿌요': 'Small Warning Puyo', '큰 예고뿌요': 'Large Warning Puyo', '빨간 돌': 'Red Rock', '별': 'Star', '태양': 'Sun', '중성자별': 'Neutron Star', '블랙홀': 'Black Hole', '위기': 'Crisis', '다시보기': 'Replay',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': 'An all clear makes your next attack much stronger.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
-            '은하': 'Galaxy',
+            '은하': 'Galaxy', '빅뱅': 'Big Bang',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)',
             '화면 가로방향 고정': 'Lock landscape orientation', '리플레이 사용': 'Use replay feature', '역으로 모델 학습': 'Reverse model learning',
             '피버 (완화)': 'FEVER (Relaxed)',
@@ -345,7 +345,7 @@
             '뿌요 W': 'Puyo W',
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
             '게임 시작': 'ゲーム開始', '구경': '観戦', '모드': 'モード', '색상 수': '色数', '다음 대전까지 %1초': '次の対戦まで%1秒', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '현재 턴 %1 / %2': 'ターン %1 / %2', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一度に%1色のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
-            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '안드레알푸스': 'アンドレアルフス', '플라우로스': 'フラウロス', '시작': '開始', '이전': '戻る',
+            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '안드레알푸스': 'アンドレアルフス', '플라우로스': 'フラウロス', '안드라스': 'アンドラス', '시작': '開始', '이전': '戻る',
             '극한': '極限',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -356,7 +356,7 @@
             '설정': '設定', '코드': 'コード', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '없음': 'なし', '크게': '大きく', '그래픽 설정': 'グラフィック設定', '사운드 데이터 URL': 'サウンドデータURL', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', 'AI API 테스트': 'AI APIテスト', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 관련 기능은 추후 제공 예정': 'サウンド機能は今後のアップデートで提供予定です。', '설정 저장 후 다시 시도해 주세요': '設定を保存してから、もう一度お試しください。', 'AI API 테스트 요청 중...': 'AI APIをテスト中…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI APIテスト成功（JSONスキーマ検証: 合格）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI APIテスト失敗（JSONスキーマ検証: 失敗）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI APIテスト失敗（JSONスキーマ検証: 未実施）',
             '플레이 방법': '遊び方', '갤러리': 'ギャラリー', '대상 유형': '種類', '대상': '対象', '일반뿌요': 'ぷよ', '예고뿌요': '予告ぷよ', '적': '敵', '빨강뿌요': '赤ぷよ', '초록뿌요': '緑ぷよ', '노랑뿌요': '黄ぷよ', '파랑뿌요': '青ぷよ', '보라뿌요': '紫ぷよ', '방해뿌요': 'おじゃまぷよ', '딱딱뿌요': 'かたぷよ', '작은 예고뿌요': '小さい予告ぷよ', '큰 예고뿌요': '大きい予告ぷよ', '빨간 돌': '赤い岩', '별': '星', '태양': '太陽', '중성자별': '中性子星', '블랙홀': 'ブラックホール', '위기': 'ピンチ', '다시보기': 'もう一度見る',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '左右・下キーでぷよを動かし、Z・Xキーで回転できます。', '좌우 방향키로 뿌요 이동': '左右キーでぷよを移動', '아래 방향키로 빨리 떨어뜨리기': '下キーで速く落下', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Zキーで左回転', 'X 키를 눌러 우측으로 뿌요 회전': 'Xキーで右回転', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '同じ色のぷよを4個以上つなげると消して攻撃できます。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '同じ色のぷよ4個がつながり、相手を攻撃できます。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'ぷよが消えると、隣接するおじゃまぷよも消えます。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '連鎖でぷよを消すと、より強く攻撃できます。', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': '全消しをすると、次の攻撃が大幅に強化されます。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '3段目の端にぷよが残ると負けです。',
-            '은하': '銀河',
+            '은하': '銀河', '빅뱅': 'ビッグバン',
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）',
             '화면 가로방향 고정': '画面を横向きに固定',
             '피버 (완화)': 'FEVER（緩和）',
@@ -370,7 +370,7 @@
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
             '게임 시작': '开始游戏', '구경': '观战', '모드': '模式', '색상 수': '颜色数', '다음 대전까지 %1초': '距离下一场对战还有%1秒', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '퍼즐뿌요': '益智魔法气泡', '퍼즐뿌요 스테이지': '益智魔法气泡关卡', '스테이지 %1': '关卡 %1', '권장 턴 수 %1': '推荐回合数: %1', '현재 턴 %1': '第 %1 回合', '현재 턴 %1 / %2': '第 %1 / %2 回合', '%1 연쇄 해봐': '试试 %1 连锁！', '싹쓸이 해봐': '试试全消！', '한 번에 %1개 뿌요를 터뜨려봐': '一次消除 %1 个魔法气泡！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一次消除 %1 种颜色的魔法气泡！', '방해뿌요 %1개를 발생 시켜봐': '发送 %1 个垃圾魔法气泡！', '스테이지 클리어': '关卡完成', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
-            '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯', '안드레알푸스': '安德雷阿尔弗斯', '플라우로스': '弗劳洛斯',
+            '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯', '안드레알푸스': '安德雷阿尔弗斯', '플라우로스': '弗劳洛斯', '안드라스': '安德拉斯',
             '극한': '极限',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -381,7 +381,7 @@
             '설정': '设置', '코드': '代码', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '없음': '无', '크게': '大', '그래픽 설정': '图形设置', '사운드 데이터 URL': '声音数据 URL', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', 'AI API 테스트': 'AI API 测试', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 관련 기능은 추후 제공 예정': '声音功能将在未来更新中提供。', '설정 저장 후 다시 시도해 주세요': '请先保存设置后再试。', 'AI API 테스트 요청 중...': '正在测试 AI API…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API 测试成功（JSON 架构检查：通过）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API 测试失败（JSON 架构检查：失败）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API 测试失败（JSON 架构检查：未执行）',
             '플레이 방법': '玩法说明', '갤러리': '图鉴', '대상 유형': '类别', '대상': '对象', '일반뿌요': '普通噗哟', '예고뿌요': '预告噗哟', '적': '敌人', '빨강뿌요': '红噗哟', '초록뿌요': '绿噗哟', '노랑뿌요': '黄噗哟', '파랑뿌요': '蓝噗哟', '보라뿌요': '紫噗哟', '방해뿌요': '垃圾噗哟', '딱딱뿌요': '硬噗哟', '작은 예고뿌요': '小型预告噗哟', '큰 예고뿌요': '大型预告噗哟', '빨간 돌': '红色岩石', '별': '星星', '태양': '太阳', '중성자별': '中子星', '블랙홀': '黑洞', '위기': '危机', '다시보기': '再次观看',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '使用左右和下方向键移动噗哟，使用 Z、X 键旋转。', '좌우 방향키로 뿌요 이동': '用左右方向键移动噗哟', '아래 방향키로 빨리 떨어뜨리기': '用下方向键快速落下', 'Z 키를 눌러 좌측으로 뿌요 회전': '按 Z 键向左旋转', 'X 키를 눌러 우측으로 뿌요 회전': '按 X 键向右旋转', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '连接四个或更多相同颜色的噗哟即可消除并攻击对手。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '四个相同颜色的噗哟连接后可以攻击对手。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': '消除噗哟时，相邻的垃圾噗哟也会一起消失。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '连续消除噗哟可以发动更强的攻击。', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': '全消后，下一次攻击会大幅增强。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '噗哟停留在第 3 行末端时会失败。',
-            '은하': '银河',
+            '은하': '银河', '빅뱅': '大爆炸',
             '음소거(꺼짐)' : '静音（关）', '음소거(활성)' : '静音（开）',
             '화면 가로방향 고정': '锁定横屏',
             '피버 (완화)': 'FEVER（缓和）',
@@ -5983,6 +5983,38 @@
         }
     }
 
+    /** 500,000개 단위의 대폭발 모양 예고뿌요다. */
+    class BigBangWarningPuyo extends WarningPuyo {
+        /** 이 종류가 나타내는 방해뿌요 수다. */
+        static unitCount = 500000;
+        /** 500,000개 단위 빅뱅 예고뿌요를 만든다. */
+        constructor() { super(BigBangWarningPuyo.unitCount, 'big-bang'); }
+        /** 예고뿌요 이름을 반환 @return {string} */
+        getName() { return '빅뱅'; }
+        /** 밝은 폭발 중심·방사형 화염·검은 연기를 한 칸 크기로 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 2D 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
+        draw(drawingContext, x, y, cellSize) {
+            const radius = cellSize * 0.31;
+            drawingContext.save();
+            drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
+            const glow = drawingContext.createRadialGradient(0, 0, radius * 0.08, 0, 0, radius * 1.7);
+            glow.addColorStop(0, '#fffde7'); glow.addColorStop(0.22, '#fff176'); glow.addColorStop(0.5, '#ffb300'); glow.addColorStop(0.76, 'rgba(255, 82, 42, 0.68)'); glow.addColorStop(1, 'rgba(58, 23, 39, 0)');
+            drawingContext.fillStyle = glow; drawingContext.beginPath(); drawingContext.arc(0, 0, radius * 1.7, 0, Math.PI * 2); drawingContext.fill();
+            drawingContext.strokeStyle = '#ff7043'; drawingContext.lineCap = 'round'; drawingContext.lineWidth = cellSize * 0.07;
+            for (let index = 0; index < 12; index += 1) {
+                drawingContext.save(); drawingContext.rotate(index * Math.PI / 6 + (index % 2 ? 0.12 : 0));
+                drawingContext.beginPath(); drawingContext.moveTo(radius * 0.67, 0); drawingContext.lineTo(radius * (index % 3 === 0 ? 1.56 : 1.23), 0); drawingContext.stroke(); drawingContext.restore();
+            }
+            drawingContext.fillStyle = '#351a27';
+            [[-0.44, -0.7, 0.23], [0.34, -0.76, 0.28], [0.62, -0.44, 0.18]].forEach(([cloudX, cloudY, cloudRadius]) => {
+                drawingContext.beginPath(); drawingContext.arc(radius * cloudX, radius * cloudY, radius * cloudRadius, 0, Math.PI * 2); drawingContext.fill();
+            });
+            drawingContext.fillStyle = '#ffca28'; drawingContext.beginPath(); drawingContext.arc(0, 0, radius * 0.61, 0, Math.PI * 2); drawingContext.fill();
+            drawingContext.fillStyle = '#fff9c4'; drawingContext.beginPath(); drawingContext.arc(-radius * 0.2, -radius * 0.23, radius * 0.31, 0, Math.PI * 2); drawingContext.fill();
+            drawPuyoEyes(drawingContext, radius * 0.55, radius * 0.1);
+            drawingContext.restore();
+        }
+    }
+
     /** 13,000개 단위의 강착 원반을 두른 블랙홀 예고뿌요다. */
     class BlackHoleWarningPuyo extends WarningPuyo {
         /** 이 종류가 나타내는 방해뿌요 수다. @type {number} */
@@ -6014,7 +6046,7 @@
      * 새 예고뿌요는 이 배열에 클래스를 추가해 등록한다.
      * @type {Array<new () => WarningPuyo>}
      */
-    const WARNING_PUYO_CLASSES = [GalaxyWarningPuyo, BlackHoleWarningPuyo, NeutronStarWarningPuyo, SunWarningPuyo, StarWarningPuyo, RockWarningPuyo, DropWarningPuyo, TinyWarningPuyo];
+    const WARNING_PUYO_CLASSES = [BigBangWarningPuyo, GalaxyWarningPuyo, BlackHoleWarningPuyo, NeutronStarWarningPuyo, SunWarningPuyo, StarWarningPuyo, RockWarningPuyo, DropWarningPuyo, TinyWarningPuyo];
 
     /**
      * 현재 변환 좌표를 기준으로 뿌요의 귀여운 두 눈을 그린다.
@@ -8415,9 +8447,9 @@
     /** 카드 인스턴스 식별자 생성에 사용할 현재 접속 내 순번이다. */
     let cardInstanceSequence = 0;
 
-    /** 고정 23종 카드의 유형·가중치 목록을 반환한다. @returns {{type:string,kind:'puyo'|'warning'|'enemy',value:string|number,weight:number}[]} */
+    /** 명시된 가중치와 이후 추가 대상의 기본 가중치를 반영한 카드 유형 목록을 반환한다. @returns {{type:string,kind:'puyo'|'warning'|'enemy',value:string|number,weight:number}[]} */
     function getCardDefinitions() {
-        return [
+        const definitions = [
             { type: 'puyo:red', kind: 'puyo', value: 'red', weight: 200 },
             { type: 'puyo:blue', kind: 'puyo', value: 'blue', weight: 150 },
             { type: 'puyo:green', kind: 'puyo', value: 'green', weight: 100 },
@@ -8433,6 +8465,7 @@
             { type: 'warning:500', kind: 'warning', value: 500, weight: 15 },
             { type: 'warning:2000', kind: 'warning', value: 2000, weight: 10 },
             { type: 'warning:80000', kind: 'warning', value: 80000, weight: 5 },
+            { type: 'warning:500000', kind: 'warning', value: 500000, weight: 1 },
             { type: 'enemy:Andromalius', kind: 'enemy', value: 'Andromalius', weight: 200 },
             { type: 'enemy:Dantalion', kind: 'enemy', value: 'Dantalion', weight: 150 },
             { type: 'enemy:Seere', kind: 'enemy', value: 'Seere', weight: 130 },
@@ -8440,8 +8473,17 @@
             { type: 'enemy:Belial', kind: 'enemy', value: 'Belial', weight: 100 },
             { type: 'enemy:Amdusias', kind: 'enemy', value: 'Amdusias', weight: 50 },
             { type: 'enemy:Kimaris', kind: 'enemy', value: 'Kimaris', weight: 25 },
-            { type: 'enemy:Andrealphus', kind: 'enemy', value: 'Andrealphus', weight: 10 }
+            { type: 'enemy:Andrealphus', kind: 'enemy', value: 'Andrealphus', weight: 10 },
+            { type: 'enemy:Flauros', kind: 'enemy', value: 'Flauros', weight: 1 }
         ];
+        // 빅뱅보다 큰 단위는 추가 등록만 해도 카드 풀에 가중치 1로 들어간다.
+        WARNING_PUYO_CLASSES.filter((WarningPuyoType) => WarningPuyoType.unitCount > BigBangWarningPuyo.unitCount)
+            .forEach((WarningPuyoType) => definitions.push({ type: `warning:${WarningPuyoType.unitCount}`, kind: 'warning', value: WarningPuyoType.unitCount, weight: 1 }));
+        const fixedEnemyTypes = new Set(['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus', 'Flauros']);
+        // 솔로몬은 세션 한정 적이고, 안드라스는 아직 카드 출시 대상이 아니므로 제외한다.
+        OPPONENTS.filter((opponent) => !fixedEnemyTypes.has(opponent.classType) && opponent.classType !== 'Solomon' && opponent.classType !== 'Andras')
+            .forEach((opponent) => definitions.push({ type: `enemy:${opponent.classType}`, kind: 'enemy', value: opponent.classType, weight: 1 }));
+        return definitions;
     }
 
     /** 가중치에 따라 카드 종류 하나를 뽑는다. @returns {object} 카드 정의 */
@@ -15220,6 +15262,83 @@
     }
 
     /**
+     * 안드라스는 날개 달린 천사 몸·새 머리·검은 늑대·불타는 검의 전승을 바탕으로 한 출시 예정 적이다.
+     * TODO: 전용 ONNX 가치망이 준비되면 modelPath를 교체하고 전용 판단 특성을 추가한다.
+     */
+    class Andras extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 10;
+            this.notAvail = true;
+            // 전용 모델 출시 전까지 플라우로스와 같은 ONNX 모델을 임시 사용한다.
+            this.modelPath = 'onnx/model01.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Andras'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '안드라스'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색 */
+        getFieldThemeColors() {
+            return { bezel: '#1b2137', field: '#2d3857', center: '#0a0e1c' };
+        }
+
+        /**
+         * 검은 늑대에 탄 날개 달린 새 머리 천사와 불타는 검을 그린다.
+         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+         * @param {number} centerX 캐릭터 중심 X 좌표
+         * @param {number} centerY 캐릭터 중심 Y 좌표
+         * @param {number} scale 기본 크기 대비 배율
+         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+         * @returns {void}
+         */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            const size = 72 * scale;
+            drawingContext.save();
+            drawingContext.translate(centerX, centerY);
+            drawingContext.lineJoin = 'round'; drawingContext.lineCap = 'round';
+            // 검은 늑대의 몸과 꼬리다.
+            drawingContext.fillStyle = '#202633'; drawingContext.strokeStyle = '#090c14'; drawingContext.lineWidth = 4 * scale;
+            drawingContext.beginPath(); drawingContext.ellipse(-size * 0.08, size * 0.33, size * 0.67, size * 0.31, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.beginPath(); drawingContext.moveTo(size * 0.48, size * 0.25); drawingContext.lineTo(size * 0.85, size * 0.08); drawingContext.lineTo(size * 0.66, size * 0.45); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#3c4555'; drawingContext.beginPath(); drawingContext.ellipse(-size * 0.45, size * 0.27, size * 0.29, size * 0.21, -0.18, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            // 청회색 천사 날개다.
+            drawingContext.fillStyle = '#aabbd1'; drawingContext.strokeStyle = '#53657d'; drawingContext.lineWidth = 2.5 * scale;
+            [-1, 1].forEach((direction) => {
+                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.13, size * 0.06);
+                drawingContext.quadraticCurveTo(direction * size * 0.92, -size * 0.02, direction * size * 0.74, -size * 0.74);
+                drawingContext.quadraticCurveTo(direction * size * 0.42, -size * 0.48, direction * size * 0.16, -size * 0.2);
+                drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+                drawingContext.strokeStyle = '#71849c'; drawingContext.lineWidth = 1.4 * scale;
+                for (let feather = 0; feather < 3; feather += 1) {
+                    drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.22, -size * (0.14 + feather * 0.1)); drawingContext.lineTo(direction * size * (0.64 + feather * 0.06), -size * (0.45 + feather * 0.08)); drawingContext.stroke();
+                }
+                drawingContext.strokeStyle = '#53657d'; drawingContext.lineWidth = 2.5 * scale;
+            });
+            // 천사 갑옷과 까마귀 머리다.
+            drawingContext.fillStyle = '#d2d9e7'; drawingContext.beginPath(); drawingContext.moveTo(-size * 0.28, size * 0.17); drawingContext.lineTo(0, -size * 0.35); drawingContext.lineTo(size * 0.29, size * 0.17); drawingContext.lineTo(0, size * 0.44); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#232937'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.45, size * 0.24, size * 0.25, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#c5a35c'; drawingContext.beginPath(); drawingContext.moveTo(size * 0.12, -size * 0.45); drawingContext.lineTo(size * 0.45, -size * 0.36); drawingContext.lineTo(size * 0.13, -size * 0.27); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            // 불타는 검을 든 오른팔이다.
+            drawingContext.strokeStyle = '#d6ddea'; drawingContext.lineWidth = 5 * scale; drawingContext.beginPath(); drawingContext.moveTo(size * 0.16, -size * 0.03); drawingContext.lineTo(size * 0.54, size * 0.05); drawingContext.stroke();
+            drawingContext.strokeStyle = '#ffb300'; drawingContext.lineWidth = 4 * scale; drawingContext.beginPath(); drawingContext.moveTo(size * 0.51, size * 0.06); drawingContext.lineTo(size * 0.98, -size * 0.55); drawingContext.stroke();
+            drawingContext.strokeStyle = '#ff7043'; drawingContext.lineWidth = 2 * scale; drawingContext.beginPath(); drawingContext.moveTo(size * 0.56, size * 0.01); drawingContext.lineTo(size * 0.88, -size * 0.73); drawingContext.stroke();
+            const eyeX = size * 0.03; const eyeY = -size * 0.47;
+            if (expression === 'defeated') {
+                drawingContext.strokeStyle = '#e1e6f0'; drawingContext.lineWidth = 2.5 * scale;
+                drawingContext.beginPath(); drawingContext.moveTo(eyeX - size * 0.09, eyeY - size * 0.06); drawingContext.lineTo(eyeX + size * 0.09, eyeY + size * 0.06); drawingContext.moveTo(eyeX + size * 0.09, eyeY - size * 0.06); drawingContext.lineTo(eyeX - size * 0.09, eyeY + size * 0.06); drawingContext.stroke();
+                drawingContext.fillStyle = '#6ec6e8'; drawingContext.beginPath(); drawingContext.arc(size * 0.17, -size * 0.23, size * 0.06, 0, Math.PI * 2); drawingContext.fill();
+            } else {
+                drawingContext.fillStyle = expression === 'crisis' ? '#ff5252' : '#ffe082'; drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.06, 0, Math.PI * 2); drawingContext.fill();
+                if (expression === 'crisis') { drawingContext.fillStyle = '#6ec6e8'; drawingContext.beginPath(); drawingContext.arc(size * 0.19, -size * 0.26, size * 0.055, 0, Math.PI * 2); drawingContext.fill(); }
+            }
+            drawingContext.restore();
+        }
+    }
+
+    /**
      * 연습 모드에서 조작하거나 뿌요를 받지 않는 상대다.
      */
     class PracticeEnemy extends BundledEnemy {
@@ -15255,7 +15374,8 @@
         createOpponentEntry(() => new Amdusias()),
         createOpponentEntry(() => new Kimaris()),
         createOpponentEntry(() => new Andrealphus()),
-        createOpponentEntry(() => new Flauros())
+        createOpponentEntry(() => new Flauros()),
+        createOpponentEntry(() => new Andras())
     );
 
     /**
@@ -15373,6 +15493,8 @@
         getWorkerSearchRotation,
         Kimaris,
         Andrealphus,
+        Flauros,
+        Andras,
         Puyo,
         RedPuyo,
         GreenPuyo,
@@ -15383,6 +15505,7 @@
         HardGarbagePuyo,
         IronPuyo,
         WarningPuyo,
+        BigBangWarningPuyo,
         SoundPool,
         CommonSoundPool,
         EnemySoundPool,

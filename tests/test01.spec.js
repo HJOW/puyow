@@ -583,6 +583,28 @@ test('갤러리 일반뿌요 목록에 철구뿌요를 처음부터 잠금 해�
   expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['잠김', 'Locked', 'ロック中', '已锁定'].includes(text)))).toBe(false);
 });
 
+test('빅뱅 예고뿌요와 출시 예정 안드라스는 각각 50만 단위와 ONNX 출시 예정 설정을 가진다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const bigBang = new window.WebPuyo.BigBangWarningPuyo();
+    const andras = new window.WebPuyo.Andras();
+    return {
+      bigBang: { unitCount: bigBang.unitCount, type: bigBang.type, name: bigBang.getName() },
+      warningTypes: window.WebPuyo.common.warningUnits(500000).map((unit) => unit.type),
+      andras: {
+        classType: andras.getClassType(), name: andras.getName(), notAvail: andras.notAvail,
+        requiresOnnx: andras.requiresOnnx, modelPath: andras.modelPath, theme: andras.getFieldThemeColors()
+      }
+    };
+  });
+
+  expect(result.bigBang).toEqual({ unitCount: 500000, type: 'big-bang', name: '빅뱅' });
+  expect(result.warningTypes).toEqual(['big-bang']);
+  expect(result.andras).toEqual({
+    classType: 'Andras', name: '안드라스', notAvail: true, requiresOnnx: true, modelPath: 'onnx/model01.onnx',
+    theme: { bezel: '#1b2137', field: '#2d3857', center: '#0a0e1c' }
+  });
+});
+
 test('카드 뽑기는 확인 전에는 자원을 쓰지 않고 취소하거나 확인할 수 있으며 등급 문구를 표시하지 않는다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], gold: 10000 }));
