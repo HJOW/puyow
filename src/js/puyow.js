@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 24;
+    const BUILDNO = 25;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -306,6 +306,20 @@
      * @type {number}
      */
     const ONNX_INFERENCE_TIMEOUT = 2000;
+    /** ONNX 런타임이 쓰는 wasm 글루 모듈 파일명이다. 46KB로 작아 항상 `src/js/`의 것을 쓴다. @type {string} */
+    const ONNX_WASM_MJS_FILE = 'ort-wasm-simd-threaded.jsep.mjs';
+    /** ONNX 런타임이 쓰는 wasm 바이너리 파일명이다. 27MB로 커서 CDN을 우선한다. @type {string} */
+    const ONNX_WASM_BINARY_FILE = 'ort-wasm-simd-threaded.jsep.wasm';
+    /** wasm 바이너리를 우선 내려받을 CDN 주소를 만드는 틀이다. `%1`에 런타임 버전이 들어간다. @type {string} */
+    const ONNX_WASM_CDN_TEMPLATE = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@%1/dist/';
+    /** `ort.env.versions.web`을 읽지 못했을 때 CDN 주소에 사용할 기본 버전이다. @type {string} */
+    const ONNX_WASM_FALLBACK_VERSION = '1.29.0';
+    /**
+     * wasm 파일 접근 가능 여부를 확인하는 HEAD 요청의 제한 시간(ms)이다.
+     * 응답이 없는 네트워크에서 적 목록이 계속 미확정으로 남지 않도록 짧게 끊는다.
+     * @type {number}
+     */
+    const ONNX_WASM_PROBE_TIMEOUT = 4000;
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. (다국어 데이터) @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
@@ -548,6 +562,15 @@
     let solomonSessionUnlocked = false;
     /** 초기화 시 확인한 ONNX Runtime for Web(전역 `ort`) 사용 가능 여부다. 저장하지 않는다. @type {boolean} */
     let onnxRuntimeAvailable = false;
+    /**
+     * ONNX 런타임이 쓸 wasm 파일에 접근할 수 있는지 여부다.
+     * 확인이 끝나기 전에는 사용 가능으로 본다. 정상 환경에서 적 목록이 뒤늦게 바뀌어 카드가 흔들리는 것을
+     * 막기 위한 낙관적 기본값이며, 확인 전에 골라도 모델 로딩 게이트가 실패를 잡아 안내 후 되돌린다.
+     * @type {boolean}
+     */
+    let onnxWasmAvailable = true;
+    /** wasm 파일 경로 결정이 끝났는지 추적하는 약속이다. 세션을 만들기 전에 반드시 기다린다. @type {Promise<boolean>|null} */
+    let onnxWasmPathsPromise = null;
     /** 이미 만든 ONNX 추론 세션을 모델 경로별로 재사용하기 위한 캐시다. @type {Map<string, Promise<object>>} */
     const onnxSessionCache = new Map();
     /** 종료된 설정 화면의 비동기 응답을 무시하기 위한 요청 식별자다. @type {number} */
@@ -1562,7 +1585,6 @@
         try {
             const wasmEnv = runtime.env?.wasm;
             if (wasmEnv) {
-                if (!wasmEnv.wasmPaths) wasmEnv.wasmPaths = resolveGameResourceURL('js/');
                 // COOP/COEP 헤더가 없는 정적 호스팅에서는 어차피 단일 스레드로 내려가므로 경고 없이 1로 고정한다.
                 wasmEnv.numThreads = 1;
                 // 세션 생성과 추론을 Web Worker에서 돌린다. wasm 연산은 메인 스레드에서 동기로 실행되므로
@@ -1573,12 +1595,90 @@
         } catch (error) {
             console.error('ONNX 런타임 실행 환경을 설정하지 못했습니다.', error);
         }
+        // wasm 파일 위치는 네트워크 확인이 필요해 비동기로 정한다. 세션은 이 결정을 기다린 뒤에 만든다.
+        onnxWasmPathsPromise = resolveOnnxWasmPaths();
         return true;
     }
 
-    /** 현재 페이지에서 ONNX 추론을 사용할 수 있는지 확인한다. @returns {boolean} 사용 가능 여부 */
+    /**
+     * 지정한 URL에 접근할 수 있는지 본문 없이 HEAD 요청으로 확인한다.
+     * 27MB짜리 wasm 파일을 실제로 내려받지 않고 존재 여부만 보기 위한 것이다.
+     * @param {string} url 확인할 주소
+     * @returns {Promise<boolean>} 접근 가능 여부
+     */
+    async function canAccessURL(url) {
+        if (typeof fetch !== 'function') return false;
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        // 응답이 없는 네트워크에서 적 목록이 계속 미확정으로 남지 않도록 제한 시간을 둔다.
+        const timeoutId = controller ? setTimeout(() => controller.abort(), ONNX_WASM_PROBE_TIMEOUT) : null;
+        try {
+            const response = await fetch(url, { method: 'HEAD', signal: controller?.signal });
+            return response.ok;
+        } catch (error) {
+            console.warn(`${url}에 접근할 수 없습니다.`, error);
+            return false;
+        } finally {
+            if (timeoutId !== null) clearTimeout(timeoutId);
+        }
+    }
+
+    /**
+     * wasm 바이너리를 우선 내려받을 CDN 디렉터리 주소를 만든다.
+     * 버전은 런타임이 알려 주는 값을 그대로 쓴다. `ort.all.min.js`만 갈아끼워도 글루와 바이너리 버전이
+     * 어긋나지 않게 하기 위해서다.
+     * @param {object} runtime ONNX 런타임 객체
+     * @returns {string} CDN 디렉터리 URL
+     */
+    function getOnnxWasmCdnBase(runtime) {
+        const version = runtime?.env?.versions?.web || ONNX_WASM_FALLBACK_VERSION;
+        return ONNX_WASM_CDN_TEMPLATE.replace('%1', version);
+    }
+
+    /**
+     * ONNX 런타임이 쓸 wasm 파일 경로를 정한다.
+     *
+     * 큰 바이너리는 CDN을 우선 시도하고, 닿지 않으면 `src/js/`의 파일로 되돌린다. 작은 글루 모듈은
+     * 함께 배포되므로 항상 로컬 것을 쓴다. 양쪽 모두 접근할 수 없으면 추론 자체가 불가능하므로,
+     * 적 선택 화면에서 ONNX 적을 감추도록 사용 불가로 기록한다.
+     *
+     * 호스트 페이지가 `ort.env.wasm.wasmPaths`를 직접 지정했다면 그 설정을 존중해 아무것도 바꾸지 않는다.
+     * @returns {Promise<boolean>} wasm 접근 가능 여부
+     */
+    async function resolveOnnxWasmPaths() {
+        const runtime = getOnnxRuntime();
+        const wasmEnv = runtime?.env?.wasm;
+        if (!wasmEnv) {
+            onnxWasmAvailable = false;
+            return false;
+        }
+        // 페이지가 직접 지정한 경로는 그대로 두고 확인도 하지 않는다.
+        if (wasmEnv.wasmPaths) {
+            onnxWasmAvailable = true;
+            return true;
+        }
+        const localBase = resolveGameResourceURL('js/');
+        const localWasmURL = `${localBase}${ONNX_WASM_BINARY_FILE}`;
+        const cdnWasmURL = `${getOnnxWasmCdnBase(runtime)}${ONNX_WASM_BINARY_FILE}`;
+        if (await canAccessURL(cdnWasmURL)) {
+            // 글루는 로컬, 큰 바이너리는 CDN으로 나눠 지정한다. ORT는 이 객체 형식을 그대로 받는다.
+            wasmEnv.wasmPaths = { mjs: `${localBase}${ONNX_WASM_MJS_FILE}`, wasm: cdnWasmURL };
+            onnxWasmAvailable = true;
+            return true;
+        }
+        // CDN에 닿지 않으면 함께 배포한 로컬 파일을 쓴다.
+        wasmEnv.wasmPaths = localBase;
+        onnxWasmAvailable = await canAccessURL(localWasmURL);
+        if (!onnxWasmAvailable) console.error(`${ONNX_WASM_BINARY_FILE}을(를) CDN과 ${localBase} 어느 쪽에서도 불러올 수 없습니다.`);
+        return onnxWasmAvailable;
+    }
+
+    /**
+     * 현재 페이지에서 ONNX 추론을 사용할 수 있는지 확인한다.
+     * 런타임과 wasm 파일이 모두 있어야 하며, wasm 확인이 끝나기 전에는 사용 가능으로 본다.
+     * @returns {boolean} 사용 가능 여부
+     */
     function isOnnxRuntimeAvailable() {
-        return onnxRuntimeAvailable;
+        return onnxRuntimeAvailable && onnxWasmAvailable;
     }
 
     /**
@@ -1592,6 +1692,10 @@
         const loading = (async () => {
             const runtime = getOnnxRuntime();
             if (!runtime) throw new Error('ONNX 런타임(ort)이 없습니다.');
+            // CDN·로컬 중 어디서 wasm을 받을지 정해진 다음에 세션을 만든다. 확인이 끝나기 전에 적을
+            // 골라도 CDN 우선 정책이 그대로 적용되게 하기 위한 대기다.
+            if (!onnxWasmPathsPromise) onnxWasmPathsPromise = resolveOnnxWasmPaths();
+            if (!(await onnxWasmPathsPromise)) throw new Error(`${ONNX_WASM_BINARY_FILE}에 접근할 수 없습니다.`);
             const modelURL = resolveGameResourceURL(modelPath);
             const response = await fetch(convertURL(modelURL));
             if (!response.ok) throw new Error(`${modelPath} 요청 실패 (${response.status})`);

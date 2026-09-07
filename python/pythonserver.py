@@ -823,12 +823,18 @@ class PuyoRequestHandler(BaseHTTPRequestHandler):
 		self.send_header("Content-Type", "application/json; charset=utf-8")
 		self.send_header("Content-Length", str(len(data)))
 		self.end_headers()
-		self.wfile.write(data)
+		# HEAD 응답은 헤더까지만 보낸다. 본문을 붙이면 HTTP 규약을 어긴다.
+		if not self._is_head_request():
+			self.wfile.write(data)
+
+	# 지금 처리 중인 요청이 본문 없이 헤더만 돌려주어야 하는 HEAD 요청인지 확인한다.
+	def _is_head_request(self) -> bool:
+		return getattr(self, "command", None) == "HEAD"
 
 	# 게임 페이지와 API 서버 포트가 달라도 요청할 수 있도록 필요한 CORS 헤더를 추가한다.
 	def _send_cors_headers(self) -> None:
 		self.send_header("Access-Control-Allow-Origin", "*")
-		self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		self.send_header("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS")
 		self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		self.send_header("Access-Control-Max-Age", "600")
 
@@ -840,6 +846,11 @@ class PuyoRequestHandler(BaseHTTPRequestHandler):
 
 	# GET 요청은 공통 라우터를 통해 정적 파일 또는 메서드 오류로 처리한다.
 	def do_GET(self) -> None:
+		self._handle_request()
+
+	# HEAD 요청은 GET과 같은 라우팅을 거치되 본문 없이 헤더만 돌려준다.
+	# 게임이 ONNX wasm 파일을 내려받기 전에 접근 가능한지 확인할 때 사용하므로 반드시 지원해야 한다.
+	def do_HEAD(self) -> None:
 		self._handle_request()
 
 	# POST 요청은 공통 라우터에서 Chat Completions 또는 /apis API로 분기한다.
@@ -895,14 +906,19 @@ class PuyoRequestHandler(BaseHTTPRequestHandler):
 		if not file_path.is_file():
 			self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "404 Not Found"})
 			return
-		data = file_path.read_bytes()
 		content_type = resolve_static_content_type(file_path)
+		# HEAD는 존재 여부와 크기만 알면 되므로 파일을 통째로 읽지 않는다.
+		# 게임이 27MB짜리 wasm 파일의 접근 가능 여부를 확인할 때 이 경로를 쓴다.
+		head_only = self._is_head_request()
+		data = b"" if head_only else file_path.read_bytes()
+		content_length = file_path.stat().st_size if head_only else len(data)
 		self.send_response(HTTPStatus.OK)
 		self._send_cors_headers()
 		self.send_header("Content-Type", content_type)
-		self.send_header("Content-Length", str(len(data)))
+		self.send_header("Content-Length", str(content_length))
 		self.end_headers()
-		self.wfile.write(data)
+		if not head_only:
+			self.wfile.write(data)
 
 
 # 명령행 포트 설정을 읽고 ThreadingHTTPServer의 수명주기를 관리하는 실행 진입점이다.

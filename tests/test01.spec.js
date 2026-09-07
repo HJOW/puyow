@@ -52,8 +52,16 @@ async function installMockGamepad(page) {
   });
 }
 
+// 게임은 ONNX wasm 바이너리를 CDN에서 먼저 받는다. 테스트가 공개 네트워크에 의존하거나
+// 27MB를 반복해서 주고받지 않도록, 기본적으로 CDN을 막아 로컬 파일 폴백 경로를 쓰게 한다.
+// CDN 우선 경로 자체를 확인하는 테스트만 자기 라우트를 따로 걸어 이 기본값을 덮어쓴다.
+async function blockOnnxWasmCdn(page) {
+  await page.route('https://cdn.jsdelivr.net/**', (route) => route.abort('failed'));
+}
+
 test.beforeEach(async ({ page }) => {
   await installMockGamepad(page);
+  await blockOnnxWasmCdn(page);
   await page.goto(GAME_PAGE);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
 });
@@ -5894,4 +5902,107 @@ test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThanOrEqual(3);
   const averageTurnMs = (Date.now() - startedAt) / 3;
   expect(averageTurnMs).toBeLessThan(15000);
+});
+
+test('ONNX wasm 바이너리는 CDN을 먼저 시도한다', async ({ page }) => {
+  const wasmRequests = [];
+  page.on('request', (request) => {
+    if (/ort-wasm[^/]*\.wasm(\?|$)/.test(request.url()) && request.method() === 'GET') wasmRequests.push(request.url());
+  });
+  // 기본 차단을 덮어쓴다. 본문은 짧은 더미로 돌려줘, 27MB를 오가지 않아도
+  // "CDN 주소를 골라 실제로 요청했는가"를 확인할 수 있다.
+  await page.route('https://cdn.jsdelivr.net/npm/onnxruntime-web@*/dist/ort-wasm-simd-threaded.jsep.wasm', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/wasm',
+    body: 'not-a-real-wasm',
+  }));
+  await page.evaluate(() => localStorage.setItem('puyow_code', JSON.stringify(['observation'])));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  // 글루 모듈은 로컬, 큰 바이너리는 CDN으로 나눈 객체 형식이어야 한다.
+  await expect.poll(() => page.evaluate(() => {
+    const paths = window.ort.env.wasm.wasmPaths;
+    return paths && typeof paths === 'object' ? paths.wasm : null;
+  })).toContain('cdn.jsdelivr.net');
+  expect(await page.evaluate(() => window.ort.env.wasm.wasmPaths.mjs)).toContain('ort-wasm-simd-threaded.jsep.mjs');
+
+  // 대전을 시작하면 런타임이 그 CDN 주소로 wasm을 요청한다.
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => wasmRequests.some((url) => url.startsWith('https://cdn.jsdelivr.net/')), { timeout: 30000 }).toBe(true);
+  expect(wasmRequests.every((url) => !url.startsWith('http://localhost'))).toBe(true);
+
+  // 이 더미 wasm으로는 세션을 만들 수 없으므로 안내 후 적 선택 화면으로 돌아온다.
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 60000 }).toBe('opponent_select');
+});
+
+test('CDN에 닿지 않으면 로컬 wasm으로 플라우로스 대전을 진행한다', async ({ page }) => {
+  test.setTimeout(180000);
+  const wasmRequests = [];
+  page.on('request', (request) => {
+    if (/ort-wasm[^/]*\.wasm(\?|$)/.test(request.url()) && request.method() === 'GET') wasmRequests.push(request.url());
+  });
+  // CDN은 beforeEach가 이미 막아 둔 상태다.
+  await page.evaluate(() => localStorage.setItem('puyow_code', JSON.stringify(['observation'])));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  // CDN이 막히면 로컬 디렉터리 접두 경로로 되돌아간다.
+  await expect.poll(() => page.evaluate(() => window.ort.env.wasm.wasmPaths)).toContain('/js/');
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 120000 }).toBeGreaterThanOrEqual(2);
+  expect(wasmRequests.every((url) => !url.startsWith('https://cdn.jsdelivr.net/'))).toBe(true);
+});
+
+test('CDN과 로컬 모두 wasm을 못 받으면 적 선택 화면에서만 플라우로스를 숨긴다', async ({ page }) => {
+  // CDN은 beforeEach가 막아 두었고, 여기서는 로컬 파일까지 없는 상황을 만든다.
+  await page.route('**/js/ort-wasm-simd-threaded.jsep.wasm', (route) => route.fulfill({ status: 404, body: '' }));
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_code', JSON.stringify(['observation']));
+    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: [], enemies: ['Flauros'] }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  // ort 자체는 있지만 wasm을 못 받으므로 추론을 쓸 수 없는 상태가 된다.
+  expect(await page.evaluate(() => typeof window.ort)).toBe('object');
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드로말리우스', 'Andromalius', 'アンドロマリウス', '安杜马利乌斯'].includes(text)))).toBe(true);
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(false);
+
+  // 갤러리는 이 제한과 무관하게 이긴 전적대로 잠금이 풀려 있어야 한다.
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
 });
