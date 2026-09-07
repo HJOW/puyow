@@ -134,6 +134,10 @@ Bun (https://bun.com/) 을 사용하여 서버 구동을 더 빠르게 진행할
   MIT License, Copyright (c) 2012-2018 Aseem Kishore, and others.
   https://github.com/json5/json5/blob/main/LICENSE.md
 
++ ONNX Runtime
+  MIT License, Copyright (c) Microsoft Corporation.
+  https://github.com/microsoft/onnxruntime/blob/gh-pages/LICENSE
+
 + The MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
