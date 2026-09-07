@@ -31,7 +31,9 @@ module.exports = {
             {
                 "test" : /\.(ts|js|mjs)$/,
                 "exclude" : [
-                    '/node_modules/'
+                    '/node_modules/',
+                    '/src/bundle/',
+                    '/src/js/ort.all.min.js'
                 ],
                 "use" : {
                     "loader" : "babel-loader"
