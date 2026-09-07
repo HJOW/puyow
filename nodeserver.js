@@ -313,6 +313,7 @@ const server = http.createServer((req, res) => {
         case '.txt': contentType = 'text/plain'; break;
         case '.js': contentType = 'text/javascript'; break;
         case '.mjs': contentType = 'text/javascript'; break;
+        case '.wasm': contentType = 'application/wasm'; break;
         case '.css': contentType = 'text/css'; break;
         case '.json': contentType = 'application/json'; break;
         case '.json5': contentType = 'application/json5'; break;
