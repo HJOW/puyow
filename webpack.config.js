@@ -3,7 +3,7 @@ const TerserPlugin = require('terser-webpack-plugin');
 const ESLintPlugin = require('eslint-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 module.exports = {
-    "entry" : ["./src/js/puyow.js"],
+    "entry" : ["./src/js/puyow.js", "./src/js/three.min.js", "./src/js/json5.min.js"],
     "output" : {
         "path" : __dirname + "/src/bundle/",
         "filename" : "puyow.bundle.js",
