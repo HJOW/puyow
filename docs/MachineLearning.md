@@ -36,14 +36,11 @@ node --version
 
 ```powershell
 python -m pip install --upgrade pip
-python -m pip install torch psutil
+python -m pip install torch psutil onnx onnxscript
 ```
 
-`torch`는 학습에, `psutil`은 GUI의 CPU·메모리 표시 기능에 필요하다. GUI에서 ONNX 파일로도 내보낼 계획이면 다음 패키지도 설치한다.
+`torch`는 학습에, `psutil`은 GUI의 CPU·메모리 표시 기능에 필요하다. `onnx` 및 `onnxscript` 는 모델을 ONNX (Open Neural Network Exchange) 형식으로 저장할 때 사용된다.
 
-```powershell
-python -m pip install onnx onnxscript
-```
 
 NVIDIA GPU 사용 환경이라면 [PyTorch 시작 페이지](https://pytorch.org/get-started/locally/)에서 CUDA 환경에 맞는 설치 명령을 확인한다. 잘 모르겠다면 이 문서의 기본 설치와 CPU 학습부터 시작하면 된다.
 
