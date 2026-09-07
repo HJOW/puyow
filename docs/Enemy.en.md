@@ -107,6 +107,10 @@ The selected opponent controller can override three theme methods when a game be
 - `drawPlayerBackground(drawingContext, area)`: Background behind each player's field. `area` has `x`, `y`, `width`, `height`, and `player`.
 - `drawCenterBackground(drawingContext, area)`: Center area behind next puyos, portrait, and score. `area` has `x`, `y`, `width`, and `height`.
 
+If flat background colors are enough, overriding `getFieldThemeColors()` alone is simpler than the three methods. It returns color strings as `{ bezel, field, center }`, and the default implementations of the three methods use them as they are. The bundled opponents keep `field` (inside the play area) lighter than `bezel`, and `center` (the center area) darkest. The `center` color also fills the screen margins outside the bezels, so changing it changes the backdrop of the whole game screen.
+
+Among the bundled opponents, Solomon and the internal opponent used by Practice, Continuous Fever, Puzzle Puyo, and How to Play keep the default theme; every other bundled opponent has a theme matching its portrait colors. In Watch battles both CPUs are opponents, so both fields and the center area use the right-hand CPU's theme.
+
 In Fever rules, an individual Fever play area overrides the opponent theme with an orange background and a slightly redder-orange bezel. Non-Fever normal play areas continue to use the opponent theme. Continuous Fever uses these Fever backgrounds for both fields throughout play.
 
 Under Fever rules and Continuous Fever, an all-clear retains the gold-field presentation and the +2 bonus for the next `TARGET COMBO`, but it produces no `ATTACK` or energy-transfer effect itself. Ordinary chain attacks and their energy transfer from popping puyos in the same placement still apply. If game end overlaps, the game completes the gold presentation and settlement of already-created warning and garbage puyos before changing to the result screen.

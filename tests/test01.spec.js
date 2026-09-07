@@ -3007,6 +3007,88 @@ test('피버 전용 필드는 적 테마보다 우선하고 일반 필드는 적
   expect(pixels.feverBezel).toEqual([207, 94, 56, 255]);
 });
 
+// 대전 화면의 베젤·플레이 영역·중앙 영역·화면 여백 색을 한 번에 읽는다.
+async function readThemePixels(page) {
+  return page.evaluate(() => {
+    const drawingContext = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d');
+    const at = (x, y) => Array.from(drawingContext.getImageData(x, y, 1, 1).data).slice(0, 3);
+    return { bezel: at(160, 300), field: at(210, 300), center: at(460, 700), margin: at(40, 700) };
+  });
+}
+
+test('기본 제공 적은 각자의 게임 테마를 쓰고 단독 모드는 기본 테마를 유지한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('playing');
+  // 첫 번째 선택지인 안드로말리우스는 초상화와 어울리는 초록 테마를 사용한다.
+  await expect.poll(() => readThemePixels(page)).toEqual({
+    bezel: [14, 53, 41], field: [22, 76, 57], center: [7, 31, 24], margin: [7, 31, 24],
+  });
+
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('playing');
+  // 대전이 아닌 연습은 기존 기본 테마를 그대로 사용한다.
+  await expect.poll(() => readThemePixels(page)).toEqual({
+    bezel: [12, 36, 51], field: [17, 47, 64], center: [7, 22, 33], margin: [7, 22, 33],
+  });
+});
+
+test('구경 대전은 양쪽 필드와 화면 배경 모두 우측 적의 테마를 쓴다', async ({ page }) => {
+  await page.evaluate(() => {
+    const cleared = ['Decarabia', 'Kimaris', 'Andrealphus'];
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: cleared,
+      clearListByDifficulty: { easy: [], normal: cleared, hard: [], extreme: [] },
+      feverClearListByDifficulty: { easy: [], normal: cleared, hard: [], extreme: [] },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('playing');
+
+  const themesByName = {
+    '데카라비아': { bezel: [53, 25, 44], field: [76, 39, 64], center: [28, 13, 23] },
+    '키마리스': { bezel: [30, 26, 32], field: [46, 40, 48], center: [14, 12, 16] },
+    '안드레알푸스': { bezel: [12, 59, 69], field: [19, 84, 96], center: [6, 31, 38] },
+  };
+  const rightName = (await page.evaluate(() => window.WebPuyo.getGameState())).opponent.name;
+  const expected = themesByName[rightName];
+  expect(expected).toBeTruthy();
+  const readWatchThemePixels = () => page.evaluate(() => {
+    const drawingContext = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d');
+    const at = (x, y) => Array.from(drawingContext.getImageData(x, y, 1, 1).data).slice(0, 3);
+    return {
+      leftBezel: at(160, 300), leftField: at(210, 300),
+      rightBezel: at(836, 300), rightField: at(886, 300),
+      center: at(460, 700), margin: at(40, 700),
+    };
+  });
+  // 좌측 CPU의 테마가 아니라 game.themeController인 우측 CPU의 테마만 사용한다.
+  await expect.poll(readWatchThemePixels).toEqual({
+    leftBezel: expected.bezel, leftField: expected.field,
+    rightBezel: expected.bezel, rightField: expected.field,
+    center: expected.center, margin: expected.center,
+  });
+});
+
 test('피버 상태의 싹쓸이는 목표 연쇄만 올리고 별도 ATTACK을 보내지 않는다', async ({ page }) => {
   await page.evaluate(() => {
     class FeverAllClearEnemy extends window.WebPuyo.Enemy {

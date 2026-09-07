@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 27;
+    const BUILDNO = 28;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -6220,6 +6220,13 @@
         context.fillText(String(player.fever.nextTime).padStart(2, '0'), centerX, topY + FEVER_GAUGE_MAX * 34 + 4);
     }
 
+    /**
+     * 적별 테마를 지정하지 않았을 때 사용하는 기본 게임 테마 색이다.
+     * 대전이 아닌 모드(연습·연속 피버·퍼즐뿌요)와 솔로몬, 테마를 재정의하지 않은 외부 적이 이 값을 쓴다.
+     * @type {{bezel:string, field:string, center:string}}
+     */
+    const DEFAULT_FIELD_THEME_COLORS = { bezel: '#0c2433', field: '#112f40', center: '#071621' };
+
     /** 피버 전용 플레이 영역의 주황색 뒷배경 색상이다. @type {string} */
     const FEVER_PLAYER_BACKGROUND_COLOR = '#e89035';
     /** 피버 전용 플레이 영역의 뒷배경보다 더 붉은 베젤 색상이다. @type {string} */
@@ -6234,9 +6241,14 @@
         return Boolean(game?.continuousFever || (game?.feverRule && player.fever?.active));
     }
 
-    /** 구경 모드에서는 각 필드의 CPU를, 그 밖에서는 대전의 대표 적을 필드 테마 컨트롤러로 반환한다. @param {PlayerState} player 대상 플레이어 @returns {Enemy} 필드 테마 컨트롤러 */
-    function getFieldThemeController(player) {
-        return game?.watch && player.controller ? player.controller : game.themeController;
+    /** 현재 게임의 테마 컨트롤러를 반환한다. 구경 모드는 두 필드 모두 우측 적(game.themeController)의 테마를 사용한다. @returns {Enemy} 필드 테마 컨트롤러 */
+    function getFieldThemeController() {
+        return game.themeController;
+    }
+
+    /** 게임 화면 전체 여백에 깔 배경색을 반환한다. 중앙 영역과 같은 색을 써서 베젤 바깥까지 테마가 이어지게 한다. @returns {string} 화면 배경색 */
+    function getGameScreenBackgroundColor() {
+        return game?.themeController?.getFieldThemeColors?.().center ?? DEFAULT_FIELD_THEME_COLORS.center;
     }
 
     /** 적 테마 또는 피버 전용 테마로 필드 베젤을 그린다. @param {PlayerState} player 대상 플레이어 @param {{x:number,y:number,width:number,height:number,player?:PlayerState}} area 베젤 영역 @returns {void} */
@@ -6246,7 +6258,7 @@
             context.fillRect(area.x, area.y, area.width, area.height);
             return;
         }
-        getFieldThemeController(player).drawBezelBackground(context, area);
+        getFieldThemeController().drawBezelBackground(context, area);
     }
 
     /** 적 테마 또는 피버 전용 테마로 필드 뒷배경을 그린다. @param {PlayerState} player 대상 플레이어 @param {{x:number,y:number,width:number,height:number,player?:PlayerState}} area 필드 영역 @returns {void} */
@@ -6256,7 +6268,7 @@
             context.fillRect(area.x, area.y, area.width, area.height);
             return;
         }
-        getFieldThemeController(player).drawPlayerBackground(context, area);
+        getFieldThemeController().drawPlayerBackground(context, area);
     }
 
     /** 피버 룰 또는 연속 피버가 두 번째 패배 칸을 쓰는지 반환한다. @returns {boolean} 두 번째 패배 칸 사용 여부 */
@@ -6816,8 +6828,8 @@
         const won = player === game.winner;
         const puzzleTargetField = isPuzzleTargetField(player);
         const soloTargetField = usesSoloPlayLayout() && player === game.players[1];
-        getFieldThemeController(player).drawBezelBackground(context, { x: x - CELL, y: FIELD_TOP - CELL, width: CELL * 8, height: CELL * 14, player });
-        getFieldThemeController(player).drawPlayerBackground(context, { x, y: FIELD_TOP, width: CELL * 6, height: CELL * 12, player });
+        getFieldThemeController().drawBezelBackground(context, { x: x - CELL, y: FIELD_TOP - CELL, width: CELL * 8, height: CELL * 14, player });
+        getFieldThemeController().drawPlayerBackground(context, { x, y: FIELD_TOP, width: CELL * 6, height: CELL * 12, player });
         context.textAlign = 'center';
         context.font = `36px ${TITLE_FONT}`;
         if (!game.puzzle && (!game.practice || !won)) {
@@ -7905,12 +7917,12 @@
         const [player, opponent] = game.players;
         const tutorial = game.tutorial;
         if (tutorial.mode === 'result' || tutorial.mode === 'complete') {
-            context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+            context.fillStyle = getGameScreenBackgroundColor(); context.fillRect(0, 0, WIDTH, HEIGHT);
             drawResultField(player); drawResultField(opponent); drawResultCenter(false);
             if (tutorial.mode === 'complete') drawTutorialCompleteOverlay(tutorial);
             return;
         }
-        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.fillStyle = getGameScreenBackgroundColor(); context.fillRect(0, 0, WIDTH, HEIGHT);
         drawField(player, opponent); drawField(opponent, player); drawCenter(); drawEnergyTransfers();
         if (tutorial.stage === 5 && tutorial.mode === 'intro') {
             const targetX = player.fieldX + 2 * CELL;
@@ -9691,11 +9703,11 @@
         } else if (game.tutorial) {
             drawTutorial();
         } else if (!game.running) {
-            context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+            context.fillStyle = getGameScreenBackgroundColor(); context.fillRect(0, 0, WIDTH, HEIGHT);
             // 게임이 끝났으면 결과 화면으로 전환한다.
             drawResultField(game.players[0]); drawResultField(game.players[1]); drawResultCenter();
         } else {
-            context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+            context.fillStyle = getGameScreenBackgroundColor(); context.fillRect(0, 0, WIDTH, HEIGHT);
             drawField(game.players[0], game.players[1]); drawField(game.players[1], game.players[0]); drawCenter(); drawEnergyTransfers();
             if (shouldShowVirtualController()) drawVirtualController();
             // ONNX 모델 로딩 중에는 카운트다운 대신 로딩 안내를 최상단에 표시한다.
@@ -12757,35 +12769,45 @@
         }
 
         /**
-         * 게임 화면의 베젤 테두리를 그린다. 기본 구현은 현행 테두리를 유지한다.
+         * 이 적과 대전할 때 사용할 게임 테마 색을 반환한다.
+         * 기본값은 현행 기본 테마이며, 적별 테마를 주려면 이 메서드만 재정의하면 된다.
+         * `field`(플레이 영역 내부)는 항상 `bezel`(베젤)보다 밝아야 하고, `center`(중앙 영역)는 가장 어둡게 둔다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return DEFAULT_FIELD_THEME_COLORS;
+        }
+
+        /**
+         * 게임 화면의 베젤 테두리를 그린다. 기본 구현은 getFieldThemeColors()의 `bezel` 색을 사용한다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {{x:number, y:number, width:number, height:number, player:PlayerState}} area 베젤 영역 정보
          * @returns {void}
          */
         drawBezelBackground(drawingContext, area) {
-            drawingContext.fillStyle = '#0c2433';
+            drawingContext.fillStyle = this.getFieldThemeColors().bezel;
             drawingContext.fillRect(area.x, area.y, area.width, area.height);
         }
 
         /**
-         * 각 사용자 필드의 뒷배경을 그린다. 기본 구현은 현행 배경을 유지한다.
+         * 각 사용자 필드의 뒷배경을 그린다. 기본 구현은 getFieldThemeColors()의 `field` 색을 사용한다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {{x:number, y:number, width:number, height:number, player:PlayerState}} area 사용자 영역 정보
          * @returns {void}
          */
         drawPlayerBackground(drawingContext, area) {
-            drawingContext.fillStyle = '#112f40';
+            drawingContext.fillStyle = this.getFieldThemeColors().field;
             drawingContext.fillRect(area.x, area.y, area.width, area.height);
         }
 
         /**
-         * 중앙 영역의 뒷배경을 그린다. 기본 구현은 현행 배경을 유지한다.
+         * 중앙 영역의 뒷배경을 그린다. 기본 구현은 getFieldThemeColors()의 `center` 색을 사용한다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {{x:number, y:number, width:number, height:number}} area 중앙 영역 정보
          * @returns {void}
          */
         drawCenterBackground(drawingContext, area) {
-            drawingContext.fillStyle = '#071621';
+            drawingContext.fillStyle = this.getFieldThemeColors().center;
             drawingContext.fillRect(area.x, area.y, area.width, area.height);
         }
     }
@@ -13184,6 +13206,14 @@
         }
 
         /**
+         * 초상화 색과 어울리는 집게와 뱀의 짙은 초록 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#0e3529', field: '#164c39', center: '#071f18' };
+        }
+
+        /**
          * 뱀을 두른 정의의 백작 안드로말리우스의 일반·위기·우는 표정을 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 2D 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
@@ -13338,6 +13368,14 @@
         chooseRotate(player) {
             const preparedPlacement = this.getPreparedPlacement();
             return this.selectSafeRotation(player, preparedPlacement?.rotation ?? (this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player)));
+        }
+
+        /**
+         * 초상화 색과 어울리는 마도서와 망토의 보라 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#261837', field: '#36234b', center: '#150d1e' };
         }
 
         /**
@@ -13901,6 +13939,14 @@
             return this.selectSafeRotation(player, preparedPlacement?.rotation ?? (this.attackPlacement ? this.attackPlacement.rotation : super.chooseRotate(player)));
         }
 
+        /**
+         * 초상화 색과 어울리는 하늘빛 날개와 은빛 갑주의 밝은 청색 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#123048', field: '#1b4463', center: '#08192a' };
+        }
+
         /** 은빛 말과 그리폰 날개, 차가운 눈을 귀엽게 표현한 세레의 세 표정 */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
             const size = 72 * scale;
@@ -14018,6 +14064,14 @@
 
             this.attackPlacement = selected || findBestAttackPlacement(player, player.active ? player.active.x : 2);
             return this.attackPlacement.x;
+        }
+
+        /**
+         * 초상화 색과 어울리는 별과 장미빛 자홍 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#35192c', field: '#4c2740', center: '#1c0d17' };
         }
 
         /**
@@ -14183,6 +14237,14 @@
         }
 
         /**
+         * 초상화 색과 어울리는 검붉은 자두빛 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#1b1522', field: '#2a1f35', center: '#0d0912' };
+        }
+
+        /**
          * 깨진 천사 후광과 망토를 두른 벨리알의 일반·위기·우는 표정을 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
@@ -14311,6 +14373,14 @@
             }
             this.attackPlacement = selected || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, !this.isInFever(player));
             return this.attackPlacement.x;
+        }
+
+        /**
+         * 초상화 색과 어울리는 유니콘 갈기의 짙은 남색 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#1f2545', field: '#2e3762', center: '#0f1224' };
         }
 
         /**
@@ -14450,6 +14520,14 @@
             if (preparedPlacement) return preparedPlacement.x;
             if (!this.attackPlacement) this.attackPlacement = this.findBestLookaheadPlacement(player);
             return this.attackPlacement?.x ?? (player.active ? player.active.x : 2);
+        }
+
+        /**
+         * 초상화 색과 어울리는 검은 말과 갈색 가죽의 무채색 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#1e1a20', field: '#2e2830', center: '#0e0c10' };
         }
 
         /**
@@ -14611,6 +14689,14 @@
         useFastDown(player) {
             if (isWorkerSearchPending(this, player)) return false;
             return super.useFastDown(player);
+        }
+
+        /**
+         * 초상화 색과 어울리는 공작 깃털의 짙은 청록 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#0c3b45', field: '#135460', center: '#061f26' };
         }
 
         /**
@@ -15021,6 +15107,14 @@
 
         /** @returns {string} 적 이름 */
         getName() { return '플라우로스'; }
+
+        /**
+         * 초상화 색과 어울리는 불꽃과 그을린 나무의 주황·갈색 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#331d14', field: '#4a2c1c', center: '#190d08' };
+        }
 
         /**
          * 검은 점무늬, 날카로운 눈, 삼각형 마법진으로 표현한 표범의 일반·위기·우는 초상화를 그린다.
