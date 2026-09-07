@@ -1,6 +1,6 @@
 # Puyo W 머신러닝 튜토리얼
 
-`learning.py`는 뿌요를 어디에 둘지 평가하는 모델을 학습해 `.pt` 파일로 저장하는 도구다. 처음에는 화면으로 쓰는 `lngui.py`를 실행하고, 다음에는 명령줄에서 `learning.py`로 같은 로컬 학습을 실행한다. 학습 중에 브라우저 게임이나 서버를 실행할 필요는 없다.
+`learning.py`는 뿌요를 어디에 둘지 평가하는 모델을 학습해 `.pt` 파일로 저장하는 도구다. 이 문서에서는 먼저 화면(GUI)으로 조작하는 `lngui.py`를 실행해 보고, 그다음 명령줄에서 `learning.py`로 같은 로컬 학습을 실행해 본다. 학습 중에 브라우저 게임이나 서버를 실행할 필요는 없다.
 
 ## 1. 처음 한 번만 준비하기
 
@@ -17,7 +17,7 @@ git clone https://github.com/HJOW/puyow.git
 cd puyow
 ```
 
-프로젝트 폴더로 이동한다. 아래 경로는 예시이므로 실제 설치 위치에 맞게 바꾼다.
+위 명령을 실행했다면 이미 프로젝트 폴더 안에 있으므로 아래 이동 단계는 필요 없다. 이미 다른 위치에 프로젝트 폴더가 있다면, 아래처럼 그 위치로 이동한다. 경로는 예시이므로 실제 설치 위치에 맞게 바꾼다.
 
 ```powershell
 cd D:\Workspace\git\puyow
@@ -30,7 +30,7 @@ python --version
 node --version
 ```
 
-각 명령에서 버전 번호가 보이면 된다. `python`을 찾을 수 없다고 나오면 새 터미널을 열어 보고, 계속되면 Python을 다시 설치하면서 PATH 옵션을 확인한다. Windows에서 `py`만 동작한다면 이후 명령의 `python` 자리에 `py`를 사용해도 된다.
+각 명령에서 버전 번호가 보이면 된다. `python`을 찾을 수 없다고 나오면 새 터미널을 열어 다시 시도하고, 그래도 안 되면 Python을 다시 설치하면서 PATH 옵션을 확인한다. Windows에서 `py`만 동작한다면 이후 명령의 `python` 자리에 `py`를 사용해도 된다.
 
 마지막으로 필요한 Python 패키지를 설치한다.
 
@@ -39,8 +39,7 @@ python -m pip install --upgrade pip
 python -m pip install torch psutil onnx onnxscript
 ```
 
-`torch`는 학습에, `psutil`은 GUI의 CPU·메모리 표시 기능에 필요하다. `onnx` 및 `onnxscript` 는 모델을 ONNX (Open Neural Network Exchange) 형식으로 저장할 때 사용된다.
-
+`torch`는 학습에, `psutil`은 GUI의 CPU·메모리 표시 기능에 필요하다. `onnx` 및 `onnxscript`는 모델을 ONNX (Open Neural Network Exchange) 형식으로 저장할 때 사용된다.
 
 NVIDIA GPU 사용 환경이라면 [PyTorch 시작 페이지](https://pytorch.org/get-started/locally/)에서 CUDA 환경에 맞는 설치 명령을 확인한다. 잘 모르겠다면 이 문서의 기본 설치와 CPU 학습부터 시작하면 된다.
 
@@ -56,7 +55,7 @@ NVIDIA GPU 사용 환경이라면 [PyTorch 시작 페이지](https://pytorch.org
    ```
 
 3. **Puyo W Model Trainer** 창이 열리면 `Episodes`의 `5000`을 우선 `10`으로 바꾼다. 에피소드는 컴퓨터가 뿌요 한 판을 시뮬레이션하는 횟수다.
-4. `Model output path`는 처음에는 기본값 `python/puyow/default.pt`를 그대로 둔다. 다른 이름이나 위치에 저장하려면 경로를 입력하거나 `Browse...`를 누른다.
+4. `Model output path`는 처음에는 기본값(`python\puyow\default.pt`)을 그대로 둔다. 다른 이름이나 위치에 저장하려면 경로를 입력하거나 `Browse...`를 누른다.
 5. **Start**를 누른다. 로그에 `Starting training`이 보이고 진행 막대가 움직이면 학습이 시작된 것이다.
 6. 완료될 때까지 기다린다. `Training finished and checkpoint saved.`가 로그에 보이면 성공이다.
 
@@ -108,7 +107,7 @@ python python/learning.py --episodes 1000 --device auto
 
 이 절의 명령은 모두 서버 없이 실행하는 로컬 학습이다. 실행이 끝나면 `--output` 경로에 `.pt` 모델 파일과 같은 이름의 `.json` 메타데이터 파일이 저장된다. 이미 있는 `.pt` 파일을 `--output`으로 지정하면 그 모델부터 추가 학습한다.
 
-학습 중에는 `Ctrl+C`로 강제 종료하기보다, 먼저 작은 `--episodes` 값으로 실행하는 편이 안전하다. 정상 완료는 모델을 저장하지만 강제 종료는 마지막 저장 단계에 도달하지 못할 수 있다.
+명령줄 학습은 모든 에피소드가 끝난 뒤 마지막에 한 번만 저장하므로, 중간에 `Ctrl+C`로 강제 종료하면 그때까지의 학습 결과가 전혀 저장되지 않는다. 그러므로 강제 종료로 학습을 멈추기보다, 먼저 작은 `--episodes` 값으로 실행해 보는 편이 안전하다.
 
 ## 5. `learning.py` 옵션
 
