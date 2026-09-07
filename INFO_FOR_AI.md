@@ -27,6 +27,7 @@
 - Webpack 번들 출력: `src/bundle/puyow.bundle.js`
 - E2E 회귀 테스트: `tests/test01.spec.js`
 - 개발자 문서: `HOWTO.md`, `docs/`
+- 공개 안내 문서: `README.md`, `README.en.md` (`README.en.md`는 `README.md`의 영어 번역본이므로 플레이 주소·실행 방법 같은 원문 갱신을 함께 반영한다.)
 - 모든 텍스트 파일은 UTF-8, 기본 UI 언어는 한국어다.
 - Windows PowerShell에서는 `npm.cmd test`와 `npx.cmd playwright ...`를 사용한다.
 - 기본 정적 검증: `node --check src/js/puyow.js`, `npm.cmd test`, `git diff --check`.

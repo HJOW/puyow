@@ -1,14 +1,16 @@
 # Puyo W
 
-A 2D Puyo-versus puzzle game you can enjoy in your browser. The player uses the field on the left, while the CPU opponent uses the field on the right. Connect Puyos of the same color to create chains, send garbage Puyos to your opponent, and block their field before they block yours.
+A 2D Puyo-versus puzzle game you can enjoy in your browser. When four Puyos of the same color connect, they pop. Create chain reactions for powerful attacks.
 
-## 한글로 작성된 문서가 필요한가요?
+## Looking for the Korean Documentation?
 
-[한글 README](README.md)
+[Korean README](README.md)
 
 ## Play Now
 
 Visit [https://hjow.github.io/puyow/](https://hjow.github.io/puyow/) to play.
+
+Alternatively, you can also play at [https://puyow-8745b.web.app](https://puyow-8745b.web.app).
 
 ## Starting the Game
 
@@ -66,9 +68,17 @@ The top center displays the player's and CPU's next two Puyo pairs. The selected
 3. Exit the game.
    Close the web browser, then press `CTRL + C` in Command Prompt (Windows) or the terminal (macOS/Linux).
 
-## Python Compatibility
+## Running the Server with Bun
 
-The server can also be run with Python 3.10 or later. After installing Python, run `python python/pythonserver.py`.
+You can start the server more quickly with Bun ([https://bun.com/](https://bun.com/)). After installing Bun from its official website, use `bun start` instead of `npm start`.
+
+Open `localhost:9891` in a web browser to play. Press `CTRL + C` in Command Prompt (Windows) or the terminal (macOS/Linux) to stop the server.
+
+## Running the Server with Python
+
+You can also run the server with Python. Install Python 3.10 or later from its official website, then install the required packages with `python -m pip install torch psutil onnx onnxscript`. Start the server with `python python/pythonserver.py`.
+
+Open `localhost:9891` in a web browser to play. Press `CTRL + C` in Command Prompt (Windows) or the terminal (macOS/Linux) to stop the server.
 
 ## Development Guide
 
@@ -99,7 +109,11 @@ This project is distributed under the [Apache License 2.0](LICENSE).
   MIT License, Copyright (c) 2012-2018 Aseem Kishore, and others.
   https://github.com/json5/json5/blob/main/LICENSE.md
 
-The MIT License
++ ONNX Runtime
+  MIT License, Copyright (c) Microsoft Corporation.
+  https://github.com/microsoft/onnxruntime/blob/gh-pages/LICENSE
+
++ The MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
