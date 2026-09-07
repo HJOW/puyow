@@ -1021,6 +1021,15 @@ test('observation 코드는 진행도를 바꾸지 않고 출시된 표시 적�
 
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  // 출시 예정 적은 observation 코드로도 열리지 않는다. 기본 제공 적이 모두 출시된 뒤에도 이 규칙을 확인하도록 임시 적을 등록한다.
+  await page.evaluate(() => {
+    class ObservationPlannedOnlyEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = 1000; this.notAvail = true; }
+      getClassType() { return 'ObservationPlannedOnlyEnemy'; }
+      getName() { return '출시 예정 유지 적'; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new ObservationPlannedOnlyEnemy() });
+  });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
@@ -2251,7 +2260,7 @@ test('세레는 오른쪽 하단 세 칸이 비어 있어도 일반 착수 카�
   expect(result.intervals.every((interval) => interval >= 20 && interval <= 25)).toBe(true);
 });
 
-test('안드레알푸스는 기본·피버 룰에 출시되고 플라우로스는 출시 예정으로 표시된다', async ({ page }) => {
+test('안드레알푸스는 기본·피버 룰에 출시되고 플라우로스는 잠긴 상태로 표시된다', async ({ page }) => {
   await page.evaluate(() => {
     const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias', 'Kimaris'];
     localStorage.setItem('puyow_store', JSON.stringify({
@@ -2270,8 +2279,9 @@ test('안드레알푸스는 기본·피버 룰에 출시되고 플라우로스�
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['암두시아스', 'Amdusias', 'アムドゥシアス', '阿姆杜西亚斯'].includes(text)))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['키마리스', 'Kimaris', 'キマリス', '基马里斯'].includes(text)))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드레알푸스', 'Andrealphus', 'アンドレアルフス', '安德雷阿尔弗斯'].includes(text)))).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['추후 출시예정', 'Coming soon', '近日公開予定', '即将推出'].includes(text)))).toBe(true);
+  // 잠긴 적은 카드에 이름 대신 '잠김'만 표시한다. 플라우로스는 안드레알푸스를 이기기 전까지 이 상태다.
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['잠김', 'Locked', 'ロック中', '已锁定'].includes(text)))).toBe(true);
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(false);
   for (let index = 0; index < 2; index += 1) await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -2287,8 +2297,9 @@ test('안드레알푸스는 기본·피버 룰에 출시되고 플라우로스�
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['추후 출시예정', 'Coming soon', '近日公開予定', '即将推出'].includes(text)))).toBe(true);
+  // 잠긴 적은 카드에 이름 대신 '잠김'만 표시한다. 플라우로스는 안드레알푸스를 이기기 전까지 이 상태다.
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['잠김', 'Locked', 'ロック中', '已锁定'].includes(text)))).toBe(true);
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(false);
   for (let index = 0; index < 2; index += 1) await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -5493,6 +5504,18 @@ test('구경 대전도 리플레이로 기록하며 재생 중에는 자동 재�
   });
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await page.evaluate(() => {
+    // observation 코드는 ONNX 추론 적까지 구경 후보로 열어 준다. 이 테스트는 리플레이 기록을 보는 것이므로
+    // 적 선정에 쓰이는 첫 두 번의 난수만 고정해 항상 같은 일반 적 둘이 나오게 하고, 뒤의 뿌요 생성은 그대로 무작위로 둔다.
+    let drawCount = 0;
+    let seed = 12345;
+    Math.random = () => {
+      drawCount += 1;
+      if (drawCount <= 2) return 0;
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+  });
 
   await enterMainMenu(page);
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
@@ -5700,4 +5723,132 @@ test('기록된 효과음 참조는 공통 풀·적 풀·원문 URL을 되살리
     'replaysfx/andromalius-spell3.ogg',
     'replaysfx/raw-url.ogg',
   ]);
+});
+
+/** 모든 기본 제공 적을 이긴 진행도와 플라우로스 갤러리 해금 기록을 저장한다. */
+async function seedAllOpponentsCleared(page) {
+  await page.evaluate(() => {
+    const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus', 'Flauros'];
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      clearListByDifficulty: { easy: cleared, normal: cleared, hard: cleared, extreme: cleared },
+      feverClearListByDifficulty: { easy: cleared, normal: cleared, hard: cleared, extreme: cleared },
+    }));
+    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: [], enemies: ['Flauros'] }));
+  });
+}
+
+test('ONNX 런타임이 없으면 플라우로스는 적 선택 화면에서 빠진다', async ({ page }) => {
+  await seedAllOpponentsCleared(page);
+  // ort.all.min.js를 빈 응답으로 바꿔 ONNX 런타임이 없는 페이지와 같은 상태를 만든다.
+  await page.route('**/js/ort.all.min.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  expect(await page.evaluate(() => typeof window.ort)).toBe('undefined');
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  // 이전 적과 플라우로스를 모두 이긴 기록이 있어도 목록에 나오지 않는다.
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드레알푸스', 'Andrealphus', 'アンドレアルフス', '安德雷阿尔弗斯'].includes(text)))).toBe(true);
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(false);
+});
+
+test('ONNX 런타임이 없어도 이긴 전적이 있는 플라우로스는 갤러리에서 잠금 해제된다', async ({ page }) => {
+  await seedAllOpponentsCleared(page);
+  await page.route('**/js/ort.all.min.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  expect(await page.evaluate(() => typeof window.ort)).toBe('undefined');
+
+  await enterMainMenu(page);
+  // 메인 메뉴 0: 게임 시작, 1: 시뮬레이터, 2: 플레이 방법, 3: 구경, 4: 갤러리
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
+  // 갤러리 유형 0: 일반뿌요, 1: 예고뿌요, 2: 적
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  // 첫 번째 ArrowDown 은 목록으로 포커스를 옮기고, 두 번째부터 잠김 해제된 다음 대상으로 이동한다.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
+});
+
+test('구경 모드는 ONNX 추론 적을 양쪽에 함께 배치하지 않는다', async ({ page }) => {
+  await page.evaluate(() => {
+    // 두 ONNX 적을 목록 맨 앞에 두고 무작위를 고정하면, 규칙이 없을 때 둘이 함께 뽑힌다.
+    class OnnxWatchEnemyA extends window.WebPuyo.OnnxEnemy {
+      constructor() { super(); this.sortPriority = -1002; }
+      getClassType() { return 'OnnxWatchEnemyA'; }
+      getName() { return 'ONNX 구경 적 A'; }
+    }
+    class OnnxWatchEnemyB extends window.WebPuyo.OnnxEnemy {
+      constructor() { super(); this.sortPriority = -1001; }
+      getClassType() { return 'OnnxWatchEnemyB'; }
+      getName() { return 'ONNX 구경 적 B'; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new OnnxWatchEnemyA() });
+    window.WebPuyo.registerOpponent({ createController: () => new OnnxWatchEnemyB() });
+    // 진행도와 관계없이 구경 메뉴를 열고 모든 적을 후보로 삼도록 지금 세션에 바로 적용한다.
+    window.WebPuyo.addCode('observation');
+    Math.random = () => 0;
+  });
+  await enterMainMenu(page);
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.watch), { timeout: 20000 }).toBe(true);
+
+  const names = await page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return [state.player.name, state.opponent.name];
+  });
+  // 왼쪽은 고정된 무작위값 때문에 항상 ONNX 적 A이고, 오른쪽은 ONNX 적 B가 아닌 일반 적이어야 한다.
+  expect(names[0]).toBe('ONNX 구경 적 A');
+  expect(names[1]).not.toBe('ONNX 구경 적 B');
+});
+
+test('플라우로스는 ONNX 모델을 불러온 뒤 대전하고, 모델을 못 불러오면 적 선택 화면으로 돌아간다', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('puyow_code', JSON.stringify(['observation'])));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  // 모델 요청을 실패시키면 대전을 시작하지 않고 적 선택 화면으로 돌아간다.
+  // 로딩 중 상태를 관찰할 수 있도록 응답을 잠시 늦춘다.
+  await page.route('**/onnx/model01.onnx', async (route) => {
+    await new Promise((resolve) => { setTimeout(resolve, 2000); });
+    await route.fulfill({ status: 404, body: '' });
+  });
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 10000 }).toBe('플라우로스');
+  // 모델을 다 불러오기 전에는 카운트다운이 줄지 않고 로딩 안내만 보여 준다.
+  expect(await page.evaluate(() => window.WebPuyo.getGameState()?.countdown)).toBe(3000);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => text.includes('...') || text.includes('…')))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('opponent_select');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState())).toBe(null);
+
+  // 모델 요청을 되살리면 로딩이 끝난 뒤 카운트다운이 진행되고 플라우로스가 실제로 뿌요를 놓는다.
+  await page.unroute('**/onnx/model01.onnx');
+  // 돌아온 적 선택 화면은 첫 줄에 포커스가 있으므로 다시 적 줄로 내려 시작한다. 선택된 적은 그대로 플라우로스다.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 10000 }).toBe('플라우로스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThan(2);
 });

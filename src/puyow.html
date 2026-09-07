@@ -34,6 +34,18 @@
         <!-- Game 관련 (선택) -->
         <script defer src="./js/three.min.js"></script>
         <script defer src="./js/json5.min.js"></script>
+        <!--
+        ort.all.min.js 는 ONNX 추론으로 판단하는 적(플라우로스 등)에만 쓰이며, 없으면 그 적들이
+        적 선택 화면과 구경 모드 후보에서 빠질 뿐 게임 자체는 그대로 동작한다.
+        이 스크립트를 넣을 때는 같은 ./js/ 폴더에 아래 두 파일도 함께 두어야 한다.
+        puyow.js 가 ort.env.wasm.wasmPaths 를 이 폴더로 지정하기 때문이다.
+            ort-wasm-simd-threaded.jsep.mjs
+            ort-wasm-simd-threaded.jsep.wasm
+        두 파일은 https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/ 에서 받을 수 있으며,
+        CDN 에서 직접 받게 하려면 PuyoW.initialize() 호출 전에 아래처럼 지정하면 된다.
+            ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/';
+        추가로 필요한 라이브러리는 현재 없다.
+        -->
         <script defer src="./js/ort.all.min.js"></script>
         <!-- // Game 관련 (선택) -->
 

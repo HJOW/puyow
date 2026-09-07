@@ -12,9 +12,12 @@ learning.py의 self-play 학습에서 "빈 상대" 대신 실제 게임에 탑�
 학습할 수 있도록, 각 적의 판단 알고리즘(chooseTarget/chooseRotate/prepareTurn)을
 puyow.js와 최대한 같은 결과가 나오도록 옮겼다. 사용자 요청에 따라 솔로몬(외부 AI
 API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다. 플라우로스(Flauros)는
-클래스 자체는 옮겨 두었지만(원작과 같은 구조를 유지하기 위해), 원작에서도 아직
-`notAvail`(출시 예정) 상태라 실제 판단 로직이 없으므로 ENEMY_FACTORIES/
+클래스 자체는 옮겨 두었지만(원작과 같은 구조를 유지하기 위해) ENEMY_FACTORIES/
 TRAINABLE_ENEMY_TYPES에는 넣지 않았다 — 즉 대전 상대로는 뽑히지 않는다.
+원작의 플라우로스는 브라우저에서 ONNX 가치망을 추론해 판단하는 적(puyow.js의
+`OnnxEnemy` 계열)이라, 그 판단을 여기서 재현하려면 학습 중인 모델과는 다른 모델을
+파이썬에서 또 돌려야 한다. 사용자 요청에 따라 ONNX 추론 방식을 쓰는 적은 모두 학습
+상대 역할에서 제외하므로, 앞으로 추가되는 ONNX 적도 같은 이유로 넣지 않는다.
 
 ## 이식 범위와 단순화한 부분
 
@@ -1202,7 +1205,12 @@ class Seere(BundledEnemy):
 
 
 class Flauros(BundledEnemy):
-    """출시 예정(notAvail) 상태의 원작과 같이, 이동·회전 판단 없이 스폰 위치에 세로로 떨어뜨리기만 한다."""
+    """원작 등록 순서를 그대로 남겨 두기 위한 자리다. 학습 상대로는 쓰지 않는다.
+
+    원작의 플라우로스는 ONNX 가치망 추론으로 판단하므로 이 클래스가 그 판단을 재현하지는 못한다.
+    TRAINABLE_ENEMY_TYPES에 넣지 않아 대전 상대로 뽑히지 않으며, 혹시 직접 만들어 쓰더라도
+    이동·회전 판단 없이 스폰 위치에 세로로 떨어뜨리기만 한다.
+    """
 
     def get_class_type(self) -> str:
         """진행 상황 저장에 쓰는 클래스 이름이다."""
@@ -1227,7 +1235,7 @@ class PracticeEnemy(BundledEnemy):
 
 # 학습에서 대전 상대로 고를 수 있는 적 목록이다. puyow.js OPPONENTS 등록 순서에서
 # 솔로몬·안드로말리우스(사용자 요청으로 제외)와 연습 상대(PracticeEnemy, 비경쟁 상대)를 뺐다.
-# 플라우로스(Flauros)도 원작처럼 판단 로직이 없는 출시 예정 상태라 대전 상대 목록에서 뺐다.
+# 플라우로스(Flauros)를 비롯해 ONNX 추론으로 판단하는 적은 사용자 요청에 따라 모두 학습 상대에서 뺐다.
 ENEMY_FACTORIES = {
     'Dantalion': Dantalion,
     'Seere': Seere,

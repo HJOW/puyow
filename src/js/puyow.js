@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 22;
+    const BUILDNO = 23;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -278,10 +278,32 @@
         required: ['x', 'rotation'],
         additionalProperties: false
     };
+    /**
+     * ONNX 가치망이 한 수를 고를 때 쓰는 감가율이다. `python/common.py`의 `DISCOUNT_GAMMA`와 같아야
+     * 파이썬 학습기가 배운 기준 그대로 배치를 비교할 수 있다. @type {number}
+     */
+    const ONNX_DISCOUNT_GAMMA = 0.70;
+    /** ONNX 모델이 받는 관측 벡터의 길이다. `python/common.py`의 `OBSERVATION_SIZE`와 같아야 한다. @type {number} */
+    const ONNX_OBSERVATION_SIZE = VISIBLE_ROWS * COLUMNS * (COLORS.length + 2) + COLORS.length * 2 + 14;
+    /** ONNX 모델 입력 텐서의 이름이다. `lngui.py`가 내보낸 그래프의 입력 이름과 같아야 한다. @type {string} */
+    const ONNX_INPUT_NAME = 'observation';
+    /** ONNX 모델 출력 텐서의 이름이다. `lngui.py`가 내보낸 그래프의 출력 이름과 같아야 한다. @type {string} */
+    const ONNX_OUTPUT_NAME = 'value';
+    /** ONNX 세션을 만들 때 사용할 실행 제공자다. WebGL·WebGPU는 이 그래프의 Shape·Slice를 지원하지 않을 수 있어 wasm만 쓴다. @type {string[]} */
+    const ONNX_EXECUTION_PROVIDERS = ['wasm'];
+    /**
+     * ONNX 세션 로그 심각도다. 0=Verbose, 1=Info, 2=Warning(기본), 3=Error.
+     * `lngui.py`가 내보낸 그래프는 `ValueNetwork.forward()`의 마지막 `reshape(-1)` 때문에 출력 축이 1로
+     * 추론되어, 여러 후보를 한 배치로 넣을 때마다 "Expected shape from model of {1}" 경고가 나온다.
+     * 출력 값 자체는 후보 수만큼 정상적으로 나오고 길이도 검증하므로, 매 턴 쌓이는 이 경고만 가린다.
+     * @type {number}
+     */
+    const ONNX_LOG_SEVERITY_LEVEL = 3;
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. (다국어 데이터) @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
             '솔로몬': 'Solomon', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'Solomon AI response error: continuing with the fallback AI.',
+            '인공지능 모델을 불러오는 중...': 'Loading the AI model…', '인공지능 모델을 불러오지 못했습니다.': 'Failed to load the AI model.',
             '뿌요 W': 'Puyo W',
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '구경': 'Watch', '모드': 'Mode', '색상 수': 'Colors', '다음 대전까지 %1초': 'Next match in %1 sec', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Pop %1 colors at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
@@ -304,6 +326,7 @@
         },
         ja: {
             '솔로몬': 'ソロモン', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'ソロモンAIの応答エラー：代替AIで続行します。',
+            '인공지능 모델을 불러오는 중...': 'AIモデルを読み込み中…', '인공지능 모델을 불러오지 못했습니다.': 'AIモデルを読み込めませんでした。',
             '이름': '名前',
             '뿌요 W': 'Puyo W',
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
@@ -327,6 +350,7 @@
         },
         zh: {
             '솔로몬': '所罗门', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': '所罗门 AI 响应错误：将使用备用 AI 继续。',
+            '인공지능 모델을 불러오는 중...': '正在加载 AI 模型…', '인공지능 모델을 불러오지 못했습니다.': '无法加载 AI 模型。',
             '이름': '名称',
             '뿌요 W': 'Puyo W',
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
@@ -515,6 +539,10 @@
     let localAiAvailable = false;
     /** 현재 페이지 접속 중 AI API 테스트를 통과해 솔로몬을 사용할 수 있는지 여부다. 저장하지 않는다. @type {boolean} */
     let solomonSessionUnlocked = false;
+    /** 초기화 시 확인한 ONNX Runtime for Web(전역 `ort`) 사용 가능 여부다. 저장하지 않는다. @type {boolean} */
+    let onnxRuntimeAvailable = false;
+    /** 이미 만든 ONNX 추론 세션을 모델 경로별로 재사용하기 위한 캐시다. @type {Map<string, Promise<object>>} */
+    const onnxSessionCache = new Map();
     /** 종료된 설정 화면의 비동기 응답을 무시하기 위한 요청 식별자다. @type {number} */
     let settingsApiTestRequestId = 0;
     /** 설정 전체 초기화 확인 후 표시하는 초기화 진행 화면 여부다. @type {boolean} */
@@ -1172,7 +1200,7 @@
                     context.restore();
                 }
             }));
-        const enemies = getVisibleOpponents()
+        const enemies = getGalleryOpponents()
             .filter((entry) => galleryUnlocks.enemies.includes(entry.classType))
             .map((entry) => ({ draw: () => entry.createController().drawPortrait(context, centerX, centerY, 2.8, 'normal') }));
         return [...puyos, ...warnings, ...enemies];
@@ -1469,6 +1497,101 @@
             console.error(`${noticeUrl}를 불러오지 못했습니다.`, error);
             noticeText = '';
         }
+    }
+
+    /**
+     * 게임 자원(모델, wasm 등)의 상대 경로를 풀 기준이 되는 `src/` 디렉터리 URL을 만든다.
+     * puyow.js는 `src/js/`, 번들은 `src/bundle/`에 있으므로 어느 쪽이든 스크립트의 상위 디렉터리가 기준이 된다.
+     * 스크립트를 찾지 못하면 문서 주소를 기준으로 삼아, 게임을 다른 페이지에 심었을 때도 최대한 동작하게 한다.
+     * @returns {URL|null} `src/` 디렉터리를 가리키는 URL. 브라우저 환경이 아니면 null이다.
+     */
+    function getGameResourceBaseURL() {
+        if (typeof document === 'undefined') return null;
+        try {
+            const script = [...(document.scripts || [])].find((element) => /puyow(?:\.min|\.bundle)?\.js(?:[?#]|$)/.test(element.src));
+            // 스크립트가 있으면 그 상위 디렉터리(src/)를, 없으면 현재 문서 위치를 기준으로 삼는다.
+            if (script?.src) return new URL('../', convertURL(script.src));
+            return new URL('./', convertURL(document.baseURI));
+        } catch (error) {
+            console.error('게임 자원 기준 경로를 만들지 못했습니다.', error);
+            return null;
+        }
+    }
+
+    /**
+     * `src/` 아래의 상대 경로를 절대 URL 문자열로 바꾼다.
+     * @param {string} relativePath `src/` 기준 상대 경로 (예: `onnx/model01.onnx`)
+     * @returns {string} 절대 URL. 기준 경로를 만들 수 없으면 입력값을 그대로 돌려준다.
+     */
+    function resolveGameResourceURL(relativePath) {
+        const baseURL = getGameResourceBaseURL();
+        if (!baseURL) return relativePath;
+        return new URL(relativePath, baseURL).href;
+    }
+
+    /**
+     * 전역에 올라온 ONNX Runtime for Web 객체를 반환한다.
+     * `ort.all.min.js`를 넣지 않은 페이지에서도 게임이 동작해야 하므로 없으면 null이다.
+     * @returns {object|null} ONNX 런타임 객체 또는 null
+     */
+    function getOnnxRuntime() {
+        // 선택 라이브러리라 선언 자체가 없을 수 있다. ort.all.min.js는 전역 var로 자신을 올리므로
+        // 없을 때 ReferenceError가 나지 않도록 globalThis를 통해서만 읽는다.
+        if (typeof globalThis === 'undefined') return null;
+        return globalThis.ort || null;
+    }
+
+    /**
+     * 게임 초기화 시 ONNX 런타임 사용 가능 여부를 확인하고 wasm 자원 경로를 지정한다.
+     * wasm 글루(`ort-wasm-simd-threaded.jsep.mjs`)와 바이너리는 puyow.js와 같은 `src/js/`에 둔다.
+     * @returns {boolean} 사용 가능 여부
+     */
+    function refreshOnnxRuntimeAvailability() {
+        const runtime = getOnnxRuntime();
+        onnxRuntimeAvailable = Boolean(runtime);
+        if (!runtime) return false;
+        try {
+            const wasmEnv = runtime.env?.wasm;
+            if (wasmEnv) {
+                if (!wasmEnv.wasmPaths) wasmEnv.wasmPaths = resolveGameResourceURL('js/');
+                // COOP/COEP 헤더가 없는 정적 호스팅에서는 어차피 단일 스레드로 내려가므로 경고 없이 1로 고정한다.
+                wasmEnv.numThreads = 1;
+            }
+        } catch (error) {
+            console.error('ONNX 런타임 wasm 경로를 설정하지 못했습니다.', error);
+        }
+        return true;
+    }
+
+    /** 현재 페이지에서 ONNX 추론을 사용할 수 있는지 확인한다. @returns {boolean} 사용 가능 여부 */
+    function isOnnxRuntimeAvailable() {
+        return onnxRuntimeAvailable;
+    }
+
+    /**
+     * 모델 경로별 ONNX 추론 세션을 만들고 캐시한다. 같은 모델을 다시 고르면 이미 만든 세션을 재사용한다.
+     * @param {string} modelPath `src/` 기준 모델 상대 경로
+     * @returns {Promise<object>} 추론 세션
+     */
+    function loadOnnxSession(modelPath) {
+        const cached = onnxSessionCache.get(modelPath);
+        if (cached) return cached;
+        const loading = (async () => {
+            const runtime = getOnnxRuntime();
+            if (!runtime) throw new Error('ONNX 런타임(ort)이 없습니다.');
+            const modelURL = resolveGameResourceURL(modelPath);
+            const response = await fetch(convertURL(modelURL));
+            if (!response.ok) throw new Error(`${modelPath} 요청 실패 (${response.status})`);
+            const modelBuffer = await response.arrayBuffer();
+            return runtime.InferenceSession.create(new Uint8Array(modelBuffer), {
+                executionProviders: ONNX_EXECUTION_PROVIDERS,
+                logSeverityLevel: ONNX_LOG_SEVERITY_LEVEL
+            });
+        })();
+        // 실패한 시도를 캐시에 남기면 다시 시도할 수 없으므로, 실패 시에는 캐시에서 지운다.
+        loading.catch(() => onnxSessionCache.delete(modelPath));
+        onnxSessionCache.set(modelPath, loading);
+        return loading;
     }
 
     /**
@@ -2059,7 +2182,7 @@
     /**
      * 적 인스턴스의 선택 화면 표시 설정을 등록 항목으로 만든다.
      * @param {()=>Enemy} createController 새 적 인스턴스 생성 함수
-     * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean}} 적 등록 항목
+     * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean, requiresOnnx:boolean}} 적 등록 항목
      */
     function createOpponentEntry(createController) {
         const controller = createController();
@@ -2075,7 +2198,8 @@
             classType,
             sortPriority: controller.sortPriority,
             hidden: controller.hidden === true,
-            notAvail: controller.notAvail === true
+            notAvail: controller.notAvail === true,
+            requiresOnnx: controller.requiresOnnx === true
         };
     }
 
@@ -2093,11 +2217,23 @@
     }
 
     /**
+     * 갤러리에 표시할 적 목록을 반환한다.
+     * 갤러리 잠금 해제는 실제로 이긴 전적만을 근거로 하므로, ONNX 런타임이 없어 지금은 대전할 수 없는
+     * 적이라도 목록에서 빼지 않는다. 적 선택 화면과 달리 `requiresOnnx`를 보지 않는 이유다.
+     * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean, requiresOnnx:boolean}[]} 갤러리 표시 대상 적 목록
+     */
+    function getGalleryOpponents() {
+        return OPPONENTS.filter((opponent) => !opponent.hidden);
+    }
+
+    /**
      * 숨김 처리되지 않아 적 선택 화면에 표시할 적 목록을 반환한다.
-     * @returns {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} 표시할 적 목록
+     * ONNX 런타임이 없는 페이지에서는 추론으로 판단하는 적을 이전 적 클리어 여부와 무관하게 감춘다.
+     * 갤러리 목록은 이 제한을 받지 않으므로 `getGalleryOpponents()`를 따로 쓴다.
+     * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean, requiresOnnx:boolean}[]} 표시할 적 목록
      */
     function getVisibleOpponents() {
-        return OPPONENTS.filter((opponent) => !opponent.hidden);
+        return getGalleryOpponents().filter((opponent) => !opponent.requiresOnnx || isOnnxRuntimeAvailable());
     }
 
     /** 성공한 AI API 테스트 뒤 현재 접속에 한해 솔로몬을 적 목록에 표시한다. @returns {void} */
@@ -2232,6 +2368,34 @@
     }
 
     /**
+     * 이번 대전에 ONNX 추론이 필요한 적이 있으면 모델을 먼저 불러오고, 그동안 카운트다운을 멈춘다.
+     * 모델 파일이 크기 때문에 게임 화면을 먼저 보여 주고 이 자리에서 로딩 안내를 띄운다.
+     * 로딩에 실패하면 대전을 아예 시작하지 않고 안내 문구와 함께 이전 선택 화면으로 돌려보낸다.
+     * @param {Enemy[]} controllers 이번 대전에 참여하는 적 컨트롤러 목록
+     * @param {()=>void} returnToSelection 로딩 실패 시 돌아갈 선택 화면을 여는 함수
+     * @returns {void}
+     */
+    function prepareGameOnnxModels(controllers, returnToSelection) {
+        const onnxControllers = controllers.filter((controller) => controller?.requiresOnnx && typeof controller.prepareModel === 'function');
+        if (!onnxControllers.length) return;
+        // 로딩이 끝나기 전에 다른 게임이 시작되면 이 결과를 무시하기 위해 시작 시점의 game을 붙잡아 둔다.
+        const startedGame = game;
+        startedGame.onnxLoading = true;
+        Promise.all(onnxControllers.map((controller) => controller.prepareModel())).then(() => {
+            if (game !== startedGame) return;
+            game.onnxLoading = false;
+        }).catch((error) => {
+            console.error('ONNX 모델을 불러오지 못했습니다.', error);
+            if (game !== startedGame) return;
+            stopBackgroundMusic();
+            game = null;
+            returnToSelection();
+            syncBackgroundMusic();
+            showMessage(translate('인공지능 모델을 불러오지 못했습니다.'), '#f5fbfc', 3000, '#7b2636');
+        });
+    }
+
+    /**
      * 대전, 연습, 피버 룰, 피버 룰 (시작) 또는 연속 피버 상태를 초기화한다.
      * @param {boolean} practice 연습 모드 여부
      * @param {boolean} continuousFever 연속 피버 모드 여부
@@ -2311,6 +2475,8 @@
         // 리플레이는 기본 룰·피버 룰·피버 룰 (시작) 대전에서만 기록한다. 연습과 연속 피버는 대상이 아니다.
         if (!soloMode) beginReplayRecording();
         syncBackgroundMusic();
+        // ONNX 적을 골랐으면 모델을 다 불러온 뒤에 카운트다운이 시작된다.
+        prepareGameOnnxModels([controller], () => openOpponentMenu(opponentMenuRule));
     }
 
     /**
@@ -2332,14 +2498,31 @@
         return Boolean(learningApiConfig && game && !game.tutorial && !game.watch && game.players?.[0]?.controller === null);
     }
 
-    /** 실제 게임 보드와 현재 조작 쌍·경과 시간·피버 상태를 learning.py의 관측 벡터로 변환한다. @param {PlayerState} player 관측할 사용자 플레이어 @returns {number[]} 관측 벡터 */
-    function getLearningObservation(player) {
+    /**
+     * 임의의 보드·조작 쌍·상태를 learning.py(`common.py`의 `encode_observation_values`)와 같은
+     * 528개 관측 벡터로 인코딩한다. 실제 플레이어의 현재 상태(`getLearningObservation`)와
+     * ONNX 적이 평가할 애프터스테이트가 같은 계약을 쓰도록 이 함수 하나만 사용한다.
+     * @param {object} state 인코딩할 상태
+     * @param {(string|null)[][]} state.board 아래 행부터의 보드. 화면에 보이는 12행만 사용한다.
+     * @param {(string|null)[]} state.pair 조작 쌍의 두 색
+     * @param {number} state.attack 누적 ATTACK
+     * @param {number} state.turn 지금까지 놓은 쌍 수
+     * @param {number} state.incomingDamage 아직 상쇄되지 않은 피해량
+     * @param {boolean} state.feverRule 피버 룰 대전 여부
+     * @param {boolean} state.allClearTicket 싹쓸이 티켓 보유 여부
+     * @param {number} state.elapsedMs 대전 경과 시간(ms)
+     * @param {number} state.marginRate 현재 마진 레이트
+     * @param {number} state.timeProgressMultiplier 현재 시간 진행 배율
+     * @param {object|null} state.fever 피버 상태. 피버 룰이 아니면 null이다.
+     * @returns {number[]} 관측 벡터
+     */
+    function buildObservationValues(state) {
         const values = [];
         // common.py와 동일하게 빈 칸, 방해뿌요, 다섯 색을 독립 채널로 기록한다.
         for (let channel = 0; channel < COLORS.length + 2; channel += 1) {
             for (let y = 0; y < VISIBLE_ROWS; y += 1) {
                 for (let x = 0; x < COLUMNS; x += 1) {
-                    const color = player.board[y]?.[x] || null;
+                    const color = state.board[y]?.[x] || null;
                     values.push(channel === 0
                         ? Number(!color)
                         : channel === 1
@@ -2348,22 +2531,21 @@
                 }
             }
         }
-        const activeColors = player.active?.colors || [];
-        for (const color of activeColors.slice(0, 2)) {
+        for (const color of (state.pair || []).slice(0, 2)) {
             for (const candidate of COLORS) values.push(Number(color === candidate));
         }
         while (values.length < VISIBLE_ROWS * COLUMNS * (COLORS.length + 2) + COLORS.length * 2) values.push(0);
         const clampRatio = (value, maximum) => Math.min(Math.max(Number(value) || 0, 0), maximum) / maximum;
-        const fever = player.fever || {};
+        const fever = state.fever || {};
         values.push(
-            clampRatio(player.attack, 30),
-            clampRatio(player.placedPairCount, 100),
-            clampRatio(player.damage, 30),
-            Number(game?.feverRule === true),
-            Number(player.allClearTicket === true),
-            clampRatio(game?.elapsed, 600000),
-            clampRatio(game?.marginRate ?? MARGIN_RATE_SCHEDULE[0].rate, 70),
-            clampRatio(Math.log2(Math.max(1, game?.timeProgressMultiplier || 1)), 10),
+            clampRatio(state.attack, 30),
+            clampRatio(state.turn, 100),
+            clampRatio(state.incomingDamage, 30),
+            Number(state.feverRule === true),
+            Number(state.allClearTicket === true),
+            clampRatio(state.elapsedMs, 600000),
+            clampRatio(state.marginRate ?? MARGIN_RATE_SCHEDULE[0].rate, 70),
+            clampRatio(Math.log2(Math.max(1, state.timeProgressMultiplier || 1)), 10),
             Number(fever.active === true),
             clampRatio(fever.gauge, FEVER_GAUGE_MAX),
             clampRatio(fever.nextTime ?? FEVER_INITIAL_TIME, FEVER_MAX_TIME),
@@ -2372,6 +2554,23 @@
             clampRatio(fever.damage, 30)
         );
         return values;
+    }
+
+    /** 실제 게임 보드와 현재 조작 쌍·경과 시간·피버 상태를 learning.py의 관측 벡터로 변환한다. @param {PlayerState} player 관측할 사용자 플레이어 @returns {number[]} 관측 벡터 */
+    function getLearningObservation(player) {
+        return buildObservationValues({
+            board: player.board,
+            pair: player.active?.colors || [],
+            attack: player.attack,
+            turn: player.placedPairCount,
+            incomingDamage: player.damage,
+            feverRule: game?.feverRule === true,
+            allClearTicket: player.allClearTicket === true,
+            elapsedMs: game?.elapsed,
+            marginRate: game?.marginRate,
+            timeProgressMultiplier: game?.timeProgressMultiplier,
+            fever: player.fever || null
+        });
     }
 
     /** 학습 API 요청을 순서대로 비동기 전송한다. @param {object} payload 학습 이벤트 본문 @returns {void} */
@@ -2528,20 +2727,26 @@
         ));
     }
 
-    /** 구경 모드에 사용할 수 있는 적 목록을 반환한다. observation 코드 적용 중에는 표시되는 출시 적 중 솔로몬·안드로말리우스·단탈리온만 제외한다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean}[]} 후보 적 목록 */
+    /** 구경 모드에 사용할 수 있는 적 목록을 반환한다. observation 코드 적용 중에는 표시되는 출시 적 중 솔로몬·안드로말리우스·단탈리온만 제외한다. ONNX 런타임이 없으면 추론으로 판단하는 적도 함께 빠진다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean,requiresOnnx:boolean}[]} 후보 적 목록 */
     function getWatchOpponentCandidates() {
-        if (isObservationCodeApplied()) return OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType));
-        return OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail
-            && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType) && hasWatchEligibleClear(entry.className));
+        // ONNX 추론으로 판단하는 적은 런타임이 없는 페이지에서 구경 대전에도 나올 수 없다.
+        const usable = getVisibleOpponents().filter((entry) => !entry.notAvail && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType));
+        if (isObservationCodeApplied()) return usable;
+        return usable.filter((entry) => hasWatchEligibleClear(entry.className));
     }
 
-    /** 구경 모드 후보 중 종류가 서로 다른 적 두 명을 무작위로 선정한다. @returns {object[]|null} 선정된 두 적 등록 항목 */
+    /**
+     * 구경 모드 후보 중 종류가 서로 다른 적 두 명을 무작위로 선정한다.
+     * ONNX 추론은 한 대전에 한쪽만 사용할 수 있으므로, 먼저 뽑힌 적이 추론을 쓰면 반대쪽은 추론을 쓰지 않는 적 중에서 고른다.
+     * @returns {object[]|null} 선정된 두 적 등록 항목
+     */
     function selectWatchOpponents() {
         const candidates = getWatchOpponentCandidates();
         if (candidates.length < 2) return null;
         const leftIndex = Math.floor(randomFloat() * candidates.length);
         const left = candidates[leftIndex];
-        const rightCandidates = candidates.filter((entry, index) => index !== leftIndex && entry.classType !== left.classType);
+        const rightCandidates = candidates.filter((entry, index) => index !== leftIndex && entry.classType !== left.classType
+            && !(left.requiresOnnx && entry.requiresOnnx));
         if (!rightCandidates.length) return null;
         const right = rightCandidates[Math.floor(randomFloat() * rightCandidates.length)];
         return [left, right];
@@ -2609,6 +2814,8 @@
         // 구경 모드의 모든 규칙도 리플레이 기록 대상이다.
         beginReplayRecording();
         syncBackgroundMusic();
+        // 구경 대전에는 적 선택 화면이 없으므로, 모델 로딩에 실패하면 구경 설정 화면으로 돌려보낸다.
+        prepareGameOnnxModels(controllers, () => { menuScreen = 'title'; openWatchSelection(); });
         return true;
     }
 
@@ -3038,12 +3245,14 @@
                 const placement = findLandingPlacement(player, x, rotation);
                 if (!placement) continue;
                 const positions = activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
+                // 공격력과 연쇄 수를 따로 구하면 같은 연쇄를 두 번 돌게 되므로 한 번에 받는다.
+                const result = simulatePlacementResult(player.board, player.active.colors, positions);
                 simulations.push({
                     x,
                     rotation,
                     positions,
-                    attack: player.estimateAttack(player.active.colors, positions),
-                    combo: player.estimateCombo(player.active.colors, positions)
+                    attack: result?.attack ?? 0,
+                    combo: result?.combo ?? 0
                 });
             }
         }
@@ -3649,20 +3858,7 @@
      * @returns {(string|null)[][]|null} 안정 상태 보드. 유효하지 않은 배치면 null
      */
     function simulatePlacementBoard(sourceBoard, colors, positions) {
-        if (!Array.isArray(colors) || !Array.isArray(positions) || colors.length !== 2 || positions.length !== 2) return null;
-        let board = sourceBoard.map((row) => [...row]);
-        for (let index = 0; index < 2; index += 1) {
-            const { x, y } = positions[index] || {};
-            if (!COLORS.includes(colors[index]) || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COLUMNS || y < 0 || y >= ROWS || board[y][x]) return null;
-            board[y][x] = colors[index];
-        }
-        board = collapseBoard(board);
-        while (true) {
-            const exploding = findExplosionsOnBoard(board);
-            if (!exploding.length) return board;
-            applyExplosionResolution(board, getExplosionResolution(board, exploding));
-            board = collapseBoard(board);
-        }
+        return simulatePlacementResult(sourceBoard, colors, positions)?.board ?? null;
     }
 
     /**
@@ -4475,29 +4671,7 @@
      * @returns {number} 연쇄 전체의 예상 ATTACK 값
      */
     function estimateAttack(sourceBoard, colors, positions) {
-        // 두 색상과 두 좌표가 모두 제공되지 않으면 유효한 가상 배치가 아니다.
-        if (!Array.isArray(colors) || !Array.isArray(positions) || colors.length !== 2 || positions.length !== 2) return 0;
-        let board = sourceBoard.map((row) => [...row]);
-        // 각 뿌요가 필드 안의 빈칸에 놓이는지 확인하며 복사 보드에 배치한다.
-        for (let index = 0; index < 2; index += 1) {
-            const { x, y } = positions[index] || {};
-            if (!COLORS.includes(colors[index]) || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COLUMNS || y < 0 || y >= ROWS || board[y][x]) return 0;
-            board[y][x] = colors[index];
-        }
-        board = collapseBoard(board);
-        let combo = 0;
-        let attack = 0;
-        // 폭발과 중력을 반복해 전체 연쇄의 공격력을 누적한다.
-        while (true) {
-            const explosionGroups = findExplosionGroupsOnBoard(board);
-            if (!explosionGroups.length) return attack;
-            const exploding = explosionGroups.flatMap((group) => group.cells);
-            const resolution = getExplosionResolution(board, exploding);
-            combo += 1;
-            attack += calculateExplosionAttack(calculateExplosionPoint(explosionGroups, combo, resolution.brokenHardGarbageCount));
-            applyExplosionResolution(board, resolution);
-            board = collapseBoard(board);
-        }
+        return simulatePlacementResult(sourceBoard, colors, positions)?.attack ?? 0;
     }
 
     /**
@@ -4508,23 +4682,41 @@
      * @returns {number} 연쇄 전체의 예상 연쇄 수
      */
     function estimateCombo(sourceBoard, colors, positions) {
+        return simulatePlacementResult(sourceBoard, colors, positions)?.combo ?? 0;
+    }
+
+    /**
+     * 두 뿌요를 가상 배치하여 연쇄가 모두 끝난 뒤의 보드와 연쇄 수, ATTACK을 한 번에 계산한다.
+     * 결과 보드·연쇄 수·ATTACK을 따로 구하던 `simulatePlacementBoard()`·`estimateCombo()`·
+     * `estimateAttack()`이 모두 이 함수 하나를 거치므로, 같은 배치를 여러 번 시뮬레이션하지 않고
+     * 세 값이 서로 어긋날 일도 없다. 애프터스테이트를 인코딩해야 하는 ONNX 적은 세 값을 함께 쓴다.
+     * @param {(string|null)[][]} sourceBoard 배치 전 보드
+     * @param {string[]} colors 배치할 두 뿌요 색상
+     * @param {{x:number, y:number}[]} positions 배치할 두 뿌요 좌표
+     * @returns {{board:(string|null)[][], combo:number, attack:number}|null} 연쇄 후 보드와 연쇄 수, ATTACK. 유효하지 않은 배치면 null이다.
+     */
+    function simulatePlacementResult(sourceBoard, colors, positions) {
         // 두 색상과 두 좌표가 모두 제공되지 않으면 유효한 가상 배치가 아니다.
-        if (!Array.isArray(colors) || !Array.isArray(positions) || colors.length !== 2 || positions.length !== 2) return 0;
+        if (!Array.isArray(colors) || !Array.isArray(positions) || colors.length !== 2 || positions.length !== 2) return null;
         let board = sourceBoard.map((row) => [...row]);
         // 각 뿌요가 필드 안의 빈칸에 놓이는지 확인하며 복사 보드에 배치한다.
         for (let index = 0; index < 2; index += 1) {
             const { x, y } = positions[index] || {};
-            if (!COLORS.includes(colors[index]) || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COLUMNS || y < 0 || y >= ROWS || board[y][x]) return 0;
+            if (!COLORS.includes(colors[index]) || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COLUMNS || y < 0 || y >= ROWS || board[y][x]) return null;
             board[y][x] = colors[index];
         }
         board = collapseBoard(board);
         let combo = 0;
-        // 더 이상 폭발이 없을 때까지 연쇄 횟수를 센다.
+        let attack = 0;
+        // 폭발과 중력을 반복해 전체 연쇄의 공격력을 누적하고, 마지막 보드를 그대로 돌려준다.
         while (true) {
-            const exploding = findExplosionsOnBoard(board);
-            if (!exploding.length) return combo;
+            const explosionGroups = findExplosionGroupsOnBoard(board);
+            if (!explosionGroups.length) return { board, combo, attack };
+            const exploding = explosionGroups.flatMap((group) => group.cells);
+            const resolution = getExplosionResolution(board, exploding);
             combo += 1;
-            applyExplosionResolution(board, getExplosionResolution(board, exploding));
+            attack += calculateExplosionAttack(calculateExplosionPoint(explosionGroups, combo, resolution.brokenHardGarbageCount));
+            applyExplosionResolution(board, resolution);
             board = collapseBoard(board);
         }
     }
@@ -8223,7 +8415,7 @@
         }
         if (type === 'card') return [];
         const expressions = ['normal', 'crisis', 'defeated'];
-        return getVisibleOpponents().map((entry) => {
+        return getGalleryOpponents().map((entry) => {
             const enemy = entry.createController();
             return {
                 id: entry.classType, displayLabel: translate(enemy.getName()),
@@ -9408,8 +9600,13 @@
             context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
             drawField(game.players[0], game.players[1]); drawField(game.players[1], game.players[0]); drawCenter(); drawEnergyTransfers();
             if (shouldShowVirtualController()) drawVirtualController();
+            // ONNX 모델 로딩 중에는 카운트다운 대신 로딩 안내를 최상단에 표시한다.
+            if (game.onnxLoading) {
+                context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+                context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `30px ${MESSAGE_FONT}`;
+                context.fillText(translate('인공지능 모델을 불러오는 중...'), WIDTH / 2, 390);
             // 시작 또는 재개 카운트다운 중에는 카운트다운 오버레이를 최상단에 표시한다.
-            if (game.countdown > 0) {
+            } else if (game.countdown > 0) {
                 context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(0, 0, WIDTH, HEIGHT);
                 context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `76px ${TITLE_FONT}`;
                 context.fillText(String(Math.ceil(game.countdown / 1000)), WIDTH / 2, 390);
@@ -9568,8 +9765,10 @@
             // 리플레이 재생은 기록된 프레임만 반영하므로 일반 진행 로직을 사용하지 않는다.
             updateReplayPlayback(delta);
         } else if (game && game.running && !game.paused) {
-            // 카운트다운이 끝나면 양쪽 플레이어의 첫 턴을 시작한다.
-            if (game.countdown > 0) {
+            if (game.onnxLoading) {
+                // ONNX 모델을 다 불러오기 전에는 카운트다운도 대전도 진행하지 않고 로딩 안내만 보여 준다.
+            } else if (game.countdown > 0) {
+                // 카운트다운이 끝나면 양쪽 플레이어의 첫 턴을 시작한다.
                 game.countdown = Math.max(0, game.countdown - delta);
                 if (!game.countdown && game.countdownStartsGame) {
                     game.countdownStartsGame = false;
@@ -11277,6 +11476,8 @@
             throw new Error('Web Puyo 초기화에는 브라우저 DOM 환경이 필요합니다.');
         }
         promptApiSupported = checkPromptApiSupport();
+        // ONNX 런타임은 선택 라이브러리다. 여기서 한 번 확인한 결과로 추론 기반 적의 표시 여부를 정한다.
+        refreshOnnxRuntimeAvailability();
         startPromptApiDownloadIfNeeded();
         prepareFontImportStyle();
         prepareRuntimeLayoutStyle();
@@ -12302,6 +12503,12 @@
             this.sortPriority = 1;
             this.hidden = false;
             this.notAvail = false;
+            /**
+             * 판단에 ONNX 추론이 필요한 적인지 여부다. `hidden`·`notAvail`과 달리 갤러리에는 영향을 주지 않고,
+             * ONNX 런타임이 없는 페이지의 적 선택 화면과 구경 모드 후보에서만 이 적을 감춘다.
+             * @type {boolean}
+             */
+            this.requiresOnnx = false;
             /** 이번 턴에 공통 규칙이 미리 선택한 착지 후보다. 적 구현은 chooseTarget/chooseRotate에서 이를 우선할 수 있다. @type {object|null} */
             this.preparedPlacement = null;
             /** Worker 탐색 또는 적별 공격 판단이 선택한 현재 턴 배치 후보다. @type {object|null} */
@@ -14387,14 +14594,304 @@
     }
 
     /**
-     * 플라우로스는 강하고 무서운 표범 모습으로 나타나며, 삼각형 밖에서는 거짓말로 소환자를 속인다는
-     * 전승을 귀엽지만 위엄 있는 모습으로 각색한 출시 예정 적이다.
+     * ONNX 가치망으로 배치를 고르는 적들의 공통 클래스다.
+     *
+     * `python/learning.py`의 `select_afterstate()`를 그대로 옮겨 왔다. 놓을 수 있는 배치마다 연쇄까지
+     * 끝난 결과 보드(애프터스테이트)를 만들어 `common.py`와 같은 528개 관측 벡터로 인코딩한 뒤, 한 번의
+     * 추론으로 모든 후보의 가치를 받아 `move_reward + DISCOUNT_GAMMA * V(애프터스테이트)`가 가장 큰
+     * 배치를 고른다. 모델은 행동을 직접 내지 않는 가치망이므로 후보 열거와 보상 계산은 이쪽에서 한다.
+     *
+     * 솔로몬과 달리 파이썬 백엔드를 거치지 않고 브라우저의 ONNX Runtime for Web으로 추론한다. 추론은
+     * 비동기라 그동안에도 자연 낙하는 계속되고, 결과가 나오기 전에 뿌요가 닿으면 그 턴은 그대로 넘어간다.
+     *
+     * 하위 클래스는 `modelPath`에 자기 모델을 지정하고 `getClassType()`·`getName()`·`drawPortrait()`만
+     * 재정의하면 된다.
      */
-    class Flauros extends BundledEnemy {
+    class OnnxEnemy extends BundledEnemy {
+        constructor() {
+            super();
+            // 이 적은 ONNX 런타임이 없는 페이지의 적 선택 화면과 구경 후보에서 숨긴다.
+            this.requiresOnnx = true;
+            /**
+             * 이 적이 사용할 ONNX 모델의 `src/` 기준 상대 경로다. 적과 모델은 1:1로 대응하므로
+             * 하위 클래스가 각자 model02.onnx, model03.onnx처럼 다른 값을 지정한다.
+             * @type {string}
+             */
+            this.modelPath = 'onnx/model01.onnx';
+            /** 이미 만들어 둔 추론 세션이다. 대전 시작 전에 `prepareModel()`이 채운다. @type {object|null} */
+            this.session = null;
+            /** @type {'idle'|'pending'|'ready'|'fallback'|'cancelled'} */
+            this.decisionState = 'idle';
+            /** 추론이 끝났을 때 아직 같은 턴인지 확인하기 위한 판별용 플레이어다. @type {PlayerState|null} */
+            this.turnPlayer = null;
+            /** 추론을 시작했던 조작 뿌요다. 턴이 바뀌면 늦게 온 결과를 버리는 근거가 된다. @type {object|null} */
+            this.turnActive = null;
+            /** 늦게 도착한 추론 결과를 버리기 위해 턴마다 올리는 일련번호다. @type {number} */
+            this.inferenceToken = 0;
+            this.targetX = 2;
+            this.targetRotation = 0;
+            this.fastDownElapsed = 0;
+        }
+
+        getClassType() { return 'OnnxEnemy'; }
+
+        /**
+         * 대전을 시작하기 전에 ONNX 세션을 만들어 둔다.
+         * 실패하면 예외를 그대로 올려서 호출자가 대전을 시작하지 않고 안내 문구를 띄우게 한다.
+         * @returns {Promise<void>}
+         */
+        async prepareModel() {
+            this.session = await loadOnnxSession(this.modelPath);
+        }
+
+        /** 캡처한 뿌요가 아직 이 컨트롤러의 현재 조작 턴인지 확인한다. @param {PlayerState} player CPU 플레이어 @returns {boolean} 같은 턴이면 true */
+        isCurrentTurn(player) {
+            return Boolean(game?.running && player === this.turnPlayer && player.controller === this
+                && player.phase === 'control' && player.active === this.turnActive);
+        }
+
+        /**
+         * 이번 턴에 실제로 사용할 수 있는 배치 후보만 추린다.
+         * 관측값의 높이 조건만 보는 파이썬과 달리, 가로 이동 경로와 회전 킥까지 확인해 실제로 도달할 수
+         * 있는 배치만 남긴다.
+         * @param {PlayerState} player CPU 플레이어
+         * @returns {object[]} 사용 가능한 배치 후보 목록
+         */
+        getUsablePlacements(player) {
+            return player.aiSimulations.filter((simulation) => this.canUsePlacement(player, simulation));
+        }
+
+        /** 실제 뿌요가 목표 X까지 먼저 이동한 뒤 그 회전까지 도달할 수 있는지 검사한다. @param {PlayerState} player CPU 플레이어 @param {{x:number,rotation:number}} result 검사할 배치 @returns {boolean} 사용 가능 여부 */
+        canUsePlacement(player, result) {
+            if (!player.active || !result || !Number.isInteger(result.x) || !Number.isInteger(result.rotation)
+                || result.x < 0 || result.x >= COLUMNS || result.rotation < 0 || result.rotation > 3) return false;
+            if (!player.aiSimulations.some((simulation) => simulation.x === result.x && simulation.rotation === result.rotation)) return false;
+            let simulated = { ...player.active };
+            while (simulated.x !== result.x) {
+                const candidate = { ...simulated, x: simulated.x + (simulated.x < result.x ? 1 : -1) };
+                if (!canPlace(player, candidate)) return false;
+                simulated = candidate;
+            }
+            while (simulated.rotation !== result.rotation) {
+                const rotationDelta = (result.rotation - simulated.rotation + 4) % 4;
+                const direction = rotationDelta === 3 ? -1 : 1;
+                const candidate = { ...simulated, rotation: (simulated.rotation + direction + 4) % 4 };
+                if (canPlace(player, candidate)) {
+                    simulated = candidate;
+                    continue;
+                }
+                const horizontalKick = candidate.rotation === 1 ? -1 : candidate.rotation === 3 ? 1 : 0;
+                const kicked = { ...candidate, x: candidate.x + horizontalKick };
+                if (horizontalKick && canPlace(player, kicked)) {
+                    simulated = kicked;
+                    continue;
+                }
+                const flipped = { ...simulated, rotation: (simulated.rotation + direction * 2 + 4) % 4 };
+                if (!canPlace(player, flipped)) return false;
+                simulated = flipped;
+            }
+            return simulated.x === result.x;
+        }
+
+        /**
+         * 한 배치의 애프터스테이트 관측 벡터와 그 수의 즉시 보상을 만든다.
+         * ATTACK·싹쓸이 티켓·피버 보정은 `learning.py`의 `_build_afterstate()`와 같은 순서로 적용해야
+         * 가치망이 학습 때 본 것과 같은 입력 분포를 받는다. 무작위인 방해뿌요 낙하는 반영하지 않고,
+         * 상쇄하고 남은 피해량만 스칼라로 남긴다.
+         * @param {PlayerState} player CPU 플레이어
+         * @param {object} simulation 착지 후보
+         * @returns {{simulation:object, reward:number, observation:number[]}|null} 후보 평가 정보. 유효하지 않으면 null이다.
+         */
+        buildAfterstate(player, simulation) {
+            const result = simulatePlacementResult(player.board, player.active.colors, simulation.positions);
+            if (!result) return null;
+            const feverRule = game?.feverRule === true;
+            const feverActive = feverRule && player.fever?.active === true;
+            // 피버 중에는 피버 필드 전용 미정산 피해가 그 시점의 실제 피해량이다.
+            const damage = feverActive ? (player.fever?.damage || 0) : (player.damage || 0);
+            let attack = result.attack;
+            let ticket = player.allClearTicket === true;
+            if (feverRule && result.combo > 0 && attack < 1 && damage >= 1) attack = 1;
+            if (result.combo > 0 && !feverRule && ticket) {
+                attack += ALL_CLEAR_TICKET_ATTACK;
+                ticket = false;
+            }
+            if (result.combo > 0 && !feverRule && isAllClearBoard(result.board)) ticket = true;
+            const remainingDamage = damage - Math.min(Math.floor(attack), Math.floor(damage));
+            const fever = player.fever ? {
+                active: feverActive,
+                gauge: player.fever.gauge,
+                nextTime: player.fever.nextTime,
+                targetCombo: player.fever.targetCombo,
+                leftTime: player.fever.leftTime,
+                damage: feverActive ? remainingDamage : player.fever.damage
+            } : null;
+            const observation = buildObservationValues({
+                board: result.board,
+                // 애프터스테이트의 조작 쌍 자리에는 이 수 다음에 내려올 쌍을 넣는다.
+                pair: player.nextPairs?.[0] || [],
+                attack,
+                turn: (player.placedPairCount || 0) + 1,
+                incomingDamage: remainingDamage,
+                feverRule,
+                allClearTicket: ticket,
+                elapsedMs: game?.elapsed,
+                marginRate: game?.marginRate,
+                timeProgressMultiplier: game?.timeProgressMultiplier,
+                fever: feverRule ? fever : null
+            });
+            // common.py의 move_reward()와 같은 계약이다. 같은 ATTACK이라도 더 긴 연쇄를 높게 본다.
+            return { simulation, reward: result.attack + result.combo * result.combo, observation };
+        }
+
+        /**
+         * 이번 턴의 모든 후보를 한 번에 추론해 가장 좋은 배치를 고른다.
+         * @param {PlayerState} player CPU 플레이어
+         * @param {number} token 이 추론을 시작한 턴의 일련번호
+         * @returns {Promise<void>}
+         */
+        async decidePlacement(player, token) {
+            try {
+                const runtime = getOnnxRuntime();
+                if (!runtime) throw new Error('ONNX 런타임(ort)이 없습니다.');
+                if (!this.session) throw new Error(`${this.modelPath} 추론 세션이 준비되지 않았습니다.`);
+                const candidates = this.getUsablePlacements(player)
+                    .map((simulation) => this.buildAfterstate(player, simulation))
+                    .filter((candidate) => candidate !== null);
+                if (!candidates.length) throw new Error('추론할 수 있는 배치 후보가 없습니다.');
+                const inputData = new Float32Array(candidates.length * ONNX_OBSERVATION_SIZE);
+                candidates.forEach((candidate, index) => {
+                    if (candidate.observation.length !== ONNX_OBSERVATION_SIZE) {
+                        throw new Error(`관측 벡터 길이 오류: ${candidate.observation.length} != ${ONNX_OBSERVATION_SIZE}`);
+                    }
+                    inputData.set(candidate.observation, index * ONNX_OBSERVATION_SIZE);
+                });
+                const tensor = new runtime.Tensor('float32', inputData, [candidates.length, ONNX_OBSERVATION_SIZE]);
+                const outputs = await this.session.run({ [ONNX_INPUT_NAME]: tensor });
+                // 추론을 기다리는 동안 턴이 넘어갔으면 이 결과는 버린다.
+                if (token !== this.inferenceToken || !this.isCurrentTurn(player)) return;
+                const values = outputs?.[ONNX_OUTPUT_NAME]?.data;
+                if (!values || values.length !== candidates.length) {
+                    throw new Error(`추론 출력 길이 오류: ${values?.length} != ${candidates.length}`);
+                }
+                let best = null;
+                let bestScore = -Infinity;
+                candidates.forEach((candidate, index) => {
+                    const value = Number(values[index]);
+                    if (!Number.isFinite(value)) return;
+                    // learning.py의 score_afterstates()와 같은 기준이다.
+                    const score = candidate.reward + ONNX_DISCOUNT_GAMMA * value;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = candidate.simulation;
+                    }
+                });
+                if (!best) throw new Error('추론 결과에서 유효한 가치를 찾지 못했습니다.');
+                this.targetX = best.x;
+                this.targetRotation = ((best.rotation % 4) + 4) % 4;
+                player.aiTarget = this.targetX;
+                player.aiRotation = this.targetRotation;
+                player.aiDecisionElapsed = 0;
+                this.fastDownElapsed = 0;
+                this.decisionState = 'ready';
+            } catch (error) {
+                if (token !== this.inferenceToken || !this.isCurrentTurn(player)) return;
+                // 추론·출력 검증 실패는 대전을 멈추지 않고 앞 1수 시뮬레이션 결과로 이어 간다.
+                console.error(`${this.getClassType()}의 ONNX 추론에 실패했습니다. 앞 1수 시뮬레이션으로 진행합니다.`, error);
+                this.applyFallback(player);
+            }
+        }
+
+        /** 추론을 쓸 수 없을 때 앞 1수 시뮬레이션의 최적 배치로 이번 턴을 결정한다. @param {PlayerState} player CPU 플레이어 @returns {void} */
+        applyFallback(player) {
+            if (!player.active) return;
+            prepareAiPlacementSimulations(player);
+            const placement = findBestAttackPlacement(player, player.active.x, null, true);
+            this.targetX = placement.x;
+            this.targetRotation = ((placement.rotation % 4) + 4) % 4;
+            player.aiTarget = this.targetX;
+            player.aiRotation = this.targetRotation;
+            player.aiDecisionElapsed = 0;
+            this.fastDownElapsed = 0;
+            this.decisionState = 'fallback';
+        }
+
+        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {void} */
+        prepareTurn(player) {
+            // 이전 턴의 추론이 아직 돌고 있으면 그 결과를 버리도록 일련번호를 올린다.
+            this.inferenceToken += 1;
+            super.prepareTurn(player);
+            this.turnPlayer = player;
+            this.turnActive = player.active;
+            this.targetX = player.active?.x ?? 2;
+            this.targetRotation = player.active?.rotation ?? 0;
+            this.fastDownElapsed = 0;
+            if (!player.active) {
+                this.decisionState = 'idle';
+                return;
+            }
+            this.decisionState = 'pending';
+            void this.decidePlacement(player, this.inferenceToken);
+        }
+
+        chooseTarget() { return this.targetX; }
+        chooseRotate() { return this.targetRotation; }
+
+        /**
+         * 추론이 끝나기 전에는 좌우 이동·회전을 하지 않고 자연 낙하만 시킨다.
+         * 결과가 나오면 수평 이동을 모두 마친 다음 회전한다.
+         * @param {PlayerState} player CPU 플레이어
+         * @param {number} delta 이전 프레임 후 경과한 밀리초
+         * @returns {boolean} 엔진 기본 이동을 대체했는지 여부
+         */
+        updateControl(player, delta) {
+            if (this.decisionState === 'fallback') return false;
+            if (this.decisionState !== 'ready') return true;
+            if (player.active.x !== player.aiTarget) {
+                this.fastDownElapsed = 0;
+                moveActive(player, player.active.x < player.aiTarget ? 1 : -1, 0);
+                return true;
+            }
+            const rotationDelta = (player.aiRotation - player.active.rotation + 4) % 4;
+            if (rotationDelta) {
+                this.fastDownElapsed = 0;
+                rotateActive(player, rotationDelta === 3 ? -1 : 1);
+                return true;
+            }
+            this.fastDownElapsed += delta;
+            return true;
+        }
+
+        /** 추론이 끝나기 전에는 빠르게 내리기를 미룬다. @param {PlayerState} player CPU 플레이어 @returns {boolean} 빠른 하강 사용 여부 */
+        useFastDown(player) {
+            if (this.decisionState === 'fallback') return super.useFastDown(player);
+            if (this.decisionState !== 'ready') return false;
+            const delay = getSelectedDifficulty().fastDownDelay;
+            if (delay === null) return false;
+            const opponent = game?.players.find((candidate) => candidate !== player);
+            const delayRate = isEnemyInCrisis(player, opponent) ? this.dangerFastDownDelayRate : this.normalFastDownDelayRate;
+            return this.fastDownElapsed >= delay * delayRate;
+        }
+
+        /** 착지 또는 턴 교체 시 진행 중인 추론 결과를 버린다. @param {PlayerState|null} player CPU 플레이어 @param {string} reason 취소 사유 @returns {void} */
+        cancelPendingRequest(player, reason = 'cancelled') {
+            if (player && player !== this.turnPlayer) return;
+            this.inferenceToken += 1;
+            if (reason === 'contact') this.decisionState = 'cancelled';
+        }
+    }
+
+    /**
+     * 플라우로스는 강하고 무서운 표범 모습으로 나타나며, 삼각형 밖에서는 거짓말로 소환자를 속인다는
+     * 전승을 귀엽지만 위엄 있는 모습으로 각색한 적이다.
+     * 판단은 `src/onnx/model01.onnx` 가치망 추론으로 하며, 추론에 실패한 턴만 앞 1수 시뮬레이션으로 넘어간다.
+     */
+    class Flauros extends OnnxEnemy {
         constructor() {
             super();
             this.sortPriority = 9;
-            this.notAvail = true;
+            // 첫 ONNX 적이라 model01.onnx와 1:1로 대응한다. 이후 적은 model02.onnx처럼 각자 모델을 갖는다.
+            this.modelPath = 'onnx/model01.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -14402,21 +14899,6 @@
 
         /** @returns {string} 적 이름 */
         getName() { return '플라우로스'; }
-
-        /**
-         * TODO: 플라우로스 전용 AI를 구현한다. 출시 전에는 이동·회전·빠른 하강 판단 없이 자연 낙하만 한다.
-         * @returns {void}
-         */
-        prepareTurn() { this.preparedPlacement = null; }
-
-        /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 현재 X 좌표 */
-        chooseTarget(player) { return player.active ? player.active.x : 2; }
-
-        /** @returns {number} 회전하지 않는 기본값 */
-        chooseRotate() { return 0; }
-
-        /** @returns {boolean} 빠른 하강을 사용하지 않으므로 항상 false */
-        useFastDown() { return false; }
 
         /**
          * 검은 점무늬, 날카로운 눈, 삼각형 마법진으로 표현한 표범의 일반·위기·우는 초상화를 그린다.
@@ -14656,6 +15138,7 @@
         formatPoint,
         collapseBoard,
         simulatePlacementBoard,
+        simulatePlacementResult,
         getFeverStageDefinitions,
         isAllClearBoard,
         estimateAttack,
@@ -14665,6 +15148,7 @@
 
     WebPuyo = {
         Enemy,
+        OnnxEnemy,
         beginWorkerSearchTurn,
         startWorkerLookaheadSearch,
         cancelPendingWorkerSearch,
@@ -14733,6 +15217,7 @@
         formatPoint,
         collapseBoard,
         simulatePlacementBoard,
+        simulatePlacementResult,
         getFeverStageDefinitions,
         isAllClearBoard,
         estimateAttack,

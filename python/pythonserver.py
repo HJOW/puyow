@@ -62,6 +62,51 @@ SERVER_CONFIG = {
 # nodeserver.js와 동일하게 학습 API에서 접근을 차단할 경로 조각이다.
 BLACKLIST_FILE_PATTERNS = ("/WEB-INF/", "/META-INF/")
 
+# 확장자별 Content-Type이다. nodeserver.js의 표와 같은 값을 쓰며, mimetypes보다 먼저 적용한다.
+# mimetypes.guess_type()은 Windows에서 레지스트리(HKEY_CLASSES_ROOT)를 함께 읽기 때문에 같은
+# 확장자라도 PC마다 다른 값이 나온다. 실제로 .mjs가 text/plain으로 잡혀 ONNX 런타임의 wasm 글루
+# 모듈을 브라우저가 거부하는 일이 있었고, .wasm도 환경에 따라 빠질 수 있다. 게임 구동에 필요한
+# 확장자는 여기에 못박아 두어 어느 PC에서 실행하든 같은 헤더가 나가게 한다.
+STATIC_CONTENT_TYPES = {
+	".html": "text/html",
+	".htm": "text/html",
+	".txt": "text/plain",
+	".js": "text/javascript",
+	".mjs": "text/javascript",
+	".wasm": "application/wasm",
+	".css": "text/css",
+	".json": "application/json",
+	".json5": "application/json5",
+	".xml": "application/xml",
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".gif": "image/gif",
+	".ico": "image/vnd.microsoft.icon",
+	".mp3": "audio/mpeg",
+	".ogg": "audio/ogg",
+	".wav": "audio/wav",
+	".mp4": "video/mp4",
+	".weba": "audio/webm",
+	".webm": "video/webm",
+	".webp": "image/webp",
+	".ttf": "font/ttf",
+	".otf": "font/otf",
+	".woff": "font/woff",
+	".woff2": "font/woff2",
+	".zip": "application/zip",
+	".7z": "application/x-7z-compressed",
+	".gz": "application/gzip",
+	".jar": "application/java-archive",
+	".csv": "text/csv",
+	".pdf": "application/pdf",
+	".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+	".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+	".webmanifest": "application/manifest+json",
+	# ONNX 모델은 브라우저가 ArrayBuffer로 받아 쓰므로 일반 이진 파일로 내려보낸다.
+	".onnx": "application/octet-stream",
+}
+
 # 이 문자열을 토큰으로 보내고 호출자가 실제로 localhost/루프백 주소일 때만 서버 설정 토큰과
 # 무관하게 인증을 통과시킨다. 빈 문자열은 이 예외에 해당하지 않으며 평소처럼 거부된다.
 LOOPBACK_BYPASS_TOKEN = "localhost"
@@ -110,6 +155,20 @@ SOLOMON_DEFAULT_TRAINING_WEIGHT = 1.0
 
 # puyow.js의 COLORS 순서와 관측 벡터의 색상 채널 순서다.
 PUYO_COLORS = ("red", "green", "yellow", "blue", "purple")
+
+
+# 정적 파일 하나에 내려보낼 Content-Type을 결정한다.
+def resolve_static_content_type(file_path: Path) -> str:
+	"""확장자로 Content-Type을 정한다. STATIC_CONTENT_TYPES를 먼저 보고 없으면 mimetypes로 넘긴다.
+
+	OS 설정에 좌우되지 않아야 하는 확장자는 STATIC_CONTENT_TYPES에 못박혀 있으므로 그 값이 우선한다.
+	표에 없는 확장자만 mimetypes.guess_type()에 맡기고, 그것도 모르면 일반 이진 파일로 본다.
+	"""
+	extension = file_path.suffix.lower()
+	content_type = STATIC_CONTENT_TYPES.get(extension)
+	if content_type is not None:
+		return content_type
+	return mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
 
 
 class ApiError(Exception):
@@ -837,7 +896,7 @@ class PuyoRequestHandler(BaseHTTPRequestHandler):
 			self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "404 Not Found"})
 			return
 		data = file_path.read_bytes()
-		content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+		content_type = resolve_static_content_type(file_path)
 		self.send_response(HTTPStatus.OK)
 		self._send_cors_headers()
 		self.send_header("Content-Type", content_type)
