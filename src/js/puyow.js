@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 23;
+    const BUILDNO = 24;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -299,6 +299,13 @@
      * @type {number}
      */
     const ONNX_LOG_SEVERITY_LEVEL = 3;
+    /**
+     * ONNX 적이 한 턴의 추론 결과를 기다리는 최대 시간(ms)이다. 이 시간을 넘기면 그 턴은 앞 1수
+     * 시뮬레이션 결과로 확정한다. 한 턴의 자연 낙하 예산(약 24초)보다 훨씬 짧게 잡아, 늦은 추론
+     * 때문에 회전도 이동도 없이 스폰 자리에 떨어뜨리는 턴이 생기지 않게 한다.
+     * @type {number}
+     */
+    const ONNX_INFERENCE_TIMEOUT = 2000;
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. (다국어 데이터) @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
@@ -1542,8 +1549,10 @@
     }
 
     /**
-     * 게임 초기화 시 ONNX 런타임 사용 가능 여부를 확인하고 wasm 자원 경로를 지정한다.
+     * 게임 초기화 시 ONNX 런타임 사용 가능 여부를 확인하고 wasm 자원 경로와 실행 방식을 지정한다.
      * wasm 글루(`ort-wasm-simd-threaded.jsep.mjs`)와 바이너리는 puyow.js와 같은 `src/js/`에 둔다.
+     *
+     * 이 설정은 첫 `InferenceSession.create()`보다 먼저 끝나야 하므로 초기화 시점에 한 번만 한다.
      * @returns {boolean} 사용 가능 여부
      */
     function refreshOnnxRuntimeAvailability() {
@@ -1556,9 +1565,13 @@
                 if (!wasmEnv.wasmPaths) wasmEnv.wasmPaths = resolveGameResourceURL('js/');
                 // COOP/COEP 헤더가 없는 정적 호스팅에서는 어차피 단일 스레드로 내려가므로 경고 없이 1로 고정한다.
                 wasmEnv.numThreads = 1;
+                // 세션 생성과 추론을 Web Worker에서 돌린다. wasm 연산은 메인 스레드에서 동기로 실행되므로
+                // 이 설정이 없으면 27MB짜리 wasm을 인스턴스화하는 동안 화면·입력·자연 낙하가 통째로 멈춘다.
+                // 느린 기기에서 그 정지가 수 초에 달해 브라우저가 응답 없음 상태로 보이던 원인이다.
+                wasmEnv.proxy = true;
             }
         } catch (error) {
-            console.error('ONNX 런타임 wasm 경로를 설정하지 못했습니다.', error);
+            console.error('ONNX 런타임 실행 환경을 설정하지 못했습니다.', error);
         }
         return true;
     }
@@ -1582,11 +1595,21 @@
             const modelURL = resolveGameResourceURL(modelPath);
             const response = await fetch(convertURL(modelURL));
             if (!response.ok) throw new Error(`${modelPath} 요청 실패 (${response.status})`);
-            const modelBuffer = await response.arrayBuffer();
-            return runtime.InferenceSession.create(new Uint8Array(modelBuffer), {
+            const modelBuffer = new Uint8Array(await response.arrayBuffer());
+            const sessionOptions = {
                 executionProviders: ONNX_EXECUTION_PROVIDERS,
                 logSeverityLevel: ONNX_LOG_SEVERITY_LEVEL
-            });
+            };
+            try {
+                return await runtime.InferenceSession.create(modelBuffer, sessionOptions);
+            } catch (error) {
+                // Blob 워커를 막는 CSP 등으로 프록시 워커를 띄우지 못하면 예전처럼 메인 스레드에서 실행한다.
+                // 이때는 세션을 만드는 동안 화면이 잠시 멈추지만, 적을 아예 못 쓰게 되는 것보다는 낫다.
+                if (!runtime.env?.wasm?.proxy) throw error;
+                console.error('ONNX 프록시 워커를 시작하지 못해 메인 스레드 추론으로 되돌립니다.', error);
+                runtime.env.wasm.proxy = false;
+                return runtime.InferenceSession.create(modelBuffer, sessionOptions);
+            }
         })();
         // 실패한 시도를 캐시에 남기면 다시 시도할 수 없으므로, 실패 시에는 캐시에서 지운다.
         loading.catch(() => onnxSessionCache.delete(modelPath));
@@ -3252,7 +3275,14 @@
                     rotation,
                     positions,
                     attack: result?.attack ?? 0,
-                    combo: result?.combo ?? 0
+                    combo: result?.combo ?? 0,
+                    /**
+                     * 연쇄가 모두 끝난 뒤의 보드다. 놓을 수 없는 배치면 null이다.
+                     * 이미 계산해 둔 값을 버리지 않고 남겨, 결과 보드까지 필요한 쪽(ONNX 적의
+                     * 애프터스테이트 인코딩)이 같은 연쇄를 다시 돌리지 않게 한다.
+                     * 여러 곳이 같은 배열을 함께 보므로 읽기 전용으로만 사용하고 절대 수정하지 않는다.
+                     */
+                    board: result?.board ?? null
                 });
             }
         }
@@ -14628,12 +14658,21 @@
             this.turnActive = null;
             /** 늦게 도착한 추론 결과를 버리기 위해 턴마다 올리는 일련번호다. @type {number} */
             this.inferenceToken = 0;
+            /** 이번 턴 추론의 마감 시한 타이머다. @type {number|null} */
+            this.decisionTimeoutId = null;
             this.targetX = 2;
             this.targetRotation = 0;
             this.fastDownElapsed = 0;
         }
 
         getClassType() { return 'OnnxEnemy'; }
+
+        /** 이번 턴의 추론 마감 타이머를 정리한다. @returns {void} */
+        clearDecisionTimeout() {
+            if (this.decisionTimeoutId === null) return;
+            clearTimeout(this.decisionTimeoutId);
+            this.decisionTimeoutId = null;
+        }
 
         /**
          * 대전을 시작하기 전에 ONNX 세션을 만들어 둔다.
@@ -14703,8 +14742,12 @@
          * @returns {{simulation:object, reward:number, observation:number[]}|null} 후보 평가 정보. 유효하지 않으면 null이다.
          */
         buildAfterstate(player, simulation) {
-            const result = simulatePlacementResult(player.board, player.active.colors, simulation.positions);
-            if (!result) return null;
+            // prepareAiPlacementSimulations()가 이미 돌려 둔 결과가 있으면 같은 연쇄를 다시 돌리지 않는다.
+            // 이 보드는 다른 곳과 공유하므로 읽기만 하며, 후보 목록 밖에서 들어온 배치만 직접 계산한다.
+            const result = simulation.board !== undefined
+                ? { board: simulation.board, combo: simulation.combo, attack: simulation.attack }
+                : simulatePlacementResult(player.board, player.active.colors, simulation.positions);
+            if (!result?.board) return null;
             const feverRule = game?.feverRule === true;
             const feverActive = feverRule && player.fever?.active === true;
             // 피버 중에는 피버 필드 전용 미정산 피해가 그 시점의 실제 피해량이다.
@@ -14787,6 +14830,7 @@
                     }
                 });
                 if (!best) throw new Error('추론 결과에서 유효한 가치를 찾지 못했습니다.');
+                this.clearDecisionTimeout();
                 this.targetX = best.x;
                 this.targetRotation = ((best.rotation % 4) + 4) % 4;
                 player.aiTarget = this.targetX;
@@ -14805,6 +14849,7 @@
         /** 추론을 쓸 수 없을 때 앞 1수 시뮬레이션의 최적 배치로 이번 턴을 결정한다. @param {PlayerState} player CPU 플레이어 @returns {void} */
         applyFallback(player) {
             if (!player.active) return;
+            this.clearDecisionTimeout();
             prepareAiPlacementSimulations(player);
             const placement = findBestAttackPlacement(player, player.active.x, null, true);
             this.targetX = placement.x;
@@ -14820,6 +14865,7 @@
         prepareTurn(player) {
             // 이전 턴의 추론이 아직 돌고 있으면 그 결과를 버리도록 일련번호를 올린다.
             this.inferenceToken += 1;
+            this.clearDecisionTimeout();
             super.prepareTurn(player);
             this.turnPlayer = player;
             this.turnActive = player.active;
@@ -14831,7 +14877,16 @@
                 return;
             }
             this.decisionState = 'pending';
-            void this.decidePlacement(player, this.inferenceToken);
+            const token = this.inferenceToken;
+            // 추론이 마감 시한을 넘기면 그 턴은 앞 1수 시뮬레이션으로 확정하고, 늦게 온 결과는 버린다.
+            // 추론은 Web Worker에서 돌아가므로 이 타이머가 실제로 제때 깨어난다.
+            this.decisionTimeoutId = setTimeout(() => {
+                this.decisionTimeoutId = null;
+                if (token !== this.inferenceToken || this.decisionState !== 'pending' || !this.isCurrentTurn(player)) return;
+                this.inferenceToken += 1;
+                this.applyFallback(player);
+            }, ONNX_INFERENCE_TIMEOUT);
+            void this.decidePlacement(player, token);
         }
 
         chooseTarget() { return this.targetX; }
@@ -14877,6 +14932,7 @@
         cancelPendingRequest(player, reason = 'cancelled') {
             if (player && player !== this.turnPlayer) return;
             this.inferenceToken += 1;
+            this.clearDecisionTimeout();
             if (reason === 'contact') this.decisionState = 'cancelled';
         }
     }

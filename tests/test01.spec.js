@@ -5852,3 +5852,46 @@ test('플라우로스는 ONNX 모델을 불러온 뒤 대전하고, 모델을 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 10000 }).toBe('플라우로스');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThan(2);
 });
+
+test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1수 시뮬레이션으로 그 턴을 확정한다', async ({ page }) => {
+  test.setTimeout(300000);
+  await page.evaluate(() => localStorage.setItem('puyow_code', JSON.stringify(['observation'])));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  // 게임 초기화가 추론을 워커로 넘겨 두었는지 확인한다. 이 설정이 없으면 wasm 연산이 메인 스레드를 막는다.
+  expect(await page.evaluate(() => window.ort.env.wasm.proxy)).toBe(true);
+
+  // 추론을 마감 시한(2초)보다 오래 끌게 만들어 폴백 경로를 태운다.
+  await page.evaluate(() => {
+    const originalCreate = window.ort.InferenceSession.create.bind(window.ort.InferenceSession);
+    window.ort.InferenceSession.create = async (...args) => {
+      const session = await originalCreate(...args);
+      const originalRun = session.run.bind(session);
+      session.run = async (...runArgs) => {
+        await new Promise((resolve) => { setTimeout(resolve, 6000); });
+        return originalRun(...runArgs);
+      };
+      return session;
+    };
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('플라우로스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
+
+  // 폴백이 없으면 회전·이동·빠른 하강 없이 자연 낙하만 하므로 한 수에 20초가 넘게 걸린다.
+  const startedAt = Date.now();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThanOrEqual(3);
+  const averageTurnMs = (Date.now() - startedAt) / 3;
+  expect(averageTurnMs).toBeLessThan(15000);
+});
