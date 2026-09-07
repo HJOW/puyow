@@ -59,9 +59,19 @@ async function blockOnnxWasmCdn(page) {
   await page.route('https://cdn.jsdelivr.net/**', (route) => route.abort('failed'));
 }
 
+// 게임을 어떤 서버로 띄웠는지에 따라 Local AI 사용 가능 여부가 달라지고, 쓸 수 있으면 제공자 기본값이
+// Local AI가 되어 솔로몬 해금·설정 포커스 순번·적 목록까지 함께 바뀐다. 기본값을 일반 웹 서버와 같은
+// 사용 불가로 고정하고, Local AI가 필요한 테스트만 자기 라우트를 따로 걸어 이 기본값을 덮어쓴다.
+async function disableLocalAiModel(page) {
+  await page.route('**/apis/localmodelinfo', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ available: false }) });
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   await installMockGamepad(page);
   await blockOnnxWasmCdn(page);
+  await disableLocalAiModel(page);
   await page.goto(GAME_PAGE);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
 });
@@ -5353,8 +5363,8 @@ test('구경 대전도 리플레이로 기록하며 재생 중에는 자동 재�
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await page.evaluate(() => {
-    // observation 코드는 ONNX 추론 적까지 구경 후보로 열어 준다. 이 테스트는 리플레이 기록을 보는 것이므로
-    // 적 선정에 쓰이는 첫 두 번의 난수만 고정해 항상 같은 일반 적 둘이 나오게 하고, 뒤의 뿌요 생성은 그대로 무작위로 둔다.
+    // 이 테스트는 리플레이 기록을 보는 것이므로 적 선정에 쓰이는 첫 두 번의 난수만 고정해
+    // 항상 같은 적 둘이 나오게 하고, 뒤의 뿌요 생성은 그대로 무작위로 둔다.
     let drawCount = 0;
     let seed = 12345;
     Math.random = () => {
@@ -5625,9 +5635,9 @@ test('ONNX 런타임이 없어도 이긴 전적이 있는 플라우로스는 갤
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
 });
 
-test('구경 모드는 ONNX 추론 적을 양쪽에 함께 배치하지 않는다', async ({ page }) => {
+test('구경 모드는 ONNX 추론 적을 선정 대상에서 아예 제외한다', async ({ page }) => {
   await page.evaluate(() => {
-    // 두 ONNX 적을 목록 맨 앞에 두고 무작위를 고정하면, 규칙이 없을 때 둘이 함께 뽑힌다.
+    // 두 ONNX 적을 목록 맨 앞에 두고 무작위를 고정하면, 제외하지 않을 때 반드시 뽑히는 자리에 놓인다.
     class OnnxWatchEnemyA extends window.WebPuyo.OnnxEnemy {
       constructor() { super(); this.sortPriority = -1002; }
       getClassType() { return 'OnnxWatchEnemyA'; }
@@ -5657,9 +5667,9 @@ test('구경 모드는 ONNX 추론 적을 양쪽에 함께 배치하지 않는�
     const state = window.WebPuyo.getGameState();
     return [state.player.name, state.opponent.name];
   });
-  // 왼쪽은 고정된 무작위값 때문에 항상 ONNX 적 A이고, 오른쪽은 ONNX 적 B가 아닌 일반 적이어야 한다.
-  expect(names[0]).toBe('ONNX 구경 적 A');
-  expect(names[1]).not.toBe('ONNX 구경 적 B');
+  // 후보에서 아예 빠지므로 고정된 무작위값으로도 양쪽 모두 ONNX 적이 뽑히지 않는다.
+  expect(names).not.toContain('ONNX 구경 적 A');
+  expect(names).not.toContain('ONNX 구경 적 B');
 });
 
 test('플라우로스는 ONNX 모델을 불러온 뒤 대전하고, 모델을 못 불러오면 적 선택 화면으로 돌아간다', async ({ page }) => {

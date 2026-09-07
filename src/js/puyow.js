@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 26;
+    const BUILDNO = 27;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -2860,17 +2860,17 @@
         ));
     }
 
-    /** 구경 모드에 사용할 수 있는 적 목록을 반환한다. observation 코드 적용 중에는 표시되는 출시 적 중 솔로몬·안드로말리우스·단탈리온만 제외한다. ONNX 런타임이 없으면 추론으로 판단하는 적도 함께 빠진다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean,requiresOnnx:boolean}[]} 후보 적 목록 */
+    /** 구경 모드에 사용할 수 있는 적 목록을 반환한다. observation 코드 적용 중에는 표시되는 출시 적 중 솔로몬·안드로말리우스·단탈리온만 제외한다. ONNX 추론으로 판단하는 적은 런타임 유무와 무관하게 항상 빠진다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean,requiresOnnx:boolean}[]} 후보 적 목록 */
     function getWatchOpponentCandidates() {
-        // ONNX 추론으로 판단하는 적은 런타임이 없는 페이지에서 구경 대전에도 나올 수 없다.
-        const usable = getVisibleOpponents().filter((entry) => !entry.notAvail && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType));
+        // ONNX 추론으로 판단하는 적은 구경 대전의 선정 대상에서 아예 제외한다.
+        const usable = getVisibleOpponents().filter((entry) => !entry.notAvail && !entry.requiresOnnx
+            && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType));
         if (isObservationCodeApplied()) return usable;
         return usable.filter((entry) => hasWatchEligibleClear(entry.className));
     }
 
     /**
      * 구경 모드 후보 중 종류가 서로 다른 적 두 명을 무작위로 선정한다.
-     * ONNX 추론은 한 대전에 한쪽만 사용할 수 있으므로, 먼저 뽑힌 적이 추론을 쓰면 반대쪽은 추론을 쓰지 않는 적 중에서 고른다.
      * @returns {object[]|null} 선정된 두 적 등록 항목
      */
     function selectWatchOpponents() {
@@ -2878,8 +2878,7 @@
         if (candidates.length < 2) return null;
         const leftIndex = Math.floor(randomFloat() * candidates.length);
         const left = candidates[leftIndex];
-        const rightCandidates = candidates.filter((entry, index) => index !== leftIndex && entry.classType !== left.classType
-            && !(left.requiresOnnx && entry.requiresOnnx));
+        const rightCandidates = candidates.filter((entry, index) => index !== leftIndex && entry.classType !== left.classType);
         if (!rightCandidates.length) return null;
         const right = rightCandidates[Math.floor(randomFloat() * rightCandidates.length)];
         return [left, right];
@@ -2947,8 +2946,6 @@
         // 구경 모드의 모든 규칙도 리플레이 기록 대상이다.
         beginReplayRecording();
         syncBackgroundMusic();
-        // 구경 대전에는 적 선택 화면이 없으므로, 모델 로딩에 실패하면 구경 설정 화면으로 돌려보낸다.
-        prepareGameOnnxModels(controllers, () => { menuScreen = 'title'; openWatchSelection(); });
         return true;
     }
 
