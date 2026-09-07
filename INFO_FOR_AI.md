@@ -147,7 +147,7 @@
 
 - 진행도·설정·GOLD는 `localStorage`의 `puyow_store`, 카드 인스턴스 배열은 `puyow_cards`, 갤러리 잠금은 `puyow_gallery`, 테스트 기능 코드 배열은 `puyow_code`에 저장된다. 초기화 시 `puyow_code`를 JSON 배열로 복원하며, 파싱 실패는 오류를 기록한 뒤 빈 배열로 계속한다. 읽을 때 이전 형식을 보정하므로 새 필드는 기본값·마이그레이션을 함께 설계한다. 설정의 `useReplayFeature`는 리플레이 기능 사용 여부를, `reverseLearning`은 역방향 모델 학습 사용 여부를 저장하는 boolean이며, 기존 저장에 값이 없으면 둘 다 `false`로 보정한다.
 - 설정 화면의 `화면 가로방향 고정`·`리플레이 사용`·`역으로 모델 학습` 체크박스는 마우스 클릭 또는 Enter·Space·Z(해당 게임패드 확인 입력 포함)로만 토글한다. 체크박스에 포커스가 있을 때 좌우 방향키는 세 체크박스 사이의 포커스 이동에 쓰며, 양 끝에서는 더 이동하지 않는다. 위치·포커스 순번·저장 키는 `getSettingsCheckboxes()` 한 곳에서 정의하고 그리기·키보드 토글·마우스 판정이 모두 이 목록을 사용하므로, 체크박스를 더할 때는 이 함수와 `SETTINGS_UI_LAYOUT`의 가로 좌표만 추가하면 된다.
-- 설정 화면 포커스 순번은 0~9 설정 행, 10 AI API 테스트, 11~13 체크박스, 14 저장, 15 취소, 16 초기화다. `getSelectableSettingsFocuses()`가 제공자·API 테스트 가능 여부에 따라 7·10을 빼므로, 키보드 이동 횟수를 검증하는 테스트는 이 목록을 기준으로 계산한다.
+- 설정 화면 포커스 순번은 0~9 설정 행, 10 AI API 테스트, 11~13 체크박스, 14 저장, 15 취소, 16 초기화다. `getSelectableSettingsFocuses()`가 AI 입력 세 행 7·8·9를 LM Studio에서만 넣고 10도 API 테스트 실행 가능 여부에 따라 빼므로, 키보드 이동 횟수를 검증하는 테스트는 이 목록을 기준으로 계산한다.
 - `registerLanguage()`, `registerOpponent()`, `registerWarningPuyo()`, `registerFeverStageState()`, `registerPuzzleStage()`가 주요 확장 지점이다. 입력 검증과 중복 처리 방식은 기존 등록 함수에 맞춘다.
 - 적은 `Enemy` 또는 `BundledEnemy` 계열이다. `getClassType()`의 안정성은 저장 진행도·사운드 연결에 중요하므로 기존 클래스 타입을 바꾸지 않는다.
 - 적의 위치·회전 결정은 게임 루프 밖의 별도 보정 함수가 아니라 `prepareTurn()`, `chooseTarget()`, `chooseRotate()` 안에서 끝낸다. 기본 `Enemy.prepareTurn()`은 피버 연쇄 최적화와 패배 위치 회피 후보를 `preparedPlacement`로 준비하고, 기본 제공 적은 `BundledEnemy`에서 연쇄 대응·즉시 패배 보호를 추가한다. 외부 적이 이 공통 규칙을 유지하려면 세 메서드에서 `super` 구현을 호출하고, 완전히 독자적인 AI라면 세 메서드를 재정의하면 된다.
@@ -159,9 +159,150 @@
 - `WarningPuyo` 확장은 양의 정수 `unitCount`, 비어 있지 않은 `type`, `draw(context, x, y, cellSize)`를 갖춰야 한다.
 - 사운드는 `SoundPool`/`CommonSoundPool`/`EnemySoundPool`과 `setEnemySoundPool()`을 사용한다. 배경음은 중복 재생하지 않고 일시정지·음소거·볼륨 상태와 동기화해야 한다. 설정 화면의 배경음악·효과음 슬라이더 값은 축소된 슬라이더 오른쪽(논리 X=920)에 표시한다.
 - 설정 화면 오른쪽 아래의 작은 `코드` 버튼은 키보드 포커스 순서에 포함하지 않고 마우스 클릭만 받는다. 클릭하면 `prompt('코드를 입력하세요')`를 호출하며, 취소·공란은 무시하고 값이 있으면 `trim()` 후 `addCode()`에 전달한다. `addCode()`에 `sound:` 접두사가 붙은 값을 직접 전달하면 접두사 뒤 문자열을 최대 200자로 잘라 사운드 데이터 URL로 읽어 `loadSoundDataURL(url, true)` 경로로 로드하고 `puyow_store.settings.soundDataURL`에 저장한다. 설정 화면이 열려 있으면 임시 설정값 `settingsDraft.soundDataURL`도 함께 갱신해 입력 컴포넌트에 즉시 표시한다. 이 예외 코드는 `puyow_code` 목록에는 추가하지 않는다.
-- 설정 화면의 AI 제공자는 번역하지 않는 브랜드명 `OpenAI`, `LM Studio`와 (초기화 때 `globalThis.LanguageModel` 존재 및 `create` 함수 여부를 확인한 브라우저에서만) `Prompt API`, (초기화 때 게임 서버의 `/apis/localmodelinfo`가 `{"available":true}`를 응답할 때만) `Local AI` 라디오 선택지다. 선택지 순서는 항상 OpenAI → LM Studio → Prompt API → Local AI다. Prompt API 지원 확인 시 `LanguageModel.availability()`도 `expectedInputs`·`expectedOutputs`에 영어 텍스트 옵션을 넣어 비동기로 호출하며 결과가 `downloading`이면 같은 옵션으로 `LanguageModel.create()`를 기다리지 않고 호출해 모델 준비를 시작한다. 실제 Prompt API 세션 생성에도 같은 옵션과 취소 신호를 전달하며, `session.prompt()`에는 솔로몬 배치와 호환되는 JSON Schema 제약을 추가한다. Prompt API를 지원하지 않는 브라우저에서 저장된 제공자가 Prompt API이면 LM Studio로 자동 이관하며, Local AI도 서버 확인 결과 사용할 수 없으면 `applyLocalAiAvailability()`가 같은 방식으로 LM Studio로 이관한다. 서버 확인은 비동기라서 `loadStore()`는 저장된 `Local AI` 값을 일단 유지한다.
-- `aiApiURL`은 `puyow_store.settings`에 저장되며 LM Studio에서만 활성화·포커스되고, Prompt API와 Local AI에서는 URL·키·모델명 모두 비활성화·포커스 제외한다. Local AI를 고르는 순간 `setSettingsDraftProvider()`가 URL에 현재 페이지 origin(예: `http://localhost:9891`), 키에 `localhost`, 모델명에 `puyow`를 채우고, 다른 제공자로 되돌아갈 때는 값을 그대로 둔 채 활성/비활성 상태만 그 제공자의 기존 규칙을 따른다. Local AI로 설정을 저장하면 AI API 테스트를 통과한 것으로 간주해 `unlockSolomonForSession()`을 호출하며, 다음 접속에서도 서버가 계속 사용 가능하다고 응답하면 같은 이유로 솔로몬을 다시 열어 준다. OpenAI는 고정 `https://api.openai.com/v1/responses`를 사용하고, LM Studio는 사용자가 입력한 서버 기본 URL 아래의 `/v1/chat/completions`를 사용한다.
-- AI API 테스트와 솔로몬은 같은 제공자별 구조화 출력 요청 경로를 공유한다. LM Studio와 Local AI 요청은 저장된 `aiApiKey`를 `$LM_API_TOKEN`에 해당하는 Bearer 토큰으로 보내고, `response_format.json_schema`와 `choices[0].message.content` 형식을 사용한다. Local AI는 `pythonserver.py`가 LM Studio API를 흉내내기 때문에 LM Studio와 완전히 같은 요청 경로를 쓴다. Prompt API는 요청마다 `LanguageModel.create()` 세션을 만들고 `session.prompt(prompt, { responseConstraint: schema, signal })`로 JSON Schema 제약 출력을 받은 뒤 즉시 `destroy()`한다. Prompt API 오류·취소·타임아웃·잘못된 JSON은 다른 제공자와 같은 솔로몬 대체 AI 처리 경로를 사용한다. 설정 화면의 AI API 테스트가 응답을 받으면 브라우저 콘솔에 제공자·모델·성공 여부·스키마 검사 여부·원문 응답·파싱 결과를 `console.log`로 기록하며, 요청 오류도 성공 여부와 오류 내용을 함께 기록한다.
+- 설정 화면의 AI 제공자는 번역하지 않는 브랜드명 `LM Studio`와 (초기화 때 게임 서버의 `/apis/localmodelinfo`가 `{"available":true}`를 응답할 때만) `Local AI` 라디오 선택지다. 선택지 순서는 항상 LM Studio → Local AI다. **아무것도 선택하지 않은 상태(`aiProvider`가 빈 문자열, 상수 `NO_AI_PROVIDER`)가 정상 상태의 하나다.** 사용자가 스스로 선택을 푸는 방법은 없고, 고른 제공자를 더 이상 쓸 수 없게 됐을 때만 이 상태로 돌아온다. 라디오 행에 포커스가 있는데 선택된 항목이 없으면 표시할 포커스 테두리가 없으므로 모든 선택지에 테두리를 그린다.
+- AI 제공자의 기본값은 Local AI 사용 가능 여부에 따라 달라진다. `createDefaultAiSettings()`가 Local AI를 쓸 수 있으면 Local AI와 그 고정값을, 쓸 수 없으면 미선택 상태를 돌려준다. 서버 확인이 비동기라서 `loadStore()` 시점에는 아직 알 수 없으므로, 확인이 끝난 뒤 `applyLocalAiAvailability()`가 저장값을 보정한다. 쓸 수 없는데 저장값이 `Local AI`이면 다른 제공자로 옮기지 않고 미선택으로 되돌리고, 반대로 쓸 수 있는데 미선택이면 Local AI 기본값을 채워 저장한다. `loadStore()`의 `normalizeAiProvider()`는 지원을 제거한 `OpenAI`·`Prompt API`를 포함해 현재 목록에 없는 값을 모두 미선택으로 되돌리되, 서버 확인 전이라 `Local AI`만 그대로 둔다.
+- `aiApiURL`·`aiApiKey`·`aiModel` 세 행은 사용자가 직접 입력하는 LM Studio에서만 활성화·포커스되고, Local AI(고정값)와 미선택 상태에서는 셋 다 비활성화·포커스 제외한다. 미선택 상태에서는 `hasCompleteAiApiSettings()`가 `aiProvider`를 빈 값으로 보므로 AI API 테스트 버튼도 자동으로 비활성이 되고, 테스트를 통과할 방법이 없으니 적 `솔로몬`도 나타나지 않는다. Local AI를 고르는 순간 `setSettingsDraftProvider()`가 `applyLocalAiProviderSettings()`로 URL에 현재 페이지 origin(예: `http://localhost:9891`), 키에 `localhost`, 모델명에 `puyow`를 채우고, 다른 제공자로 되돌아갈 때는 값을 그대로 둔 채 활성/비활성 상태만 그 제공자의 규칙을 따른다. Local AI로 설정을 저장하면 AI API 테스트를 통과한 것으로 간주해 `unlockSolomonForSession()`을 호출하며, 다음 접속에서도 서버가 계속 사용 가능하다고 응답하면 같은 이유로 솔로몬을 다시 열어 준다.
+- AI API 테스트와 솔로몬은 같은 구조화 출력 요청 경로를 공유한다. 두 제공자 모두 사용자가 입력했거나 채워진 서버 기본 URL 아래의 `/v1/chat/completions`로 요청하고, 저장된 `aiApiKey`를 `$LM_API_TOKEN`에 해당하는 Bearer 토큰으로 보내며, `response_format.json_schema`와 `choices[0].message.content` 형식을 사용한다. Local AI는 `pythonserver.py`가 LM Studio API를 흉내내기 때문에 LM Studio와 완전히 같은 요청 경로를 쓴다. 설정 화면의 AI API 테스트가 응답을 받으면 브라우저 콘솔에 제공자·모델·성공 여부·스키마 검사 여부·원문 응답·파싱 결과를 `console.log`로 기록하며, 요청 오류도 성공 여부와 오류 내용을 함께 기록한다.
+
+### 제거한 AI 제공자(OpenAI·Prompt API) 재도입 참고
+
+BUILDNO 26에서 `OpenAI`와 `Prompt API` 제공자를 **임시로** 제거했다. 게임 규칙이나 솔로몬의 판단 로직이 문제가 아니라, 상용 LLM은 한 수를 고르는 데 너무 오래 걸려 실제로 플레이할 수 없었기 때문이다. 언젠가 다시 넣을 수 있으므로 지운 구현을 아래에 남긴다. 제거 직전 상태는 BUILDNO 25(커밋 `28ddfde`)의 `src/js/puyow.js`와 `tests/test01.spec.js`에 그대로 있으니, 되살릴 때는 이 문서로 범위를 먼저 파악한 뒤 그 커밋에서 실제 코드를 확인하는 편이 빠르다.
+
+**되살릴 때 먼저 알아야 할 변경점.** 제거와 함께 `aiProvider`에 "아무것도 선택하지 않은 상태"(빈 문자열)가 생겼고, 남은 두 제공자가 모두 `/v1/chat/completions`를 쓰기 때문에 `aiApiURL`·`aiApiKey`·`aiModel` 세 행은 "LM Studio일 때만 활성"이라는 하나의 조건으로 단순해졌다. OpenAI는 URL을 입력받지 않고 Prompt API는 셋 다 입력받지 않으므로, 되살리려면 이 단순화한 조건을 다시 제공자별로 나눠야 한다. 대상은 `getSelectableSettingsFocuses()`, `getSettingsRows()`의 `disabled`, `getSettingsTextField()`, `hasCompleteAiApiSettings()`의 `requiredKeys` 네 곳이다.
+
+**제거한 상수.**
+
+```js
+/** 항상 선택할 수 있는 AI 서비스 제공자 목록이다. 브랜드명은 번역하지 않는다. */
+const AI_SERVICE_PROVIDERS = ['OpenAI', 'LM Studio'];
+/** 브라우저 내장 AI 기반의 선택적 제공자 이름이다. */
+const PROMPT_API_PROVIDER = 'Prompt API';
+/** Prompt API에서 솔로몬이 사용하는 구조화 JSON 텍스트 출력 옵션이다. */
+const PROMPT_API_LANGUAGE_OPTIONS = {
+    expectedInputs: [{ type: 'text', languages: ['en'] }],
+    expectedOutputs: [{ type: 'text', languages: ['en'] }]
+};
+/** 브라우저에서 직접 호출할 OpenAI Responses API 주소다. */
+const OPENAI_RESPONSES_API_URL = 'https://api.openai.com/v1/responses';
+```
+
+**Prompt API 지원 확인과 모델 준비.** `let promptApiSupported = false;` 상태를 두고 `initialize()`가 `refreshOnnxRuntimeAvailability()`보다 먼저 `promptApiSupported = checkPromptApiSupport();`를, 그 뒤에 `startPromptApiDownloadIfNeeded();`를 호출했다. 두 함수는 초기화 흐름을 막지 않도록 결과를 기다리지 않는다.
+
+```js
+function checkPromptApiSupport() {
+    const languageModel = typeof globalThis !== 'undefined' ? globalThis.LanguageModel : undefined;
+    return typeof languageModel !== 'undefined' && typeof languageModel.create === 'function';
+}
+
+function startPromptApiDownloadIfNeeded() {
+    const languageModel = typeof globalThis !== 'undefined' ? globalThis.LanguageModel : undefined;
+    if (!languageModel || typeof languageModel.availability !== 'function' || typeof languageModel.create !== 'function') return;
+    Promise.resolve().then(() => languageModel.availability(PROMPT_API_LANGUAGE_OPTIONS)).then((availability) => {
+        if (availability !== 'downloading') return;
+        return languageModel.create(PROMPT_API_LANGUAGE_OPTIONS);
+    }).catch((error) => {
+        console.info('Puyo W Prompt API 모델 준비를 시작하지 못했습니다.', error);
+    });
+}
+```
+
+**선택지 목록과 판정.** 선택지 순서는 OpenAI → LM Studio → Prompt API → Local AI였다.
+
+```js
+function getAiServiceProviders() {
+    return [...AI_SERVICE_PROVIDERS, ...(promptApiSupported ? [PROMPT_API_PROVIDER] : []), ...(localAiAvailable ? [LOCAL_AI_PROVIDER] : [])];
+}
+
+function isPromptApiProvider(settings) {
+    return settings?.aiProvider === PROMPT_API_PROVIDER;
+}
+```
+
+**요청 경로.** OpenAI는 Responses API라 응답 본문 구조가 Chat Completions와 달라 전용 추출 함수가 필요했다. Prompt API는 HTTP 요청이 아니라 브라우저 세션이므로 `requestStructuredAiOutput()` 맨 앞에서 갈라졌고, 세션은 한 요청에만 쓰고 항상 `destroy()`해 이전 턴의 문맥이 이어지지 않게 했다.
+
+```js
+function getResponsesOutputText(response) {
+    if (typeof response?.output_text === 'string') return response.output_text;
+    for (const outputItem of response?.output || []) {
+        for (const content of outputItem?.content || []) {
+            if (content?.type === 'output_text' && typeof content.text === 'string') return content.text;
+        }
+    }
+    return null;
+}
+
+// createStructuredAiRequest()에서 LM Studio·Local AI가 아닐 때 사용한 OpenAI 분기다.
+return {
+    url: convertURL(OPENAI_RESPONSES_API_URL),
+    options: {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model: settings.aiModel,
+            reasoning: { effort: 'low' },
+            input: [{ role: 'user', content: prompt }],
+            text: { format: { type: 'json_schema', name: schemaName, strict: true, schema } },
+            max_output_tokens: maxTokens
+        })
+    },
+    readOutputText: getResponsesOutputText
+};
+
+// requestStructuredAiOutput()의 첫 분기다.
+if (isPromptApiProvider(settings)) {
+    if (!promptApiSupported) throw new Error('Prompt API를 지원하지 않는 브라우저입니다.');
+    const session = await globalThis.LanguageModel.create({ ...PROMPT_API_LANGUAGE_OPTIONS, signal });
+    try {
+        return await session.prompt(prompt, { responseConstraint: schema, signal });
+    } finally {
+        if (typeof session.destroy === 'function') session.destroy();
+    }
+}
+```
+
+**제공자별 입력 조건.** Prompt API는 URL·키·모델명을 쓰지 않으므로 테스트 실행 조건과 저장 여부 판정도 달랐다.
+
+```js
+function hasCompleteAiApiSettings(settings) {
+    if (isPromptApiProvider(settings)) return promptApiSupported;
+    const requiredKeys = ['aiProvider', 'aiApiKey', 'aiModel', ...(isLmStudioProvider(settings) || isLocalAiProvider(settings) ? ['aiApiURL'] : [])];
+    return Boolean(settings && requiredKeys.every((key) => typeof settings[key] === 'string' && settings[key].trim()));
+}
+
+function hasSavedAiApiSettings() {
+    if (isPromptApiProvider(settingsDraft)) return Boolean(store.settings && settingsDraft.aiProvider === store.settings.aiProvider);
+    /* 이하 기존 비교와 동일 */
+}
+
+function getSelectableSettingsFocuses() {
+    const aiSettingFocuses = isPromptApiProvider(settingsDraft) || isLocalAiProvider(settingsDraft) ? [] : [
+        ...(isLmStudioProvider(settingsDraft) ? [7] : []), 8, 9
+    ];
+    return [0, 1, 2, 3, 4, 5, 6, ...aiSettingFocuses, ...(canRunAiApiTest() ? [10] : []), 11, 12, 13, 14, 15, 16];
+}
+
+// getSettingsRows()의 7·8·9행 조건과 getSettingsTextField()의 8·9 조건도 같은 모양이었다.
+// 7행: disabled: !isLmStudioProvider(settingsDraft)
+// 8·9행: disabled: isPromptApiProvider(settingsDraft) || isLocalAiProvider(settingsDraft)
+```
+
+**저장값 이관.** 그때는 미선택 상태가 없어서 쓸 수 없게 된 제공자를 항상 `LM Studio`로 옮겼다. 지금은 `normalizeAiProvider()`가 미선택으로 되돌리고 `applyLocalAiAvailability()`도 같은 규칙을 쓰므로, 되살릴 때 이 이관 규칙을 예전으로 되돌리지 말고 현재 규칙을 그대로 유지해야 한다.
+
+```js
+// loadStore()의 예전 aiProvider 보정이다.
+aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
+    ? 'LM Studio'
+    : settings.aiProvider === LOCAL_AI_PROVIDER || getAiServiceProviders().includes(settings.aiProvider) ? settings.aiProvider : initial.settings.aiProvider,
+```
+
+**함께 지운 회귀 테스트.** `tests/test01.spec.js`에서 아래 네 개를 지웠고, 나머지 AI 테스트는 OpenAI 대신 LM Studio 설정을 쓰도록 옮겼다. Prompt API 테스트는 `page.addInitScript()`로 `window.LanguageModel`을 가짜로 심어 `create`·`prompt`·`destroy` 호출을 기록하는 방식이었다.
+
+- `설정의 AI 서비스 제공자는 OpenAI와 LM Studio를 라디오로 표시하고 기존 Google 값은 정규화한다`
+- `Prompt API를 지원하지 않으면 선택지를 숨기고 저장된 Prompt API 설정을 LM Studio로 이관한다`
+- `Prompt API는 API 테스트와 솔로몬 배치에서 JSON Schema 제약 prompt를 사용한다`
+- `Prompt API 모델이 다운로드 중이면 초기화를 기다리지 않고 create를 호출한다`
+
+`src/notice/notice_ko.txt`·`notice_en.txt`의 "OpenAI 등 상용 LLM은 느리다"는 안내 문구도 제공자 이름을 뺀 일반 문장으로 바꿨다.
 
 ## 공통 계산 함수
 

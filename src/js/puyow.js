@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 25;
+    const BUILDNO = 26;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -216,17 +216,12 @@
     const TEN_CARD_DRAW_PRICE = 9000;
     /** 카드 합성 한 번에 소비할 카드 수다. */
     const CARD_SYNTHESIS_COST = 5;
-    /** 설정에서 새로 제안하고 저장값이 비어 있을 때 보정할 기본 OpenAI 모델명이다. @type {string} */
+    /** 설정에서 새로 제안하고 저장값이 비어 있을 때 보정할 기본 모델명이다. @type {string} */
     const DEFAULT_AI_MODEL = 'gpt-5.6-luna';
+    /** 아무 AI 서비스 제공자도 선택하지 않은 상태를 나타내는 저장값이다. @type {string} */
+    const NO_AI_PROVIDER = '';
     /** 항상 선택할 수 있는 AI 서비스 제공자 목록이다. 브랜드명은 번역하지 않는다. @type {string[]} */
-    const AI_SERVICE_PROVIDERS = ['OpenAI', 'LM Studio'];
-    /** 브라우저 내장 AI 기반의 선택적 제공자 이름이다. @type {string} */
-    const PROMPT_API_PROVIDER = 'Prompt API';
-    /** Prompt API에서 솔로몬이 사용하는 구조화 JSON 텍스트 출력 옵션이다. @type {object} */
-    const PROMPT_API_LANGUAGE_OPTIONS = {
-        expectedInputs: [{ type: 'text', languages: ['en'] }],
-        expectedOutputs: [{ type: 'text', languages: ['en'] }]
-    };
+    const AI_SERVICE_PROVIDERS = ['LM Studio'];
     /** 게임을 제공하는 서버가 직접 모델을 서비스할 때만 나타나는 선택적 제공자 이름이다. @type {string} */
     const LOCAL_AI_PROVIDER = 'Local AI';
     /** Local AI 선택 시 AI API 키 입력란에 채울 고정값이다. @type {string} */
@@ -257,8 +252,6 @@
     ];
     /** AI API URL로 허용할 최대 글자 수다. */
     const AI_API_URL_MAX_LENGTH = 200;
-    /** 브라우저에서 직접 호출할 OpenAI Responses API 주소다. @type {string} */
-    const OPENAI_RESPONSES_API_URL = 'https://api.openai.com/v1/responses';
     /** API 테스트 응답에 요구할 최소 JSON Schema다. @type {object} */
     const AI_API_TEST_JSON_SCHEMA = {
         type: 'object',
@@ -266,7 +259,7 @@
         required: ['success'],
         additionalProperties: false
     };
-    /** 솔로몬이 OpenAI Responses API 응답을 기다리는 최대 시간(ms)이다. @type {number} */
+    /** 솔로몬이 AI API 응답을 기다리는 최대 시간(ms)이다. @type {number} */
     const SOLOMON_API_TIMEOUT = 6000;
     /** 솔로몬의 배치 결정에 요구할 구조화 출력 JSON Schema다. @type {object} */
     const SOLOMON_PLACEMENT_JSON_SCHEMA = {
@@ -554,8 +547,6 @@
     const SCREEN_MESSAGE_FADE_DURATION = 500;
     /** AI API 테스트 요청이 진행 중인지 여부다. @type {boolean} */
     let settingsApiTestPending = false;
-    /** 초기화 시 확인한 Prompt API 지원 여부다. @type {boolean} */
-    let promptApiSupported = false;
     /** 초기화 시 게임 서버에 확인한 Local AI 사용 가능 여부다. @type {boolean} */
     let localAiAvailable = false;
     /** 현재 페이지 접속 중 AI API 테스트를 통과해 솔로몬을 사용할 수 있는지 여부다. 저장하지 않는다. @type {boolean} */
@@ -847,43 +838,31 @@
         return [primaryFontName, ...uniqueFallbacks].map(quoteFontNameIfNeeded).join(', ');
     }
 
-    /**
-     * 현재 브라우저가 Prompt API의 세션 생성 기능을 제공하는지 확인한다.
-     * 게임 초기화 시 한 번만 호출해 설정 화면의 선택지를 결정한다.
-     * @returns {boolean} Prompt API 지원 여부
-     */
-    function checkPromptApiSupport() {
-        const languageModel = typeof globalThis !== 'undefined' ? globalThis.LanguageModel : undefined;
-        return typeof languageModel !== 'undefined' && typeof languageModel.create === 'function';
-    }
-
-    /** Prompt API 모델이 다운로드 중이면 초기화와 동시에 모델 준비를 시작한다. @returns {void} */
-    function startPromptApiDownloadIfNeeded() {
-        const languageModel = typeof globalThis !== 'undefined' ? globalThis.LanguageModel : undefined;
-        if (!languageModel || typeof languageModel.availability !== 'function' || typeof languageModel.create !== 'function') return;
-        // availability()와 create()는 초기화 흐름을 막지 않도록 기다리지 않고 실행한다.
-        Promise.resolve().then(() => languageModel.availability(PROMPT_API_LANGUAGE_OPTIONS)).then((availability) => {
-            if (availability !== 'downloading') return;
-            return languageModel.create(PROMPT_API_LANGUAGE_OPTIONS);
-        }).catch((error) => {
-            // 모델 다운로드를 시작하지 못해도 게임 초기화와 다른 AI 제공자는 계속 사용할 수 있다.
-            console.info('Puyo W Prompt API 모델 준비를 시작하지 못했습니다.', error);
-        });
-    }
-
     /** 현재 설정 화면에서 선택할 수 있는 AI 제공자 목록을 반환한다. @returns {string[]} 제공자 목록 */
     function getAiServiceProviders() {
-        return [...AI_SERVICE_PROVIDERS, ...(promptApiSupported ? [PROMPT_API_PROVIDER] : []), ...(localAiAvailable ? [LOCAL_AI_PROVIDER] : [])];
+        return [...AI_SERVICE_PROVIDERS, ...(localAiAvailable ? [LOCAL_AI_PROVIDER] : [])];
     }
 
-    /** 현재 제공자가 Prompt API인지 확인한다. @param {object|null} settings 설정값 @returns {boolean} Prompt API 여부 */
-    function isPromptApiProvider(settings) {
-        return settings?.aiProvider === PROMPT_API_PROVIDER;
+    /** 아무 AI 서비스 제공자도 선택하지 않은 상태인지 확인한다. @param {object|null} settings 설정값 @returns {boolean} 미선택 여부 */
+    function hasNoAiProvider(settings) {
+        return !settings?.aiProvider;
     }
 
     /** 현재 제공자가 게임 서버가 직접 제공하는 Local AI인지 확인한다. @param {object|null} settings 설정값 @returns {boolean} Local AI 여부 */
     function isLocalAiProvider(settings) {
         return settings?.aiProvider === LOCAL_AI_PROVIDER;
+    }
+
+    /**
+     * 저장된 AI 제공자 값을 현재 사용할 수 있는 값으로 보정한다.
+     * 지원을 제거한 OpenAI·Prompt API를 비롯해 알 수 없는 값은 아무것도 선택하지 않은 상태로 되돌린다.
+     * Local AI는 서버 확인이 끝나기 전이므로 여기서는 유지하고, 사용할 수 없으면 `applyLocalAiAvailability()`가 되돌린다.
+     * @param {unknown} provider 저장된 제공자 값
+     * @returns {string} 보정한 제공자 값
+     */
+    function normalizeAiProvider(provider) {
+        if (provider === LOCAL_AI_PROVIDER || getAiServiceProviders().includes(provider)) return provider;
+        return NO_AI_PROVIDER;
     }
 
     /**
@@ -923,21 +902,51 @@
 
     /**
      * 확인한 Local AI 사용 가능 여부를 저장된 설정과 편집 중인 설정에 반영한다.
-     * 사용할 수 없는데 저장값이 Local AI이면 Prompt API와 같은 방식으로 LM Studio로 이관한다.
+     * 사용할 수 없게 된 Local AI는 다른 제공자로 옮기지 않고 아무것도 선택하지 않은 상태로 되돌리며,
+     * 반대로 사용할 수 있는데 아무것도 선택하지 않았다면 기본값인 Local AI를 채운다.
      * @returns {void}
      */
     function applyLocalAiAvailability() {
         if (!store?.settings) return;
         if (!localAiAvailable) {
             if (isLocalAiProvider(store.settings)) {
-                store.settings.aiProvider = 'LM Studio';
+                store.settings.aiProvider = NO_AI_PROVIDER;
                 saveStore();
             }
-            if (isLocalAiProvider(settingsDraft)) settingsDraft.aiProvider = 'LM Studio';
+            if (isLocalAiProvider(settingsDraft)) settingsDraft.aiProvider = NO_AI_PROVIDER;
             return;
+        }
+        if (hasNoAiProvider(store.settings)) {
+            applyLocalAiProviderSettings(store.settings);
+            saveStore();
+            if (hasNoAiProvider(settingsDraft)) applyLocalAiProviderSettings(settingsDraft);
         }
         // 저장된 제공자가 이미 Local AI이면 AI API 테스트를 마친 것과 같이 솔로몬을 열어 준다.
         if (isLocalAiProvider(store.settings)) unlockSolomonForSession();
+    }
+
+    /**
+     * 설정값의 AI 제공자를 Local AI로 바꾸고 서버 주소·고정 키·고정 모델명을 채운다.
+     * @param {object|null} settings 대상 설정값
+     * @returns {void}
+     */
+    function applyLocalAiProviderSettings(settings) {
+        if (!settings) return;
+        settings.aiProvider = LOCAL_AI_PROVIDER;
+        settings.aiApiURL = normalizeAiApiURL(getLocalAiServerURL());
+        settings.aiApiKey = LOCAL_AI_API_KEY;
+        settings.aiModel = LOCAL_AI_MODEL;
+    }
+
+    /**
+     * 새 설정에 사용할 AI 제공자 기본값을 만든다.
+     * Local AI를 사용할 수 있으면 Local AI이고, 사용할 수 없으면 아무것도 선택하지 않은 상태다.
+     * @returns {{aiProvider:string, aiApiURL:string, aiApiKey:string, aiModel:string}} 기본 AI 설정
+     */
+    function createDefaultAiSettings() {
+        const settings = { aiProvider: NO_AI_PROVIDER, aiApiURL: '', aiApiKey: '', aiModel: DEFAULT_AI_MODEL };
+        if (localAiAvailable) applyLocalAiProviderSettings(settings);
+        return settings;
     }
 
     /**
@@ -947,12 +956,12 @@
      */
     function setSettingsDraftProvider(provider) {
         if (!settingsDraft) return;
-        settingsDraft.aiProvider = provider;
+        if (provider === LOCAL_AI_PROVIDER) {
+            applyLocalAiProviderSettings(settingsDraft);
+            return;
+        }
         // Local AI가 아닌 제공자로 되돌아갈 때는 입력값을 그대로 두어 사용자가 적어 둔 설정을 지우지 않는다.
-        if (!isLocalAiProvider(settingsDraft)) return;
-        settingsDraft.aiApiURL = normalizeAiApiURL(getLocalAiServerURL());
-        settingsDraft.aiApiKey = LOCAL_AI_API_KEY;
-        settingsDraft.aiModel = LOCAL_AI_MODEL;
+        settingsDraft.aiProvider = provider;
     }
 
     /**
@@ -970,7 +979,7 @@
             puzzleGoldClearStages: [],
             puzzleGoldStarStages: [],
             gold: 0,
-            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, useReplayFeature: false, reverseLearning: false, soundDataURL: '', aiProvider: 'OpenAI', aiApiURL: '', aiApiKey: '', aiModel: DEFAULT_AI_MODEL },
+            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, useReplayFeature: false, reverseLearning: false, soundDataURL: '', ...createDefaultAiSettings() },
             muted: false
         };
     }
@@ -1470,11 +1479,8 @@
                 useReplayFeature: normalizeUseReplayFeature(settings.useReplayFeature),
                 reverseLearning: normalizeReverseLearning(settings.reverseLearning),
                 soundDataURL: normalizeSoundDataURL(settings.soundDataURL),
-                // Prompt API를 지원하지 않는 브라우저에서는 기존 Prompt API 설정을 LM Studio로 이관한다.
-                // Local AI는 서버 확인이 끝나기 전이므로 여기서는 유지하고, 사용할 수 없으면 applyLocalAiAvailability()가 이관한다.
-                aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
-                    ? 'LM Studio'
-                    : settings.aiProvider === LOCAL_AI_PROVIDER || getAiServiceProviders().includes(settings.aiProvider) ? settings.aiProvider : initial.settings.aiProvider,
+                // 지원을 제거한 OpenAI·Prompt API를 저장해 둔 설정은 아무것도 선택하지 않은 상태로 되돌린다.
+                aiProvider: normalizeAiProvider(settings.aiProvider),
                 aiApiURL: normalizeAiApiURL(settings.aiApiURL),
                 aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
                 aiModel: typeof settings.aiModel === 'string' && settings.aiModel.trim() ? settings.aiModel : initial.settings.aiModel
@@ -8037,16 +8043,14 @@
         return settings?.aiProvider === 'LM Studio';
     }
 
-    /** AI API 테스트에 필요한 입력값이 모두 채워졌는지 확인한다. Prompt API는 별도 입력값이 필요 없다. @param {object|null} settings 설정값 @returns {boolean} 실행 가능 여부 */
+    /** AI API 테스트에 필요한 입력값이 모두 채워졌는지 확인한다. 제공자를 고르지 않았으면 실행할 수 없다. @param {object|null} settings 설정값 @returns {boolean} 실행 가능 여부 */
     function hasCompleteAiApiSettings(settings) {
-        if (isPromptApiProvider(settings)) return promptApiSupported;
-        const requiredKeys = ['aiProvider', 'aiApiKey', 'aiModel', ...(isLmStudioProvider(settings) || isLocalAiProvider(settings) ? ['aiApiURL'] : [])];
+        const requiredKeys = ['aiProvider', 'aiApiURL', 'aiApiKey', 'aiModel'];
         return Boolean(settings && requiredKeys.every((key) => typeof settings[key] === 'string' && settings[key].trim()));
     }
 
     /** 편집 중인 AI 설정이 저장된 설정과 같은지 확인한다. @returns {boolean} 저장된 설정 사용 여부 */
     function hasSavedAiApiSettings() {
-        if (isPromptApiProvider(settingsDraft)) return Boolean(store.settings && settingsDraft.aiProvider === store.settings.aiProvider);
         return Boolean(settingsDraft && store.settings
             && settingsDraft.aiProvider === store.settings.aiProvider
             && settingsDraft.aiApiURL === store.settings.aiApiURL
@@ -8061,9 +8065,9 @@
 
     /** API 테스트 실행 가능 여부를 반영한 설정 화면 포커스 순서를 만든다. @returns {number[]} 포커스 인덱스 목록 */
     function getSelectableSettingsFocuses() {
-        const aiSettingFocuses = isPromptApiProvider(settingsDraft) || isLocalAiProvider(settingsDraft) ? [] : [
-            ...(isLmStudioProvider(settingsDraft) ? [7] : []), 8, 9
-        ];
+        // URL·키·모델명은 사용자가 직접 입력하는 LM Studio에서만 쓴다. Local AI는 고정값을 채우고,
+        // 아무 제공자도 고르지 않았으면 입력할 대상 자체가 없으므로 세 행을 모두 건너뛴다.
+        const aiSettingFocuses = isLmStudioProvider(settingsDraft) ? [7, 8, 9] : [];
         return [0, 1, 2, 3, 4, 5, 6, ...aiSettingFocuses, ...(canRunAiApiTest() ? [10] : []), 11, 12, 13, 14, 15, 16];
     }
 
@@ -8086,17 +8090,6 @@
         settingsApiTestPending = false;
     }
 
-    /** Responses API 응답에서 생성된 텍스트를 꺼낸다. @param {object} response API 응답 @returns {string|null} JSON 텍스트 */
-    function getResponsesOutputText(response) {
-        if (typeof response?.output_text === 'string') return response.output_text;
-        for (const outputItem of response?.output || []) {
-            for (const content of outputItem?.content || []) {
-                if (content?.type === 'output_text' && typeof content.text === 'string') return content.text;
-            }
-        }
-        return null;
-    }
-
     /** Chat Completions 응답에서 생성된 텍스트를 꺼낸다. @param {object} response API 응답 @returns {string|null} JSON 텍스트 */
     function getChatCompletionsOutputText(response) {
         const content = response?.choices?.[0]?.message?.content;
@@ -8115,47 +8108,28 @@
         return new URL(path, directoryBaseURL).href;
     }
 
-    /** HTTP 기반 제공자에 맞는 구조화 JSON 생성 요청을 만든다. @param {object} settings 저장 설정 @param {string} prompt 사용자 프롬프트 @param {string} schemaName 스키마 이름 @param {object} schema JSON Schema @param {number} maxTokens 최대 출력 토큰 @returns {{url:string,options:object,readOutputText:(response:object)=>string|null}} 요청 정보 */
+    /** 구조화 JSON 생성 요청을 만든다. @param {object} settings 저장 설정 @param {string} prompt 사용자 프롬프트 @param {string} schemaName 스키마 이름 @param {object} schema JSON Schema @param {number} maxTokens 최대 출력 토큰 @returns {{url:string,options:object,readOutputText:(response:object)=>string|null}} 요청 정보 */
     function createStructuredAiRequest(settings, prompt, schemaName, schema, maxTokens) {
-        const headers = { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' };
-        // Local AI 서버의 /v1/chat/completions는 LM Studio API를 흉내내므로 같은 요청 형식을 쓴다.
-        if (isLmStudioProvider(settings) || isLocalAiProvider(settings)) {
-            return {
-                url: getLmStudioChatCompletionsURL(settings.aiApiURL),
-                options: {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({
-                        model: settings.aiModel,
-                        messages: [{ role: 'user', content: prompt }],
-                        response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: true, schema } },
-                        max_tokens: maxTokens,
-                        stream: false
-                    })
-                },
-                readOutputText: getChatCompletionsOutputText
-            };
-        }
+        // Local AI 서버의 /v1/chat/completions는 LM Studio API를 흉내내므로 두 제공자가 같은 요청 형식을 쓴다.
         return {
-            url: convertURL(OPENAI_RESPONSES_API_URL),
+            url: getLmStudioChatCompletionsURL(settings.aiApiURL),
             options: {
                 method: 'POST',
-                headers,
+                headers: { Authorization: `Bearer ${settings.aiApiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     model: settings.aiModel,
-                    reasoning: { effort: 'low' },
-                    input: [{ role: 'user', content: prompt }],
-                    text: { format: { type: 'json_schema', name: schemaName, strict: true, schema } },
-                    max_output_tokens: maxTokens
+                    messages: [{ role: 'user', content: prompt }],
+                    response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: true, schema } },
+                    max_tokens: maxTokens,
+                    stream: false
                 })
             },
-            readOutputText: getResponsesOutputText
+            readOutputText: getChatCompletionsOutputText
         };
     }
 
     /**
      * 제공자별 구조화 JSON 생성 결과 텍스트를 요청한다.
-     * Prompt API 세션은 한 번의 요청에만 사용하고 항상 해제해 이전 턴의 문맥이 이어지지 않게 한다.
      * @param {object} settings 저장 설정
      * @param {string} prompt 사용자 프롬프트
      * @param {string} schemaName 스키마 이름
@@ -8165,16 +8139,6 @@
      * @returns {Promise<string|null>} 구조화 JSON 텍스트
      */
     async function requestStructuredAiOutput(settings, prompt, schemaName, schema, maxTokens, signal) {
-        if (isPromptApiProvider(settings)) {
-            if (!promptApiSupported) throw new Error('Prompt API를 지원하지 않는 브라우저입니다.');
-            const languageModel = globalThis.LanguageModel;
-            const session = await languageModel.create({ ...PROMPT_API_LANGUAGE_OPTIONS, signal });
-            try {
-                return await session.prompt(prompt, { responseConstraint: schema, signal });
-            } finally {
-                if (typeof session.destroy === 'function') session.destroy();
-            }
-        }
         const request = createStructuredAiRequest(settings, prompt, schemaName, schema, maxTokens);
         if (signal) request.options.signal = signal;
         const response = await window.fetch(request.url, request.options);
@@ -8312,8 +8276,8 @@
             { label: '사운드 데이터 URL', value: settingsDraft.soundDataURL, kind: 'text' },
             { label: 'AI 서비스 제공자', value: settingsDraft.aiProvider, kind: 'radio', options: getAiServiceProviders().map((provider, index) => ({ label: provider, value: provider, x: x + index * step, translateLabel: false })) },
             { label: 'AI API URL', value: settingsDraft.aiApiURL, kind: 'text', disabled: !isLmStudioProvider(settingsDraft) },
-            { label: 'AI API 키', value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text', disabled: isPromptApiProvider(settingsDraft) || isLocalAiProvider(settingsDraft) },
-            { label: '사용 모델명', value: settingsDraft.aiModel, kind: 'text', disabled: isPromptApiProvider(settingsDraft) || isLocalAiProvider(settingsDraft) }
+            { label: 'AI API 키', value: settingsDraft.aiApiKey ? '•'.repeat(Math.min(30, settingsDraft.aiApiKey.length)) : '', kind: 'text', disabled: !isLmStudioProvider(settingsDraft) },
+            { label: '사용 모델명', value: settingsDraft.aiModel, kind: 'text', disabled: !isLmStudioProvider(settingsDraft) }
         ].map((row, index) => ({ ...row, y: SETTINGS_UI_LAYOUT.rowYs[index] }));
     }
 
@@ -8349,10 +8313,13 @@
                 context.fillStyle = '#4cc9b0'; context.fillRect(layout.controlX + 2, row.y - 5, (layout.sliderWidth - 4) * row.value / 100, 10);
                 context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 920, row.y + 4);
             } else if (row.kind === 'radio') {
+                // 아무 선택지도 고르지 않은 상태에서는 포커스를 표시할 선택지가 없으므로 모든 선택지에 포커스 테두리를 그린다.
+                const noneSelected = !row.options.some((option) => row.value === option.value);
                 row.options.forEach((option) => {
                     const selected = row.value === option.value;
+                    const focusHighlighted = focused && (selected || noneSelected);
                     context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(option.x, row.y - layout.controlHeight / 2, layout.optionWidth, layout.controlHeight);
-                    context.strokeStyle = focused && selected ? '#ffd54f' : '#426474'; context.lineWidth = focused && selected ? 3 : 2; context.strokeRect(option.x, row.y - layout.controlHeight / 2, layout.optionWidth, layout.controlHeight);
+                    context.strokeStyle = focusHighlighted ? '#ffd54f' : '#426474'; context.lineWidth = focusHighlighted ? 3 : 2; context.strokeRect(option.x, row.y - layout.controlHeight / 2, layout.optionWidth, layout.controlHeight);
                     context.beginPath(); context.arc(option.x + 14, row.y, 5, 0, Math.PI * 2); context.fillStyle = '#d8f2f5'; context.strokeStyle = '#d8f2f5'; context.lineWidth = 2; context.stroke();
                     if (selected) { context.beginPath(); context.arc(option.x + 14, row.y, 2.5, 0, Math.PI * 2); context.fill(); }
                     context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(option.translateLabel ? translate(option.label) : option.label, option.x + (layout.optionWidth + 14) / 2, row.y + 4);
@@ -10036,8 +10003,8 @@
         if (settingsFocus === 0) return 'playerName';
         if (settingsFocus === 5) return 'soundDataURL';
         if (settingsFocus === 7 && isLmStudioProvider(settingsDraft)) return 'aiApiURL';
-        if (settingsFocus === 8 && !isPromptApiProvider(settingsDraft) && !isLocalAiProvider(settingsDraft)) return 'aiApiKey';
-        if (settingsFocus === 9 && !isPromptApiProvider(settingsDraft) && !isLocalAiProvider(settingsDraft)) return 'aiModel';
+        if (settingsFocus === 8 && isLmStudioProvider(settingsDraft)) return 'aiApiKey';
+        if (settingsFocus === 9 && isLmStudioProvider(settingsDraft)) return 'aiModel';
         return null;
     }
 
@@ -11609,10 +11576,8 @@
         if (typeof document === 'undefined' || typeof window === 'undefined') {
             throw new Error('Web Puyo 초기화에는 브라우저 DOM 환경이 필요합니다.');
         }
-        promptApiSupported = checkPromptApiSupport();
         // ONNX 런타임은 선택 라이브러리다. 여기서 한 번 확인한 결과로 추론 기반 적의 표시 여부를 정한다.
         refreshOnnxRuntimeAvailability();
-        startPromptApiDownloadIfNeeded();
         prepareFontImportStyle();
         prepareRuntimeLayoutStyle();
         languageCode = navigator.language || navigator.userLanguage || 'ko';

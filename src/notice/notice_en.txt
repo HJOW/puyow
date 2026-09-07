@@ -8,9 +8,9 @@ settings screen and the connection test succeeds, you can
 choose "Solomon" as your opponent in battle modes such as
 "Basic Rule" and "Fever Rule" to play against the AI.
 
-However, commercial LLMs such as OpenAI take a long time
-to respond, so the game is practically unplayable with them
-for now. Please do not use them.
+However, a slow LLM server takes a long time to respond,
+so the game becomes practically unplayable. Please keep
+that in mind when choosing a server.
 
 If you download the project, run the local Python server,
 and connect to that local server to play the game,
