@@ -1112,6 +1112,23 @@ test('사운드 데이터 URL은 최대 200자로 저장되고 초기화 시 변
   await expect.poll(() => requestedUrl).toBe('https://sound.example/sounds_en.json');
 });
 
+test('addCode의 sound 코드는 사운드 데이터 URL을 저장하고 변환된 주소를 요청한다', async ({ page }) => {
+  await openSettings(page);
+  let requestedUrl = null;
+  await page.route('https://sound.example/**', async (route) => {
+    requestedUrl = route.request().url();
+    await route.fulfill({ status: 200, contentType: 'application/javascript', body: '' });
+  });
+
+  await page.evaluate(() => window.WebPuyo.addCode('sound:https://sound.example/code_[LANG].json'));
+
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.soundDataURL))
+    .toBe('https://sound.example/code_[LANG].json');
+  expect(await page.evaluate(() => localStorage.getItem('puyow_code'))).toBeNull();
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('https://sound.example/code_[LANG].json'))).toBe(true);
+  await expect.poll(() => requestedUrl).toBe('https://sound.example/code_en.json');
+});
+
 test('설정 텍스트 입력은 선택, 복사, 붙여넣기와 클립보드 실패 시 선택 삭제를 지원한다', async ({ page }) => {
   await page.evaluate(() => {
     window.testClipboardText = '';

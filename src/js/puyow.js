@@ -18,7 +18,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 21;
+    const BUILDNO = 22;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -10910,8 +10910,18 @@
     /** 테스트 기능 활성화를 위한 코드를 등록한다. @param {string} code  */
     function addCode(code) {
         if (!code || typeof code !== 'string') throw new TypeError('code는 문자열이어야 합니다.');
+
+        // 예외사항 해당 시 적용
+        if (code.startsWith('sound:')) {
+            // sound: 뒤의 문자열은 사운드 데이터 URL로 처리하고, 일반 코드 목록에는 추가하지 않는다.
+            const soundURL = normalizeSoundDataURL(code.slice('sound:'.length));
+            loadSoundDataURL(soundURL, true);
+            if (settingsDraft) settingsDraft.soundDataURL = soundURL;
+            return;
+        }
+
         
-        // codeArchive 의 키로 존재하는 코드만 입력 가능
+        // 그외의 경우 codeArchive 의 키로 존재하는 코드만 입력 가능
         const fAction = codeArchive[code];
         if (typeof(fAction) != 'function') { alert('유효하지 않은 코드입니다.'); return; }
 

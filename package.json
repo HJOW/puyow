@@ -1,7 +1,7 @@
 {
-  "name": "webpuyo",
-  "version": "0.0.21",
-  "description": "",
+  "name": "puyow",
+  "version": "0.0.22",
+  "description": "Puyo Pop game on web",
   "license": "Apache-2.0",
   "author": "HJOW",
   "type": "commonjs",
