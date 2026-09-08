@@ -6326,17 +6326,16 @@ test('너랑 나랑 결과 화면은 다시 플레이로 승패 현황을 잇고
   await startTogetherGame(page);
   await finishTogetherGameByTopOut(page);
 
-  // 결과 화면에는 종료·리플레이 복사에 이어 다시 플레이가 붙는다. 세 번째 버튼은 기존 판독 범위보다 아래에 있다.
+  // 결과 화면에는 다시 플레이가 맨 위에 오고 그 아래로 종료·리플레이 복사가 붙는다. 세 번째 버튼은 기존 판독 범위보다 아래에 있다.
   const labels = await readTogetherResultButtonLabels(page);
   const [exitLabel, copyLabel, againLabel] = await Promise.all([
     translated(page, '종료'), translated(page, '리플레이 복사'), translated(page, '다시 플레이'),
   ]);
-  expect(labels).toEqual(expect.arrayContaining([exitLabel, copyLabel, againLabel]));
+  expect(labels).toEqual(expect.arrayContaining([againLabel, exitLabel, copyLabel]));
+  expect(labels.indexOf(againLabel)).toBeLessThan(labels.indexOf(exitLabel));
 
-  // 다시 플레이는 누적 승수를 유지한 채 같은 규칙으로 다시 시작한다.
+  // 다시 플레이는 진입 시부터 포커스되어 있어 Enter만으로 누적 승수를 유지한 채 같은 규칙으로 다시 시작한다.
   const winLabel = (await translated(page, '%1승')).replace('%1', '1');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('countdown');
   expect(await page.evaluate(() => window.WebPuyo.getGameState().mode)).toBe('together');
@@ -6375,6 +6374,8 @@ test('너랑 나랑 대전도 새 형식으로 기록하고 재생하면 승패 
   expect(replay.meta.players.map((info) => info.controller)).toEqual([null, null]);
 
   // 기록한 리플레이를 그대로 재생하면 중앙에 초상화 대신 승패 현황이 나온다.
+  // 너랑 나랑 결과 화면은 0번 다시 플레이에 포커스가 있으므로 아래 방향키로 종료를 골라 메인 메뉴로 나간다.
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
   await page.evaluate((data) => { window.prompt = () => JSON.stringify(data); }, replay);

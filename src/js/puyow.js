@@ -8125,18 +8125,17 @@
 
     /**
      * 결과 화면에 표시할 버튼 목록과 위치를 반환한다.
+     * "너랑 나랑"은 누적 승수를 이어서 다시 대전하는 경우가 많으므로 다시 플레이를 맨 위에 두어 기본 포커스를 받게 한다.
      * 리플레이 재생 결과에는 다시보기를, 리플레이가 기록된 대전 결과에는 리플레이 복사를 종료 버튼 아래에 둔다.
      * @returns {{key:string,label:string,color:string,x:number,y:number,width:number,height:number}[]} 결과 화면 버튼 목록
      */
     function getResultScreenButtons() {
         if (!game || game.running) return [];
-        const buttons = [{ key: 'exit', label: '종료', color: '#ef5350' }];
+        const buttons = [];
+        if (game.together && !game.replayPlayback) buttons.push({ key: 'playAgain', label: '다시 플레이', color: '#7e57c2' });
+        buttons.push({ key: 'exit', label: '종료', color: '#ef5350' });
         if (game.replayPlayback) buttons.push({ key: 'replayAgain', label: '다시보기', color: '#34556b' });
-        else {
-            if (hasCopyableReplay()) buttons.push({ key: 'copyReplay', label: '리플레이 복사', color: '#34556b' });
-            // "너랑 나랑"은 누적 승수를 이어서 다시 대전할 수 있다.
-            if (game.together) buttons.push({ key: 'playAgain', label: '다시 플레이', color: '#7e57c2' });
-        }
+        else if (hasCopyableReplay()) buttons.push({ key: 'copyReplay', label: '리플레이 복사', color: '#34556b' });
         return buttons.map((button, index) => ({ ...button, x: 515, y: 165 + index * (64 + RESULT_BUTTON_GAP), width: 250, height: 64 }));
     }
 
