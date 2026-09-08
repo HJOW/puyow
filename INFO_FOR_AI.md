@@ -20,12 +20,13 @@
 
 - 2D 게임 페이지: `src/puyow.html`
 - 핵심 엔진·캔버스 UI: `src/js/puyow.js`
+- 개발용 도구 페이지: `src/tools.html`, `src/js/puyow_tools.js` (피버 패턴·퍼즐뿌요 제작용, 게임 페이지는 이 스크립트를 읽지 않는다)
 - 스타일: `src/css/puyow.css`
 - 선택적 라이브러리: `src/js/three.min.js`, `src/js/json5.min.js`
 - 이미지: `src/img/`
 - 언어별 공지사항: `src/notice/`
 - Webpack 번들 출력: `src/bundle/puyow.bundle.js`
-- E2E 회귀 테스트: `tests/test01.spec.js`
+- E2E 회귀 테스트: `tests/test01.spec.js` (게임 페이지), `tests/test02_tools.spec.js` (개발용 도구 페이지)
 - 개발자 문서: `HOWTO.md`, `docs/`
 - 공개 안내 문서: `README.md`, `README.en.md` (`README.en.md`는 `README.md`의 영어 번역본이므로 플레이 주소·실행 방법 같은 원문 갱신을 함께 반영한다.)
 - 모든 텍스트 파일은 UTF-8, 기본 UI 언어는 한국어다.
@@ -132,7 +133,7 @@
 - 스틱 그림만 기준점 원(`VIRTUAL_JOYSTICK_RADIUS`) 안으로 제한하며, 방향 판정 자체는 거리 제한을 받지 않는다. 구경(`game.watch`) 중에는 방향 조작이 없으므로 조이스틱을 만들지 않고 ESC 버튼만 남긴다.
 - 포인터 처리는 누름과 이동의 역할이 나뉘어 있다. Z·X·ESC 조작 버튼은 `handleVirtualPointerDown()`에서만 눌리고, `handleVirtualPointerMove()`는 조이스틱 드래그만 처리한다. 그래서 버튼 위를 지나가거나 다른 곳에서 끌고 들어온 포인터로는 회전·일시정지가 일어나지 않는다. 좌표 히트 테스트만으로 눌림을 판단하던 예전 구조에서는 마우스를 버튼 위로 지나가기만 해도 눌렸다(BUILDNO 32~33에서 고친 실제 버그다).
 - `handleVirtualPointerMove()`는 `event.buttons`가 0인 이동을 조작으로 보지 않는다. 터치·펜은 닿아 있는 동안 1 이상이고 마우스만 누르지 않은 채 0으로 지나가므로 이 값으로 호버를 가려낸다. 이때 남아 있는 포인터 상태가 있으면 캔버스 밖에서 뗀 것으로 보고 정리한다.
-- 시뮬레이터 그리기 모드의 우측 버튼은 재생·JSON복사·JSON넣기·초기화·종료 순서다. 초기화는 좌측 플레이 영역의 모든 배치를 제거하며, 버튼 라벨은 `translate('초기화')`를 사용한다.
+- 시뮬레이터 그리기 모드의 우측 버튼은 재생·JSON복사·JSON넣기·초기화·종료 순서다. 초기화는 좌측 플레이 영역의 모든 배치를 제거하며, 버튼 라벨은 `translate('초기화')`를 사용한다. 개발용 도구가 연 편집 모드(`simulator.tools`)에서만 팔레트가 색 뿌요와 방해뿌요로 좁혀지고 `종료` 버튼이 빠지며, 나머지 네 버튼과 지우개 위치는 그대로다.
 - 공개 `setGameElapsed(elapsed)`는 진행 중인 게임의 경과 시간을 지정한 값으로 옮기고 마진 레이트·시간 진행 배율을 다시 계산한다. 조작 뿌요의 자연 낙하 속도(`getPlayerFallSpeedMultiplier()`, 75분 경과 시 최대 16배)도 경과 시간에서 파생되므로, 긴 대전의 후반 상황을 실제로 기다리지 않고 재현할 때 사용한다. 진행 중인 게임이 없거나 0 미만·유한하지 않은 값이면 예외를 던진다.
 - 솔로몬이 AI API 요청을 취소할 때는 `abort(reason)`으로 사유(`contact`·`replaced`·`timeout`)를 신호에 함께 싣는다. 요청을 받은 쪽은 `signal.reason`으로 착지·턴 교체·타임아웃을 구분할 수 있으며, 회귀 테스트가 어느 경로로 취소됐는지 확인하는 근거다.
 - 공개 `askConfirm(message)`는 메시지를 그대로 표시하고 번역된 확인·취소 버튼으로 `Promise<boolean>`을 완료한다. 키보드·게임패드·마우스를 지원하며, 게임 중 호출 시 자동 일시정지하고 원래 실행 중이었던 게임만 응답 뒤 재개한다. 동시 요청은 순서대로 표시한다. 카드 뽑기·합성 확인도 이 공용 함수를 사용한다.
@@ -321,6 +322,21 @@ aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
 - `Prompt API 모델이 다운로드 중이면 초기화를 기다리지 않고 create를 호출한다`
 
 `src/notice/notice_ko.txt`·`notice_en.txt`의 "OpenAI 등 상용 LLM은 느리다"는 안내 문구도 제공자 이름을 뺀 일반 문장으로 바꿨다.
+
+## 개발용 도구 (`tools.html`)
+
+피버 패턴과 퍼즐뿌요 스테이지를 만들기 위한 개발자 전용 페이지다. 게임 페이지(`puyow.html`)와는 별개이며 배포 게임 동작에 영향을 주지 않는다.
+
+- 화면·검증·스크립트 생성 등 도구의 핵심 코드는 모두 `src/js/puyow_tools.js`에 둔다. 필요한 CSS도 이 파일이 초기화할 때 `style.puyow_tools_style` 태그로 문서에 넣는다. `tools.html`은 `PuyoWTools.initialize(divTarget)` 한 줄만 호출한다.
+- 뿌요 배치 편집과 테스트 실행은 새로 만들지 않고 `puyow.js`의 기존 코드를 재사용한다. 그 연결 지점이 `PuyoW.tools` API다: `openEditor({kind, stageData, suppliedNextPuyos})`, `closeEditor()`, `getEditorData()`, `setEditorData(data)`, `startFeverTest(stage, onFinish)`, `startPuzzleTest(stage, onFinish)`, `stopTest()`, `isTesting()`, `getMaxNextTurns()`, `getColors()`.
+- 화면 구성은 최상단 툴바(항상 표시, `피버 패턴 개발`·`퍼즐뿌요 개발` 선택), 좌측 사이드바와 우측 영역이 4 : 6, 우측은 캔버스 영역과 읽기 전용 스크립트 출력 영역이 7 : 3이다. 대상을 고르기 전에는 툴바 아래가 비어 있고, 게임 캔버스도 그때 처음 `PuyoW.initialize()`로 만든다.
+- 편집 모드는 시뮬레이터 그리기 모드 그 자체다. `simulator.tools`가 있으면 중앙 영역에 `다음에 나올 뿌요` 편집 칸(`drawToolsNextArea()`, `getToolsNextCellBounds()`)이 그려지고, 피버는 1턴·퍼즐은 최대 `TOOLS_MAX_NEXT_TURNS`(6)턴을 받는다. 배열 0번이 아래쪽 축 뿌요이므로 화면에서도 아래 칸이 0번이다. 이 칸에는 색 뿌요만 넣을 수 있다.
+- 플레이 영역은 클릭과 드래그로 칠한다. 드래그는 `handleToolsPointerDown()`·`handleToolsPointerMove()`가 처리하며, 도구 편집 모드가 아니면 곧바로 false를 돌려 기존 가상 컨트롤러 경로를 그대로 둔다.
+- 피버 테스트는 `startGame(false, true)`로 연속 피버를 시작한 뒤 `game.toolsTest`를 붙인다. `prepareFeverTurn()`은 `game.toolsTest.pendingStage`가 있으면 그 패턴을 색 변환 없이(`createToolsIdentityColorMap()`) 그대로 올리고, 그 다음 번 호출부터는 실제 게임과 같은 방식으로 패턴을 고른 뒤 `finishAfterStage`를 세워 배치가 끝나면 편집 모드로 돌아간다. 남은 시간은 `CONTINUOUS_FEVER_INITIAL_TIME`(60초), 목표 연쇄와 지급 뿌요는 편집 중인 값을 그대로 쓴다.
+- 퍼즐뿌요 테스트는 `startPuzzleStageGame(stage, -1, 0)`으로 등록되지 않은 스테이지를 그대로 실행한다. `stageIndex`가 -1이거나 `game.toolsTest`가 있으면 `finishPuzzleStage()`가 클리어 기록·별·GOLD를 저장하지 않는다.
+- 테스트 종료는 `updateToolsTest()`가 맡는다. 결과 화면에 들어가면 `TOOLS_TEST_FINISH_DELAY`(1.5초) 뒤 `returnFromToolsTest()`로 편집 모드에 복귀하며, 일시정지의 `종료`와 결과 화면 닫기도 메인 메뉴 대신 편집 모드로 간다.
+- `puyow.js`의 도구 관련 코드는 모두 `simulator.tools` 또는 `game.toolsTest` 조건 안에 있다. 게임 페이지 동작을 바꾸지 않는 것이 이 API의 계약이므로, 도구 기능을 넓힐 때도 이 가드를 벗어나지 않는다.
+- 스크립트 생성은 `TODO.md`의 예시와 같은 형식(`new FeverStageState(...)` 5인자, `new PuzzlePuyoStage({...})` 6항목)을 출력한다. 생성 직전에 목표 연쇄 4~12, 난이도 1 이상, 사용 색상 중복 없음, 배치·지급 색이 사용 색상 목록 안에 있는지, 퍼즐 지급 뿌요가 1턴부터 빈 턴 없이 이어지는지를 검사한다. 불러오기는 붙여 넣은 스크립트를 게임의 실제 클래스에 그대로 넘겨 만든다.
 
 ## 공통 계산 함수
 

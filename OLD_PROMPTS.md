@@ -1,5 +1,159 @@
 
 
+
+아래 내용은 114차 수정요청한 내용이야. 참고만 해줘.
+----------------------------------------------------------
+
+
+피버 패턴 및 퍼즐뿌요 개발용 도구 구현
+
+페이지는 tools.html, 스크립트는 puyow_tools.js 에 새로 개발하도록 구현할 거야.
+다만 테스트, 마우스 드래그 및 클릭으로 뿌요 배치 등 일부 기능 구현 시 puyow.js 의 코드를 재사용하여 구현해야 해.
+
+지금 tools.html 은 게임 초기화하는 부분이 빠졌고 puyow_tools.js 임포트하는 부분이 들어갔어.
+puyow_tools.js 는 텅 비어있어.
+
+이 도구의 핵심 코드는 모두 puyow_tools.js 에 들어가야 해. 필요한 css 또한 puyow_tools.js 안에서 초기화할 때 DOM에 style 태그를 넣는 방식으로 구현해야 해.
+
+이 페이지에 접속하면, 화면 최상단에 툴바가 있고, 하단은 비어있는 화면이 나타나야 해.
+이 "화면 최상단 툴바"는 이 화면에서 앞으로도 계속 이 위치에 존재해야 해.
+화면 최상단에서는 "피버 패턴 개발", "퍼즐뿌요 개발" 두 가지 선택지 버튼이 있어.
+둘 중 하나를 클릭해 선택해야 다음 단계로 넘어가.
+
+화면 최상단 툴바에서 
+피버 패턴 개발 선택 시, 화면 하단에 "피버 패턴 개발" 화면이 나타날 거야.
+퍼즐뿌요 개발  선택 시, 화면 하단에 "퍼즐뿌요 개발" 화면이 나타날 거야.
+
+두 화면 모두 공통적인 레이아웃을 가지고 있는데
+우선 화면 최상단 툴바는 위에서도 적었듯 항상 있어야 하고
+좌측에 꽤 넓은 사이드바 (4:6 정도 비율)
+우측은 둘로 나뉘어서 (7:3), 
+우측 중앙에는 뿌요를 배치하거나 테스트할 수 있는 캔버스 영역
+우측 하단에는 자바스크립트 코드가 결과로 출력될 텍스트 영역 (읽기 전용)
+이렇게 구성되어야 해.
+
+좌측 사이드바에서는, 기존 데이터를 불러오는 버튼과, 피버 패턴 혹은 퍼즐뿌요의 공통적인 사항을 입력받는 영역을 둘 거야.
+
+기존 데이터를 불러오는 버튼 (텍스트는 "불러오기" 사용) 클릭 시, 
+화면 내 레이어 팝업으로, 여러줄 텍스트를 입력하는 창이 나타나서,
+이 안에 기존에 만든 피버 패턴이나 퍼즐뿌요 스크립트를 붙여넣고 "확인" 버튼을 클릭해, 기존 데이터를 불러오거나
+"취소" 버튼을 클릭해 레이어 팝업을 닫을 수 있도록 해줘.
+불러올 데이터는 다음과 같이 스크립트 형태로 입력받아.
+이를테면 피버 패턴을 불러올 때는
+```
+new FeverStageState(
+    {"puyos":[{"x":0,"y":0,"color":"green"},{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"green"},{"x":1,"y":1,"color":"green"},{"x":2,"y":1,"color":"red"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"green"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"garbage"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"yellow"},{"x":3,"y":2,"color":"green"},{"x":4,"y":2,"color":"red"},{"x":5,"y":2,"color":"green"},{"x":0,"y":3,"color":"yellow"},{"x":1,"y":3,"color":"yellow"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"red"},{"x":4,"y":3,"color":"green"},{"x":5,"y":3,"color":"red"},{"x":0,"y":4,"color":"green"},{"x":1,"y":4,"color":"garbage"},{"x":2,"y":4,"color":"yellow"},{"x":3,"y":4,"color":"garbage"},{"x":4,"y":4,"color":"green"},{"x":5,"y":4,"color":"red"},{"x":2,"y":5,"color":"green"},{"x":3,"y":5,"color":"red"},{"x":4,"y":5,"color":"yellow"},{"x":5,"y":5,"color":"yellow"},{"x":2,"y":6,"color":"red"},{"x":3,"y":6,"color":"red"},{"x":4,"y":6,"color":"yellow"},{"x":5,"y":6,"color":"green"},{"x":5,"y":7,"color":"green"},{"x":5,"y":8,"color":"yellow"},{"x":5,"y":9,"color":"red"},{"x":5,"y":10,"color":"red"},{"x":5,"y":11,"color":"green"}]},
+    10,
+    ['green', 'green'],
+    2,
+    ['red', 'green', 'yellow']
+)
+```
+퍼즐뿌요 스테이지를 불러올 때는
+```
+new PuzzlePuyoStage({
+    stageData : {"puyos":[{"x":0,"y":0,"color":"blue"},{"x":1,"y":0,"color":"blue"},{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"blue"},{"x":5,"y":0,"color":"blue"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"green"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"green"},{"x":2,"y":2,"color":"green"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"green"},{"x":5,"y":2,"color":"red"},{"x":3,"y":3,"color":"green"},{"x":4,"y":3,"color":"green"},{"x":3,"y":4,"color":"red"},{"x":4,"y":4,"color":"red"},{"x":4,"y":5,"color":"red"}]},
+    suppliedNextPuyos : [['red', 'blue'], ['red', 'red'], ['red', 'red']],
+    turnLimit : 3,
+    winConditionType : 'combo',
+    winConditionValue : 6,
+    hint : '최초 폭발은 빨간색'
+})
+```
+이런 형식으로 입력 받아.
+
+
+
+피버 패턴 개발 시에는 다음 정보를 입력받아야 해. (puyow.js 의 FeverStageState 클래스를 참고해 줘.)
+
+먼저, 목표 연쇄 수를 4 ~ 12 사이 정수로 입력받아. (FeverStageState 클래스의 targetCombo 정보에 해당)
+
+그리고, 사용할 색상 목록도 선택 받아야 해. (FeverStageState 클래스의 usingColors 정보에 해당)
+이 부분은 편집 가능한 Grid 형태로 입력 받아야 할 것 같아. 다만 값은 red, blue, green, yellow, purple 중에서만 입력이 가능해야 하지.
+동일색상 중복 입력 못해야 하지만, 이건 당장은 막지 말고 최종단계에서 스크립트 생성 전에 체크하여 막도록 하자.
+
+그리고, 게임 시작 직후 플레이 영역에 배치될 뿌요들 정보 (좌표, 뿌요 종류 등. FeverStageState 클래스의 stageData 정보에 해당)
+   예: 
+   ```
+   {"puyos":[{"x":0,"y":0,"color":"green"},{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"green"},{"x":1,"y":1,"color":"green"},{"x":2,"y":1,"color":"red"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"green"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"garbage"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"yellow"},{"x":3,"y":2,"color":"green"},{"x":4,"y":2,"color":"red"},{"x":5,"y":2,"color":"green"},{"x":0,"y":3,"color":"yellow"},{"x":1,"y":3,"color":"yellow"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"red"},{"x":4,"y":3,"color":"green"},{"x":5,"y":3,"color":"red"},{"x":0,"y":4,"color":"green"},{"x":1,"y":4,"color":"garbage"},{"x":2,"y":4,"color":"yellow"},{"x":3,"y":4,"color":"garbage"},{"x":4,"y":4,"color":"green"},{"x":5,"y":4,"color":"red"},{"x":2,"y":5,"color":"green"},{"x":3,"y":5,"color":"red"},{"x":4,"y":5,"color":"yellow"},{"x":5,"y":5,"color":"yellow"},{"x":2,"y":6,"color":"red"},{"x":3,"y":6,"color":"red"},{"x":4,"y":6,"color":"yellow"},{"x":5,"y":6,"color":"green"},{"x":5,"y":7,"color":"green"},{"x":5,"y":8,"color":"yellow"},{"x":5,"y":9,"color":"red"},{"x":5,"y":10,"color":"red"},{"x":5,"y":11,"color":"green"}]}
+   ```
+이 정보는 텍스트로 표현할 게 아니고
+puyow.js 의 "시뮬레이터" 화면을 참고하여 화면 우측 중앙 영역에 캔버스로 표현되어야 해.
+좌측에는 플레이 영역, 우측에는 팔레트가 배치되는 건, 본 게임의 "시뮬레이터" 화면 내 "그리기" 모드와 동일하지만
+대신 여기서는 우측 영역에 "종료" 버튼이 없어야 하고
+팔레트에서 뿌요를 선택해, 좌측 플레이 영역과 숨겨진 영역에도 물론 기존처럼 뿌요를 배치할 수 있어야 해. (기존 "시뮬레이터" 화면처럼)
+하지만
+기존 "시뮬레이터" 화면과는 달리, 중앙 영역에 "다음에 나올 뿌요" 보여주는 영역도 출력하여, 이 곳에도 뿌요를 배치할 수 있어야 해.
+("다음에 나올 뿌요" 뿌요 배치 시에는 FeverStageState 클래스의 suppliedNextPuyos 배열에 배치된 뿌요의 색상이 들어가야 함. 피버 패턴은 "다음에 나올 뿌요" 를 1회차 것만 입력 받음.)
+(이 상태를 이제 "편집" 모드라고 부를게.)
+
+그리고 난이도를 1 이상의 정수값으로 받아야 해. (FeverStageState 클래스의 difficulty 정보에 해당)
+ 
+그외에, 좌측 사이드바에는 컨트롤 버튼들
+"테스트", "스크립트 생성" 버튼이 있어야 해.
+
+테스트 버튼 클릭 시 화면 중앙 영역이 "연속 피버" 모드 플레이 화면처럼 바뀌면서,
+바로 피버 상태에 진입하고, 남은 시간 LEFT TIME 은 60, 피버 패턴은 지금 편집 중인 피버 패턴의 stageData 데이터, 목표 연쇄 수는 지금 편집 중인 피버 패턴의 targetCombo 로, "다음에 나올 뿌요" 목록은 이 피버 패턴의 suppliedNextPuyos 데이터로 세팅이 되어야 해.
+게임하듯이 키보드로 조작해서 테스트가 가능해야 하고, 
+뿌요를 터뜨려 연쇄 시작 및 연쇄 절차가 다 종료되어, 그 결과에 따라 다음 FeverStageState 스테이지를 선정하면
+그 스테이지대로 플레이 영역에 뿌요들이 배치가 완료되는 것까지 보여준 후 다시 "편집" 모드로 돌아와야 해.
+
+"스크립트 생성" 버튼을 클릭하면
+다음 형태대로 자바스크립트 코드가 화면 우측 하단 영역에 출력되어야 해.
+이를테면
+```
+new FeverStageState(
+    {"puyos":[{"x":0,"y":0,"color":"green"},{"x":1,"y":0,"color":"red"},{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":0,"y":1,"color":"green"},{"x":1,"y":1,"color":"green"},{"x":2,"y":1,"color":"red"},{"x":3,"y":1,"color":"red"},{"x":4,"y":1,"color":"green"},{"x":5,"y":1,"color":"red"},{"x":0,"y":2,"color":"garbage"},{"x":1,"y":2,"color":"red"},{"x":2,"y":2,"color":"yellow"},{"x":3,"y":2,"color":"green"},{"x":4,"y":2,"color":"red"},{"x":5,"y":2,"color":"green"},{"x":0,"y":3,"color":"yellow"},{"x":1,"y":3,"color":"yellow"},{"x":2,"y":3,"color":"red"},{"x":3,"y":3,"color":"red"},{"x":4,"y":3,"color":"green"},{"x":5,"y":3,"color":"red"},{"x":0,"y":4,"color":"green"},{"x":1,"y":4,"color":"garbage"},{"x":2,"y":4,"color":"yellow"},{"x":3,"y":4,"color":"garbage"},{"x":4,"y":4,"color":"green"},{"x":5,"y":4,"color":"red"},{"x":2,"y":5,"color":"green"},{"x":3,"y":5,"color":"red"},{"x":4,"y":5,"color":"yellow"},{"x":5,"y":5,"color":"yellow"},{"x":2,"y":6,"color":"red"},{"x":3,"y":6,"color":"red"},{"x":4,"y":6,"color":"yellow"},{"x":5,"y":6,"color":"green"},{"x":5,"y":7,"color":"green"},{"x":5,"y":8,"color":"yellow"},{"x":5,"y":9,"color":"red"},{"x":5,"y":10,"color":"red"},{"x":5,"y":11,"color":"green"}]},
+    10,
+    ['green', 'green'],
+    2,
+    ['red', 'green', 'yellow']
+)
+```
+이런 식으로 말이지.
+
+
+
+퍼즐뿌요 개발 또한 상당수가 피버 패턴 개발의 경우와 동일하지만 다른 점도 있어.
+
+우선 퍼즐뿌요에는 목표 연쇄 대신, 
+목표 타입 (PuzzlePuyoStage 클래스의 winConditionType), 목표 타입 값 (PuzzlePuyoStage 클래스의 winConditionValue),
+목표 턴수 (PuzzlePuyoStage 클래스의 turnLimit), 흰트 (PuzzlePuyoStage 클래스의 hint)
+를 입력받아야 하고
+"다음에 나올 뿌요" (PuzzlePuyoStage 클래스의 suppliedNextPuyos) 는 여러 턴 정보를 포함해야 하기 때문에, 중앙 영역 내 "다음에 나올 뿌요" 영역도 충분히 넓어야 하고, 그 안에 뿌요들을 배치할 수 있어야 해. (최대 6턴까지만 받도록 해줘.)
+테스트 시 피버 상태가 되지 않아. 퍼즐뿌요 게임 화면으로 진입하고 바로 게임하듯 테스트를 하는거지. 퍼즐뿌요 클리어 조건을 만족시키거나 패배하거나 또는 ESC 눌러 일시정지 후 중단한 경우, 종료 화면을 잠깐 띄운 후 테스트를 종료하고 바로 "편집" 모드로 돌아가면 돼.
+
+목표 타입은 콤보박스 (html의 select 태그에 해당) 형태로 선택 받아야 해.
+목표 타입에는 다음 종류가 있어.
+    combo : 목표 연쇄 수를 달성하면 승리
+    clear : 싹쓸이 발생 시 승리
+    multiple : 한 번의 연쇄에 동시에 터지는 뿌요 수가 한 번이라도 목표 수 이상으로 넘어갔다면 승리
+    color : 한 번의 연쇄에 동시에 터지는 뿌요 색상 수가 한 번이라도 목표 수 이상으로 넘어갔다면 승리 (방해뿌요는 색상에서 제외)
+    attack : 발생시킨 공격 ATTACK + 상대에게 적용한 피해 DAMAGE (즉 예고뿌요가 나타내는 방해뿌요 총 수) 합이 순간적으로 이 목표 수 
+
+목표 타입 값은 양의 정수로 입력 받으면 돼.
+단, 목표 타입이 clear 인 경우, 목표 타입 값은 의미가 없으므로 이 때는 입력 란이 비활성화되어야 해.
+
+
+
+"스크립트 생성" 버튼을 클릭하면
+다음 형태대로 자바스크립트 코드가 화면 우측 하단 영역에 출력되어야 해.
+이를테면
+```
+new PuzzlePuyoStage({
+    stageData : {"puyos":[{"x":0,"y":0,"color":"blue"},{"x":1,"y":0,"color":"blue"},{"x":2,"y":0,"color":"green"},{"x":3,"y":0,"color":"green"},{"x":4,"y":0,"color":"blue"},{"x":5,"y":0,"color":"blue"},{"x":2,"y":1,"color":"blue"},{"x":3,"y":1,"color":"green"},{"x":4,"y":1,"color":"blue"},{"x":5,"y":1,"color":"green"},{"x":2,"y":2,"color":"green"},{"x":3,"y":2,"color":"blue"},{"x":4,"y":2,"color":"green"},{"x":5,"y":2,"color":"red"},{"x":3,"y":3,"color":"green"},{"x":4,"y":3,"color":"green"},{"x":3,"y":4,"color":"red"},{"x":4,"y":4,"color":"red"},{"x":4,"y":5,"color":"red"}]},
+    suppliedNextPuyos : [['red', 'blue'], ['red', 'red'], ['red', 'red']],
+    turnLimit : 3,
+    winConditionType : 'combo',
+    winConditionValue : 6,
+    hint : '최초 폭발은 빨간색'
+})
+```
+이런 식으로 말이지.
+
+이외에는 위의 피버 개발 화면과 동일하게 동작하면 돼.
+
+
 아래 내용은 113차 수정요청한 내용이야. 참고만 해줘.
 ----------------------------------------------------------
 
