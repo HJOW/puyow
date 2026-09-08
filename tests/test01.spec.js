@@ -6296,6 +6296,26 @@ test('너랑 나랑 게임 중앙에는 초상화 대신 1P·2P 승패 현황이
   expect(await page.evaluate((texts) => texts.every((text) => window.testCanvasTexts.includes(text)), [recordLabel, winLabel])).toBe(true);
 });
 
+test('너랑 나랑의 1P는 공통 주문 효과음을, 2P는 공통 적 주문 효과음을 낸다', async ({ page }) => {
+  await page.evaluate(() => {
+    window.WebPuyo.commonSoundPool.spellCombo1 = 'sounds/together-1p-spell.ogg';
+    window.WebPuyo.commonSoundPool.commonEnemySpellCombo1 = 'sounds/together-2p-spell.ogg';
+    // 한 가지 색만 나오게 해 양쪽 모두 빠른 하강만으로 곧바로 연쇄를 일으키게 한다.
+    Math.random = () => 0;
+  });
+  await openTogetherGuide(page);
+  await startTogetherGame(page);
+
+  await page.keyboard.down('KeyB');
+  await page.keyboard.down('Numpad2');
+  await expect.poll(() => page.evaluate(() => ({
+    first: window.testAudioInstances.some((audio) => audio.src === 'sounds/together-1p-spell.ogg'),
+    second: window.testAudioInstances.some((audio) => audio.src === 'sounds/together-2p-spell.ogg'),
+  })), { timeout: 30000 }).toEqual({ first: true, second: true });
+  await page.keyboard.up('KeyB');
+  await page.keyboard.up('Numpad2');
+});
+
 /** 결과 화면 버튼 세 개까지 담기도록 넓은 범위에서 버튼 문구를 읽는다. */
 async function readTogetherResultButtonLabels(page) {
   await page.evaluate(() => { window.testCanvasTextCalls = []; });

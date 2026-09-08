@@ -88,6 +88,7 @@
 - `startTogetherGame()`이 양쪽 `PlayerState`의 컨트롤러를 모두 `null`로 두고 `game.together = { rule, wins }`를 만든다. 이름은 번역하지 않는 `1P`·`2P`(`TOGETHER_PLAYER_NAMES`)이고, 배경·배경음에 쓸 `themeController`만 `PracticeEnemy`로 채운다. 그래서 배경음악은 연습과 같은 공통 곡을 쓴다.
 - 중앙 영역은 초상화 대신 `drawTogetherRecordPanel()`의 누적 승수 패널을 그린다. 실제 대전의 누적 승수는 모듈 상태 `togetherWinCounts`에 있고, `openTogetherGuide()`에서만 초기화한다. 결과 화면의 `다시 플레이`(`restartTogetherGame()`)는 이 값을 유지한 채 같은 규칙·색상 수로 다시 시작하고, `종료`는 메인 메뉴로 돌아간다.
 - 결과 화면 버튼은 `다시 플레이` → `종료` → `리플레이 복사`(기록이 있을 때) 순서다. 기본 포커스는 0번 `다시 플레이`이므로 결과 화면에서 Enter만 누르면 바로 이어서 대전한다.
+- 연쇄 주문 효과음은 `playComboSounds()`가 고른다. 좌측 1P는 다른 화면의 사용자와 같은 공통 `spellCombo1~7`을, 우측 2P는 적 컨트롤러가 없어도 공통 `commonEnemySpellCombo1~7`을 써서 좌우 소리를 구분한다.
 - 진행도(`recordEnemyClear()`), GOLD(`calculateCurrentGameGoldReward()`), 역방향 학습 전송(`shouldSendLearningEvent()`), 가상 컨트롤러(`shouldShowVirtualController()`)는 모두 `game.together`를 제외 조건으로 갖는다. ONNX 모델 준비도 호출하지 않는다.
 - 조작키는 `resolveTogetherKeyInput()` 한 곳에서 판정한다. 1P는 `TOGETHER_PLAYER_ONE_KEY_CODES`(방향키·Z·X와 F·G·H·B), 2P는 `TOGETHER_PLAYER_TWO_KEY_CODES`(키패드 4·6·2·5와 `[`·`]`)를 쓰며 **반드시 물리 키 코드로 판정한다**. NumLock이 꺼져 있으면 키패드가 방향키 문자값을 보내므로, 문자값으로 판정하면 2P 조작이 1P로 새어 들어간다.
 - 방향 홀드 상태는 `playerDirectionInputs[0|1]`에 플레이어별로 있다. 좌우 홀드 반복·빠른 하강·리플레이의 빠른 하강 기록이 모두 `getPlayerDirectionInput(player)`를 거치므로, 새 입력 수단을 붙일 때도 이 배열을 사용한다. 가상 컨트롤러 입력은 1P 전용이다.

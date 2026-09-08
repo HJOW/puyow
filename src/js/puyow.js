@@ -2303,10 +2303,13 @@
         const spellPool = player.controller ? player.controller.soundPool : commonSoundPool;
         const combo = player.combo;
         playSound(getComboSoundUrl(commonSoundPool, 'puyoBurstCombo', combo), 'effects', '뿌요 폭발 효과음');
-        const spellUrl = getComboSoundUrl(spellPool, 'spellCombo', combo)
-            || (player.controller
-                ? getComboSoundUrl(commonSoundPool, game?.watch && player === game.players[0] ? 'spellCombo' : 'commonEnemySpellCombo', combo)
-                : null);
+        // "너랑 나랑"은 양쪽 모두 사람이 조작해 적 컨트롤러가 없다. 우측 2P는 공통 적 주문 효과음을 써서 좌우 소리를 구분한다.
+        const spellUrl = game?.together && player === game.players[1]
+            ? getComboSoundUrl(commonSoundPool, 'commonEnemySpellCombo', combo)
+            : getComboSoundUrl(spellPool, 'spellCombo', combo)
+                || (player.controller
+                    ? getComboSoundUrl(commonSoundPool, game?.watch && player === game.players[0] ? 'spellCombo' : 'commonEnemySpellCombo', combo)
+                    : null);
         playSound(spellUrl, 'effects', '연쇄 주문 효과음');
     }
 
@@ -12834,7 +12837,7 @@
         combo6SpellEffect = null;
 
         /**  
-         * 1연쇄 발생 시 적이 말하는 주문 효과음. 적 SoundPool에 음원이 없을 때 기본 대전의 적은 이 값을 사용한다. 구경 모드 좌측 적은 대신 공통 spellCombo1을 사용한다.
+         * 1연쇄 발생 시 적이 말하는 주문 효과음. 적 SoundPool에 음원이 없을 때 기본 대전의 적은 이 값을 사용한다. 구경 모드 좌측 적은 대신 공통 spellCombo1을 사용하고, "너랑 나랑"의 우측 2P는 적이 없어도 이 값을 사용한다.
          * @type {string|null}
          */
         commonEnemySpellCombo1 = null;
@@ -12864,7 +12867,7 @@
          */
         commonEnemySpellCombo6 = null;
         /**  
-         * 7연쇄 발생 시 적이 말하는 주문 효과음. (해당 적의 SoundPool 의 spellCombo7 이 null일 때 대신 사용, null 인 경우 해당 상황에서 소리가 나지 않는다.)
+         * 7 또는 그 이상의 연쇄 발생 시 적이 말하는 주문 효과음. (해당 적의 SoundPool 의 spellCombo7 이 null일 때 대신 사용, null 인 경우 해당 상황에서 소리가 나지 않는다.)
          * @type {string|null}
          */
         commonEnemySpellCombo7 = null;
