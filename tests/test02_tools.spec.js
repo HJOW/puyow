@@ -5,6 +5,10 @@ import { test, expect } from '@playwright/test';
 
 const TOOLS_PAGE = '/tools.html';
 
+// 도구 페이지는 한국어와 영어만 지원한다. 아래 테스트들은 한국어 문구로 화면을 찾으므로
+// 브라우저 언어를 한국어로 고정하고, 기본 언어인 영어는 파일 끝의 별도 그룹에서 확인한다.
+test.use({ locale: 'ko-KR' });
+
 // 도구는 ONNX 추론 적을 쓰지 않지만, 게임 초기화가 CDN에서 27MB wasm을 받으려고 하지 않도록 막는다.
 async function blockOnnxWasmCdn(page) {
   await page.route('https://cdn.jsdelivr.net/**', (route) => route.abort('failed'));
@@ -16,9 +20,22 @@ async function disableLocalAiModel(page) {
   });
 }
 
+// 편집 화면 canvas 문구를 확인할 수 있도록 그려진 텍스트를 모아 둔다.
+async function recordCanvasTexts(page) {
+  await page.addInitScript(() => {
+    window.testCanvasTexts = [];
+    const originalFillText = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+      window.testCanvasTexts.push(String(text));
+      return originalFillText.call(this, text, ...args);
+    };
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   await blockOnnxWasmCdn(page);
   await disableLocalAiModel(page);
+  await recordCanvasTexts(page);
   await page.goto(TOOLS_PAGE);
   await page.waitForFunction(() => Boolean(window.PuyoWTools && window.PuyoW));
 });
@@ -114,6 +131,8 @@ test('피버 패턴의 사용할 색상 목록 기본값은 빨강·초록·파�
   await expect(colorSelects.nth(0)).toHaveValue('red');
   await expect(colorSelects.nth(1)).toHaveValue('green');
   await expect(colorSelects.nth(2)).toHaveValue('blue');
+  // 한국어에서는 색 이름 옆에 한국어 이름을 함께 보여 준다.
+  await expect(page.locator('.puyow-tools-grid tbody select option').first()).toHaveText('red (빨강)');
 });
 
 test('사용할 색상 목록이 중복이면 스크립트를 만들지 않고 알린다', async ({ page }) => {
@@ -265,4 +284,49 @@ test('피버 테스트에서 연쇄를 끝내면 다음 패턴 배치까지 보�
   const editor = await page.evaluate(() => window.PuyoW.tools.getEditorData());
   expect(editor.stageData.puyos.length).toBe(6);
   expect(editor.nextPuyos).toEqual([['red', 'green']]);
+});
+
+test('한국어 브라우저에서는 편집 화면 canvas 문구도 한국어로 나온다', async ({ page }) => {
+  await selectMode(page, '피버 패턴 개발');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('다음에 나올 뿌요'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('1턴'))).toBe(true);
+});
+
+test.describe('기본 언어인 영어', () => {
+  test.use({ locale: 'en-US' });
+
+  test('한국어가 아닌 브라우저에서는 도구 화면이 영어로 나온다', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Edit FEVER Pattern' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit Puzzle Puyo' })).toBeVisible();
+    await expect(page.locator('.puyow-tools-status')).toHaveText('Choose what to develop.');
+    await expect(page.locator('.puyow-tools-empty'))
+      .toHaveText('Choose "Edit FEVER Pattern" or "Edit Puzzle Puyo" at the top of the screen.');
+  });
+
+  test('영어 사이드바와 편집 화면 canvas 문구도 영어로 나온다', async ({ page }) => {
+    await selectMode(page, 'Edit FEVER Pattern');
+    await expect(page.locator('.puyow-tools-sidebar')).toContainText('Colors In Use');
+    await expect(page.locator('.puyow-tools-sidebar')).toContainText('Target Chain');
+    await expect(page.getByRole('button', { name: 'Generate Script' })).toBeVisible();
+    await expect(page.locator('.puyow-tools-output-title')).toHaveText('Generated Script');
+    // 색상 선택 칸은 영어에서 색 이름만 보여 준다.
+    await expect(page.locator('.puyow-tools-grid tbody select option').first()).toHaveText('red');
+    await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Next Puyos'))).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('T1'))).toBe(true);
+  });
+
+  test('영어 화면의 검증 오류 문구도 영어로 나온다', async ({ page }) => {
+    await selectMode(page, 'Edit FEVER Pattern');
+    await page.getByRole('button', { name: 'Generate Script' }).click();
+    await expect(page.locator('.puyow-tools-status'))
+      .toHaveText('Script generation failed: Place at least one puyo on the play field.');
+    await expect(page.locator('.puyow-tools-status')).toHaveClass(/is-error/);
+  });
+
+  test('영어 화면의 퍼즐뿌요 목표 타입 설명도 영어로 나온다', async ({ page }) => {
+    await selectMode(page, 'Edit Puzzle Puyo');
+    await expect(page.locator('.puyow-tools-sidebar')).toContainText('Win when the target chain count is reached.');
+    await page.locator('.puyow-tools-sidebar select').first().selectOption('clear');
+    await expect(page.locator('.puyow-tools-sidebar')).toContainText('Win on an all clear. The condition value is not used.');
+  });
 });

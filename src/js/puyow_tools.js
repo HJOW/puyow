@@ -22,22 +22,133 @@
 (() => {
     'use strict';
 
+    /**
+     * 도구 화면에서만 쓰는 문구의 다국어 표다.
+     * 도구 페이지의 기본 언어는 영어이므로 영어 원문을 키로 쓰고, 지원하는 다른 언어인
+     * 한국어 번역만 여기에 둔다. 게임 본체(puyow.js)의 번역표와는 별개다.
+     * @type {Object<string, Object<string,string>>}
+     */
+    const TOOLS_STRINGS = {
+        ko: {
+            'Puyo W Dev Tools': '뿌요 W 개발 도구',
+            'Edit FEVER Pattern': '피버 패턴 개발',
+            'Edit Puzzle Puyo': '퍼즐뿌요 개발',
+            'Choose what to develop.': '개발할 대상을 선택해 주세요.',
+            'Choose "Edit FEVER Pattern" or "Edit Puzzle Puyo" at the top of the screen.': '화면 위쪽에서 "피버 패턴 개발" 또는 "퍼즐뿌요 개발"을 선택하세요.',
+            'Use a screen that is wider than it is tall.': '가로가 더 넓은 화면에서 사용해 주세요.',
+            'Editing a FEVER pattern.': '피버 패턴을 편집합니다.',
+            'Editing a Puzzle Puyo stage.': '퍼즐뿌요 스테이지를 편집합니다.',
+            'Choose again after the test finishes.': '테스트가 끝난 뒤에 다시 선택해 주세요.',
+            'Existing data loaded.': '기존 데이터를 불러왔습니다.',
+            'Load failed: %1': '불러오기 실패: %1',
+            'Script generated.': '스크립트를 생성했습니다.',
+            'Script generation failed: %1': '스크립트 생성 실패: %1',
+            'Test failed: %1': '테스트 실패: %1',
+            'FEVER test in progress. Play with the keyboard. (ESC: pause)': '피버 테스트 중입니다. 키보드로 조작하세요. (ESC: 일시정지)',
+            'Puzzle Puyo test in progress. Play with the keyboard. (ESC: pause)': '퍼즐뿌요 테스트 중입니다. 키보드로 조작하세요. (ESC: 일시정지)',
+            'Test finished. Back to edit mode.': '테스트를 마치고 편집 모드로 돌아왔습니다.',
+            'You can add up to %1 colors.': '색상은 최대 %1개까지 넣을 수 있습니다.',
+            'Existing Data': '기존 데이터',
+            'Load': '불러오기',
+            'FEVER Pattern': '피버 패턴 정보',
+            'Target Chain': '목표 연쇄 수',
+            'Difficulty': '난이도',
+            'Target chain is an integer from %1 to %2, and difficulty an integer of 1 or more.': '목표 연쇄 수는 %1 ~ %2 사이의 정수, 난이도는 1 이상의 정수입니다.',
+            'Colors In Use': '사용할 색상 목록',
+            'No.': '순번',
+            'Color': '색상',
+            'Delete': '삭제',
+            'Add Color': '색상 추가',
+            'Only red, blue, green, yellow and purple can be chosen. A duplicated color is blocked when the script is generated.': 'red, blue, green, yellow, purple 중에서만 고를 수 있습니다. 같은 색을 두 번 넣으면 스크립트 생성 단계에서 막습니다.',
+            'Controls': '조작',
+            'Test': '테스트',
+            'Generate Script': '스크립트 생성',
+            'Pick a puyo from the palette at the right of the canvas, then click or drag on the left play field and on the "Next Puyos" cells in the middle.': '캔버스 오른쪽 팔레트에서 뿌요를 고른 뒤, 왼쪽 플레이 영역과 가운데 "다음에 나올 뿌요" 칸을 클릭하거나 끌어서 배치합니다.',
+            'Puzzle Puyo': '퍼즐뿌요 정보',
+            'Win Condition': '목표 타입',
+            'Condition Value': '목표 타입 값',
+            'Turn Limit': '목표 턴수',
+            'Hint': '힌트',
+            'Turn limit is an integer of 0 or more, and 0 means no limit. The hint may be left empty.': '목표 턴수는 0 이상의 정수이며, 0을 넣으면 제한이 없는 것으로 봅니다. 힌트는 비워 둘 수 있습니다.',
+            'Generated Script': '생성된 스크립트',
+            'Load Existing Data': '기존 데이터 불러오기',
+            'Paste a script written as new FeverStageState(...) or new PuzzlePuyoStage({...}).': 'new FeverStageState(...) 또는 new PuzzlePuyoStage({...}) 형태의 스크립트를 붙여 넣어 주세요.',
+            'OK': '확인',
+            'Cancel': '취소',
+            'combo (chain)': 'combo (연쇄)',
+            'Win when the target chain count is reached.': '목표 연쇄 수를 달성하면 승리',
+            'clear (all clear)': 'clear (싹쓸이)',
+            'Win on an all clear. The condition value is not used.': '싹쓸이 발생 시 승리 (목표 값 없음)',
+            'multiple (puyos popped at once)': 'multiple (동시 폭발 수)',
+            'Win when the puyos popped at once in one chain reach the target count.': '한 번의 연쇄에 동시에 터지는 뿌요 수가 목표 수 이상',
+            'color (colors popped at once)': 'color (동시 폭발 색 수)',
+            'Win when the colors popped at once in one chain reach the target count. Garbage puyos are excluded.': '한 번의 연쇄에 동시에 터지는 색 수가 목표 수 이상 (방해뿌요 제외)',
+            'attack (attack amount)': 'attack (공격량)',
+            'Win when ATTACK plus DAMAGE momentarily reaches the target count.': 'ATTACK + DAMAGE 합이 순간적으로 목표 수 이상',
+            'red': '빨강',
+            'green': '초록',
+            'yellow': '노랑',
+            'blue': '파랑',
+            'purple': '보라',
+            'puyow.js must be loaded first.': 'puyow.js를 먼저 불러와야 합니다.',
+            'This puyow.js build has no dev tools API.': '이 puyow.js 빌드에는 개발용 도구 API가 없습니다.',
+            'Enter the script to load.': '불러올 스크립트를 입력해 주세요.',
+            'The script could not be parsed. (%1)': '스크립트를 해석할 수 없습니다. (%1)',
+            'Not a FeverStageState or PuzzlePuyoStage object.': 'FeverStageState 또는 PuzzlePuyoStage 객체가 아닙니다.',
+            'The editor is not ready.': '편집 화면이 준비되지 않았습니다.',
+            'Place at least one puyo on the play field.': '플레이 영역에 뿌요를 하나 이상 배치해 주세요.',
+            'Enter %1.': '%1을(를) 입력해 주세요.',
+            '%1 must be an integer.': '%1은(는) 정수여야 합니다.',
+            'Target chain must be from %1 to %2.': '목표 연쇄 수는 %1 이상 %2 이하여야 합니다.',
+            'Difficulty must be an integer of 1 or more.': '난이도는 1 이상의 정수여야 합니다.',
+            'Add at least one color to use.': '사용할 색상을 한 개 이상 넣어 주세요.',
+            'The colors in use contain "%1" more than once.': '사용할 색상 목록에 "%1"이(가) 두 번 이상 있습니다.',
+            'Fill both cells of the next puyos.': '"다음에 나올 뿌요"의 두 칸을 모두 채워 주세요.',
+            'The color "%1" on the play field is not in the colors in use.': '플레이 영역의 "%1" 색이 사용할 색상 목록에 없습니다.',
+            'The color "%1" of the next puyos is not in the colors in use.': '"다음에 나올 뿌요"의 "%1" 색이 사용할 색상 목록에 없습니다.',
+            'One cell of turn %1 of the next puyos is empty.': '"다음에 나올 뿌요" %1턴의 한 칸이 비어 있습니다.',
+            'There is an empty turn before turn %1 of the next puyos.': '"다음에 나올 뿌요" %1턴 앞에 비어 있는 턴이 있습니다.',
+            'Fill at least one turn of the next puyos.': '"다음에 나올 뿌요"를 한 턴 이상 채워 주세요.',
+            'Choose a win condition.': '목표 타입을 선택해 주세요.',
+            'The condition value must be an integer of 1 or more.': '목표 타입 값은 1 이상의 정수여야 합니다.',
+            'The turn limit must be an integer of 0 or more.': '목표 턴수는 0 이상의 정수여야 합니다.',
+            'Could not find the element to build the dev tools in.': '개발용 도구를 넣을 요소를 찾을 수 없습니다.'
+        }
+    };
+
+    /**
+     * 편집 화면 canvas는 puyow.js가 그리므로, 도구에서만 쓰는 canvas 문구의 번역은
+     * `registerLanguage()`로 게임 번역표에 넣어 준다. 번역 정보 자체는 이 파일이 갖는다.
+     * puyow.js의 번역 키는 한국어 원문이며, 도구 페이지는 한국어와 영어만 지원하므로
+     * 한국어가 아닌 모든 언어에는 같은 영어 문구를 넣는다.
+     * @type {Object<string,string>}
+     */
+    const TOOLS_CANVAS_STRINGS = {
+        '다음에 나올 뿌요': 'Next Puyos',
+        '%1턴': 'T%1',
+        '다음에 나올 뿌요에는 색 뿌요만 넣을 수 있습니다.': 'Only color puyos can be placed in the next puyos.',
+        '도구 편집 모드에서만 테스트할 수 있습니다.': 'Testing is only available in the dev tools editor.'
+    };
+
+    /** puyow.js가 가진 한국어 외 언어 코드다. 이 언어들에 도구 canvas 문구의 영어 번역을 넣는다. @type {string[]} */
+    const TOOLS_CANVAS_LOCALES = ['en', 'ja', 'zh', 'de', 'fr'];
+
+    /** 도구 화면이 쓸 언어 코드다. 한국어가 아니면 기본 언어인 영어를 쓴다. @type {'ko'|'en'} */
+    let toolsLanguage = 'en';
+
     /** 편집에 쓸 수 있는 일반 뿌요 색 목록이다. puyow.js의 COLORS와 같은 순서를 유지한다. @type {string[]} */
     const COLORS = ['red', 'green', 'yellow', 'blue', 'purple'];
-
-    /** 색상 선택 칸에 보여 줄 한국어 이름이다. @type {Object<string,string>} */
-    const COLOR_LABELS = { red: '빨강', green: '초록', yellow: '노랑', blue: '파랑', purple: '보라' };
 
     /** 색상 선택 칸 옆에 표시할 미리보기 색이다. @type {Object<string,string>} */
     const COLOR_SAMPLES = { red: '#ef5350', green: '#66bb6a', yellow: '#f7c843', blue: '#42a5f5', purple: '#ab73e8' };
 
-    /** 퍼즐뿌요의 승리 조건 유형 목록이다. @type {{value:string, label:string, description:string}[]} */
+    /** 퍼즐뿌요의 승리 조건 유형 목록이다. label과 description은 번역 키다. @type {{value:string, label:string, description:string}[]} */
     const WIN_CONDITION_TYPES = [
-        { value: 'combo', label: 'combo (연쇄)', description: '목표 연쇄 수를 달성하면 승리' },
-        { value: 'clear', label: 'clear (싹쓸이)', description: '싹쓸이 발생 시 승리 (목표 값 없음)' },
-        { value: 'multiple', label: 'multiple (동시 폭발 수)', description: '한 번의 연쇄에 동시에 터지는 뿌요 수가 목표 수 이상' },
-        { value: 'color', label: 'color (동시 폭발 색 수)', description: '한 번의 연쇄에 동시에 터지는 색 수가 목표 수 이상 (방해뿌요 제외)' },
-        { value: 'attack', label: 'attack (공격량)', description: 'ATTACK + DAMAGE 합이 순간적으로 목표 수 이상' }
+        { value: 'combo', label: 'combo (chain)', description: 'Win when the target chain count is reached.' },
+        { value: 'clear', label: 'clear (all clear)', description: 'Win on an all clear. The condition value is not used.' },
+        { value: 'multiple', label: 'multiple (puyos popped at once)', description: 'Win when the puyos popped at once in one chain reach the target count.' },
+        { value: 'color', label: 'color (colors popped at once)', description: 'Win when the colors popped at once in one chain reach the target count. Garbage puyos are excluded.' },
+        { value: 'attack', label: 'attack (attack amount)', description: 'Win when ATTACK plus DAMAGE momentarily reaches the target count.' }
     ];
 
     /** 피버 패턴 개발 화면에 처음 세팅해 둘 사용 색상 목록(3색)이다. @type {string[]} */
@@ -67,17 +178,51 @@
     /** 캔버스 영역 크기 변화를 감시하는 관찰자다. @type {ResizeObserver|null} */
     let canvasResizeObserver = null;
 
+    /**
+     * 도구 화면에 쓸 언어를 정한다. 도구 페이지는 한국어와 영어만 지원하므로
+     * 브라우저 언어가 한국어일 때만 한국어를 쓰고, 나머지는 기본 언어인 영어를 쓴다.
+     * @returns {'ko'|'en'} 사용할 언어 코드
+     */
+    function detectToolsLanguage() {
+        const code = String(navigator.language || navigator.userLanguage || '').toLowerCase();
+        return code === 'ko' || code.startsWith('ko-') ? 'ko' : 'en';
+    }
+
+    /**
+     * 도구 화면의 영어 원문을 현재 언어로 번역하고 %1, %2 형식의 인수를 채운다.
+     * 기본 언어가 영어이므로 번역이 없으면 원문을 그대로 쓴다.
+     * @param {string} text 영어 원문 키
+     * @param {...(string|number)} values 치환할 값
+     * @returns {string} 표시할 문구
+     */
+    function translate(text, ...values) {
+        const localeTable = TOOLS_STRINGS[toolsLanguage] || {};
+        const translated = localeTable[text] || text;
+        return values.reduce((result, value, index) => result.replace(`%${index + 1}`, String(value)), translated);
+    }
+
+    /**
+     * 편집 화면 canvas에서만 쓰는 문구의 영어 번역을 게임 번역표에 등록한다.
+     * `registerLanguage()`는 초기화 전에만 부를 수 있으므로 게임을 만들기 전에 한 번 실행한다.
+     * @returns {void}
+     */
+    function registerToolsCanvasLanguages() {
+        const api = getGameApi();
+        if (typeof api.registerLanguage !== 'function') return;
+        TOOLS_CANVAS_LOCALES.forEach((locale) => api.registerLanguage(locale, TOOLS_CANVAS_STRINGS));
+    }
+
     /** @returns {object} puyow.js가 내보낸 게임 API */
     function getGameApi() {
         const api = window.PuyoW || window.WebPuyo;
-        if (!api) throw new Error('puyow.js를 먼저 불러와야 합니다.');
+        if (!api) throw new Error(translate('puyow.js must be loaded first.'));
         return api;
     }
 
     /** @returns {object} puyow.js가 내보낸 개발용 도구 API */
     function getToolsApi() {
         const api = getGameApi().tools;
-        if (!api) throw new Error('이 puyow.js 빌드에는 개발용 도구 API가 없습니다.');
+        if (!api) throw new Error(translate('This puyow.js build has no dev tools API.'));
         return api;
     }
 
@@ -451,17 +596,17 @@
         rootElement.textContent = '';
 
         const toolbar = createElement('div', { className: 'puyow-tools-toolbar' }, rootElement);
-        createElement('h1', { text: '뿌요 W 개발 도구' }, toolbar);
-        elements.feverModeButton = createElement('button', { text: '피버 패턴 개발', attributes: { type: 'button' } }, toolbar);
-        elements.puzzleModeButton = createElement('button', { text: '퍼즐뿌요 개발', attributes: { type: 'button' } }, toolbar);
-        elements.status = createElement('div', { className: 'puyow-tools-status', text: '개발할 대상을 선택해 주세요.' }, toolbar);
+        createElement('h1', { text: translate('Puyo W Dev Tools') }, toolbar);
+        elements.feverModeButton = createElement('button', { text: translate('Edit FEVER Pattern'), attributes: { type: 'button' } }, toolbar);
+        elements.puzzleModeButton = createElement('button', { text: translate('Edit Puzzle Puyo'), attributes: { type: 'button' } }, toolbar);
+        elements.status = createElement('div', { className: 'puyow-tools-status', text: translate('Choose what to develop.') }, toolbar);
         elements.feverModeButton.addEventListener('click', () => selectMode('fever'));
         elements.puzzleModeButton.addEventListener('click', () => selectMode('puzzle'));
 
         elements.body = createElement('div', { className: 'puyow-tools-body' }, rootElement);
         elements.empty = createElement('div', {
             className: 'puyow-tools-empty',
-            text: '화면 위쪽에서 "피버 패턴 개발" 또는 "퍼즐뿌요 개발"을 선택하세요.'
+            text: translate('Choose "Edit FEVER Pattern" or "Edit Puzzle Puyo" at the top of the screen.')
         }, elements.body);
 
         elements.sidebar = createElement('div', { className: 'puyow-tools-sidebar' }, elements.body);
@@ -470,7 +615,7 @@
         elements.canvasRoot = createElement('div', { attributes: { id: 'puyow_tools_canvas_root' } }, elements.canvasHost);
 
         const output = createElement('div', { className: 'puyow-tools-output' }, elements.right);
-        createElement('div', { className: 'puyow-tools-output-title', text: '생성된 스크립트' }, output);
+        createElement('div', { className: 'puyow-tools-output-title', text: translate('Generated Script') }, output);
         elements.output = createElement('textarea', { attributes: { readonly: 'readonly', spellcheck: 'false' } }, output);
 
         elements.sidebar.hidden = true;
@@ -489,15 +634,15 @@
         const dialog = createElement('div', { className: 'puyow-tools-dialog' }, rootElement);
         dialog.hidden = true;
         const panel = createElement('div', { className: 'puyow-tools-dialog-panel' }, dialog);
-        createElement('h2', { text: '기존 데이터 불러오기' }, panel);
+        createElement('h2', { text: translate('Load Existing Data') }, panel);
         createElement('div', {
             className: 'puyow-tools-hint',
-            text: 'new FeverStageState(...) 또는 new PuzzlePuyoStage({...}) 형태의 스크립트를 붙여 넣어 주세요.'
+            text: translate('Paste a script written as new FeverStageState(...) or new PuzzlePuyoStage({...}).')
         }, panel);
         elements.loadInput = createElement('textarea', { attributes: { spellcheck: 'false' } }, panel);
         const buttons = createElement('div', { className: 'puyow-tools-dialog-buttons' }, panel);
-        const confirmButton = createElement('button', { className: 'is-primary', text: '확인', attributes: { type: 'button' } }, buttons);
-        const cancelButton = createElement('button', { text: '취소', attributes: { type: 'button' } }, buttons);
+        const confirmButton = createElement('button', { className: 'is-primary', text: translate('OK'), attributes: { type: 'button' } }, buttons);
+        const cancelButton = createElement('button', { text: translate('Cancel'), attributes: { type: 'button' } }, buttons);
         confirmButton.addEventListener('click', confirmLoadDialog);
         cancelButton.addEventListener('click', closeLoadDialog);
         elements.loadDialog = dialog;
@@ -524,9 +669,9 @@
             const stage = parseStageScript(elements.loadInput.value);
             applyLoadedStage(stage);
             closeLoadDialog();
-            setStatus('기존 데이터를 불러왔습니다.', 'done');
+            setStatus(translate('Existing data loaded.'), 'done');
         } catch (error) {
-            setStatus(`불러오기 실패: ${error.message}`, 'error');
+            setStatus(translate('Load failed: %1', error.message), 'error');
         }
     }
 
@@ -538,17 +683,17 @@
      */
     function parseStageScript(text) {
         const trimmed = String(text || '').trim().replace(/;+\s*$/, '');
-        if (!trimmed) throw new Error('불러올 스크립트를 입력해 주세요.');
+        if (!trimmed) throw new Error(translate('Enter the script to load.'));
         const api = getGameApi();
         let stage = null;
         try {
             const factory = new Function('FeverStageState', 'PuzzlePuyoStage', `'use strict';\nreturn (\n${trimmed}\n);`);
             stage = factory(api.FeverStageState, api.PuzzlePuyoStage);
         } catch (error) {
-            throw new Error(`스크립트를 해석할 수 없습니다. (${error.message})`);
+            throw new Error(translate('The script could not be parsed. (%1)', error.message));
         }
         if (stage instanceof api.FeverStageState || stage instanceof api.PuzzlePuyoStage) return stage;
-        throw new Error('FeverStageState 또는 PuzzlePuyoStage 객체가 아닙니다.');
+        throw new Error(translate('Not a FeverStageState or PuzzlePuyoStage object.'));
     }
 
     /**
@@ -584,7 +729,7 @@
      */
     function selectMode(kind) {
         if (testing) {
-            setStatus('테스트가 끝난 뒤에 다시 선택해 주세요.', 'error');
+            setStatus(translate('Choose again after the test finishes.'), 'error');
             return;
         }
         if (currentMode === kind) return;
@@ -604,7 +749,7 @@
         }
         getToolsApi().openEditor({ kind });
         resizeCanvasRoot();
-        setStatus(kind === 'fever' ? '피버 패턴을 편집합니다.' : '퍼즐뿌요 스테이지를 편집합니다.');
+        setStatus(kind === 'fever' ? translate('Editing a FEVER pattern.') : translate('Editing a Puzzle Puyo stage.'));
     }
 
     /**
@@ -614,9 +759,9 @@
     function buildCommonSection() {
         elements.sidebar.textContent = '';
         const section = createElement('div', { className: 'puyow-tools-section' }, elements.sidebar);
-        createElement('h2', { text: '기존 데이터' }, section);
+        createElement('h2', { text: translate('Existing Data') }, section);
         const buttons = createElement('div', { className: 'puyow-tools-buttons' }, section);
-        const loadButton = createElement('button', { text: '불러오기', attributes: { type: 'button' } }, buttons);
+        const loadButton = createElement('button', { text: translate('Load'), attributes: { type: 'button' } }, buttons);
         loadButton.addEventListener('click', openLoadDialog);
         return section;
     }
@@ -627,15 +772,15 @@
      */
     function buildControlSection() {
         const section = createElement('div', { className: 'puyow-tools-section' }, elements.sidebar);
-        createElement('h2', { text: '조작' }, section);
+        createElement('h2', { text: translate('Controls') }, section);
         const buttons = createElement('div', { className: 'puyow-tools-buttons' }, section);
-        elements.testButton = createElement('button', { text: '테스트', attributes: { type: 'button' } }, buttons);
-        elements.generateButton = createElement('button', { className: 'is-primary', text: '스크립트 생성', attributes: { type: 'button' } }, buttons);
+        elements.testButton = createElement('button', { text: translate('Test'), attributes: { type: 'button' } }, buttons);
+        elements.generateButton = createElement('button', { className: 'is-primary', text: translate('Generate Script'), attributes: { type: 'button' } }, buttons);
         elements.testButton.addEventListener('click', runTest);
         elements.generateButton.addEventListener('click', generateScript);
         createElement('div', {
             className: 'puyow-tools-hint',
-            text: '캔버스 오른쪽 팔레트에서 뿌요를 고른 뒤, 왼쪽 플레이 영역과 가운데 "다음에 나올 뿌요" 칸을 클릭하거나 끌어서 배치합니다.'
+            text: translate('Pick a puyo from the palette at the right of the canvas, then click or drag on the left play field and on the "Next Puyos" cells in the middle.')
         }, section);
     }
 
@@ -647,32 +792,32 @@
         buildCommonSection();
 
         const section = createElement('div', { className: 'puyow-tools-section' }, elements.sidebar);
-        createElement('h2', { text: '피버 패턴 정보' }, section);
+        createElement('h2', { text: translate('FEVER Pattern') }, section);
 
         elements.targetCombo = createElement('input', {
             attributes: { type: 'number', min: String(FEVER_TARGET_COMBO_MIN), max: String(FEVER_TARGET_COMBO_MAX), step: '1', value: '5' }
         });
-        appendField(section, '목표 연쇄 수', elements.targetCombo);
+        appendField(section, translate('Target Chain'), elements.targetCombo);
 
         elements.difficulty = createElement('input', { attributes: { type: 'number', min: '1', step: '1', value: '1' } });
-        appendField(section, '난이도', elements.difficulty);
+        appendField(section, translate('Difficulty'), elements.difficulty);
 
         createElement('div', {
             className: 'puyow-tools-hint',
-            text: `목표 연쇄 수는 ${FEVER_TARGET_COMBO_MIN} ~ ${FEVER_TARGET_COMBO_MAX} 사이의 정수, 난이도는 1 이상의 정수입니다.`
+            text: translate('Target chain is an integer from %1 to %2, and difficulty an integer of 1 or more.', FEVER_TARGET_COMBO_MIN, FEVER_TARGET_COMBO_MAX)
         }, section);
 
         const colorSection = createElement('div', { className: 'puyow-tools-section' }, elements.sidebar);
-        createElement('h2', { text: '사용할 색상 목록' }, colorSection);
+        createElement('h2', { text: translate('Colors In Use') }, colorSection);
         const table = createElement('table', { className: 'puyow-tools-grid' }, colorSection);
         const headRow = createElement('tr', {}, createElement('thead', {}, table));
-        createElement('th', { text: '순번' }, headRow);
-        createElement('th', { text: '색상' }, headRow);
+        createElement('th', { text: translate('No.') }, headRow);
+        createElement('th', { text: translate('Color') }, headRow);
         createElement('th', { text: '' }, headRow);
         elements.usingColorBody = createElement('tbody', {}, table);
         const colorButtons = createElement('div', { className: 'puyow-tools-buttons' }, colorSection);
         colorButtons.style.marginTop = '8px';
-        const addColorButton = createElement('button', { className: 'is-small', text: '색상 추가', attributes: { type: 'button' } }, colorButtons);
+        const addColorButton = createElement('button', { className: 'is-small', text: translate('Add Color'), attributes: { type: 'button' } }, colorButtons);
         addColorButton.addEventListener('click', () => {
             const used = readUsingColorValues();
             const unused = COLORS.find((color) => !used.includes(color)) || COLORS[0];
@@ -680,7 +825,7 @@
         });
         createElement('div', {
             className: 'puyow-tools-hint',
-            text: 'red, blue, green, yellow, purple 중에서만 고를 수 있습니다. 같은 색을 두 번 넣으면 스크립트 생성 단계에서 막습니다.'
+            text: translate('Only red, blue, green, yellow and purple can be chosen. A duplicated color is blocked when the script is generated.')
         }, colorSection);
         setUsingColorRows(DEFAULT_FEVER_USING_COLORS);
 
@@ -695,28 +840,28 @@
         buildCommonSection();
 
         const section = createElement('div', { className: 'puyow-tools-section' }, elements.sidebar);
-        createElement('h2', { text: '퍼즐뿌요 정보' }, section);
+        createElement('h2', { text: translate('Puzzle Puyo') }, section);
 
         elements.winConditionType = createElement('select', {});
         WIN_CONDITION_TYPES.forEach((type) => {
-            const option = createElement('option', { text: type.label }, elements.winConditionType);
+            const option = createElement('option', { text: translate(type.label) }, elements.winConditionType);
             option.value = type.value;
         });
-        appendField(section, '목표 타입', elements.winConditionType);
+        appendField(section, translate('Win Condition'), elements.winConditionType);
 
         elements.winConditionValue = createElement('input', { attributes: { type: 'number', min: '1', step: '1', value: '4' } });
-        appendField(section, '목표 타입 값', elements.winConditionValue);
+        appendField(section, translate('Condition Value'), elements.winConditionValue);
 
         elements.turnLimit = createElement('input', { attributes: { type: 'number', min: '0', step: '1', value: '2' } });
-        appendField(section, '목표 턴수', elements.turnLimit);
+        appendField(section, translate('Turn Limit'), elements.turnLimit);
 
         elements.hint = createElement('input', { attributes: { type: 'text', maxlength: '80', value: '' } });
-        appendField(section, '힌트', elements.hint);
+        appendField(section, translate('Hint'), elements.hint);
 
         elements.winConditionDescription = createElement('div', { className: 'puyow-tools-hint', text: '' }, section);
         createElement('div', {
             className: 'puyow-tools-hint',
-            text: '목표 턴수는 0 이상의 정수이며, 0을 넣으면 제한이 없는 것으로 봅니다. 힌트는 비워 둘 수 있습니다.'
+            text: translate('Turn limit is an integer of 0 or more, and 0 means no limit. The hint may be left empty.')
         }, section);
 
         elements.winConditionType.addEventListener('change', refreshWinConditionValueState);
@@ -734,7 +879,7 @@
         const selected = WIN_CONDITION_TYPES.find((type) => type.value === elements.winConditionType.value);
         const isClear = elements.winConditionType.value === 'clear';
         elements.winConditionValue.disabled = isClear;
-        elements.winConditionDescription.textContent = selected ? selected.description : '';
+        elements.winConditionDescription.textContent = selected ? translate(selected.description) : '';
     }
 
     /**
@@ -744,7 +889,7 @@
      */
     function addUsingColorRow(color) {
         if (elements.usingColorBody.children.length >= COLORS.length) {
-            setStatus(`색상은 최대 ${COLORS.length}개까지 넣을 수 있습니다.`, 'error');
+            setStatus(translate('You can add up to %1 colors.', COLORS.length), 'error');
             return;
         }
         const row = createElement('tr', {}, elements.usingColorBody);
@@ -756,14 +901,16 @@
         const select = createElement('select', {}, colorCell);
         select.style.marginLeft = '6px';
         COLORS.forEach((value) => {
-            const option = createElement('option', { text: `${value} (${COLOR_LABELS[value]})` }, select);
+            // 영어에서는 번역이 색 이름과 같으므로 괄호 없이 색 이름만 보여 준다.
+            const label = translate(value);
+            const option = createElement('option', { text: label === value ? value : `${value} (${label})` }, select);
             option.value = value;
         });
         select.value = COLORS.includes(color) ? color : COLORS[0];
         sample.style.background = COLOR_SAMPLES[select.value];
         select.addEventListener('change', () => { sample.style.background = COLOR_SAMPLES[select.value]; });
 
-        const removeButton = createElement('button', { className: 'is-small is-danger', text: '삭제', attributes: { type: 'button' } }, buttonCell);
+        const removeButton = createElement('button', { className: 'is-small is-danger', text: translate('Delete'), attributes: { type: 'button' } }, buttonCell);
         removeButton.addEventListener('click', () => {
             row.remove();
             refreshUsingColorIndexes();
@@ -803,9 +950,9 @@
      */
     function readIntegerField(input, name) {
         const text = String(input.value || '').trim();
-        if (!text) throw new Error(`${name}을(를) 입력해 주세요.`);
+        if (!text) throw new Error(translate('Enter %1.', name));
         const value = Number(text);
-        if (!Number.isInteger(value)) throw new Error(`${name}은(는) 정수여야 합니다.`);
+        if (!Number.isInteger(value)) throw new Error(translate('%1 must be an integer.', name));
         return value;
     }
 
@@ -815,8 +962,8 @@
      */
     function readEditorData() {
         const editor = getToolsApi().getEditorData();
-        if (!editor) throw new Error('편집 화면이 준비되지 않았습니다.');
-        if (!editor.stageData.puyos.length) throw new Error('플레이 영역에 뿌요를 하나 이상 배치해 주세요.');
+        if (!editor) throw new Error(translate('The editor is not ready.'));
+        if (!editor.stageData.puyos.length) throw new Error(translate('Place at least one puyo on the play field.'));
         return editor;
     }
 
@@ -826,26 +973,26 @@
      */
     function collectFeverStage() {
         const editor = readEditorData();
-        const targetCombo = readIntegerField(elements.targetCombo, '목표 연쇄 수');
+        const targetCombo = readIntegerField(elements.targetCombo, translate('Target Chain'));
         if (targetCombo < FEVER_TARGET_COMBO_MIN || targetCombo > FEVER_TARGET_COMBO_MAX) {
-            throw new Error(`목표 연쇄 수는 ${FEVER_TARGET_COMBO_MIN} 이상 ${FEVER_TARGET_COMBO_MAX} 이하여야 합니다.`);
+            throw new Error(translate('Target chain must be from %1 to %2.', FEVER_TARGET_COMBO_MIN, FEVER_TARGET_COMBO_MAX));
         }
-        const difficulty = readIntegerField(elements.difficulty, '난이도');
-        if (difficulty < 1) throw new Error('난이도는 1 이상의 정수여야 합니다.');
+        const difficulty = readIntegerField(elements.difficulty, translate('Difficulty'));
+        if (difficulty < 1) throw new Error(translate('Difficulty must be an integer of 1 or more.'));
 
         const usingColors = readUsingColorValues();
-        if (!usingColors.length) throw new Error('사용할 색상을 한 개 이상 넣어 주세요.');
+        if (!usingColors.length) throw new Error(translate('Add at least one color to use.'));
         const duplicated = usingColors.find((color, index) => usingColors.indexOf(color) !== index);
-        if (duplicated) throw new Error(`사용할 색상 목록에 "${duplicated}"이(가) 두 번 이상 있습니다.`);
+        if (duplicated) throw new Error(translate('The colors in use contain "%1" more than once.', duplicated));
 
         const supplied = editor.nextPuyos[0] || [];
-        if (!supplied[0] || !supplied[1]) throw new Error('"다음에 나올 뿌요"의 두 칸을 모두 채워 주세요.');
+        if (!supplied[0] || !supplied[1]) throw new Error(translate('Fill both cells of the next puyos.'));
 
         const colorSet = new Set(usingColors);
         const invalidPuyo = editor.stageData.puyos.find((puyo) => puyo.color !== 'garbage' && !colorSet.has(puyo.color));
-        if (invalidPuyo) throw new Error(`플레이 영역의 "${invalidPuyo.color}" 색이 사용할 색상 목록에 없습니다.`);
+        if (invalidPuyo) throw new Error(translate('The color "%1" on the play field is not in the colors in use.', invalidPuyo.color));
         const invalidSupplied = supplied.find((color) => !colorSet.has(color));
-        if (invalidSupplied) throw new Error(`"다음에 나올 뿌요"의 "${invalidSupplied}" 색이 사용할 색상 목록에 없습니다.`);
+        if (invalidSupplied) throw new Error(translate('The color "%1" of the next puyos is not in the colors in use.', invalidSupplied));
 
         return new (getGameApi().FeverStageState)(editor.stageData, targetCombo, [supplied[0], supplied[1]], difficulty, usingColors);
     }
@@ -861,11 +1008,11 @@
         nextPuyos.forEach((pair, index) => {
             const filled = [pair[0], pair[1]].filter((color) => Boolean(color));
             if (filled.length === 0) { emptyTurnFound = true; return; }
-            if (filled.length === 1) throw new Error(`"다음에 나올 뿌요" ${index + 1}턴의 한 칸이 비어 있습니다.`);
-            if (emptyTurnFound) throw new Error(`"다음에 나올 뿌요" ${index + 1}턴 앞에 비어 있는 턴이 있습니다.`);
+            if (filled.length === 1) throw new Error(translate('One cell of turn %1 of the next puyos is empty.', index + 1));
+            if (emptyTurnFound) throw new Error(translate('There is an empty turn before turn %1 of the next puyos.', index + 1));
             pairs.push([pair[0], pair[1]]);
         });
-        if (!pairs.length) throw new Error('"다음에 나올 뿌요"를 한 턴 이상 채워 주세요.');
+        if (!pairs.length) throw new Error(translate('Fill at least one turn of the next puyos.'));
         return pairs;
     }
 
@@ -876,14 +1023,14 @@
     function collectPuzzleStage() {
         const editor = readEditorData();
         const winConditionType = elements.winConditionType.value;
-        if (!WIN_CONDITION_TYPES.some((type) => type.value === winConditionType)) throw new Error('목표 타입을 선택해 주세요.');
+        if (!WIN_CONDITION_TYPES.some((type) => type.value === winConditionType)) throw new Error(translate('Choose a win condition.'));
         let winConditionValue = 0;
         if (winConditionType !== 'clear') {
-            winConditionValue = readIntegerField(elements.winConditionValue, '목표 타입 값');
-            if (winConditionValue < 1) throw new Error('목표 타입 값은 1 이상의 정수여야 합니다.');
+            winConditionValue = readIntegerField(elements.winConditionValue, translate('Condition Value'));
+            if (winConditionValue < 1) throw new Error(translate('The condition value must be an integer of 1 or more.'));
         }
-        const turnLimit = readIntegerField(elements.turnLimit, '목표 턴수');
-        if (turnLimit < 0) throw new Error('목표 턴수는 0 이상의 정수여야 합니다.');
+        const turnLimit = readIntegerField(elements.turnLimit, translate('Turn Limit'));
+        if (turnLimit < 0) throw new Error(translate('The turn limit must be an integer of 0 or more.'));
         const suppliedNextPuyos = collectPuzzleNextPuyos(editor.nextPuyos);
 
         return new (getGameApi().PuzzlePuyoStage)({
@@ -961,10 +1108,10 @@
             } else {
                 elements.output.value = formatPuzzleScript(collectPuzzleStage());
             }
-            setStatus('스크립트를 생성했습니다.', 'done');
+            setStatus(translate('Script generated.'), 'done');
         } catch (error) {
             elements.output.value = '';
-            setStatus(`스크립트 생성 실패: ${error.message}`, 'error');
+            setStatus(translate('Script generation failed: %1', error.message), 'error');
         }
     }
 
@@ -991,7 +1138,7 @@
         try {
             stage = currentMode === 'fever' ? collectFeverStage() : collectPuzzleStage();
         } catch (error) {
-            setStatus(`테스트 실패: ${error.message}`, 'error');
+            setStatus(translate('Test failed: %1', error.message), 'error');
             return;
         }
         try {
@@ -1000,16 +1147,16 @@
             if (document.activeElement && typeof document.activeElement.blur === 'function') document.activeElement.blur();
             const onFinish = () => {
                 setTesting(false);
-                setStatus('테스트를 마치고 편집 모드로 돌아왔습니다.', 'done');
+                setStatus(translate('Test finished. Back to edit mode.'), 'done');
             };
             if (currentMode === 'fever') getToolsApi().startFeverTest(stage, onFinish);
             else getToolsApi().startPuzzleTest(stage, onFinish);
             setStatus(currentMode === 'fever'
-                ? '피버 테스트 중입니다. 키보드로 조작하세요. (ESC: 일시정지)'
-                : '퍼즐뿌요 테스트 중입니다. 키보드로 조작하세요. (ESC: 일시정지)');
+                ? translate('FEVER test in progress. Play with the keyboard. (ESC: pause)')
+                : translate('Puzzle Puyo test in progress. Play with the keyboard. (ESC: pause)'));
         } catch (error) {
             setTesting(false);
-            setStatus(`테스트 실패: ${error.message}`, 'error');
+            setStatus(translate('Test failed: %1', error.message), 'error');
         }
     }
 
@@ -1044,12 +1191,15 @@
     function initialize(target) {
         if (rootElement) return;
         const element = typeof target === 'string' ? document.getElementById(target) : target;
-        if (!element) throw new Error('개발용 도구를 넣을 요소를 찾을 수 없습니다.');
+        if (!element) throw new Error(translate('Could not find the element to build the dev tools in.'));
+        toolsLanguage = detectToolsLanguage();
         rootElement = element;
+        // 게임을 만들기 전에 등록해야 편집 화면 canvas 문구도 같은 언어로 나온다.
+        registerToolsCanvasLanguages();
         prepareStyle();
         buildLayout();
         if (window.innerWidth < window.innerHeight) {
-            setStatus('가로가 더 넓은 화면에서 사용해 주세요.', 'error');
+            setStatus(translate('Use a screen that is wider than it is tall.'), 'error');
         }
     }
 

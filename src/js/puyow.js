@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 34;
+    const BUILDNO = 35;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -9202,7 +9202,8 @@
             const labelBounds = getToolsNextCellBounds(turnIndex, 1);
             context.fillStyle = '#7fb2c4';
             context.font = `13px ${MESSAGE_FONT}`;
-            context.fillText(`${turnIndex + 1}${translate('턴')}`, labelBounds.x + CELL / 2, labelBounds.y - 6);
+            // 언어마다 숫자와 단위의 순서가 다르므로 번역 문구 전체를 한 키로 둔다.
+            context.fillText(translate('%1턴', turnIndex + 1), labelBounds.x + CELL / 2, labelBounds.y - 6);
             [1, 0].forEach((slotIndex) => {
                 const bounds = getToolsNextCellBounds(turnIndex, slotIndex);
                 context.fillStyle = '#0a1d29';

@@ -337,6 +337,16 @@ aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
 - 테스트 종료는 `updateToolsTest()`가 맡는다. 결과 화면에 들어가면 `TOOLS_TEST_FINISH_DELAY`(1.5초) 뒤 `returnFromToolsTest()`로 편집 모드에 복귀하며, 일시정지의 `종료`와 결과 화면 닫기도 메인 메뉴 대신 편집 모드로 간다.
 - `puyow.js`의 도구 관련 코드는 모두 `simulator.tools` 또는 `game.toolsTest` 조건 안에 있다. 게임 페이지 동작을 바꾸지 않는 것이 이 API의 계약이므로, 도구 기능을 넓힐 때도 이 가드를 벗어나지 않는다.
 - 스크립트 생성은 `TODO.md`의 예시와 같은 형식(`new FeverStageState(...)` 5인자, `new PuzzlePuyoStage({...})` 6항목)을 출력한다. 생성 직전에 목표 연쇄 4~12, 난이도 1 이상, 사용 색상 중복 없음, 배치·지급 색이 사용 색상 목록 안에 있는지, 퍼즐 지급 뿌요가 1턴부터 빈 턴 없이 이어지는지를 검사한다. 불러오기는 붙여 넣은 스크립트를 게임의 실제 클래스에 그대로 넘겨 만든다.
+- 피버 패턴 화면의 `사용할 색상 목록` 기본값은 `DEFAULT_FEVER_USING_COLORS`(빨강·초록·파랑 3색)다.
+
+### 개발용 도구의 다국어
+
+- 도구 페이지는 **한국어와 영어만** 지원하고 **기본 언어는 영어**다. 그래서 게임 본체와 달리 영어 원문을 번역 키로 쓰고, 한국어 번역만 `puyow_tools.js`의 `TOOLS_STRINGS.ko`에 둔다. 게임 본체(`puyow.js`)의 `stringTable`은 한국어가 키이므로 두 표를 섞지 않는다.
+- 도구 화면 문구는 `puyow_tools.js`가 자체적으로 가진 `translate(text, ...values)`를 거친다. `%1`, `%2` 치환 방식은 게임 쪽과 같다. 번역이 없으면 영어 원문을 그대로 쓴다.
+- 언어 선택은 `detectToolsLanguage()`가 `navigator.language`를 보고 `ko`로 시작할 때만 `ko`, 그 밖에는 모두 `en`을 돌려준다. 결과는 `toolsLanguage`에 담기며 도구 초기화 때 한 번 정한다.
+- 편집 화면 canvas는 `puyow.js`가 그리므로, 도구에서만 쓰는 canvas 문구(`다음에 나올 뿌요`, `%1턴`, 지급 뿌요 색 경고, 편집 모드 밖 테스트 오류)의 번역은 `puyow_tools.js`의 `TOOLS_CANVAS_STRINGS`에 두고 `registerLanguage()`로 게임 번역표에 등록한다. 등록은 `PuyoW.initialize()` 전에 해야 하므로 도구 초기화에서 처리한다. 도구 페이지는 한국어·영어만 지원하므로 `TOOLS_CANVAS_LOCALES`(en·ja·zh·de·fr)에 모두 같은 영어 문구를 넣어, 한국어가 아닌 브라우저는 어디서든 영어가 나오게 한다.
+- 색상 선택 칸은 `translate(color)`가 색 이름과 다른 값을 돌려줄 때만 `red (빨강)`처럼 괄호를 붙인다. 영어에서는 번역이 색 이름과 같아 `red`만 나온다.
+- 도구 회귀 테스트(`tests/test02_tools.spec.js`)는 파일 전체에 `test.use({ locale: 'ko-KR' })`를 걸어 한국어 문구로 화면을 찾고, 기본 언어인 영어는 파일 끝의 `기본 언어인 영어` 그룹이 `locale: 'en-US'`로 따로 확인한다. 도구 문구를 바꾸면 두 쪽을 함께 본다.
 
 ## 공통 계산 함수
 
