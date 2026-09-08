@@ -13,7 +13,10 @@
 [https://hjow.github.io/puyow/](https://hjow.github.io/puyow/) 에 접속하여 플레이해 보세요.
 
 또는
-[https://puyow-8745b.web.app](https://puyow-8745b.web.app) 에서도 플레이 가능.
+[https://puyow-8745b.web.app](https://puyow-8745b.web.app) 에서도 플레이할 수 있습니다.
+    
+퍼즐뿌요 개발 도구도 이용해 보세요.
+[https://hjow.github.io/puyow/src/tools.html](https://hjow.github.io/puyow/src/tools.html)
 
 ## 게임 시작
 

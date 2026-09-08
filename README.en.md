@@ -7,10 +7,13 @@ A 2D Puyo-versus puzzle game you can enjoy in your browser. When four Puyos of t
 [Korean README](README.md)
 
 ## Play Now
-
+    
 Visit [https://hjow.github.io/puyow/](https://hjow.github.io/puyow/) to play.
-
+    
 Alternatively, you can also play at [https://puyow-8745b.web.app](https://puyow-8745b.web.app).
+    
+Puzzle Stage Tool
+[https://hjow.github.io/puyow/src/tools.html](https://hjow.github.io/puyow/src/tools.html)
 
 ## Starting the Game
 
