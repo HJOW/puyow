@@ -88,6 +88,28 @@ async function openSettings(page) {
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
 }
 
+// 가상 조이스틱 테스트는 조작할 뿌요와 빈 화면이 모두 필요하므로 연습 모드를 쓴다.
+async function startPracticeWithVirtualController(page, size = 'normal') {
+  await page.evaluate((virtualController) => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { virtualController } }));
+  }, size);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 15000 }).toBe(true);
+  const box = await page.locator('[data-puyow-canvas="2d"]').boundingBox();
+  return {
+    point: (logicalX, logicalY) => ({ x: box.x + logicalX * box.width / 1280, y: box.y + logicalY * box.height / 720 }),
+    activeX: () => page.evaluate(() => window.WebPuyo.getGameState().player.active.x),
+    activeY: () => page.evaluate(() => window.WebPuyo.getGameState().player.active.y),
+  };
+}
+
 async function expectDefeatCellMarkers(page, columns) {
   await expect.poll(() => page.evaluate((targetColumns) => {
     const drawingContext = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d');
@@ -1200,6 +1222,137 @@ test('가상 컨트롤러 크기는 이전 저장값을 호환하고 키보드�
   for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.virtualController)).toBe('none');
+});
+
+test('가상 조이스틱은 누른 지점을 기준으로 드래그 방향의 방향키를 누르고 떼면 조작을 멈춘다', async ({ page }) => {
+  const { point, activeX } = await startPracticeWithVirtualController(page);
+
+  // 조작 버튼이 없는 곳을 누르면 그 지점이 이번 조이스틱의 기준점이 된다.
+  const base = point(400, 300);
+  const before = await activeX();
+  await page.mouse.move(base.x, base.y);
+  await page.mouse.down();
+
+  // 최소 드래그 거리에 못 미치는 이동은 조작으로 인정하지 않는다.
+  const tiny = point(405, 300);
+  await page.mouse.move(tiny.x, tiny.y);
+  expect(await activeX()).toBe(before);
+
+  const right = point(460, 300);
+  await page.mouse.move(right.x, right.y);
+  expect(await activeX()).toBeGreaterThan(before);
+
+  const movedRight = await activeX();
+  const left = point(340, 300);
+  await page.mouse.move(left.x, left.y);
+  await expect.poll(activeX).toBeLessThan(movedRight);
+
+  // 손가락을 떼면 기준점이 사라지고 방향키에서 손을 뗀 것으로 처리한다.
+  await page.mouse.up();
+  const released = await activeX();
+  await page.waitForTimeout(300);
+  expect(await activeX()).toBe(released);
+});
+
+test('가상 조이스틱의 대각선 드래그는 두 방향키를 함께 누른 것으로 처리한다', async ({ page }) => {
+  const { point, activeX, activeY } = await startPracticeWithVirtualController(page);
+
+  // 입력이 없을 때의 자연 낙하량을 먼저 재 둔다.
+  const naturalStart = await activeY();
+  await page.waitForTimeout(150);
+  const naturalDrop = naturalStart - (await activeY());
+
+  const base = point(400, 300);
+  const downRight = point(460, 360);
+  const startX = await activeX();
+  const startY = await activeY();
+  await page.mouse.move(base.x, base.y);
+  await page.mouse.down();
+  await page.mouse.move(downRight.x, downRight.y);
+  await page.waitForTimeout(150);
+  const movedX = (await activeX()) - startX;
+  const droppedY = startY - (await activeY());
+  await page.mouse.up();
+
+  // 우측 아래 드래그라서 오른쪽 이동과 빠른 하강이 동시에 일어나야 한다.
+  expect(movedX).toBeGreaterThan(0);
+  expect(droppedY).toBeGreaterThan(naturalDrop * 2);
+});
+
+test('가상 조이스틱은 회전을 일으키지 않고 Z·X 가상 버튼만 조작 뿌요를 돌린다', async ({ page }) => {
+  const { point, activeX } = await startPracticeWithVirtualController(page);
+  const rotation = () => page.evaluate(() => window.WebPuyo.getGameState().player.active.rotation);
+
+  // 회전은 우측 조작 버튼만 담당한다.
+  const beforeButton = await rotation();
+  const xButton = point(1170, 590);
+  await page.mouse.click(xButton.x, xButton.y);
+  expect(await rotation()).toBe((beforeButton + 1) % 4);
+
+  // 위로 끄는 조작에는 대응하는 방향키가 없어 회전도 이동도 하지 않는다.
+  const base = point(400, 300);
+  const beforeDrag = await rotation();
+  const beforeX = await activeX();
+  await page.mouse.move(base.x, base.y);
+  await page.mouse.down();
+  const up = point(400, 240);
+  await page.mouse.move(up.x, up.y);
+  await page.waitForTimeout(150);
+  expect(await rotation()).toBe(beforeDrag);
+  expect(await activeX()).toBe(beforeX);
+
+  // 우측 위 대각선도 회전 없이 오른쪽 이동만 한다.
+  const upRight = point(460, 240);
+  await page.mouse.move(upRight.x, upRight.y);
+  await page.waitForTimeout(150);
+  expect(await rotation()).toBe(beforeDrag);
+  expect(await activeX()).toBeGreaterThan(beforeX);
+  await page.mouse.up();
+});
+
+test('가상 조작 버튼은 직접 누른 경우에만 반응하고 지나가거나 끌고 들어온 포인터는 무시한다', async ({ page }) => {
+  const { point, activeX } = await startPracticeWithVirtualController(page);
+  const rotation = () => page.evaluate(() => window.WebPuyo.getGameState().player.active.rotation);
+  const paused = () => page.evaluate(() => window.WebPuyo.getGameState().paused);
+  const buttonPoints = [[1090, 590], [1170, 590], [1170, 500]].map(([x, y]) => point(x, y));
+
+  // 누르지 않은 채 Z·X·ESC 버튼 위를 차례로 지나간다.
+  const beforeHoverRotation = await rotation();
+  const beforeHoverX = await activeX();
+  for (const hover of buttonPoints) await page.mouse.move(hover.x, hover.y);
+  await page.waitForTimeout(80);
+  expect(await rotation()).toBe(beforeHoverRotation);
+  expect(await activeX()).toBe(beforeHoverX);
+  expect(await paused()).toBe(false);
+
+  // 버튼 밖에서 누른 뒤 버튼 위로 끌고 들어와도 눌린 것으로 보지 않는다.
+  const beforeDragRotation = await rotation();
+  const outside = point(700, 300);
+  await page.mouse.move(outside.x, outside.y);
+  await page.mouse.down();
+  for (const hover of buttonPoints) await page.mouse.move(hover.x, hover.y);
+  await page.mouse.up();
+  expect(await rotation()).toBe(beforeDragRotation);
+  expect(await paused()).toBe(false);
+
+  // 버튼을 직접 누르면 그대로 동작한다.
+  const beforePressRotation = await rotation();
+  await page.mouse.click(buttonPoints[1].x, buttonPoints[1].y);
+  expect(await rotation()).toBe((beforePressRotation + 1) % 4);
+});
+
+test('가상 조이스틱은 조작 버튼 위에서는 만들어지지 않고 버튼 동작을 그대로 남긴다', async ({ page }) => {
+  const { point, activeX } = await startPracticeWithVirtualController(page);
+
+  // ESC 버튼에서 시작한 드래그는 방향 조작이 아니라 기존 버튼 동작이어야 한다.
+  const escapeButton = point(1170, 500);
+  const before = await activeX();
+  await page.mouse.move(escapeButton.x, escapeButton.y);
+  await page.mouse.down();
+  await page.mouse.move(escapeButton.x + 60, escapeButton.y);
+  await page.mouse.up();
+  expect(await activeX()).toBe(before);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.paused)).toBe(true);
 });
 
 test('빈 사용 모델명은 기본값으로 보정되고 API 테스트 버튼은 API 키 없이는 비활성이다', async ({ page }) => {
@@ -3706,7 +3859,12 @@ test('연속 피버는 키보드로 3색을 선택하고 피버 패턴도 선택
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 5000 }).toBe('playing');
-  const state = await page.evaluate(() => window.WebPuyo.getGameState());
+  // 조작 뿌요는 착지와 다음 쌍 지급 사이에 잠시 비므로, active가 있는 순간의 상태를 통째로 붙잡는다.
+  let state = null;
+  await expect.poll(async () => {
+    state = await page.evaluate(() => window.WebPuyo.getGameState());
+    return Boolean(state?.player.active);
+  }, { timeout: 5000 }).toBe(true);
   expect(state.continuousFever).toBe(true);
   expect(state.colorCount).toBe(3);
   expect(state.colors).toEqual(['green', 'yellow', 'blue']);

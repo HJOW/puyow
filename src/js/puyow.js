@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 29;
+    const BUILDNO = 33;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -169,14 +169,16 @@
     const VIRTUAL_HORIZONTAL_HOLD_DELAY = 100;
     /** 가상 컨트롤러 방향키 홀드 반복 이동 간격(ms)이다. @type {number} */
     const VIRTUAL_HORIZONTAL_REPEAT_INTERVAL = 80;
-    /** 가상 컨트롤러 방향 패드 중심 좌표와 한 방향 버튼의 크기다. @type {{x:number,y:number,size:number}} */
-    const VIRTUAL_DPAD = { x: 118, y: 610, size: 52 };
     /** 가상 컨트롤러 Z, X, ESC 버튼의 중심 좌표와 크기다. @type {{z:{x:number,y:number},x:{x:number,y:number},escape:{x:number,y:number},radius:number}} */
     const VIRTUAL_ACTION_BUTTONS = { z: { x: 1090, y: 590 }, x: { x: 1170, y: 590 }, escape: { x: 1170, y: 500 }, radius: 31 };
-    /** 크게 표시할 때 방향 패드를 이동할 논리 좌표다. CSS 최대 폭 1280px 화면에서는 화면 픽셀과 같다. @type {{x:number,y:number}} */
-    const VIRTUAL_LARGE_DPAD_OFFSET = { x: 40, y: -40 };
     /** 크게 표시할 때 버튼끼리 겹치지 않도록 벌린 우측 조작 버튼 중심 좌표다. @type {{z:{x:number,y:number},x:{x:number,y:number},escape:{x:number,y:number}}} */
     const VIRTUAL_LARGE_ACTION_BUTTONS = { z: { x: 1060, y: 590 }, x: { x: 1200, y: 610 }, escape: { x: 1200, y: 480 } };
+    /** 가상 조이스틱을 조작으로 인정할 최소 드래그 거리(논리 픽셀)다. CSS 최대 폭 1280px 화면에서는 화면 픽셀과 같다. @type {number} */
+    const VIRTUAL_JOYSTICK_MIN_DRAG = 10;
+    /** 가상 조이스틱 기준점 원과 스틱 원의 반지름이다. 스틱은 기준점 원 안에서만 움직인다. @type {{base:number,stick:number}} */
+    const VIRTUAL_JOYSTICK_RADIUS = { base: 52, stick: 26 };
+    /** 한 방향을 대각선으로도 볼지 판단하는 다른 축 대비 최대 배율이다. 값이 클수록 대각선으로 인정하는 범위가 넓어진다. @type {number} */
+    const VIRTUAL_JOYSTICK_DIAGONAL_RATIO = 2;
     /** AI 쉬움 난이도에서 빠른 하강을 사용하지 않음을 나타내는 지연 시간이다. @type {number|null} */
     const AI_FAST_DOWN_DELAY_EASY = null;
     /** AI 보통 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number|null} */
@@ -655,10 +657,12 @@
         horizontalHoldElapsed = 0;
         horizontalRepeatElapsed = 0;
     }
-    /** 가상 컨트롤러에서 현재 홀드 중인 방향키 상태다. @type {{arrowleft:boolean,arrowright:boolean,arrowup:boolean,arrowdown:boolean}} */
-    let virtualDirectionInput = { arrowleft: false, arrowright: false, arrowup: false, arrowdown: false };
-    /** 터치·포인터별로 누르고 있는 가상 컨트롤러 버튼 목록이다. @type {Map<number,string[]>} */
+    /** 가상 컨트롤러에서 현재 홀드 중인 방향키 상태다. 조이스틱은 좌우 이동과 빠른 하강만 만들므로 위 방향은 없다. @type {{arrowleft:boolean,arrowright:boolean,arrowdown:boolean}} */
+    let virtualDirectionInput = { arrowleft: false, arrowright: false, arrowdown: false };
+    /** 터치·포인터별로 누르고 있는 가상 컨트롤러 버튼 목록이다. 조이스틱이 만든 방향키도 여기에 함께 담는다. @type {Map<number,string[]>} */
     let virtualPointerButtons = new Map();
+    /** 터치·포인터별 가상 조이스틱의 기준점과 현재 좌표다. 손가락을 뗄 때까지 기준점을 유지한다. @type {Map<number,{baseX:number,baseY:number,x:number,y:number}>} */
+    let virtualJoystickPointers = new Map();
     /** 가상 컨트롤러 좌우 방향키를 누른 뒤 경과한 시간(ms)이다. @type {number} */
     let virtualHorizontalHoldElapsed = 0;
     /** 가상 컨트롤러 좌우 방향키 홀드 반복 이동의 누적 시간(ms)이다. @type {number} */
@@ -6606,28 +6610,12 @@
     /** 선택된 가상 컨트롤러의 렌더링·입력 배율을 반환한다. @returns {number} */
     function getVirtualControllerScale() { return store.settings.virtualController === 'large' ? 1.5 : 1; }
 
-    /** 선택된 크기에 맞는 가상 컨트롤러의 공통 그리기·입력 배치를 반환한다. @returns {{dpad:{x:number,y:number,size:number},actions:{z:{x:number,y:number},x:{x:number,y:number},escape:{x:number,y:number}},scale:number}} */
+    /** 선택된 크기에 맞는 가상 컨트롤러의 공통 그리기·입력 배치를 반환한다. @returns {{actions:{z:{x:number,y:number},x:{x:number,y:number},escape:{x:number,y:number}},scale:number}} */
     function getVirtualControllerLayout() {
-        const large = store.settings.virtualController === 'large';
         return {
-            dpad: {
-                x: VIRTUAL_DPAD.x + (large ? VIRTUAL_LARGE_DPAD_OFFSET.x : 0),
-                y: VIRTUAL_DPAD.y + (large ? VIRTUAL_LARGE_DPAD_OFFSET.y : 0),
-                size: VIRTUAL_DPAD.size
-            },
-            actions: large ? VIRTUAL_LARGE_ACTION_BUTTONS : VIRTUAL_ACTION_BUTTONS,
+            actions: store.settings.virtualController === 'large' ? VIRTUAL_LARGE_ACTION_BUTTONS : VIRTUAL_ACTION_BUTTONS,
             scale: getVirtualControllerScale()
         };
-    }
-
-    /** 가상 방향 패드의 한 방향 버튼을 그린다. @param {number} x X 좌표 @param {number} y Y 좌표 @param {string} label 표시 문자 @param {boolean} pressed 눌림 여부 @param {number} scale 표시 배율 @returns {void} */
-    function drawVirtualDirectionButton(x, y, label, pressed, scale) {
-        const size = VIRTUAL_DPAD.size * scale;
-        context.fillStyle = pressed ? 'rgba(247, 200, 67, 0.88)' : 'rgba(11, 32, 44, 0.78)';
-        context.fillRect(x, y, size, size);
-        context.strokeStyle = pressed ? '#fff6c7' : '#9cc9d2'; context.lineWidth = 2; context.strokeRect(x, y, size, size);
-        context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillStyle = pressed ? '#263238' : '#f5fbfc'; context.font = `${28 * scale}px ${BUTTON_FONT}`;
-        context.fillText(label, x + size / 2, y + size / 2 + 1);
     }
 
     /** 가상 조작 버튼을 그린다. @param {number} x 중심 X 좌표 @param {number} y 중심 Y 좌표 @param {string} label 표시 문자 @param {boolean} pressed 눌림 여부 @param {number} scale 표시 배율 @returns {void} */
@@ -6639,33 +6627,42 @@
         context.fillText(label, x, y + 1);
     }
 
+    /** 조작 중인 가상 조이스틱의 기준점과 스틱을 그린다. @param {{baseX:number,baseY:number,x:number,y:number}} joystick 조이스틱 상태 @param {number} scale 표시 배율 @returns {void} */
+    function drawVirtualJoystick(joystick, scale) {
+        const baseRadius = VIRTUAL_JOYSTICK_RADIUS.base * scale;
+        const deltaX = joystick.x - joystick.baseX;
+        const deltaY = joystick.y - joystick.baseY;
+        const distance = Math.hypot(deltaX, deltaY);
+        // 방향 판정과 달리 스틱 그림만 기준점 원 안에 붙잡아, 손가락을 멀리 끌어도 화면 밖으로 벗어나지 않게 한다.
+        const limit = distance > baseRadius ? baseRadius / distance : 1;
+        context.strokeStyle = 'rgba(156, 201, 210, 0.85)'; context.lineWidth = 2;
+        context.beginPath(); context.arc(joystick.baseX, joystick.baseY, baseRadius, 0, Math.PI * 2); context.stroke();
+        context.strokeStyle = 'rgba(156, 201, 210, 0.45)';
+        context.beginPath(); context.arc(joystick.baseX, joystick.baseY, baseRadius * 0.62, 0, Math.PI * 2); context.stroke();
+        context.beginPath(); context.arc(joystick.baseX + deltaX * limit, joystick.baseY + deltaY * limit, VIRTUAL_JOYSTICK_RADIUS.stick * scale, 0, Math.PI * 2);
+        context.fillStyle = 'rgba(247, 200, 67, 0.55)'; context.fill();
+        context.strokeStyle = '#fff6c7'; context.lineWidth = 2; context.stroke();
+    }
+
     /** 터치 조작이 가능한 가상 컨트롤러를 게임 화면 위에 그린다. @returns {void} */
     function drawVirtualController() {
-        const { dpad, actions, scale } = getVirtualControllerLayout();
-        if (game?.watch) {
-            const pressed = new Set([...virtualPointerButtons.values()].flat());
-            drawVirtualActionButton(actions.escape.x, actions.escape.y, 'ESC', pressed.has('escape'), scale);
-            context.textBaseline = 'alphabetic';
-            return;
-        }
-        const { x, y, size: baseSize } = dpad; const size = baseSize * scale;
-        drawVirtualDirectionButton(x - size / 2, y - size * 1.5, '↑', virtualDirectionInput.arrowup, scale);
-        drawVirtualDirectionButton(x - size * 1.5, y - size / 2, '←', virtualDirectionInput.arrowleft, scale);
-        drawVirtualDirectionButton(x + size / 2, y - size / 2, '→', virtualDirectionInput.arrowright, scale);
-        drawVirtualDirectionButton(x - size / 2, y + size / 2, '↓', virtualDirectionInput.arrowdown, scale);
-        drawVirtualDirectionButton(x - size * 1.5, y + size / 2, '↙', virtualDirectionInput.arrowleft && virtualDirectionInput.arrowdown, scale);
-        drawVirtualDirectionButton(x + size / 2, y + size / 2, '↘', virtualDirectionInput.arrowright && virtualDirectionInput.arrowdown, scale);
+        const { actions, scale } = getVirtualControllerLayout();
         const pressed = new Set([...virtualPointerButtons.values()].flat());
-        drawVirtualActionButton(actions.z.x, actions.z.y, 'Z', pressed.has('z'), scale);
-        drawVirtualActionButton(actions.x.x, actions.x.y, 'X', pressed.has('x'), scale);
+        // 구경 중에는 방향 조작이 없으므로 ESC 버튼만 남긴다.
+        if (!game?.watch) {
+            virtualJoystickPointers.forEach((joystick) => drawVirtualJoystick(joystick, scale));
+            drawVirtualActionButton(actions.z.x, actions.z.y, 'Z', pressed.has('z'), scale);
+            drawVirtualActionButton(actions.x.x, actions.x.y, 'X', pressed.has('x'), scale);
+        }
         drawVirtualActionButton(actions.escape.x, actions.escape.y, 'ESC', pressed.has('escape'), scale);
         context.textBaseline = 'alphabetic';
     }
 
     /** 가상 컨트롤러의 모든 누름 상태를 해제한다. @returns {void} */
     function resetVirtualControllerInput() {
-        virtualDirectionInput = { arrowleft: false, arrowright: false, arrowup: false, arrowdown: false };
+        virtualDirectionInput = { arrowleft: false, arrowright: false, arrowdown: false };
         virtualPointerButtons.clear();
+        virtualJoystickPointers.clear();
         virtualHorizontalHoldElapsed = 0;
         virtualHorizontalRepeatElapsed = 0;
     }
@@ -6762,7 +6759,7 @@
     /** 포인터별 누름 상태를 합쳐 가상 방향 입력을 갱신한다. @returns {void} */
     function refreshVirtualDirectionInput() {
         const previous = virtualDirectionInput;
-        const next = { arrowleft: false, arrowright: false, arrowup: false, arrowdown: false };
+        const next = { arrowleft: false, arrowright: false, arrowdown: false };
         virtualPointerButtons.forEach((buttons) => buttons.forEach((button) => {
             if (Object.hasOwn(next, button)) next[button] = true;
         }));
@@ -6782,27 +6779,24 @@
         }
     }
 
-    /** 캔버스 좌표에서 눌린 가상 컨트롤러 버튼을 구한다. @param {number} x X 좌표 @param {number} y Y 좌표 @returns {string[]} */
+    /** 캔버스 좌표에서 눌린 가상 조작 버튼을 구한다. 방향 입력은 조이스틱이 맡으므로 여기서는 다루지 않는다. @param {number} x X 좌표 @param {number} y Y 좌표 @returns {string[]} */
     function getVirtualControllerButtonsAt(x, y) {
-        const buttons = [];
-        const { dpad, actions, scale } = getVirtualControllerLayout();
-        if (game?.watch) {
-            if ((x - actions.escape.x) ** 2 + (y - actions.escape.y) ** 2 <= (VIRTUAL_ACTION_BUTTONS.radius * scale) ** 2) buttons.push('escape');
-            return buttons;
-        }
-        const { x: centerX, y: centerY } = dpad;
-        const size = dpad.size * scale;
-        const inButton = (left, top) => x >= left && x < left + size && y >= top && y < top + size;
-        if (inButton(centerX - size / 2, centerY - size * 1.5)) buttons.push('arrowup');
-        if (inButton(centerX - size * 1.5, centerY - size / 2)) buttons.push('arrowleft');
-        if (inButton(centerX + size / 2, centerY - size / 2)) buttons.push('arrowright');
-        if (inButton(centerX - size / 2, centerY + size / 2)) buttons.push('arrowdown');
-        if (inButton(centerX - size * 1.5, centerY + size / 2)) buttons.push('arrowleft', 'arrowdown');
-        if (inButton(centerX + size / 2, centerY + size / 2)) buttons.push('arrowright', 'arrowdown');
-        Object.entries(actions).forEach(([button, value]) => {
-            if ((x - value.x) ** 2 + (y - value.y) ** 2 <= (VIRTUAL_ACTION_BUTTONS.radius * scale) ** 2) buttons.push(button);
-        });
-        return buttons;
+        const { actions, scale } = getVirtualControllerLayout();
+        const radius = VIRTUAL_ACTION_BUTTONS.radius * scale;
+        // 구경 중에는 ESC만 표시하므로 나머지 버튼은 눌린 것으로 보지 않는다.
+        const names = game?.watch ? ['escape'] : Object.keys(actions);
+        return names.filter((name) => (x - actions[name].x) ** 2 + (y - actions[name].y) ** 2 <= radius ** 2);
+    }
+
+    /** 조이스틱 기준점에서 끌어낸 거리로 눌린 방향키를 구한다. 조이스틱은 좌우 이동과 빠른 하강만 맡고 회전은 Z·X 버튼이 담당하므로, 위로 끄는 동작에는 대응하는 방향키가 없다. @param {number} deltaX 기준점 대비 X 이동량 @param {number} deltaY 기준점 대비 Y 이동량 @returns {string[]} */
+    function getVirtualJoystickDirections(deltaX, deltaY) {
+        // 손가락을 살짝 대거나 미세하게 흔든 것이 조작으로 잡히지 않도록, 최소 거리를 넘겨야 방향을 인정한다.
+        if (Math.hypot(deltaX, deltaY) < VIRTUAL_JOYSTICK_MIN_DRAG) return [];
+        const directions = [];
+        // 다른 축이 이 축의 배율 안쪽이면 두 축을 함께 눌러, 대각선 드래그를 두 방향키 동시 입력으로 처리한다.
+        if (Math.abs(deltaY) <= Math.abs(deltaX) * VIRTUAL_JOYSTICK_DIAGONAL_RATIO) directions.push(deltaX < 0 ? 'arrowleft' : 'arrowright');
+        if (deltaY > 0 && Math.abs(deltaX) <= deltaY * VIRTUAL_JOYSTICK_DIAGONAL_RATIO) directions.push('arrowdown');
+        return directions;
     }
 
     /** 가상 버튼의 한 번 누름 동작을 처리한다. @param {string} button 버튼 식별자 @returns {void} */
@@ -6817,36 +6811,69 @@
         }
         const player = game.players[0];
         if (player.phase !== 'control') return;
-        if (button === 'arrowup' || button === 'x') rotateActive(player, 1);
+        if (button === 'x') rotateActive(player, 1);
         else if (button === 'z') rotateActive(player, -1);
     }
 
-    /** 포인터 이벤트를 가상 컨트롤러 입력으로 바꾼다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
-    function updateVirtualPointer(event) {
+    /** 포인터별 가상 컨트롤러 상태를 구분할 식별자를 얻는다. @param {PointerEvent} event 포인터 이벤트 @returns {number} */
+    function getVirtualPointerId(event) {
+        return Number.isFinite(event.pointerId) ? event.pointerId : 0;
+    }
+
+    /**
+     * 가상 컨트롤러 포인터 누름을 처리한다.
+     *
+     * Z·X·ESC 조작 버튼은 이 시점에만 눌린다. 버튼 위를 지나가거나 다른 곳에서 끌고 들어온 포인터는
+     * 누른 것으로 보지 않으므로, 실제로 버튼을 짚은 손가락만 회전·일시정지를 일으킨다.
+     * @param {PointerEvent} event 포인터 이벤트
+     * @returns {void}
+     */
+    function handleVirtualPointerDown(event) {
         if (!shouldShowVirtualController()) return;
         const { x, y } = getCanvasEventCoordinates(event);
-        const pointerId = Number.isFinite(event.pointerId) ? event.pointerId : 0;
-        const previous = virtualPointerButtons.get(pointerId) || [];
+        const pointerId = getVirtualPointerId(event);
         const buttons = getVirtualControllerButtonsAt(x, y);
-        if (buttons.length) virtualPointerButtons.set(pointerId, buttons);
+        if (buttons.length) {
+            virtualPointerButtons.set(pointerId, buttons);
+            buttons.forEach(triggerVirtualButton);
+        } else if (game?.watch) {
+            // 구경 중에는 ESC 말고 받을 조작이 없다.
+            return;
+        } else {
+            // 조작 버튼 밖을 누른 지점이 이번 조이스틱의 기준점이 된다.
+            virtualJoystickPointers.set(pointerId, { baseX: x, baseY: y, x, y });
+        }
+        if (event.cancelable) event.preventDefault();
+        if (Number.isFinite(event.pointerId) && canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
+    }
+
+    /** 조이스틱 드래그를 방향 입력으로 반영한다. 조작 버튼은 누른 순간에만 반응하므로 여기서는 다루지 않는다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
+    function handleVirtualPointerMove(event) {
+        const pointerId = getVirtualPointerId(event);
+        // 터치·펜은 닿아 있는 동안 buttons가 1 이상이고, 마우스는 버튼을 누르지 않고 지나갈 때만 0이다.
+        if (event.buttons === 0) {
+            // 캔버스 밖에서 버튼을 떼 pointerup을 놓친 경우를 대비해 남아 있는 상태만 정리한다.
+            if (virtualPointerButtons.has(pointerId) || virtualJoystickPointers.has(pointerId)) handleVirtualPointerUp(event);
+            return;
+        }
+        const joystick = virtualJoystickPointers.get(pointerId);
+        if (!joystick || !shouldShowVirtualController()) return;
+        const { x, y } = getCanvasEventCoordinates(event);
+        joystick.x = x;
+        joystick.y = y;
+        const directions = getVirtualJoystickDirections(x - joystick.baseX, y - joystick.baseY);
+        if (directions.length) virtualPointerButtons.set(pointerId, directions);
         else virtualPointerButtons.delete(pointerId);
         refreshVirtualDirectionInput();
-        buttons.filter((button) => !previous.includes(button)).forEach(triggerVirtualButton);
-        if (buttons.length && event.cancelable) event.preventDefault();
+        // 최소 거리에 못 미쳐 방향이 없더라도, 드래그가 화면 넘김으로 새지 않게 기본 동작을 막는다.
+        if (event.cancelable) event.preventDefault();
     }
 
-    /** 가상 컨트롤러 포인터 누름을 처리한다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
-    function handleVirtualPointerDown(event) {
-        updateVirtualPointer(event);
-        if (virtualPointerButtons.has(event.pointerId) && canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
-    }
-
-    /** 가상 컨트롤러 포인터 이동을 처리한다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
-    function handleVirtualPointerMove(event) { updateVirtualPointer(event); }
-
-    /** 가상 컨트롤러 포인터 해제를 처리한다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
+    /** 가상 컨트롤러 포인터 해제를 처리한다. 조이스틱 기준점도 함께 지워 조작을 멈춘다. @param {PointerEvent} event 포인터 이벤트 @returns {void} */
     function handleVirtualPointerUp(event) {
-        virtualPointerButtons.delete(event.pointerId);
+        const pointerId = getVirtualPointerId(event);
+        virtualPointerButtons.delete(pointerId);
+        virtualJoystickPointers.delete(pointerId);
         refreshVirtualDirectionInput();
     }
 
