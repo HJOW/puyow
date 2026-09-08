@@ -40,6 +40,9 @@
         { value: 'attack', label: 'attack (공격량)', description: 'ATTACK + DAMAGE 합이 순간적으로 목표 수 이상' }
     ];
 
+    /** 피버 패턴 개발 화면에 처음 세팅해 둘 사용 색상 목록(3색)이다. @type {string[]} */
+    const DEFAULT_FEVER_USING_COLORS = ['red', 'green', 'blue'];
+
     /** 피버 패턴에서 받을 수 있는 목표 연쇄 수의 최솟값이다. @type {number} */
     const FEVER_TARGET_COMBO_MIN = 4;
 
@@ -679,7 +682,7 @@
             className: 'puyow-tools-hint',
             text: 'red, blue, green, yellow, purple 중에서만 고를 수 있습니다. 같은 색을 두 번 넣으면 스크립트 생성 단계에서 막습니다.'
         }, colorSection);
-        setUsingColorRows(['red', 'green']);
+        setUsingColorRows(DEFAULT_FEVER_USING_COLORS);
 
         buildControlSection();
     }
@@ -784,7 +787,7 @@
     function setUsingColorRows(colors) {
         elements.usingColorBody.textContent = '';
         const values = (Array.isArray(colors) ? colors : []).filter((color) => COLORS.includes(color));
-        (values.length ? values : ['red', 'green']).forEach((color) => addUsingColorRow(color));
+        (values.length ? values : DEFAULT_FEVER_USING_COLORS).forEach((color) => addUsingColorRow(color));
     }
 
     /** @returns {string[]} 사용할 색상 목록 그리드에 지금 들어 있는 색 목록 */

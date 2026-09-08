@@ -102,9 +102,18 @@ test('피버 패턴의 스크립트 생성은 FeverStageState 생성 코드를 �
     + '    4,\n'
     + "    ['red', 'green'],\n"
     + '    1,\n'
-    + "    ['red', 'green']\n"
+    + "    ['red', 'green', 'blue']\n"
     + ')'
   );
+});
+
+test('피버 패턴의 사용할 색상 목록 기본값은 빨강·초록·파랑 3색이다', async ({ page }) => {
+  await selectMode(page, '피버 패턴 개발');
+  const colorSelects = page.locator('.puyow-tools-grid tbody select');
+  await expect(colorSelects).toHaveCount(3);
+  await expect(colorSelects.nth(0)).toHaveValue('red');
+  await expect(colorSelects.nth(1)).toHaveValue('green');
+  await expect(colorSelects.nth(2)).toHaveValue('blue');
 });
 
 test('사용할 색상 목록이 중복이면 스크립트를 만들지 않고 알린다', async ({ page }) => {
