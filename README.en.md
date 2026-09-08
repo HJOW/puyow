@@ -23,7 +23,7 @@ Select `Practice` to play freely against a practice opponent that does not attac
 
 ## Play Together (two players, one computer)
 
-Select `Play Together` on the main screen and choose `Standard Rules`, `FEVER Rules`, or `FEVER Rules (Start)`. A guide screen then shows the controls; pick the number of colors and press `Start` to play a head-to-head match with two people on one computer. The rules are the same as a match against the CPU, and the center of the screen shows both players' win record instead of a portrait.
+Select `Play Together` on the main screen and a guide screen showing the controls appears right away. Choose the rules (`Standard Rules`, `FEVER Rules`, or `FEVER Rules (Start)`) and the number of colors there, then press `Start` to play a head-to-head match with two people on one computer. The rules are the same as a match against the CPU, and the center of the screen shows both players' win record instead of a portrait.
 
 When the match ends, `Play Again` starts another match while keeping the win record, and `Quit` returns to the main screen and clears the record.
 

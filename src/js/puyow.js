@@ -326,7 +326,7 @@
             '인공지능 모델을 불러오는 중...': 'Loading the AI model…', '인공지능 모델을 불러오지 못했습니다.': 'Failed to load the AI model.',
             '뿌요 W': 'Puyo W',
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
-            '게임 시작': 'Game Start', '구경': 'Watch', '모드': 'Mode', '색상 수': 'Colors', '다음 대전까지 %1초': 'Next match in %1 sec', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Pop %1 colors at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
+            '게임 시작': 'Game Start', '구경': 'Watch', '모드': 'Mode', '규칙': 'Rules', '색상 수': 'Colors', '다음 대전까지 %1초': 'Next match in %1 sec', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Pop %1 colors at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '안드레알푸스': 'Andrealphus', '플라우로스': 'Flauros', '안드라스': 'Andras', '시작': 'Start', '이전': 'Back',
             '극한': 'Extreme',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
@@ -350,7 +350,7 @@
             '이름': '名前',
             '뿌요 W': 'Puyo W',
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
-            '게임 시작': 'ゲーム開始', '구경': '観戦', '모드': 'モード', '색상 수': '色数', '다음 대전까지 %1초': '次の対戦まで%1秒', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '현재 턴 %1 / %2': 'ターン %1 / %2', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一度に%1色のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
+            '게임 시작': 'ゲーム開始', '구경': '観戦', '모드': 'モード', '규칙': 'ルール', '색상 수': '色数', '다음 대전까지 %1초': '次の対戦まで%1秒', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '현재 턴 %1 / %2': 'ターン %1 / %2', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一度に%1色のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '안드레알푸스': 'アンドレアルフス', '플라우로스': 'フラウロス', '안드라스': 'アンドラス', '시작': '開始', '이전': '戻る',
             '극한': '極限',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
@@ -374,7 +374,7 @@
             '이름': '名称',
             '뿌요 W': 'Puyo W',
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
-            '게임 시작': '开始游戏', '구경': '观战', '모드': '模式', '색상 수': '颜色数', '다음 대전까지 %1초': '距离下一场对战还有%1秒', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '퍼즐뿌요': '益智魔法气泡', '퍼즐뿌요 스테이지': '益智魔法气泡关卡', '스테이지 %1': '关卡 %1', '권장 턴 수 %1': '推荐回合数: %1', '현재 턴 %1': '第 %1 回合', '현재 턴 %1 / %2': '第 %1 / %2 回合', '%1 연쇄 해봐': '试试 %1 连锁！', '싹쓸이 해봐': '试试全消！', '한 번에 %1개 뿌요를 터뜨려봐': '一次消除 %1 个魔法气泡！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一次消除 %1 种颜色的魔法气泡！', '방해뿌요 %1개를 발생 시켜봐': '发送 %1 个垃圾魔法气泡！', '스테이지 클리어': '关卡完成', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
+            '게임 시작': '开始游戏', '구경': '观战', '모드': '模式', '규칙': '规则', '색상 수': '颜色数', '다음 대전까지 %1초': '距离下一场对战还有%1秒', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '퍼즐뿌요': '益智魔法气泡', '퍼즐뿌요 스테이지': '益智魔法气泡关卡', '스테이지 %1': '关卡 %1', '권장 턴 수 %1': '推荐回合数: %1', '현재 턴 %1': '第 %1 回合', '현재 턴 %1 / %2': '第 %1 / %2 回合', '%1 연쇄 해봐': '试试 %1 连锁！', '싹쓸이 해봐': '试试全消！', '한 번에 %1개 뿌요를 터뜨려봐': '一次消除 %1 个魔法气泡！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一次消除 %1 种颜色的魔法气泡！', '방해뿌요 %1개를 발생 시켜봐': '发送 %1 个垃圾魔法气泡！', '스테이지 클리어': '关卡完成', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯', '안드레알푸스': '安德雷阿尔弗斯', '플라우로스': '弗劳洛斯', '안드라스': '安德拉斯',
             '극한': '极限',
@@ -401,7 +401,7 @@
     Object.assign(stringTable.de, stringTable.en, {
         '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'Solomon-Antwortfehler: Mit der Ersatz-KI wird fortgefahren.',
         '초기화': 'Zurücksetzen', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Alle Spieleinstellungen zurücksetzen?', '초기화 중...': 'Wird zurückgesetzt…',
-        '게임 시작': 'Spiel starten', '구경': 'Zuschauen', '모드': 'Modus', '색상 수': 'Farben', '다음 대전까지 %1초': 'Nächstes Duell in %1 Sek.', '기본 룰': 'Standardregeln', '피버 룰': 'FEVER-Regeln', '연속 피버': 'Dauer-FEVER', '퍼즐뿌요': 'Puzzle-Puyo', '퍼즐뿌요 스테이지': 'Puzzle-Puyo-Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Empfohlene Züge: %1', '현재 턴 %1': 'Zug %1', '현재 턴 %1 / %2': 'Zug %1 / %2', '%1 연쇄 해봐': 'Mache eine %1er-Kette!', '싹쓸이 해봐': 'Schaffe einen All Clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Lass %1 Puyos auf einmal platzen!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Lass %1 Farben auf einmal platzen!', '방해뿌요 %1개를 발생 시켜봐': 'Sende %1 Müll-Puyos!', '스테이지 클리어': 'Stage geschafft', '(출시 예정)': '(Bald verfügbar)', '목표 연쇄': 'ZIELKETTE', '남은 시간': 'RESTZEIT', '연습': 'Übung', '선택': 'Auswählen', '난이도': 'Schwierigkeit', '적 선택': 'Gegner', 'ENTER 혹은 클릭하여 시작': 'Zum Start ENTER drücken oder klicken',
+        '게임 시작': 'Spiel starten', '구경': 'Zuschauen', '모드': 'Modus', '규칙': 'Regeln', '색상 수': 'Farben', '다음 대전까지 %1초': 'Nächstes Duell in %1 Sek.', '기본 룰': 'Standardregeln', '피버 룰': 'FEVER-Regeln', '연속 피버': 'Dauer-FEVER', '퍼즐뿌요': 'Puzzle-Puyo', '퍼즐뿌요 스테이지': 'Puzzle-Puyo-Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Empfohlene Züge: %1', '현재 턴 %1': 'Zug %1', '현재 턴 %1 / %2': 'Zug %1 / %2', '%1 연쇄 해봐': 'Mache eine %1er-Kette!', '싹쓸이 해봐': 'Schaffe einen All Clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Lass %1 Puyos auf einmal platzen!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Lass %1 Farben auf einmal platzen!', '방해뿌요 %1개를 발생 시켜봐': 'Sende %1 Müll-Puyos!', '스테이지 클리어': 'Stage geschafft', '(출시 예정)': '(Bald verfügbar)', '목표 연쇄': 'ZIELKETTE', '남은 시간': 'RESTZEIT', '연습': 'Übung', '선택': 'Auswählen', '난이도': 'Schwierigkeit', '적 선택': 'Gegner', 'ENTER 혹은 클릭하여 시작': 'Zum Start ENTER drücken oder klicken',
         '3색': '3 Farben', '4색': '4 Farben', '5색': '5 Farben', '쉬움': 'Leicht', '보통': 'Normal', '어려움': 'Schwer', '시작': 'Start', '이전': 'Zurück', '극한': 'Extrem',
         '일시정지': 'Pausiert', '재개': 'Fortsetzen', '종료': 'Beenden', '승리': 'Sieg', '패배': 'Niederlage', '최종 점수 %1': 'Endpunktzahl: %1', '게임 시간 %1초': 'Spielzeit: %1 Sek.', '%1연쇄': '%1-Kette',
         '연습 상대': 'Übungsgegner', '추후 출시예정': 'Bald verfügbar', '잠김': 'Gesperrt', '두 번째에 터뜨려': 'Lass sie beim zweiten Zug platzen.', '한 번만 회전해': 'Drehe nur einmal.', '마지막 폭발은 초록색으로': 'Die letzte Explosion muss grün sein.', '마지막 파란색 폭발 후를 생각해': 'Denke an das Ende nach der letzten blauen Explosion.', '3, 4연쇄째에 보충이 필요해': 'Bei der 3. oder 4. Kette ist Nachschub nötig.', '방해뿌요는 터뜨려야 제맛': 'Lass auch die Müll-Puyos platzen.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Wo solltest du anfangen? Rechts?', '저 위의 빨간 색은 왜 있을까?': 'Warum ist dort oben ein roter Puyo?', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Platziere vier grüne Puyos irgendwo in den drei rechten Spalten.', '그냥 내려 봐': 'Lass sie einfach fallen.',
@@ -415,7 +415,7 @@
     Object.assign(stringTable.fr, stringTable.en, {
         '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'Erreur de réponse de Solomon : continuation avec l’IA de secours.',
         '초기화': 'Réinitialiser', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Réinitialiser tous les réglages du jeu ?', '초기화 중...': 'Réinitialisation…',
-        '게임 시작': 'Commencer', '구경': 'Regarder', '모드': 'Mode', '색상 수': 'Couleurs', '다음 대전까지 %1초': 'Prochain duel dans %1 s', '기본 룰': 'Règles standard', '피버 룰': 'Règles FEVER', '연속 피버': 'FEVER continu', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Stage Puzzle Puyo', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Tours recommandés : %1', '현재 턴 %1': 'Tour %1', '현재 턴 %1 / %2': 'Tour %1 / %2', '%1 연쇄 해봐': 'Fais une chaîne de %1 !', '싹쓸이 해봐': 'Fais un Tout Effacé !', '한 번에 %1개 뿌요를 터뜨려봐': 'Fais éclater %1 Puyos à la fois !', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Fais éclater %1 couleurs à la fois !', '방해뿌요 %1개를 발생 시켜봐': 'Envoie %1 Puyos-ordures !', '스테이지 클리어': 'Stage réussi', '(출시 예정)': '(Bientôt disponible)', '목표 연쇄': 'CHAÎNE CIBLE', '남은 시간': 'TEMPS RESTANT', '연습': 'Entraînement', '선택': 'Sélectionner', '난이도': 'Difficulté', '적 선택': 'Adversaire', 'ENTER 혹은 클릭하여 시작': 'Appuie sur ENTRÉE ou clique pour commencer',
+        '게임 시작': 'Commencer', '구경': 'Regarder', '모드': 'Mode', '규칙': 'Règles', '색상 수': 'Couleurs', '다음 대전까지 %1초': 'Prochain duel dans %1 s', '기본 룰': 'Règles standard', '피버 룰': 'Règles FEVER', '연속 피버': 'FEVER continu', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Stage Puzzle Puyo', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Tours recommandés : %1', '현재 턴 %1': 'Tour %1', '현재 턴 %1 / %2': 'Tour %1 / %2', '%1 연쇄 해봐': 'Fais une chaîne de %1 !', '싹쓸이 해봐': 'Fais un Tout Effacé !', '한 번에 %1개 뿌요를 터뜨려봐': 'Fais éclater %1 Puyos à la fois !', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Fais éclater %1 couleurs à la fois !', '방해뿌요 %1개를 발생 시켜봐': 'Envoie %1 Puyos-ordures !', '스테이지 클리어': 'Stage réussi', '(출시 예정)': '(Bientôt disponible)', '목표 연쇄': 'CHAÎNE CIBLE', '남은 시간': 'TEMPS RESTANT', '연습': 'Entraînement', '선택': 'Sélectionner', '난이도': 'Difficulté', '적 선택': 'Adversaire', 'ENTER 혹은 클릭하여 시작': 'Appuie sur ENTRÉE ou clique pour commencer',
         '3색': '3 couleurs', '4색': '4 couleurs', '5색': '5 couleurs', '쉬움': 'Facile', '보통': 'Normal', '어려움': 'Difficile', '시작': 'Commencer', '이전': 'Retour', '극한': 'Extrême',
         '일시정지': 'En pause', '재개': 'Reprendre', '종료': 'Quitter', '승리': 'Victoire', '패배': 'Défaite', '최종 점수 %1': 'Score final : %1', '게임 시간 %1초': 'Durée : %1 s', '%1연쇄': 'Chaîne de %1',
         '연습 상대': 'Adversaire d’entraînement', '추후 출시예정': 'Bientôt disponible', '잠김': 'Verrouillé', '두 번째에 터뜨려': 'Fais-les éclater au deuxième tour.', '한 번만 회전해': 'Ne tourne qu’une fois.', '마지막 폭발은 초록색으로': 'Fais éclater le dernier en vert.', '마지막 파란색 폭발 후를 생각해': 'Pense à ce qui suit la dernière explosion bleue.', '3, 4연쇄째에 보충이 필요해': 'Un ravitaillement est nécessaire à la 3e ou 4e chaîne.', '방해뿌요는 터뜨려야 제맛': 'Fais aussi éclater les Puyos-ordures.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Par où commencer ? À droite ?', '저 위의 빨간 색은 왜 있을까?': 'Pourquoi ce Puyo rouge est-il là-haut ?', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Place quatre Puyos verts quelque part dans les trois colonnes de droite.', '그냥 내려 봐': 'Laisse-les simplement tomber.',
@@ -708,15 +708,11 @@
     let watchSelectionFocus = 0;
     /** 구경 설정 하단에서 포커스된 동작이다. 0: 시작, 1: 취소. @type {number} */
     let watchSelectedAction = 0;
-    /** 메인 메뉴의 "너랑 나랑" 규칙 선택 오버레이가 열려 있는지 여부다. @type {boolean} */
-    let togetherSelectionOpen = false;
-    /** "너랑 나랑" 규칙 선택 오버레이에서 포커스된 항목이다. @type {number} */
-    let togetherSelectionFocus = 0;
-    /** "너랑 나랑"에서 선택한 대전 규칙이다. @type {'standard'|'fever'|'feverStart'} */
+    /** "너랑 나랑" 안내 화면에서 선택한 대전 규칙이다. @type {'standard'|'fever'|'feverStart'} */
     let togetherRule = 'standard';
     /** "너랑 나랑" 안내 화면에서 선택한 색상 수의 DIFFICULTIES 배열 인덱스다. @type {number} */
     let togetherDifficulty = 1;
-    /** "너랑 나랑" 안내 화면에서 포커스된 행이다. 0: 색상 수, 1: 동작. @type {number} */
+    /** "너랑 나랑" 안내 화면에서 포커스된 행이다. 0: 규칙, 1: 색상 수, 2: 동작. @type {number} */
     let togetherGuideFocus = 0;
     /** "너랑 나랑" 안내 화면 하단에서 포커스된 동작이다. 0: 시작, 1: 취소. @type {number} */
     let togetherGuideAction = 0;
@@ -909,7 +905,7 @@
     /** 게임 규칙 선택 오버레이에서 취소 버튼에 사용할 가상 항목 인덱스다. */
     const RULE_SELECTION_CANCEL_INDEX = GAME_RULE_OPTIONS.length;
     /**
-     * "너랑 나랑"의 규칙 선택지다. 기존 대전 규칙과 같은 세 가지를 사용하며 잠금 조건도 같다.
+     * "너랑 나랑" 안내 화면의 규칙 선택지다. 기존 대전 규칙과 같은 세 가지를 사용하며 잠금 조건도 같다.
      * @type {{key:'standard'|'fever'|'feverStart',label:string,backgroundColor:string,isDisabled?:()=>boolean}[]}
      */
     const TOGETHER_RULE_OPTIONS = [
@@ -917,8 +913,6 @@
         { key: 'fever', label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever },
         { key: 'feverStart', label: '피버 룰 (시작)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.feverStart, isDisabled: () => !isFeverStartRuleUnlocked() }
     ];
-    /** "너랑 나랑" 규칙 선택 오버레이에서 취소 버튼에 사용할 가상 항목 인덱스다. */
-    const TOGETHER_SELECTION_CANCEL_INDEX = TOGETHER_RULE_OPTIONS.length;
     /** "너랑 나랑" 양쪽 플레이어의 표시 이름이다. 언어와 무관하게 같은 표기를 사용한다. @type {string[]} */
     const TOGETHER_PLAYER_NAMES = ['1P', '2P'];
     /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {object|null} */
@@ -2127,8 +2121,7 @@
         if (game) return null;
         if (menuScreen === 'title' && ruleSelectionOpen) return `rule:${ruleSelectionFocus}`;
         if (menuScreen === 'title' && watchSelectionOpen) return `watch:${watchSelectionFocus}:${watchDifficulty}:${watchRule}:${watchSelectedAction}`;
-        if (menuScreen === 'title' && togetherSelectionOpen) return `together:${togetherSelectionFocus}`;
-        if (menuScreen === 'togetherGuide') return `togetherGuide:${togetherGuideFocus}:${togetherDifficulty}:${togetherGuideAction}`;
+        if (menuScreen === 'togetherGuide') return `togetherGuide:${togetherGuideFocus}:${togetherRule}:${togetherDifficulty}:${togetherGuideAction}`;
         if (menuScreen === 'title') return `title:${titleMenuFocus}`;
         if (menuScreen === 'opponent') return `opponent:${opponentMenuFocus}:${selectedDifficulty}:${selectedAiDifficulty}:${selectedOpponent}:${selectedOpponentAction}`;
         if (menuScreen === 'practiceDifficulty') return `difficulty:${colorSelectionFocus}:${selectedDifficulty}`;
@@ -3173,7 +3166,6 @@
         resetKeyboardDirectionInput();
         resetVirtualControllerInput();
         resetGamepadInput();
-        closeTogetherSelection();
         menuScreen = 'title';
         learningEpisodeStarted = false;
         learningPendingTransition = null;
@@ -8484,7 +8476,6 @@
         simulator = null;
         gallery = null;
         ruleSelectionOpen = false;
-        togetherSelectionOpen = false;
         togetherWinCounts = [0, 0];
         if (settingsResetTimer !== null) window.clearTimeout(settingsResetTimer);
         settingsResetTimer = window.setTimeout(() => {
@@ -9884,7 +9875,6 @@
     /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 연다. @returns {void} */
     function openRuleSelection() {
         watchSelectionOpen = false;
-        togetherSelectionOpen = false;
         ruleSelectionOpen = true;
         ruleSelectionFocus = getSelectableRuleOptionIndices()[0] ?? 0;
     }
@@ -9899,7 +9889,6 @@
     /** 메인 메뉴 위에 구경 모드 설정 오버레이를 연다. @returns {void} */
     function openWatchSelection() {
         ruleSelectionOpen = false;
-        togetherSelectionOpen = false;
         watchSelectionOpen = true;
         watchDifficulty = 1;
         watchRule = 'standard';
@@ -9997,45 +9986,32 @@
         });
     }
 
-    /** "너랑 나랑" 규칙 선택지 하나의 화면 영역을 반환한다. @param {number} index 선택지 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
-    function getTogetherRuleButtonBounds(index) {
-        const width = 250;
-        const gap = 18;
-        const totalWidth = TOGETHER_RULE_OPTIONS.length * width + (TOGETHER_RULE_OPTIONS.length - 1) * gap;
-        return { x: (WIDTH - totalWidth) / 2 + index * (width + gap), y: 290, width, height: 78 };
-    }
-
-    /** "너랑 나랑" 규칙 선택 오버레이 취소 버튼의 화면 영역을 반환한다. @returns {{x:number,y:number,width:number,height:number}} 취소 버튼 영역 */
-    function getTogetherSelectionCancelButtonBounds() {
-        return { x: WIDTH / 2 - 140, y: 400, width: 280, height: 78 };
-    }
-
     /** 포커스할 수 있는 "너랑 나랑" 규칙 선택지의 순번을 반환한다. @returns {number[]} 포커스 가능한 선택지 순번 */
     function getSelectableTogetherRuleIndices() {
         return TOGETHER_RULE_OPTIONS.map((option, index) => isGameRuleOptionDisabled(option) ? -1 : index).filter((index) => index >= 0);
     }
 
-    /** 메인 메뉴 위에 "너랑 나랑" 규칙 선택 오버레이를 연다. 이때 누적 승수도 초기화한다. @returns {void} */
-    function openTogetherSelection() {
+    /** "너랑 나랑" 안내 화면의 규칙 버튼 영역을 반환한다. @param {number} index TOGETHER_RULE_OPTIONS 배열 인덱스 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getTogetherGuideRuleButtonBounds(index) {
+        const width = 230;
+        const gap = 16;
+        const totalWidth = TOGETHER_RULE_OPTIONS.length * width + (TOGETHER_RULE_OPTIONS.length - 1) * gap;
+        return { x: (WIDTH - totalWidth) / 2 + index * (width + gap), y: 414, width, height: 62 };
+    }
+
+    /**
+     * 메인 메뉴에서 곧바로 "너랑 나랑" 안내 화면을 연다. 규칙과 색상 수는 이 화면에서 함께 고른다.
+     * 안내 화면으로 새로 들어올 때마다 누적 승수를 초기화하므로, 승수를 이어가려면 결과 화면의 "다시 플레이"를 쓴다.
+     * @returns {void}
+     */
+    function openTogetherGuide() {
         ruleSelectionOpen = false;
         watchSelectionOpen = false;
-        togetherSelectionOpen = true;
-        togetherSelectionFocus = getSelectableTogetherRuleIndices()[0] ?? TOGETHER_SELECTION_CANCEL_INDEX;
-        togetherWinCounts = [0, 0];
-    }
-
-    /** "너랑 나랑" 규칙 선택 오버레이를 닫고 메인 메뉴로 돌아간다. @returns {void} */
-    function closeTogetherSelection() {
-        togetherSelectionOpen = false;
-        togetherSelectionFocus = 0;
-    }
-
-    /** "너랑 나랑" 안내 화면을 연다. @param {'standard'|'fever'|'feverStart'} rule 선택한 대전 규칙 @returns {void} */
-    function openTogetherGuide(rule) {
-        togetherRule = rule;
+        togetherRule = TOGETHER_RULE_OPTIONS[getSelectableTogetherRuleIndices()[0] ?? 0].key;
         togetherDifficulty = 1;
         togetherGuideFocus = 0;
         togetherGuideAction = 0;
+        togetherWinCounts = [0, 0];
         menuScreen = 'togetherGuide';
     }
 
@@ -10043,85 +10019,26 @@
     function closeTogetherGuide() {
         playMenuCancelSound();
         menuScreen = 'title';
-        closeTogetherSelection();
         loadNotice();
-    }
-
-    /** 포커스된 "너랑 나랑" 규칙 선택지를 실행한다. @returns {void} */
-    function activateTogetherSelection() {
-        if (togetherSelectionFocus === TOGETHER_SELECTION_CANCEL_INDEX) {
-            playMenuCancelSound();
-            closeTogetherSelection();
-            return;
-        }
-        const option = TOGETHER_RULE_OPTIONS[togetherSelectionFocus];
-        if (!option || isGameRuleOptionDisabled(option)) return;
-        playMenuSelectSound();
-        openTogetherGuide(option.key);
-    }
-
-    /** "너랑 나랑" 규칙 선택 오버레이의 키보드·게임패드 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
-    function handleTogetherSelectionKey(key) {
-        if (key === 'escape') { playMenuCancelSound(); closeTogetherSelection(); return; }
-        if (key === 'enter' || key === ' ') { activateTogetherSelection(); return; }
-        const selectable = getSelectableTogetherRuleIndices();
-        if (key === 'arrowdown') { togetherSelectionFocus = TOGETHER_SELECTION_CANCEL_INDEX; return; }
-        if (key === 'arrowup') {
-            if (togetherSelectionFocus === TOGETHER_SELECTION_CANCEL_INDEX && selectable.length) togetherSelectionFocus = selectable[0];
-            return;
-        }
-        if (key !== 'arrowleft' && key !== 'arrowright') return;
-        if (togetherSelectionFocus === TOGETHER_SELECTION_CANCEL_INDEX) return;
-        if (!selectable.length) return;
-        const direction = key === 'arrowleft' ? -1 : 1;
-        const currentIndex = Math.max(0, selectable.indexOf(togetherSelectionFocus));
-        togetherSelectionFocus = selectable[(currentIndex + direction + selectable.length) % selectable.length];
-    }
-
-    /** 메인 메뉴 위에 "너랑 나랑" 규칙 선택 오버레이를 그린다. @returns {void} */
-    function drawTogetherSelectionOverlay() {
-        context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `38px ${TITLE_FONT}`;
-        context.fillText(translate('너랑 나랑'), WIDTH / 2, 220);
-        TOGETHER_RULE_OPTIONS.forEach((option, index) => {
-            const bounds = getTogetherRuleButtonBounds(index);
-            const disabled = isGameRuleOptionDisabled(option);
-            const focused = !disabled && index === togetherSelectionFocus;
-            context.fillStyle = disabled ? '#3c4650' : option.backgroundColor; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-            context.strokeStyle = disabled ? '#7c8791' : focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2;
-            context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
-            context.fillStyle = disabled ? '#c4cbd0' : '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
-            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (disabled ? 32 : 47));
-            if (disabled) {
-                context.fillStyle = '#f0c674'; context.font = `15px ${BUTTON_FONT}`;
-                context.fillText(translate('잠김'), bounds.x + bounds.width / 2, bounds.y + 59);
-            }
-        });
-        const cancelBounds = getTogetherSelectionCancelButtonBounds();
-        const cancelFocused = togetherSelectionFocus === TOGETHER_SELECTION_CANCEL_INDEX;
-        context.fillStyle = '#455a64'; context.fillRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
-        context.strokeStyle = cancelFocused ? '#f7c843' : '#607d8b'; context.lineWidth = cancelFocused ? 4 : 2;
-        context.strokeRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
-        context.fillStyle = '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
-        context.fillText(translate('취소'), cancelBounds.x + cancelBounds.width / 2, cancelBounds.y + 47);
     }
 
     /** "너랑 나랑" 안내 화면의 색상 수 버튼 영역을 반환한다. @param {number} index DIFFICULTIES 배열 인덱스 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
     function getTogetherGuideColorButtonBounds(index) {
-        return { x: getColorDifficultyButtonX(index), y: 445, width: 110, height: 58 };
+        return { x: getColorDifficultyButtonX(index), y: 526, width: 110, height: 56 };
     }
 
     /** "너랑 나랑" 안내 화면의 시작·취소 버튼 영역을 반환한다. @param {number} index 0: 시작, 1: 취소 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
     function getTogetherGuideActionButtonBounds(index) {
         const width = 200;
         const gap = 20;
-        return { x: WIDTH / 2 - width - gap / 2 + index * (width + gap), y: 540, width, height: 58 };
+        return { x: WIDTH / 2 - width - gap / 2 + index * (width + gap), y: 616, width, height: 58 };
     }
 
     /** "너랑 나랑" 안내 화면에서 현재 포커스된 선택을 실행한다. @returns {void} */
     function activateTogetherGuide() {
-        if (togetherGuideFocus === 0) {
-            togetherGuideFocus = 1;
+        // 규칙·색상 수 행에서 Enter를 누르면 다음 행으로 내려가고, 마지막 동작 행에서만 시작·취소를 실행한다.
+        if (togetherGuideFocus < 2) {
+            togetherGuideFocus += 1;
             return;
         }
         if (togetherGuideAction === 0) startTogetherGame();
@@ -10132,11 +10049,20 @@
     function handleTogetherGuideKey(key) {
         if (key === 'escape') { closeTogetherGuide(); return; }
         if (key === 'enter' || key === ' ') { activateTogetherGuide(); return; }
-        if (key === 'arrowup') { togetherGuideFocus = 0; return; }
-        if (key === 'arrowdown') { togetherGuideFocus = 1; return; }
+        if (key === 'arrowup') { togetherGuideFocus = Math.max(0, togetherGuideFocus - 1); return; }
+        if (key === 'arrowdown') { togetherGuideFocus = Math.min(2, togetherGuideFocus + 1); return; }
         if (key !== 'arrowleft' && key !== 'arrowright') return;
         const direction = key === 'arrowleft' ? -1 : 1;
         if (togetherGuideFocus === 0) {
+            // 잠긴 규칙은 건너뛴다.
+            const choices = getSelectableTogetherRuleIndices();
+            if (!choices.length) return;
+            const current = TOGETHER_RULE_OPTIONS.findIndex((option) => option.key === togetherRule);
+            const currentIndex = Math.max(0, choices.indexOf(current));
+            togetherRule = TOGETHER_RULE_OPTIONS[choices[(currentIndex + direction + choices.length) % choices.length]].key;
+            return;
+        }
+        if (togetherGuideFocus === 1) {
             const choices = getSelectableColorDifficultyIndices();
             const currentIndex = Math.max(0, choices.indexOf(togetherDifficulty));
             togetherDifficulty = choices[(currentIndex + direction + choices.length) % choices.length];
@@ -10145,42 +10071,59 @@
         togetherGuideAction = togetherGuideAction === 0 ? 1 : 0;
     }
 
-    /** "너랑 나랑" 안내 화면을 그린다. @returns {void} */
+    /** "너랑 나랑" 안내 화면을 그린다. 조작키 안내 아래에 규칙·색상 수·동작 세 행을 차례로 놓는다. @returns {void} */
     function drawTogetherGuideOverlay() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         context.textAlign = 'center';
         context.fillStyle = '#d8f2f5'; context.font = `36px ${TITLE_FONT}`;
-        context.fillText(translate('너랑 나랑'), WIDTH / 2, 120);
+        context.fillText(translate('너랑 나랑'), WIDTH / 2, 100);
         context.fillStyle = '#b8dbe2'; context.font = `18px ${MESSAGE_FONT}`;
-        context.fillText(translate('한 대의 컴퓨터에서 두 사람이 함께 대전합니다.'), WIDTH / 2, 168);
-        context.fillText(translate('키보드 하나를 둘이 나눠 사용합니다.'), WIDTH / 2, 196);
+        context.fillText(translate('한 대의 컴퓨터에서 두 사람이 함께 대전합니다.'), WIDTH / 2, 146);
+        context.fillText(translate('키보드 하나를 둘이 나눠 사용합니다.'), WIDTH / 2, 174);
         [
             { name: '1P', color: '#ef8aa0', x: 330, lines: ['이동: 방향키 또는 F(좌) H(우) B(아래)', '회전: Z(좌) X(우) 또는 G(좌)'] },
             { name: '2P', color: '#6bbce8', x: 950, lines: ['이동: 키패드 4(좌) 6(우) 2(아래)', '회전: [ (좌) ] (우) 또는 키패드 5(좌)'] }
         ].forEach(({ name, color, x, lines }) => {
             context.fillStyle = color; context.font = `24px ${TITLE_FONT}`;
-            context.fillText(name, x, 254);
+            context.fillText(name, x, 232);
             context.fillStyle = '#e7f8fa'; context.font = `15px ${MESSAGE_FONT}`;
-            lines.forEach((line, index) => context.fillText(translate(line), x, 290 + index * 26));
+            lines.forEach((line, index) => context.fillText(translate(line), x, 266 + index * 26));
         });
         context.fillStyle = '#b8dbe2'; context.font = `15px ${MESSAGE_FONT}`;
-        context.fillText(translate('게임패드를 연결하면 첫 번째가 1P, 두 번째가 2P입니다.'), WIDTH / 2, 362);
-        context.fillText(translate('가상 컨트롤러는 사용할 수 없습니다.'), WIDTH / 2, 388);
+        context.fillText(translate('게임패드를 연결하면 첫 번째가 1P, 두 번째가 2P입니다.'), WIDTH / 2, 338);
+        context.fillText(translate('가상 컨트롤러는 사용할 수 없습니다.'), WIDTH / 2, 362);
         context.fillStyle = '#b8dbe2'; context.font = `18px ${MESSAGE_FONT}`;
-        context.fillText(translate('색상 수'), WIDTH / 2, 428);
+        context.fillText(translate('규칙'), WIDTH / 2, 398);
+        TOGETHER_RULE_OPTIONS.forEach((option, index) => {
+            const bounds = getTogetherGuideRuleButtonBounds(index);
+            const disabled = isGameRuleOptionDisabled(option);
+            const selected = !disabled && option.key === togetherRule;
+            const focused = togetherGuideFocus === 0 && selected;
+            context.fillStyle = disabled ? '#3c4650' : selected ? option.backgroundColor : '#0b202c'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = disabled ? '#7c8791' : focused ? '#f7c843' : selected ? '#8fd0e2' : '#3b6070'; context.lineWidth = focused ? 4 : 2;
+            context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = disabled ? '#c4cbd0' : '#f5fbfc'; context.font = `21px ${BUTTON_FONT}`;
+            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (disabled ? 28 : 39));
+            if (disabled) {
+                context.fillStyle = '#f0c674'; context.font = `15px ${BUTTON_FONT}`;
+                context.fillText(translate('잠김'), bounds.x + bounds.width / 2, bounds.y + 50);
+            }
+        });
+        context.fillStyle = '#b8dbe2'; context.font = `18px ${MESSAGE_FONT}`;
+        context.fillText(translate('색상 수'), WIDTH / 2, 510);
         DIFFICULTIES.forEach((difficulty, index) => {
             const bounds = getTogetherGuideColorButtonBounds(index);
             const selected = index === togetherDifficulty;
-            const focused = togetherGuideFocus === 0 && selected;
+            const focused = togetherGuideFocus === 1 && selected;
             context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.strokeStyle = focused ? '#f7c843' : '#3b6070'; context.lineWidth = focused ? 4 : 2;
             context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`;
-            context.fillText(translate(difficulty.name), bounds.x + bounds.width / 2, bounds.y + 36);
+            context.fillText(translate(difficulty.name), bounds.x + bounds.width / 2, bounds.y + 35);
         });
         ['시작', '취소'].forEach((label, index) => {
             const bounds = getTogetherGuideActionButtonBounds(index);
-            const focused = togetherGuideFocus === 1 && togetherGuideAction === index;
+            const focused = togetherGuideFocus === 2 && togetherGuideAction === index;
             context.fillStyle = index === 0 ? '#ef5350' : '#455a64'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.strokeStyle = focused ? '#f7c843' : index === 0 ? '#ef5350' : '#607d8b'; context.lineWidth = focused ? 4 : 2;
             context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
@@ -10607,7 +10550,6 @@
         if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'title' && ruleSelectionOpen) drawRuleSelectionOverlay();
         if (menuScreen === 'title' && watchSelectionOpen) drawWatchSelectionOverlay();
-        if (menuScreen === 'title' && togetherSelectionOpen) drawTogetherSelectionOverlay();
     }
 
     /**
@@ -11325,10 +11267,6 @@
                 handleWatchSelectionKey(key);
                 return;
             }
-            if (menuScreen === 'title' && togetherSelectionOpen) {
-                handleTogetherSelectionKey(key);
-                return;
-            }
             if (menuScreen === 'togetherGuide') {
                 handleTogetherGuideKey(key);
                 return;
@@ -11508,7 +11446,7 @@
         if (isTitleMenuItemLocked(titleMenuFocus)) return;
         playMenuSelectSound();
         if (titleMenuFocus === 0) openRuleSelection();
-        else if (titleMenuFocus === 1) openTogetherSelection();
+        else if (titleMenuFocus === 1) openTogetherGuide();
         else if (titleMenuFocus === 2) openSimulator();
         else if (titleMenuFocus === 3) openTutorial();
         else if (titleMenuFocus === TITLE_WATCH_MENU_INDEX) openWatchSelection();
@@ -11698,29 +11636,19 @@
             }
             return;
         }
-        if (menuScreen === 'title' && togetherSelectionOpen) {
-            const cancelBounds = getTogetherSelectionCancelButtonBounds();
-            if (x >= cancelBounds.x && x <= cancelBounds.x + cancelBounds.width && y >= cancelBounds.y && y <= cancelBounds.y + cancelBounds.height) {
-                togetherSelectionFocus = TOGETHER_SELECTION_CANCEL_INDEX;
-                activateTogetherSelection();
-                return;
-            }
-            const selectedIndex = TOGETHER_RULE_OPTIONS.findIndex((option, index) => {
-                const bounds = getTogetherRuleButtonBounds(index);
+        if (menuScreen === 'togetherGuide') {
+            const ruleIndex = TOGETHER_RULE_OPTIONS.findIndex((option, index) => {
+                const bounds = getTogetherGuideRuleButtonBounds(index);
                 return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
             });
-            if (selectedIndex >= 0) {
-                if (!isGameRuleOptionDisabled(TOGETHER_RULE_OPTIONS[selectedIndex])) {
-                    togetherSelectionFocus = selectedIndex;
-                    activateTogetherSelection();
+            if (ruleIndex >= 0) {
+                if (!isGameRuleOptionDisabled(TOGETHER_RULE_OPTIONS[ruleIndex])) {
+                    playMenuSelectSound();
+                    togetherRule = TOGETHER_RULE_OPTIONS[ruleIndex].key;
+                    togetherGuideFocus = 0;
                 }
-            } else {
-                playMenuCancelSound();
-                closeTogetherSelection();
+                return;
             }
-            return;
-        }
-        if (menuScreen === 'togetherGuide') {
             const colorIndex = DIFFICULTIES.findIndex((difficulty, index) => {
                 const bounds = getTogetherGuideColorButtonBounds(index);
                 return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
@@ -11728,7 +11656,7 @@
             if (colorIndex >= 0) {
                 playMenuSelectSound();
                 togetherDifficulty = colorIndex;
-                togetherGuideFocus = 0;
+                togetherGuideFocus = 1;
                 return;
             }
             const actionIndex = [0, 1].find((index) => {
@@ -11736,7 +11664,7 @@
                 return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
             });
             if (actionIndex !== undefined) {
-                togetherGuideFocus = 1;
+                togetherGuideFocus = 2;
                 togetherGuideAction = actionIndex;
                 activateTogetherGuide();
             }
@@ -12000,7 +11928,7 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
         if (settingsResetting) return { screen: 'settings_resetting', playerCanControl: false };
@@ -12008,7 +11936,6 @@
             if (menuScreen === 'initialTitle') return { screen: 'initial_title', playerCanControl: false };
             if (menuScreen === 'title' && ruleSelectionOpen) return { screen: 'rule_select', playerCanControl: false };
             if (menuScreen === 'title' && watchSelectionOpen) return { screen: 'watch_select', playerCanControl: false };
-            if (menuScreen === 'title' && togetherSelectionOpen) return { screen: 'together_select', playerCanControl: false };
             if (menuScreen === 'togetherGuide') return { screen: 'together_guide', playerCanControl: false };
             if (menuScreen === 'opponent') return { screen: opponentMenuRule !== 'standard' ? 'fever_opponent_select' : 'opponent_select', playerCanControl: false };
             if (menuScreen === 'practiceDifficulty') return { screen: 'practice_difficulty', playerCanControl: false };
@@ -12144,7 +12071,7 @@
     /**
      * 현재 표시 중인 화면과 플레이어 조작 가능 여부를 반환한다.
      * 메뉴, 튜토리얼, 대전 진행 상태 모두에서 사용할 수 있다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getScreenState() {
         return getNowScreen();
@@ -12575,8 +12502,6 @@
         watchSelectionOpen = false;
         watchSelectionFocus = 0;
         watchSelectedAction = 0;
-        togetherSelectionOpen = false;
-        togetherSelectionFocus = 0;
         togetherRule = 'standard';
         togetherDifficulty = 1;
         togetherGuideFocus = 0;
