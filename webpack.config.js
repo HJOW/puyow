@@ -3,7 +3,7 @@ const TerserPlugin = require('terser-webpack-plugin');
 const ESLintPlugin = require('eslint-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 module.exports = {
-    "entry" : ["./src/js/puyow.js", "./src/js/three.min.js", "./src/js/json5.min.js"],
+    "entry" : ["./src/js/puyow.js", "./src/js/three.min.js", "./src/js/json5.min.js", "./src/js/virtualjoystick.js"],
     "output" : {
         "path" : __dirname + "/src/bundle/",
         "filename" : "puyow.bundle.js",
@@ -58,8 +58,9 @@ module.exports = {
  * GitHub : https://github.com/HJOW/puyow
  * 
  * Dependencies
- *     three.min.js (https://threejs.org/) - MIT License
- *     json5.min.js (https://json5.org/  ) - MIT License
+ *     three.min.js       (https://threejs.org/                               ) - MIT License
+ *     json5.min.js       (https://json5.org/                                 ) - MIT License
+ *     virtualjoystick.js (https://github.com/jeromeetienne/virtualjoystick.js) - MIT License
  * 
  */`,
             "footer" : false,

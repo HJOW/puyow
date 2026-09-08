@@ -109,6 +109,10 @@ This project is distributed under the [Apache License 2.0](LICENSE).
   MIT License, Copyright (c) 2012-2018 Aseem Kishore, and others.
   https://github.com/json5/json5/blob/main/LICENSE.md
 
++ virtualjoystick.js
+  MIT License, Copyright (c) 2012-2018 Aseem Kishore, and others.
+  https://github.com/jeromeetienne/virtualjoystick.js/blob/master/MIT-LICENSE.txt
+
 + ONNX Runtime
   MIT License, Copyright (c) Microsoft Corporation.
   https://github.com/microsoft/onnxruntime/blob/gh-pages/LICENSE
