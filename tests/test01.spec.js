@@ -83,7 +83,7 @@ async function enterMainMenu(page) {
 
 async function openSettings(page) {
   await enterMainMenu(page);
-  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
 }
@@ -298,6 +298,7 @@ test('기본 룰·연습·플레이 방법의 양쪽 필드는 기본 패배 칸
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('tutorial_intro');
   await expectDefeatCellMarkers(page, [2]);
@@ -474,7 +475,7 @@ test('구경 모드는 양쪽 AI에 다음 20쌍을 제공한다', async ({ page
   });
 
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
   await page.keyboard.press('ArrowDown');
@@ -544,6 +545,7 @@ test('registerPuzzleStage는 기존 PuzzlePuyoStage와 uid가 중복되면 등�
 test('시뮬레이터는 양쪽 기본 패배 칸을 표시하고 해당 칸의 뿌요를 앞에 그린다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
   await expectDefeatCellMarkers(page, [2]);
@@ -596,7 +598,7 @@ test('일반·방해뿌요 클래스는 이름을 제공하고 캔버스에 직�
 
 test('갤러리 일반뿌요 목록에 철구뿌요를 처음부터 잠금 해제 상태로 표시한다', async ({ page }) => {
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
 
@@ -635,7 +637,7 @@ test('카드 뽑기는 확인 전에는 자원을 쓰지 않고 취소하거나 
   await page.evaluate(() => { Math.random = () => 0; });
   await enterMainMenu(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('10,000 GOLD'))).toBe(true);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
@@ -665,7 +667,7 @@ test('카드 5장을 선택해 합성하면 원본을 제거하고 새 카드 1�
   await page.reload();
   await page.evaluate(() => { Math.random = () => 0; });
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
@@ -736,6 +738,7 @@ test('기존 퍼즐 진행도는 GOLD 보상 완료로 이관하고 잘못된 GO
   await page.reload();
   await enterMainMenu(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('0 GOLD'))).toBe(true);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Escape');
@@ -847,7 +850,7 @@ test('Local AI를 사용할 수 있으면 기본값으로 선택되고 서버 �
   });
 
   // Local AI 저장은 AI API 테스트를 마친 것으로 취급하므로 솔로몬이 곧바로 나타난다.
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(true);
@@ -904,7 +907,7 @@ test('로컬 모델을 사용할 수 없으면 Local AI 선택지를 숨기고 �
 
   // 테스트를 통과할 방법이 없으므로 솔로몬도 적 선택 화면에 나타나지 않는다.
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.waitForTimeout(100);
@@ -992,7 +995,7 @@ test('observation 코드는 진행도를 바꾸지 않고 출시된 표시 적�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
 
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
 
@@ -1037,7 +1040,7 @@ test('observation 코드는 진행도를 바꾸지 않고 출시된 표시 적�
     Math.random = () => 0;
   });
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -1063,7 +1066,7 @@ test('플레이어 이름은 설정에 저장되며 게임 화면에 적용되�
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
 
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.playerName)).toBe('ABCDEFGHIJ');
-  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowUp');
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowUp');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1434,7 +1437,7 @@ test('솔로몬은 성공한 AI API 테스트 뒤 현재 접속에서만 안드�
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(false);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('AI API test succeeded (JSON schema: passed).'))).toBe(true);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => {
@@ -1475,7 +1478,7 @@ test('솔로몬은 매 턴 저장된 서버와 토큰으로 구조화된 배치�
   await page.keyboard.press('Enter');
   await expect.poll(() => requests.length).toBe(1);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1653,7 +1656,7 @@ test('LM Studio 제공자와 극한이 아닌 난이도의 솔로몬 프롬프�
   await page.keyboard.press('Enter');
   await expect.poll(() => prompts.length).toBe(1);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
   await page.keyboard.press('Enter');
   // 극한 난이도로 시작하더라도 Local AI 제공자가 아니면 학습 세션을 만들지 않는다.
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
@@ -1693,7 +1696,7 @@ test('솔로몬의 잘못된 API 배치는 게임을 일시정지하고 현재 �
   await page.keyboard.press('Enter');
   await expect.poll(() => requestCount).toBe(1);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1739,7 +1742,7 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
     };
   });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 300 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -3231,7 +3234,7 @@ test('구경 대전은 양쪽 필드와 화면 배경 모두 우측 적의 테�
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
   await page.keyboard.press('ArrowDown');
@@ -3891,6 +3894,7 @@ test('플레이 방법 시연은 에너지 이동 초기화 오류 없이 시작
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('tutorial_intro');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 7000 }).toBe('tutorial_demo');
@@ -3906,6 +3910,7 @@ test('플레이 방법 4단계는 보라 싹쓸이 뒤 빨강 두 쌍으로 티�
   });
   await page.reload();
   await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -3925,6 +3930,7 @@ test('플레이 방법 4단계는 보라 싹쓸이 뒤 빨강 두 쌍으로 티�
 
 test('플레이 방법 1단계는 지정된 뿌요 순서와 조작 시연 메시지를 사용한다', async ({ page }) => {
   await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -4665,6 +4671,7 @@ test('공통 사운드 풀은 시뮬레이터의 뿌요 착지·폭발·주문 �
   });
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
@@ -4731,6 +4738,7 @@ test('common sound pool plays menu and game-start sounds', async ({ page }) => {
 test('시뮬레이터 연쇄는 새 점수 계산식과 같은 연쇄 문구를 표시한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
@@ -4745,6 +4753,7 @@ test('시뮬레이터 연쇄는 새 점수 계산식과 같은 연쇄 문구를 
 
 test('시뮬레이터 싹쓸이는 추가 점수·ATTACK 없이 티켓을 부여한 뒤 완료한다', async ({ page }) => {
   await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
@@ -4763,6 +4772,7 @@ test('시뮬레이터 싹쓸이는 추가 점수·ATTACK 없이 티켓을 부여
 
 test('시뮬레이터 그리기 모드에서는 마우스와 키보드로 13번째 줄에 뿌요를 배치한다', async ({ page }) => {
   await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
@@ -4784,6 +4794,7 @@ test('시뮬레이터 그리기 모드에서는 마우스와 키보드로 13번�
 test('시뮬레이터의 초기화 버튼은 좌측 플레이 영역의 뿌요를 모두 제거한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
@@ -4798,6 +4809,7 @@ test('시뮬레이터의 초기화 버튼은 좌측 플레이 영역의 뿌요�
 
 test('시뮬레이터 전용 철구뿌요는 키보드와 마우스로 배치되고 재생 후에도 남는다', async ({ page }) => {
   await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
@@ -4825,6 +4837,7 @@ test('시뮬레이터 전용 철구뿌요는 키보드와 마우스로 배치되
 test('숨김 13번째 줄 뿌요는 폭발 연결 수에 포함되지 않는다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
@@ -4844,6 +4857,7 @@ test('숨김 13번째 줄 뿌요는 폭발 연결 수에 포함되지 않는다'
 test('숨김 13번째 줄 뿌요는 중력으로 내려온 뒤 다음 폭발 판정에 참여한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
@@ -4860,6 +4874,7 @@ test('숨김 13번째 줄 뿌요는 중력으로 내려온 뒤 다음 폭발 판
 
 test('시뮬레이터 점수는 동시 폭발의 색수와 가장 많은 색의 연결 보너스를 합산한다', async ({ page }) => {
   await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
@@ -4878,6 +4893,7 @@ test('시뮬레이터 점수는 동시 폭발의 색수와 가장 많은 색의 
 
 test('시뮬레이터 점수는 동시 4·5색 폭발에서 5개 색의 연결 보너스를 적용한다', async ({ page }) => {
   await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
@@ -4899,6 +4915,7 @@ test('시뮬레이터 점수는 동시 4·5색 폭발에서 5개 색의 연결 �
 test('시뮬레이터 점수는 다섯 뿌요 연결 보너스를 적용한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
@@ -4912,6 +4929,7 @@ test('시뮬레이터 점수는 다섯 뿌요 연결 보너스를 적용한다',
 
 test('시뮬레이터에서 딱딱뿌요 하나의 파괴는 점수에 세 배율로 반영된다', async ({ page }) => {
   await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
@@ -4944,6 +4962,7 @@ test('시뮬레이터에서 딱딱뿌요 하나의 파괴는 점수에 세 배�
 test('시뮬레이터에서 동시에 파괴한 두 딱딱뿌요는 점수에 다섯 배율로 반영된다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
@@ -4964,6 +4983,7 @@ test('시뮬레이터에서 동시에 파괴한 두 딱딱뿌요는 점수에 �
 
 test('시뮬레이터 딱딱뿌요는 한 방향 폭발에 일반 방해뿌요가 된다', async ({ page }) => {
   await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
@@ -5182,7 +5202,7 @@ test('구경 메뉴는 데카라비아를 보통 이상에서 이기기 전에�
 
   await page.reload();
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
 
@@ -5195,7 +5215,7 @@ test('구경 메뉴는 데카라비아를 보통 이상에서 이기기 전에�
   });
   await page.reload();
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
 
@@ -5208,7 +5228,7 @@ test('구경 메뉴는 데카라비아를 보통 이상에서 이기기 전에�
   });
   await page.reload();
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
 });
@@ -5224,7 +5244,7 @@ test('구경 설정은 키보드와 마우스로 색상 수·규칙·취소를 �
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
   await expect.poll(() => page.evaluate(() => ['구경', 'Watch', '観戦', '观战', 'Zuschauen', 'Regarder'].some((text) => window.testCanvasTexts.includes(text)))).toBe(true);
@@ -5341,7 +5361,7 @@ test('구경 중앙 영역은 양쪽 적의 초상화와 현재 표정을 함께
   });
 
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
   await page.keyboard.press('ArrowDown');
@@ -5393,7 +5413,7 @@ test('구경 결과 화면을 5초 동안 조작하지 않으면 새 적 두 명
   });
 
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -5448,7 +5468,7 @@ test('구경 모드 좌측 적은 고유 주문 효과음이 없으면 플레이
   });
 
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -5537,7 +5557,7 @@ test('리플레이 설정을 켜면 기본 룰 대전을 기록하고 결과 화
   await playQuickMatch(page);
 
   const replay = await page.evaluate(() => window.WebPuyo.getReplayData());
-  expect(replay.version).toBe(2);
+  expect(replay.version).toBe(3);
   expect(replay.meta.rule).toBe('standard');
   expect(replay.meta.watch).toBe(false);
   expect(replay.meta.players).toHaveLength(2);
@@ -5638,7 +5658,7 @@ test('구경 대전도 리플레이로 기록하며 재생 중에는 자동 재�
   });
 
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
   await page.keyboard.press('ArrowDown');
@@ -5684,7 +5704,7 @@ test('리플레이 재생 버튼은 취소·잘못된 데이터·재현 오류�
   // 프레임이 손상된 리플레이는 재현 중 오류를 알리고 2초 뒤 결과 화면으로 넘어간다.
   await page.evaluate(() => {
     window.prompt = () => JSON.stringify({
-      version: 2,
+      version: 3,
       meta: {
         rule: 'standard', watch: false, feverRule: false, feverStart: false, feverLightStart: 0,
         difficulty: 1, aiDifficulty: 1, colors: ['red', 'green', 'yellow', 'blue'],
@@ -5718,7 +5738,7 @@ test('메인 메뉴 리플레이 재생 버튼은 GitHub 버튼 위에 있고 �
 
   // 목록 항목 다음 순서가 리플레이 재생 버튼이다. 잠긴 구경 항목은 건너뛴다.
   await page.evaluate(() => { window.replayPromptCount = 0; window.prompt = () => { window.replayPromptCount += 1; return ''; }; });
-  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => window.replayPromptCount)).toBe(1);
   expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
@@ -5813,7 +5833,7 @@ test('기록된 효과음 참조는 공통 풀·적 풀·원문 URL을 되살리
   await enterMainMenu(page);
   await page.evaluate(() => {
     window.prompt = () => JSON.stringify({
-      version: 2,
+      version: 3,
       meta: {
         rule: 'standard', watch: false, feverRule: false, feverStart: false, feverLightStart: 0,
         difficulty: 1, aiDifficulty: 1, colors: ['red', 'green', 'yellow', 'blue'],
@@ -5884,8 +5904,8 @@ test('ONNX 런타임이 없어도 이긴 전적이 있는 플라우로스는 갤
   expect(await page.evaluate(() => typeof window.ort)).toBe('undefined');
 
   await enterMainMenu(page);
-  // 메인 메뉴 0: 게임 시작, 1: 시뮬레이터, 2: 플레이 방법, 3: 구경, 4: 갤러리
-  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  // 메인 메뉴 0: 게임 시작, 1: 너랑 나랑, 2: 시뮬레이터, 3: 플레이 방법, 4: 구경, 5: 갤러리
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
   // 갤러리 유형 0: 일반뿌요, 1: 예고뿌요, 2: 적
@@ -5917,7 +5937,7 @@ test('구경 모드는 ONNX 추론 적을 선정 대상에서 아예 제외한�
     Math.random = () => 0;
   });
   await enterMainMenu(page);
-  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
   await page.keyboard.press('ArrowDown');
@@ -6109,7 +6129,7 @@ test('CDN과 로컬 모두 wasm을 못 받으면 적 선택 화면에서만 플�
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
-  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
   await page.keyboard.press('ArrowRight');
@@ -6117,4 +6137,259 @@ test('CDN과 로컬 모두 wasm을 못 받으면 적 선택 화면에서만 플�
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
+});
+
+/** 메인 메뉴에서 "너랑 나랑" 규칙 선택 오버레이를 연다. */
+async function openTogetherSelection(page) {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_select');
+}
+
+/** "너랑 나랑" 안내 화면에서 현재 포커스된 규칙으로 대전을 시작한다. */
+async function startTogetherGame(page, colorPresses = 0) {
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
+  for (let index = 0; index < colorPresses; index += 1) await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('playing');
+}
+
+test('너랑 나랑 규칙 선택은 취소로 메인 메뉴에 돌아가고 안내 화면으로 이어진다', async ({ page }) => {
+  await openTogetherSelection(page);
+
+  // 취소 선택지로 내려가 실행하면 메인 메뉴로 돌아간다.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  // 선택지 밖을 클릭해도 메인 메뉴로 돌아간다.
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_select');
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 100, y: 660 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  // 규칙을 고르면 안내 화면으로 넘어가고, 안내 화면의 취소는 다시 메인 메뉴로 돌아간다.
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});
+
+test('너랑 나랑 안내 화면은 조작키 안내와 색상 수 선택을 보여 준다', async ({ page }) => {
+  await openTogetherSelection(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
+  const guideTexts = await Promise.all([
+    translated(page, '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.'),
+    translated(page, '이동: 방향키 또는 F(좌) H(우) B(아래)'),
+    translated(page, '이동: 키패드 4(좌) 6(우) 2(아래)'),
+    translated(page, '가상 컨트롤러는 사용할 수 없습니다.'),
+  ]);
+  await expect.poll(() => page.evaluate((texts) => texts.every((text) => window.testCanvasTexts.includes(text)), guideTexts)).toBe(true);
+  expect(await page.evaluate(() => window.testCanvasTexts.includes('1P') && window.testCanvasTexts.includes('2P'))).toBe(true);
+
+  // 색상 수는 기본 4색이며 왼쪽 방향키로 3색을 고를 수 있다.
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('countdown');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().colorCount)).toBe(3);
+});
+
+test('너랑 나랑 대전은 양쪽 모두 사람이 조작하고 1P·2P 키가 각자 자기 뿌요만 움직인다', async ({ page }) => {
+  await openTogetherSelection(page);
+  await startTogetherGame(page);
+
+  const state = await page.evaluate(() => window.WebPuyo.getGameState());
+  expect(state.mode).toBe('together');
+  expect(state.player.isCpu).toBe(false);
+  expect(state.opponent.isCpu).toBe(false);
+  expect(state.player.name).toBe('1P');
+  expect(state.opponent.name).toBe('2P');
+
+  const actives = () => page.evaluate(() => ({
+    first: window.WebPuyo.getGameState().player.active?.x ?? null,
+    second: window.WebPuyo.getGameState().opponent.active?.x ?? null,
+  }));
+  const before = await actives();
+
+  // 1P의 F 키는 왼쪽 필드만, 2P의 키패드 6은 오른쪽 필드만 움직인다.
+  await page.keyboard.press('KeyF');
+  await expect.poll(async () => (await actives()).first).toBe(before.first - 1);
+  expect((await actives()).second).toBe(before.second);
+
+  await page.keyboard.press('Numpad6');
+  await expect.poll(async () => (await actives()).second).toBe(before.second + 1);
+  expect((await actives()).first).toBe(before.first - 1);
+
+  // 회전도 1P는 G, 2P는 대괄호 키로 각자 처리한다.
+  const rotations = () => page.evaluate(() => ({
+    first: window.WebPuyo.getGameState().player.active?.rotation ?? null,
+    second: window.WebPuyo.getGameState().opponent.active?.rotation ?? null,
+  }));
+  const beforeRotation = await rotations();
+  await page.keyboard.press('KeyG');
+  await expect.poll(async () => (await rotations()).first).toBe((beforeRotation.first + 3) % 4);
+  expect((await rotations()).second).toBe(beforeRotation.second);
+  await page.keyboard.press('BracketRight');
+  await expect.poll(async () => (await rotations()).second).toBe((beforeRotation.second + 1) % 4);
+});
+
+test('너랑 나랑은 가상 컨트롤러를 그리지 않는다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { virtualController: 'normal' } }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openTogetherSelection(page);
+  await startTogetherGame(page);
+  await page.evaluate(() => { window.testCanvasTexts = []; });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.length)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.testCanvasTexts.includes('ESC'))).toBe(false);
+});
+
+test('너랑 나랑의 피버 룰 (시작)은 해금 전에는 잠기고 해금 뒤에 고를 수 있다', async ({ page }) => {
+  await openTogetherSelection(page);
+  const feverStartLabel = await translated(page, '피버 룰 (시작)');
+  const lockedLabel = await translated(page, '잠김');
+  await expect.poll(() => page.evaluate((texts) => texts.every((text) => window.testCanvasTexts.includes(text)), [feverStartLabel, lockedLabel])).toBe(true);
+
+  // 오른쪽 방향키는 잠긴 선택지를 건너뛰므로 피버 룰에서 더 이동하지 않는다.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  // 피버 룰로 키마리스를 이긴 기록이 있으면 잠금이 풀린다.
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      feverClearListByDifficulty: { easy: ['Kimaris'], normal: [], hard: [], extreme: [] },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await openTogetherSelection(page);
+  await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), feverStartLabel)).toBe(true);
+  expect(await page.evaluate((text) => window.testCanvasTexts.includes(text), lockedLabel)).toBe(false);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 10000 }).toBe('countdown');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().rule)).toBe('fever_start');
+});
+
+test('너랑 나랑 게임 중앙에는 초상화 대신 1P·2P 승패 현황이 표시된다', async ({ page }) => {
+  await openTogetherSelection(page);
+  await startTogetherGame(page);
+  const recordLabel = await translated(page, '전적');
+  const winLabel = (await translated(page, '%1승')).replace('%1', '0');
+  await page.evaluate(() => { window.testCanvasTexts = []; });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.length)).toBeGreaterThan(0);
+  expect(await page.evaluate((texts) => texts.every((text) => window.testCanvasTexts.includes(text)), [recordLabel, winLabel])).toBe(true);
+});
+
+/** 결과 화면 버튼 세 개까지 담기도록 넓은 범위에서 버튼 문구를 읽는다. */
+async function readTogetherResultButtonLabels(page) {
+  await page.evaluate(() => { window.testCanvasTextCalls = []; });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.length)).toBeGreaterThan(0);
+  return page.evaluate(() => window.testCanvasTextCalls
+    .filter(({ y }) => y > 150 && y < 400)
+    .map(({ text }) => text));
+}
+
+/** 1P가 빠른 하강으로 스스로 쌓아 패배할 때까지 기다려 "너랑 나랑" 대전을 끝낸다. */
+async function finishTogetherGameByTopOut(page) {
+  await page.keyboard.down('KeyB');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 180000 }).toBe('game_over');
+  await page.keyboard.up('KeyB');
+}
+
+test('너랑 나랑 결과 화면은 다시 플레이로 승패 현황을 잇고 종료하면 초기화한다', async ({ page }) => {
+  test.setTimeout(300000);
+  await enableReplayFeature(page);
+  await openTogetherSelection(page);
+  await startTogetherGame(page);
+  await finishTogetherGameByTopOut(page);
+
+  // 결과 화면에는 종료·리플레이 복사에 이어 다시 플레이가 붙는다. 세 번째 버튼은 기존 판독 범위보다 아래에 있다.
+  const labels = await readTogetherResultButtonLabels(page);
+  const [exitLabel, copyLabel, againLabel] = await Promise.all([
+    translated(page, '종료'), translated(page, '리플레이 복사'), translated(page, '다시 플레이'),
+  ]);
+  expect(labels).toEqual(expect.arrayContaining([exitLabel, copyLabel, againLabel]));
+
+  // 다시 플레이는 누적 승수를 유지한 채 같은 규칙으로 다시 시작한다.
+  const winLabel = (await translated(page, '%1승')).replace('%1', '1');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('countdown');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().mode)).toBe('together');
+  await page.evaluate(() => { window.testCanvasTexts = []; });
+  await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), winLabel)).toBe(true);
+
+  // 일시정지에서 종료해 메인 메뉴로 돌아간 뒤 다시 고르면 승패 현황이 초기화된다.
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+
+  // 메인 메뉴 포커스는 "너랑 나랑"에 그대로 남아 있으므로 Enter만 눌러 다시 연다.
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_select');
+  await startTogetherGame(page);
+  const resetLabel = (await translated(page, '%1승')).replace('%1', '0');
+  await page.evaluate(() => { window.testCanvasTexts = []; });
+  await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), resetLabel)).toBe(true);
+  expect(await page.evaluate((text) => window.testCanvasTexts.includes(text), winLabel)).toBe(false);
+});
+
+test('너랑 나랑 대전도 새 형식으로 기록하고 재생하면 승패 현황까지 되살린다', async ({ page }) => {
+  test.setTimeout(300000);
+  await enableReplayFeature(page);
+  await openTogetherSelection(page);
+  await startTogetherGame(page);
+  await finishTogetherGameByTopOut(page);
+
+  const replay = await page.evaluate(() => window.WebPuyo.getReplayData());
+  expect(replay.version).toBe(3);
+  expect(replay.meta.together).toBe(true);
+  expect(replay.meta.togetherWins).toEqual([0, 0]);
+  expect(replay.meta.players.map((info) => info.controller)).toEqual([null, null]);
+
+  // 기록한 리플레이를 그대로 재생하면 중앙에 초상화 대신 승패 현황이 나온다.
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await page.evaluate((data) => { window.prompt = () => JSON.stringify(data); }, replay);
+  await clickReplayPlaybackButton(page);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
+  const recordLabel = await translated(page, '전적');
+  await page.evaluate(() => { window.testCanvasTexts = []; });
+  await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), recordLabel)).toBe(true);
+
+  // 재생 결과 화면에는 다시보기만 붙고, 종료하면 메인 메뉴로 돌아간다.
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('game_over');
+  const playbackLabels = await readTogetherResultButtonLabels(page);
+  expect(playbackLabels).toContain(await translated(page, '다시보기'));
+  expect(playbackLabels).not.toContain(await translated(page, '다시 플레이'));
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });

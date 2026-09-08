@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 35;
+    const BUILDNO = 36;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -473,6 +473,63 @@
     Object.assign(stringTable.ja, { '리플레이 사용': 'リプレイを使用', '역으로 모델 학습': 'モデルを逆学習' });
     Object.assign(stringTable.zh, { '리플레이 사용': '使用回放功能', '역으로 모델 학습': '反向训练模型' });
 
+    // "너랑 나랑"(한 컴퓨터 2인 대전) 관련 문구다. 독일어·프랑스어 표도 위에서 영어 표를 복사한 뒤이므로 언어별로 각각 추가한다.
+    Object.assign(stringTable.en, {
+        '너랑 나랑': 'Play Together', '다시 플레이': 'Play Again', '전적': 'Record', '%1승': '%1 W',
+        '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.': 'Two players share one computer for a head-to-head match.',
+        '키보드 하나를 둘이 나눠 사용합니다.': 'Both players share the same keyboard.',
+        '이동: 방향키 또는 F(좌) H(우) B(아래)': 'Move: arrow keys, or F (left), H (right), B (down)',
+        '회전: Z(좌) X(우) 또는 G(좌)': 'Rotate: Z (left), X (right), or G (left)',
+        '이동: 키패드 4(좌) 6(우) 2(아래)': 'Move: numpad 4 (left), 6 (right), 2 (down)',
+        '회전: [ (좌) ] (우) 또는 키패드 5(좌)': 'Rotate: [ (left), ] (right), or numpad 5 (left)',
+        '게임패드를 연결하면 첫 번째가 1P, 두 번째가 2P입니다.': 'With gamepads connected, the first one is 1P and the second is 2P.',
+        '가상 컨트롤러는 사용할 수 없습니다.': 'The virtual controller is not available in this mode.'
+    });
+    Object.assign(stringTable.ja, {
+        '너랑 나랑': '二人プレイ', '다시 플레이': 'もう一度プレイ', '전적': '戦績', '%1승': '%1勝',
+        '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.': '一台のコンピューターで二人が対戦します。',
+        '키보드 하나를 둘이 나눠 사용합니다.': 'キーボード一つを二人で分けて使います。',
+        '이동: 방향키 또는 F(좌) H(우) B(아래)': '移動: 方向キー または F(左) H(右) B(下)',
+        '회전: Z(좌) X(우) 또는 G(좌)': '回転: Z(左) X(右) または G(左)',
+        '이동: 키패드 4(좌) 6(우) 2(아래)': '移動: テンキー 4(左) 6(右) 2(下)',
+        '회전: [ (좌) ] (우) 또는 키패드 5(좌)': '回転: [ (左) ] (右) または テンキー 5(左)',
+        '게임패드를 연결하면 첫 번째가 1P, 두 번째가 2P입니다.': 'ゲームパッド接続時は一台目が1P、二台目が2Pです。',
+        '가상 컨트롤러는 사용할 수 없습니다.': 'このモードでは仮想コントローラーを使用できません。'
+    });
+    Object.assign(stringTable.zh, {
+        '너랑 나랑': '双人对战', '다시 플레이': '再玩一次', '전적': '战绩', '%1승': '%1胜',
+        '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.': '两名玩家在同一台电脑上对战。',
+        '키보드 하나를 둘이 나눠 사용합니다.': '两名玩家共用一个键盘。',
+        '이동: 방향키 또는 F(좌) H(우) B(아래)': '移动：方向键，或 F（左）H（右）B（下）',
+        '회전: Z(좌) X(우) 또는 G(좌)': '旋转：Z（左）X（右），或 G（左）',
+        '이동: 키패드 4(좌) 6(우) 2(아래)': '移动：小键盘 4（左）6（右）2（下）',
+        '회전: [ (좌) ] (우) 또는 키패드 5(좌)': '旋转：[（左）]（右），或小键盘 5（左）',
+        '게임패드를 연결하면 첫 번째가 1P, 두 번째가 2P입니다.': '连接手柄时，第一个为 1P，第二个为 2P。',
+        '가상 컨트롤러는 사용할 수 없습니다.': '此模式不支持虚拟控制器。'
+    });
+    Object.assign(stringTable.de, {
+        '너랑 나랑': 'Zusammen spielen', '다시 플레이': 'Nochmal spielen', '전적': 'Bilanz', '%1승': '%1 S',
+        '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.': 'Zwei Personen spielen an einem Computer gegeneinander.',
+        '키보드 하나를 둘이 나눠 사용합니다.': 'Beide teilen sich dieselbe Tastatur.',
+        '이동: 방향키 또는 F(좌) H(우) B(아래)': 'Bewegen: Pfeiltasten oder F (links), H (rechts), B (runter)',
+        '회전: Z(좌) X(우) 또는 G(좌)': 'Drehen: Z (links), X (rechts) oder G (links)',
+        '이동: 키패드 4(좌) 6(우) 2(아래)': 'Bewegen: Ziffernblock 4 (links), 6 (rechts), 2 (runter)',
+        '회전: [ (좌) ] (우) 또는 키패드 5(좌)': 'Drehen: [ (links), ] (rechts) oder Ziffernblock 5 (links)',
+        '게임패드를 연결하면 첫 번째가 1P, 두 번째가 2P입니다.': 'Mit Gamepads ist das erste 1P und das zweite 2P.',
+        '가상 컨트롤러는 사용할 수 없습니다.': 'Der virtuelle Controller ist in diesem Modus nicht verfügbar.'
+    });
+    Object.assign(stringTable.fr, {
+        '너랑 나랑': 'Jouer à deux', '다시 플레이': 'Rejouer', '전적': 'Bilan', '%1승': '%1 V',
+        '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.': 'Deux joueurs s’affrontent sur un même ordinateur.',
+        '키보드 하나를 둘이 나눠 사용합니다.': 'Les deux joueurs partagent le même clavier.',
+        '이동: 방향키 또는 F(좌) H(우) B(아래)': 'Déplacer : flèches, ou F (gauche), H (droite), B (bas)',
+        '회전: Z(좌) X(우) 또는 G(좌)': 'Tourner : Z (gauche), X (droite) ou G (gauche)',
+        '이동: 키패드 4(좌) 6(우) 2(아래)': 'Déplacer : pavé num. 4 (gauche), 6 (droite), 2 (bas)',
+        '회전: [ (좌) ] (우) 또는 키패드 5(좌)': 'Tourner : [ (gauche), ] (droite) ou pavé num. 5 (gauche)',
+        '게임패드를 연결하면 첫 번째가 1P, 두 번째가 2P입니다.': 'Avec des manettes, la première est 1P et la seconde 2P.',
+        '가상 컨트롤러는 사용할 수 없습니다.': 'La manette virtuelle n’est pas disponible dans ce mode.'
+    });
+
     /** 현재 최상위 게임 영역이다. @type {HTMLDivElement|null} */
     let puyowRoot = null;
     /** 현재 연결된 2D 게임 캔버스 요소다. @type {HTMLCanvasElement|null} */
@@ -616,12 +673,29 @@
     let opponentMenuRule = 'standard';
     /** 메인 메뉴에서 포커스된 항목이다. @type {number} */
     let titleMenuFocus = 0;
+    /** 메인 메뉴 목록 항목의 라벨과 색이다. 포커스 순번은 이 배열의 순서와 같다. @type {{label:string,color:string}[]} */
+    const TITLE_MENU_OPTIONS = [
+        { label: '게임 시작', color: '#ef5350' }, { label: '너랑 나랑', color: '#7e57c2' }, { label: '시뮬레이터', color: '#34556b' },
+        { label: '플레이 방법', color: '#405c70' }, { label: '구경', color: '#236a8b' }, { label: '갤러리', color: '#405c70' },
+        { label: '설정', color: '#405c70' }
+    ];
+    /** 메인 메뉴 목록 항목 하나의 크기와 배치다. 항목 수가 늘면 이 값만 조정한다. @type {{x:number,width:number,height:number,startY:number,gap:number}} */
+    const TITLE_MENU_ITEM_LAYOUT = { x: WIDTH / 2 - 109, width: 218, height: 42, startY: 250, gap: 8 };
+    /** 메인 메뉴 구경 항목의 순번이다. 진행도에 따라 잠긴다. @type {number} */
+    const TITLE_WATCH_MENU_INDEX = 4;
+    /** 메인 메뉴 GitHub 버튼의 포커스 순번이다. @type {number} */
+    const TITLE_GITHUB_FOCUS_INDEX = 7;
+    /** 메인 메뉴 음소거 버튼의 포커스 순번이다. @type {number} */
+    const TITLE_MUTE_FOCUS_INDEX = 8;
     /** 메인 메뉴 리플레이 재생 버튼의 포커스 순번이다. @type {number} */
-    const TITLE_REPLAY_FOCUS_INDEX = 8;
+    const TITLE_REPLAY_FOCUS_INDEX = 9;
     /** 메인 메뉴 좌측 하단 리플레이 재생 버튼의 위치와 크기다. GitHub 버튼 바로 위에 둔다. @type {{x:number,y:number,width:number,height:number}} */
     const TITLE_REPLAY_BUTTON = { x: 32, y: 634, width: 85, height: 23 };
     /** 메인 메뉴 방향키 포커스 이동 순서다. 목록 항목 뒤에 리플레이 재생, GitHub, 음소거 버튼이 온다. @type {number[]} */
-    const TITLE_MENU_FOCUS_ORDER = [0, 1, 2, 3, 4, 5, TITLE_REPLAY_FOCUS_INDEX, 6, 7];
+    const TITLE_MENU_FOCUS_ORDER = [
+        ...TITLE_MENU_OPTIONS.map((option, index) => index),
+        TITLE_REPLAY_FOCUS_INDEX, TITLE_GITHUB_FOCUS_INDEX, TITLE_MUTE_FOCUS_INDEX
+    ];
     /** 메인 메뉴의 게임 규칙 선택 오버레이가 열려 있는지 여부다. @type {boolean} */
     let ruleSelectionOpen = false;
     /** 메인 메뉴의 구경 설정 오버레이가 열려 있는지 여부다. @type {boolean} */
@@ -634,6 +708,24 @@
     let watchSelectionFocus = 0;
     /** 구경 설정 하단에서 포커스된 동작이다. 0: 시작, 1: 취소. @type {number} */
     let watchSelectedAction = 0;
+    /** 메인 메뉴의 "너랑 나랑" 규칙 선택 오버레이가 열려 있는지 여부다. @type {boolean} */
+    let togetherSelectionOpen = false;
+    /** "너랑 나랑" 규칙 선택 오버레이에서 포커스된 항목이다. @type {number} */
+    let togetherSelectionFocus = 0;
+    /** "너랑 나랑"에서 선택한 대전 규칙이다. @type {'standard'|'fever'|'feverStart'} */
+    let togetherRule = 'standard';
+    /** "너랑 나랑" 안내 화면에서 선택한 색상 수의 DIFFICULTIES 배열 인덱스다. @type {number} */
+    let togetherDifficulty = 1;
+    /** "너랑 나랑" 안내 화면에서 포커스된 행이다. 0: 색상 수, 1: 동작. @type {number} */
+    let togetherGuideFocus = 0;
+    /** "너랑 나랑" 안내 화면 하단에서 포커스된 동작이다. 0: 시작, 1: 취소. @type {number} */
+    let togetherGuideAction = 0;
+    /**
+     * "너랑 나랑"의 1P·2P 누적 승수다.
+     * 결과 화면의 "다시 플레이"로 이어서 대전할 때는 유지하고, 메인 메뉴에서 다시 고를 때 초기화한다.
+     * @type {number[]}
+     */
+    let togetherWinCounts = [0, 0];
     /** 메인 메뉴에서 떠다닐 갤러리 항목의 위치·속도·회전 상태다. @type {{draw:()=>void,x:number,y:number,vx:number,vy:number,radius:number,rotation:number,rotationVelocity:number}[]} */
     let mainMenuGalleryFloaters = [];
     /** 직전 렌더링 메뉴 화면이다. 메인 메뉴 재진입 시 떠다니는 항목을 다시 추첨하는 데 사용한다. @type {string} */
@@ -646,20 +738,85 @@
     let resultScreenFocus = 0;
     /** 직전 애니메이션 프레임의 시각이다. @type {number} */
     let lastTime = 0;
-    /** 아래 방향키가 눌린 상태인지 여부다. @type {boolean} */
-    let isDownKeyPressed = false;
-    /** 현재 홀드 중인 좌우 방향키다. @type {'arrowleft'|'arrowright'|null} */
-    let horizontalKeyPressed = null;
-    /** 좌우 방향키를 누른 뒤 경과한 시간(ms)이다. @type {number} */
-    let horizontalHoldElapsed = 0;
-    /** 좌우 방향키 홀드 반복 이동의 누적 시간(ms)이다. @type {number} */
-    let horizontalRepeatElapsed = 0;
+    /**
+     * 사람이 조작하는 플레이어별 키보드·게임패드 방향 입력 상태다.
+     * 0번은 1P, 1번은 "너랑 나랑"의 2P가 사용한다.
+     * @returns {{down:boolean, horizontal:('arrowleft'|'arrowright'|null), holdElapsed:number, repeatElapsed:number}} 초기 방향 입력 상태
+     */
+    function createPlayerDirectionInput() {
+        return { down: false, horizontal: null, holdElapsed: 0, repeatElapsed: 0 };
+    }
+    /** 플레이어별 방향 입력 상태다. @type {{down:boolean, horizontal:('arrowleft'|'arrowright'|null), holdElapsed:number, repeatElapsed:number}[]} */
+    const playerDirectionInputs = [createPlayerDirectionInput(), createPlayerDirectionInput()];
     /** 키보드 방향키 입력 상태를 해제한다. 창 포커스를 잃어 keyup 이벤트를 받지 못한 경우에도 입력이 남지 않게 한다. @returns {void} */
     function resetKeyboardDirectionInput() {
-        isDownKeyPressed = false;
-        horizontalKeyPressed = null;
-        horizontalHoldElapsed = 0;
-        horizontalRepeatElapsed = 0;
+        playerDirectionInputs.forEach((input) => {
+            input.down = false;
+            input.horizontal = null;
+            input.holdElapsed = 0;
+            input.repeatElapsed = 0;
+        });
+    }
+    /**
+     * 사람이 키보드·게임패드로 조작하는 플레이어의 방향 입력 순번을 반환한다.
+     * 1P는 항상 0번이고, "너랑 나랑"에서만 오른쪽 플레이어가 1번을 함께 쓴다.
+     * @param {PlayerState|null|undefined} player 확인할 플레이어
+     * @returns {number} 방향 입력 순번. 사람이 조작하지 않으면 -1
+     */
+    function getPlayerInputIndex(player) {
+        if (!game || !player || player.controller) return -1;
+        const index = game.players ? game.players.indexOf(player) : -1;
+        if (index === 0) return 0;
+        return game.together && index === 1 ? 1 : -1;
+    }
+    /**
+     * 사람이 조작하는 플레이어의 방향 입력 상태를 반환한다.
+     * @param {PlayerState|null|undefined} player 확인할 플레이어
+     * @returns {{down:boolean, horizontal:('arrowleft'|'arrowright'|null), holdElapsed:number, repeatElapsed:number}|null} 방향 입력 상태
+     */
+    function getPlayerDirectionInput(player) {
+        const index = getPlayerInputIndex(player);
+        return index < 0 ? null : playerDirectionInputs[index];
+    }
+    /**
+     * 지정한 플레이어의 방향 조작 홀드 상태를 시작한다.
+     * @param {number} playerIndex 방향 입력 순번
+     * @param {'left'|'right'|'down'} action 방향 조작 종류
+     * @returns {void}
+     */
+    function pressPlayerDirection(playerIndex, action) {
+        const input = playerDirectionInputs[playerIndex];
+        if (!input) return;
+        if (action === 'down') {
+            input.down = true;
+            return;
+        }
+        const key = action === 'left' ? 'arrowleft' : 'arrowright';
+        if (input.horizontal !== key) {
+            input.horizontal = key;
+            input.holdElapsed = 0;
+            input.repeatElapsed = 0;
+        }
+    }
+    /**
+     * 지정한 플레이어의 방향 조작 홀드 상태를 해제한다.
+     * @param {number} playerIndex 방향 입력 순번
+     * @param {'left'|'right'|'down'} action 방향 조작 종류
+     * @returns {void}
+     */
+    function releasePlayerDirection(playerIndex, action) {
+        const input = playerDirectionInputs[playerIndex];
+        if (!input) return;
+        if (action === 'down') {
+            input.down = false;
+            return;
+        }
+        const key = action === 'left' ? 'arrowleft' : 'arrowright';
+        if (input.horizontal === key) {
+            input.horizontal = null;
+            input.holdElapsed = 0;
+            input.repeatElapsed = 0;
+        }
     }
     /** 가상 컨트롤러에서 현재 홀드 중인 방향키 상태다. 조이스틱은 좌우 이동과 빠른 하강만 만들므로 위 방향은 없다. @type {{arrowleft:boolean,arrowright:boolean,arrowdown:boolean}} */
     let virtualDirectionInput = { arrowleft: false, arrowright: false, arrowdown: false };
@@ -673,10 +830,13 @@
     let virtualHorizontalRepeatElapsed = 0;
     /** Gamepad API의 스틱 입력을 방향 입력으로 판단하는 최소 절댓값이다. @type {number} */
     const GAMEPAD_STICK_DEAD_ZONE = 0.5;
-    /** 게임패드에서 현재 누르고 있는 방향키다. 키보드 입력과 별도로 해제하기 위해 보관한다. @type {Set<string>} */
-    let gamepadDirectionKeys = new Set();
-    /** 게임패드의 한 번 누름 동작 버튼 상태다. @type {{z:boolean,x:boolean,enter:boolean,escape:boolean}} */
-    let gamepadActionInput = { z: false, x: false, enter: false, escape: false };
+    /** 게임패드에서 현재 누르고 있는 방향키다. 키보드 입력과 별도로 해제하기 위해 플레이어별로 보관한다. @type {Set<string>[]} */
+    let gamepadDirectionKeys = [new Set(), new Set()];
+    /** 게임패드의 한 번 누름 동작 버튼 상태다. "너랑 나랑"에서는 두 번째 게임패드가 1번 자리를 사용한다. @type {{z:boolean,x:boolean,enter:boolean,escape:boolean}[]} */
+    let gamepadActionInput = [
+        { z: false, x: false, enter: false, escape: false },
+        { z: false, x: false, enter: false, escape: false }
+    ];
     /** 현재 화면 문구에 적용할 언어 코드다. @type {string} */
     let languageCode = 'ko';
     /** [CTX] 예약어를 치환할 웹 애플리케이션의 URL 컨텍스트 경로다. @type {string} */
@@ -748,6 +908,19 @@
     ];
     /** 게임 규칙 선택 오버레이에서 취소 버튼에 사용할 가상 항목 인덱스다. */
     const RULE_SELECTION_CANCEL_INDEX = GAME_RULE_OPTIONS.length;
+    /**
+     * "너랑 나랑"의 규칙 선택지다. 기존 대전 규칙과 같은 세 가지를 사용하며 잠금 조건도 같다.
+     * @type {{key:'standard'|'fever'|'feverStart',label:string,backgroundColor:string,isDisabled?:()=>boolean}[]}
+     */
+    const TOGETHER_RULE_OPTIONS = [
+        { key: 'standard', label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard },
+        { key: 'fever', label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever },
+        { key: 'feverStart', label: '피버 룰 (시작)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.feverStart, isDisabled: () => !isFeverStartRuleUnlocked() }
+    ];
+    /** "너랑 나랑" 규칙 선택 오버레이에서 취소 버튼에 사용할 가상 항목 인덱스다. */
+    const TOGETHER_SELECTION_CANCEL_INDEX = TOGETHER_RULE_OPTIONS.length;
+    /** "너랑 나랑" 양쪽 플레이어의 표시 이름이다. 언어와 무관하게 같은 표기를 사용한다. @type {string[]} */
+    const TOGETHER_PLAYER_NAMES = ['1P', '2P'];
     /** 브라우저 전역 및 CommonJS로 공개할 라이브러리 API다. @type {object|null} */
     let WebPuyo = null;
 
@@ -1954,6 +2127,8 @@
         if (game) return null;
         if (menuScreen === 'title' && ruleSelectionOpen) return `rule:${ruleSelectionFocus}`;
         if (menuScreen === 'title' && watchSelectionOpen) return `watch:${watchSelectionFocus}:${watchDifficulty}:${watchRule}:${watchSelectedAction}`;
+        if (menuScreen === 'title' && togetherSelectionOpen) return `together:${togetherSelectionFocus}`;
+        if (menuScreen === 'togetherGuide') return `togetherGuide:${togetherGuideFocus}:${togetherDifficulty}:${togetherGuideAction}`;
         if (menuScreen === 'title') return `title:${titleMenuFocus}`;
         if (menuScreen === 'opponent') return `opponent:${opponentMenuFocus}:${selectedDifficulty}:${selectedAiDifficulty}:${selectedOpponent}:${selectedOpponentAction}`;
         if (menuScreen === 'practiceDifficulty') return `difficulty:${colorSelectionFocus}:${selectedDifficulty}`;
@@ -2102,6 +2277,8 @@
                 || (game.feverRule && game.players.some((player) => player.fever?.active));
             if (feverMusicActive) startBackgroundMusic(commonSoundPool?.feverBackgroundMusic);
             else if (game.tutorial) startGameBackgroundMusic(null, true);
+            // "너랑 나랑"은 적이 없으므로 연습과 마찬가지로 공통 배경음악을 사용한다.
+            else if (game.together) startGameBackgroundMusic(null, true);
             else startGameBackgroundMusic(game.practice ? null : game.themeController, game.practice);
             if (game.paused) pauseBackgroundMusic();
             else resumeBackgroundMusic();
@@ -2636,7 +2813,8 @@
 
     /** 현재 사용자 게임이 API 학습 전송 대상인지 확인한다. @returns {boolean} 전송 대상이면 true */
     function shouldSendLearningEvent() {
-        return Boolean(learningApiConfig && game && !game.tutorial && !game.watch && game.players?.[0]?.controller === null);
+        // "너랑 나랑"은 AI 모델 관련 기능을 쓰지 않으므로 역방향 학습 전송에서도 제외한다.
+        return Boolean(learningApiConfig && game && !game.tutorial && !game.watch && !game.together && game.players?.[0]?.controller === null);
     }
 
     /**
@@ -2965,6 +3143,100 @@
         watchDifficulty = game.watch.difficulty;
         watchRule = game.watch.rule || (game.watch.feverRule ? 'fever' : 'standard');
         startWatchGame(false);
+    }
+
+    /**
+     * 현재 화면에 표시할 "너랑 나랑" 누적 승수를 반환한다.
+     * 리플레이 재생은 기록 당시의 값을, 실제 대전은 이번 세션의 누적 값을 사용한다.
+     * @returns {number[]} 1P·2P 누적 승수
+     */
+    function getTogetherWinCounts() {
+        return game?.together?.wins ?? togetherWinCounts;
+    }
+
+    /** "너랑 나랑" 대전이 끝났을 때 승자의 누적 승수를 올린다. @param {PlayerState} winner 승리한 플레이어 @returns {void} */
+    function recordTogetherResult(winner) {
+        if (!game?.together || game.replayPlayback) return;
+        const index = game.players.indexOf(winner);
+        if (index < 0) return;
+        togetherWinCounts[index] += 1;
+    }
+
+    /**
+     * 현재 선택한 규칙·색상 수로 "너랑 나랑" 대전을 시작한다.
+     * 누적 승수는 이 함수에서 건드리지 않으므로 "다시 플레이"로 이어서 시작해도 그대로 유지된다.
+     * @param {boolean} [playSelectionSound=true] 메뉴 선택음을 재생할지 여부
+     * @returns {void}
+     */
+    function startTogetherGame(playSelectionSound = true) {
+        if (playSelectionSound) playMenuSelectSound();
+        resetKeyboardDirectionInput();
+        resetVirtualControllerInput();
+        resetGamepadInput();
+        closeTogetherSelection();
+        menuScreen = 'title';
+        learningEpisodeStarted = false;
+        learningPendingTransition = null;
+        resultScreenFocus = 0;
+        const feverStart = togetherRule === 'feverStart';
+        const usesFeverRule = togetherRule !== 'standard';
+        const colors = DIFFICULTIES[togetherDifficulty].colors;
+        const pairQueue = Array.from({ length: INITIAL_PAIR_QUEUE_LENGTH }, () => createRandomPair(colors));
+        if (DEBUG_CLEAR_RULE_MODE) {
+            const debugColor = randomColor(colors);
+            pairQueue[0] = [debugColor, debugColor];
+            pairQueue[1] = [debugColor, debugColor];
+        }
+        // 양쪽 모두 사람이 조작하므로 컨트롤러는 두지 않고, 배경·배경음에 쓸 기본 테마만 준비한다.
+        const themeController = new PracticeEnemy();
+        const players = [
+            new PlayerState(TOGETHER_PLAYER_NAMES[0], FIELD_LEFT, null, colors),
+            new PlayerState(TOGETHER_PLAYER_NAMES[1], FIELD_RIGHT, null, colors)
+        ];
+        if (usesFeverRule) players.forEach((player) => {
+            player.fever = createFeverRuleState();
+            if (feverStart) player.fever.nextTime = FEVER_START_INITIAL_TIME / 1000;
+        });
+        game = {
+            running: true,
+            paused: false,
+            winner: null,
+            goldAwarded: false,
+            ending: null,
+            countdown: 3000,
+            countdownStartsGame: true,
+            elapsed: 0,
+            marginRate: MARGIN_RATE_SCHEDULE[0].rate,
+            timeProgressMultiplier: 1,
+            practice: false,
+            continuousFever: false,
+            feverRule: usesFeverRule,
+            feverStart,
+            fever: null,
+            /** 이 대전이 "너랑 나랑"임을 나타낸다. wins는 리플레이 재생에서만 채운다. */
+            together: { rule: togetherRule, wins: null },
+            difficulty: togetherDifficulty,
+            aiDifficulty: selectedAiDifficulty,
+            opponentIndex: null,
+            themeController,
+            pairQueueColors: colors,
+            pairQueue,
+            energyTransfers: [],
+            players
+        };
+        players.forEach(updateNextPairs);
+        // "너랑 나랑"도 기존 대전과 같은 조건으로 리플레이를 기록한다.
+        beginReplayRecording();
+        syncBackgroundMusic();
+    }
+
+    /** 결과 화면에서 같은 규칙·색상 수로 "너랑 나랑" 대전을 다시 시작한다. @returns {void} */
+    function restartTogetherGame() {
+        const rule = game?.together?.rule;
+        if (!rule) return;
+        togetherRule = rule;
+        stopBackgroundMusic();
+        startTogetherGame();
     }
 
     /** 연속 피버 모드를 선택된 3색·4색·5색, 목표 5연쇄, 60초 상태로 시작한다. @returns {void} */
@@ -3530,15 +3802,16 @@
         player.fallTimer = 0;
         // 플레이 방법 시연은 새 뿌요를 지급할 때마다 빠른 하강 상태를 초기화한다.
         if (game?.tutorial && player === game.players[0]) player.tutorialFastDown = false;
-        if (player === game?.players[0]) {
-            horizontalHoldElapsed = 0;
-            horizontalRepeatElapsed = 0;
+        const directionInput = getPlayerDirectionInput(player);
+        if (directionInput) {
+            directionInput.holdElapsed = 0;
+            directionInput.repeatElapsed = 0;
         }
         player.active = { x: 2, y: ACTIVE_PUYO_SPAWN_Y, rotation: 0, colors: takeNextPair(player) };
         // 뿌요 지급 전부터 누르고 있던 좌우 키도 새 조작 턴의 첫 프레임에 즉시 반영한다.
         // 이후의 반복 이동은 아래 게임 루프가 일반 홀드 입력과 같은 간격으로 처리한다.
-        if (!player.controller && player === game?.players[0] && horizontalKeyPressed) {
-            moveActive(player, horizontalKeyPressed === 'arrowleft' ? -1 : 1, 0);
+        if (directionInput?.horizontal) {
+            moveActive(player, directionInput.horizontal === 'arrowleft' ? -1 : 1, 0);
         }
         // CPU 플레이어면 이번 뿌요 쌍의 목표 위치와 회전을 미리 결정한다.
         if (player.controller) {
@@ -5235,7 +5508,8 @@
      * @returns {void}
      */
     function recordEnemyClear(winner) {
-        if (game.practice || game.watch || winner !== game.players[0]) return;
+        // "너랑 나랑"은 적이 없으므로 적 진행도를 저장하지 않는다.
+        if (game.practice || game.watch || game.together || winner !== game.players[0]) return;
         const enemyController = game.players[1].controller;
         const enemyClassName = enemyController.constructor.name;
         unlockGalleryEnemy(enemyController.getClassType());
@@ -5283,7 +5557,8 @@
     /** 종료된 현재 게임에서 지급할 GOLD를 계산한다. @returns {number} 지급 GOLD */
     function calculateCurrentGameGoldReward() {
         const player = game?.players?.[0];
-        if (!player || game.watch || game.puzzle || (!game.practice && game.winner !== player)) return 0;
+        // "너랑 나랑"은 진행도와 마찬가지로 GOLD 지급 대상이 아니다.
+        if (!player || game.watch || game.puzzle || game.together || (!game.practice && game.winner !== player)) return 0;
         const soloMode = game.practice === true;
         const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key || 'normal';
         const difficultyBonus = soloMode ? 1 : (AI_DIFFICULTY_GOLD_BONUSES[difficultyKey] || 1);
@@ -5475,6 +5750,7 @@
         // 패배 연출과 승자의 연쇄·싹쓸이·에너지 이동이 모두 끝난 뒤에만 게임을 종료한다.
         if (ending.elapsed > ending.duration && !isWinnerSettlementPending(ending.winner)) {
             recordEnemyClear(ending.winner);
+            recordTogetherResult(ending.winner);
             game.winner = ending.winner;
             awardCurrentGameGold();
             game.running = false;
@@ -5546,13 +5822,14 @@
         // 조작 단계에서는 CPU 이동과 낙하 타이머를 갱신한다.
         if (player.phase === 'control') {
             const tutorialAutoplay = game?.tutorial?.stage === 1 && player === game.players[0];
-            if (!tutorialAutoplay && !player.controller && player === game?.players[0] && horizontalKeyPressed) {
-                horizontalHoldElapsed += delta;
-                if (horizontalHoldElapsed >= HORIZONTAL_HOLD_DELAY) {
-                    horizontalRepeatElapsed += delta;
-                    while (horizontalRepeatElapsed >= HORIZONTAL_REPEAT_INTERVAL) {
-                        moveActive(player, horizontalKeyPressed === 'arrowleft' ? -1 : 1, 0);
-                        horizontalRepeatElapsed -= HORIZONTAL_REPEAT_INTERVAL;
+            const directionInput = tutorialAutoplay ? null : getPlayerDirectionInput(player);
+            if (directionInput?.horizontal) {
+                directionInput.holdElapsed += delta;
+                if (directionInput.holdElapsed >= HORIZONTAL_HOLD_DELAY) {
+                    directionInput.repeatElapsed += delta;
+                    while (directionInput.repeatElapsed >= HORIZONTAL_REPEAT_INTERVAL) {
+                        moveActive(player, directionInput.horizontal === 'arrowleft' ? -1 : 1, 0);
+                        directionInput.repeatElapsed -= HORIZONTAL_REPEAT_INTERVAL;
                     }
                 }
             }
@@ -5584,7 +5861,9 @@
                 player.aiFastDown = player.controller.useFastDown(player) === true;
             }
             // AI 정책 또는 사용자·가상 컨트롤러·튜토리얼 입력으로 빠른 하강을 적용할지 여부다.
-            const fastDown = player.controller ? player.aiFastDown : tutorialAutoplay ? player.tutorialFastDown === true : isDownKeyPressed || virtualDirectionInput.arrowdown || player.tutorialFastDown === true;
+            // 가상 컨트롤러는 1P 전용이므로 "너랑 나랑"의 2P 빠른 하강에는 반영하지 않는다.
+            const virtualFastDown = player === game?.players[0] && virtualDirectionInput.arrowdown === true;
+            const fastDown = player.controller ? player.aiFastDown : tutorialAutoplay ? player.tutorialFastDown === true : directionInput?.down === true || virtualFastDown || player.tutorialFastDown === true;
             // 피버의 1.5배는 이미 고정된 보드가 중력으로 정산될 때만 적용한다.
             const fallInterval = getActivePuyoFallInterval(player, fastDown);
             const currentFloor = Math.floor(player.active.y);
@@ -6569,6 +6848,31 @@
     }
 
     /**
+     * "너랑 나랑"의 1P·2P 누적 승수 패널을 그린다.
+     * 게임 화면에서는 초상화 자리에, 결과 화면에서는 버튼 아래에 같은 모양으로 표시한다.
+     * @param {number} y 패널의 위쪽 좌표
+     * @returns {void}
+     */
+    function drawTogetherRecordPanel(y) {
+        const x = 482;
+        const width = 316;
+        const height = 150;
+        const wins = getTogetherWinCounts();
+        context.fillStyle = '#0b202c'; context.fillRect(x, y, width, height);
+        context.strokeStyle = '#7e57c2'; context.lineWidth = 2; context.strokeRect(x, y, width, height);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `16px ${MESSAGE_FONT}`;
+        context.fillText(translate('전적'), x + width / 2, y + 30);
+        TOGETHER_PLAYER_NAMES.forEach((name, index) => {
+            const rowY = y + 72 + index * 44;
+            context.textAlign = 'left'; context.fillStyle = index === 0 ? '#ef8aa0' : '#6bbce8'; context.font = `20px ${BUTTON_FONT}`;
+            context.fillText(name, x + 40, rowY);
+            context.textAlign = 'right'; context.fillStyle = '#f5fbfc'; context.font = `22px ${MESSAGE_FONT}`;
+            context.fillText(translate('%1승', wins[index] ?? 0), x + width - 40, rowY);
+        });
+        context.textAlign = 'center';
+    }
+
+    /**
    * 다음 뿌요, 단탈리온 이미지와 중앙 점수 패널을 그린다.
      * @returns {void}
      */
@@ -6615,6 +6919,9 @@
             // 구경은 두 CPU가 모두 적이므로, 중앙 좌우에 각자의 현재 표정을 함께 표시한다.
             left.controller.drawPortrait(context, 545, 380, 0.72, getEnemyPortraitExpression(left, right));
             right.controller.drawPortrait(context, 735, 380, 0.72, getEnemyPortraitExpression(right, left));
+        } else if (game.together) {
+            // "너랑 나랑"은 적이 없으므로 초상화 자리에 두 사람의 승패 현황을 표시한다.
+            drawTogetherRecordPanel(305);
         } else {
             right.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, getEnemyPortraitExpression(right, left));
         }
@@ -6634,7 +6941,8 @@
 
     /** 가상 컨트롤러를 표시할 수 있는 게임 진행 상태인지 확인한다. @returns {boolean} */
     function shouldShowVirtualController() {
-        return Boolean(game && !game.tutorial && !game.replayPlayback && game.running && !game.paused && !game.ending && game.countdown <= 0 && store.settings.virtualController !== 'none');
+        // "너랑 나랑"은 두 사람이 키보드·게임패드를 나눠 쓰므로 가상 컨트롤러를 지원하지 않는다.
+        return Boolean(game && !game.tutorial && !game.together && !game.replayPlayback && game.running && !game.paused && !game.ending && game.countdown <= 0 && store.settings.virtualController !== 'none');
     }
 
     /** 선택된 가상 컨트롤러의 렌더링·입력 배율을 반환한다. @returns {number} */
@@ -6697,9 +7005,15 @@
         virtualHorizontalRepeatElapsed = 0;
     }
 
-    /** 게임패드에서 내부 키 입력 처리기로 전달할 최소 키보드 이벤트를 만든다. @param {string} key 키 이름 @returns {{key:string,repeat:boolean,preventDefault:()=>void}} */
-    function createGamepadKeyboardEvent(key) {
-        return { key, repeat: false, preventDefault: () => {} };
+    /**
+     * 게임패드에서 내부 키 입력 처리기로 전달할 최소 키보드 이벤트를 만든다.
+     * "너랑 나랑"은 키가 아니라 이 플레이어 순번으로 조작 대상을 정한다.
+     * @param {string} key 키 이름
+     * @param {number} [playerIndex=0] 이 입력을 만든 게임패드 자리
+     * @returns {{key:string,repeat:boolean,gamepadPlayerIndex:number,preventDefault:()=>void}} 내부 전달용 이벤트
+     */
+    function createGamepadKeyboardEvent(key, playerIndex = 0) {
+        return { key, repeat: false, gamepadPlayerIndex: playerIndex, preventDefault: () => {} };
     }
 
     /** 게임패드 버튼이 눌린 상태인지 확인한다. @param {Gamepad} gamepad 게임패드 @param {number} index 버튼 번호 @returns {boolean} */
@@ -6726,51 +7040,81 @@
         return new Set([Math.abs(axisX) >= Math.abs(axisY) ? horizontal : vertical]);
     }
 
+    /** 한 게임패드 자리의 눌린 방향키와 동작 버튼 상태를 모두 해제한다. @param {number} playerIndex 게임패드 자리 @returns {void} */
+    function resetGamepadSlotInput(playerIndex) {
+        gamepadDirectionKeys[playerIndex].forEach((key) => handleKeyup(createGamepadKeyboardEvent(key, playerIndex)));
+        gamepadDirectionKeys[playerIndex].clear();
+        gamepadActionInput[playerIndex] = { z: false, x: false, enter: false, escape: false };
+    }
+
     /** 게임패드가 해제되거나 연결이 끊겼을 때 게임패드가 누르던 방향키만 해제한다. @returns {void} */
     function resetGamepadInput() {
         try {
-            gamepadDirectionKeys.forEach((key) => handleKeyup(createGamepadKeyboardEvent(key)));
-            gamepadDirectionKeys.clear();
-            gamepadActionInput = { z: false, x: false, enter: false, escape: false };
+            gamepadDirectionKeys.forEach((keys, playerIndex) => resetGamepadSlotInput(playerIndex));
         } catch (error) {
             console.error('게임패드 입력을 해제하지 못했습니다.', error);
         }
     }
 
-    /** 현재 연결된 첫 게임패드의 입력을 키보드 입력으로 반영한다. @param {boolean} suppressActions 초기 인식 시 이미 누르고 있던 버튼은 실행하지 않을지 여부 @returns {void} */
+    /**
+     * 한 게임패드의 현재 상태를 해당 자리의 키 입력으로 반영한다.
+     * @param {Gamepad|null} gamepad 대상 게임패드
+     * @param {number} playerIndex 게임패드 자리. 0은 1P, 1은 "너랑 나랑"의 2P다.
+     * @param {boolean} suppressActions 이미 누르고 있던 동작 버튼을 실행하지 않을지 여부
+     * @returns {void}
+     */
+    function updateGamepadSlotInput(gamepad, playerIndex, suppressActions) {
+        if (!gamepad) {
+            resetGamepadSlotInput(playerIndex);
+            return;
+        }
+        const previousDirections = gamepadDirectionKeys[playerIndex];
+        const nextDirections = getGamepadDirectionKeys(gamepad);
+        previousDirections.forEach((key) => {
+            if (!nextDirections.has(key)) handleKeyup(createGamepadKeyboardEvent(key, playerIndex));
+        });
+        nextDirections.forEach((key) => {
+            if (!previousDirections.has(key)) handleKeydown(createGamepadKeyboardEvent(key, playerIndex));
+        });
+        gamepadDirectionKeys[playerIndex] = nextDirections;
+
+        const nextActions = {
+            z: isGamepadButtonPressed(gamepad, 0) || isGamepadButtonPressed(gamepad, 4),
+            x: isGamepadButtonPressed(gamepad, 1) || isGamepadButtonPressed(gamepad, 5),
+            enter: isGamepadButtonPressed(gamepad, 2),
+            escape: isGamepadButtonPressed(gamepad, 3)
+        };
+        if (!suppressActions) {
+            Object.entries(nextActions).forEach(([key, pressed]) => {
+                if (pressed && !gamepadActionInput[playerIndex][key]) handleKeydown(createGamepadKeyboardEvent(key, playerIndex));
+            });
+        }
+        gamepadActionInput[playerIndex] = nextActions;
+    }
+
+    /**
+     * 연결된 게임패드의 입력을 키보드 입력으로 반영한다.
+     * 평소에는 첫 번째로 연결된 게임패드 하나만 사용하고,
+     * "너랑 나랑"에서는 navigator.getGamepads()의 0번을 1P, 1번을 2P로 고정해 사용한다.
+     * @param {boolean} suppressActions 초기 인식 시 이미 누르고 있던 버튼은 실행하지 않을지 여부
+     * @returns {void}
+     */
     function updateGamepadInput(suppressActions = false) {
         try {
             if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') {
                 resetGamepadInput();
                 return;
             }
-            const gamepads = navigator.getGamepads();
-            const gamepad = Array.from(gamepads || []).find((candidate) => candidate && candidate.connected !== false);
-            if (!gamepad) {
-                resetGamepadInput();
+            const gamepads = Array.from(navigator.getGamepads() || []);
+            if (game?.together) {
+                [0, 1].forEach((playerIndex) => {
+                    const gamepad = gamepads[playerIndex];
+                    updateGamepadSlotInput(gamepad && gamepad.connected !== false ? gamepad : null, playerIndex, suppressActions);
+                });
                 return;
             }
-            const nextDirections = getGamepadDirectionKeys(gamepad);
-            gamepadDirectionKeys.forEach((key) => {
-                if (!nextDirections.has(key)) handleKeyup(createGamepadKeyboardEvent(key));
-            });
-            nextDirections.forEach((key) => {
-                if (!gamepadDirectionKeys.has(key)) handleKeydown(createGamepadKeyboardEvent(key));
-            });
-            gamepadDirectionKeys = nextDirections;
-
-            const nextActions = {
-                z: isGamepadButtonPressed(gamepad, 0) || isGamepadButtonPressed(gamepad, 4),
-                x: isGamepadButtonPressed(gamepad, 1) || isGamepadButtonPressed(gamepad, 5),
-                enter: isGamepadButtonPressed(gamepad, 2),
-                escape: isGamepadButtonPressed(gamepad, 3)
-            };
-            if (!suppressActions) {
-                Object.entries(nextActions).forEach(([key, pressed]) => {
-                    if (pressed && !gamepadActionInput[key]) handleKeydown(createGamepadKeyboardEvent(key));
-                });
-            }
-            gamepadActionInput = nextActions;
+            resetGamepadSlotInput(1);
+            updateGamepadSlotInput(gamepads.find((candidate) => candidate && candidate.connected !== false) || null, 0, suppressActions);
         } catch (error) {
             console.error('게임패드 입력을 처리하지 못했습니다.', error);
         }
@@ -6954,7 +7298,9 @@
         game.themeController.drawCenterBackground(context, { x: 450, y: 0, width: 380, height: HEIGHT });
         context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText(translate('뿌요 W'), WIDTH / 2, 95);
         const enemy = game.players[1];
-        if (!game.puzzle && enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
+        // "너랑 나랑"은 적 초상화 대신 누적 승수를 결과 화면에서도 이어서 보여 준다.
+        if (game.together) drawTogetherRecordPanel(400);
+        else if (!game.puzzle && enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
         context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
         context.fillText(translate('게임 시간 %1초', Math.floor(game.elapsed / 1000)), WIDTH / 2, 145);
         const resultButtons = getResultScreenButtons();
@@ -6998,7 +7344,7 @@
     // ------------------------------------------------------------------
 
     /** 리플레이 데이터 형식 버전이다. 저장 구조를 바꾸면 이 값을 올린다. @type {number} */
-    const REPLAY_FORMAT_VERSION = 2;
+    const REPLAY_FORMAT_VERSION = 3;
     /** 리플레이 프레임을 기록하는 간격(ms)이다. 초당 30프레임으로 표본화한다. @type {number} */
     const REPLAY_SAMPLE_INTERVAL = 1000 / 30;
     /** 한 리플레이가 보관할 최대 프레임 수다. 약 30분 분량이며, 넘어서면 더 기록하지 않는다. @type {number} */
@@ -7132,6 +7478,9 @@
         return {
             rule: game.watch ? (game.watch.rule || 'standard') : game.feverStart ? 'feverStart' : game.feverRule ? 'fever' : 'standard',
             watch: Boolean(game.watch),
+            // "너랑 나랑"은 재생에서도 중앙에 초상화 대신 승패 현황을 보여야 하므로 기록 당시의 누적 승수까지 남긴다.
+            together: Boolean(game.together),
+            togetherWins: game.together ? [...getTogetherWinCounts()] : null,
             feverRule: Boolean(game.feverRule),
             feverStart: Boolean(game.feverStart),
             feverLightStart: game.players[0]?.fever?.lightStart ?? FEVER_LIGHT_STARTS,
@@ -7345,7 +7694,9 @@
         recorder.elapsed += delta;
         recorder.sampleElapsed += delta;
         game.players.forEach((player, index) => {
-            const fastDown = player.controller ? player.aiFastDown === true : (isDownKeyPressed || virtualDirectionInput.arrowdown === true);
+            const directionInput = getPlayerDirectionInput(player);
+            const virtualFastDown = index === 0 && virtualDirectionInput.arrowdown === true;
+            const fastDown = player.controller ? player.aiFastDown === true : (directionInput?.down === true || virtualFastDown);
             if (recorder.fastDown[index] === fastDown) return;
             recorder.fastDown[index] = fastDown;
             recordReplayInput(player, REPLAY_INPUT.fastDown, fastDown ? 1 : 0);
@@ -7452,6 +7803,10 @@
             meta: {
                 rule: typeof meta.rule === 'string' ? meta.rule : 'standard',
                 watch: meta.watch === true,
+                together: meta.together === true,
+                togetherWins: Array.isArray(meta.togetherWins) && meta.togetherWins.length === 2
+                    ? meta.togetherWins.map((count) => (Number.isInteger(count) && count >= 0 ? count : 0))
+                    : [0, 0],
                 feverRule: meta.feverRule === true,
                 feverStart: meta.feverStart === true,
                 feverLightStart: Number.isInteger(meta.feverLightStart) ? Math.max(0, Math.min(6, meta.feverLightStart)) : FEVER_LIGHT_STARTS,
@@ -7496,9 +7851,10 @@
         const meta = replay.meta;
         const colors = meta.colors;
         const controllers = meta.players.map((info) => createReplayController(info.controller));
+        // "너랑 나랑"은 양쪽 모두 사람이 조작한 대전이므로 재생에서도 오른쪽에 적 컨트롤러를 붙이지 않는다.
         const players = [
             new PlayerState(meta.players[0].name, FIELD_LEFT, meta.watch ? controllers[0] : null, colors),
-            new PlayerState(meta.players[1].name, FIELD_RIGHT, controllers[1], colors)
+            new PlayerState(meta.players[1].name, FIELD_RIGHT, meta.together ? null : controllers[1], colors)
         ];
         if (meta.feverRule) players.forEach((player) => { player.fever = createFeverRuleState(meta.feverLightStart); });
         // 재생은 기록된 프레임만 반영하므로 플레이어의 자체 진행 단계는 멈춰 둔다.
@@ -7535,6 +7891,8 @@
                     openingPlacementColumns: []
                 }
             } : {}),
+            // "너랑 나랑" 리플레이만 together 속성을 만들어 중앙 승패 현황과 결과 화면 복귀 대상을 맞춘다.
+            ...(meta.together ? { together: { rule: meta.rule, wins: [...meta.togetherWins] } } : {}),
             difficulty: meta.difficulty,
             aiDifficulty: meta.aiDifficulty,
             opponentIndex: null,
@@ -7774,7 +8132,11 @@
         if (!game || game.running) return [];
         const buttons = [{ key: 'exit', label: '종료', color: '#ef5350' }];
         if (game.replayPlayback) buttons.push({ key: 'replayAgain', label: '다시보기', color: '#34556b' });
-        else if (hasCopyableReplay()) buttons.push({ key: 'copyReplay', label: '리플레이 복사', color: '#34556b' });
+        else {
+            if (hasCopyableReplay()) buttons.push({ key: 'copyReplay', label: '리플레이 복사', color: '#34556b' });
+            // "너랑 나랑"은 누적 승수를 이어서 다시 대전할 수 있다.
+            if (game.together) buttons.push({ key: 'playAgain', label: '다시 플레이', color: '#7e57c2' });
+        }
         return buttons.map((button, index) => ({ ...button, x: 515, y: 165 + index * (64 + RESULT_BUTTON_GAP), width: 250, height: 64 }));
     }
 
@@ -7784,6 +8146,7 @@
         if (!button) return;
         if (button.key === 'copyReplay') copyReplayToClipboard();
         else if (button.key === 'replayAgain') restartReplayPlayback();
+        else if (button.key === 'playAgain') restartTogetherGame();
         else closeResultScreen();
     }
 
@@ -8122,6 +8485,8 @@
         simulator = null;
         gallery = null;
         ruleSelectionOpen = false;
+        togetherSelectionOpen = false;
+        togetherWinCounts = [0, 0];
         if (settingsResetTimer !== null) window.clearTimeout(settingsResetTimer);
         settingsResetTimer = window.setTimeout(() => {
             settingsResetTimer = null;
@@ -9475,6 +9840,12 @@
         context.fillText(translate('ENTER 혹은 클릭하여 시작'), WIDTH / 2, HEIGHT - 70);
     }
 
+    /** 메인 메뉴 목록 항목 하나의 화면 영역을 반환한다. 그리기와 클릭 판정이 이 함수를 함께 사용한다. @param {number} index 메뉴 항목 순번 @returns {{x:number,y:number,width:number,height:number}} 항목 영역 */
+    function getTitleMenuItemBounds(index) {
+        const layout = TITLE_MENU_ITEM_LAYOUT;
+        return { x: layout.x, y: layout.startY + index * (layout.height + layout.gap), width: layout.width, height: layout.height };
+    }
+
     /** 포커스 가능한 게임 규칙 선택지의 실제 배열 순번을 반환한다. @returns {number[]} 포커스 가능한 선택지 순번 */
     function getSelectableRuleOptionIndices() {
         return GAME_RULE_OPTIONS.map((option, index) => isGameRuleOptionDisabled(option) ? -1 : index).filter((index) => index >= 0);
@@ -9514,6 +9885,7 @@
     /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 연다. @returns {void} */
     function openRuleSelection() {
         watchSelectionOpen = false;
+        togetherSelectionOpen = false;
         ruleSelectionOpen = true;
         ruleSelectionFocus = getSelectableRuleOptionIndices()[0] ?? 0;
     }
@@ -9528,6 +9900,7 @@
     /** 메인 메뉴 위에 구경 모드 설정 오버레이를 연다. @returns {void} */
     function openWatchSelection() {
         ruleSelectionOpen = false;
+        togetherSelectionOpen = false;
         watchSelectionOpen = true;
         watchDifficulty = 1;
         watchRule = 'standard';
@@ -9622,6 +9995,198 @@
             context.fillStyle = index === 0 ? '#ef5350' : '#455a64'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.strokeStyle = focused ? '#f7c843' : index === 0 ? '#ef5350' : '#607d8b'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.fillStyle = '#f5fbfc'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate(label), bounds.x + bounds.width / 2, bounds.y + 37);
+        });
+    }
+
+    /** "너랑 나랑" 규칙 선택지 하나의 화면 영역을 반환한다. @param {number} index 선택지 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getTogetherRuleButtonBounds(index) {
+        const width = 250;
+        const gap = 18;
+        const totalWidth = TOGETHER_RULE_OPTIONS.length * width + (TOGETHER_RULE_OPTIONS.length - 1) * gap;
+        return { x: (WIDTH - totalWidth) / 2 + index * (width + gap), y: 290, width, height: 78 };
+    }
+
+    /** "너랑 나랑" 규칙 선택 오버레이 취소 버튼의 화면 영역을 반환한다. @returns {{x:number,y:number,width:number,height:number}} 취소 버튼 영역 */
+    function getTogetherSelectionCancelButtonBounds() {
+        return { x: WIDTH / 2 - 140, y: 400, width: 280, height: 78 };
+    }
+
+    /** 포커스할 수 있는 "너랑 나랑" 규칙 선택지의 순번을 반환한다. @returns {number[]} 포커스 가능한 선택지 순번 */
+    function getSelectableTogetherRuleIndices() {
+        return TOGETHER_RULE_OPTIONS.map((option, index) => isGameRuleOptionDisabled(option) ? -1 : index).filter((index) => index >= 0);
+    }
+
+    /** 메인 메뉴 위에 "너랑 나랑" 규칙 선택 오버레이를 연다. 이때 누적 승수도 초기화한다. @returns {void} */
+    function openTogetherSelection() {
+        ruleSelectionOpen = false;
+        watchSelectionOpen = false;
+        togetherSelectionOpen = true;
+        togetherSelectionFocus = getSelectableTogetherRuleIndices()[0] ?? TOGETHER_SELECTION_CANCEL_INDEX;
+        togetherWinCounts = [0, 0];
+    }
+
+    /** "너랑 나랑" 규칙 선택 오버레이를 닫고 메인 메뉴로 돌아간다. @returns {void} */
+    function closeTogetherSelection() {
+        togetherSelectionOpen = false;
+        togetherSelectionFocus = 0;
+    }
+
+    /** "너랑 나랑" 안내 화면을 연다. @param {'standard'|'fever'|'feverStart'} rule 선택한 대전 규칙 @returns {void} */
+    function openTogetherGuide(rule) {
+        togetherRule = rule;
+        togetherDifficulty = 1;
+        togetherGuideFocus = 0;
+        togetherGuideAction = 0;
+        menuScreen = 'togetherGuide';
+    }
+
+    /** "너랑 나랑" 안내 화면을 닫고 메인 메뉴로 돌아간다. @returns {void} */
+    function closeTogetherGuide() {
+        playMenuCancelSound();
+        menuScreen = 'title';
+        closeTogetherSelection();
+        loadNotice();
+    }
+
+    /** 포커스된 "너랑 나랑" 규칙 선택지를 실행한다. @returns {void} */
+    function activateTogetherSelection() {
+        if (togetherSelectionFocus === TOGETHER_SELECTION_CANCEL_INDEX) {
+            playMenuCancelSound();
+            closeTogetherSelection();
+            return;
+        }
+        const option = TOGETHER_RULE_OPTIONS[togetherSelectionFocus];
+        if (!option || isGameRuleOptionDisabled(option)) return;
+        playMenuSelectSound();
+        openTogetherGuide(option.key);
+    }
+
+    /** "너랑 나랑" 규칙 선택 오버레이의 키보드·게임패드 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
+    function handleTogetherSelectionKey(key) {
+        if (key === 'escape') { playMenuCancelSound(); closeTogetherSelection(); return; }
+        if (key === 'enter' || key === ' ') { activateTogetherSelection(); return; }
+        const selectable = getSelectableTogetherRuleIndices();
+        if (key === 'arrowdown') { togetherSelectionFocus = TOGETHER_SELECTION_CANCEL_INDEX; return; }
+        if (key === 'arrowup') {
+            if (togetherSelectionFocus === TOGETHER_SELECTION_CANCEL_INDEX && selectable.length) togetherSelectionFocus = selectable[0];
+            return;
+        }
+        if (key !== 'arrowleft' && key !== 'arrowright') return;
+        if (togetherSelectionFocus === TOGETHER_SELECTION_CANCEL_INDEX) return;
+        if (!selectable.length) return;
+        const direction = key === 'arrowleft' ? -1 : 1;
+        const currentIndex = Math.max(0, selectable.indexOf(togetherSelectionFocus));
+        togetherSelectionFocus = selectable[(currentIndex + direction + selectable.length) % selectable.length];
+    }
+
+    /** 메인 메뉴 위에 "너랑 나랑" 규칙 선택 오버레이를 그린다. @returns {void} */
+    function drawTogetherSelectionOverlay() {
+        context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `38px ${TITLE_FONT}`;
+        context.fillText(translate('너랑 나랑'), WIDTH / 2, 220);
+        TOGETHER_RULE_OPTIONS.forEach((option, index) => {
+            const bounds = getTogetherRuleButtonBounds(index);
+            const disabled = isGameRuleOptionDisabled(option);
+            const focused = !disabled && index === togetherSelectionFocus;
+            context.fillStyle = disabled ? '#3c4650' : option.backgroundColor; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = disabled ? '#7c8791' : focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2;
+            context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = disabled ? '#c4cbd0' : '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
+            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (disabled ? 32 : 47));
+            if (disabled) {
+                context.fillStyle = '#f0c674'; context.font = `15px ${BUTTON_FONT}`;
+                context.fillText(translate('잠김'), bounds.x + bounds.width / 2, bounds.y + 59);
+            }
+        });
+        const cancelBounds = getTogetherSelectionCancelButtonBounds();
+        const cancelFocused = togetherSelectionFocus === TOGETHER_SELECTION_CANCEL_INDEX;
+        context.fillStyle = '#455a64'; context.fillRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
+        context.strokeStyle = cancelFocused ? '#f7c843' : '#607d8b'; context.lineWidth = cancelFocused ? 4 : 2;
+        context.strokeRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
+        context.fillStyle = '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
+        context.fillText(translate('취소'), cancelBounds.x + cancelBounds.width / 2, cancelBounds.y + 47);
+    }
+
+    /** "너랑 나랑" 안내 화면의 색상 수 버튼 영역을 반환한다. @param {number} index DIFFICULTIES 배열 인덱스 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getTogetherGuideColorButtonBounds(index) {
+        return { x: getColorDifficultyButtonX(index), y: 445, width: 110, height: 58 };
+    }
+
+    /** "너랑 나랑" 안내 화면의 시작·취소 버튼 영역을 반환한다. @param {number} index 0: 시작, 1: 취소 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getTogetherGuideActionButtonBounds(index) {
+        const width = 200;
+        const gap = 20;
+        return { x: WIDTH / 2 - width - gap / 2 + index * (width + gap), y: 540, width, height: 58 };
+    }
+
+    /** "너랑 나랑" 안내 화면에서 현재 포커스된 선택을 실행한다. @returns {void} */
+    function activateTogetherGuide() {
+        if (togetherGuideFocus === 0) {
+            togetherGuideFocus = 1;
+            return;
+        }
+        if (togetherGuideAction === 0) startTogetherGame();
+        else closeTogetherGuide();
+    }
+
+    /** "너랑 나랑" 안내 화면의 키보드·게임패드 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
+    function handleTogetherGuideKey(key) {
+        if (key === 'escape') { closeTogetherGuide(); return; }
+        if (key === 'enter' || key === ' ') { activateTogetherGuide(); return; }
+        if (key === 'arrowup') { togetherGuideFocus = 0; return; }
+        if (key === 'arrowdown') { togetherGuideFocus = 1; return; }
+        if (key !== 'arrowleft' && key !== 'arrowright') return;
+        const direction = key === 'arrowleft' ? -1 : 1;
+        if (togetherGuideFocus === 0) {
+            const choices = getSelectableColorDifficultyIndices();
+            const currentIndex = Math.max(0, choices.indexOf(togetherDifficulty));
+            togetherDifficulty = choices[(currentIndex + direction + choices.length) % choices.length];
+            return;
+        }
+        togetherGuideAction = togetherGuideAction === 0 ? 1 : 0;
+    }
+
+    /** "너랑 나랑" 안내 화면을 그린다. @returns {void} */
+    function drawTogetherGuideOverlay() {
+        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.textAlign = 'center';
+        context.fillStyle = '#d8f2f5'; context.font = `36px ${TITLE_FONT}`;
+        context.fillText(translate('너랑 나랑'), WIDTH / 2, 120);
+        context.fillStyle = '#b8dbe2'; context.font = `18px ${MESSAGE_FONT}`;
+        context.fillText(translate('한 대의 컴퓨터에서 두 사람이 함께 대전합니다.'), WIDTH / 2, 168);
+        context.fillText(translate('키보드 하나를 둘이 나눠 사용합니다.'), WIDTH / 2, 196);
+        [
+            { name: '1P', color: '#ef8aa0', x: 330, lines: ['이동: 방향키 또는 F(좌) H(우) B(아래)', '회전: Z(좌) X(우) 또는 G(좌)'] },
+            { name: '2P', color: '#6bbce8', x: 950, lines: ['이동: 키패드 4(좌) 6(우) 2(아래)', '회전: [ (좌) ] (우) 또는 키패드 5(좌)'] }
+        ].forEach(({ name, color, x, lines }) => {
+            context.fillStyle = color; context.font = `24px ${TITLE_FONT}`;
+            context.fillText(name, x, 254);
+            context.fillStyle = '#e7f8fa'; context.font = `15px ${MESSAGE_FONT}`;
+            lines.forEach((line, index) => context.fillText(translate(line), x, 290 + index * 26));
+        });
+        context.fillStyle = '#b8dbe2'; context.font = `15px ${MESSAGE_FONT}`;
+        context.fillText(translate('게임패드를 연결하면 첫 번째가 1P, 두 번째가 2P입니다.'), WIDTH / 2, 362);
+        context.fillText(translate('가상 컨트롤러는 사용할 수 없습니다.'), WIDTH / 2, 388);
+        context.fillStyle = '#b8dbe2'; context.font = `18px ${MESSAGE_FONT}`;
+        context.fillText(translate('색상 수'), WIDTH / 2, 428);
+        DIFFICULTIES.forEach((difficulty, index) => {
+            const bounds = getTogetherGuideColorButtonBounds(index);
+            const selected = index === togetherDifficulty;
+            const focused = togetherGuideFocus === 0 && selected;
+            context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#f7c843' : '#3b6070'; context.lineWidth = focused ? 4 : 2;
+            context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`;
+            context.fillText(translate(difficulty.name), bounds.x + bounds.width / 2, bounds.y + 36);
+        });
+        ['시작', '취소'].forEach((label, index) => {
+            const bounds = getTogetherGuideActionButtonBounds(index);
+            const focused = togetherGuideFocus === 1 && togetherGuideAction === index;
+            context.fillStyle = index === 0 ? '#ef5350' : '#455a64'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#f7c843' : index === 0 ? '#ef5350' : '#607d8b'; context.lineWidth = focused ? 4 : 2;
+            context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = '#f5fbfc'; context.font = `20px ${BUTTON_FONT}`;
+            context.fillText(translate(label), bounds.x + bounds.width / 2, bounds.y + 37);
         });
     }
 
@@ -9904,6 +10469,11 @@
      */
     function drawMenu() {
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        // "너랑 나랑" 안내는 설명 문구가 화면 전체를 쓰므로 메인 메뉴 목록을 그리지 않는다.
+        if (menuScreen === 'togetherGuide') {
+            drawTogetherGuideOverlay();
+            return;
+        }
         if (menuScreen === 'title') drawMainMenuGalleryFloaters();
         if (menuScreen === 'title') drawGoldBalance();
         const opponentMenuScaled = menuScreen === 'opponent';
@@ -9995,18 +10565,13 @@
             context.restore();
             return;
         }
-        const menuX = WIDTH / 2 - 109; const menuWidth = 218; const menuHeight = 46; const menuStartY = 280; const menuGap = 10;
-        const titleOptions = [
-            { label: '게임 시작', color: '#ef5350' }, { label: '시뮬레이터', color: '#34556b' }, { label: '플레이 방법', color: '#405c70' },
-            { label: '구경', color: '#236a8b' }, { label: '갤러리', color: '#405c70' }, { label: '설정', color: '#405c70' }
-        ];
-        titleOptions.forEach((option, index) => {
-            const y = menuStartY + index * (menuHeight + menuGap);
+        TITLE_MENU_OPTIONS.forEach((option, index) => {
+            const bounds = getTitleMenuItemBounds(index);
             const locked = isTitleMenuItemLocked(index);
-            context.fillStyle = locked ? '#3c4650' : option.color; context.fillRect(menuX, y, menuWidth, menuHeight);
-            context.strokeStyle = locked ? '#7c8791' : titleMenuFocus === index ? '#f7c843' : option.color; context.lineWidth = titleMenuFocus === index && !locked ? 4 : 2; context.strokeRect(menuX, y, menuWidth, menuHeight);
-            context.fillStyle = locked ? '#c4cbd0' : '#e3f4ff'; context.font = `20px ${BUTTON_FONT}`;
-            context.fillText(locked ? `${translate(option.label)} (${translate('잠김')})` : translate(option.label), WIDTH / 2, y + 30);
+            context.fillStyle = locked ? '#3c4650' : option.color; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = locked ? '#7c8791' : titleMenuFocus === index ? '#f7c843' : option.color; context.lineWidth = titleMenuFocus === index && !locked ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = locked ? '#c4cbd0' : '#e3f4ff'; context.font = `19px ${BUTTON_FONT}`;
+            context.fillText(locked ? `${translate(option.label)} (${translate('잠김')})` : translate(option.label), WIDTH / 2, bounds.y + 28);
         });
         context.fillStyle = '#34556b'; context.fillRect(TITLE_REPLAY_BUTTON.x, TITLE_REPLAY_BUTTON.y, TITLE_REPLAY_BUTTON.width, TITLE_REPLAY_BUTTON.height);
         context.strokeStyle = titleMenuFocus === TITLE_REPLAY_FOCUS_INDEX ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === TITLE_REPLAY_FOCUS_INDEX ? 2 : 1;
@@ -10014,10 +10579,10 @@
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`;
         context.fillText(translate('리플레이 재생'), TITLE_REPLAY_BUTTON.x + TITLE_REPLAY_BUTTON.width / 2, TITLE_REPLAY_BUTTON.y + 16);
         context.fillStyle = '#24292f'; context.fillRect(32, 665, 85, 23);
-        context.strokeStyle = titleMenuFocus === 6 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 6 ? 2 : 1; context.strokeRect(32, 665, 85, 23);
+        context.strokeStyle = titleMenuFocus === TITLE_GITHUB_FOCUS_INDEX ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === TITLE_GITHUB_FOCUS_INDEX ? 2 : 1; context.strokeRect(32, 665, 85, 23);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 74.5, 681);
         context.fillStyle = store.muted ? '#52606d' : '#264b5b'; context.fillRect(WIDTH - 117, 665, 85, 23);
-        context.strokeStyle = titleMenuFocus === 7 ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === 7 ? 2 : 1; context.strokeRect(WIDTH - 117, 665, 85, 23);
+        context.strokeStyle = titleMenuFocus === TITLE_MUTE_FOCUS_INDEX ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === TITLE_MUTE_FOCUS_INDEX ? 2 : 1; context.strokeRect(WIDTH - 117, 665, 85, 23);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate(store.muted ? '음소거(활성)' : '음소거(꺼짐)'), WIDTH - 74.5, 681);
         context.fillStyle = '#8899a6'; context.font = `14px ${MESSAGE_FONT}`; context.fillText('Copyright (c) HJOW', WIDTH / 2, HEIGHT - 20);
         if (menuScreen === 'practiceDifficulty') {
@@ -10043,6 +10608,7 @@
         if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'title' && ruleSelectionOpen) drawRuleSelectionOverlay();
         if (menuScreen === 'title' && watchSelectionOpen) drawWatchSelectionOverlay();
+        if (menuScreen === 'title' && togetherSelectionOpen) drawTogetherSelectionOverlay();
     }
 
     /**
@@ -10607,8 +11173,8 @@
         const finishedGame = game;
         // 개발용 도구의 테스트 결과는 편집 모드로 돌아간다.
         if (finishedGame.toolsTest) { returnFromToolsTest(); return; }
-        // 리플레이 재생 결과는 항상 메인 메뉴로 돌아간다.
-        const returnToTitle = finishedGame.practice || finishedGame.watch || finishedGame.replayPlayback;
+        // 리플레이 재생 결과와 "너랑 나랑" 결과는 항상 메인 메뉴로 돌아간다.
+        const returnToTitle = finishedGame.practice || finishedGame.watch || finishedGame.together || finishedGame.replayPlayback;
         const returnToPuzzleStages = finishedGame.puzzle !== undefined && finishedGame.puzzle !== null;
         const puzzleFocusIndex = returnToPuzzleStages && finishedGame.winner === finishedGame.players[0]
             ? finishedGame.puzzle.returnFocusIndex
@@ -10618,6 +11184,72 @@
         if (returnToPuzzleStages) openPuzzleStageSelection(puzzleFocusIndex);
         else if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
         else restoreOpponentMenuAfterResult(finishedGame);
+    }
+
+    /**
+     * "너랑 나랑"에서 1P가 사용하는 물리 키 코드다.
+     * 방향키·Z·X와 함께 오른손이 닿는 F·G·H·B 키를 같은 조작으로 받는다.
+     * @type {Record<string, 'left'|'right'|'down'|'rotateLeft'|'rotateRight'|'rotateUp'>}
+     */
+    const TOGETHER_PLAYER_ONE_KEY_CODES = {
+        ArrowLeft: 'left', ArrowRight: 'right', ArrowDown: 'down', ArrowUp: 'rotateUp',
+        KeyZ: 'rotateLeft', KeyX: 'rotateRight',
+        KeyF: 'left', KeyH: 'right', KeyB: 'down', KeyG: 'rotateLeft'
+    };
+    /**
+     * "너랑 나랑"에서 2P가 사용하는 물리 키 코드다.
+     * NumLock이 꺼져 있으면 키패드가 방향키 문자값을 보내므로 반드시 물리 키 코드로만 판정해야 1P와 섞이지 않는다.
+     * @type {Record<string, 'left'|'right'|'down'|'rotateLeft'|'rotateRight'>}
+     */
+    const TOGETHER_PLAYER_TWO_KEY_CODES = {
+        Numpad4: 'left', Numpad6: 'right', Numpad2: 'down', Numpad5: 'rotateLeft',
+        BracketLeft: 'rotateLeft', BracketRight: 'rotateRight'
+    };
+    /** 게임패드가 만든 키 이름을 "너랑 나랑"의 조작 종류로 바꾸는 표다. @type {Record<string, 'left'|'right'|'down'|'rotateLeft'|'rotateRight'|'rotateUp'>} */
+    const TOGETHER_KEY_NAME_ACTIONS = {
+        arrowleft: 'left', arrowright: 'right', arrowdown: 'down', arrowup: 'rotateUp',
+        z: 'rotateLeft', x: 'rotateRight'
+    };
+    /** 방향 홀드 상태를 유지하는 조작 종류다. @type {string[]} */
+    const TOGETHER_HOLD_ACTIONS = ['left', 'right', 'down'];
+
+    /**
+     * "너랑 나랑" 게임에서 눌린 키가 어느 플레이어의 어떤 조작인지 판정한다.
+     * 게임패드가 만든 입력은 이벤트에 담긴 플레이어 순번을 그대로 따른다.
+     * @param {KeyboardEvent|{key:string, code?:string, gamepadPlayerIndex?:number}} event 키보드 또는 게임패드 이벤트
+     * @param {string} key 소문자 키 이름
+     * @returns {{playerIndex:number, action:string}|null} 조작 대상과 종류. 조작 키가 아니면 null
+     */
+    function resolveTogetherKeyInput(event, key) {
+        if (Number.isInteger(event?.gamepadPlayerIndex)) {
+            const gamepadAction = TOGETHER_KEY_NAME_ACTIONS[key];
+            return gamepadAction ? { playerIndex: event.gamepadPlayerIndex, action: gamepadAction } : null;
+        }
+        const code = typeof event?.code === 'string' ? event.code : '';
+        const secondAction = TOGETHER_PLAYER_TWO_KEY_CODES[code];
+        if (secondAction) return { playerIndex: 1, action: secondAction };
+        const firstAction = TOGETHER_PLAYER_ONE_KEY_CODES[code];
+        if (firstAction) return { playerIndex: 0, action: firstAction };
+        // 물리 키 코드를 제공하지 않는 환경에서도 최소한의 조작은 문자값으로 인식한다.
+        if (key === '[') return { playerIndex: 1, action: 'rotateLeft' };
+        if (key === ']') return { playerIndex: 1, action: 'rotateRight' };
+        const fallbackAction = TOGETHER_KEY_NAME_ACTIONS[key];
+        return fallbackAction ? { playerIndex: 0, action: fallbackAction } : null;
+    }
+
+    /**
+     * 판정된 조작 종류를 실제 조작 뿌요 이동·회전으로 적용한다.
+     * @param {PlayerState} player 조작할 플레이어
+     * @param {string} action 조작 종류
+     * @param {boolean} repeat 키 반복 입력 여부
+     * @returns {void}
+     */
+    function applyPlayerControlAction(player, action, repeat) {
+        if (action === 'left' && !repeat) moveActive(player, -1, 0);
+        else if (action === 'right' && !repeat) moveActive(player, 1, 0);
+        else if (action === 'rotateUp' && !repeat) rotateActive(player, 1);
+        else if (action === 'rotateLeft') rotateActive(player, -1);
+        else if (action === 'rotateRight') rotateActive(player, 1);
     }
 
     /**
@@ -10692,6 +11324,14 @@
             }
             if (menuScreen === 'title' && watchSelectionOpen) {
                 handleWatchSelectionKey(key);
+                return;
+            }
+            if (menuScreen === 'title' && togetherSelectionOpen) {
+                handleTogetherSelectionKey(key);
+                return;
+            }
+            if (menuScreen === 'togetherGuide') {
+                handleTogetherGuideKey(key);
                 return;
             }
             if (menuScreen === 'practiceDifficulty') {
@@ -10780,14 +11420,13 @@
         // 시작 또는 재개 카운트다운 중에는 일시정지를 포함한 게임 조작을 받지 않는다.
         // 컨트롤 가능 여부와 무관하게 방향키의 현재 눌림 상태는 기록한다.
         // 그래야 카운트다운이나 이전 턴의 정산 중에 누른 키를 새 뿌요 지급 순간에도 반영할 수 있다.
-        if (key === 'arrowleft' || key === 'arrowright') {
-            if (horizontalKeyPressed !== key) {
-                horizontalKeyPressed = key;
-                horizontalHoldElapsed = 0;
-                horizontalRepeatElapsed = 0;
-            }
+        const togetherControl = game.together ? resolveTogetherKeyInput(event, key) : null;
+        if (game.together) {
+            if (togetherControl && TOGETHER_HOLD_ACTIONS.includes(togetherControl.action)) pressPlayerDirection(togetherControl.playerIndex, togetherControl.action);
+        } else {
+            if (key === 'arrowleft' || key === 'arrowright') pressPlayerDirection(0, key === 'arrowleft' ? 'left' : 'right');
+            if (key === 'arrowdown') pressPlayerDirection(0, 'down');
         }
-        if (key === 'arrowdown') isDownKeyPressed = true;
         if (game.countdown > 0) {
             return;
         }
@@ -10810,6 +11449,14 @@
         }
         // 구경 모드는 공통 일시정지 입력을 처리한 뒤 나머지 게임 조작을 모두 무시한다.
         if (game.watch) return;
+        // "너랑 나랑"은 키마다 조작할 플레이어가 정해져 있으므로 판정 결과를 그대로 적용한다.
+        if (game.together) {
+            if (!togetherControl) return;
+            const target = game.players[togetherControl.playerIndex];
+            if (!target || target.phase !== 'control') return;
+            applyPlayerControlAction(target, togetherControl.action, event.repeat === true);
+            return;
+        }
         const player = game.players[0];
         if (player.phase !== 'control') return;
         if (key === 'arrowleft' && !event.repeat) moveActive(player, -1, 0);
@@ -10826,17 +11473,18 @@
      */
     function handleKeyup(event) {
         const key = event.key.toLowerCase();
-        if (key === 'arrowdown') isDownKeyPressed = false;
-        if (key === horizontalKeyPressed) {
-            horizontalKeyPressed = null;
-            horizontalHoldElapsed = 0;
-            horizontalRepeatElapsed = 0;
+        if (game?.together) {
+            const control = resolveTogetherKeyInput(event, key);
+            if (control && TOGETHER_HOLD_ACTIONS.includes(control.action)) releasePlayerDirection(control.playerIndex, control.action);
+            return;
         }
+        if (key === 'arrowdown') releasePlayerDirection(0, 'down');
+        if (key === 'arrowleft' || key === 'arrowright') releasePlayerDirection(0, key === 'arrowleft' ? 'left' : 'right');
     }
 
     /** 메인 메뉴의 지정한 항목이 잠겼는지 확인한다. @param {number} index 메뉴 항목 순번 @returns {boolean} 잠금 여부 */
     function isTitleMenuItemLocked(index) {
-        return index === 3 && !isWatchModeUnlocked();
+        return index === TITLE_WATCH_MENU_INDEX && !isWatchModeUnlocked();
     }
 
     /** 잠긴 항목을 건너뛰어 메인 메뉴 포커스를 이동한다. @param {number} direction 이전 -1 또는 다음 1 @returns {void} */
@@ -10861,13 +11509,14 @@
         if (isTitleMenuItemLocked(titleMenuFocus)) return;
         playMenuSelectSound();
         if (titleMenuFocus === 0) openRuleSelection();
-        else if (titleMenuFocus === 1) openSimulator();
-        else if (titleMenuFocus === 2) openTutorial();
-        else if (titleMenuFocus === 3) openWatchSelection();
-        else if (titleMenuFocus === 4) openGallery();
-        else if (titleMenuFocus === 5) openSettings();
+        else if (titleMenuFocus === 1) openTogetherSelection();
+        else if (titleMenuFocus === 2) openSimulator();
+        else if (titleMenuFocus === 3) openTutorial();
+        else if (titleMenuFocus === TITLE_WATCH_MENU_INDEX) openWatchSelection();
+        else if (titleMenuFocus === 5) openGallery();
+        else if (titleMenuFocus === 6) openSettings();
         else if (titleMenuFocus === TITLE_REPLAY_FOCUS_INDEX) openReplayPlaybackPrompt();
-        else if (titleMenuFocus === 6) {
+        else if (titleMenuFocus === TITLE_GITHUB_FOCUS_INDEX) {
             const githubWindow = window.open(convertURL('https://github.com/HJOW/puyow'), '_blank');
             if (githubWindow) githubWindow.opener = null;
         } else {
@@ -11050,6 +11699,50 @@
             }
             return;
         }
+        if (menuScreen === 'title' && togetherSelectionOpen) {
+            const cancelBounds = getTogetherSelectionCancelButtonBounds();
+            if (x >= cancelBounds.x && x <= cancelBounds.x + cancelBounds.width && y >= cancelBounds.y && y <= cancelBounds.y + cancelBounds.height) {
+                togetherSelectionFocus = TOGETHER_SELECTION_CANCEL_INDEX;
+                activateTogetherSelection();
+                return;
+            }
+            const selectedIndex = TOGETHER_RULE_OPTIONS.findIndex((option, index) => {
+                const bounds = getTogetherRuleButtonBounds(index);
+                return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+            });
+            if (selectedIndex >= 0) {
+                if (!isGameRuleOptionDisabled(TOGETHER_RULE_OPTIONS[selectedIndex])) {
+                    togetherSelectionFocus = selectedIndex;
+                    activateTogetherSelection();
+                }
+            } else {
+                playMenuCancelSound();
+                closeTogetherSelection();
+            }
+            return;
+        }
+        if (menuScreen === 'togetherGuide') {
+            const colorIndex = DIFFICULTIES.findIndex((difficulty, index) => {
+                const bounds = getTogetherGuideColorButtonBounds(index);
+                return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+            });
+            if (colorIndex >= 0) {
+                playMenuSelectSound();
+                togetherDifficulty = colorIndex;
+                togetherGuideFocus = 0;
+                return;
+            }
+            const actionIndex = [0, 1].find((index) => {
+                const bounds = getTogetherGuideActionButtonBounds(index);
+                return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+            });
+            if (actionIndex !== undefined) {
+                togetherGuideFocus = 1;
+                togetherGuideAction = actionIndex;
+                activateTogetherGuide();
+            }
+            return;
+        }
         if (menuScreen === 'simulator' && simulator) {
             if (simulator.mode === 'complete') {
                 if (x >= 600 && x <= 750 && y >= 145 && y <= 203) { playMenuSelectSound(); restoreSimulatorDrawing(); }
@@ -11166,18 +11859,18 @@
             return;
         }
         if (menuScreen === 'title') {
-            const titleItemIndex = Array.from({ length: 6 }, (unused, index) => index).find((index) => {
-                const itemY = 280 + index * 56;
-                return x >= WIDTH / 2 - 109 && x <= WIDTH / 2 + 109 && y >= itemY && y <= itemY + 46;
+            const titleItemIndex = TITLE_MENU_OPTIONS.findIndex((option, index) => {
+                const bounds = getTitleMenuItemBounds(index);
+                return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
             });
-            if (titleItemIndex !== undefined) {
+            if (titleItemIndex >= 0) {
                 titleMenuFocus = titleItemIndex;
                 activateTitleMenu();
             } else if (x >= WIDTH - 117 && x <= WIDTH - 32 && y >= 665 && y <= 688) {
                 playMenuSelectSound();
                 toggleMuted();
             } else if (x >= 32 && x <= 117 && y >= 665 && y <= 688) {
-                titleMenuFocus = 6;
+                titleMenuFocus = TITLE_GITHUB_FOCUS_INDEX;
                 activateTitleMenu();
             } else if (x >= TITLE_REPLAY_BUTTON.x && x <= TITLE_REPLAY_BUTTON.x + TITLE_REPLAY_BUTTON.width && y >= TITLE_REPLAY_BUTTON.y && y <= TITLE_REPLAY_BUTTON.y + TITLE_REPLAY_BUTTON.height) {
                 titleMenuFocus = TITLE_REPLAY_FOCUS_INDEX;
@@ -11308,7 +12001,7 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
         if (settingsResetting) return { screen: 'settings_resetting', playerCanControl: false };
@@ -11316,6 +12009,8 @@
             if (menuScreen === 'initialTitle') return { screen: 'initial_title', playerCanControl: false };
             if (menuScreen === 'title' && ruleSelectionOpen) return { screen: 'rule_select', playerCanControl: false };
             if (menuScreen === 'title' && watchSelectionOpen) return { screen: 'watch_select', playerCanControl: false };
+            if (menuScreen === 'title' && togetherSelectionOpen) return { screen: 'together_select', playerCanControl: false };
+            if (menuScreen === 'togetherGuide') return { screen: 'together_guide', playerCanControl: false };
             if (menuScreen === 'opponent') return { screen: opponentMenuRule !== 'standard' ? 'fever_opponent_select' : 'opponent_select', playerCanControl: false };
             if (menuScreen === 'practiceDifficulty') return { screen: 'practice_difficulty', playerCanControl: false };
             if (menuScreen === 'puzzleStage') return { screen: 'puzzle_stage_select', playerCanControl: false };
@@ -11450,7 +12145,7 @@
     /**
      * 현재 표시 중인 화면과 플레이어 조작 가능 여부를 반환한다.
      * 메뉴, 튜토리얼, 대전 진행 상태 모두에서 사용할 수 있다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getScreenState() {
         return getNowScreen();
@@ -11545,7 +12240,7 @@
      * 일반·피버 규칙과 학습·적 AI가 필요한 양측 일반/현재/피버 필드 및 앞 두 NEXT를 함께 제공한다.
      * 반환된 객체와 그 안의 배열을 변경해도 실제 게임 상태에는 영향을 주지 않는다.
      * 메뉴, 튜토리얼 또는 초기화 전 상태에서는 null을 반환한다.
-     * @returns {{screen:string, playerCanControl:boolean, mode:'versus'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'continuous_fever', running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, timeProgressMultiplier:number, practice:boolean, watch:boolean, continuousFever:boolean, feverRule:boolean, feverStart:boolean, allClearTicketEnabled:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
+     * @returns {{screen:string, playerCanControl:boolean, mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'continuous_fever', running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, timeProgressMultiplier:number, practice:boolean, watch:boolean, continuousFever:boolean, feverRule:boolean, feverStart:boolean, allClearTicketEnabled:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
      */
     function getGameState() {
         if (!game || game.tutorial) return null;
@@ -11553,7 +12248,8 @@
         const [player, opponent] = game.players;
         const getRole = (target) => target === player ? 'player' : target === opponent ? 'opponent' : null;
         const mode = game.watch !== undefined ? 'watch'
-            : (game.continuousFever ? 'continuous_fever' : (game.puzzle ? 'puzzle' : (game.practice ? 'practice' : 'versus')));
+            : (game.together ? 'together'
+                : (game.continuousFever ? 'continuous_fever' : (game.puzzle ? 'puzzle' : (game.practice ? 'practice' : 'versus'))));
         const rule = game.continuousFever ? 'continuous_fever'
             : (game.feverStart ? 'fever_start' : (game.feverRule ? 'fever' : 'standard'));
         return {
@@ -11880,6 +12576,13 @@
         watchSelectionOpen = false;
         watchSelectionFocus = 0;
         watchSelectedAction = 0;
+        togetherSelectionOpen = false;
+        togetherSelectionFocus = 0;
+        togetherRule = 'standard';
+        togetherDifficulty = 1;
+        togetherGuideFocus = 0;
+        togetherGuideAction = 0;
+        togetherWinCounts = [0, 0];
         createdPuyowRoot = false;
         createdRuntimeLayoutStyle = false;
         runtimeLayoutStyle = null;

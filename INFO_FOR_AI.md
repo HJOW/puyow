@@ -78,6 +78,20 @@
 | 연속 피버 | 단독 플레이 피버 스테이지. 목표 5연쇄·60초로 시작하며 두 패배 칸을 쓴다. |
 | 퍼즐뿌요 | 항상 5색, `PuzzlePuyoStage` 기반 단독 스테이지다. 오른쪽 영역은 적 필드가 아니라 목표/턴 상태 표시다. |
 | 구경 | 선택 가능한 두 CPU가 자동 대전한다. 플레이 조작은 막고 ESC 일시정지만 허용한다. 결과 뒤 5초면 다음 대전을 자동 시작한다. |
+| 너랑 나랑 | 한 컴퓨터에서 두 사람이 대전한다. 규칙은 기본 룰·피버 룰·피버 룰 (시작)과 같고 양쪽 모두 사람이 조작한다. 진행도·GOLD·AI 학습은 모두 대상이 아니다. |
+
+### 너랑 나랑 (한 컴퓨터 2인 대전)
+
+- 메인 메뉴 두 번째 항목이며 `openTogetherSelection()`이 규칙 선택 오버레이를 연다. 선택지는 `TOGETHER_RULE_OPTIONS`의 기본 룰·피버 룰·피버 룰 (시작)과 취소이고, 피버 룰 (시작)의 잠금 조건은 기존 규칙 선택과 같은 `isFeverStartRuleUnlocked()`다.
+- 규칙을 고르면 `menuScreen`이 `togetherGuide`가 된다. 이 화면은 조작키 안내와 색상 수(3·4·5색) 선택, 시작·취소 버튼으로 구성하며 타이틀 화면 위에 오버레이로 그린다. 취소는 메인 메뉴로 돌아간다.
+- `startTogetherGame()`이 양쪽 `PlayerState`의 컨트롤러를 모두 `null`로 두고 `game.together = { rule, wins }`를 만든다. 이름은 번역하지 않는 `1P`·`2P`(`TOGETHER_PLAYER_NAMES`)이고, 배경·배경음에 쓸 `themeController`만 `PracticeEnemy`로 채운다. 그래서 배경음악은 연습과 같은 공통 곡을 쓴다.
+- 중앙 영역은 초상화 대신 `drawTogetherRecordPanel()`의 누적 승수 패널을 그린다. 실제 대전의 누적 승수는 모듈 상태 `togetherWinCounts`에 있고, `openTogetherSelection()`에서만 초기화한다. 결과 화면의 `다시 플레이`(`restartTogetherGame()`)는 이 값을 유지한 채 같은 규칙·색상 수로 다시 시작하고, `종료`는 메인 메뉴로 돌아간다.
+- 결과 화면 버튼은 `종료` → `리플레이 복사`(기록이 있을 때) → `다시 플레이` 순서다. 기본 포커스는 기존과 같이 0번 `종료`다.
+- 진행도(`recordEnemyClear()`), GOLD(`calculateCurrentGameGoldReward()`), 역방향 학습 전송(`shouldSendLearningEvent()`), 가상 컨트롤러(`shouldShowVirtualController()`)는 모두 `game.together`를 제외 조건으로 갖는다. ONNX 모델 준비도 호출하지 않는다.
+- 조작키는 `resolveTogetherKeyInput()` 한 곳에서 판정한다. 1P는 `TOGETHER_PLAYER_ONE_KEY_CODES`(방향키·Z·X와 F·G·H·B), 2P는 `TOGETHER_PLAYER_TWO_KEY_CODES`(키패드 4·6·2·5와 `[`·`]`)를 쓰며 **반드시 물리 키 코드로 판정한다**. NumLock이 꺼져 있으면 키패드가 방향키 문자값을 보내므로, 문자값으로 판정하면 2P 조작이 1P로 새어 들어간다.
+- 방향 홀드 상태는 `playerDirectionInputs[0|1]`에 플레이어별로 있다. 좌우 홀드 반복·빠른 하강·리플레이의 빠른 하강 기록이 모두 `getPlayerDirectionInput(player)`를 거치므로, 새 입력 수단을 붙일 때도 이 배열을 사용한다. 가상 컨트롤러 입력은 1P 전용이다.
+- 게임패드는 `updateGamepadInput()`이 "너랑 나랑"에서만 `navigator.getGamepads()`의 0번을 1P, 1번을 2P로 고정해 읽는다. 그 밖의 화면에서는 예전처럼 첫 번째로 연결된 게임패드 하나만 1P 자리에 쓴다. 게임패드가 만든 내부 이벤트는 `gamepadPlayerIndex`로 조작 대상을 전달한다.
+- `getGameState()`의 `mode`는 `together`, `getNowScreen()`의 화면 이름은 `together_select`·`together_guide`다.
 
 ### 피버와 연속 피버
 
@@ -122,9 +136,10 @@
 - 게임 시작 규칙 선택은 첫 줄의 기본 룰·피버 룰·피버 룰 (시작)과 그 아래 연습·연속 피버·퍼즐뿌요, 취소로 구성된다. 물리 배치에 맞춘 방향키 이동을 유지한다. 연속 피버에서 아래는 하단 취소다.
 - 연습·연속 피버의 색 수 화면과 퍼즐 스테이지 선택에도 취소가 있다. ESC와 외부 클릭의 기존 의미를 바꾸지 않는다.
 - 단독 모드 결과의 오른쪽 영역에는 일반 적 결과를 출력하지 않는다. 퍼즐은 전용 스테이지 상태를, 연습·연속 피버는 빈 적 영역을 사용한다.
-- 결과 화면 이후의 복귀 대상은 모드별로 다르다(단독 모드는 메인, 퍼즐은 스테이지 선택, 대전은 적 선택, 리플레이 재생은 메인). 변경 시 `closeResultScreen()`과 관련 메뉴 포커스를 함께 확인한다.
-- 결과 화면 버튼은 `getResultScreenButtons()`가 만든다. 0번은 항상 `종료`이며 논리 좌표 (515, 165, 250, 64)에 둔다. 두 번째 버튼은 그 아래 12px 간격으로 놓이고, 리플레이 재생 결과에는 `다시보기`, 리플레이를 기록한 대전 결과에는 `리플레이 복사`가 붙는다. 기본 포커스(`resultScreenFocus`)는 항상 0번이므로 Enter만 누르면 기존처럼 이전 화면으로 돌아간다. 방향키로 포커스를 옮기고 Enter·Space·마우스로 실행하며, 버튼이 하나뿐일 때는 기존 모습을 지키기 위해 포커스 테두리를 그리지 않는다. 구경 결과의 `다음 대전까지 %1초` 안내는 버튼이 두 개면 논리 Y=470으로 내려 겹침을 피한다.
-- 메인 메뉴 좌측 하단 GitHub 버튼 바로 위 (32, 634, 85, 23)에 `리플레이 재생` 버튼이 있다. 포커스 순번은 8이며 이동 순서는 `TITLE_MENU_FOCUS_ORDER`가 정한다(목록 0~5 → 리플레이 8 → GitHub 6 → 음소거 7).
+- 결과 화면 이후의 복귀 대상은 모드별로 다르다(단독 모드는 메인, 퍼즐은 스테이지 선택, 대전은 적 선택, 너랑 나랑과 리플레이 재생은 메인). 변경 시 `closeResultScreen()`과 관련 메뉴 포커스를 함께 확인한다.
+- 결과 화면 버튼은 `getResultScreenButtons()`가 만든다. 0번은 항상 `종료`이며 논리 좌표 (515, 165, 250, 64)에 둔다. 이어지는 버튼은 그 아래 12px 간격으로 놓이고, 리플레이 재생 결과에는 `다시보기`, 리플레이를 기록한 대전 결과에는 `리플레이 복사`, 너랑 나랑 결과에는 그 뒤에 `다시 플레이`가 붙는다. 기본 포커스(`resultScreenFocus`)는 항상 0번이므로 Enter만 누르면 기존처럼 이전 화면으로 돌아간다. 방향키로 포커스를 옮기고 Enter·Space·마우스로 실행하며, 버튼이 하나뿐일 때는 기존 모습을 지키기 위해 포커스 테두리를 그리지 않는다. 구경 결과의 `다음 대전까지 %1초` 안내는 버튼이 두 개면 논리 Y=470으로 내려 겹침을 피한다.
+- 메인 메뉴 목록은 `TITLE_MENU_OPTIONS`(게임 시작 0, 너랑 나랑 1, 시뮬레이터 2, 플레이 방법 3, 구경 4, 갤러리 5, 설정 6)이고, 항목 배치는 `TITLE_MENU_ITEM_LAYOUT`(폭 218, 높이 42, 시작 Y 250, 간격 8)을 그리기와 클릭 판정이 함께 쓰는 `getTitleMenuItemBounds()`로 계산한다. 항목을 더하거나 빼면 이 두 상수만 고치면 되고, 잠기는 구경 항목은 `TITLE_WATCH_MENU_INDEX`로 참조한다.
+- 메인 메뉴 좌측 하단 GitHub 버튼 바로 위 (32, 634, 85, 23)에 `리플레이 재생` 버튼이 있다. 목록 밖 버튼의 포커스 순번은 `TITLE_GITHUB_FOCUS_INDEX`(7)·`TITLE_MUTE_FOCUS_INDEX`(8)·`TITLE_REPLAY_FOCUS_INDEX`(9)이며 이동 순서는 `TITLE_MENU_FOCUS_ORDER`가 정한다(목록 0~6 → 리플레이 → GitHub → 음소거). 목록이 늘어나면 이 세 상수도 목록 뒤로 밀어야 순번이 겹치지 않는다.
 - 가상 컨트롤러의 Z·X·ESC 조작 버튼은 표시 레이아웃과 히트 테스트에 같은 `getVirtualControllerLayout()`을 사용해야 한다. 크기 옵션/대형 배치 변경은 둘을 함께 수정한다.
 - 방향 조작은 BUILDNO 30에서 고정 방향 패드를 없애고 [virtualjoystick.js](https://github.com/jeromeetienne/virtualjoystick.js) 방식을 벤치마킹한 가상 조이스틱으로 완전히 대체했다. 조작 버튼 밖을 누른 지점이 그 포인터의 기준점(`virtualJoystickPointers`)이 되고, 손가락을 떼면 기준점과 방향 입력이 함께 사라진다. 기준점은 드래그 중 따라오지 않는다.
 - 방향 판정은 `getVirtualJoystickDirections()` 한 곳에 모여 있다. 기준점에서 `VIRTUAL_JOYSTICK_MIN_DRAG`(10, 논리 픽셀) 미만이면 아무 방향도 아니며, 다른 축이 이 축의 `VIRTUAL_JOYSTICK_DIAGONAL_RATIO`(2)배 안쪽이면 두 축을 함께 눌러 대각선을 두 방향키 동시 입력으로 처리한다. 조이스틱이 만든 방향키도 기존 `virtualPointerButtons`에 담기므로, 좌우 홀드 반복과 빠른 하강 같은 후속 처리는 예전 경로를 그대로 탄다.
@@ -149,10 +164,10 @@
 
 ### 리플레이
 
-- 설정의 `리플레이 사용`이 켜져 있을 때만 기록한다. 대상은 기본 룰·피버 룰·피버 룰 (시작) 대전과 구경 모드의 모든 규칙이며, 연습·연속 피버·퍼즐뿌요·플레이 방법·시뮬레이터는 기록하지 않는다. 기록기는 `game.replay`에 두므로 결과 화면까지 남고 `closeResultScreen()`에서 게임과 함께 사라진다.
+- 설정의 `리플레이 사용`이 켜져 있을 때만 기록한다. 대상은 기본 룰·피버 룰·피버 룰 (시작) 대전과 구경 모드의 모든 규칙, 그리고 너랑 나랑 대전이며, 연습·연속 피버·퍼즐뿌요·플레이 방법·시뮬레이터는 기록하지 않는다. 기록기는 `game.replay`에 두므로 결과 화면까지 남고 `closeResultScreen()`에서 게임과 함께 사라진다.
 - 기록은 `beginReplayRecording()`으로 시작하고, `frame()`이 카운트다운이 끝난 실행 중·비일시정지 프레임에서만 `recordReplayFrame(delta)`를 호출한다. 승패가 확정되는 `updateDefeatSequence()`에서 `finishReplayRecording()`이 마지막 프레임·뿌요 지급 덱·승자를 담아 기록을 닫는다.
 - 프레임은 `REPLAY_SAMPLE_INTERVAL`(초당 30장) 간격의 표본이며, 직전 표본과 달라진 항목만 담는 델타 프레임이다. 보드와 뿌요 쌍은 칸·색마다 한 글자인 문자열로 접고, 폭발·중력·연쇄 표시·싹쓸이 효과·패배 연출은 매 프레임 변하는 경과 시간 대신 시작(또는 종료) 시각만 저장한다. 재생 쪽 `refreshReplayAnimationTimers()`가 현재 재생 시각으로 경과 시간을 다시 계산하므로 30fps 표본으로도 연출이 부드럽다. 실측 평균은 프레임당 약 40~80바이트다.
-- 데이터는 `{version, build, meta, deck, inputs, sounds, result, frames}` 구조다. `meta`는 규칙·구경 여부·색상 목록·양측 이름과 적 클래스 타입을, `deck`은 전체 뿌요 지급 덱과 양측 소비 위치를, `inputs`는 `[시각, 플레이어, 조작종류, 값]` 형태의 시간대별 컨트롤 조작을 담는다. 조작 종류는 `REPLAY_INPUT`(이동·회전·빠른 하강·고정)이다. `REPLAY_FORMAT_VERSION`이 다르면 재생을 거부하므로 구조를 바꿀 때 함께 올린다. 현재 버전은 2다.
+- 데이터는 `{version, build, meta, deck, inputs, sounds, result, frames}` 구조다. `meta`는 규칙·구경 여부·색상 목록·양측 이름과 적 클래스 타입을, `deck`은 전체 뿌요 지급 덱과 양측 소비 위치를, `inputs`는 `[시각, 플레이어, 조작종류, 값]` 형태의 시간대별 컨트롤 조작을 담는다. 조작 종류는 `REPLAY_INPUT`(이동·회전·빠른 하강·고정)이다. `meta.together`가 참이면 양쪽 모두 사람이 조작한 너랑 나랑 대전이며, `meta.togetherWins`에 기록 시작 시점의 1P·2P 누적 승수를 담아 재생 중앙 패널에 그대로 보여 준다. `REPLAY_FORMAT_VERSION`이 다르면 재생을 거부하므로 구조를 바꿀 때 함께 올린다. 현재 버전은 3이며, 너랑 나랑 필드를 넣으면서 2에서 올렸다. 그래서 버전 2로 복사해 둔 예전 리플레이는 재생되지 않는다.
 - 효과음은 `sounds`에 `[시각, 출처, 사운드 풀 속성 이름]` 형태로 담는다. 출처는 공통 풀 `'c'`, 왼쪽·오른쪽 적 풀 `0`·`1`, 어느 풀에도 없는 짧은 URL을 그대로 담는 `'u'`다. 데이터 URL이나 `REPLAY_SOUND_URL_MAX_LENGTH`(200자)를 넘는 URL은 기록하지 않는다. 대량 방해뿌요 착지음처럼 중복 재생을 막는 항목은 네 번째 값 `1`을 붙여 재생 쪽에서도 같은 경로를 쓴다.
 - 기록 지점은 `playSound()`와 `playGarbageFallLotSound()` 안의 `recordReplaySound()` 한 곳이다. 현재 음량이나 Audio 지원 여부와 무관하게 남기므로 음소거 상태에서 기록한 리플레이도 소리가 난다. 새 게임 효과음을 추가할 때 이 두 함수를 거치면 별도 작업 없이 리플레이에 포함된다. 재생은 `playReplaySounds()`가 현재 재생 시각까지의 항목을 순서대로 내보내며, 참조를 되살리지 못한 항목은 조용히 건너뛴다.
 - 배경음악은 별도로 기록하지 않는다. `syncBackgroundMusic()`이 재생용 `game.themeController`와 복원된 피버 활성 상태를 그대로 읽어 원래 대전과 같은 곡을 고른다. 카운트다운이 끝나는 순간에는 `startGameStartFirework()`로 시작 연출도 같이 보여 준다.

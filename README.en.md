@@ -21,6 +21,19 @@ Select `Start Game` on the main screen, choose a difficulty and opponent, and pr
 
 Select `Practice` to play freely against a practice opponent that does not attack. The `GitHub` button in the lower-left corner of the main screen opens the project repository in a new window.
 
+## Play Together (two players, one computer)
+
+Select `Play Together` on the main screen and choose `Standard Rules`, `FEVER Rules`, or `FEVER Rules (Start)`. A guide screen then shows the controls; pick the number of colors and press `Start` to play a head-to-head match with two people on one computer. The rules are the same as a match against the CPU, and the center of the screen shows both players' win record instead of a portrait.
+
+When the match ends, `Play Again` starts another match while keeping the win record, and `Quit` returns to the main screen and clears the record.
+
+| Player | Move | Rotate |
+| --- | --- | --- |
+| 1P | Arrow keys, or F (left), H (right), B (down) | Z (left), X (right), or G (left) |
+| 2P | Numpad 4 (left), 6 (right), 2 (down) | `[` (left), `]` (right), or numpad 5 (left) |
+
+With two gamepads connected, the first one is 1P and the second is 2P. The virtual controller is not available in this mode.
+
 ## Controls
 
 | Key | Action |
