@@ -351,7 +351,7 @@ test('피버 테스트는 편집한 패턴과 목표 연쇄로 피버 상태에 
   await page.keyboard.press('Escape');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 10000 }).toBe('simulator_draw');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('simulator_draw');
   await expect(page.getByRole('button', { name: '스크립트 생성' })).toBeEnabled();
   const editor = await page.evaluate(() => window.PuyoW.tools.getEditorData());
   expect(editor.stageData.puyos.length).toBe(4);
@@ -371,7 +371,7 @@ test('퍼즐뿌요 테스트는 편집한 스테이지로 진행하고 클리어
   await page.keyboard.press('Escape');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 10000 }).toBe('simulator_draw');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('simulator_draw');
   const clearedStages = await page.evaluate(() => {
     const saved = window.localStorage.getItem('puyow_store');
     return saved ? (JSON.parse(saved).puzzleClearStages || []) : [];
@@ -442,6 +442,40 @@ test('피버 패턴 자동생성은 목표 연쇄가 정확히 나오는 배치�
   expect(check.count).toBeGreaterThan(0);
   expect(check.selfPops).toBe(0);
   expect(check.best).toBe(4);
+});
+
+test('피버 패턴 자동생성을 다시 하면 조건을 만족하는 다른 배치를 만든다', async ({ page }) => {
+  test.setTimeout(300000);
+  await selectMode(page, '피버 패턴 개발');
+  await page.locator('.puyow-tools-sidebar input[type="number"]').first().fill('4');
+
+  // 같은 조건으로 두 번 자동생성한다. 두 번 모두 빈 배치에서 시작해야 조건이 같다.
+  const runAutoGenerate = async () => {
+    await page.evaluate(() => window.PuyoW.tools.setEditorData({
+      stageData: { puyos: [] },
+      suppliedNextPuyos: ['red', 'red']
+    }));
+    await page.getByRole('button', { name: '자동생성' }).click();
+    await expect(page.locator('.puyow-tools-status')).toHaveText(/자동생성을 마쳤습니다/, { timeout: 120000 });
+    await expect(page.locator('.puyow-tools-overlay')).toBeHidden();
+    return page.evaluate(() => {
+      const editor = window.PuyoW.tools.getEditorData();
+      const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+      editor.stageData.puyos.forEach(({ x, y, color }) => { board[y][x] = color; });
+      return {
+        signature: editor.stageData.puyos.map(({ x, y, color }) => `${x},${y},${color}`).sort().join('|'),
+        best: window.PuyoW.findBestPreviewResult(board, ['red', 'red']).combo
+      };
+    });
+  };
+
+  const first = await runAutoGenerate();
+  const second = await runAutoGenerate();
+
+  // 조건을 만족하는 경우가 여럿이면 매번 다른 결과를 내야 사용자가 마음에 들 때까지 눌러 볼 수 있다.
+  expect(second.signature).not.toBe(first.signature);
+  expect(first.best).toBe(4);
+  expect(second.best).toBe(4);
 });
 
 test('피버 패턴 자동생성은 중단 버튼으로 멈출 수 있다', async ({ page }) => {

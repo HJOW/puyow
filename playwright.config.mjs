@@ -31,6 +31,13 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
+  /*
+   * 이 게임 테스트는 실제 대전과 연출을 그대로 진행하므로, 여러 테스트를 한꺼번에 돌리면
+   * 화면 전환 한 번이 기본값 5초를 쉽게 넘긴다. 단독 실행에서는 통과하는데 전체 실행에서만
+   * 실패하는 일이 반복되어 expect 기본 대기 시간을 늘렸다. 실제로 깨진 기능은 그대로 실패하고
+   * 실패를 알아채기까지 걸리는 시간만 길어진다.
+   */
+  expect: { timeout: 15000 },
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */

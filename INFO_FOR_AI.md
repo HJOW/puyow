@@ -26,7 +26,7 @@
 - 이미지: `src/img/`
 - 언어별 공지사항: `src/notice/`
 - Webpack 번들 출력: `src/bundle/puyow.bundle.js`
-- E2E 회귀 테스트: `tests/test01.spec.js` (게임 페이지), `tests/test02_tools.spec.js` (개발용 도구 페이지)
+- E2E 회귀 테스트: `tests/test01_*.spec.js` (게임 페이지), `tests/test02_tools.spec.js` (개발용 도구 페이지), `tests/test03_ai.spec.js` (AI 모델 사용·학습)
 - 개발자 문서: `HOWTO.md`, `docs/`
 - 공개 안내 문서: `README.md`, `README.en.md` (`README.en.md`는 `README.md`의 영어 번역본이므로 플레이 주소·실행 방법 같은 원문 갱신을 함께 반영한다.)
 - 모든 텍스트 파일은 UTF-8, 기본 UI 언어는 한국어다.
@@ -202,7 +202,7 @@
 
 ### 제거한 AI 제공자(OpenAI·Prompt API) 재도입 참고
 
-BUILDNO 26에서 `OpenAI`와 `Prompt API` 제공자를 **임시로** 제거했다. 게임 규칙이나 솔로몬의 판단 로직이 문제가 아니라, 상용 LLM은 한 수를 고르는 데 너무 오래 걸려 실제로 플레이할 수 없었기 때문이다. 언젠가 다시 넣을 수 있으므로 지운 구현을 아래에 남긴다. 제거 직전 상태는 BUILDNO 25(커밋 `28ddfde`)의 `src/js/puyow.js`와 `tests/test01.spec.js`에 그대로 있으니, 되살릴 때는 이 문서로 범위를 먼저 파악한 뒤 그 커밋에서 실제 코드를 확인하는 편이 빠르다.
+BUILDNO 26에서 `OpenAI`와 `Prompt API` 제공자를 **임시로** 제거했다. 게임 규칙이나 솔로몬의 판단 로직이 문제가 아니라, 상용 LLM은 한 수를 고르는 데 너무 오래 걸려 실제로 플레이할 수 없었기 때문이다. 언젠가 다시 넣을 수 있으므로 지운 구현을 아래에 남긴다. 제거 직전 상태는 BUILDNO 25(커밋 `28ddfde`)의 `src/js/puyow.js`와 당시의 `tests/test01.spec.js`(지금은 아래 「테스트 파일 구성」대로 나뉘었다)에 그대로 있으니, 되살릴 때는 이 문서로 범위를 먼저 파악한 뒤 그 커밋에서 실제 코드를 확인하는 편이 빠르다.
 
 **되살릴 때 먼저 알아야 할 변경점.** 제거와 함께 `aiProvider`에 "아무것도 선택하지 않은 상태"(빈 문자열)가 생겼고, 남은 두 제공자가 모두 `/v1/chat/completions`를 쓰기 때문에 `aiApiURL`·`aiApiKey`·`aiModel` 세 행은 "LM Studio일 때만 활성"이라는 하나의 조건으로 단순해졌다. OpenAI는 URL을 입력받지 않고 Prompt API는 셋 다 입력받지 않으므로, 되살리려면 이 단순화한 조건을 다시 제공자별로 나눠야 한다. 대상은 `getSelectableSettingsFocuses()`, `getSettingsRows()`의 `disabled`, `getSettingsTextField()`, `hasCompleteAiApiSettings()`의 `requiredKeys` 네 곳이다.
 
@@ -331,7 +331,7 @@ aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
     : settings.aiProvider === LOCAL_AI_PROVIDER || getAiServiceProviders().includes(settings.aiProvider) ? settings.aiProvider : initial.settings.aiProvider,
 ```
 
-**함께 지운 회귀 테스트.** `tests/test01.spec.js`에서 아래 네 개를 지웠고, 나머지 AI 테스트는 OpenAI 대신 LM Studio 설정을 쓰도록 옮겼다. Prompt API 테스트는 `page.addInitScript()`로 `window.LanguageModel`을 가짜로 심어 `create`·`prompt`·`destroy` 호출을 기록하는 방식이었다.
+**함께 지운 회귀 테스트.** 당시의 `tests/test01.spec.js`에서 아래 네 개를 지웠고, 나머지 AI 테스트는 OpenAI 대신 LM Studio 설정을 쓰도록 옮겼다. Prompt API 테스트는 `page.addInitScript()`로 `window.LanguageModel`을 가짜로 심어 `create`·`prompt`·`destroy` 호출을 기록하는 방식이었다.
 
 - `설정의 AI 서비스 제공자는 OpenAI와 LM Studio를 라디오로 표시하고 기존 Google 값은 정규화한다`
 - `Prompt API를 지원하지 않으면 선택지를 숨기고 저장된 Prompt API 설정을 LM Studio로 이관한다`
@@ -378,6 +378,7 @@ aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
 - 본래 쓰레드의 확인은 피버가 `findExplosionsOnBoard()`(스스로 터지지 않는지)와 `findBestPreviewResult()`(정확히 목표 연쇄인지)를, 퍼즐이 `findExplosionGroupsOnBoard()`·`collapseBoard()`로 단계를 직접 밟으며 목표 타입별 값을 센다. 게임이 단계별 폭발 수·색 수를 따로 내보내지 않기 때문이다. `attack` 목표만 `simulatePlacementResult().attack`으로 어림한다.
 - **퍼즐 자동생성은 첫 턴에 목표를 이룰 수 있는 배치만 찾는다.** 목표 턴수는 1 이상이므로 첫 턴 해법은 언제나 제한 안이다. 여러 턴을 써야 풀리는 배치는 찾지 않는다.
 - 못 찾으면 `AUTO_GENERATE_TIME_LIMIT`(2분) 뒤 안내 문구를 낸다. 알려진 한계로 3색만 쓰는 11~12연쇄와 목표 타입 `color`의 4·5색은 잘 찾지 못한다.
+- **자동생성은 누를 때마다 다른 결과를 내려고 한다.** 사용자가 마음에 들 때까지 눌러 보고 이어서 손으로 고칠 수 있게 하려는 것이다. 두 가지가 이 성질을 만든다. 첫째, 탐색 난수의 씨앗을 본래 쓰레드가 `createAutoGenerateSeed()`(게임의 `randomFloat()`를 거친다)로 매번 새로 만들어 `start` 메시지에 실어 보낸다. 예전에는 Worker가 씨앗 0에서 시작해 같은 조건이면 늘 같은 배치가 나왔다. Worker의 `nextSteps()`는 후보를 섞은 뒤 안정 정렬로 이득·더하는 뿌요 수만 비교하므로, 같은 값끼리의 순서가 이 씨앗에 따라 달라진다. 둘째, 찾은 배치가 직전 결과(`autoGenerateLastSignature`)와 완전히 같으면 `retryAutoGenerateForVariety()`가 `reject`를 보내 다른 경우를 더 찾게 한다. 해가 하나뿐인 조건에서 멈추지 않도록 `AUTO_GENERATE_VARIETY_RETRIES`(8)회까지만 다시 찾고 그 뒤에는 같은 결과라도 받아들인다. 개발 대상을 바꾸면 이 지문은 지운다.
 - 자동생성 결과도 그대로 쓸 수 있는 완성품이 아니라 손으로 다듬을 초안이다. 배치가 바뀌면 검증 지문도 달라지므로 스크립트를 만들려면 다시 테스트해야 한다.
 
 ### 개발용 도구의 WebMCP
@@ -416,7 +417,38 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 4. `node --check src/js/puyow.js`, `npm.cmd test`, 관련 Playwright 테스트를 실행한다.
 5. 최종 보고에는 변경 파일, 실행한 검증, 실행하지 못한 검증의 이유를 간단히 적는다.
 
-Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 떠 있는 서버를 그대로 쓴다. `nodeserver.js`는 `/apis/localmodelinfo`에 항상 `{"available": false}`를 주지만 모델을 올린 `python/pythonserver.py`는 `true`를 주므로, 어느 서버로 띄웠는지에 따라 Local AI 사용 가능 여부가 달라진다. Local AI를 쓸 수 있으면 제공자 기본값이 Local AI가 되고 그 때문에 솔로몬이 세션에서 열려 적 목록과 설정 화면 포커스 순번까지 함께 바뀐다. 그래서 `test.beforeEach`의 `disableLocalAiModel()`이 이 응답을 `false`로 고정해 기준선을 일반 웹 서버와 같게 만든다. Local AI가 필요한 테스트는 `page.route()`를 자기 안에서 다시 걸어 이 기본값을 덮어쓴다(나중에 등록한 라우트가 이긴다). ONNX wasm CDN을 막는 `blockOnnxWasmCdn()`도 같은 구조다. 서버 응답에 따라 게임 동작이 갈리는 기능을 새로 만들면 이 두 함수처럼 기준선을 함께 고정한다.
+### 테스트 파일 구성
+
+게임 페이지 회귀 테스트는 예전에 `tests/test01.spec.js` 한 파일이었으나, 무엇을 확인하는 테스트인지에 따라 아래처럼 나눴다. 테스트를 더할 때는 새 파일을 만들기 전에 이 표에서 맞는 자리를 먼저 찾는다.
+
+| 파일 | 다루는 범위 |
+| --- | --- |
+| `tests/common/gamepage.js` | 여러 파일이 함께 쓰는 준비 코드와 도우미. `setupGamePage()`가 공통 `test.beforeEach`를 지금 spec 파일에 등록한다. 파일 이름이 `*.spec.js`가 아니라서 Playwright가 테스트로 수집하지 않는다. |
+| `test01_core.spec.js` | 초기화·리소스 로드·공개 API·보드/NEXT/DAMAGE 규칙·저장 데이터 보정·확인창·다국어와 URL 치환 |
+| `test01_menu.spec.js` | 타이틀 메뉴·설정 화면·카드와 GOLD·가상 컨트롤러와 조이스틱·게임패드·화면 회전·플레이 방법 시연 |
+| `test01_enemy.spec.js` | 기본 제공 적 AI의 판단, 다수 탐색 Worker, 패배 위치 회피, 적 테마, 진행도 저장, 구경 모드 |
+| `test01_fever.spec.js` | 피버 룰·피버 룰 (시작)·연속 피버와 그에 딸린 공격·싹쓸이 정산 |
+| `test01_puzzle.spec.js` | 퍼즐뿌요 스테이지 선택·승리 조건·결과 화면 |
+| `test01_simulator.spec.js` | 시뮬레이터와 점수·연결 보너스 계산 |
+| `test01_replay.spec.js` | 리플레이 기록과 재생 |
+| `test01_together.spec.js` | 너랑 나랑 (한 컴퓨터 2인 대전) |
+| `test02_tools.spec.js` | 개발용 도구 페이지(`tools.html`) |
+| `test03_ai.spec.js` | **AI 모델 사용과 학습.** 설정의 AI 서비스 제공자(LM Studio·Local AI), 솔로몬의 배치 요청과 온라인 학습 전송, `역으로 모델 학습` 설정, 브라우저 ONNX 추론 적 |
+
+AI 모델과 학습에 관한 테스트는 반드시 `test03_ai.spec.js`에 둔다. 이 파일만 외부 AI 서버 응답과 ONNX 런타임을 흉내 내고 CPU를 많이 쓰므로, 나머지 게임 동작 테스트와 섞으면 실패 원인을 가리기 어렵다.
+
+한 파일에서만 쓰는 도우미 함수는 그 파일 안에 남기고, 두 파일 이상이 쓰는 것만 `tests/common/gamepage.js`로 올린다.
+
+Playwright 설치 때 생긴 예제 `tests/example.spec.js`(공개 인터넷의 playwright.dev에 접속했다)와 철회한 독립 3D 버전의 `tests/puyow3d.spec.js`(전부 `test.skip`이었다)는 지웠다. 되살릴 일이 있으면 git 히스토리에서 찾는다.
+
+### 부하 때문에 흔들리는 테스트
+
+Playwright는 `fullyParallel`이라 여러 테스트를 한꺼번에 돌린다. 이 테스트들은 실제 대전과 연출을 그대로 진행하므로, 혼자 돌릴 때 1초에 끝나는 화면 전환이 전체 실행에서는 몇 초씩 걸린다. **단독 실행에서는 통과하는데 전체 실행에서만 실패한다면 기능이 깨진 것이 아니라 대개 이 문제다.** 두 가지로 대응하고 있다.
+
+- `playwright.config.mjs`의 `expect: { timeout: 15000 }`이 기본 대기 시간을 15초로 올린다. 테스트 안에서 `expect.poll`에 제한 시간을 따로 적을 때도 15초보다 짧게 적지 않는다. 실제로 깨진 기능은 그대로 실패하고 실패를 알아채기까지 걸리는 시간만 길어진다.
+- 한 테스트에서 여러 단계를 이어 보는 항목(ONNX 모델 로딩 실패 뒤 실제 추론 대전, 구경 대전 뒤 리플레이 재생 등)은 각 단계의 대기 시간을 합치면 기본 테스트 제한 시간 30초를 넘기므로 `test.setTimeout()`으로 넉넉히 잡는다. ONNX 추론과 구경 대전은 CPU를 많이 써서 함께 돌 때 특히 느려진다.
+
+Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 떠 있는 서버를 그대로 쓴다. `nodeserver.js`는 `/apis/localmodelinfo`에 항상 `{"available": false}`를 주지만 모델을 올린 `python/pythonserver.py`는 `true`를 주므로, 어느 서버로 띄웠는지에 따라 Local AI 사용 가능 여부가 달라진다. Local AI를 쓸 수 있으면 제공자 기본값이 Local AI가 되고 그 때문에 솔로몬이 세션에서 열려 적 목록과 설정 화면 포커스 순번까지 함께 바뀐다. 그래서 `tests/common/gamepage.js`의 `setupGamePage()`가 등록하는 `test.beforeEach` 안에서 `disableLocalAiModel()`이 이 응답을 `false`로 고정해 기준선을 일반 웹 서버와 같게 만든다. Local AI가 필요한 테스트는 `page.route()`를 자기 안에서 다시 걸어 이 기본값을 덮어쓴다(나중에 등록한 라우트가 이긴다). ONNX wasm CDN을 막는 `blockOnnxWasmCdn()`도 같은 구조다. 서버 응답에 따라 게임 동작이 갈리는 기능을 새로 만들면 이 두 함수처럼 기준선을 함께 고정한다.
 
 ## 머신러닝 작업 참고
 
@@ -506,3 +538,84 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.
 주석 및 채팅창 답변은 모두 한국어로 해줘.
 
+
+----------------------------------------------------------
+
+## 인수인계 (2026-09-09 작업 중단 시점)
+
+`TODO.md`의 두 항목(테스트 코드 역할 분리·정리, 개발용 도구 자동생성 결과 랜덤화)을 작업하다가 사용자 요청으로 중단했다. **커밋하지 않은 작업 트리 상태 그대로**이며, 이어받는 사람이 알아야 할 내용을 아래에 적는다. 이 절은 남은 작업을 다 끝내면 지운다.
+
+### 끝난 작업
+
+**1. 개발용 도구 자동생성 결과 랜덤화 — 완료.**
+
+`src/js/puyow_tools.js`만 고쳤다. 자세한 내용은 위 「개발용 도구의 자동생성」 절에 반영해 두었다. 요약하면 탐색 난수 씨앗을 본래 쓰레드가 매번 새로 만들어 Worker에 보내고(`createAutoGenerateSeed()`), 직전 결과와 지문이 같으면 최대 8번까지 다른 경우를 다시 찾는다(`retryAutoGenerateForVariety()`). 예전에는 Worker가 씨앗 0에서 시작해 같은 조건이면 늘 같은 배치가 나왔다.
+
+검증은 두 가지로 했다. Worker 본체(`autoGenerateWorkerBootstrap`)를 문자열로 뽑아 Node에서 직접 6번 돌려 6가지 모두 다른 결과가 나오는 것을 확인했고, `tests/test02_tools.spec.js`에 `피버 패턴 자동생성을 다시 하면 조건을 만족하는 다른 배치를 만든다` 회귀 테스트를 더했다(chromium 통과).
+
+**2. 게임 페이지 테스트 파일 분할 — 완료.**
+
+`tests/test01.spec.js`(6,409줄, 186개 테스트)를 종류별 8개 파일과 AI 전용 `tests/test03_ai.spec.js`로 나누고, 공통 준비 코드를 `tests/common/gamepage.js`로 뽑았다. 파일별 담당 범위는 위 「테스트 파일 구성」 표에 있다. 테스트 186개는 하나도 잃지 않았고 내용도 그대로 옮겼다. 함께 `tests/example.spec.js`(Playwright 설치 예제, 공개 인터넷 의존)와 `tests/puyow3d.spec.js`(철회한 3D 버전, 전부 `test.skip`)를 지웠다.
+
+**3. 부하 때문에 흔들리던 테스트 수정 — 완료.**
+
+원인은 `fullyParallel` 실행에서 화면 전환이 기본 5초를 넘기는 것이었다. `playwright.config.mjs`에 `expect: { timeout: 15000 }`을 넣고, 각 spec의 15초 미만 `timeout` 값 93곳을 15000으로 올렸다. 여러 단계를 이어 보는 두 테스트에는 제한 시간을 따로 줬다(`플라우로스는 ONNX 모델을 불러온 뒤 대전하고…`에 `test.setTimeout(180000)`, `구경 대전도 리플레이로 기록하며…`의 ESC 뒤 메인 메뉴 대기를 60초로). 자세한 배경은 위 「부하 때문에 흔들리는 테스트」 절에 적었다.
+
+### 검증한 것과 하지 못한 것
+
+- `npm.cmd test`(eslint)와 `node --check src/js/puyow_tools.js` 통과.
+- **chromium 전체 223개 통과**(3.2분). 단, 이 실행은 아래 「하던 작업」의 WebKit 수정을 넣기 **전** 상태다.
+- **webkit 전체 205개 통과 / 18개 실패**(5.9분). 이 중 10개는 `--last-failed --workers=2`로 다시 돌리면 통과하는 병렬 부하 문제였고, 8개는 단독 실행에서도 결정적으로 실패한다. 이 8개는 이번 분할 이전부터 실패하던 것이다(분할 전 webkit 실행에서도 같은 항목들이 실패 목록에 있었다).
+- **firefox는 한 번도 돌리지 않았다.**
+
+### 하던 작업 — WebKit에서만 결정적으로 실패하는 8개
+
+원인을 밝힌 것이 4개, 아직 손대지 않은 것이 4개다.
+
+**밝힌 원인: Playwright WebKit은 `page.route()`가 하나라도 걸려 있으면 `blob:` 주소의 Worker 스크립트를 읽지 못한다.** 공통 `test.beforeEach`가 `blockOnnxWasmCdn()`·`disableLocalAiModel()`로 라우트를 걸어 두므로, 게임의 Blob Worker(3수 이상 N수 탐색)가 늘 시간 초과로 1수 결과에 대체되어 아래 네 테스트가 깨졌다.
+
+| 파일·테스트 | 실패 모습 |
+| --- | --- |
+| `test01_enemy.spec.js` `안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 선택에 적용한다` | 회전·목표 값이 기대와 다름 |
+| `test01_enemy.spec.js` `3수 이상 공통 Worker 탐색은 정상 완료 Worker를 다음 요청에서 재사용한다` | Worker 생성 수가 1이 아니라 2 |
+| `test01_enemy.spec.js` `3수 이상 공통 Worker 탐색은 깊이별 현재 1수 결과를 순서대로 전달한다` | `depths`가 `[1,2,3]`이 아니라 빈 배열 |
+| `test01_enemy.spec.js` `3수 Worker 메인 콜백 오류는 기존 1수 탐색 결과로 즉시 대체한다` | `onProgress`가 불리지 않아 `errorLogged: false` |
+
+원인을 확정한 방법은 이렇다. 임시 spec을 만들어 같은 페이지에서 (a) 라우트 없음, (b) 라우트만, (c) `addInitScript`만 세 조건으로 `simulateNMovePlacementsInWorker()`를 돌렸더니 (b)에서만 `{depth: 0, fallback: true}`가 나왔다. `page.unrouteAll()` 뒤 `page.reload()`를 하면 WebKit에서도 `{depth: 3, fallback: false}`로 정상 동작한다. **게임 코드의 문제가 아니라 테스트 도구의 제약이므로 `src/js/puyow.js`는 고치지 않았다.** 실제 Safari에는 해당하지 않는다.
+
+이에 맞춰 아래를 이미 고쳐 두었으나 **아직 재검증하지 않았다.**
+
+- `tests/common/gamepage.js`에 `releaseNetworkInterception(page)`를 더했다. 기준선 라우트를 모두 걷고 페이지를 다시 연다.
+- `tests/test01_enemy.spec.js`의 Worker 관련 테스트 다섯 개(위 네 개와 `외부 Enemy 하위 클래스도 Worker 탐색 보조 함수로 결과를 적용한다`) 맨 앞에서 이 함수를 부르게 했다. 이 테스트들은 ONNX·Local AI 응답을 쓰지 않으므로 기준선을 잃지 않는다.
+- 같은 파일에 `WORKER_SEARCH_TIME_LIMIT`(15000) 상수를 두고, Worker 탐색에 주던 1000ms 예산을 모두 이 값으로 바꿨다. 상수는 `page.evaluate`의 인자로 브라우저에 넘긴다. `안드레알푸스…` 테스트의 `lookaheadTimeLimitMs` 기대값도 15000으로 함께 고쳤다.
+
+**다음에 할 일 (1)**: 아래로 재검증한다. 통과하면 이 네 개는 끝난 것이다.
+
+```
+npx.cmd playwright test tests/test01_enemy.spec.js --project=webkit --workers=1 -g "Worker"
+```
+
+**다음에 할 일 (2)**: 아직 원인을 보지 않은 나머지 네 개를 조사한다. 모두 WebKit 단독 실행에서도 실패한다.
+
+| 파일·테스트 | 관찰한 오류 |
+| --- | --- |
+| `test01_menu.spec.js` `플레이어 이름은 설정에 저장되며 게임 화면에 적용되고 최대 10자로 제한된다` | `locator.click`이 테스트 제한 시간 초과 |
+| `test01_menu.spec.js` `설정 텍스트 입력은 선택, 복사, 붙여넣기와 클립보드 실패 시 선택 삭제를 지원한다` | `page.evaluate: Execution context was destroyed, most likely because of a navigation` |
+| `test02_tools.spec.js` `편집 화면은 클릭·드래그로 플레이 영역과 다음 뿌요 칸에 뿌요를 배치한다` | 배치 결과 `toEqual` 불일치 |
+| `test03_ai.spec.js` `로컬 모델을 사용할 수 없으면 Local AI 선택지를 숨기고 아무것도 선택하지 않은 상태로 되돌린다` | 비활성 색(`#7f969e`)으로 그린 문구를 찾지 못함 |
+
+앞의 세 개는 WebKit의 클립보드·마우스 이벤트·캔버스 처리 차이일 가능성이 높고, 마지막 하나는 캔버스에 그린 색을 픽셀이 아니라 `fillStyle` 문자열로 확인하는 방식이라 WebKit의 색 표기 차이일 수 있다. 실제 게임 동작이 깨진 것인지(수정), 테스트 방식이 WebKit에 맞지 않는 것인지(테스트 수정 또는 WebKit 제외)를 먼저 가른다. 조사할 때는 위에서 쓴 방법 — 임시 spec을 만들어 조건을 하나씩 빼며 좁히는 것 — 이 잘 통했다.
+
+**다음에 할 일 (3)**: 위 두 가지를 끝낸 뒤 세 브라우저 전체를 돌려 마무리한다. firefox는 아직 한 번도 돌리지 않았다.
+
+```
+npx.cmd playwright test --project=chromium
+npx.cmd playwright test --project=firefox
+npx.cmd playwright test --project=webkit
+```
+
+### 그 밖에 알아 둘 것
+
+- `src/js/puyow.js`는 이번에 손대지 않았으므로 `BUILDNO`는 37 그대로이고 `package.json`의 `version`도 `0.0.37` 그대로다. 이어받는 사람이 `puyow.js`를 고치면 그때 함께 올린다.
+- `TODO.md`는 사용자가 적은 그대로 두었다.
+- 위 「테스트 파일 구성」·「부하 때문에 흔들리는 테스트」·「개발용 도구의 자동생성」 절은 이번 작업 결과로 이미 갱신했다. `docs/Simulator.md`와 `docs/Simulator.en.md`의 `tests/test01.spec.js` 참조도 `tests/test01_simulator.spec.js`로 고쳤다.

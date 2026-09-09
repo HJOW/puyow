@@ -676,6 +676,19 @@
     /** 자동생성을 포기하기까지 기다리는 시간(ms)이다. @type {number} */
     const AUTO_GENERATE_TIME_LIMIT = 120000;
 
+    /**
+     * 직전과 같은 결과가 나왔을 때 다른 경우를 다시 찾아볼 최대 횟수다.
+     * 해가 하나뿐인 조건도 있으므로 무한정 다시 찾지 않고 이 횟수까지만 시도한다.
+     * @type {number}
+     */
+    const AUTO_GENERATE_VARIETY_RETRIES = 8;
+
+    /** 직전 자동생성 결과의 지문이다. 같은 결과가 또 나오면 다른 경우를 더 찾아본다. @type {string|null} */
+    let autoGenerateLastSignature = null;
+
+    /** 지금 자동생성에서 같은 결과를 피하려고 다시 찾은 횟수다. @type {number} */
+    let autoGenerateVarietyRetries = 0;
+
     /** 지금 돌고 있는 자동생성 Worker다. 진행 중이 아니면 null이다. @type {Worker|null} */
     let generateWorker = null;
 
@@ -700,6 +713,53 @@
         const waiters = autoGenerateWaiters;
         autoGenerateWaiters = [];
         waiters.forEach((resolve) => resolve(message));
+    }
+
+    /**
+     * 자동생성 탐색에 쓸 시작 난수 씨앗을 만든다.
+     * 이 값이 매번 달라야 조건을 만족하는 여러 배치 가운데 다른 것이 나온다.
+     * Math.random()을 직접 부르지 않고 게임의 randomFloat()를 거치는 것은 puyow.js와 같은 계약을 지키기 위해서다.
+     * @returns {number} 0 이상 2^31 미만의 정수
+     */
+    function createAutoGenerateSeed() {
+        return Math.floor(getGameApi().randomFloat() * 0x7fffffff);
+    }
+
+    /**
+     * 자동생성 결과를 서로 비교하기 위한 지문을 만든다.
+     * 놓인 자리와 색이 모두 같을 때만 같은 지문이 된다.
+     * @param {{x:number,y:number,color:string}[]} puyos 자동생성이 돌려준 배치
+     * @returns {string} 배치 지문
+     */
+    function buildAutoGenerateSignature(puyos) {
+        return puyos.map(({ x, y, color }) => `${x},${y},${color}`).sort().join('|');
+    }
+
+    /**
+     * 방금 찾은 배치가 직전 결과와 똑같으면 Worker에게 다른 경우를 더 찾게 한다.
+     * 사용자가 마음에 들 때까지 자동생성을 눌러 볼 수 있도록 되도록 다른 결과를 내주려는 것이며,
+     * 해가 하나뿐인 조건에서 영원히 헤매지 않도록 정해 둔 횟수까지만 다시 찾는다.
+     * @param {{x:number,y:number,color:string}[]} puyos 방금 찾은 배치
+     * @param {Worker} worker 지금 돌고 있는 자동생성 Worker
+     * @returns {boolean} 다시 찾도록 요청했는지 여부
+     */
+    function retryAutoGenerateForVariety(puyos, worker) {
+        if (buildAutoGenerateSignature(puyos) !== autoGenerateLastSignature) return false;
+        if (autoGenerateVarietyRetries >= AUTO_GENERATE_VARIETY_RETRIES) return false;
+        autoGenerateVarietyRetries += 1;
+        worker.postMessage({ type: 'reject' });
+        return true;
+    }
+
+    /**
+     * 자동생성 결과를 받아들이고, 다음 자동생성이 같은 결과를 피할 수 있도록 지문을 남긴다.
+     * @param {{x:number,y:number,color:string}[]} puyos 받아들일 배치
+     * @returns {void}
+     */
+    function acceptAutoGenerateResult(puyos) {
+        autoGenerateLastSignature = buildAutoGenerateSignature(puyos);
+        stopAutoGenerate();
+        getToolsApi().setEditorData({ stageData: { puyos } });
     }
 
     /**
@@ -1538,6 +1598,8 @@
         if (currentMode === kind) return;
         currentMode = kind;
         verifiedSnapshot = null;
+        // 개발 대상이 바뀌면 직전 자동생성 결과와 비교할 이유가 없다.
+        autoGenerateLastSignature = null;
         elements.feverModeButton.classList.toggle('is-active', kind === 'fever');
         elements.puzzleModeButton.classList.toggle('is-active', kind === 'puzzle');
         elements.empty.hidden = true;
@@ -2334,7 +2396,9 @@
                     pair: data.pair,
                     objective,
                     deadline: Date.now() + data.timeLimit,
-                    seed: 0,
+                    // 씨앗을 본래 쓰레드에서 받아 매번 다르게 시작한다. 조건을 만족하는 배치가
+                    // 여럿일 때 자동생성을 누를 때마다 다른 결과가 나오게 하려는 것이다.
+                    seed: Number(data.seed) || 0,
                     nodes: startNodes
                 };
                 runJob();
@@ -2477,8 +2541,9 @@
                     worker.postMessage({ type: 'reject' });
                     return;
                 }
-                stopAutoGenerate();
-                getToolsApi().setEditorData({ stageData: { puyos: data.puyos } });
+                // 직전과 똑같은 배치면 다른 경우를 더 찾아본다.
+                if (retryAutoGenerateForVariety(data.puyos, worker)) return;
+                acceptAutoGenerateResult(data.puyos);
                 finishAutoGenerate(translate('Auto generation finished. %1 puyos were added.', data.puyos.length - before), 'done');
                 return;
             }
@@ -2501,13 +2566,15 @@
             stopAutoGenerate();
             finishAutoGenerate(translate('Auto generation stopped.'), 'error');
         });
+        autoGenerateVarietyRetries = 0;
         worker.postMessage({
             type: 'start',
             puyos: stage.stageData.puyos,
             colors: stage.usingColors,
             pair: [...stage.suppliedNextPuyos],
             objective: { kind: 'combo', target: stage.targetCombo },
-            timeLimit: AUTO_GENERATE_TIME_LIMIT
+            timeLimit: AUTO_GENERATE_TIME_LIMIT,
+            seed: createAutoGenerateSeed()
         });
     }
 
@@ -2634,8 +2701,9 @@
                     worker.postMessage({ type: 'reject' });
                     return;
                 }
-                stopAutoGenerate();
-                getToolsApi().setEditorData({ stageData: { puyos: data.puyos } });
+                // 직전과 똑같은 배치면 다른 경우를 더 찾아본다.
+                if (retryAutoGenerateForVariety(data.puyos, worker)) return;
+                acceptAutoGenerateResult(data.puyos);
                 finishAutoGenerate(translate('Auto generation finished. %1 puyos were added.', data.puyos.length - before), 'done');
                 return;
             }
@@ -2658,13 +2726,15 @@
             stopAutoGenerate();
             finishAutoGenerate(translate('Auto generation stopped.'), 'error');
         });
+        autoGenerateVarietyRetries = 0;
         worker.postMessage({
             type: 'start',
             puyos: stage.stageData.puyos,
             colors,
             pair: [...pair],
             objective,
-            timeLimit: AUTO_GENERATE_TIME_LIMIT
+            timeLimit: AUTO_GENERATE_TIME_LIMIT,
+            seed: createAutoGenerateSeed()
         });
     }
 
