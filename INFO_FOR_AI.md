@@ -105,7 +105,7 @@
 
 ### 퍼즐뿌요
 
-- `PUZZLE_STAGES`의 순서와 `PuzzlePuyoStage` 데이터가 콘텐츠의 기준이다. 새 스테이지는 `registerPuzzleStage()`로도 등록할 수 있다.
+- `PUZZLE_STAGES`의 순서와 `PuzzlePuyoStage` 데이터가 콘텐츠의 기준이다. 새 스테이지는 `registerPuzzleStage()`로도 등록할 수 있다. 스테이지 `hint`는 한국어 원문을 번역 키로 사용하므로, 새 힌트를 추가할 때는 `stringTable`의 영어·일본어·중국어·독일어·프랑스어 번역도 함께 추가한다.
 - 승리 조건: `combo`, `clear`, `multiple`, `color`, `attack`.
   - `clear`는 한 번이라도 싹쓸이가 발생하면, 후속 정산 뒤에도 승리로 유지되어야 한다.
   - `multiple`/`color`는 한 폭발 단계의 최대 동시 폭발 수/색 수다.

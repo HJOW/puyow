@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 40;
+    const BUILDNO = 41;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -5632,6 +5632,57 @@
     });
     Object.assign(stringTable.fr, {
         '최초 폭발은 빨간색': 'La première explosion est rouge.', '최초 폭발은 초록색': 'La première explosion est verte.', '최초 폭발은 노란색': 'La première explosion est jaune.', '확인': 'Confirmer', '1장 뽑기를 진행할까요?': 'Tirer 1 carte ?', '10장 뽑기를 진행할까요?': 'Tirer 10 cartes ?', '선택한 카드 %1장을 합성할까요?': 'Fusionner les %1 cartes sélectionnées ?'
+    });
+
+    Object.assign(stringTable.en, {
+        '초록색은 위에, 빨강색은 아래에': 'Green on top, red on bottom.',
+        '처음 놓는 뿌요 2개는 2연쇄째에 터져야 해': 'The first two puyos must pop in the second chain.',
+        '이 연쇄는 오른쪽에서 왼쪽으로': 'This chain goes from right to left.',
+        '왼쪽만 신경 써': 'Focus only on the left side.',
+        '오른쪽만 신경 써': 'Focus only on the right side.',
+        '최소 하나는 눞혀': 'Lay at least one pair horizontally.',
+        '노란색으로 시작하나 빨간색에 주의해': 'Start with yellow, but watch out for red.',
+        '보라색은 무조건 위로': 'Purple must always go on top.'
+    });
+    Object.assign(stringTable.ja, {
+        '초록색은 위에, 빨강색은 아래에': '緑は上、赤は下。',
+        '처음 놓는 뿌요 2개는 2연쇄째에 터져야 해': '最初に置く2個のぷよは2連鎖目で消そう。',
+        '이 연쇄는 오른쪽에서 왼쪽으로': 'この連鎖は右から左へ。',
+        '왼쪽만 신경 써': '左側だけに集中しよう。',
+        '오른쪽만 신경 써': '右側だけに集中しよう。',
+        '최소 하나는 눞혀': '少なくとも1組は横に置こう。',
+        '노란색으로 시작하나 빨간색에 주의해': '黄色で始めるけど、赤に注意しよう。',
+        '보라색은 무조건 위로': '紫は必ず上に。'
+    });
+    Object.assign(stringTable.zh, {
+        '초록색은 위에, 빨강색은 아래에': '绿色在上，红色在下。',
+        '처음 놓는 뿌요 2개는 2연쇄째에 터져야 해': '最先放置的两个噗哟必须在第二连锁中消除。',
+        '이 연쇄는 오른쪽에서 왼쪽으로': '这次连锁要从右向左。',
+        '왼쪽만 신경 써': '只关注左边。',
+        '오른쪽만 신경 써': '只关注右边。',
+        '최소 하나는 눞혀': '至少有一组要横着放。',
+        '노란색으로 시작하나 빨간색에 주의해': '从黄色开始，但要注意红色。',
+        '보라색은 무조건 위로': '紫色一定要放在上面。'
+    });
+    Object.assign(stringTable.de, {
+        '초록색은 위에, 빨강색은 아래에': 'Grün nach oben, Rot nach unten.',
+        '처음 놓는 뿌요 2개는 2연쇄째에 터져야 해': 'Die ersten beiden Puyos müssen in der zweiten Kette platzen.',
+        '이 연쇄는 오른쪽에서 왼쪽으로': 'Diese Kette geht von rechts nach links.',
+        '왼쪽만 신경 써': 'Konzentriere dich nur auf die linke Seite.',
+        '오른쪽만 신경 써': 'Konzentriere dich nur auf die rechte Seite.',
+        '최소 하나는 눞혀': 'Lege mindestens ein Paar waagerecht.',
+        '노란색으로 시작하나 빨간색에 주의해': 'Beginne mit Gelb, aber achte auf Rot.',
+        '보라색은 무조건 위로': 'Lila muss immer nach oben.'
+    });
+    Object.assign(stringTable.fr, {
+        '초록색은 위에, 빨강색은 아래에': 'Vert en haut, rouge en bas.',
+        '처음 놓는 뿌요 2개는 2연쇄째에 터져야 해': 'Les deux premiers Puyos doivent éclater dans la deuxième chaîne.',
+        '이 연쇄는 오른쪽에서 왼쪽으로': 'Cette chaîne va de droite à gauche.',
+        '왼쪽만 신경 써': 'Concentre-toi uniquement sur la gauche.',
+        '오른쪽만 신경 써': 'Concentre-toi uniquement sur la droite.',
+        '최소 하나는 눞혀': 'Pose au moins une paire à l’horizontale.',
+        '노란색으로 시작하나 빨간색에 주의해': 'Commence par le jaune, mais attention au rouge.',
+        '보라색은 무조건 위로': 'Le violet doit toujours aller en haut.'
     });
 
     /** 현재 게임의 GOLD 룰 패널티를 반환한다. @returns {number} 룰 패널티 */
