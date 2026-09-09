@@ -83,7 +83,11 @@ async function selectMode(page, label) {
 
 /** 논리 캔버스 좌표를 실제 화면 좌표로 바꾼다. */
 async function createCoordinateMapper(page) {
-  const box = await page.locator('canvas[data-puyow-canvas="2d"]').boundingBox();
+  const canvas = page.locator('canvas[data-puyow-canvas="2d"]');
+  // WebKit은 화면 밖 canvas의 절대 좌표로 보낸 마우스 입력을 전달하지 않는다.
+  // 실제 사용자처럼 먼저 편집 영역을 보이게 한 뒤 같은 좌표 변환을 적용한다.
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
   return (logicalX, logicalY) => ({
     x: box.x + (logicalX / 1280) * box.width,
     y: box.y + (logicalY / 720) * box.height

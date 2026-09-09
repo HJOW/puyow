@@ -154,7 +154,11 @@ test('로컬 모델을 사용할 수 없으면 Local AI 선택지를 숨기고 �
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('');
   expect(await page.evaluate(() => window.testCanvasTextCalls.some((call) => call.text === 'Local AI' && call.y === 350))).toBe(false);
   // 제공자를 고르지 않았으므로 AI API 테스트 버튼도 비활성 색으로 그린다.
-  expect(await page.evaluate(() => window.testCanvasTextCalls.some((call) => call.y === 523 && call.fillStyle === '#7f969e'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.some((call) => {
+    // Chromium은 16진수, WebKit은 rgb()/rgba() 문자열로 fillStyle을 돌려줄 수 있다.
+    const color = String(call.fillStyle).replace(/\s/g, '').toLowerCase();
+    return call.y === 523 && ['#7f969e', 'rgb(127,150,158)', 'rgba(127,150,158,1)'].includes(color);
+  }))).toBe(true);
 
   // 테스트를 통과할 방법이 없으므로 솔로몬도 적 선택 화면에 나타나지 않는다.
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });

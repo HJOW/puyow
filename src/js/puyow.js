@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 37;
+    const BUILDNO = 38;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -11005,6 +11005,9 @@
     function handleSettingsKeydown(event, key) {
         const textField = getSettingsTextField();
         if (settingsEditing && textField) {
+            // canvas에 포커스가 있을 때 WebKit은 Backspace를 이전 페이지 이동으로 처리한다.
+            // 이 분기에서 처리하는 입력은 모두 설정 문자열 편집 전용이므로 브라우저 기본 동작을 막는다.
+            event.preventDefault();
             const field = textField;
             if (event.ctrlKey && key === 'a') {
                 event.preventDefault();

@@ -450,6 +450,13 @@ Playwright는 `fullyParallel`이라 여러 테스트를 한꺼번에 돌린다. 
 
 Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 떠 있는 서버를 그대로 쓴다. `nodeserver.js`는 `/apis/localmodelinfo`에 항상 `{"available": false}`를 주지만 모델을 올린 `python/pythonserver.py`는 `true`를 주므로, 어느 서버로 띄웠는지에 따라 Local AI 사용 가능 여부가 달라진다. Local AI를 쓸 수 있으면 제공자 기본값이 Local AI가 되고 그 때문에 솔로몬이 세션에서 열려 적 목록과 설정 화면 포커스 순번까지 함께 바뀐다. 그래서 `tests/common/gamepage.js`의 `setupGamePage()`가 등록하는 `test.beforeEach` 안에서 `disableLocalAiModel()`이 이 응답을 `false`로 고정해 기준선을 일반 웹 서버와 같게 만든다. Local AI가 필요한 테스트는 `page.route()`를 자기 안에서 다시 걸어 이 기본값을 덮어쓴다(나중에 등록한 라우트가 이긴다). ONNX wasm CDN을 막는 `blockOnnxWasmCdn()`도 같은 구조다. 서버 응답에 따라 게임 동작이 갈리는 기능을 새로 만들면 이 두 함수처럼 기준선을 함께 고정한다.
 
+### 2026-09-09 WebKit 호환성 정리
+
+- Playwright WebKit은 `page.route()`가 남아 있으면 `blob:` Worker 스크립트를 읽지 못한다. Worker 탐색만 확인하는 적 AI 테스트는 `releaseNetworkInterception(page)`로 공통 라우트를 걷고 새로 연 뒤 실행한다. 이 경로의 WebKit 단일 worker 5개 회귀는 통과했다.
+- 설정 문자열 편집은 모든 처리 키의 기본 브라우저 동작을 막는다. 특히 canvas에 포커스가 있을 때 WebKit의 `Backspace`가 이전 페이지로 이동하지 않아야 한다.
+- 도구 화면의 canvas 좌표 테스트는 `scrollIntoViewIfNeeded()` 뒤 실제 bounding box를 읽는다. WebKit은 화면 밖 canvas의 절대 좌표에 보낸 마우스 입력을 전달하지 않는다.
+- Local AI 사용 불가 UI는 저장값 보정과 canvas 재그리기가 비동기이므로, 비활성 API 테스트 버튼의 색 확인도 `expect.poll`로 기다린다. `fillStyle` 문자열은 브라우저마다 16진수·`rgb()`·`rgba()`로 달라질 수 있다.
+
 ## 머신러닝 작업 참고
 
 머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. 승·패 보상(`WIN_REWARD`, `LOSS_REWARD`), 한 수의 즉시 보상 계약 `move_reward()`(= `ATTACK + 연쇄^2`), 감가율 `DISCOUNT_GAMMA`(0.70)와 스칼라 관측값의 정규화 기준(`ATTACK_SCALE` 등), 관측 벡터를 보드·쌍·상태로 되돌리는 `decode_observation_board()`·`decode_observation_pair()`·`decode_observation_scalars()`는 `python/common.py`에 있다. 오프라인 학습과 서버의 온라인 학습이 같은 보상 크기를 써야 하므로 `PuyoDuelEnvironment.WIN_REWARD`도 이 공통 상수를 그대로 참조한다. `pythonserver.py`와 `nodeserver.js`는 모두 `/apis/localmodelinfo`를 제공하며 `{ "available": boolean }`만 응답한다. `pythonserver.py`는 `SERVER_CONFIG['model_path']`가 실제 파일이고 `get_value_model()` 로드까지 성공할 때만 `true`이며, `/v1/chat/completions`를 구현하지 않은 `nodeserver.js`는 항상 `false`다. `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스이며, 솔로몬·안드로말리우스와 ONNX 추론을 쓰는 플라우로스는 제외한다(ONNX 추론 적은 앞으로도 모두 학습 상대에서 제외한다). `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 일곱 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. 피버 룰은 일반/피버 필드, 게이지, 제한 시간, 목표 연쇄 및 JS의 실제 피버 패턴을 사용한다. 브라우저 관측은 `game.elapsed`의 실제 시간을 쓰고, 벽시계와 무관하게 고속 실행되는 오프라인 학습은 양측 한 턴을 3초로 진행한다. `src/js/puyow.js`의 적 AI 판단 로직이나 피버 패턴을 바꾸면 `bundledenemy.py`와 학습 회귀 테스트를 함께 확인한다. 숨김 행 없는 12행 보드, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등 의도적인 제한은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
@@ -541,9 +548,9 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 
 ----------------------------------------------------------
 
-## 인수인계 (2026-09-09 작업 중단 시점)
+## 작업 기록 (2026-09-09 중단 시점)
 
-`TODO.md`의 두 항목(테스트 코드 역할 분리·정리, 개발용 도구 자동생성 결과 랜덤화)을 작업하다가 사용자 요청으로 중단했다. **커밋하지 않은 작업 트리 상태 그대로**이며, 이어받는 사람이 알아야 할 내용을 아래에 적는다. 이 절은 남은 작업을 다 끝내면 지운다.
+아래는 당시 중단 시점의 작업 기록이다. 이후 WebKit Worker·설정 텍스트·도구 canvas 좌표·Local AI canvas 재그리기 문제는 위 「2026-09-09 WebKit 호환성 정리」의 방식으로 처리했다. 당시의 명령과 실패 목록은 비슷한 브라우저 차이를 다시 조사할 때만 참고한다.
 
 ### 끝난 작업
 
