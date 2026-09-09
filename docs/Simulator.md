@@ -10,7 +10,7 @@
 
 ## 피버 패턴 추가
 
-피버 룰의 피버 상황과 연속 피버 모드에서 사용할 피버 패턴을 추가할 수 있습니다. 새 피버 턴에는 필드를 비운 뒤 `FeverStageState`에 정의한 뿌요 배치 패턴을 채우고, 지정된 다음 뿌요 쌍을 제공합니다. 외부 스크립트에서는 `PuyoW.FeverStageState`를 만들고 `PuyoW.registerFeverStageState()`로 등록해 목표 연쇄별 패턴을 추가할 수 있습니다. 피버 게임을 시작하기 전에 등록하는 것을 권장합니다.
+피버 룰의 피버 상황과 연속 피버 모드에서 사용할 피버 패턴을 추가할 수 있습니다. 새 피버 턴에는 필드를 비운 뒤 `FeverStageState`에 정의한 뿌요 배치 패턴을 채우고, 지정된 다음 뿌요 쌍을 제공합니다. 외부 스크립트에서는 `PuyoW.FeverStageState`를 만들고 `PuyoW.registerFeverStage()`로 등록해 목표 연쇄별 패턴을 추가할 수 있습니다. 피버 게임을 시작하기 전에 등록하는 것을 권장합니다.
 
 `FeverStageState` 생성자는 `new PuyoW.FeverStageState(stageData, targetCombo, suppliedNextPuyos, difficulty, usingColors)` 형식입니다. 마지막 `usingColors`는 생략할 수 있으며, 생략하면 배치와 다음 뿌요에 실제로 쓰인 일반 색상 목록을 자동으로 사용합니다.
 
@@ -40,14 +40,14 @@ const fiveChainStage = new PuyoW.FeverStageState(
     ['red', 'blue', 'green']
 );
 
-PuyoW.registerFeverStageState(fiveChainStage);
+PuyoW.registerFeverStage(fiveChainStage);
 ```
 
 JSON복사 결과에는 클릭해서 고정한 필드 뿌요만 들어갑니다. 피버 턴에 줄 다음 뿌요 쌍은 포함되지 않으므로, 등록할 때는 동색·이색 구성에 맞춰 `suppliedNextPuyos`를 별도로 지정합니다.
 
 현재 색 모드의 색 목록에 `usingColors`의 모든 색이 들어 있으면 스테이지 배치와 지급 뿌요는 원본 색 그대로 사용합니다. 그렇지 않더라도 `usingColors` 수가 현재 모드보다 많지 않으면, 배치와 지급 뿌요의 일반 색상은 현재 모드 색만 쓰도록 중복 없는 1:1 대응으로 변환합니다. `'garbage'`는 변환 없이 유지됩니다. 따라서 특정 색 이름 자체보다 색의 연결 구조가 중요하며, 각 목표 연쇄에는 동색 쌍용 패턴과 이색 쌍용 패턴을 모두 하나 이상 등록해야 어느 다음 쌍이 나와도 후보를 고를 수 있습니다.
 
-`registerFeverStageState()`는 `FeverStageState` 인스턴스만 받으며 다른 값은 `TypeError`를 발생시킵니다. 좌표, 색상, 목표 연쇄가 실제로 올바른지는 등록 시 자동으로 시뮬레이션하지 않으므로, 시뮬레이터 또는 `estimateCombo()`로 실제 착지 가능한 배치와 목표 연쇄 수를 반드시 검증한 뒤 등록해야 합니다.
+`registerFeverStage()`는 `FeverStageState` 인스턴스만 받으며 다른 값은 `TypeError`를 발생시킵니다. 좌표, 색상, 목표 연쇄가 실제로 올바른지는 등록 시 자동으로 시뮬레이션하지 않으므로, 시뮬레이터 또는 `estimateCombo()`로 실제 착지 가능한 배치와 목표 연쇄 수를 반드시 검증한 뒤 등록해야 합니다.
 
 ## 퍼즐뿌요 스테이지 추가
 

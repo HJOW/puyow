@@ -103,7 +103,7 @@ test('피버·연속 피버에서 새로 지급된 조작 뿌요의 자연 낙�
 test('연속 피버는 두 번째 패배 칸 (3, 11)도 패배로 판정하고 적 결과 상세를 숨긴다', async ({ page }) => {
   await page.evaluate(() => {
     Math.random = () => 0.999999;
-    window.WebPuyo.registerFeverStageState(new window.WebPuyo.FeverStageState(
+    window.WebPuyo.registerFeverStage(new window.WebPuyo.FeverStageState(
       { puyos: Array.from({ length: 12 }, (unused, y) => ({ x: 3, y, color: 'garbage' })) },
       5,
       ['red', 'red'],
@@ -747,7 +747,7 @@ test('피버 룰은 DAMAGE 전달 뒤 상대 방해뿌요 낙하를 기다리지
 test('연속 피버는 다음 스테이지 배치 때 DAMAGE 예고를 없애고 방해뿌요를 생성하지 않는다', async ({ page }) => {
   await page.evaluate(() => {
     Math.random = () => 0.999999;
-    window.WebPuyo.registerFeverStageState(new window.WebPuyo.FeverStageState(
+    window.WebPuyo.registerFeverStage(new window.WebPuyo.FeverStageState(
       { puyos: [
         { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' },
         { x: 3, y: 0, color: 'red' }, { x: 4, y: 0, color: 'red' }, { x: 5, y: 0, color: 'red' },

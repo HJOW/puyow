@@ -10,7 +10,7 @@ An iron puyo uses the color value `'iron'` in simulator JSON. Do not use that va
 
 ## Adding Fever patterns
 
-You can add Fever patterns used for Fever situations in Fever rules and in Continuous Fever mode. A new Fever turn clears the field, fills it with the layout defined by `FeverStageState`, and supplies the specified next puyo pair. External scripts can create `PuyoW.FeverStageState` objects and register them with `PuyoW.registerFeverStageState()` to add patterns for each target chain. Register them before starting a Fever game.
+You can add Fever patterns used for Fever situations in Fever rules and in Continuous Fever mode. A new Fever turn clears the field, fills it with the layout defined by `FeverStageState`, and supplies the specified next puyo pair. External scripts can create `PuyoW.FeverStageState` objects and register them with `PuyoW.registerFeverStage()` to add patterns for each target chain. Register them before starting a Fever game.
 
 The `FeverStageState` constructor is `new PuyoW.FeverStageState(stageData, targetCombo, suppliedNextPuyos, difficulty, usingColors)`. The final `usingColors` argument is optional; if omitted, it is automatically populated from the normal colors actually used in the layout and next puyos.
 
@@ -40,14 +40,14 @@ const fiveChainStage = new PuyoW.FeverStageState(
     ['red', 'blue', 'green']
 );
 
-PuyoW.registerFeverStageState(fiveChainStage);
+PuyoW.registerFeverStage(fiveChainStage);
 ```
 
 Copied JSON contains only fixed puyos placed by clicking the field. It does not include the next puyo pair supplied on a Fever turn, so specify `suppliedNextPuyos` separately for same-color and different-color pair layouts when registering.
 
 If the current color mode includes every color in `usingColors`, the stage layout and supplied puyos retain their original colors. Otherwise, provided the number of `usingColors` does not exceed the current mode, the normal colors in both are converted with a one-to-one, non-duplicating mapping that uses only current-mode colors. `'garbage'` is not converted. Consequently, the color-connection structure matters more than particular color names. Register at least one same-color-pair pattern and one different-color-pair pattern for every target chain so there is a candidate for either next pair.
 
-`registerFeverStageState()` accepts only `FeverStageState` instances; other values raise `TypeError`. Registration does not automatically simulate whether coordinates, colors, and the target chain are valid. Verify a reachable placement and target chain with the simulator or `estimateCombo()` before registering.
+`registerFeverStage()` accepts only `FeverStageState` instances; other values raise `TypeError`. Registration does not automatically simulate whether coordinates, colors, and the target chain are valid. Verify a reachable placement and target chain with the simulator or `estimateCombo()` before registering.
 
 ## Adding Puzzle Puyo stages
 

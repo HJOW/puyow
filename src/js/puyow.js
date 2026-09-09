@@ -13159,6 +13159,25 @@
             if(typeof(plainObject.uid) != 'undefined') this.uid = plainObject.uid;
             if(typeof(plainObject.opened) != 'undefined') this.opened = plainObject.opened;
         }
+
+        /**
+         * 객체를 JSON 형태로 변환하여 반환한다.
+         * 
+         * @returns {Object} JSON 형태로 변환된 객체
+         */
+        toJSON() {
+            return {
+                stageData: this.stageData,
+                suppliedNextPuyos: this.suppliedNextPuyos,
+                turnLimit: this.turnLimit,
+                winConditionType: this.winConditionType,
+                winConditionValue: this.winConditionValue,
+                hint: this.hint,
+                hidden: this.hidden,
+                uid: this.uid,
+                opened: this.opened
+            };
+        }
     }
 
         /**
@@ -13336,6 +13355,20 @@
                 ...this.suppliedNextPuyos
             ].filter((color) => color && color !== 'garbage'))];
             this.usingColors = Array.isArray(pUsingColors) ? [...new Set(pUsingColors.filter((color) => color && color !== 'garbage'))] : patternColors;
+        }
+
+        /**
+         * 객체를 JSON 형태로 변환하여 반환합니다.
+         * @returns {Object} JSON 형태로 변환된 객체
+         */
+        toJSON() {
+            return {
+                stageData: this.stageData,
+                targetCombo: this.targetCombo,
+                suppliedNextPuyos: this.suppliedNextPuyos,
+                difficulty: this.difficulty,
+                usingColors: this.usingColors
+            }
         }
     }
 
@@ -16728,16 +16761,6 @@
     }
 
     /**
-     * 피버 연쇄 패턴을 추가한다.
-     * 
-     * @param {FeverStageState} feverStageState 피버 연쇄 패턴
-     */
-    function registerFeverStageState(feverStageState) {
-        if (!(feverStageState instanceof FeverStageState)) throw new TypeError('feverStageState는 FeverStageState 인스턴스여야 합니다.');
-        addFeverStageState(feverStageState);
-    }
-    
-    /**
      * 퍼즐 뿌요 스테이지를 추가한다.
      * 
      * @param {PuzzlePuyoStage} puzzlePuyoStage 퍼즐 뿌요 스테이지
@@ -16840,7 +16863,7 @@
         loadSoundDataURL,
         applySoundDataJson,
         setStorageManager,
-        registerFeverStageState,
+        registerFeverStage,
         registerPuzzleStage,
         registerOpponent,
         registerWarningPuyo,
