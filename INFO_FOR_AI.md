@@ -345,25 +345,60 @@ aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
 피버 패턴과 퍼즐뿌요 스테이지를 만들기 위한 개발자 전용 페이지다. 게임 페이지(`puyow.html`)와는 별개이며 배포 게임 동작에 영향을 주지 않는다.
 
 - 화면·검증·스크립트 생성 등 도구의 핵심 코드는 모두 `src/js/puyow_tools.js`에 둔다. 필요한 CSS도 이 파일이 초기화할 때 `style.puyow_tools_style` 태그로 문서에 넣는다. `tools.html`은 `PuyoWTools.initialize(divTarget)` 한 줄만 호출한다.
-- 뿌요 배치 편집과 테스트 실행은 새로 만들지 않고 `puyow.js`의 기존 코드를 재사용한다. 그 연결 지점이 `PuyoW.tools` API다: `openEditor({kind, stageData, suppliedNextPuyos})`, `closeEditor()`, `getEditorData()`, `setEditorData(data)`, `startFeverTest(stage, onFinish)`, `startPuzzleTest(stage, onFinish)`, `stopTest()`, `isTesting()`, `getMaxNextTurns()`, `getColors()`.
-- 화면 구성은 최상단 툴바(항상 표시, `피버 패턴 개발`·`퍼즐뿌요 개발` 선택), 좌측 사이드바와 우측 영역이 4 : 6, 우측은 캔버스 영역과 읽기 전용 스크립트 출력 영역이 7 : 3이다. 대상을 고르기 전에는 툴바 아래가 비어 있고, 게임 캔버스도 그때 처음 `PuyoW.initialize()`로 만든다.
+- 뿌요 배치 편집과 테스트 실행은 새로 만들지 않고 `puyow.js`의 기존 코드를 재사용한다. 그 연결 지점이 `PuyoW.tools` API다: `openEditor({kind, stageData, suppliedNextPuyos})`, `closeEditor()`, `getEditorData()`, `setEditorData(data)`, `startFeverTest(stage, onFinish)`, `startPuzzleTest(stage, onFinish)`, `stopTest()`, `isTesting()`, `getMaxNextTurns()`, `getColors()`. `onFinish(result)`는 테스트 결과 객체를 받는다. 피버는 `{kind:'fever', combo}`, 퍼즐은 `{kind:'puzzle', cleared:true, turn, combo}`이며, 목표를 이루지 못하고 끝나면 `null`이다.
+- 화면 구성은 최상단 툴바(항상 표시, 왼쪽부터 `퍼즐뿌요 개발`·`피버 패턴 개발`, 오른쪽 끝에 `설정`), 좌측 사이드바와 우측 영역이 4 : 6, 우측은 캔버스 영역과 읽기 전용 스크립트 출력 영역이 7 : 3이다. 대상을 고르기 전에는 툴바 아래가 비어 있고, 게임 캔버스도 그때 처음 `PuyoW.initialize()`로 만든다.
 - 편집 모드는 시뮬레이터 그리기 모드 그 자체다. `simulator.tools`가 있으면 중앙 영역에 `다음에 나올 뿌요` 편집 칸(`drawToolsNextArea()`, `getToolsNextCellBounds()`)이 그려지고, 피버는 1턴·퍼즐은 최대 `TOOLS_MAX_NEXT_TURNS`(6)턴을 받는다. 배열 0번이 아래쪽 축 뿌요이므로 화면에서도 아래 칸이 0번이다. 이 칸에는 색 뿌요만 넣을 수 있다.
 - 플레이 영역은 클릭과 드래그로 칠한다. 드래그는 `handleToolsPointerDown()`·`handleToolsPointerMove()`가 처리하며, 도구 편집 모드가 아니면 곧바로 false를 돌려 기존 가상 컨트롤러 경로를 그대로 둔다.
 - 피버 테스트는 `startGame(false, true)`로 연속 피버를 시작한 뒤 `game.toolsTest`를 붙인다. `prepareFeverTurn()`은 `game.toolsTest.pendingStage`가 있으면 그 패턴을 색 변환 없이(`createToolsIdentityColorMap()`) 그대로 올리고, 그 다음 번 호출부터는 실제 게임과 같은 방식으로 패턴을 고른 뒤 `finishAfterStage`를 세워 배치가 끝나면 편집 모드로 돌아간다. 남은 시간은 `CONTINUOUS_FEVER_INITIAL_TIME`(60초), 목표 연쇄와 지급 뿌요는 편집 중인 값을 그대로 쓴다.
 - 퍼즐뿌요 테스트는 `startPuzzleStageGame(stage, -1, 0)`으로 등록되지 않은 스테이지를 그대로 실행한다. `stageIndex`가 -1이거나 `game.toolsTest`가 있으면 `finishPuzzleStage()`가 클리어 기록·별·GOLD를 저장하지 않는다.
 - 테스트 종료는 `updateToolsTest()`가 맡는다. 결과 화면에 들어가면 `TOOLS_TEST_FINISH_DELAY`(1.5초) 뒤 `returnFromToolsTest()`로 편집 모드에 복귀하며, 일시정지의 `종료`와 결과 화면 닫기도 메인 메뉴 대신 편집 모드로 간다.
+- 테스트 결과는 `game.toolsTest.result`에 쌓인다. 피버는 `resolveExplosions()`가 첫 연쇄를 끝낼 때 그 연쇄 수를, 퍼즐은 `finishPuzzleStage()`가 달성 턴과 연쇄 수를 한 번만 적는다. `returnFromToolsTest()`가 `game`을 비우기 전에 이 값을 챙겨 종료 콜백으로 넘긴다.
 - `puyow.js`의 도구 관련 코드는 모두 `simulator.tools` 또는 `game.toolsTest` 조건 안에 있다. 게임 페이지 동작을 바꾸지 않는 것이 이 API의 계약이므로, 도구 기능을 넓힐 때도 이 가드를 벗어나지 않는다.
-- 스크립트 생성은 `TODO.md`의 예시와 같은 형식(`new FeverStageState(...)` 5인자, `new PuzzlePuyoStage({...})` 6항목)을 출력한다. 생성 직전에 목표 연쇄 4~12, 난이도 1 이상, 사용 색상 중복 없음, 배치·지급 색이 사용 색상 목록 안에 있는지, 퍼즐 지급 뿌요가 1턴부터 빈 턴 없이 이어지는지를 검사한다. 불러오기는 붙여 넣은 스크립트를 게임의 실제 클래스에 그대로 넘겨 만든다.
+- 스크립트 생성은 `TODO.md`의 예시와 같은 형식(`new FeverStageState(...)` 5인자, `new PuzzlePuyoStage({...})` 6항목)을 출력한다. 불러오기는 붙여 넣은 스크립트를 게임의 실제 클래스에 그대로 넘겨 만든다.
+
+### 개발용 도구의 검증 규칙
+
+- **테스트를 누를 때** 값을 모두 검사하며, 하나라도 걸리면 테스트를 시작하지 않는다. 피버는 목표 연쇄 4~12, 난이도 1 이상, 사용 색상 3~5개에 중복 없음, 배치·지급 색이 사용 색상 목록 안(방해뿌요 제외), 지급 뿌요 두 칸이 모두 색 뿌요여야 한다. 퍼즐은 목표 턴수 1~6, 목표 타입 값 1 이상(`clear` 제외), `다음에 나올 뿌요`가 목표 턴수만큼 빈 턴 없이 채워져 있어야 한다. 목표 턴수보다 많이 채운 것은 허용한다.
+- **스크립트 생성은 테스트에 성공한 뒤에만** 된다. 성공 판정은 `judgeTestResult()`가 하며, 피버는 처음 지급받은 쌍(1턴)으로 **정확히** 목표 연쇄를 내야 하고 더 많이 터져도 실패다. 퍼즐은 목표 턴수 안에 목표를 이뤄야 하고, 목표 타입이 `combo`면 연쇄 수가 목표와 **정확히** 같아야 한다. 목표 연쇄 수로 패턴을 분류해 쓰기 때문에 초과는 그 목표의 패턴이 아니라고 본다.
+- 테스트에 성공하면 그 시점의 내용 지문(`buildVerificationSnapshot()`)을 남긴다. 지문에는 플레이 영역, `다음에 나올 뿌요`, 그리고 달성 여부에 영향을 주는 입력값(피버는 목표 연쇄, 퍼즐은 목표 타입·값·턴수)이 들어간다. 난이도와 힌트는 달성 가능성과 무관해 넣지 않는다. 생성 직전에 지문이 다르면 다시 테스트하도록 막는다.
+
+### 개발용 도구의 설정 창
+
+- 툴바 오른쪽 끝 `설정` 버튼이 레이어 팝업(`.puyow-tools-dialog.is-settings`)을 연다. 값은 `저장`을 눌러야 적용·저장되고 `취소`는 아무것도 바꾸지 않는다.
+- 저장 위치는 `localStorage`의 `puyow_tools_settings` 키이며 JSON 한 덩어리다. 게임 본체의 `puyow_store`와 이름이 겹치지 않게 따로 둔다. 읽을 때 알 수 없는 항목은 `toolsSettingsRaw`에 담아 두었다가 저장할 때 그대로 다시 써서 지우지 않는다.
+- 지금 있는 항목은 다크 모드 사용 여부 하나이며 기본값은 `true`다. 끄면 `document.body`에 `puyow-tools-light` 클래스가 붙어 CSS 변수(`--tools-*`)가 밝은 톤 값으로 바뀐다. 게임 테스트 영역은 `puyow.js`가 직접 그리므로 `--tools-canvas-bg`만 밝은 톤에서도 어두운 값을 유지한다.
+- 도구 화면의 색은 전부 `--tools-*` 변수를 거친다. 새 UI를 넣을 때도 색 리터럴을 직접 쓰지 않는다. 밝은 톤에서 `body.webpuyo`의 어두운 배경을 덮어야 하는데, 게임과 함께 쓰는 `puyow.css`는 건드리지 않고 도구가 나중에 넣는 `style.puyow_tools_style`에서 덮는다.
+
+### 개발용 도구의 자동생성
+
+- 사이드바 `조작` 영역의 `자동생성` 버튼이 플레이 영역을 목표에 맞게 채운다. 이미 놓인 뿌요와 `다음에 나올 뿌요`, 사이드바 값은 그대로 두고 필요한 만큼만 더한다. 시작 전에 테스트와 같은 검증을 거치되, 플레이 영역이 비어 있는 것은 허용한다(`collectFeverStage({requirePuyos:false})`).
+- 진행 중에는 화면 전체를 덮는 음영(`.puyow-tools-overlay`)과 진행률을 알 수 없는 게이지, `중단` 버튼이 나온다. 중단은 `worker.terminate()`이며, 완료·중단 모두 음영을 걷고 이어서 손으로 고칠 수 있는 상태로 돌아간다.
+- 탐색은 `autoGenerateWorkerBootstrap()`을 문자열로 만들어 Blob URL로 띄운 Worker가 맡는다. 별도 파일은 두지 않는다. `puyow.js`의 연쇄 코드는 IIFE 안에 있어 Worker로 넘길 수 없으므로 Worker가 연쇄 판정을 다시 구현하지만, **그것은 후보를 고르기 위한 근사일 뿐이고 최종 확인은 본래 쓰레드가 게임 코드로 다시 한다**. 두 판정이 어긋나도 잘못된 배치가 반영되지 않는 이유가 이 역할 분담이다.
+- 알고리즘은 목표에 한 걸음씩 다가가는 깊이 우선 탐색이다. 한 걸음은 같은 색 뿌요를 1~4개, 한 열 또는 이웃한 두 열에 쌓는 것이며, 쌍을 놓기 전에 스스로 터지는 배치는 버린다. 막히면 직전 선택을 바꿔 되돌아간다. 더하는 뿌요가 적은 후보를 먼저 보므로 결과는 "찾은 것 중 가장 적은" 배치이며, 이론적 최소를 보장하지는 않는다.
+- 본래 쓰레드의 확인은 피버가 `findExplosionsOnBoard()`(스스로 터지지 않는지)와 `findBestPreviewResult()`(정확히 목표 연쇄인지)를, 퍼즐이 `findExplosionGroupsOnBoard()`·`collapseBoard()`로 단계를 직접 밟으며 목표 타입별 값을 센다. 게임이 단계별 폭발 수·색 수를 따로 내보내지 않기 때문이다. `attack` 목표만 `simulatePlacementResult().attack`으로 어림한다.
+- **퍼즐 자동생성은 첫 턴에 목표를 이룰 수 있는 배치만 찾는다.** 목표 턴수는 1 이상이므로 첫 턴 해법은 언제나 제한 안이다. 여러 턴을 써야 풀리는 배치는 찾지 않는다.
+- 못 찾으면 `AUTO_GENERATE_TIME_LIMIT`(2분) 뒤 안내 문구를 낸다. 알려진 한계로 3색만 쓰는 11~12연쇄와 목표 타입 `color`의 4·5색은 잘 찾지 못한다.
+- 자동생성 결과도 그대로 쓸 수 있는 완성품이 아니라 손으로 다듬을 초안이다. 배치가 바뀌면 검증 지문도 달라지므로 스크립트를 만들려면 다시 테스트해야 한다.
+
+### 개발용 도구의 WebMCP
+
+- `PuyoWTools.initialize()`에서 `registerMcpTools()`가 `document.modelContext`에 도구를 등록한다. 미지원 브라우저에서는 아무 일도 하지 않으며, `destroy()`가 `AbortController`로 한 번에 해제한다.
+- 이름은 모두 `tools_` 접두어를 쓴다. 편집 화면에 들어가면 `puyow.js`도 같은 문서에 `manual`·`now_screen`·`now_game_status`·`point_recommend`·`show_message`를 등록하므로 이름이 겹치면 안 된다. 게임 도구는 `PuyoW.initialize()` 때 등록되므로 개발 대상을 고르기 전에는 도구 페이지 것 11개만 있다.
+- 도구 목록은 `tools_manual`, `tools_status`, `tools_select_mode`, `tools_load_script`, `tools_set_options`, `tools_place_puyos`, `tools_set_next_puyos`, `tools_auto_generate`, `tools_run_test`, `tools_stop_test`, `tools_generate_script`다.
+- `tools_auto_generate`는 결과가 나올 때까지 기다린다. `finishAutoGenerate()`가 결과 문구를 화면에 적으면서 `autoGenerateWaiters`에 담긴 완료 함수를 모두 깨우는 구조다.
+- **`tools_run_test`는 테스트를 시작만 하고 바로 돌아온다.** 조작을 넣는 도구가 없어 AI가 대신 플레이할 수 없기 때문이다. 사람이 키보드로 플레이해야 하며 결과는 `tools_status`로 확인한다. 그래서 AI 혼자서는 스크립트 생성까지 갈 수 없고, 배치를 준비하는 데까지가 이 도구들의 몫이다.
 - 피버 패턴 화면의 `사용할 색상 목록` 기본값은 `DEFAULT_FEVER_USING_COLORS`(빨강·초록·파랑 3색)다.
 
 ### 개발용 도구의 다국어
 
-- 도구 페이지는 **한국어와 영어만** 지원하고 **기본 언어는 영어**다. 그래서 게임 본체와 달리 영어 원문을 번역 키로 쓰고, 한국어 번역만 `puyow_tools.js`의 `TOOLS_STRINGS.ko`에 둔다. 게임 본체(`puyow.js`)의 `stringTable`은 한국어가 키이므로 두 표를 섞지 않는다.
+- 도구 페이지는 **한국어·영어·일본어·중국어·독일어·프랑스어**를 지원하고 **기본 언어는 영어**다. 그래서 게임 본체와 달리 영어 원문을 번역 키로 쓰고, 나머지 다섯 언어의 번역을 `puyow_tools.js`의 `TOOLS_STRINGS`(`ko`·`ja`·`zh`·`de`·`fr`)에 둔다. 게임 본체(`puyow.js`)의 `stringTable`은 한국어가 키이므로 두 표를 섞지 않는다. 문구를 새로 넣을 때는 다섯 표에 모두 넣는다.
 - 도구 화면 문구는 `puyow_tools.js`가 자체적으로 가진 `translate(text, ...values)`를 거친다. `%1`, `%2` 치환 방식은 게임 쪽과 같다. 번역이 없으면 영어 원문을 그대로 쓴다.
-- 언어 선택은 `detectToolsLanguage()`가 `navigator.language`를 보고 `ko`로 시작할 때만 `ko`, 그 밖에는 모두 `en`을 돌려준다. 결과는 `toolsLanguage`에 담기며 도구 초기화 때 한 번 정한다.
-- 편집 화면 canvas는 `puyow.js`가 그리므로, 도구에서만 쓰는 canvas 문구(`다음에 나올 뿌요`, `%1턴`, 지급 뿌요 색 경고, 편집 모드 밖 테스트 오류)의 번역은 `puyow_tools.js`의 `TOOLS_CANVAS_STRINGS`에 두고 `registerLanguage()`로 게임 번역표에 등록한다. 등록은 `PuyoW.initialize()` 전에 해야 하므로 도구 초기화에서 처리한다. 도구 페이지는 한국어·영어만 지원하므로 `TOOLS_CANVAS_LOCALES`(en·ja·zh·de·fr)에 모두 같은 영어 문구를 넣어, 한국어가 아닌 브라우저는 어디서든 영어가 나오게 한다.
+- 언어 선택은 `detectToolsLanguage()`가 `navigator.language`의 앞 두 글자를 보고 `TOOLS_STRINGS`에 있으면 그 언어를, 없으면 `en`을 돌려준다. `puyow.js`가 게임 문구의 언어를 고르는 방식과 같게 맞춘 것이며, 두 판정이 어긋나면 사이드바와 편집 화면 canvas의 언어가 서로 달라진다. 결과는 `toolsLanguage`에 담기며 도구 초기화 때 한 번 정한다.
+- 편집 화면 canvas는 `puyow.js`가 그리므로, 도구에서만 쓰는 canvas 문구(`다음에 나올 뿌요`, `%1턴`, 지급 뿌요 색 경고, 편집 모드 밖 테스트 오류)의 번역은 `puyow_tools.js`의 `TOOLS_CANVAS_STRINGS`에 언어별(en·ja·zh·de·fr)로 두고 `registerLanguage()`로 게임 번역표에 등록한다. 여기서는 게임 번역표에 맞춰 한국어 원문을 키로 쓴다. 등록은 `PuyoW.initialize()` 전에 해야 하므로 도구 초기화에서 처리한다.
 - 색상 선택 칸은 `translate(color)`가 색 이름과 다른 값을 돌려줄 때만 `red (빨강)`처럼 괄호를 붙인다. 영어에서는 번역이 색 이름과 같아 `red`만 나온다.
-- 도구 회귀 테스트(`tests/test02_tools.spec.js`)는 파일 전체에 `test.use({ locale: 'ko-KR' })`를 걸어 한국어 문구로 화면을 찾고, 기본 언어인 영어는 파일 끝의 `기본 언어인 영어` 그룹이 `locale: 'en-US'`로 따로 확인한다. 도구 문구를 바꾸면 두 쪽을 함께 본다.
+- 도구 회귀 테스트(`tests/test02_tools.spec.js`)는 파일 전체에 `test.use({ locale: 'ko-KR' })`를 걸어 한국어 문구로 화면을 찾고, 파일 끝의 `일본어`·`독일어`·`기본 언어인 영어` 그룹이 각자의 로케일로 따로 확인한다. 도구 문구를 바꾸면 이 그룹들을 함께 본다.
+- 테스트에서 조작 뿌요를 떨어뜨릴 때 **빠른 하강은 방향키를 눌러 둔 동안에만 동작한다**. `page.keyboard.press('ArrowDown')`을 여러 번 부르는 방식은 거의 내려가지 않으므로, `keyboard.down`으로 눌러 두고 기다렸다가 `keyboard.up`으로 뗀다(`dropPairAtLeftEdge()`).
+- 피버 테스트 성공을 확인하는 고정 데이터는 `FEVER_FOUR_CHAIN_PUYOS`다. 열 0에 빨강 쌍을 떨어뜨릴 때만 정확히 4연쇄가 되며, 열 5의 방해뿌요는 싹쓸이를 막아 다음 목표 연쇄를 5로 고정하려고 남겨 둔 것이다. 싹쓸이가 나면 다음 목표가 7로 뛰는데, 그 색 수와 지급 쌍 구성에 맞는 피버 스테이지가 없으면 `selectContinuousFeverStage()`가 예외를 던져 테스트가 멈춘다.
 
 ## 공통 계산 함수
 

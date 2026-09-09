@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 36;
+    const BUILDNO = 37;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -5191,6 +5191,10 @@
         const completedCombo = player.combo;
         deliverFinalAttackEnergy(player, opponent);
         if (game?.continuousFever && player === game.players[0] && game.fever) game.fever.pendingCombo = completedCombo;
+        // 개발용 도구의 피버 테스트는 지급받은 첫 쌍으로 만든 연쇄 수만 결과로 남긴다.
+        if (game?.toolsTest?.kind === 'fever' && game.toolsTest.result === null && player === game.players[0]) {
+            game.toolsTest.result = { kind: 'fever', combo: completedCombo };
+        }
         if (game?.feverRule && player.fever?.active) player.fever.pendingCombo = completedCombo;
         if (game?.puzzle && player === game.players[0]) game.puzzle.pendingCombo = completedCombo;
         player.combo = 0;
@@ -5669,6 +5673,10 @@
     /** 퍼즐뿌요 스테이지의 클리어 정보를 저장하고 즉시 결과 화면으로 전환한다. @param {PlayerState} player 사용자 @returns {void} */
     function finishPuzzleStage(player) {
         const stageIndex = game.puzzle.stageIndex;
+        // 개발용 도구의 퍼즐 테스트는 달성한 턴 수와 연쇄 수를 결과로 남긴다.
+        if (game.toolsTest?.kind === 'puzzle' && game.toolsTest.result === null) {
+            game.toolsTest.result = { kind: 'puzzle', cleared: true, turn: game.puzzle.turn, combo: game.puzzle.pendingCombo };
+        }
         const earnedStar = player === game.players[0] && game.puzzle.turn <= game.puzzle.stage.turnLimit;
         let progressChanged = false;
         let goldReward = 0;
@@ -9727,6 +9735,8 @@
     /** 도구 테스트를 끝내고 편집 모드로 되돌린다. @returns {void} */
     function returnFromToolsTest() {
         stopBackgroundMusic();
+        // 테스트 결과는 game을 비우기 전에 챙겨 두었다가 종료 콜백으로 넘긴다.
+        const result = game?.toolsTest?.result || null;
         game = null;
         if (!simulator?.tools) {
             menuScreen = 'title';
@@ -9738,7 +9748,7 @@
         restoreSimulatorDrawing();
         const onFinish = simulator.tools.onTestFinish;
         simulator.tools.onTestFinish = null;
-        if (typeof onFinish === 'function') onFinish();
+        if (typeof onFinish === 'function') onFinish(result);
     }
 
     /** 도구 테스트가 끝났는지 확인하고 정해진 시간이 지나면 편집 모드로 돌아간다. @param {number} delta 경과 시간(ms) @returns {void} */
@@ -9754,7 +9764,7 @@
         if (!game.running) test.finishTimer = TOOLS_TEST_FINISH_DELAY;
     }
 
-    /** 도구 테스트 시작 전 편집 상태를 보존하고 테스트 종료 콜백을 등록한다. @param {Function} [onFinish] 종료 시 호출할 함수 @returns {void} */
+    /** 도구 테스트 시작 전 편집 상태를 보존하고 테스트 종료 콜백을 등록한다. @param {Function} [onFinish] 종료 시 테스트 결과를 받아 호출할 함수 @returns {void} */
     function prepareToolsTest(onFinish) {
         if (!simulator?.tools) throw new Error('도구 편집 모드에서만 테스트할 수 있습니다.');
         // 테스트 뒤 restoreSimulatorDrawing()이 예전 "재생" 시점의 보드로 되돌리지 않도록 백업을 비운다.
@@ -9766,7 +9776,7 @@
      * 편집 중인 피버 패턴을 연속 피버 모드로 테스트한다.
      * 남은 시간 60초, 목표 연쇄와 지급 뿌요는 이 패턴의 값을 그대로 사용한다.
      * @param {FeverStageState} feverStage 테스트할 피버 패턴
-     * @param {Function} [onFinish] 테스트가 끝나 편집 모드로 돌아갈 때 호출할 함수
+     * @param {Function} [onFinish] 테스트가 끝나 편집 모드로 돌아갈 때 호출할 함수. 테스트 결과 객체를 받는다.
      * @returns {void}
      */
     function startToolsFeverTest(feverStage, onFinish) {
@@ -9779,7 +9789,7 @@
         selectedDifficulty = Math.max(0, DIFFICULTIES.findIndex((difficulty) => difficulty.colors.length >= colorCount));
         startGame(false, true);
         if (!game?.fever) throw new Error('연속 피버 테스트를 시작하지 못했습니다.');
-        game.toolsTest = { kind: 'fever', pendingStage: feverStage, finishAfterStage: false, finishTimer: null };
+        game.toolsTest = { kind: 'fever', pendingStage: feverStage, finishAfterStage: false, finishTimer: null, result: null };
         game.pairQueueColors = colors;
         game.players.forEach((player) => { player.colors = colors; });
         game.fever.targetCombo = feverStage.targetCombo;
@@ -9792,7 +9802,7 @@
     /**
      * 편집 중인 퍼즐뿌요 스테이지를 그대로 테스트한다. 클리어 기록과 골드는 남기지 않는다.
      * @param {PuzzlePuyoStage} puzzleStage 테스트할 퍼즐뿌요 스테이지
-     * @param {Function} [onFinish] 테스트가 끝나 편집 모드로 돌아갈 때 호출할 함수
+     * @param {Function} [onFinish] 테스트가 끝나 편집 모드로 돌아갈 때 호출할 함수. 테스트 결과 객체를 받는다.
      * @returns {void}
      */
     function startToolsPuzzleTest(puzzleStage, onFinish) {
@@ -9800,7 +9810,7 @@
         prepareToolsTest(onFinish);
         startPuzzleStageGame(puzzleStage, -1, 0);
         if (!game?.puzzle) throw new Error('퍼즐뿌요 테스트를 시작하지 못했습니다.');
-        game.toolsTest = { kind: 'puzzle', pendingStage: null, finishAfterStage: false, finishTimer: null };
+        game.toolsTest = { kind: 'puzzle', pendingStage: null, finishAfterStage: false, finishTimer: null, result: null };
     }
 
     /**
