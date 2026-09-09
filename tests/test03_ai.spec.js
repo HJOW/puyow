@@ -790,13 +790,38 @@ test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1�
 
   // 추론을 마감 시한(2초)보다 오래 끌게 만들어 폴백 경로를 태운다.
   await page.evaluate(() => {
+    window.onnxSessionStats = { activeRuns: 0, maxActiveRuns: 0, inputDisposals: 0, outputDisposals: 0, releases: 0 };
     const originalCreate = window.ort.InferenceSession.create.bind(window.ort.InferenceSession);
     window.ort.InferenceSession.create = async (...args) => {
       const session = await originalCreate(...args);
       const originalRun = session.run.bind(session);
       session.run = async (...runArgs) => {
-        await new Promise((resolve) => { setTimeout(resolve, 6000); });
-        return originalRun(...runArgs);
+        const input = runArgs[0]?.observation;
+        const originalInputDispose = input?.dispose?.bind(input);
+        if (originalInputDispose) input.dispose = () => {
+          window.onnxSessionStats.inputDisposals += 1;
+          return originalInputDispose();
+        };
+        window.onnxSessionStats.activeRuns += 1;
+        window.onnxSessionStats.maxActiveRuns = Math.max(window.onnxSessionStats.maxActiveRuns, window.onnxSessionStats.activeRuns);
+        try {
+          await new Promise((resolve) => { setTimeout(resolve, 6000); });
+          const outputs = await originalRun(...runArgs);
+          const output = outputs.value;
+          const originalOutputDispose = output?.dispose?.bind(output);
+          if (originalOutputDispose) output.dispose = () => {
+            window.onnxSessionStats.outputDisposals += 1;
+            return originalOutputDispose();
+          };
+          return outputs;
+        } finally {
+          window.onnxSessionStats.activeRuns -= 1;
+        }
+      };
+      const originalRelease = session.release?.bind(session);
+      if (originalRelease) session.release = async () => {
+        window.onnxSessionStats.releases += 1;
+        return originalRelease();
       };
       return session;
     };
@@ -820,6 +845,42 @@ test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThanOrEqual(3);
   const averageTurnMs = (Date.now() - startedAt) / 3;
   expect(averageTurnMs).toBeLessThan(15000);
+  // 마감 시한을 넘긴 이전 run()이 남아 있어도 새 추론을 쌓지 않아 동시에 실행되는 세션 호출은 하나다.
+  expect(await page.evaluate(() => window.onnxSessionStats.maxActiveRuns)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.onnxSessionStats.inputDisposals)).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.onnxSessionStats.outputDisposals)).toBeGreaterThan(0);
+  // destroy()는 대전이 빌린 세션을 반납하고, 실행 중인 추론이 끝난 뒤 ONNX 리소스를 해제한다.
+  await page.evaluate(() => window.WebPuyo.destroy());
+  await expect.poll(() => page.evaluate(() => window.onnxSessionStats.releases)).toBeGreaterThan(0);
+});
+
+test('ONNX 프록시 워커를 만들지 못하면 메인 스레드 재시도 없이 기본 AI로 대전한다', async ({ page }) => {
+  test.setTimeout(180000);
+  await page.evaluate(() => localStorage.setItem('puyow_code', JSON.stringify(['observation'])));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  await page.evaluate(() => {
+    window.ort.InferenceSession.create = async () => {
+      throw new Error("Failed to construct 'Worker': Script at blob: blocked by CSP");
+    };
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('플라우로스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThanOrEqual(1);
+  // proxy 플래그를 끄지 않았으므로 이후 대전도 메인 스레드 ONNX 실행으로 바뀌지 않는다.
+  expect(await page.evaluate(() => window.ort.env.wasm.proxy)).toBe(true);
 });
 
 test('ONNX wasm 바이너리는 CDN을 먼저 시도한다', async ({ page }) => {

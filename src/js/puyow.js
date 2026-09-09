@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 38;
+    const BUILDNO = 39;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -305,6 +305,8 @@
      * @type {number}
      */
     const ONNX_INFERENCE_TIMEOUT = 2000;
+    /** 한 대전의 양쪽 적이 동시에 쓸 수 있는 ONNX 모델 수 상한이다. 대전이 끝나면 모두 해제한다. @type {number} */
+    const ONNX_SESSION_CACHE_LIMIT = 2;
     /** ONNX 런타임이 쓰는 wasm 글루 모듈 파일명이다. 46KB로 작아 항상 `src/js/`의 것을 쓴다. @type {string} */
     const ONNX_WASM_MJS_FILE = 'ort-wasm-simd-threaded.jsep.mjs';
     /** ONNX 런타임이 쓰는 wasm 바이너리 파일명이다. 27MB로 커서 CDN을 우선한다. @type {string} */
@@ -323,7 +325,7 @@
     const stringTable = {
         en: {
             '솔로몬': 'Solomon', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'Solomon AI response error: continuing with the fallback AI.',
-            '인공지능 모델을 불러오는 중...': 'Loading the AI model…', '인공지능 모델을 불러오지 못했습니다.': 'Failed to load the AI model.',
+            '인공지능 모델을 불러오는 중...': 'Loading the AI model…', '인공지능 모델을 불러오지 못했습니다.': 'Failed to load the AI model.', 'ONNX 워커를 시작하지 못해 기본 인공지능으로 진행합니다.': 'The ONNX worker could not start; continuing with the standard AI.',
             '뿌요 W': 'Puyo W',
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '구경': 'Watch', '모드': 'Mode', '규칙': 'Rules', '색상 수': 'Colors', '다음 대전까지 %1초': 'Next match in %1 sec', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Pop %1 colors at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
@@ -625,8 +627,10 @@
     let onnxWasmAvailable = true;
     /** wasm 파일 경로 결정이 끝났는지 추적하는 약속이다. 세션을 만들기 전에 반드시 기다린다. @type {Promise<boolean>|null} */
     let onnxWasmPathsPromise = null;
-    /** 이미 만든 ONNX 추론 세션을 모델 경로별로 재사용하기 위한 캐시다. @type {Map<string, Promise<object>>} */
+    /** 현재 대전이 빌린 ONNX 세션을 모델 경로별로 관리한다. 값에는 로딩 약속과 대전 중 사용 수가 들어간다. @type {Map<string, {loading:Promise<object>, leases:number}>} */
     const onnxSessionCache = new Map();
+    /** 같은 세션의 `run()`이 겹치지 않도록 현재 실행 중인 추론 약속을 기억한다. @type {Map<object, Promise<object>>} */
+    const onnxSessionRunPromises = new Map();
     /** 종료된 설정 화면의 비동기 응답을 무시하기 위한 요청 식별자다. @type {number} */
     let settingsApiTestRequestId = 0;
     /** 설정 전체 초기화 확인 후 표시하는 초기화 진행 화면 여부다. @type {boolean} */
@@ -1862,14 +1866,31 @@
         return onnxRuntimeAvailable && onnxWasmAvailable;
     }
 
+    /** ONNX 세션 캐시의 최근 사용 순서를 갱신한다. @param {string} modelPath 모델 상대 경로 @returns {{loading:Promise<object>, leases:number}|null} 캐시 항목 */
+    function touchOnnxSessionCache(modelPath) {
+        const cached = onnxSessionCache.get(modelPath);
+        if (!cached) return null;
+        onnxSessionCache.delete(modelPath);
+        onnxSessionCache.set(modelPath, cached);
+        return cached;
+    }
+
     /**
-     * 모델 경로별 ONNX 추론 세션을 만들고 캐시한다. 같은 모델을 다시 고르면 이미 만든 세션을 재사용한다.
+     * 모델 경로별 ONNX 추론 세션을 만들고 빌린다. 같은 모델의 동시 요청은 하나의 약속으로 합친다.
+     * 대전이 끝날 때 빌린 수만큼 반납해야 세션과 wasm 메모리를 해제할 수 있다.
      * @param {string} modelPath `src/` 기준 모델 상대 경로
      * @returns {Promise<object>} 추론 세션
      */
-    function loadOnnxSession(modelPath) {
-        const cached = onnxSessionCache.get(modelPath);
-        if (cached) return cached;
+    function acquireOnnxSession(modelPath) {
+        const cached = touchOnnxSessionCache(modelPath);
+        if (cached) {
+            cached.leases += 1;
+            return cached.loading;
+        }
+        if (onnxSessionCache.size >= ONNX_SESSION_CACHE_LIMIT) {
+            throw new Error(`동시에 사용할 수 있는 ONNX 모델 수(${ONNX_SESSION_CACHE_LIMIT})를 넘었습니다.`);
+        }
+        const entry = { loading: null, leases: 1 };
         const loading = (async () => {
             const runtime = getOnnxRuntime();
             if (!runtime) throw new Error('ONNX 런타임(ort)이 없습니다.');
@@ -1888,18 +1909,69 @@
             try {
                 return await runtime.InferenceSession.create(modelBuffer, sessionOptions);
             } catch (error) {
-                // Blob 워커를 막는 CSP 등으로 프록시 워커를 띄우지 못하면 예전처럼 메인 스레드에서 실행한다.
-                // 이때는 세션을 만드는 동안 화면이 잠시 멈추지만, 적을 아예 못 쓰게 되는 것보다는 낫다.
-                if (!runtime.env?.wasm?.proxy) throw error;
-                console.error('ONNX 프록시 워커를 시작하지 못해 메인 스레드 추론으로 되돌립니다.', error);
-                runtime.env.wasm.proxy = false;
-                return runtime.InferenceSession.create(modelBuffer, sessionOptions);
+                // Blob Worker/CSP 문제로 워커를 만들지 못한 경우 메인 스레드 재시도는 브라우저를 멈출 수 있다.
+                // 호출자가 이 오류를 받아 해당 대전만 기존 시뮬레이션 AI로 안전하게 전환한다.
+                if (runtime.env?.wasm?.proxy && isOnnxWorkerStartError(error)) {
+                    const workerError = new Error('ONNX 프록시 워커를 시작하지 못했습니다.');
+                    workerError.onnxWorkerUnavailable = true;
+                    throw workerError;
+                }
+                throw error;
             }
         })();
+        entry.loading = loading;
         // 실패한 시도를 캐시에 남기면 다시 시도할 수 없으므로, 실패 시에는 캐시에서 지운다.
-        loading.catch(() => onnxSessionCache.delete(modelPath));
-        onnxSessionCache.set(modelPath, loading);
+        loading.catch(() => {
+            if (onnxSessionCache.get(modelPath) === entry) onnxSessionCache.delete(modelPath);
+        });
+        onnxSessionCache.set(modelPath, entry);
         return loading;
+    }
+
+    /** Blob Worker 또는 CSP 때문에 ONNX 프록시 워커 생성만 실패했는지 확인한다. @param {*} error 생성 오류 @returns {boolean} 워커 생성 실패 여부 */
+    function isOnnxWorkerStartError(error) {
+        const message = String(error?.message || error || '').toLowerCase();
+        return message.includes('worker') && (message.includes('blob') || message.includes('content security') || message.includes('csp') || message.includes('construct'));
+    }
+
+    /** `acquireOnnxSession()`으로 빌린 세션 하나를 반납하고, 마지막 사용자가 떠나면 wasm 리소스를 해제한다. @param {string} modelPath 모델 상대 경로 @returns {void} */
+    function releaseOnnxSession(modelPath) {
+        const entry = onnxSessionCache.get(modelPath);
+        if (!entry) return;
+        entry.leases = Math.max(0, entry.leases - 1);
+        if (entry.leases > 0) return;
+        onnxSessionCache.delete(modelPath);
+        void (async () => {
+            try {
+                const session = await entry.loading;
+                const running = onnxSessionRunPromises.get(session);
+                // 실행 중인 run()을 먼저 끝내야 release()가 아직 쓰는 세션을 해제하지 않는다.
+                if (running) {
+                    try { await running; } catch (error) { /* 추론 실패는 이미 대체 AI가 처리한다. */ }
+                }
+                if (typeof session.release === 'function') await session.release();
+            } catch (error) {
+                // 로딩 실패 세션은 해제할 리소스가 없고, 해제 실패는 화면 진행을 막지 않는다.
+                console.error('ONNX 세션을 해제하지 못했습니다.', error);
+            }
+        })();
+    }
+
+    /** 같은 세션의 추론을 하나만 실행한다. 이미 실행 중이면 null을 돌려 호출자가 즉시 대체 AI를 쓴다. @param {object} session ONNX 세션 @param {object} feeds 입력 텐서 맵 @returns {Promise<object>|null} 출력 맵 또는 실행 불가 표시 */
+    function runOnnxSessionIfIdle(session, feeds) {
+        if (onnxSessionRunPromises.has(session)) return null;
+        let running;
+        try {
+            running = Promise.resolve(session.run(feeds));
+        } catch (error) {
+            return Promise.reject(error);
+        }
+        onnxSessionRunPromises.set(session, running);
+        void running.then(
+            () => { if (onnxSessionRunPromises.get(session) === running) onnxSessionRunPromises.delete(session); },
+            () => { if (onnxSessionRunPromises.get(session) === running) onnxSessionRunPromises.delete(session); }
+        );
+        return running;
     }
 
     /**
@@ -2681,6 +2753,11 @@
         };
     }
 
+    /** 현재 게임이 빌린 ONNX 모델 세션을 모두 반납한다. @param {object|null} targetGame 종료할 게임 상태 @returns {void} */
+    function releaseGameOnnxModels(targetGame) {
+        targetGame?.players?.forEach((player) => player.controller?.releaseModel?.());
+    }
+
     /**
      * 이번 대전에 ONNX 추론이 필요한 적이 있으면 모델을 먼저 불러오고, 그동안 카운트다운을 멈춘다.
      * 모델 파일이 크기 때문에 게임 화면을 먼저 보여 주고 이 자리에서 로딩 안내를 띄운다.
@@ -2699,7 +2776,19 @@
             if (game !== startedGame) return;
             game.onnxLoading = false;
         }).catch((error) => {
+            if (error?.onnxWorkerUnavailable === true) {
+                console.error('ONNX 프록시 워커를 시작하지 못해 기본 인공지능으로 전환합니다.', error);
+                if (game !== startedGame) {
+                    onnxControllers.forEach((controller) => controller.releaseModel?.());
+                    return;
+                }
+                onnxControllers.forEach((controller) => controller.disableOnnx?.());
+                game.onnxLoading = false;
+                showMessage(translate('ONNX 워커를 시작하지 못해 기본 인공지능으로 진행합니다.'), '#f5fbfc', 3000, '#7b2636');
+                return;
+            }
             console.error('ONNX 모델을 불러오지 못했습니다.', error);
+            onnxControllers.forEach((controller) => controller.releaseModel?.());
             if (game !== startedGame) return;
             stopBackgroundMusic();
             game = null;
@@ -11137,6 +11226,7 @@
             ? finishedGame.puzzle.returnFocusIndex
             : 0;
         stopBackgroundMusic();
+        releaseGameOnnxModels(finishedGame);
         game = null;
         if (returnToPuzzleStages) openPuzzleStageSelection(puzzleFocusIndex);
         else if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
@@ -11495,6 +11585,7 @@
             // 개발용 도구의 테스트는 메인 화면 대신 편집 모드로 돌아간다.
             if (game?.toolsTest) { returnFromToolsTest(); return; }
             stopBackgroundMusic();
+            releaseGameOnnxModels(game);
             game = null;
             menuScreen = 'title'; loadNotice();
             syncBackgroundMusic();
@@ -12462,6 +12553,7 @@
      */
     function destroy() {
         if (!initialized) return;
+        releaseGameOnnxModels(game);
         stopBackgroundMusic();
         if (settingsResetTimer !== null) window.clearTimeout(settingsResetTimer);
         if (feverStageValidationTimer !== null) window.clearTimeout(feverStageValidationTimer);
@@ -15870,6 +15962,12 @@
             this.modelPath = 'onnx/model01.onnx';
             /** 이미 만들어 둔 추론 세션이다. 대전 시작 전에 `prepareModel()`이 채운다. @type {object|null} */
             this.session = null;
+            /** ONNX 모델 세션을 빌린 상태인지 여부다. 대전 종료 시 반드시 반납한다. @type {boolean} */
+            this.modelLeaseHeld = false;
+            /** 프록시 Worker를 쓸 수 없어 이번 대전에서 기존 시뮬레이션 AI로 전환했는지 여부다. @type {boolean} */
+            this.onnxEnabled = true;
+            /** 중복 모델 준비 요청을 합치기 위한 약속이다. @type {Promise<void>|null} */
+            this.modelLoadPromise = null;
             /** @type {'idle'|'pending'|'ready'|'fallback'|'cancelled'} */
             this.decisionState = 'idle';
             /** 추론이 끝났을 때 아직 같은 턴인지 확인하기 위한 판별용 플레이어다. @type {PlayerState|null} */
@@ -15894,13 +15992,33 @@
             this.decisionTimeoutId = null;
         }
 
-        /**
-         * 대전을 시작하기 전에 ONNX 세션을 만들어 둔다.
-         * 실패하면 예외를 그대로 올려서 호출자가 대전을 시작하지 않고 안내 문구를 띄우게 한다.
-         * @returns {Promise<void>}
-         */
+        /** 대전을 시작하기 전에 ONNX 세션을 빌려 둔다. @returns {Promise<void>} */
         async prepareModel() {
-            this.session = await loadOnnxSession(this.modelPath);
+            if (!this.onnxEnabled || this.modelLoadPromise) return this.modelLoadPromise;
+            this.modelLeaseHeld = true;
+            this.modelLoadPromise = acquireOnnxSession(this.modelPath).then((session) => {
+                // 로딩 중 대전이 끝나 반납했다면 세션 참조를 다시 붙잡지 않는다.
+                if (this.modelLeaseHeld) this.session = session;
+            }).catch((error) => {
+                this.modelLeaseHeld = false;
+                this.modelLoadPromise = null;
+                throw error;
+            });
+            return this.modelLoadPromise;
+        }
+
+        /** 현재 대전에서 빌린 모델 세션을 반납한다. @returns {void} */
+        releaseModel() {
+            if (!this.modelLeaseHeld) return;
+            this.modelLeaseHeld = false;
+            this.session = null;
+            releaseOnnxSession(this.modelPath);
+        }
+
+        /** 프록시 Worker를 만들 수 없을 때 이번 대전만 기존 시뮬레이션 AI로 전환한다. @returns {void} */
+        disableOnnx() {
+            this.onnxEnabled = false;
+            this.releaseModel();
         }
 
         /** 캡처한 뿌요가 아직 이 컨트롤러의 현재 조작 턴인지 확인한다. @param {PlayerState} player CPU 플레이어 @returns {boolean} 같은 턴이면 true */
@@ -16014,6 +16132,8 @@
          * @returns {Promise<void>}
          */
         async decidePlacement(player, token) {
+            let tensor = null;
+            let outputs = null;
             try {
                 const runtime = getOnnxRuntime();
                 if (!runtime) throw new Error('ONNX 런타임(ort)이 없습니다.');
@@ -16029,8 +16149,13 @@
                     }
                     inputData.set(candidate.observation, index * ONNX_OBSERVATION_SIZE);
                 });
-                const tensor = new runtime.Tensor('float32', inputData, [candidates.length, ONNX_OBSERVATION_SIZE]);
-                const outputs = await this.session.run({ [ONNX_INPUT_NAME]: tensor });
+                tensor = new runtime.Tensor('float32', inputData, [candidates.length, ONNX_OBSERVATION_SIZE]);
+                outputs = await runOnnxSessionIfIdle(this.session, { [ONNX_INPUT_NAME]: tensor });
+                // 앞선 턴 또는 다른 ONNX 적이 같은 세션을 쓰고 있으면 요청을 쌓지 않고 즉시 대체 AI를 쓴다.
+                if (outputs === null) {
+                    if (token === this.inferenceToken && this.isCurrentTurn(player)) this.applyFallback(player);
+                    return;
+                }
                 // 추론을 기다리는 동안 턴이 넘어갔으면 이 결과는 버린다.
                 if (token !== this.inferenceToken || !this.isCurrentTurn(player)) return;
                 const values = outputs?.[ONNX_OUTPUT_NAME]?.data;
@@ -16063,6 +16188,10 @@
                 // 추론·출력 검증 실패는 대전을 멈추지 않고 앞 1수 시뮬레이션 결과로 이어 간다.
                 console.error(`${this.getClassType()}의 ONNX 추론에 실패했습니다. 앞 1수 시뮬레이션으로 진행합니다.`, error);
                 this.applyFallback(player);
+            } finally {
+                // CPU wasm 텐서도 내부 버퍼 참조를 끊고, 이후 GPU 실행 제공자로 바뀌어도 리소스를 남기지 않는다.
+                if (typeof tensor?.dispose === 'function') tensor.dispose();
+                if (outputs && typeof outputs === 'object') Object.values(outputs).forEach((output) => output?.dispose?.());
             }
         }
 
@@ -16083,6 +16212,11 @@
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {void} */
         prepareTurn(player) {
+            // 프록시 Worker가 불가능한 대전은 ONNX를 절대 메인 스레드에서 재시도하지 않는다.
+            if (!this.onnxEnabled) {
+                super.prepareTurn(player);
+                return;
+            }
             // 이전 턴의 추론이 아직 돌고 있으면 그 결과를 버리도록 일련번호를 올린다.
             this.inferenceToken += 1;
             this.clearDecisionTimeout();
