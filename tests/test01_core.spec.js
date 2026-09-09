@@ -466,26 +466,50 @@ test('일반·방해뿌요 클래스는 이름을 제공하고 캔버스에 직�
   ]);
 });
 
-test('빅뱅 예고뿌요와 출시 예정 안드라스는 각각 50만 단위와 ONNX 출시 예정 설정을 가진다', async ({ page }) => {
+test('빅뱅 예고뿌요와 ONNX 적 3종은 출시 상태·모델·테마 설정을 가진다', async ({ page }) => {
   const result = await page.evaluate(() => {
     const bigBang = new window.WebPuyo.BigBangWarningPuyo();
     const andras = new window.WebPuyo.Andras();
+    const valak = new window.WebPuyo.Valak();
+    const zagan = new window.WebPuyo.Zagan();
+    const describeEnemy = (enemy) => ({
+      classType: enemy.getClassType(), name: enemy.getName(), notAvail: enemy.notAvail,
+      requiresOnnx: enemy.requiresOnnx, modelPath: enemy.modelPath, theme: enemy.getFieldThemeColors()
+    });
     return {
       bigBang: { unitCount: bigBang.unitCount, type: bigBang.type, name: bigBang.getName() },
       warningTypes: window.WebPuyo.common.warningUnits(500000).map((unit) => unit.type),
-      andras: {
-        classType: andras.getClassType(), name: andras.getName(), notAvail: andras.notAvail,
-        requiresOnnx: andras.requiresOnnx, modelPath: andras.modelPath, theme: andras.getFieldThemeColors()
-      }
+      andras: describeEnemy(andras), valak: describeEnemy(valak), zagan: describeEnemy(zagan)
     };
   });
 
   expect(result.bigBang).toEqual({ unitCount: 500000, type: 'big-bang', name: '빅뱅' });
   expect(result.warningTypes).toEqual(['big-bang']);
   expect(result.andras).toEqual({
-    classType: 'Andras', name: '안드라스', notAvail: true, requiresOnnx: true, modelPath: 'onnx/model01.onnx',
+    classType: 'Andras', name: '안드라스', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model02.onnx',
     theme: { bezel: '#1b2137', field: '#2d3857', center: '#0a0e1c' }
   });
+  expect(result.valak).toEqual({
+    classType: 'Valak', name: '발라크', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model03.onnx',
+    theme: { bezel: '#431c24', field: '#622936', center: '#210b12' }
+  });
+  expect(result.zagan).toEqual({
+    classType: 'Zagan', name: '자간', notAvail: true, requiresOnnx: true, modelPath: 'onnx/model01.onnx',
+    theme: { bezel: '#3d3220', field: '#594a2d', center: '#1c160c' }
+  });
+});
+
+test('발라크와 자간은 세 가지 표정의 초상화를 캔버스에 그린다', async ({ page }) => {
+  const painted = await page.evaluate(() => [window.WebPuyo.Valak, window.WebPuyo.Zagan].map((EnemyType) => {
+    const enemy = new EnemyType();
+    return ['normal', 'crisis', 'defeated'].map((expression) => {
+      const canvas = document.createElement('canvas'); canvas.width = 220; canvas.height = 220;
+      const drawingContext = canvas.getContext('2d');
+      enemy.drawPortrait(drawingContext, 110, 110, 1, expression);
+      return Array.from(drawingContext.getImageData(0, 0, 220, 220).data).some((value, index) => index % 4 === 3 && value > 0);
+    });
+  }));
+  expect(painted).toEqual([[true, true, true], [true, true, true]]);
 });
 
 test('공개 askConfirm은 요청을 순서대로 표시하고 키보드와 마우스 선택 결과를 Promise로 반환한다', async ({ page }) => {

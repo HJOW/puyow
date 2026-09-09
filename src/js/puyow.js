@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 39;
+    const BUILDNO = 40;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -329,7 +329,7 @@
             '뿌요 W': 'Puyo W',
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '구경': 'Watch', '모드': 'Mode', '규칙': 'Rules', '색상 수': 'Colors', '다음 대전까지 %1초': 'Next match in %1 sec', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Pop %1 colors at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
-            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '안드레알푸스': 'Andrealphus', '플라우로스': 'Flauros', '안드라스': 'Andras', '시작': 'Start', '이전': 'Back',
+            '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '안드레알푸스': 'Andrealphus', '플라우로스': 'Flauros', '안드라스': 'Andras', '발라크': 'Valak', '자간': 'Zagan', '시작': 'Start', '이전': 'Back',
             '극한': 'Extreme',
             '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -353,7 +353,7 @@
             '뿌요 W': 'Puyo W',
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
             '게임 시작': 'ゲーム開始', '구경': '観戦', '모드': 'モード', '규칙': 'ルール', '색상 수': '色数', '다음 대전까지 %1초': '次の対戦まで%1秒', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '현재 턴 %1 / %2': 'ターン %1 / %2', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一度に%1色のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
-            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '안드레알푸스': 'アンドレアルフス', '플라우로스': 'フラウロス', '안드라스': 'アンドラス', '시작': '開始', '이전': '戻る',
+            '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '안드레알푸스': 'アンドレアルフス', '플라우로스': 'フラウロス', '안드라스': 'アンドラス', '발라크': 'ヴァラク', '자간': 'ザガン', '시작': '開始', '이전': '戻る',
             '극한': '極限',
             '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -378,7 +378,7 @@
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
             '게임 시작': '开始游戏', '구경': '观战', '모드': '模式', '규칙': '规则', '색상 수': '颜色数', '다음 대전까지 %1초': '距离下一场对战还有%1秒', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '퍼즐뿌요': '益智魔法气泡', '퍼즐뿌요 스테이지': '益智魔法气泡关卡', '스테이지 %1': '关卡 %1', '권장 턴 수 %1': '推荐回合数: %1', '현재 턴 %1': '第 %1 回合', '현재 턴 %1 / %2': '第 %1 / %2 回合', '%1 연쇄 해봐': '试试 %1 连锁！', '싹쓸이 해봐': '试试全消！', '한 번에 %1개 뿌요를 터뜨려봐': '一次消除 %1 个魔法气泡！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一次消除 %1 种颜色的魔法气泡！', '방해뿌요 %1개를 발생 시켜봐': '发送 %1 个垃圾魔法气泡！', '스테이지 클리어': '关卡完成', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
-            '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯', '안드레알푸스': '安德雷阿尔弗斯', '플라우로스': '弗劳洛斯', '안드라스': '安德拉斯',
+            '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯', '안드레알푸스': '安德雷阿尔弗斯', '플라우로스': '弗劳洛斯', '안드라스': '安德拉斯', '발라크': '瓦拉克', '자간': '扎甘',
             '극한': '极限',
             '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -8995,8 +8995,8 @@
         WARNING_PUYO_CLASSES.filter((WarningPuyoType) => WarningPuyoType.unitCount > BigBangWarningPuyo.unitCount)
             .forEach((WarningPuyoType) => definitions.push({ type: `warning:${WarningPuyoType.unitCount}`, kind: 'warning', value: WarningPuyoType.unitCount, weight: 1 }));
         const fixedEnemyTypes = new Set(['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus', 'Flauros']);
-        // 솔로몬은 세션 한정 적이고, 안드라스는 아직 카드 출시 대상이 아니므로 제외한다.
-        OPPONENTS.filter((opponent) => !fixedEnemyTypes.has(opponent.classType) && opponent.classType !== 'Solomon' && opponent.classType !== 'Andras')
+        // 솔로몬은 세션 한정 적이고, 출시 예정 적은 출시될 때까지 카드 풀에서 제외한다.
+        OPPONENTS.filter((opponent) => !fixedEnemyTypes.has(opponent.classType) && opponent.classType !== 'Solomon' && !opponent.notAvail)
             .forEach((opponent) => definitions.push({ type: `enemy:${opponent.classType}`, kind: 'enemy', value: opponent.classType, weight: 1 }));
         return definitions;
     }
@@ -16422,16 +16422,15 @@
     }
 
     /**
-     * 안드라스는 날개 달린 천사 몸·새 머리·검은 늑대·불타는 검의 전승을 바탕으로 한 출시 예정 적이다.
-     * TODO: 전용 ONNX 가치망이 준비되면 modelPath를 교체하고 전용 판단 특성을 추가한다.
+     * 안드라스는 날개 달린 천사 몸·새 머리·검은 늑대·불타는 검의 전승을 바탕으로 한 적이다.
+     * 판단은 플라우로스와 같은 ONNX 공통 로직으로 하며 전용 `model02.onnx` 가치망을 사용한다.
      */
     class Andras extends OnnxEnemy {
         constructor() {
             super();
             this.sortPriority = 10;
-            this.notAvail = true;
-            // 전용 모델 출시 전까지 플라우로스와 같은 ONNX 모델을 임시 사용한다.
-            this.modelPath = 'onnx/model01.onnx';
+            this.notAvail = false;
+            this.modelPath = 'onnx/model02.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -16499,6 +16498,163 @@
     }
 
     /**
+     * 발라크는 두 개의 붉은 목을 가진 지옥의 드래곤 위에 탄 날개 달린 소년의 모습으로 나타나는 적이다.
+     * 판단은 플라우로스와 같은 ONNX 공통 로직으로 하며 전용 `model03.onnx` 가치망을 사용한다.
+     */
+    class Valak extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 11;
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Valak'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '발라크'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색 */
+        getFieldThemeColors() {
+            return { bezel: '#431c24', field: '#622936', center: '#210b12' };
+        }
+
+        /**
+         * 두 머리의 붉은 드래곤과 그 위에 탄 작은 날개 달린 소년을 그린다.
+         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+         * @param {number} centerX 캐릭터 중심 X 좌표
+         * @param {number} centerY 캐릭터 중심 Y 좌표
+         * @param {number} scale 기본 크기 대비 배율
+         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+         * @returns {void}
+         */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            const size = 72 * scale;
+            drawingContext.save();
+            drawingContext.translate(centerX, centerY);
+            drawingContext.lineJoin = 'round'; drawingContext.lineCap = 'round';
+            drawingContext.strokeStyle = '#2a0a10'; drawingContext.lineWidth = 4 * scale;
+
+            // 불길처럼 뻗은 날개와 드래곤 몸통이다.
+            drawingContext.fillStyle = '#7d1f2d';
+            [-1, 1].forEach((direction) => {
+                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.2, size * 0.22);
+                drawingContext.lineTo(direction * size * 0.92, -size * 0.26); drawingContext.lineTo(direction * size * 0.67, size * 0.15);
+                drawingContext.lineTo(direction * size * 0.96, size * 0.38); drawingContext.lineTo(direction * size * 0.28, size * 0.46);
+                drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            });
+            drawingContext.fillStyle = '#a52b37';
+            drawingContext.beginPath(); drawingContext.ellipse(0, size * 0.43, size * 0.65, size * 0.31, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+
+            // 서로 갈라진 두 붉은 목과 뿔 달린 머리다.
+            [-1, 1].forEach((direction) => {
+                drawingContext.strokeStyle = '#a52b37'; drawingContext.lineWidth = 16 * scale;
+                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.18, size * 0.38); drawingContext.quadraticCurveTo(direction * size * 0.28, 0, direction * size * 0.5, -size * 0.28); drawingContext.stroke();
+                drawingContext.fillStyle = '#bb3440'; drawingContext.strokeStyle = '#2a0a10'; drawingContext.lineWidth = 3 * scale;
+                drawingContext.beginPath(); drawingContext.ellipse(direction * size * 0.55, -size * 0.34, size * 0.25, size * 0.18, direction * 0.18, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+                drawingContext.fillStyle = '#e0b75c';
+                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.48, -size * 0.48); drawingContext.lineTo(direction * size * 0.52, -size * 0.72); drawingContext.lineTo(direction * size * 0.66, -size * 0.49); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+                const eyeX = direction * size * 0.59; const eyeY = -size * 0.38;
+                if (expression === 'defeated') {
+                    drawingContext.strokeStyle = '#f4d7ad'; drawingContext.lineWidth = 2.5 * scale;
+                    drawingContext.beginPath(); drawingContext.moveTo(eyeX - size * 0.055, eyeY - size * 0.045); drawingContext.lineTo(eyeX + size * 0.055, eyeY + size * 0.045); drawingContext.moveTo(eyeX + size * 0.055, eyeY - size * 0.045); drawingContext.lineTo(eyeX - size * 0.055, eyeY + size * 0.045); drawingContext.stroke();
+                } else {
+                    drawingContext.fillStyle = expression === 'crisis' ? '#fff176' : '#ffca55'; drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.045, 0, Math.PI * 2); drawingContext.fill();
+                }
+            });
+
+            // 드래곤 위의 아기 천사 모습이다.
+            drawingContext.fillStyle = '#f0d2b2'; drawingContext.strokeStyle = '#5a3441'; drawingContext.lineWidth = 3 * scale;
+            drawingContext.beginPath(); drawingContext.arc(0, -size * 0.28, size * 0.18, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#f2eadf';
+            [-1, 1].forEach((direction) => {
+                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.08, -size * 0.1); drawingContext.quadraticCurveTo(direction * size * 0.48, -size * 0.2, direction * size * 0.38, size * 0.13); drawingContext.quadraticCurveTo(direction * size * 0.18, size * 0.04, direction * size * 0.04, 0); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            });
+            drawingContext.fillStyle = '#ead8c6'; drawingContext.beginPath(); drawingContext.moveTo(-size * 0.17, -size * 0.13); drawingContext.lineTo(size * 0.17, -size * 0.13); drawingContext.lineTo(size * 0.25, size * 0.31); drawingContext.lineTo(-size * 0.25, size * 0.31); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            if (expression === 'defeated') {
+                drawingContext.strokeStyle = '#5a3441'; drawingContext.beginPath(); drawingContext.arc(0, -size * 0.21, size * 0.08, Math.PI, Math.PI * 2); drawingContext.stroke();
+                drawingContext.fillStyle = '#78d5ee'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.2, -size * 0.2, size * 0.045, size * 0.09, 0.2, 0, Math.PI * 2); drawingContext.fill();
+            } else {
+                drawingContext.fillStyle = expression === 'crisis' ? '#d32f2f' : '#4d3541';
+                [-size * 0.06, size * 0.06].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX, -size * 0.31, size * 0.025, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.strokeStyle = '#5a3441'; drawingContext.beginPath(); drawingContext.arc(0, -size * 0.24, size * 0.055, expression === 'crisis' ? Math.PI : 0, expression === 'crisis' ? Math.PI * 2 : Math.PI); drawingContext.stroke();
+                if (expression === 'crisis') { drawingContext.fillStyle = '#78d5ee'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.2, -size * 0.2, size * 0.04, size * 0.08, 0.2, 0, Math.PI * 2); drawingContext.fill(); }
+            }
+            drawingContext.restore();
+        }
+    }
+
+    /**
+     * 자간은 그리폰의 날개를 가진 숫소의 모습으로 나타나는 출시 예정 적이다.
+     * TODO: 출시 전에 자간 전용 ONNX 가치망으로 modelPath를 교체하고 판단 특성을 검증한다.
+     */
+    class Zagan extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 12;
+            this.notAvail = true;
+            // 전용 모델이 준비되기 전까지 플라우로스의 가치망으로 동작 구조만 미리 연결한다.
+            this.modelPath = 'onnx/model01.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Zagan'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '자간'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색 */
+        getFieldThemeColors() {
+            return { bezel: '#3d3220', field: '#594a2d', center: '#1c160c' };
+        }
+
+        /**
+         * 황금빛 그리폰 날개와 굽은 뿔을 지닌 숫소의 일반·위기·패배 초상화를 그린다.
+         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+         * @param {number} centerX 캐릭터 중심 X 좌표
+         * @param {number} centerY 캐릭터 중심 Y 좌표
+         * @param {number} scale 기본 크기 대비 배율
+         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+         * @returns {void}
+         */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            const size = 72 * scale;
+            drawingContext.save(); drawingContext.translate(centerX, centerY);
+            drawingContext.lineJoin = 'round'; drawingContext.lineCap = 'round';
+            drawingContext.strokeStyle = '#24180c'; drawingContext.lineWidth = 4 * scale;
+            // 그리폰처럼 층이 진 황금 날개다.
+            drawingContext.fillStyle = '#b88a3b';
+            [-1, 1].forEach((direction) => {
+                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.16, size * 0.14);
+                drawingContext.lineTo(direction * size * 0.62, -size * 0.7); drawingContext.lineTo(direction * size * 0.58, -size * 0.15);
+                drawingContext.lineTo(direction * size * 0.96, -size * 0.48); drawingContext.lineTo(direction * size * 0.7, size * 0.08);
+                drawingContext.lineTo(direction * size, -size * 0.06); drawingContext.lineTo(direction * size * 0.48, size * 0.43);
+                drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            });
+            // 숫소의 몸과 머리다.
+            drawingContext.fillStyle = '#5a3b25'; drawingContext.beginPath(); drawingContext.ellipse(0, size * 0.34, size * 0.58, size * 0.43, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#795238'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.09, size * 0.43, size * 0.4, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#d7b56a';
+            [-1, 1].forEach((direction) => {
+                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.27, -size * 0.34); drawingContext.quadraticCurveTo(direction * size * 0.75, -size * 0.72, direction * size * 0.64, -size * 0.18); drawingContext.quadraticCurveTo(direction * size * 0.48, -size * 0.39, direction * size * 0.23, -size * 0.21); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            });
+            drawingContext.fillStyle = '#b98262'; drawingContext.beginPath(); drawingContext.ellipse(0, size * 0.13, size * 0.3, size * 0.2, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#2b170f'; [-size * 0.11, size * 0.11].forEach((nostrilX) => { drawingContext.beginPath(); drawingContext.arc(nostrilX, size * 0.14, size * 0.035, 0, Math.PI * 2); drawingContext.fill(); });
+            const eyeY = -size * 0.11;
+            if (expression === 'defeated') {
+                drawingContext.strokeStyle = '#f0dfba'; drawingContext.lineWidth = 3 * scale;
+                [-size * 0.18, size * 0.18].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.moveTo(eyeX - size * 0.06, eyeY - size * 0.055); drawingContext.lineTo(eyeX + size * 0.06, eyeY + size * 0.055); drawingContext.moveTo(eyeX + size * 0.06, eyeY - size * 0.055); drawingContext.lineTo(eyeX - size * 0.06, eyeY + size * 0.055); drawingContext.stroke(); });
+                drawingContext.fillStyle = '#75cce7'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.34, size * 0.04, size * 0.05, size * 0.11, 0.15, 0, Math.PI * 2); drawingContext.fill();
+            } else {
+                drawingContext.fillStyle = '#f5e8bd'; [-size * 0.18, size * 0.18].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.09, expression === 'crisis' ? size * 0.12 : size * 0.08, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.fillStyle = expression === 'crisis' ? '#d32f2f' : '#21140d'; [-size * 0.18, size * 0.18].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.035, 0, Math.PI * 2); drawingContext.fill(); });
+                if (expression === 'crisis') { drawingContext.fillStyle = '#75cce7'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.35, size * 0.02, size * 0.045, size * 0.1, 0.15, 0, Math.PI * 2); drawingContext.fill(); }
+            }
+            drawingContext.restore();
+        }
+    }
+
+    /**
      * 연습 모드에서 조작하거나 뿌요를 받지 않는 상대다.
      */
     class PracticeEnemy extends BundledEnemy {
@@ -16535,7 +16691,9 @@
         createOpponentEntry(() => new Kimaris()),
         createOpponentEntry(() => new Andrealphus()),
         createOpponentEntry(() => new Flauros()),
-        createOpponentEntry(() => new Andras())
+        createOpponentEntry(() => new Andras()),
+        createOpponentEntry(() => new Valak()),
+        createOpponentEntry(() => new Zagan())
     );
 
     /**
@@ -16655,6 +16813,8 @@
         Andrealphus,
         Flauros,
         Andras,
+        Valak,
+        Zagan,
         Puyo,
         RedPuyo,
         GreenPuyo,

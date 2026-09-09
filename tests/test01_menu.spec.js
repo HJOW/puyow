@@ -18,6 +18,64 @@ test('갤러리 일반뿌요 목록에 철구뿌요를 처음부터 잠금 해�
   expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['잠김', 'Locked', 'ロック中', '已锁定'].includes(text)))).toBe(false);
 });
 
+test('갤러리 적 목록에는 안드라스·발라크·출시 예정 자간이 모두 등록된다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: [], enemies: ['Andras', 'Valak', 'Zagan'] }));
+  });
+  await page.reload();
+  await page.evaluate(() => {
+    window.newEnemyGalleryDraws = { Andras: 0, Valak: 0, Zagan: 0 };
+    ['Andras', 'Valak', 'Zagan'].forEach((classType) => {
+      const prototype = window.WebPuyo[classType].prototype;
+      const original = prototype.drawPortrait;
+      prototype.drawPortrait = function (...args) {
+        window.newEnemyGalleryDraws[classType] += 1;
+        return original.apply(this, args);
+      };
+    });
+  });
+  await enterMainMenu(page);
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  // 최초 공개 적 다음부터 잠금 해제된 새 적 세 종을 차례로 선택해 초상화까지 확인한다.
+  for (const classType of ['Andras', 'Valak', 'Zagan']) {
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(() => page.evaluate((name) => window.newEnemyGalleryDraws[name], classType)).toBeGreaterThan(0);
+  }
+  await expect.poll(() => page.evaluate(() => Object.fromEntries(Object.entries(window.newEnemyGalleryDraws).map(([name, count]) => [name, count > 0])))).toEqual({ Andras: true, Valak: true, Zagan: true });
+});
+
+test('출시된 안드라스·발라크 카드는 유효하고 출시 예정 자간 카드는 풀에서 제외된다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_cards', JSON.stringify([
+      { id: 'andras-card', type: 'enemy:Andras' },
+      { id: 'valak-card', type: 'enemy:Valak' },
+      { id: 'zagan-card', type: 'enemy:Zagan' }
+    ]));
+  });
+  await page.reload();
+  await page.evaluate(() => {
+    window.newEnemyCardDraws = { Andras: 0, Valak: 0, Zagan: 0 };
+    ['Andras', 'Valak', 'Zagan'].forEach((classType) => {
+      const prototype = window.WebPuyo[classType].prototype;
+      const original = prototype.drawPortrait;
+      prototype.drawPortrait = function (...args) {
+        window.newEnemyCardDraws[classType] += 1;
+        return original.apply(this, args);
+      };
+    });
+  });
+  await enterMainMenu(page);
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowRight');
+  await expect.poll(() => page.evaluate(() => window.newEnemyCardDraws.Andras > 0 && window.newEnemyCardDraws.Valak > 0)).toBe(true);
+  expect(await page.evaluate(() => window.newEnemyCardDraws.Zagan)).toBe(0);
+});
+
 test('카드 뽑기는 확인 전에는 자원을 쓰지 않고 취소하거나 확인할 수 있으며 등급 문구를 표시하지 않는다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], gold: 10000 }));

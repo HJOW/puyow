@@ -758,7 +758,7 @@ test('플라우로스는 ONNX 모델을 불러온 뒤 대전하고, 모델을 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('플라우로스');
@@ -834,7 +834,7 @@ test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('플라우로스');
@@ -873,7 +873,7 @@ test('ONNX 프록시 워커를 만들지 못하면 메인 스레드 재시도 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('플라우로스');
@@ -914,7 +914,7 @@ test('ONNX wasm 바이너리는 CDN을 먼저 시도한다', async ({ page }) =>
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => wasmRequests.some((url) => url.startsWith('https://cdn.jsdelivr.net/')), { timeout: 30000 }).toBe(true);
@@ -945,7 +945,7 @@ test('CDN에 닿지 않으면 로컬 wasm으로 플라우로스 대전을 진행
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 120000 }).toBeGreaterThanOrEqual(2);
