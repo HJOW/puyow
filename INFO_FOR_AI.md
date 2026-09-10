@@ -357,6 +357,9 @@ aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
 - 테스트 결과는 `game.toolsTest.result`에 쌓인다. 피버는 `resolveExplosions()`가 첫 연쇄를 끝낼 때 그 연쇄 수를, 퍼즐은 `finishPuzzleStage()`가 달성 턴과 연쇄 수를 한 번만 적는다. `returnFromToolsTest()`가 `game`을 비우기 전에 이 값을 챙겨 종료 콜백으로 넘긴다.
 - `puyow.js`의 도구 관련 코드는 모두 `simulator.tools` 또는 `game.toolsTest` 조건 안에 있다. 게임 페이지 동작을 바꾸지 않는 것이 이 API의 계약이므로, 도구 기능을 넓힐 때도 이 가드를 벗어나지 않는다.
 - 스크립트 생성은 `TODO.md`의 예시와 같은 형식(`new FeverStageState(...)` 5인자, `new PuzzlePuyoStage({...})` 6항목)을 출력한다. 불러오기는 붙여 넣은 스크립트를 게임의 실제 클래스에 그대로 넘겨 만든다.
+- 사이드바 첫 단락 `불러오기`에는 버튼이 둘 있다. `스크립트`는 스크립트를 붙여 넣는 팝업(`.puyow-tools-dialog.is-load`)을, `기존 패턴`은 `puyow.js`에 탑재된 패턴을 고르는 팝업(`.puyow-tools-dialog.is-pattern`)을 연다. 두 팝업 모두 취소하면 편집 내용을 그대로 둔다.
+- `기존 패턴` 목록은 열 때마다 `fillPatternList()`가 지금 개발 중인 대상에 맞게 다시 만든다. 퍼즐뿌요는 `PuyoW.PUZZLE_STAGES`를 그대로 읽고, 피버는 `FEVER_STAGES`를 내보내지 않으므로 직렬화 사본을 주는 `getFeverStageDefinitions()`로 `FeverStageState`를 다시 만들어 쓴다. 이 두 API가 이미 있어 `puyow.js`는 건드리지 않았다. 고른 패턴은 스크립트 불러오기와 같은 `applyLoadedStage()`를 거치고, 편집 화면에 넣는 값은 `setEditorData()`가 복사하므로 게임의 원본 스테이지는 바뀌지 않는다.
+- 목록 한 줄의 설명(`describeExistingPattern()`)은 사이드바 항목 이름(`목표 연쇄 수`·`난이도`·`사용할 색상 목록`·`목표 타입`·`목표 타입 값`·`목표 턴수`·`힌트`)을 그대로 써서 번역을 함께 맞춘다. 힌트는 게임 데이터에 적힌 원문 그대로 보여 준다. 불러온 뒤에도 검증 지문은 새로 만들지 않으므로 스크립트를 만들려면 테스트를 다시 해야 한다.
 
 ### 개발용 도구의 검증 규칙
 

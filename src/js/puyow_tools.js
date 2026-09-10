@@ -40,6 +40,7 @@
             'Editing a Puzzle Puyo stage.': '퍼즐뿌요 스테이지를 편집합니다.',
             'Choose again after the test finishes.': '테스트가 끝난 뒤에 다시 선택해 주세요.',
             'Existing data loaded.': '기존 데이터를 불러왔습니다.',
+            'Existing pattern loaded.': '기존 패턴을 불러왔습니다.',
             'Load failed: %1': '불러오기 실패: %1',
             'Script generated.': '스크립트를 생성했습니다.',
             'Script generation failed: %1': '스크립트 생성 실패: %1',
@@ -54,8 +55,9 @@
             'Run a successful test before generating the script.': '스크립트를 생성하려면 먼저 테스트에 성공해야 합니다.',
             'The data changed after the test. Run the test again before generating the script.': '테스트 후 내용이 바뀌었습니다. 스크립트를 생성하려면 테스트를 다시 해 주세요.',
             'You can add up to %1 colors.': '색상은 최대 %1개까지 넣을 수 있습니다.',
-            'Existing Data': '기존 데이터',
             'Load': '불러오기',
+            'Script': '스크립트',
+            'Existing Patterns': '기존 패턴',
             'FEVER Pattern': '피버 패턴 정보',
             'Target Chain': '목표 연쇄 수',
             'Difficulty': '난이도',
@@ -77,7 +79,10 @@
             'Hint': '힌트',
             'Turn limit is an integer from %1 to %2, and the next puyos must be filled for at least that many turns. The hint may be left empty.': '목표 턴수는 %1 ~ %2 사이의 정수이며, "다음에 나올 뿌요"를 최소 그 턴수만큼 채워야 합니다. 힌트는 비워 둘 수 있습니다.',
             'Generated Script': '생성된 스크립트',
-            'Load Existing Data': '기존 데이터 불러오기',
+            'Load Script': '스크립트 불러오기',
+            'Load Existing Pattern': '기존 패턴 불러오기',
+            'Choose a pattern to load into the editor.': '편집 화면에 불러올 패턴을 선택해 주세요.',
+            'There is no pattern to load.': '불러올 패턴이 없습니다.',
             'Paste a script written as new FeverStageState(...) or new PuzzlePuyoStage({...}).': 'new FeverStageState(...) 또는 new PuzzlePuyoStage({...}) 형태의 스크립트를 붙여 넣어 주세요.',
             'OK': '확인',
             'Cancel': '취소',
@@ -150,6 +155,7 @@
             'Editing a Puzzle Puyo stage.': 'なぞぷよステージを編集します。',
             'Choose again after the test finishes.': 'テストが終わってから選び直してください。',
             'Existing data loaded.': '既存データを読み込みました。',
+            'Existing pattern loaded.': '既存パターンを読み込みました。',
             'Load failed: %1': '読み込み失敗: %1',
             'Script generated.': 'スクリプトを生成しました。',
             'Script generation failed: %1': 'スクリプト生成失敗: %1',
@@ -164,8 +170,9 @@
             'Run a successful test before generating the script.': 'スクリプトを生成するには、先にテストへ成功してください。',
             'The data changed after the test. Run the test again before generating the script.': 'テスト後に内容が変わりました。スクリプトを生成するにはテストをやり直してください。',
             'You can add up to %1 colors.': '色は最大%1個まで追加できます。',
-            'Existing Data': '既存データ',
             'Load': '読み込み',
+            'Script': 'スクリプト',
+            'Existing Patterns': '既存パターン',
             'FEVER Pattern': 'FEVERパターン情報',
             'Target Chain': '目標連鎖数',
             'Difficulty': '難易度',
@@ -187,7 +194,10 @@
             'Hint': 'ヒント',
             'Turn limit is an integer from %1 to %2, and the next puyos must be filled for at least that many turns. The hint may be left empty.': '目標手数は%1 ~ %2の整数で、「NEXTぷよ」は少なくともその手数分を埋める必要があります。ヒントは空でも構いません。',
             'Generated Script': '生成されたスクリプト',
-            'Load Existing Data': '既存データの読み込み',
+            'Load Script': 'スクリプトの読み込み',
+            'Load Existing Pattern': '既存パターンの読み込み',
+            'Choose a pattern to load into the editor.': '編集画面に読み込むパターンを選んでください。',
+            'There is no pattern to load.': '読み込めるパターンがありません。',
             'Paste a script written as new FeverStageState(...) or new PuzzlePuyoStage({...}).': 'new FeverStageState(...) または new PuzzlePuyoStage({...}) の形式のスクリプトを貼り付けてください。',
             'OK': '確認',
             'Cancel': 'キャンセル',
@@ -260,6 +270,7 @@
             'Editing a Puzzle Puyo stage.': '正在编辑解谜魔法气泡关卡。',
             'Choose again after the test finishes.': '请在测试结束后重新选择。',
             'Existing data loaded.': '已载入现有数据。',
+            'Existing pattern loaded.': '已载入现有图案。',
             'Load failed: %1': '载入失败：%1',
             'Script generated.': '已生成脚本。',
             'Script generation failed: %1': '脚本生成失败：%1',
@@ -274,8 +285,9 @@
             'Run a successful test before generating the script.': '要生成脚本，请先通过测试。',
             'The data changed after the test. Run the test again before generating the script.': '测试后内容已更改。要生成脚本，请重新测试。',
             'You can add up to %1 colors.': '最多可以添加 %1 种颜色。',
-            'Existing Data': '现有数据',
             'Load': '载入',
+            'Script': '脚本',
+            'Existing Patterns': '现有图案',
             'FEVER Pattern': 'FEVER 图案信息',
             'Target Chain': '目标连锁数',
             'Difficulty': '难度',
@@ -297,7 +309,10 @@
             'Hint': '提示',
             'Turn limit is an integer from %1 to %2, and the next puyos must be filled for at least that many turns. The hint may be left empty.': '目标回合数是 %1 ~ %2 的整数，“下一个气泡”至少要填满这么多回合。提示可以留空。',
             'Generated Script': '生成的脚本',
-            'Load Existing Data': '载入现有数据',
+            'Load Script': '载入脚本',
+            'Load Existing Pattern': '载入现有图案',
+            'Choose a pattern to load into the editor.': '请选择要载入编辑画面的图案。',
+            'There is no pattern to load.': '没有可载入的图案。',
             'Paste a script written as new FeverStageState(...) or new PuzzlePuyoStage({...}).': '请粘贴写成 new FeverStageState(...) 或 new PuzzlePuyoStage({...}) 形式的脚本。',
             'OK': '确认',
             'Cancel': '取消',
@@ -370,6 +385,7 @@
             'Editing a Puzzle Puyo stage.': 'Eine Puzzle-Puyo-Stage wird bearbeitet.',
             'Choose again after the test finishes.': 'Wähle erneut, sobald der Test beendet ist.',
             'Existing data loaded.': 'Vorhandene Daten geladen.',
+            'Existing pattern loaded.': 'Vorhandenes Muster geladen.',
             'Load failed: %1': 'Laden fehlgeschlagen: %1',
             'Script generated.': 'Skript erzeugt.',
             'Script generation failed: %1': 'Skripterzeugung fehlgeschlagen: %1',
@@ -384,8 +400,9 @@
             'Run a successful test before generating the script.': 'Bestehe erst einen Test, bevor du das Skript erzeugst.',
             'The data changed after the test. Run the test again before generating the script.': 'Die Daten haben sich nach dem Test geändert. Teste erneut, bevor du das Skript erzeugst.',
             'You can add up to %1 colors.': 'Du kannst bis zu %1 Farben hinzufügen.',
-            'Existing Data': 'Vorhandene Daten',
             'Load': 'Laden',
+            'Script': 'Skript',
+            'Existing Patterns': 'Vorhandene Muster',
             'FEVER Pattern': 'FEVER-Muster',
             'Target Chain': 'Zielkette',
             'Difficulty': 'Schwierigkeit',
@@ -407,7 +424,10 @@
             'Hint': 'Hinweis',
             'Turn limit is an integer from %1 to %2, and the next puyos must be filled for at least that many turns. The hint may be left empty.': 'Das Zuglimit ist eine ganze Zahl von %1 bis %2, und die nächsten Puyos müssen für mindestens so viele Züge gefüllt sein. Der Hinweis darf leer bleiben.',
             'Generated Script': 'Erzeugtes Skript',
-            'Load Existing Data': 'Vorhandene Daten laden',
+            'Load Script': 'Skript laden',
+            'Load Existing Pattern': 'Vorhandenes Muster laden',
+            'Choose a pattern to load into the editor.': 'Wähle ein Muster, das in den Editor geladen werden soll.',
+            'There is no pattern to load.': 'Es gibt kein Muster zum Laden.',
             'Paste a script written as new FeverStageState(...) or new PuzzlePuyoStage({...}).': 'Füge ein Skript in der Form new FeverStageState(...) oder new PuzzlePuyoStage({...}) ein.',
             'OK': 'OK',
             'Cancel': 'Abbrechen',
@@ -480,6 +500,7 @@
             'Editing a Puzzle Puyo stage.': 'Édition d’un niveau de Puyo puzzle.',
             'Choose again after the test finishes.': 'Choisis de nouveau une fois le test terminé.',
             'Existing data loaded.': 'Données existantes chargées.',
+            'Existing pattern loaded.': 'Motif existant chargé.',
             'Load failed: %1': 'Échec du chargement : %1',
             'Script generated.': 'Script généré.',
             'Script generation failed: %1': 'Échec de la génération du script : %1',
@@ -494,8 +515,9 @@
             'Run a successful test before generating the script.': 'Réussis d’abord un test avant de générer le script.',
             'The data changed after the test. Run the test again before generating the script.': 'Les données ont changé après le test. Refais le test avant de générer le script.',
             'You can add up to %1 colors.': 'Tu peux ajouter jusqu’à %1 couleurs.',
-            'Existing Data': 'Données existantes',
             'Load': 'Charger',
+            'Script': 'Script',
+            'Existing Patterns': 'Motifs existants',
             'FEVER Pattern': 'Motif FEVER',
             'Target Chain': 'Chaîne visée',
             'Difficulty': 'Difficulté',
@@ -517,7 +539,10 @@
             'Hint': 'Indice',
             'Turn limit is an integer from %1 to %2, and the next puyos must be filled for at least that many turns. The hint may be left empty.': 'Le nombre de tours est un entier de %1 à %2, et les puyos suivants doivent être remplis pour au moins autant de tours. L’indice peut rester vide.',
             'Generated Script': 'Script généré',
-            'Load Existing Data': 'Charger des données existantes',
+            'Load Script': 'Charger un script',
+            'Load Existing Pattern': 'Charger un motif existant',
+            'Choose a pattern to load into the editor.': 'Choisis un motif à charger dans l’éditeur.',
+            'There is no pattern to load.': 'Aucun motif à charger.',
             'Paste a script written as new FeverStageState(...) or new PuzzlePuyoStage({...}).': 'Colle un script écrit sous la forme new FeverStageState(...) ou new PuzzlePuyoStage({...}).',
             'OK': 'OK',
             'Cancel': 'Annuler',
@@ -1264,6 +1289,35 @@
                 text-align: center;
             }
 
+            /* 패턴이 많으므로 목록만 팝업 안에서 스크롤한다. */
+            .puyow-tools-pattern-list {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+
+            .puyow-tools-pattern-item {
+                align-items: baseline;
+                display: flex;
+                gap: 10px;
+                text-align: left;
+                width: 100%;
+            }
+
+            .puyow-tools-pattern-index {
+                color: var(--tools-label);
+                flex: 0 0 auto;
+            }
+
+            .puyow-tools-pattern-detail {
+                flex: 1 1 auto;
+                font-size: 13px;
+                line-height: 1.5;
+                word-break: break-word;
+            }
+
             .puyow-tools-dialog-buttons {
                 display: flex;
                 gap: 8px;
@@ -1394,6 +1448,7 @@
         elements.right.hidden = true;
 
         buildLoadDialog();
+        buildPatternDialog();
         buildSettingsDialog();
         buildProgressOverlay();
         rootElement.addEventListener('keydown', stopKeyEventForFormField);
@@ -1490,14 +1545,14 @@
     }
 
     /**
-     * 기존 데이터를 붙여 넣을 레이어 팝업을 만든다.
+     * 스크립트를 붙여 넣을 레이어 팝업을 만든다.
      * @returns {void}
      */
     function buildLoadDialog() {
         const dialog = createElement('div', { className: 'puyow-tools-dialog is-load' }, rootElement);
         dialog.hidden = true;
         const panel = createElement('div', { className: 'puyow-tools-dialog-panel' }, dialog);
-        createElement('h2', { text: translate('Load Existing Data') }, panel);
+        createElement('h2', { text: translate('Load Script') }, panel);
         createElement('div', {
             className: 'puyow-tools-hint',
             text: translate('Paste a script written as new FeverStageState(...) or new PuzzlePuyoStage({...}).')
@@ -1586,6 +1641,119 @@
     }
 
     /**
+     * puyow.js에 탑재된 기존 패턴을 고를 레이어 팝업을 만든다.
+     * 목록은 열 때마다 지금 개발 중인 대상에 맞춰 다시 만든다.
+     * @returns {void}
+     */
+    function buildPatternDialog() {
+        const dialog = createElement('div', { className: 'puyow-tools-dialog is-pattern' }, rootElement);
+        dialog.hidden = true;
+        const panel = createElement('div', { className: 'puyow-tools-dialog-panel' }, dialog);
+        createElement('h2', { text: translate('Load Existing Pattern') }, panel);
+        createElement('div', {
+            className: 'puyow-tools-hint',
+            text: translate('Choose a pattern to load into the editor.')
+        }, panel);
+        elements.patternList = createElement('div', { className: 'puyow-tools-pattern-list' }, panel);
+        const buttons = createElement('div', { className: 'puyow-tools-dialog-buttons' }, panel);
+        const cancelButton = createElement('button', { text: translate('Cancel'), attributes: { type: 'button' } }, buttons);
+        cancelButton.addEventListener('click', closePatternDialog);
+        elements.patternDialog = dialog;
+    }
+
+    /**
+     * 지금 개발 중인 대상에 맞는 기존 패턴 목록을 게임 본체에서 가져온다.
+     * 피버는 FEVER_STAGES를 그대로 내보내지 않으므로 직렬화 사본(getFeverStageDefinitions())으로
+     * FeverStageState를 다시 만들고, 퍼즐뿌요는 등록된 PUZZLE_STAGES를 그대로 읽는다.
+     * 편집 화면에 넣는 값은 setEditorData()가 복사하므로 게임의 원본 스테이지는 바뀌지 않는다.
+     * @returns {object[]} 목록에 보여 줄 스테이지 객체
+     */
+    function collectExistingPatterns() {
+        const api = getGameApi();
+        if (currentMode === 'fever') {
+            return (api.getFeverStageDefinitions() || []).map((definition) => new api.FeverStageState(
+                definition.stageData,
+                definition.targetCombo,
+                definition.suppliedNextPuyos,
+                definition.difficulty,
+                definition.usingColors
+            ));
+        }
+        return Array.isArray(api.PUZZLE_STAGES) ? api.PUZZLE_STAGES.slice() : [];
+    }
+
+    /**
+     * 목록 한 줄에 보여 줄 설명 문구를 만든다. 사이드바에 쓰는 항목 이름을 그대로 써서 번역을 함께 맞춘다.
+     * @param {object} stage FeverStageState 또는 PuzzlePuyoStage 객체
+     * @returns {string} 설명 문구
+     */
+    function describeExistingPattern(stage) {
+        if (currentMode === 'fever') {
+            const colors = (stage.usingColors || []).map((color) => translate(color)).join(', ');
+            return [
+                `${translate('Target Chain')}: ${stage.targetCombo}`,
+                `${translate('Difficulty')}: ${stage.difficulty}`,
+                `${translate('Colors In Use')}: ${colors}`
+            ].join(' / ');
+        }
+        const conditionType = WIN_CONDITION_TYPES.find((type) => type.value === stage.winConditionType);
+        const parts = [`${translate('Win Condition')}: ${conditionType ? translate(conditionType.label) : stage.winConditionType}`];
+        // 싹쓸이 목표는 목표 값을 쓰지 않으므로 사이드바와 같게 빼고 보여 준다.
+        if (stage.winConditionType !== 'clear') parts.push(`${translate('Condition Value')}: ${stage.winConditionValue}`);
+        parts.push(`${translate('Turn Limit')}: ${stage.turnLimit}`);
+        if (stage.hint) parts.push(`${translate('Hint')}: ${stage.hint}`);
+        return parts.join(' / ');
+    }
+
+    /**
+     * 기존 패턴 팝업의 목록을 지금 개발 대상에 맞게 다시 만든다.
+     * @returns {void}
+     */
+    function fillPatternList() {
+        const list = elements.patternList;
+        list.textContent = '';
+        const stages = collectExistingPatterns();
+        if (stages.length <= 0) {
+            createElement('div', { className: 'puyow-tools-hint', text: translate('There is no pattern to load.') }, list);
+            return;
+        }
+        stages.forEach((stage, index) => {
+            const item = createElement('button', { className: 'puyow-tools-pattern-item', attributes: { type: 'button' } }, list);
+            createElement('span', { className: 'puyow-tools-pattern-index', text: `#${index + 1}` }, item);
+            createElement('span', { className: 'puyow-tools-pattern-detail', text: describeExistingPattern(stage) }, item);
+            item.addEventListener('click', () => selectExistingPattern(stage));
+        });
+    }
+
+    /**
+     * 목록에서 고른 기존 패턴을 편집 화면에 반영하고 팝업을 닫는다.
+     * @param {object} stage 고른 스테이지 객체
+     * @returns {void}
+     */
+    function selectExistingPattern(stage) {
+        try {
+            applyLoadedStage(stage);
+            setStatus(translate('Existing pattern loaded.'), 'done');
+        } catch (error) {
+            setStatus(translate('Load failed: %1', error.message), 'error');
+        }
+        closePatternDialog();
+    }
+
+    /** 기존 패턴 팝업을 연다. 목록은 열 때마다 새로 만든다. @returns {void} */
+    function openPatternDialog() {
+        fillPatternList();
+        elements.patternDialog.hidden = false;
+        const firstItem = elements.patternList.querySelector('button');
+        if (firstItem) firstItem.focus();
+    }
+
+    /** 기존 패턴 팝업을 닫는다. 고르지 않으면 아무것도 바뀌지 않는다. @returns {void} */
+    function closePatternDialog() {
+        elements.patternDialog.hidden = true;
+    }
+
+    /**
      * 개발 대상을 고르고 그에 맞는 사이드바와 편집 화면을 준비한다.
      * @param {'fever'|'puzzle'} kind 개발 대상
      * @returns {void}
@@ -1619,16 +1787,18 @@
     }
 
     /**
-     * 사이드바 위쪽의 공통 영역(불러오기 버튼)을 만든다.
+     * 사이드바 위쪽의 공통 영역(불러오기 버튼들)을 만든다.
      * @returns {HTMLElement} 만들어진 영역
      */
     function buildCommonSection() {
         elements.sidebar.textContent = '';
         const section = createElement('div', { className: 'puyow-tools-section' }, elements.sidebar);
-        createElement('h2', { text: translate('Existing Data') }, section);
+        createElement('h2', { text: translate('Load') }, section);
         const buttons = createElement('div', { className: 'puyow-tools-buttons' }, section);
-        const loadButton = createElement('button', { text: translate('Load'), attributes: { type: 'button' } }, buttons);
+        const loadButton = createElement('button', { text: translate('Script'), attributes: { type: 'button' } }, buttons);
         loadButton.addEventListener('click', openLoadDialog);
+        const patternButton = createElement('button', { text: translate('Existing Patterns'), attributes: { type: 'button' } }, buttons);
+        patternButton.addEventListener('click', openPatternDialog);
         return section;
     }
 

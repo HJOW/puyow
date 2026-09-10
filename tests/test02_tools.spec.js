@@ -108,7 +108,8 @@ test('개발 대상을 고르면 툴바는 그대로 두고 사이드바·캔버
   await expect(page.locator('.puyow-tools-sidebar')).toBeVisible();
   await expect(page.locator('.puyow-tools-canvas canvas[data-puyow-canvas="2d"]')).toBeVisible();
   await expect(page.locator('.puyow-tools-output textarea')).toHaveAttribute('readonly', 'readonly');
-  await expect(page.getByRole('button', { name: '불러오기' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '스크립트', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '기존 패턴' })).toBeVisible();
   await expect(page.getByRole('button', { name: '테스트' })).toBeVisible();
   await expect(page.getByRole('button', { name: '스크립트 생성' })).toBeVisible();
 });
@@ -293,9 +294,9 @@ test('퍼즐뿌요 목표 타입이 clear면 목표 타입 값 입력을 잠근�
   await expect(winConditionValue).toBeEnabled();
 });
 
-test('불러오기 팝업은 기존 퍼즐뿌요 스크립트를 읽어 편집 화면에 반영한다', async ({ page }) => {
+test('스크립트 팝업은 기존 퍼즐뿌요 스크립트를 읽어 편집 화면에 반영한다', async ({ page }) => {
   await selectMode(page, '퍼즐뿌요 개발');
-  await page.getByRole('button', { name: '불러오기' }).click();
+  await page.getByRole('button', { name: '스크립트', exact: true }).click();
   await expect(page.locator('.puyow-tools-dialog.is-load')).toBeVisible();
   await page.locator('.puyow-tools-dialog.is-load textarea').fill(`new PuzzlePuyoStage({
     stageData : {"puyos":[{"x":3,"y":0,"color":"blue"},{"x":4,"y":0,"color":"red"},{"x":5,"y":0,"color":"red"},{"x":4,"y":1,"color":"blue"}]},
@@ -318,16 +319,90 @@ test('불러오기 팝업은 기존 퍼즐뿌요 스크립트를 읽어 편집 �
   await expect(page.locator('.puyow-tools-sidebar input[type="text"]').first()).toHaveValue('두 번째에 터뜨려');
 });
 
-test('불러오기 팝업의 취소는 편집 내용을 바꾸지 않고 닫는다', async ({ page }) => {
+test('스크립트 팝업의 취소는 편집 내용을 바꾸지 않고 닫는다', async ({ page }) => {
   await selectMode(page, '피버 패턴 개발');
   await page.evaluate(() => window.PuyoW.tools.setEditorData({
     stageData: { puyos: [{ x: 0, y: 0, color: 'red' }] },
     suppliedNextPuyos: ['red', 'red']
   }));
-  await page.getByRole('button', { name: '불러오기' }).click();
+  await page.getByRole('button', { name: '스크립트', exact: true }).click();
   await page.locator('.puyow-tools-dialog.is-load textarea').fill('new FeverStageState({"puyos":[]}, 4, [\'red\', \'red\'], 1, [\'red\'])');
   await page.locator('.puyow-tools-dialog.is-load').getByRole('button', { name: '취소' }).click();
   await expect(page.locator('.puyow-tools-dialog.is-load')).toBeHidden();
+  const editor = await page.evaluate(() => window.PuyoW.tools.getEditorData());
+  expect(editor.stageData.puyos).toEqual([{ x: 0, y: 0, color: 'red' }]);
+});
+
+test('기존 패턴 팝업은 퍼즐뿌요 스테이지 목록을 보여 주고 고른 것을 편집 화면에 올린다', async ({ page }) => {
+  await selectMode(page, '퍼즐뿌요 개발');
+  await page.getByRole('button', { name: '기존 패턴' }).click();
+  await expect(page.locator('.puyow-tools-dialog.is-pattern')).toBeVisible();
+
+  const items = page.locator('.puyow-tools-pattern-item');
+  const registered = await page.evaluate(() => window.PuyoW.PUZZLE_STAGES.length);
+  expect(registered).toBeGreaterThan(0);
+  await expect(items).toHaveCount(registered);
+  // 목록은 사이드바와 같은 항목 이름으로 스테이지 정보를 보여 준다.
+  await expect(items.first()).toContainText('목표 타입');
+  await expect(items.first()).toContainText('목표 턴수');
+
+  const first = await page.evaluate(() => {
+    const stage = window.PuyoW.PUZZLE_STAGES[0];
+    return {
+      puyoCount: stage.stageData.puyos.length,
+      nextPuyos: stage.suppliedNextPuyos.slice(0, 2),
+      winConditionType: stage.winConditionType,
+      turnLimit: stage.turnLimit
+    };
+  });
+  await items.first().click();
+  await expect(page.locator('.puyow-tools-dialog.is-pattern')).toBeHidden();
+  await expect(page.locator('.puyow-tools-status')).toHaveText('기존 패턴을 불러왔습니다.');
+
+  const loaded = await page.evaluate(() => window.PuyoW.tools.getEditorData());
+  expect(loaded.stageData.puyos.length).toBe(first.puyoCount);
+  expect(loaded.nextPuyos.slice(0, 2)).toEqual(first.nextPuyos);
+  await expect(page.locator('.puyow-tools-sidebar select').first()).toHaveValue(first.winConditionType);
+  await expect(page.locator('.puyow-tools-sidebar input[type="number"]').nth(1)).toHaveValue(String(first.turnLimit));
+});
+
+test('기존 패턴 팝업은 피버 패턴 목록도 보여 주고 고른 것을 편집 화면에 올린다', async ({ page }) => {
+  await selectMode(page, '피버 패턴 개발');
+  await page.getByRole('button', { name: '기존 패턴' }).click();
+
+  const items = page.locator('.puyow-tools-pattern-item');
+  const first = await page.evaluate(() => {
+    const stages = window.PuyoW.getFeverStageDefinitions();
+    return {
+      count: stages.length,
+      puyoCount: stages[0].stageData.puyos.length,
+      nextPuyos: stages[0].suppliedNextPuyos,
+      targetCombo: stages[0].targetCombo,
+      difficulty: stages[0].difficulty
+    };
+  });
+  await expect(items).toHaveCount(first.count);
+  await expect(items.first()).toContainText('목표 연쇄 수');
+
+  await items.first().click();
+  await expect(page.locator('.puyow-tools-dialog.is-pattern')).toBeHidden();
+
+  const loaded = await page.evaluate(() => window.PuyoW.tools.getEditorData());
+  expect(loaded.stageData.puyos.length).toBe(first.puyoCount);
+  expect(loaded.nextPuyos[0]).toEqual(first.nextPuyos);
+  await expect(page.locator('.puyow-tools-sidebar input[type="number"]').first()).toHaveValue(String(first.targetCombo));
+  await expect(page.locator('.puyow-tools-sidebar input[type="number"]').nth(1)).toHaveValue(String(first.difficulty));
+});
+
+test('기존 패턴 팝업의 취소는 편집 내용을 바꾸지 않고 닫는다', async ({ page }) => {
+  await selectMode(page, '피버 패턴 개발');
+  await page.evaluate(() => window.PuyoW.tools.setEditorData({
+    stageData: { puyos: [{ x: 0, y: 0, color: 'red' }] },
+    suppliedNextPuyos: ['red', 'red']
+  }));
+  await page.getByRole('button', { name: '기존 패턴' }).click();
+  await page.locator('.puyow-tools-dialog.is-pattern').getByRole('button', { name: '취소' }).click();
+  await expect(page.locator('.puyow-tools-dialog.is-pattern')).toBeHidden();
   const editor = await page.evaluate(() => window.PuyoW.tools.getEditorData());
   expect(editor.stageData.puyos).toEqual([{ x: 0, y: 0, color: 'red' }]);
 });
