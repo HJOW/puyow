@@ -10380,7 +10380,8 @@
         if (key === 'enter' || key === ' ') { activateRuleSelection(); return; }
         if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
         if (ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX) {
-            if (key === 'arrowleft' || key === 'arrowright' || key === 'arrowup') ruleSelectionFocus = 4;
+            if (key === 'arrowleft') ruleSelectionFocus = GAME_RULE_OPTIONS.length - 1;
+            else if (key === 'arrowup') ruleSelectionFocus = 4;
             return;
         }
         const focusByDirection = {
