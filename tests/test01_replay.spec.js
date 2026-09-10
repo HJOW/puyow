@@ -103,6 +103,11 @@ test('기록한 기본 룰 리플레이를 재생하면 마지막 상태가 원�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('playing');
   expect(await page.evaluate(() => window.WebPuyo.getGameState().mode)).toBe('versus');
+  // 재생은 기록된 조작 단계와 조작 뿌요를 되살릴 뿐이므로, 그 순간에도 사람이 조작할 수 있다고 보고하지 않는다.
+  await expect.poll(() => page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state?.player.phase === 'control' && state.player.active ? state.playerCanControl : null;
+  }), { timeout: 30000 }).toBe(false);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 240000 }).toBe('game_over');
   expect(await readMatchSummary(page)).toEqual(recorded);
 

@@ -164,6 +164,15 @@
 - 솔로몬이 AI API 요청을 취소할 때는 `abort(reason)`으로 사유(`contact`·`replaced`·`timeout`)를 신호에 함께 싣는다. 요청을 받은 쪽은 `signal.reason`으로 착지·턴 교체·타임아웃을 구분할 수 있으며, 회귀 테스트가 어느 경로로 취소됐는지 확인하는 근거다.
 - 공개 `askConfirm(message)`는 메시지를 그대로 표시하고 번역된 확인·취소 버튼으로 `Promise<boolean>`을 완료한다. 키보드·게임패드·마우스를 지원하며, 게임 중 호출 시 자동 일시정지하고 원래 실행 중이었던 게임만 응답 뒤 재개한다. 동시 요청은 순서대로 표시한다. 카드 뽑기·합성 확인도 이 공용 함수를 사용한다. 실제 대기열 등록은 내부 `requestConfirmDialog(message, confirmLabel = '확인')`이 맡으며, 확인 버튼 문구를 바꿔야 하는 내부 확인창(ONNX 적 불안정 안내의 `계속`)만 두 번째 인자를 쓴다. 공개 `askConfirm()`의 버튼은 항상 `확인`·`취소`다. 메시지는 `wrapCanvasText()`로 폭 440px 안에서 공백 기준으로 줄바꿈하고(한 단어가 넘치면 글자 단위), 줄 묶음을 논리 Y=345 중심으로 세로 가운데 정렬한다. 한 줄에 들어가는 짧은 메시지는 예전처럼 원문 한 번의 `fillText`로 그린다.
 
+### 게임 페이지의 WebMCP
+
+- `initialize()`의 `registerWebMcpTools()`가 `document.modelContext`에 `manual`·`now_screen`·`now_game_status`·`point_recommend`·`show_message` 다섯 도구를 등록하고, `destroy()`가 `webMcpAbortController`로 해제한다. 도구 설명·스키마·`manual` 문구는 AI가 읽도록 영어로 쓴다.
+- **게임 기능을 바꾸면 이 도구도 함께 고친다.** 너랑 나랑·피버 룰 (시작)·리플레이·ONNX 모델 로딩·확인창을 넣을 때 반영이 빠져 BUILDNO 44에서 몰아서 고쳤다. `getNowScreen()`에 화면 이름을 더하면 `screenNames`를, `getGameState()`에 필드를 더하면 `statusProperties`를, 조작 키·규칙·모드가 바뀌면 `manual` 문구를 함께 본다.
+- `now_screen`은 `getWebMcpScreen()`을 쓴다. 공개 `getScreenState()`의 `{screen, playerCanControl}`은 그대로 두고 `mode`·`rule`(대전 밖에서는 null, 계산은 `getGameState()`와 같은 `getGameModeInfo()`), `replayPlayback`, `modelLoading`(`game.onnxLoading`), `confirmDialogOpen`만 더한다.
+- `now_game_status`는 `getNowGameStatus()`가 공개 `getGameState()` 결과에 `replayPlayback`과 `together`(`{rule, wins}` 또는 null)를 더해 돌려준다. 같은 상태를 따로 조립하지 않아 두 API가 어긋나지 않는다. `statusSchema.required`는 `statusProperties`의 키 전체이며, 회귀 테스트가 연습 대전에서 실제 반환 키·`properties`·`required`가 정확히 같은지 확인한다.
+- `playerCanControl`은 왼쪽 1P가 사람이고 조작 중일 때만 true다. 구경과 리플레이 재생(`game.replayPlayback`)은 false이고, 너랑 나랑에서는 1P 기준이다. 리플레이는 기록된 `phase`·조작 뿌요를 되살리므로 예전에는 재생 중에도 true가 되던 버그가 있었다. `point_recommend`도 이 값으로 막으며 추천 칸은 1P 필드에만 그린다.
+- 스키마 경계값은 상수로 만든다. 피버 `nextTime`(초)의 최대값은 피버 룰 (시작)이 60초로 시작하므로 `Math.max(FEVER_MAX_TIME, FEVER_START_INITIAL_TIME / 1000)`이고, 퍼즐 `stageIndex`는 개발용 도구가 등록되지 않은 스테이지를 -1로 실행하므로 최소값이 -1이다. `warningPuyos` 설명은 도구 등록 시점의 `WARNING_PUYO_CLASSES`에서 종류와 단위를 읽어 외부 등록 예고뿌요도 포함한다.
+
 ### 게임 테마 (적별 배경색)
 
 - 게임 화면의 배경은 `Enemy.getFieldThemeColors()`가 돌려주는 `{bezel, field, center}` 한 벌로 결정한다. `drawBezelBackground()`·`drawPlayerBackground()`·`drawCenterBackground()`의 기본 구현이 각각 이 값을 쓰므로, 단색 테마만 바꿀 때는 `getFieldThemeColors()` 하나만 재정의한다. 세 그리기 메서드를 직접 재정의하는 기존 외부 확장도 그대로 동작한다.

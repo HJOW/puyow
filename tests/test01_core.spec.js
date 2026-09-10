@@ -127,7 +127,7 @@ test('Three.js가 없어도 3D canvas를 만들되 3D 컨텍스트 없이 2D 게
   await enterMainMenu(page);
 });
 
-test('WebMCP 도구 스키마는 퍼즐뿌요와 최신 게임 상태 필드를 노출한다', async ({ page }) => {
+test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레이까지 포함한 최신 게임 상태를 노출한다', async ({ page }) => {
   await page.addInitScript(() => {
     window.registeredWebMcpTools = [];
     Object.defineProperty(document, 'modelContext', {
@@ -147,17 +147,62 @@ test('WebMCP 도구 스키마는 퍼즐뿌요와 최신 게임 상태 필드를 
       playerRequired: tools.now_game_status.outputSchema.properties.player.required,
       feverTargetMinimum: tools.now_game_status.outputSchema.properties.fever.properties.targetCombo.minimum,
       activeYType: tools.now_game_status.outputSchema.properties.player.properties.active.properties.y.type,
-      puzzleConditionTypes: tools.now_game_status.outputSchema.properties.puzzle.properties.winConditionType.enum
+      puzzleConditionTypes: tools.now_game_status.outputSchema.properties.puzzle.properties.winConditionType.enum,
+      screenRequired: tools.now_screen.outputSchema.required,
+      feverNextTimeMaximum: tools.now_game_status.outputSchema.properties.player.properties.fever.properties.nextTime.maximum,
+      puzzleStageIndexMinimum: tools.now_game_status.outputSchema.properties.puzzle.properties.stageIndex.minimum,
+      togetherRules: tools.now_game_status.outputSchema.properties.together.properties.rule.enum,
+      warningDescription: tools.now_game_status.outputSchema.properties.player.properties.warningPuyos.description,
+      manual: tools.manual.execute(),
+      titleScreen: tools.now_screen.execute()
     };
   });
-  expect(schema.screenEnum).toContain('puzzle_stage_select');
-  expect(schema.screenEnum).toContain('watch_select');
-  expect(schema.statusRequired).toContain('puzzle');
-  expect(schema.statusRequired).toContain('watch');
+  expect(schema.screenEnum).toEqual(expect.arrayContaining(['puzzle_stage_select', 'watch_select', 'together_guide']));
+  expect(schema.screenRequired).toEqual(['screen', 'playerCanControl', 'mode', 'rule', 'replayPlayback', 'modelLoading', 'confirmDialogOpen']);
+  expect(schema.statusRequired).toEqual(expect.arrayContaining(['puzzle', 'watch', 'feverStart', 'mode', 'rule', 'elapsed', 'marginRate', 'timeProgressMultiplier', 'allClearTicketEnabled', 'replayPlayback', 'together']));
   expect(schema.playerRequired).toEqual(expect.arrayContaining(['point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount', 'allClearTicket']));
   expect(schema.feverTargetMinimum).toBe(4);
+  // 피버 룰 (시작)은 nextTime 60초로 시작한다.
+  expect(schema.feverNextTimeMaximum).toBe(60);
+  // 개발용 도구는 등록되지 않은 퍼즐 스테이지를 -1로 실행한다.
+  expect(schema.puzzleStageIndexMinimum).toBe(-1);
+  expect(schema.togetherRules).toEqual(['standard', 'fever', 'feverStart']);
+  expect(schema.warningDescription).toContain('big-bang 500000');
   expect(schema.activeYType).toBe('number');
   expect(schema.puzzleConditionTypes).toContain('color');
+  expect(schema.manual).toContain('Together mode');
+  expect(schema.titleScreen).toEqual({ screen: 'initial_title', playerCanControl: false, mode: null, rule: null, replayPlayback: false, modelLoading: false, confirmDialogOpen: false });
+
+  // 실제 반환값의 키가 스키마의 required와 정확히 같아야 게임 상태 필드 추가가 도구에서 빠지지 않는다.
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('playing');
+  const status = await page.evaluate(() => {
+    const tools = Object.fromEntries(window.registeredWebMcpTools.map((tool) => [tool.name, tool]));
+    const result = tools.now_game_status.execute();
+    const outputSchema = tools.now_game_status.outputSchema;
+    return {
+      keys: Object.keys(result).sort(),
+      required: [...outputSchema.required].sort(),
+      propertyKeys: Object.keys(outputSchema.properties).sort(),
+      playerKeys: Object.keys(result.player).sort(),
+      playerRequired: [...outputSchema.properties.player.required].sort(),
+      mode: result.mode,
+      rule: result.rule,
+      replayPlayback: result.replayPlayback,
+      together: result.together,
+      screen: tools.now_screen.execute()
+    };
+  });
+  expect(status.keys).toEqual(status.required);
+  expect(status.propertyKeys).toEqual(status.required);
+  expect(status.playerKeys).toEqual(status.playerRequired);
+  expect(status).toMatchObject({ mode: 'practice', rule: 'standard', replayPlayback: false, together: null });
+  expect(status.screen).toMatchObject({ screen: 'playing', mode: 'practice', rule: 'standard', replayPlayback: false, modelLoading: false, confirmDialogOpen: false });
 });
 
 test('기본 룰·연습·플레이 방법의 양쪽 필드는 기본 패배 칸에 빨간 X를 표시한다', async ({ page }) => {

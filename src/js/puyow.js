@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 43;
+    const BUILDNO = 44;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -12264,7 +12264,21 @@
         if (game.paused) return { screen: 'paused', playerCanControl: false };
         if (game.countdown > 0) return { screen: 'countdown', playerCanControl: false };
         if (game.ending) return { screen: 'ending', playerCanControl: false };
-        return { screen: 'playing', playerCanControl: !game.watch && game.players[0].controller === null && game.players[0].phase === 'control' && game.players[0].active !== null };
+        // 리플레이 재생은 기록된 조작 단계를 되살릴 뿐 사람이 조작하는 것이 아니므로 제외한다.
+        return { screen: 'playing', playerCanControl: !game.watch && !game.replayPlayback && game.players[0].controller === null && game.players[0].phase === 'control' && game.players[0].active !== null };
+    }
+
+    /**
+     * 진행 중인 게임의 모드와 규칙 식별자를 반환한다. 튜토리얼이나 메뉴에서는 호출하지 않는다.
+     * @returns {{mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'continuous_fever'}}
+     */
+    function getGameModeInfo() {
+        const mode = game.watch !== undefined ? 'watch'
+            : (game.together ? 'together'
+                : (game.continuousFever ? 'continuous_fever' : (game.puzzle ? 'puzzle' : (game.practice ? 'practice' : 'versus'))));
+        const rule = game.continuousFever ? 'continuous_fever'
+            : (game.feverStart ? 'fever_start' : (game.feverRule ? 'fever' : 'standard'));
+        return { mode, rule };
     }
 
     /** @returns {number} 중앙 NEXT 영역과 getNextPairs() API에 노출할 다음 뿌요 쌍 수 */
@@ -12335,43 +12349,35 @@
     }
 
     /**
-     * 플레이 중인 게임의 AI용 상세 상태를 반환한다.
+     * 공개 getGameState()에 리플레이 재생·"너랑 나랑" 정보를 더한다.
      * @returns {object}
      */
     function getNowGameStatus() {
-        const screen = getNowScreen();
-        if (!game || game.tutorial || (screen.screen !== 'playing' && screen.screen !== 'paused')) {
-            throw new Error('now_game_status is available only during a normal match while playing or paused.');
+        const state = getGameState();
+        if (!state || (state.screen !== 'playing' && state.screen !== 'paused')) {
+            throw new Error('now_game_status is available only while a match is playing or paused.');
         }
-        const [player, opponent] = game.players;
         return {
-            screen: screen.screen,
-            playerCanControl: screen.playerCanControl,
-            watch: game.watch !== undefined,
-            continuousFever: game.continuousFever === true,
-            feverRule: game.feverRule === true,
-            feverStart: game.feverStart === true,
-            puzzle: game.puzzle ? {
-                stageIndex: game.puzzle.stageIndex,
-                turn: game.puzzle.turn,
-                winConditionType: game.puzzle.stage.winConditionType,
-                winConditionValue: game.puzzle.stage.winConditionValue,
-                recommendedTurns: game.puzzle.stage.turnLimit,
-                condition: getPuzzleConditionText(game.puzzle.stage),
-                starEarned: hasPuzzleStageStar()
-            } : null,
-            fever: game.fever ? {
-                targetCombo: game.fever.targetCombo,
-                leftTime: game.fever.leftTime,
-                turn: game.fever.turn,
-                pendingCombo: game.fever.pendingCombo,
-                pendingAllClear: game.fever.pendingAllClear,
-                selectedStageTarget: game.fever.selectedStageTarget,
-                stageSuppliedPair: [...game.fever.stageSuppliedPair]
-            } : null,
-            player: getPlayerGameStatus(player, opponent),
-            opponent: getPlayerGameStatus(opponent, player),
-            recommendedPoint: recommendedPoint ? { ...recommendedPoint } : null
+            ...state,
+            replayPlayback: Boolean(game.replayPlayback),
+            together: game.together ? { rule: game.together.rule, wins: [...getTogetherWinCounts()] } : null
+        };
+    }
+
+    /**
+     * WebMCP now_screen 도구가 돌려줄 화면 상태다. 공개 getScreenState()의 값에 모드·리플레이·모델 로딩·확인창 여부를 더한다.
+     * @returns {{screen:string, playerCanControl:boolean, mode:string|null, rule:string|null, replayPlayback:boolean, modelLoading:boolean, confirmDialogOpen:boolean}}
+     */
+    function getWebMcpScreen() {
+        const inMatch = Boolean(game && !game.tutorial);
+        const { mode, rule } = inMatch ? getGameModeInfo() : { mode: null, rule: null };
+        return {
+            ...getNowScreen(),
+            mode,
+            rule,
+            replayPlayback: Boolean(game?.replayPlayback),
+            modelLoading: Boolean(game?.onnxLoading),
+            confirmDialogOpen: Boolean(confirmDialog)
         };
     }
 
@@ -12490,11 +12496,7 @@
         const screen = getNowScreen();
         const [player, opponent] = game.players;
         const getRole = (target) => target === player ? 'player' : target === opponent ? 'opponent' : null;
-        const mode = game.watch !== undefined ? 'watch'
-            : (game.together ? 'together'
-                : (game.continuousFever ? 'continuous_fever' : (game.puzzle ? 'puzzle' : (game.practice ? 'practice' : 'versus'))));
-        const rule = game.continuousFever ? 'continuous_fever'
-            : (game.feverStart ? 'fever_start' : (game.feverRule ? 'fever' : 'standard'));
+        const { mode, rule } = getGameModeInfo();
         return {
             screen: screen.screen,
             playerCanControl: screen.playerCanControl,
@@ -12598,15 +12600,28 @@
         if (!document.modelContext || typeof document.modelContext.registerTool !== 'function') return;
         webMcpAbortController = new AbortController();
         const emptyInput = { type: 'object', properties: {}, additionalProperties: false };
+        // getNowScreen()이 돌려줄 수 있는 화면 이름을 모두 담는다. 화면을 더하면 이 목록도 함께 고친다.
+        const screenNames = ['initial_title', 'main_menu', 'rule_select', 'watch_select', 'together_guide', 'practice_difficulty', 'puzzle_stage_select', 'opponent_select', 'fever_opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'settings_resetting', 'gallery', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'];
+        const modeNames = ['versus', 'together', 'practice', 'watch', 'continuous_fever', 'puzzle'];
+        const ruleNames = ['standard', 'fever', 'fever_start', 'continuous_fever'];
+        const playerCanControlSchema = { type: 'boolean', description: 'True only while the left human player (1P) controls an active pair. Always false in watch mode and during replay playback. In together mode it describes 1P only.' };
+        const replayPlaybackSchema = { type: 'boolean', description: 'True while a recorded replay is played back. Only Escape is accepted, and it skips to the result screen.' };
         const screenSchema = {
             type: 'object',
             properties: {
-                screen: { type: 'string', enum: ['initial_title', 'main_menu', 'rule_select', 'watch_select', 'practice_difficulty', 'puzzle_stage_select', 'opponent_select', 'fever_opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'settings_resetting', 'gallery', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'], description: 'The exact visible title, puzzle-stage selection, menu, gallery, simulator, tutorial, or match screen.' },
-                playerCanControl: { type: 'boolean' }
+                screen: { type: 'string', enum: screenNames, description: 'The exact visible title, menu, together-mode guide, puzzle-stage selection, gallery, simulator, tutorial, or match screen. game_over is the match result screen.' },
+                playerCanControl: playerCanControlSchema,
+                mode: { type: ['string', 'null'], enum: [...modeNames, null], description: 'Match mode, or null outside a match (menus, simulator, gallery, settings, tutorial).' },
+                rule: { type: ['string', 'null'], enum: [...ruleNames, null], description: 'Match rule, or null outside a match.' },
+                replayPlayback: replayPlaybackSchema,
+                modelLoading: { type: 'boolean', description: 'True while ONNX models of a deep-learning opponent are loading. The countdown waits until loading ends.' },
+                confirmDialogOpen: { type: 'boolean', description: 'True while a confirmation dialog covers the screen and captures all input. A match under the dialog is paused.' }
             },
-            required: ['screen', 'playerCanControl']
+            required: ['screen', 'playerCanControl', 'mode', 'rule', 'replayPlayback', 'modelLoading', 'confirmDialogOpen']
         };
         const boardColors = [...COLORS, 'garbage', HARD_GARBAGE, IRON_PUYO];
+        // 외부에서 등록한 예고뿌요도 설명에 들어가도록 등록 시점의 목록에서 만든다.
+        const warningPuyoTypes = WARNING_PUYO_CLASSES.map((WarningPuyoType) => `${new WarningPuyoType().type} ${WarningPuyoType.unitCount}`).join(', ');
         const puyoSchema = {
             type: 'object', properties: {
                 x: { type: 'integer', minimum: 0, maximum: COLUMNS - 1, description: 'Column from the left.' },
@@ -12624,7 +12639,9 @@
         };
         const playerSchema = {
             type: 'object', properties: {
-                name: { type: 'string' }, isCpu: { type: 'boolean' }, phase: { type: 'string' },
+                name: { type: 'string', description: 'Display name. Together mode uses 1P and 2P.' },
+                isCpu: { type: 'boolean', description: 'True when a CPU controller moves this side. Solo modes (practice, continuous fever, Puzzle Puyo) show a placeholder opponent on the right.' },
+                phase: { type: 'string', description: 'Turn phase such as idle, control, gravity, burst, check, garbage, feverWait, feverAllClearWait, or defeated. Moves are accepted only in control.' },
                 point: { type: 'number', minimum: 0 }, attack: { type: 'number', minimum: 0 },
                 damage: { type: 'number', minimum: 0 }, normalDamage: { type: 'number', minimum: 0 },
                 combo: { type: 'integer', minimum: 0 }, placedPairCount: { type: 'integer', minimum: 0 },
@@ -12637,13 +12654,13 @@
                     columns: { type: 'integer', const: COLUMNS }, rows: { type: 'integer', const: ROWS }, visibleRows: { type: 'integer', const: VISIBLE_ROWS },
                     puyos: { type: 'array', items: puyoSchema, description: 'Fixed puyos in the normal field, including while FEVER is active.' }
                 }, required: ['columns', 'rows', 'visibleRows', 'puyos'] },
-                nextPairs: { type: 'array', items: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 2, maxItems: 2 } },
-                warningPuyos: { type: 'array', items: { type: 'string' } },
-                fever: { type: ['object', 'null'], properties: {
-                    active: { type: 'boolean' }, gauge: { type: 'integer', minimum: 0, maximum: FEVER_GAUGE_MAX },
-                    nextTime: { type: 'integer', minimum: FEVER_INITIAL_TIME, maximum: FEVER_MAX_TIME },
-                    targetCombo: { type: 'integer', minimum: FEVER_MIN_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO },
-                    leftTime: { type: 'number', minimum: 0 }, damage: { type: 'number', minimum: 0 }, turn: { type: 'integer', minimum: 0 },
+                nextPairs: { type: 'array', items: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 2, maxItems: 2 }, description: 'The next two pairs; index 0 is the pair after the active one and each pair lists the bottom (pivot) color first.' },
+                warningPuyos: { type: 'array', items: { type: 'string' }, maxItems: 6, description: `Warning-puyo icons shown above the field for pending garbage, largest first, at most six. Types with garbage counts: ${warningPuyoTypes}.` },
+                fever: { type: ['object', 'null'], description: 'Per-player FEVER state in FEVER rules; null in other rules.', properties: {
+                    active: { type: 'boolean' }, gauge: { type: 'integer', minimum: 0, maximum: FEVER_GAUGE_MAX, description: `FEVER gauge; FEVER starts when it reaches ${FEVER_GAUGE_MAX}.` },
+                    nextTime: { type: 'integer', minimum: FEVER_INITIAL_TIME, maximum: Math.max(FEVER_MAX_TIME, FEVER_START_INITIAL_TIME / 1000), description: `Seconds granted when FEVER next starts. FEVER rule (start) begins at ${FEVER_START_INITIAL_TIME / 1000}.` },
+                    targetCombo: { type: 'integer', minimum: FEVER_MIN_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO, description: 'Chain length of the next FEVER pattern.' },
+                    leftTime: { type: 'number', minimum: 0, description: 'Remaining FEVER time in milliseconds.' }, damage: { type: 'number', minimum: 0 }, turn: { type: 'integer', minimum: 0 },
                     selectedStageTarget: { type: ['integer', 'null'], minimum: FEVER_MIN_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO },
                     stageSuppliedPair: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 0, maxItems: 2 },
                     field: { type: ['object', 'null'], properties: {
@@ -12656,7 +12673,7 @@
         };
         const puzzleSchema = {
             type: ['object', 'null'], properties: {
-                stageIndex: { type: 'integer', minimum: 0 }, turn: { type: 'integer', minimum: 1 },
+                stageIndex: { type: 'integer', minimum: -1, description: 'Zero-based stage index, or -1 for an unregistered stage tested from the developer tools page.' }, turn: { type: 'integer', minimum: 1 },
                 winConditionType: { type: 'string', enum: ['combo', 'clear', 'multiple', 'color', 'attack'] },
                 winConditionValue: { type: 'number', minimum: 0 }, recommendedTurns: { type: 'number', minimum: 0 },
                 condition: { type: 'string' }, starEarned: { type: 'boolean' }
@@ -12675,49 +12692,87 @@
             },
             required: ['targetCombo', 'leftTime', 'turn', 'pendingCombo', 'pendingAllClear', 'selectedStageTarget', 'stageSuppliedPair']
         };
+        const roleSchema = { type: ['string', 'null'], enum: ['player', 'opponent', null] };
+        const statusProperties = {
+            screen: { type: 'string', enum: ['playing', 'paused'] },
+            playerCanControl: playerCanControlSchema,
+            mode: { type: 'string', enum: modeNames },
+            rule: { type: 'string', enum: ruleNames },
+            running: { type: 'boolean' },
+            paused: { type: 'boolean' },
+            countdown: { type: 'number', minimum: 0, description: 'Remaining start countdown in milliseconds.' },
+            elapsed: { type: 'number', minimum: 0, description: 'Match time in milliseconds.' },
+            marginRate: { type: 'number', exclusiveMinimum: 0, description: 'Current margin rate. ATTACK is the score divided by this rate, and the rate drops as the match goes on.' },
+            timeProgressMultiplier: { type: 'number', minimum: 1, description: 'ATTACK multiplier from match time: 1 until 300 seconds, then doubling every 20 seconds from 320 seconds up to 1024.' },
+            practice: { type: 'boolean' },
+            watch: { type: 'boolean', description: 'True when two CPUs play each other, including watch replays.' },
+            continuousFever: { type: 'boolean' },
+            feverRule: { type: 'boolean' },
+            feverStart: { type: 'boolean', description: 'True for FEVER rule (start), where both players begin inside FEVER.' },
+            allClearTicketEnabled: { type: 'boolean', description: 'True in the standard rule, where an all-clear grants a ticket that adds 2100 points and 30 ATTACK to the next colored-puyo explosion.' },
+            colorCount: { type: 'integer', minimum: 3, maximum: COLORS.length },
+            colors: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 3, maxItems: COLORS.length },
+            aiDifficulty: { type: 'object', properties: {
+                key: { type: 'string', enum: AI_DIFFICULTIES.map((difficulty) => difficulty.key) }, name: { type: 'string' },
+                fastDownDelay: { type: ['number', 'null'], description: 'CPU fast-drop delay in milliseconds, or null when the CPU never fast-drops.' }
+            }, required: ['key', 'name', 'fastDownDelay'] },
+            winner: roleSchema,
+            ending: { type: ['object', 'null'], properties: {
+                loser: roleSchema, winner: roleSchema, elapsed: { type: 'number', minimum: 0 }, duration: { type: 'number', minimum: 0 }
+            }, required: ['loser', 'winner', 'elapsed', 'duration'] },
+            replayPlayback: replayPlaybackSchema,
+            together: { type: ['object', 'null'], description: 'Together mode (two humans on one computer) state, or null. wins holds the 1P and 2P win counts of this session.', properties: {
+                rule: { type: 'string', enum: TOGETHER_RULE_OPTIONS.map((option) => option.key) },
+                wins: { type: 'array', items: { type: 'integer', minimum: 0 }, minItems: 2, maxItems: 2 }
+            }, required: ['rule', 'wins'] },
+            puzzle: puzzleSchema,
+            fever: feverSchema,
+            player: playerSchema,
+            opponent: playerSchema,
+            recommendedPoint: { type: ['object', 'null'], properties: {
+                x: { type: 'integer', minimum: 0, maximum: COLUMNS - 1 }, y: { type: 'integer', minimum: 0, maximum: VISIBLE_ROWS - 1 }
+            }, required: ['x', 'y'] }
+        };
         const statusSchema = {
             type: 'object',
-            description: 'Both game fields, score and attack state, upcoming pairs, warning puyos, fever or puzzle state, and the currently controlled pair. Board coordinates start at the bottom-left.',
-            properties: {
-                screen: { type: 'string', enum: ['playing', 'paused'] },
-                playerCanControl: { type: 'boolean' },
-                watch: { type: 'boolean' },
-                continuousFever: { type: 'boolean' },
-                feverRule: { type: 'boolean' },
-                feverStart: { type: 'boolean' },
-                puzzle: puzzleSchema,
-                fever: feverSchema,
-                player: playerSchema, opponent: playerSchema,
-                recommendedPoint: { type: ['object', 'null'], properties: {
-                    x: { type: 'integer', minimum: 0, maximum: COLUMNS - 1 }, y: { type: 'integer', minimum: 0, maximum: VISIBLE_ROWS - 1 }
-                }, required: ['x', 'y'] }
-            },
-            required: ['screen', 'playerCanControl', 'watch', 'continuousFever', 'feverRule', 'puzzle', 'fever', 'player', 'opponent', 'recommendedPoint']
+            description: 'Match mode and rule, time and ATTACK scaling, both current, normal, and FEVER fields, scores, ATTACK and DAMAGE, all-clear tickets, upcoming pairs, warning puyos, FEVER, Puzzle Puyo, and together-mode state, and both active pairs. Board coordinates start at the bottom-left.',
+            properties: statusProperties,
+            // getNowGameStatus()는 모든 항목을 항상 채우므로 required도 properties 전체다.
+            required: Object.keys(statusProperties)
         };
         const tools = [
             {
                 name: 'manual',
                 description: 'Return English instructions for playing Puyo W and using the other available game tools.',
                 inputSchema: emptyInput,
-                execute: () => 'Puyo W is a falling-pair puzzle battle. During a match control turn, use left/right to move, Z/X to rotate, and down to fall faster. Match four or more same-color puyos to clear them and send attacks. Practice and continuous-fever modes use a solo opponent; continuous fever starts with a 60-second timer and advances through selected fever stages. Puzzle Puyo uses stage objectives and turn limits. Fever-rule players have independent gauge, nextTime, targetCombo, leftTime, and fever field state. Use now_screen to identify the exact menu, puzzle-stage selection, gallery, simulator, tutorial, or match screen. Use now_game_status while a match is playing or paused, and point_recommend only during a controllable player turn. Use show_message to display already-localized text at the top of the current screen.'
+                execute: () => [
+                    `Puyo W is a falling-pair puzzle battle on a ${COLUMNS}-column field. x counts columns from the left (0-${COLUMNS - 1}) and y counts rows from the bottom; ${VISIBLE_ROWS} rows are visible and more hidden rows sit above them.`,
+                    'Connect four or more same-color puyos vertically or horizontally to clear them. Garbage puyos next to a clear are removed too; a hard garbage puyo becomes normal garbage when hit once and breaks when hit twice in the same step. Chains create ATTACK, which first offsets your own DAMAGE and then reaches the opponent as warning puyos and falling garbage. ATTACK is the score divided by the current margin rate, which drops over time, multiplied by a time multiplier that doubles every 20 seconds from 320 seconds.',
+                    'A player loses when cell (2, 11) is filled. FEVER rules and continuous fever also use cell (3, 11).',
+                    'Keyboard: Left and Right move, Z rotates one way while X and Up rotate the other way, holding Down drops faster, and Escape pauses. Gamepads and an on-screen virtual joystick with Z, X, and ESC buttons also work.',
+                    'Modes: the standard rule, FEVER rule, and FEVER rule (start) are matches against a CPU opponent. In the standard rule an all-clear grants a ticket that adds 2100 points and 30 ATTACK to your next colored-puyo explosion. In FEVER rules each player has a FEVER gauge; when it fills, the player plays preset chain patterns on a separate FEVER field under a time limit, and FEVER rule (start) begins both players inside FEVER with 60 seconds. Practice is solo play. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result.',
+                    'Together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',
+                    'Replays of recorded matches can be played back from the main menu; during playback no input is accepted except Escape, which skips to the result screen. The tutorial, simulator, gallery, and settings are separate menu screens. Some menus open a confirmation dialog that captures all input until it is answered.',
+                    'Tools: now_screen returns the exact screen, the match mode and rule, and whether a replay, ONNX model loading, or confirmation dialog is in progress. now_game_status works only while a match is playing or paused, in every mode including watch, together, and replay playback. point_recommend works only while now_screen reports playerCanControl, and marks one cell on the left field until the active pair locks. show_message displays already-localized text at the top of the current screen.'
+                ].join('\n\n')
             },
             {
                 name: 'now_screen',
-                description: 'Get the exact visible Puyo W screen, including gallery, standard or fever opponent selection, practice or puzzle-stage selection, simulator modes, tutorial phases, match countdown, ending animation, pause, and game-over. playerCanControl is true only when the human can control an active pair in a match.',
+                description: 'Get the exact visible Puyo W screen: initial title, main menu, rule or watch selection, together-mode guide, standard or FEVER opponent selection, practice or continuous-fever color selection, Puzzle Puyo stage selection, simulator modes, settings, gallery, tutorial phases, match countdown, playing, pause, ending animation, or the result screen (game_over). Also reports the match mode and rule, replay playback, ONNX model loading, and whether a confirmation dialog is open. playerCanControl is true only while the left human player (1P) controls an active pair.',
                 inputSchema: emptyInput,
                 outputSchema: screenSchema,
-                execute: getNowScreen
+                execute: getWebMcpScreen
             },
             {
                 name: 'now_game_status',
-                description: 'Get complete JSON game state only while a normal match is playing or paused: both boards, scores, ATTACK and DAMAGE, upcoming pairs, warning puyos, per-player fever state and fields, optional Puzzle Puyo objective state, and both active pairs with coordinates.',
+                description: 'Get complete JSON match state while a match is playing or paused, in any mode (CPU match, together, practice, continuous fever, Puzzle Puyo, watch, or replay playback): mode and rule, elapsed time, margin rate and time multiplier, colors, AI difficulty, both current, normal, and FEVER fields, scores, ATTACK and DAMAGE, all-clear tickets, the next two pairs, warning puyos, per-player and continuous FEVER state, Puzzle Puyo objective, together-mode win counts, and both active pairs with coordinates.',
                 inputSchema: emptyInput,
                 outputSchema: statusSchema,
                 execute: getNowGameStatus
             },
             {
                 name: 'point_recommend',
-                description: 'While the human player is actively controlling a pair, highlight exactly one recommended board cell at the given integer x and y coordinate. The highlight disappears when that pair locks.',
+                description: 'While now_screen reports playerCanControl, highlight exactly one recommended cell on the left (1P) field at the given integer x and y coordinate. The highlight disappears when that pair locks. It is unavailable in watch mode, during replay playback, pause, countdown, and while no pair is controlled.',
                 inputSchema: {
                     type: 'object', properties: {
                         x: { type: 'integer', minimum: 0, maximum: COLUMNS - 1, description: 'Board column from the left.' },
