@@ -96,6 +96,10 @@ You can also run the server with Python. Install Python 3.10 or later from its o
 
 Open `localhost:9891` in a web browser to play. Press `CTRL + C` in Command Prompt (Windows) or the terminal (macOS/Linux) to stop the server.
 
+## Playing Against Solomon (Local AI)
+
+Both the Node server started with `npm start` and the Python server provide Local AI. Choose "Local AI" as the AI service provider in the settings screen, then pick Solomon on the opponent selection screen. The Node server uses the `src/onnx/default.onnx` model file and the Python server uses `python/puyow/default.pt`. The "Reverse model training" feature on the extreme difficulty works only with the Python server.
+
 ## Development Guide
 
 See [HOWTO.en.md](HOWTO.en.md) for information about game settings, library usage, and creating new AI opponents.

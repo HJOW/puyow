@@ -342,6 +342,8 @@ Model name used: puyow-dqn
 
 If `model_path` is empty or points to a file that doesn't exist, only `/v1/chat/completions` returns 404. Static file serving and the `/apis/learning` training-event API keep running even in this case.
 
+[nodeserver.js](../nodeserver.js), started with `npm start`, provides the same `/apis/localmodelinfo` and `/v1/chat/completions` contract, so you can choose **Local AI** in the game settings and play against Solomon without Python. Instead of a `.pt` checkpoint, this server runs [src/onnx/default.onnx](../src/onnx/default.onnx) with `onnxruntime-node`, which `npm install` installs; change the model path with the `LOCAL_AI_MODEL_PATH` constant in `nodeserver.js`. If no file exists at that path, `/apis/localmodelinfo` returns `available: false` so the game cannot select Local AI, while static files and the other APIs keep working. The placement rule (afterstate reward + 0.70 × value) is the same as `pythonserver.py`. Reverse training is not supported: `/apis/solomonlearning` only accepts requests and never changes the model.
+
 To run inference on a single observation vector without a server, prepare a JSON array of 528 numbers and run:
 
 ```powershell

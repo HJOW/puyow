@@ -121,6 +121,13 @@ Bun (https://bun.com/) 을 사용하여 서버 구동을 더 빠르게 진행할
 웹 브라우저로 주소 `localhost:9891` 입력해 접속해 즐기고, 
 명령 프롬프트 (Windows) / 터미널 (MacOS/Linux) 창에서 단축키 CTRL + C 입력해 서버를 종료할 수 있습니다.
 
+## 솔로몬과 대전 (Local AI)
+
+`npm start` 로 구동한 Node 서버와 Python 서버 모두 Local AI 를 제공합니다.
+설정 화면의 AI 서비스 제공자에서 "Local AI" 를 선택하면 적 선택 화면에서 솔로몬과 대전할 수 있습니다.
+Node 서버는 `src/onnx/default.onnx`, Python 서버는 `python/puyow/default.pt` 모델 파일을 사용합니다.
+극한 난이도의 "역으로 모델 학습" 기능은 Python 서버에서만 동작합니다.
+
 ## 개발 안내
 
 게임 설정, 라이브러리 사용법, 새 AI 상대 제작 방법은 [HOWTO.md](HOWTO.md)를 참고하세요.

@@ -342,6 +342,8 @@ AI API KEY : localhost
 
 `model_path`가 비어 있거나 존재하지 않는 파일이면 `/v1/chat/completions`만 404를 반환한다. 이 경우에도 정적 파일 제공과 `/apis/learning` 학습 이벤트 API는 계속 실행된다.
 
+`npm start`로 띄우는 [nodeserver.js](../nodeserver.js)도 같은 `/apis/localmodelinfo`·`/v1/chat/completions` 계약을 제공하므로, 파이썬 없이도 게임 설정에서 **Local AI**를 골라 솔로몬과 대전할 수 있다. 이 서버는 `.pt` 대신 [src/onnx/default.onnx](../src/onnx/default.onnx)를 `npm install`로 설치되는 `onnxruntime-node`로 추론하며, 모델 경로는 `nodeserver.js`의 `LOCAL_AI_MODEL_PATH` 상수로 바꾼다. 이 경로에 파일이 없으면 `/apis/localmodelinfo`가 `available: false`를 돌려주어 게임에서 Local AI를 고를 수 없고, 정적 파일과 다른 API는 그대로 동작한다. 배치를 고르는 규칙(애프터스테이트 보상 + 0.70 × 가치)은 `pythonserver.py`와 같다. 역학습은 지원하지 않아 `/apis/solomonlearning`은 요청을 받기만 하고 모델을 바꾸지 않는다.
+
 서버 없이 관측 벡터 하나를 직접 추론하려면 528개 숫자 배열 JSON을 준비하고 다음처럼 실행한다. 결과는 `action`, `x`, `rotation` JSON이며, 가득 찬 열과 벽을 침범하는 행동은 후보에서 아예 빠진다. 실제 대전과 같은 기준으로 평가하려면 배열 대신 `{"observation": [...], "nextPair": [3, 4]}` 형식으로 다음 쌍까지 넣는다(색 번호는 red·green·yellow·blue·purple 순서인 0~4다).
 
 ```powershell

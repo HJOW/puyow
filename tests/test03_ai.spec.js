@@ -3,6 +3,10 @@
 // 이 파일만 외부 AI 서버 응답과 ONNX 런타임을 흉내 내므로, 나머지 게임 테스트와 섞지 않는다.
 
 import { test, expect } from '@playwright/test';
+import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { setupGamePage, enterMainMenu, openSettings } from './common/gamepage.js';
 
 setupGamePage();
@@ -141,6 +145,162 @@ test('Local AI는 현재 서버의 Chat Completions로 AI API 테스트를 보�
     response_format: { type: 'json_schema', json_schema: { name: 'ai_api_test_result', strict: true } },
     stream: false,
   });
+});
+
+// 아래 두 테스트는 흉내 낸 응답이 아니라 Playwright가 띄운 nodeserver.js의 실제 Local AI를 사용한다.
+test('Node 서버는 default.onnx로 Local AI 확인·API 테스트·솔로몬 배치에 응답하고 역학습 요청은 받기만 한다', async ({ request }) => {
+  const info = await request.get('/apis/localmodelinfo');
+  expect(await info.json()).toEqual({ available: true });
+
+  const headers = { Authorization: 'Bearer localhost' };
+  const chatBody = (schemaName, content) => ({
+    model: 'puyow',
+    messages: [{ role: 'user', content }],
+    response_format: { type: 'json_schema', json_schema: { name: schemaName, strict: true, schema: {} } },
+    stream: false,
+  });
+  const apiTest = await request.post('/v1/chat/completions', { headers, data: chatBody('ai_api_test_result', 'Return only JSON.') });
+  expect(apiTest.status()).toBe(200);
+  expect(JSON.parse((await apiTest.json()).choices[0].message.content)).toEqual({ success: true });
+
+  const prompt = {
+    currentField: { columns: 6, rows: 25, visibleRows: 12, occupiedCells: [{ x: 0, y: 0, color: 'red' }, { x: 0, y: 1, color: 'red' }, { x: 0, y: 2, color: 'red' }] },
+    currentState: { attack: 0, placedPairCount: 3, incomingDamage: 0, feverRule: false, allClearTicket: false, elapsedMs: 10000, marginRate: 70, timeProgressMultiplier: 1, fever: null },
+    suppliedPuyos: [{ order: 'current', colors: ['red', 'blue'] }, { order: 'next_1', colors: ['green', 'green'] }],
+    usablePlacements: [{ x: 0, rotation: 0 }, { x: 3, rotation: 1 }, { x: 5, rotation: 2 }],
+    learningSessionId: 'solomon-node-server-test',
+  };
+  const placement = await request.post('/v1/chat/completions', { headers, data: chatBody('solomon_puyo_placement', JSON.stringify(prompt)) });
+  expect(placement.status()).toBe(200);
+  // 게임이 보낸 사용 가능한 배치 안에서만 고른다.
+  expect(prompt.usablePlacements).toContainEqual(JSON.parse((await placement.json()).choices[0].message.content));
+
+  // 후보 목록이 없으면 관측값의 열 높이로 거른 24개 행동 중에서 고른다.
+  const { usablePlacements, ...promptWithoutPlacements } = prompt;
+  const freeChoice = await request.post('/v1/chat/completions', { headers, data: chatBody('solomon_puyo_placement', JSON.stringify(promptWithoutPlacements)) });
+  const freePlacement = JSON.parse((await freeChoice.json()).choices[0].message.content);
+  expect(freePlacement.x).toBeGreaterThanOrEqual(0);
+  expect(freePlacement.x).toBeLessThan(6);
+  expect([0, 1, 2, 3]).toContain(freePlacement.rotation);
+
+  expect((await request.post('/v1/chat/completions', { headers: { Authorization: 'Bearer wrong-token' }, data: chatBody('ai_api_test_result', 'x') })).status()).toBe(401);
+  expect((await request.get('/v1/chat/completions', { headers })).status()).toBe(405);
+  expect((await request.post('/v1/chat/completions', { headers, data: chatBody('unknown_schema', 'x') })).status()).toBe(400);
+
+  const learning = await request.post('/apis/solomonlearning', { headers, data: { event: 'finish', sessionId: prompt.learningSessionId, result: 'win' } });
+  expect(learning.status()).toBe(200);
+  expect(await learning.json()).toMatchObject({ ok: true, trained: false });
+});
+
+test('Node 서버는 Local AI 모델 파일이 없으면 사용 불가로 응답하고 모델 서비스 외 API는 그대로 동작한다', async ({ request }) => {
+  // 모델 파일이 없는 설치를 흉내 내려고 nodeserver.js만 임시 폴더에 복사해 따로 띄운다.
+  const serverRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'puyow-nodeserver-'));
+  fs.copyFileSync(path.join(process.cwd(), 'nodeserver.js'), path.join(serverRoot, 'nodeserver.js'));
+  fs.mkdirSync(path.join(serverRoot, 'src'));
+  fs.writeFileSync(path.join(serverRoot, 'src', 'index.html'), '<p>puyow</p>');
+  const port = 9950 + test.info().workerIndex;
+  const baseURL = `http://127.0.0.1:${port}`;
+  const server = spawn(process.execPath, ['nodeserver.js', String(port)], {
+    cwd: serverRoot,
+    env: { ...process.env, PUYOW_AI_TOKEN: 'node-test-token' },
+    stdio: 'ignore',
+  });
+  try {
+    await expect.poll(async () => {
+      try {
+        return (await request.get(`${baseURL}/index.html`)).status();
+      } catch {
+        return 0;
+      }
+    }).toBe(200);
+
+    expect(await (await request.get(`${baseURL}/apis/localmodelinfo`)).json()).toEqual({ available: false });
+    const chat = await request.post(`${baseURL}/v1/chat/completions`, {
+      headers: { Authorization: 'Bearer localhost' },
+      data: { model: 'puyow', messages: [{ role: 'user', content: 'x' }], response_format: { type: 'json_schema', json_schema: { name: 'ai_api_test_result' } } },
+    });
+    expect(chat.status()).toBe(404);
+    expect((await chat.json()).error.type).toBe('not_found_error');
+
+    const learning = await request.post(`${baseURL}/apis/learning`, {
+      headers: { Authorization: 'Bearer node-test-token' },
+      data: { event: 'reset', sessionId: 'no-model-session', observation: [0, 1] },
+    });
+    expect(learning.status()).toBe(200);
+    expect(await learning.json()).toMatchObject({ ok: true, event: 'reset', sessionId: 'no-model-session' });
+    const solomonLearning = await request.post(`${baseURL}/apis/solomonlearning`, {
+      headers: { Authorization: 'Bearer localhost' },
+      data: { event: 'finish', sessionId: 'no-model-session', result: 'loss' },
+    });
+    expect(await solomonLearning.json()).toMatchObject({ ok: true, trained: false });
+    expect((await request.get(`${baseURL}/apis/unknown`)).status()).toBe(404);
+  } finally {
+    if (server.exitCode === null) {
+      await new Promise((resolve) => {
+        server.once('exit', resolve);
+        server.kill();
+      });
+    }
+    fs.rmSync(serverRoot, { recursive: true, force: true });
+  }
+});
+
+test('Node 서버의 Local AI로 극한 난이도 솔로몬과 끝까지 대전해도 배치 오류와 학습 요청 오류가 없다', async ({ page }) => {
+  test.setTimeout(120000);
+  // 공통 준비가 사용 불가로 고정한 응답을 걷고 실제 서버의 확인 결과를 쓴다.
+  await page.route('**/apis/localmodelinfo', (route) => route.continue());
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'Local AI', aiApiURL: 'http://localhost:9891', aiApiKey: 'localhost', aiModel: 'puyow', reverseLearning: true },
+    }));
+  });
+  const chatResponses = [];
+  const learningResponses = [];
+  page.on('response', (response) => {
+    const pathname = new URL(response.url()).pathname;
+    if (pathname === '/v1/chat/completions') chatResponses.push(response.status());
+    if (pathname === '/apis/solomonlearning') learningResponses.push(response.json().then((body) => ({ status: response.status(), body })));
+  });
+  const consoleErrors = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+  // 솔로몬은 실제 서버의 사용 가능 응답이 도착한 뒤에야 열리므로, 모델 로딩까지 끝난 응답을 먼저 기다린다.
+  const localModelInfo = page.waitForResponse((response) => new URL(response.url()).pathname === '/apis/localmodelinfo');
+  await page.reload();
+  expect(await (await localModelInfo).json()).toEqual({ available: true });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('Local AI');
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(true);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty().key)).toBe('extreme');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => chatResponses.length, { timeout: 20000 }).toBeGreaterThanOrEqual(2);
+
+  // 조작 없이 계속 내리면 사용자가 먼저 패배해 결과 화면과 역학습 finish 요청까지 진행된다.
+  await page.keyboard.down('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 60000 }).toBe('game_over');
+  await page.keyboard.up('ArrowDown');
+
+  await expect.poll(async () => (await Promise.all(learningResponses)).some(({ body }) => body.trained === false && body.reason)).toBe(true);
+  expect(chatResponses.every((status) => status === 200)).toBe(true);
+  expect((await Promise.all(learningResponses)).every(({ status, body }) => status === 200 && body.ok === true)).toBe(true);
+  expect(consoleErrors.filter((text) => text.includes('솔로몬'))).toEqual([]);
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => [
+    '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.',
+    'Solomon AI response error: continuing with the fallback AI.',
+  ].includes(text)))).toBe(false);
 });
 
 test('로컬 모델을 사용할 수 없으면 Local AI 선택지를 숨기고 아무것도 선택하지 않은 상태로 되돌린다', async ({ page }) => {
