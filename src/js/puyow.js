@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 42;
+    const BUILDNO = 43;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -345,6 +345,7 @@
             '화면 가로방향 고정': 'Lock landscape orientation', '리플레이 사용': 'Use replay feature', '역으로 모델 학습': 'Reverse model learning',
             '피버 (완화)': 'FEVER (Relaxed)',
             '카드': 'Cards', '1장 뽑기': 'Draw 1', '10장 뽑기': 'Draw 10', '합성': 'Synthesize', '카드 5장': '5 Cards', '확인': 'Confirm', '이용에 필요한 GOLD 가 부족합니다.': 'Not enough GOLD.', '카드 5장을 선택하고 이용해 주세요.': 'Select cards in groups of 5.', '1장 뽑기를 진행할까요?': 'Draw 1 card?', '10장 뽑기를 진행할까요?': 'Draw 10 cards?', '선택한 카드 %1장을 합성할까요?': 'Synthesize the %1 selected cards?',
+            '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': 'This is a high-difficulty opponent powered by deep learning. Gameplay may be unstable.', '계속': 'Continue',
         },
         ja: {
             '솔로몬': 'ソロモン', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'ソロモンAIの応答エラー：代替AIで続行します。',
@@ -369,6 +370,7 @@
             '화면 가로방향 고정': '画面を横向きに固定',
             '피버 (완화)': 'FEVER（緩和）',
             '카드': 'カード', '1장 뽑기': '1枚引く', '10장 뽑기': '10枚引く', '합성': '合成', '카드 5장': 'カード5枚', '확인': '確認', '이용에 필요한 GOLD 가 부족합니다.': '利用に必要なGOLDが不足しています。', '카드 5장을 선택하고 이용해 주세요.': 'カードを5枚単位で選択してください。', '1장 뽑기를 진행할까요?': 'カードを1枚引きますか？', '10장 뽑기를 진행할까요?': 'カードを10枚引きますか？', '선택한 카드 %1장을 합성할까요?': '選択したカード%1枚を合成しますか？',
+            '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': 'ディープラーニングを用いた高難易度の敵のため、ゲームプレイが不安定になる場合があります。', '계속': '続ける',
         },
         zh: {
             '솔로몬': '所罗门', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': '所罗门 AI 响应错误：将使用备用 AI 继续。',
@@ -394,6 +396,7 @@
             '화면 가로방향 고정': '锁定横屏',
             '피버 (완화)': 'FEVER（缓和）',
             '카드': '卡牌', '1장 뽑기': '抽1张', '10장 뽑기': '抽10张', '합성': '合成', '카드 5장': '5张卡牌', '확인': '确认', '이용에 필요한 GOLD 가 부족합니다.': '所需GOLD不足。', '카드 5장을 선택하고 이용해 주세요.': '请选择5张倍数的卡牌。', '1장 뽑기를 진행할까요?': '要抽1张卡牌吗？', '10장 뽑기를 진행할까요?': '要抽10张卡牌吗？', '선택한 카드 %1장을 합성할까요?': '要合成所选的%1张卡牌吗？',
+            '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': '这是基于深度学习的高难度对手，游戏过程可能不稳定。', '계속': '继续',
         },
         // 독일어·프랑스어는 아래 초기화 구문에서 영어 표를 기본값으로 복사한 뒤 현지화한다. (영어 번역 데이터 일부를 같이 사용하기 위함)
         de: {},
@@ -432,6 +435,9 @@
     Object.assign(stringTable.ja, { '피버 룰 (시작)': 'FEVER ルール (開始)' });
     Object.assign(stringTable.zh, { '피버 룰 (시작)': 'FEVER 规则（开始）' });
     Object.assign(stringTable.de, { '피버 룰 (시작)': 'FEVER-Regeln (Start)' });
+    // ONNX 추론 적 첫 대전 전 불안정 안내 문구다. 위에서 영어 표를 복사한 뒤이므로 독일어·프랑스어는 따로 덮어쓴다.
+    Object.assign(stringTable.de, { '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': 'Ein sehr schwerer Gegner auf Deep-Learning-Basis. Das Spiel kann instabil laufen.', '계속': 'Weiter' });
+    Object.assign(stringTable.fr, { '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': 'Adversaire très difficile basé sur l’apprentissage profond. Le jeu peut être instable.', '계속': 'Continuer' });
     Object.assign(stringTable.fr, { '피버 룰 (시작)': 'Règles FEVER (Début)' });
 
     // 리플레이 기록·재생 관련 문구다. 독일어·프랑스어 표는 위에서 영어 표를 복사한 뒤이므로 언어별로 각각 추가한다.
@@ -1171,7 +1177,9 @@
             puzzleGoldStarStages: [],
             gold: 0,
             settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, useReplayFeature: false, reverseLearning: false, soundDataURL: '', ...createDefaultAiSettings() },
-            muted: false
+            muted: false,
+            /** ONNX 추론 적 대전 전 불안정 안내에서 한 번이라도 `계속`을 골랐는지 여부다. */
+            onnxWarningAcknowledged: false
         };
     }
 
@@ -1675,7 +1683,9 @@
                 aiApiURL: normalizeAiApiURL(settings.aiApiURL),
                 aiApiKey: typeof settings.aiApiKey === 'string' ? settings.aiApiKey : initial.settings.aiApiKey,
                 aiModel: typeof settings.aiModel === 'string' && settings.aiModel.trim() ? settings.aiModel : initial.settings.aiModel
-            }, muted: parsed.muted === true };
+            }, muted: parsed.muted === true,
+                // 값이 없는 기존 저장은 아직 안내를 확인하지 않은 것으로 본다.
+                onnxWarningAcknowledged: parsed.onnxWarningAcknowledged === true };
             saveStore();
         } catch (error) {
             console.error('Puyo W 저장 데이터 불러오기에 실패했습니다.', error);
@@ -10619,7 +10629,7 @@
             context.strokeStyle = opponentMenuFocus === 2 ? '#f7c843' : '#ef8aa0'; context.lineWidth = opponentMenuFocus === 2 ? 4 : 3; context.strokeRect(WIDTH / 2 - 170, 300, 340, 170);
             if (opponent) {
                 opponent.createController().drawPortrait(context, WIDTH / 2, 375, 0.62);
-                context.fillStyle = '#f5fbfc'; context.font = `28px ${BUTTON_FONT}`; context.fillText(translate(opponent.createController().getName()), WIDTH / 2, 450);
+                context.fillStyle = '#f5fbfc'; context.font = `28px ${BUTTON_FONT}`; drawOpponentNameWithMark(translate(opponent.createController().getName()), WIDTH / 2, 450, opponent.requiresOnnx, 12);
             }
             const previousOpponent = getRelativeSelectableOpponent(-1, opponentMenuRule);
             const nextOpponent = getRelativeSelectableOpponent(1, opponentMenuRule);
@@ -10656,11 +10666,11 @@
                     context.restore();
                     // 잠긴 적은 이름을 숨긴다. 출시 예정 적은 기존처럼 이름과 안내를 함께 표시한다.
                     if (entry.notAvail) {
-                        context.fillStyle = '#c4cbd0'; context.font = `15px ${BUTTON_FONT}`; context.fillText(translate(entry.createController().getName()), cardX + 94, 500);
+                        context.fillStyle = '#c4cbd0'; context.font = `15px ${BUTTON_FONT}`; drawOpponentNameWithMark(translate(entry.createController().getName()), cardX + 94, 500, entry.requiresOnnx, 7);
                     }
                     context.fillStyle = '#f0c674'; context.font = `13px ${BUTTON_FONT}`; context.fillText(translate(entry.notAvail ? '추후 출시예정' : '잠김'), cardX + 80, entry.notAvail ? 524 : 500);
                 } else {
-                    context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; context.fillText(translate(entry.createController().getName()), cardX + 80, 513);
+                    context.fillStyle = '#f5fbfc'; context.font = `17px ${BUTTON_FONT}`; drawOpponentNameWithMark(translate(entry.createController().getName()), cardX + 80, 513, entry.requiresOnnx, 8);
                 }
             });
             context.fillStyle = '#ef5350'; context.fillRect(440, 600, 250, 58);
@@ -10744,6 +10754,74 @@
         context.fillText(translate('종료'), 735, 417);
     }
 
+    /**
+     * 현재 글꼴 기준으로 문장을 최대 폭 안에 들어가는 줄 목록으로 나눈다.
+     * 공백 단위로 나누되, 한 단어가 폭을 넘으면 그 단어만 글자 단위로 자른다.
+     * @param {string} text 나눌 문장
+     * @param {number} maxWidth 한 줄의 최대 폭
+     * @returns {string[]} 줄 목록
+     */
+    function wrapCanvasText(text, maxWidth) {
+        const lines = [];
+        let line = '';
+        text.split(' ').forEach((word) => {
+            const candidate = line ? `${line} ${word}` : word;
+            if (line && context.measureText(candidate).width > maxWidth) {
+                lines.push(line);
+                line = word;
+            } else line = candidate;
+            // 한 단어가 한 줄 폭을 넘으면 넘치는 부분을 글자 단위로 잘라 다음 줄로 보낸다.
+            while (line.length > 1 && context.measureText(line).width > maxWidth) {
+                let cut = line.length - 1;
+                while (cut > 1 && context.measureText(line.slice(0, cut)).width > maxWidth) cut -= 1;
+                lines.push(line.slice(0, cut));
+                line = line.slice(cut);
+            }
+        });
+        lines.push(line);
+        return lines;
+    }
+
+    /**
+     * ONNX(딥러닝) 추론 적임을 알리는 노란 원 안의 느낌표 마크를 그린다.
+     * @param {number} x 마크 중심 X
+     * @param {number} baselineY 나란히 놓인 이름의 글자 기준선 Y
+     * @param {number} radius 원 반지름
+     * @returns {void}
+     */
+    function drawOnnxWarningMark(x, baselineY, radius) {
+        const centerY = baselineY - radius * 0.8;
+        context.save();
+        context.fillStyle = '#f7c843';
+        context.beginPath(); context.arc(x, centerY, radius, 0, Math.PI * 2); context.fill();
+        context.fillStyle = '#3a2a00'; context.textAlign = 'center'; context.textBaseline = 'middle';
+        context.font = `bold ${Math.round(radius * 1.5)}px ${BUTTON_FONT}`;
+        context.fillText('!', x, centerY + radius * 0.1);
+        context.restore();
+    }
+
+    /**
+     * 적 선택 화면의 적 이름을 현재 글꼴·색으로 가운데 정렬해 그린다(호출 전 textAlign이 center여야 한다).
+     * ONNX 추론 적이면 이름 오른쪽에 느낌표 마크를 붙이고, 이름과 마크를 한 덩어리로 가운데에 맞춘다.
+     * @param {string} name 번역된 적 이름
+     * @param {number} centerX 가운데 X
+     * @param {number} baselineY 글자 기준선 Y
+     * @param {boolean} requiresOnnx ONNX 추론 적 여부
+     * @param {number} markRadius 마크 반지름
+     * @returns {void}
+     */
+    function drawOpponentNameWithMark(name, centerX, baselineY, requiresOnnx, markRadius) {
+        if (!requiresOnnx) {
+            context.fillText(name, centerX, baselineY);
+            return;
+        }
+        const gap = markRadius * 0.6;
+        const nameWidth = context.measureText(name).width;
+        const left = centerX - (nameWidth + gap + markRadius * 2) / 2;
+        context.fillText(name, left + nameWidth / 2, baselineY);
+        drawOnnxWarningMark(left + nameWidth + gap + markRadius, baselineY, markRadius);
+    }
+
     /** 현재 공용 확인 대화상자를 모든 화면 요소 위에 그린다. @returns {void} */
     function drawConfirmDialog() {
         if (!confirmDialog) return;
@@ -10751,8 +10829,14 @@
         context.fillStyle = '#102c3b'; context.fillRect(380, 250, 520, 270);
         context.strokeStyle = '#6ea2b8'; context.lineWidth = 3; context.strokeRect(380, 250, 520, 270);
         context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.font = `24px ${MESSAGE_FONT}`;
-        context.fillText(confirmDialog.message, WIDTH / 2, 345, 440);
-        [translate('확인'), translate('취소')].forEach((label, index) => {
+        // 긴 안내 문구는 가로로 눌러 쓰지 않고 여러 줄로 나눠 Y=345를 가운데로 쌓는다.
+        const messageWidth = 440;
+        const lineHeight = 34;
+        const messageLines = wrapCanvasText(confirmDialog.message, messageWidth);
+        messageLines.forEach((line, index) => {
+            context.fillText(line, WIDTH / 2, 345 + (index - (messageLines.length - 1) / 2) * lineHeight, messageWidth);
+        });
+        [translate(confirmDialog.confirmLabel || '확인'), translate('취소')].forEach((label, index) => {
             const bounds = getConfirmDialogButtonBounds(index);
             const focused = confirmDialog.choice === index;
             context.fillStyle = focused ? '#563068' : '#173848'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
@@ -11536,7 +11620,7 @@
                 else if (opponentMenuFocus === 2) {
                     opponentMenuFocus = 3;
                     selectedOpponentAction = 0;
-                } else if (selectedOpponentAction === 0) startGame(false, false, opponentMenuRule !== 'standard', opponentMenuRule === 'feverStart');
+                } else if (selectedOpponentAction === 0) startOpponentMenuGame();
                 else { playMenuCancelSound(); menuScreen = 'title'; loadNotice(); }
             } else if (key === 'escape' && menuScreen === 'opponent') { playMenuCancelSound(); menuScreen = 'title'; loadNotice(); }
             return;
@@ -11688,6 +11772,35 @@
         opponentMenuFocus = 0;
         selectedOpponentAction = 0;
         menuScreen = 'opponent';
+    }
+
+    /** ONNX 추론 적 첫 대전 전에 띄우는 불안정 안내 문구다. 번역 키로도 쓴다. */
+    const ONNX_ENEMY_WARNING_MESSAGE = '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.';
+
+    /**
+     * 적 선택 화면의 `시작`을 실행한다.
+     * ONNX 추론은 아직 동작이 불안정할 수 있어(임시 대응), 이 안내에서 한 번도 `계속`을 고른 적이 없으면
+     * ONNX 적과의 대전을 곧바로 시작하지 않고 `계속`/`취소` 확인창을 먼저 띄운다.
+     * @returns {void}
+     */
+    function startOpponentMenuGame() {
+        const feverRule = opponentMenuRule !== 'standard';
+        const feverStart = opponentMenuRule === 'feverStart';
+        if (!ensureSelectedOpponent()) return;
+        const opponent = OPPONENTS[selectedOpponent];
+        if (!opponent.requiresOnnx || store.onnxWarningAcknowledged) {
+            startGame(false, false, feverRule, feverStart);
+            return;
+        }
+        playMenuSelectSound();
+        void requestConfirmDialog(translate(ONNX_ENEMY_WARNING_MESSAGE), '계속').then((confirmed) => {
+            if (!confirmed) return;
+            store.onnxWarningAcknowledged = true;
+            saveStore();
+            // 응답을 기다리는 동안 다른 화면으로 옮겨졌거나 선택 적이 바뀌었다면 기록만 남기고 시작하지 않는다.
+            if (game || menuScreen !== 'opponent' || OPPONENTS[selectedOpponent] !== opponent) return;
+            startGame(false, false, feverRule, feverStart);
+        });
     }
 
     /**
@@ -12109,7 +12222,7 @@
             } else if (opponentX >= 440 && opponentX <= 690 && opponentY >= 600 && opponentY <= 658) {
                 selectedOpponentAction = 0;
                 opponentMenuFocus = 3;
-                startGame(false, false, opponentMenuRule !== 'standard', opponentMenuRule === 'feverStart');
+                startOpponentMenuGame();
             } else if (opponentX >= 710 && opponentX <= 840 && opponentY >= 600 && opponentY <= 658) {
                 playMenuCancelSound();
                 selectedOpponentAction = 1;
@@ -12328,8 +12441,18 @@
     function askConfirm(message) {
         if (!initialized || !context) throw new Error('확인 대화상자를 표시하려면 먼저 WebPuyo.initialize()를 호출해야 합니다.');
         if (typeof message !== 'string') throw new TypeError('message는 문자열이어야 합니다.');
+        return requestConfirmDialog(message);
+    }
+
+    /**
+     * 확인 대화상자 요청을 대기열에 넣는다. 공개 `askConfirm()`과 확인 버튼 문구를 바꿔야 하는 내부 확인창이 함께 쓴다.
+     * @param {string} message 표시할 메시지. 원문 그대로 표시한다.
+     * @param {string} [confirmLabel='확인'] 확인 버튼의 번역 전 한국어 문구
+     * @returns {Promise<boolean>} 확인은 true, 취소는 false
+     */
+    function requestConfirmDialog(message, confirmLabel = '확인') {
         return new Promise((resolve) => {
-            confirmDialogQueue.push({ message, choice: 0, resolve });
+            confirmDialogQueue.push({ message, confirmLabel, choice: 0, resolve });
             openNextConfirmDialog();
         });
     }
