@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 41;
+    const BUILDNO = 42;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -738,6 +738,18 @@
     let resultScreenFocus = 0;
     /** 직전 애니메이션 프레임의 시각이다. @type {number} */
     let lastTime = 0;
+    /**
+     * 한 번의 갱신이 다룰 수 있는 최대 시간(밀리초)이다.
+     * 이보다 긴 시간이 흐른 프레임은 이 크기로 여러 번 나눠 갱신한다.
+     * @type {number}
+     */
+    const UPDATE_STEP_MS = 50;
+    /**
+     * 프레임 하나에서 따라잡을 수 있는 실제 경과 시간의 상한(밀리초)이다.
+     * 탭 복귀처럼 시간이 크게 벌어졌을 때 게임이 순간이동하듯 진행되지 않게 막는다.
+     * @type {number}
+     */
+    const MAX_CATCH_UP_MS = 250;
     /**
      * 사람이 조작하는 플레이어별 키보드·게임패드 방향 입력 상태다.
      * 0번은 1P, 1번은 "너랑 나랑"의 2P가 사용한다.
@@ -10919,14 +10931,13 @@
     }
 
     /**
-     * 애니메이션 프레임을 갱신하고 다음 프레임을 예약한다.
-     * @param {number} time 브라우저가 제공한 현재 시각
+     * 게임 상태를 주어진 시간만큼 진행시킨다.
+     * 프레임률이 낮으면 frame()이 이 함수를 한 프레임에 여러 번 부르므로,
+     * 여기의 모든 처리는 호출 횟수가 아니라 delta에만 의존해야 한다.
+     * @param {number} delta 이번 갱신이 다룰 밀리초
      * @returns {void}
      */
-    function frame(time) {
-        const delta = Math.min(50, time - lastTime || 0);
-        lastTime = time;
-        updateGamepadInput();
+    function updateWorld(delta) {
         updateScreenMessage(delta);
         updateGameStartFirework(delta);
         // 플레이 방법은 결과 화면 표시 시간까지 갱신하고, 일반 게임은 실행 중일 때만 갱신한다.
@@ -10977,6 +10988,30 @@
             updateMainMenuGalleryFloaters(delta);
         }
         previousRenderedMenuScreen = menuScreen;
+    }
+
+    /**
+     * 애니메이션 프레임을 갱신하고 다음 프레임을 예약한다.
+     *
+     * 프레임 간격이 UPDATE_STEP_MS를 넘으면 넘은 시간을 버리지 않고 그 크기로 나눠 여러 번 갱신한다.
+     * 예전에는 `Math.min(50, delta)`로 잘라 버려서 프레임률이 20fps 아래로 떨어지면
+     * 게임 시간이 실제 시간보다 느리게 흘렀고, 느린 환경과 자동화 테스트에서
+     * 뿌요가 덜 떨어지거나 제한 시간이 줄지 않는 문제가 있었다.
+     * 갱신은 여러 번 하더라도 입력 읽기와 그리기는 프레임당 한 번만 한다.
+     * @param {number} time 브라우저가 제공한 현재 시각
+     * @returns {void}
+     */
+    function frame(time) {
+        const realDelta = lastTime ? Math.min(MAX_CATCH_UP_MS, Math.max(0, time - lastTime)) : 0;
+        lastTime = time;
+        updateGamepadInput();
+        let remaining = realDelta;
+        // 경과 시간이 0이어도 프레임마다 한 번은 갱신해 화면 진입 처리 같은 매 프레임 작업을 남긴다.
+        do {
+            const step = Math.min(UPDATE_STEP_MS, remaining);
+            updateWorld(step);
+            remaining -= step;
+        } while (remaining > 0);
         syncBackgroundMusic();
         render();
         animationFrameId = requestAnimationFrame(frame);
