@@ -522,6 +522,15 @@ Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 �
 - **세션 로그를 error로 낮춘 이유**: `lngui.py`가 내보낸 그래프는 `ValueNetwork.forward()`의 마지막 `reshape(-1)` 때문에 출력 축이 1로 추론되어, 여러 후보를 한 배치로 넣을 때마다 `Expected shape from model of {1}` 경고가 매 턴 쌓인다. 출력 값 자체는 후보 수만큼 정상이고 길이도 검증하므로 `logSeverityLevel: 3`으로 이 경고만 가린다.
 - **학습 상대에서는 제외한다**: ONNX 추론 적은 `python/bundledenemy.py`의 `ENEMY_FACTORIES`/`TRAINABLE_ENEMY_TYPES`에 넣지 않는다. 학습 중인 모델과 별개의 모델을 파이썬에서 또 돌려야 하기 때문이며, 앞으로 추가되는 ONNX 적도 같은 이유로 넣지 않는다.
 
+#### 학습형 적이 브라우저를 멈추는 현상 점검 (2026-09-11)
+
+- 프런트엔드의 영구적인 동기 무한 루프는 확인되지 않았다. `simulatePlacementResult()`·`causesImmediateDefeat()`의 폭발 반복은 보드의 뿌요가 제거될 때마다 종료되고, `frame()`의 보정 갱신도 `MAX_CATCH_UP_MS`(250ms)로 제한된다. 실제 Local AI 솔로몬 끝까지 대전 회귀도 통과했다.
+- 솔로몬의 `cancelPendingRequest()`는 브라우저의 `fetch`에 Abort 신호를 보내지만, `nodeserver.js`의 `/v1/chat/completions`와 `python/pythonserver.py`의 `chat_completions_api()`는 클라이언트 연결 종료를 추론 작업에 전달하지 않는다. 따라서 솔로몬이 다음 뿌요로 넘어갈 때 브라우저 요청은 취소되어도 백엔드의 `chooseLocalAiAction()`/`choose_model_action()`과 ONNX `session.run()`은 끝까지 실행된다.
+- 이 요청은 서버에 동시 실행 상한이 없다. Node 서버는 같은 ONNX 세션에 여러 `session.run()`을 병렬로 걸고, Python 서버는 `ThreadingHTTPServer`의 요청 스레드가 `value_model_lock` 앞에서 무제한 대기한다. 모델 추론이 한 턴의 낙하 시간보다 느리면 매 턴 새 요청이 추가되어 CPU·메모리·스레드가 누적된다. `nodeserver.js`가 정적 파일도 같은 이벤트 루프에서 서빙하므로 CPU 포화 시 새로고침 요청까지 응답하지 않는 증상과 일치한다.
+- `queueSolomonLearningRequest()`와 `queueLearningEvent()`도 요청별 제한 시간이 없다. 역학습을 켠 상태에서 학습 API 하나가 멈추면 Promise 체인이 이후 payload를 계속 붙잡아 브라우저 힙이 증가한다. 이는 솔로몬에서만 나타나는 별도의 누수 경로다.
+- 플라우로스 등 `OnnxEnemy`는 `ort.env.wasm.proxy=true`이면 추론을 Worker로 보내지만, CSP·Worker 생성 실패를 확인하지 못한 배포나 프록시가 꺼진 호스트에서는 `InferenceSession.create()`·`session.run()`의 wasm 연산이 메인 스레드를 동기 점유할 수 있다. 이 경우 새로고침까지 막히는 직접적인 브라우저 정지 원인이 된다. 현재 코드는 Worker 실패를 감지하면 폴백하도록 되어 있으므로 실제 배포에서 `ort.env.wasm.proxy`와 Worker 생성 오류를 반드시 계측해야 한다.
+- 원인 확정을 위한 다음 계측 항목은 서버의 `inflight chat completions`, 요청별 추론 시작·종료·클라이언트 disconnect, Python 대기 스레드 수, 브라우저의 `performance.memory` 및 메인 스레드 Long Task다. 우선 서버에서 요청별 취소/동시성 상한과 추론 큐 폐기를 구현한 뒤 재검증한다.
+
 ### Local AI 서버에 보내는 배치 후보 목록
 
 서버의 `is_legal_observation_action()`은 관측 벡터에 담긴 **화면 12줄의 목적지 열 높이**만 본다. 반면 게임의 `Solomon.canUsePlacement()`는 뿌요의 현재 낙하 Y에서의 가로 이동 경로, 회전 킥으로 X가 밀리는지, 숨김 행까지 포함한 25줄 보드의 `aiSimulations` 포함 여부를 함께 본다. 그래서 필드가 높아지면 서버가 "합법"이라고 답한 배치를 게임이 거부해 `handleRequestFailure()`로 일시정지되는 일이 생겼다.
