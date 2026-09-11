@@ -5,11 +5,166 @@
 import { test, expect } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import vm from 'node:vm';
 import os from 'node:os';
 import path from 'node:path';
 import { setupGamePage, enterMainMenu, openSettings } from './common/gamepage.js';
 
 setupGamePage();
+
+// 무한 반복이 되살아나도 브라우저나 테스트 프로세스가 멈추지 않도록 실제 게임 코드를
+// 실행 제한 시간이 있는 VM에서 검사한다. 공개 API를 늘리지 않고 테스트 안에서만 솔로몬을 노출한다.
+const source = fs.readFileSync('src/js/puyow.js', 'utf8');
+const exportAnchor = 'WebPuyo = {';
+
+function createContext(enemyName) {
+  expect(source.includes(exportAnchor)).toBe(true);
+  const context = vm.createContext({ module: { exports: {} } });
+  vm.runInContext(source.replace(exportAnchor, `${exportAnchor} Solomon,`), context, { timeout: 5000 });
+  context.api = context.module.exports;
+  context.controller = Object.create(context.api[enemyName].prototype);
+  return context;
+}
+
+function createPlayer() {
+  return {
+    board: Array.from({ length: 25 }, () => Array(6).fill(null)),
+    active: { x: 2, y: 11.9, rotation: 0, colors: ['red', 'green'] },
+    aiSimulations: [],
+  };
+}
+
+function setLandingCandidates(context, player) {
+  // 임의로 삽입한 불법 후보가 아니라 게임의 실제 착지 계산을 통과한 후보들을 검사한다.
+  player.aiSimulations = [];
+  for (let x = 0; x < 6; x += 1) {
+    for (let rotation = 0; rotation < 4; rotation += 1) {
+      if (context.api.findLandingPlacement(player, x, rotation)) player.aiSimulations.push({ x, rotation });
+    }
+  }
+  context.player = player;
+}
+
+for (const enemyName of ['Solomon', 'OnnxEnemy']) {
+  test(`${enemyName} 배치 검사는 킥 이후 좌우 뒤집기 순환을 거부하고 나머지 후보를 반환한다`, () => {
+    const context = createContext(enemyName);
+    const player = createPlayer();
+    // 오른쪽 벽 때문에 왼쪽으로 킥한 뒤, 아래 장애물 때문에 회전 1과 3을 끝없이 오가던 필드다.
+    for (let y = 0; y <= 10; y += 1) player.board[y][1] = 'red';
+    for (let y = 0; y <= 11; y += 1) player.board[y][3] = 'blue';
+    setLandingCandidates(context, player);
+    expect(player.aiSimulations).toContainEqual({ x: 2, rotation: 2 });
+    const before = JSON.stringify(player);
+    expect(vm.runInContext('controller.canUsePlacement(player, { x: 2, rotation: 2 })', context, { timeout: 500 })).toBe(false);
+    const candidates = vm.runInContext('controller.getUsablePlacements(player)', context, { timeout: 500 });
+    expect(candidates).not.toContainEqual({ x: 2, rotation: 2 });
+    expect(candidates).toContainEqual({ x: 2, rotation: 0 });
+    expect(JSON.stringify(player)).toBe(before);
+  });
+
+  test(`${enemyName} 배치 검사는 정상 이동과 회전 및 180도 뒤집기를 유지한다`, () => {
+    const context = createContext(enemyName);
+    const player = createPlayer();
+    setLandingCandidates(context, player);
+    // 오른쪽 끝의 아래 방향은 중간 킥으로 X가 바뀌므로 기존에도 거부하던 후보다.
+    const expected = player.aiSimulations.filter(({ x, rotation }) => !(x === 5 && rotation === 2));
+    expect(vm.runInContext('controller.getUsablePlacements(player)', context, { timeout: 500 })).toEqual(expected);
+    player.board[11][1] = 'blue';
+    player.board[11][3] = 'blue';
+    setLandingCandidates(context, player);
+    // 양쪽이 막혀 90도 회전과 킥은 실패하지만, 아래가 비어 있으면 뒤집기는 성공한다.
+    expect(vm.runInContext('controller.canUsePlacement(player, { x: 2, rotation: 2 })', context, { timeout: 500 })).toBe(true);
+  });
+
+  test(`${enemyName} 배치 검사는 막힌 이동과 목표 X를 벗어나는 킥을 거부한다`, () => {
+    const context = createContext(enemyName);
+    const player = createPlayer();
+    player.board[11][3] = 'blue';
+    setLandingCandidates(context, player);
+    expect(player.aiSimulations).toContainEqual({ x: 4, rotation: 0 });
+    expect(vm.runInContext('controller.canUsePlacement(player, { x: 4, rotation: 0 })', context, { timeout: 500 })).toBe(false);
+    // 아래로 뒤집은 최종 배치는 비어 있어도 중간 킥으로 X가 바뀌면 목표 배치가 아니다.
+    expect(player.aiSimulations).toContainEqual({ x: 2, rotation: 2 });
+    expect(vm.runInContext('controller.canUsePlacement(player, { x: 2, rotation: 2 })', context, { timeout: 500 })).toBe(false);
+  });
+
+  test(`${enemyName} 배치 검사는 조작 종료와 잘못된 좌표를 안전하게 거부한다`, () => {
+    const context = createContext(enemyName);
+    const player = createPlayer();
+    setLandingCandidates(context, player);
+    for (const result of [null, { x: 99, rotation: 0 }, { x: 2.5, rotation: 0 }, { x: 2, rotation: 4 }, { x: 2, rotation: NaN }]) {
+      context.result = result;
+      expect(vm.runInContext('controller.canUsePlacement(player, result)', context, { timeout: 500 })).toBe(false);
+    }
+    const active = player.active;
+    for (const invalid of [null, { ...active, x: NaN }, { ...active, x: 2.5 }, { ...active, y: Infinity }, { ...active, rotation: 4 }]) {
+      player.active = invalid;
+      expect(vm.runInContext('controller.canUsePlacement(player, { x: 2, rotation: 0 })', context, { timeout: 500 })).toBe(false);
+    }
+    player.active = active;
+    player.aiSimulations = [];
+    expect(vm.runInContext('controller.canUsePlacement(player, { x: 2, rotation: 0 })', context, { timeout: 500 })).toBe(false);
+  });
+
+  test(`${enemyName} 배치 검사는 다양한 높이와 회전의 필드에서도 종료된다`, () => {
+    const context = createContext(enemyName);
+    // 고정 수열로 필드 1,000개를 만들어 결과를 재현할 수 있게 한다.
+    const checked = vm.runInContext(`(() => {
+      let seed = 20260911;
+      let checked = 0;
+      const random = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0);
+      for (let index = 0; index < 1000; index += 1) {
+        const player = {
+          board: Array.from({ length: 25 }, () => Array(6).fill(null)),
+          active: { x: random() % 6, y: 11.9, rotation: (random() >>> 16) % 4, colors: ['red', 'green'] },
+          aiSimulations: [],
+        };
+        for (let x = 0; x < 6; x += 1) {
+          const height = (random() >>> 16) % 14;
+          for (let y = 0; y < height; y += 1) player.board[y][x] = 'blue';
+        }
+        if (!api.findLandingPlacement(player, player.active.x, player.active.rotation)) continue;
+        for (let x = 0; x < 6; x += 1) {
+          for (let rotation = 0; rotation < 4; rotation += 1) {
+            if (api.findLandingPlacement(player, x, rotation)) player.aiSimulations.push({ x, rotation });
+          }
+        }
+        controller.getUsablePlacements(player);
+        checked += 1;
+      }
+      return checked;
+    })()`, context, { timeout: 5000 });
+    expect(checked).toBeGreaterThan(100);
+  });
+}
+
+for (const runtime of ['원본', '번들']) {
+  test(`순환 배치 필드를 검사한 뒤에도 ${runtime}의 화면 갱신과 새로고침이 동작한다`, async ({ page }) => {
+    if (runtime === '번들') {
+      // 기본 페이지는 원본 JS를 읽으므로 번들 검증 때만 해당 응답을 빌드 산출물로 교체한다.
+      await page.route('**/js/puyow.js', (route) => route.fulfill({ path: path.resolve('src/bundle/puyow.bundle.js'), contentType: 'application/javascript' }));
+      await page.reload();
+      await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+    }
+    const candidates = await page.evaluate(async () => {
+      const player = {
+        board: Array.from({ length: 25 }, () => Array(6).fill(null)),
+        active: { x: 2, y: 11.9, rotation: 0, colors: ['red', 'green'] },
+        aiSimulations: [{ x: 2, rotation: 2 }, { x: 2, rotation: 0 }],
+      };
+      for (let y = 0; y <= 10; y += 1) player.board[y][1] = 'red';
+      for (let y = 0; y <= 11; y += 1) player.board[y][3] = 'blue';
+      // puyow.html이 실제로 읽은 코드와 플라우로스의 상속 경로를 검사한다.
+      const controller = Object.create(window.WebPuyo.Flauros.prototype);
+      const result = controller.getUsablePlacements(player);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      return result;
+    });
+    expect(candidates).toEqual([{ x: 2, rotation: 0 }]);
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  });
+}
 
 test('설정의 AI 서비스 제공자는 LM Studio를 라디오로 표시하고 지원하지 않는 저장값은 미선택으로 되돌린다', async ({ page }) => {
   await page.evaluate(() => {

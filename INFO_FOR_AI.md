@@ -522,14 +522,15 @@ Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 �
 - **세션 로그를 error로 낮춘 이유**: `lngui.py`가 내보낸 그래프는 `ValueNetwork.forward()`의 마지막 `reshape(-1)` 때문에 출력 축이 1로 추론되어, 여러 후보를 한 배치로 넣을 때마다 `Expected shape from model of {1}` 경고가 매 턴 쌓인다. 출력 값 자체는 후보 수만큼 정상이고 길이도 검증하므로 `logSeverityLevel: 3`으로 이 경고만 가린다.
 - **학습 상대에서는 제외한다**: ONNX 추론 적은 `python/bundledenemy.py`의 `ENEMY_FACTORIES`/`TRAINABLE_ENEMY_TYPES`에 넣지 않는다. 학습 중인 모델과 별개의 모델을 파이썬에서 또 돌려야 하기 때문이며, 앞으로 추가되는 ONNX 적도 같은 이유로 넣지 않는다.
 
-#### 학습형 적이 브라우저를 멈추는 현상 점검 (2026-09-11)
+#### 학습형 적이 브라우저를 멈추는 현상 수정 (2026-09-11, BUILDNO 49)
 
-- 프런트엔드의 영구적인 동기 무한 루프는 확인되지 않았다. `simulatePlacementResult()`·`causesImmediateDefeat()`의 폭발 반복은 보드의 뿌요가 제거될 때마다 종료되고, `frame()`의 보정 갱신도 `MAX_CATCH_UP_MS`(250ms)로 제한된다. 실제 Local AI 솔로몬 끝까지 대전 회귀도 통과했다.
-- 솔로몬의 `cancelPendingRequest()`는 브라우저의 `fetch`에 Abort 신호를 보내지만, `nodeserver.js`의 `/v1/chat/completions`와 `python/pythonserver.py`의 `chat_completions_api()`는 클라이언트 연결 종료를 추론 작업에 전달하지 않는다. 따라서 솔로몬이 다음 뿌요로 넘어갈 때 브라우저 요청은 취소되어도 백엔드의 `chooseLocalAiAction()`/`choose_model_action()`과 ONNX `session.run()`은 끝까지 실행된다.
-- 이 요청은 서버에 동시 실행 상한이 없다. Node 서버는 같은 ONNX 세션에 여러 `session.run()`을 병렬로 걸고, Python 서버는 `ThreadingHTTPServer`의 요청 스레드가 `value_model_lock` 앞에서 무제한 대기한다. 모델 추론이 한 턴의 낙하 시간보다 느리면 매 턴 새 요청이 추가되어 CPU·메모리·스레드가 누적된다. `nodeserver.js`가 정적 파일도 같은 이벤트 루프에서 서빙하므로 CPU 포화 시 새로고침 요청까지 응답하지 않는 증상과 일치한다.
-- `queueSolomonLearningRequest()`와 `queueLearningEvent()`도 요청별 제한 시간이 없다. 역학습을 켠 상태에서 학습 API 하나가 멈추면 Promise 체인이 이후 payload를 계속 붙잡아 브라우저 힙이 증가한다. 이는 솔로몬에서만 나타나는 별도의 누수 경로다.
-- 플라우로스 등 `OnnxEnemy`는 `ort.env.wasm.proxy=true`이면 추론을 Worker로 보내지만, CSP·Worker 생성 실패를 확인하지 못한 배포나 프록시가 꺼진 호스트에서는 `InferenceSession.create()`·`session.run()`의 wasm 연산이 메인 스레드를 동기 점유할 수 있다. 이 경우 새로고침까지 막히는 직접적인 브라우저 정지 원인이 된다. 현재 코드는 Worker 실패를 감지하면 폴백하도록 되어 있으므로 실제 배포에서 `ort.env.wasm.proxy`와 Worker 생성 오류를 반드시 계측해야 한다.
-- 원인 확정을 위한 다음 계측 항목은 서버의 `inflight chat completions`, 요청별 추론 시작·종료·클라이언트 disconnect, Python 대기 스레드 수, 브라우저의 `performance.memory` 및 메인 스레드 Long Task다. 우선 서버에서 요청별 취소/동시성 상한과 추론 큐 폐기를 구현한 뒤 재검증한다.
+- **재현된 원인은 프런트엔드 배치 검사의 동기 무한 반복이다.** 이전 점검의 '무한 루프는 확인되지 않았다'는 결론은 아래 필드를 검사하지 못한 결과였으며, 서버 요청 누적을 이번 정지의 원인으로 확정하면 안 된다.
+- `Solomon.canUsePlacement()`와 `OnnxEnemy.canUsePlacement()`에 복제되어 있던 회전 반복은 회전 실패 시 수평 킥과 180도 뒤집기를 시도하지만, 뒤집기에 성공하더라도 목표에 가까워진다는 보장이 없었다. 예를 들어 25×6 보드에서 열 1의 Y=0..10, 열 3의 Y=0..11을 채우고 조작 뿌요를 `{x:2,y:11.9,rotation:0}`으로 두면, 착지 자체는 가능한 `{x:2,rotation:2}` 검사 중 `회전 0 → 왼쪽 킥(X=1, 회전 1) → 회전 3 → 회전 1 → …`이 끝없이 반복된다. 수정 전 두 클래스 모두 VM 실행 제한 300ms를 넘기는 것으로 재현했다.
+- 이 검사는 브라우저 메인 스레드에서 실행한다. Local AI 솔로몬의 요청 후보 생성과 ONNX 적의 추론 후보 생성 단계에서 모델 호출 전에 멈출 수 있고, 솔로몬 응답 검증에도 같은 코드가 사용된다. 따라서 서버에서 추론하거나 ONNX Worker·타이머를 사용해도 이 루프는 중단되지 않는다. 화면·입력·타이머 처리를 막고 임시 객체를 반복 생성하므로, 메모리 문제처럼 보일 수 있지만 이 재현은 모델 로딩이나 서버 없이도 발생한다.
+- 두 클래스는 이제 공통 `canUseAiPlacement()`를 사용한다. 현재 뿌요와 목표의 좌표를 검증하고, 회전 중 방문한 `(X, 회전)`을 기록해 같은 상태를 다시 만나면 해당 후보를 거부한다. 검사 중 보드와 Y는 고정되며 가능한 회전 상태는 최대 `COLUMNS * 4`개다. X가 달라지는 킥을 잘못 거부하지 않도록 회전값만 기록하지 않는다. 가로 이동 우선·90도 회전·수평 킥·180도 뒤집기·최종 X 일치 판정은 유지한다.
+- `tests/test03_ai.spec.js`에 두 클래스의 순환 필드·나머지 후보 반환·원본 상태 보존·정상 이동/뒤집기·막힌 이동/킥·잘못된 좌표·고정 수열로 만든 1,000개 필드 검사를 추가했다. 실제 소스를 VM에서 실행하고 제한 시간을 걸어, 회귀 시 테스트 프로세스까지 무한 반복하지 않게 한다. 솔로몬은 VM 내부에서만 노출하며 공개 API에는 추가하지 않는다.
+- 검증: 배치 검사 10개와 기존 솔로몬/ONNX 대전 5개를 Chromium에서 통과했다(실제 Node Local AI 끝까지 대전 포함). 별도로 Chromium·Firefox·WebKit에서 원본 JS와 빌드 번들 각각에 순환 필드를 넣어 후보 검사 후 `requestAnimationFrame`·새로고침이 완료되는 6개 테스트도 통과했다. `puyow.html` 기본값은 원본 JS이므로 번들 테스트는 원본 스크립트 응답만 실제 빌드 산출물로 교체한다. ESLint와 webpack 빌드를 통과했고 번들을 갱신했다. 버전값 자체는 테스트하지 않았다.
+- 이전에 언급한 서버 취소 전파/동시 실행 상한, 학습 요청 큐의 제한 시간, ONNX Worker 장애는 별도로 계측할 안정성 점검 대상이지 이번 재현의 전제나 확정 원인이 아니다. 이번 수정은 확인된 공통 무한 반복을 제거하며 서버/API 동작은 변경하지 않는다. 장시간 실제 플레이에서 다른 종류의 정지가 없는지는 별도 확인이 필요하다.
 
 ### Local AI 서버에 보내는 배치 후보 목록
 

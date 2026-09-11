@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 48;
+    const BUILDNO = 49;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -4020,6 +4020,55 @@
      */
     function canPlace(player, active) {
         return activeCells(active).every((cell) => cell.x >= 0 && cell.x < COLUMNS && cell.y >= 0 && cell.y < ROWS && !player.board[cell.y][cell.x]);
+    }
+
+    /**
+     * 학습형 적이 사용하는 '먼저 가로 이동한 뒤 회전' 경로를 검사한다.
+     * @param {PlayerState} player CPU 플레이어
+     * @param {{x:number,rotation:number}} result 목표 배치
+     * @returns {boolean} 현재 조작 뿌요로 목표에 도달할 수 있는지 여부
+     */
+    function canUseAiPlacement(player, result) {
+        const active = player.active;
+        // 조작 뿌요가 사라졌거나 좌표가 잘못됐으면 이동·회전 반복에 진입하지 않는다.
+        if (!active || !Number.isInteger(active.x) || active.x < 0 || active.x >= COLUMNS
+            || !Number.isFinite(active.y) || !Number.isInteger(active.rotation) || active.rotation < 0 || active.rotation > 3
+            || !result || !Number.isInteger(result.x) || !Number.isInteger(result.rotation)
+            || result.x < 0 || result.x >= COLUMNS || result.rotation < 0 || result.rotation > 3) return false;
+        if (!player.aiSimulations.some((simulation) => simulation.x === result.x && simulation.rotation === result.rotation)) return false;
+        let simulated = { ...active };
+        // 정수 X가 목표에 한 칸씩 가까워지므로 가로 이동은 유한 번 안에 끝난다.
+        while (simulated.x !== result.x) {
+            const candidate = { ...simulated, x: simulated.x + (simulated.x < result.x ? 1 : -1) };
+            if (!canPlace(player, candidate)) return false;
+            simulated = candidate;
+        }
+        const visited = new Set();
+        while (simulated.rotation !== result.rotation) {
+            // 회전 실패 시 180도 뒤집기가 성공해도 목표에 가까워지는 것은 아니다.
+            // 고정된 보드·Y에서 같은 X와 회전을 다시 만나면 이후 경로도 같아 영원히 반복된다.
+            // 킥으로 X가 바뀌므로 회전값만이 아닌 (X, 회전)을 기록한다(최대 COLUMNS * 4개).
+            const state = simulated.x * 4 + simulated.rotation;
+            if (visited.has(state)) return false;
+            visited.add(state);
+            const rotationDelta = (result.rotation - simulated.rotation + 4) % 4;
+            const direction = rotationDelta === 3 ? -1 : 1;
+            const candidate = { ...simulated, rotation: (simulated.rotation + direction + 4) % 4 };
+            if (canPlace(player, candidate)) {
+                simulated = candidate;
+                continue;
+            }
+            const horizontalKick = candidate.rotation === 1 ? -1 : candidate.rotation === 3 ? 1 : 0;
+            const kicked = { ...candidate, x: candidate.x + horizontalKick };
+            if (horizontalKick && canPlace(player, kicked)) {
+                simulated = kicked;
+                continue;
+            }
+            const flipped = { ...simulated, rotation: (simulated.rotation + direction * 2 + 4) % 4 };
+            if (!canPlace(player, flipped)) return false;
+            simulated = flipped;
+        }
+        return simulated.x === result.x;
     }
 
     /**
@@ -14817,34 +14866,7 @@
 
         /** 실제 뿌요가 API 결과의 X까지 먼저 이동한 뒤 회전할 수 있는지 검사한다. @param {PlayerState} player CPU 플레이어 @param {{x:number,rotation:number}} result API 결과 @returns {boolean} */
         canUsePlacement(player, result) {
-            if (!result || !Number.isInteger(result.x) || !Number.isInteger(result.rotation)
-                || result.x < 0 || result.x >= COLUMNS || result.rotation < 0 || result.rotation > 3) return false;
-            if (!player.aiSimulations.some((simulation) => simulation.x === result.x && simulation.rotation === result.rotation)) return false;
-            let simulated = { ...player.active };
-            while (simulated.x !== result.x) {
-                const candidate = { ...simulated, x: simulated.x + (simulated.x < result.x ? 1 : -1) };
-                if (!canPlace(player, candidate)) return false;
-                simulated = candidate;
-            }
-            while (simulated.rotation !== result.rotation) {
-                const rotationDelta = (result.rotation - simulated.rotation + 4) % 4;
-                const direction = rotationDelta === 3 ? -1 : 1;
-                const candidate = { ...simulated, rotation: (simulated.rotation + direction + 4) % 4 };
-                if (canPlace(player, candidate)) {
-                    simulated = candidate;
-                    continue;
-                }
-                const horizontalKick = candidate.rotation === 1 ? -1 : candidate.rotation === 3 ? 1 : 0;
-                const kicked = { ...candidate, x: candidate.x + horizontalKick };
-                if (horizontalKick && canPlace(player, kicked)) {
-                    simulated = kicked;
-                    continue;
-                }
-                const flipped = { ...simulated, rotation: (simulated.rotation + direction * 2 + 4) % 4 };
-                if (!canPlace(player, flipped)) return false;
-                simulated = flipped;
-            }
-            return simulated.x === result.x;
+            return canUseAiPlacement(player, result);
         }
 
         /**
@@ -16737,34 +16759,7 @@
 
         /** 실제 뿌요가 목표 X까지 먼저 이동한 뒤 그 회전까지 도달할 수 있는지 검사한다. @param {PlayerState} player CPU 플레이어 @param {{x:number,rotation:number}} result 검사할 배치 @returns {boolean} 사용 가능 여부 */
         canUsePlacement(player, result) {
-            if (!player.active || !result || !Number.isInteger(result.x) || !Number.isInteger(result.rotation)
-                || result.x < 0 || result.x >= COLUMNS || result.rotation < 0 || result.rotation > 3) return false;
-            if (!player.aiSimulations.some((simulation) => simulation.x === result.x && simulation.rotation === result.rotation)) return false;
-            let simulated = { ...player.active };
-            while (simulated.x !== result.x) {
-                const candidate = { ...simulated, x: simulated.x + (simulated.x < result.x ? 1 : -1) };
-                if (!canPlace(player, candidate)) return false;
-                simulated = candidate;
-            }
-            while (simulated.rotation !== result.rotation) {
-                const rotationDelta = (result.rotation - simulated.rotation + 4) % 4;
-                const direction = rotationDelta === 3 ? -1 : 1;
-                const candidate = { ...simulated, rotation: (simulated.rotation + direction + 4) % 4 };
-                if (canPlace(player, candidate)) {
-                    simulated = candidate;
-                    continue;
-                }
-                const horizontalKick = candidate.rotation === 1 ? -1 : candidate.rotation === 3 ? 1 : 0;
-                const kicked = { ...candidate, x: candidate.x + horizontalKick };
-                if (horizontalKick && canPlace(player, kicked)) {
-                    simulated = kicked;
-                    continue;
-                }
-                const flipped = { ...simulated, rotation: (simulated.rotation + direction * 2 + 4) % 4 };
-                if (!canPlace(player, flipped)) return false;
-                simulated = flipped;
-            }
-            return simulated.x === result.x;
+            return canUseAiPlacement(player, result);
         }
 
         /**
