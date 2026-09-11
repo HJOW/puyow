@@ -157,7 +157,7 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
       titleScreen: tools.now_screen.execute()
     };
   });
-  expect(schema.screenEnum).toEqual(expect.arrayContaining(['puzzle_stage_select', 'watch_select', 'together_guide']));
+  expect(schema.screenEnum).toEqual(expect.arrayContaining(['puzzle_stage_select', 'watch_select', 'together_mode_select', 'together_guide']));
   expect(schema.screenRequired).toEqual(['screen', 'playerCanControl', 'mode', 'rule', 'replayPlayback', 'modelLoading', 'confirmDialogOpen']);
   expect(schema.statusRequired).toEqual(expect.arrayContaining(['puzzle', 'watch', 'feverStart', 'mode', 'rule', 'elapsed', 'marginRate', 'timeProgressMultiplier', 'allClearTicketEnabled', 'replayPlayback', 'together']));
   expect(schema.playerRequired).toEqual(expect.arrayContaining(['point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount', 'allClearTicket']));

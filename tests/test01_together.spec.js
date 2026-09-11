@@ -5,10 +5,12 @@ import { setupGamePage, enterMainMenu, translated, enableReplayFeature, clickRep
 
 setupGamePage();
 
-/** 메인 메뉴에서 "너랑 나랑" 안내 화면을 연다. 규칙 선택 오버레이 없이 곧바로 넘어간다. */
+/** 메인 메뉴에서 "너랑 나랑" 방식 선택을 거쳐 오프라인 플레이 안내 화면을 연다. 방식 선택의 첫 포커스는 오프라인 플레이다. */
 async function openTogetherGuide(page) {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_mode_select');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
 }
@@ -23,7 +25,7 @@ async function startTogetherGame(page, colorPresses = 0) {
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('playing');
 }
 
-test('너랑 나랑은 메인 메뉴에서 바로 안내 화면으로 넘어가고 취소로 메인 메뉴에 돌아간다', async ({ page }) => {
+test('너랑 나랑의 오프라인 플레이 안내 화면은 취소로 메인 메뉴에 돌아간다', async ({ page }) => {
   await openTogetherGuide(page);
 
   // 규칙·색상 수 행을 지나 동작 행의 취소를 고르면 메인 메뉴로 돌아간다.
@@ -35,14 +37,77 @@ test('너랑 나랑은 메인 메뉴에서 바로 안내 화면으로 넘어가�
 
   // ESC로도 메인 메뉴로 돌아간다.
   await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_mode_select');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
+test('너랑 나랑 방식 선택은 비활성 온라인 플레이를 건너뛰고 키보드·마우스로 오프라인 플레이와 취소를 고른다', async ({ page }) => {
+  const currentScreen = () => page.evaluate(() => window.WebPuyo.getScreenState().screen);
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(currentScreen).toBe('together_mode_select');
+  const selectionTexts = await Promise.all([
+    translated(page, '너랑 나랑'), translated(page, '오프라인 플레이'), translated(page, '온라인 플레이'), translated(page, '준비 중'), translated(page, '취소'),
+  ]);
+  await expect.poll(() => page.evaluate((texts) => texts.every((text) => window.testCanvasTexts.includes(text)), selectionTexts)).toBe(true);
+
+  // 첫 포커스는 오프라인 플레이이며, 오른쪽으로 한 번 이동하면 비활성 온라인 플레이를 건너뛰고 취소에 닿는다.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(currentScreen).toBe('main_menu');
+
+  // 아래 방향키도 온라인 플레이를 건너뛰고 끝에서는 더 이동하지 않으며, 위 방향키로 오프라인 플레이에 돌아온다.
+  await page.keyboard.press('Enter');
+  await expect.poll(currentScreen).toBe('together_mode_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Enter');
+  await expect.poll(currentScreen).toBe('together_guide');
+  const guideTitle = await translated(page, '오프라인 너랑 나랑 플레이');
+  await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), guideTitle)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect.poll(currentScreen).toBe('main_menu');
+
+  // ESC는 방식 선택만 닫고 메인 메뉴에 머문다.
+  await page.keyboard.press('Enter');
+  await expect.poll(currentScreen).toBe('together_mode_select');
+  await page.keyboard.press('Escape');
+  await expect.poll(currentScreen).toBe('main_menu');
+
+  // 버튼은 논리 좌표 Y 321~399에 폭 250, 간격 18로 가운데 정렬된다(오프라인 X 247, 온라인 X 515, 취소 X 783).
+  const box = await page.locator('[data-puyow-canvas="2d"]').boundingBox();
+  const scale = box.width / 1280;
+  const clickLogical = (logicalX, logicalY) => page.mouse.click(box.x + logicalX * scale, box.y + logicalY * scale);
+  await page.keyboard.press('Enter');
+  await expect.poll(currentScreen).toBe('together_mode_select');
+  // 비활성 온라인 플레이는 클릭해도 아무 화면으로도 넘어가지 않는다.
+  await clickLogical(640, 360);
+  await page.waitForTimeout(300);
+  expect(await currentScreen()).toBe('together_mode_select');
+  await clickLogical(908, 360);
+  await expect.poll(currentScreen).toBe('main_menu');
+
+  // 버튼 밖을 클릭하면 취소와 같이 메인 메뉴로 돌아간다.
+  await page.keyboard.press('Enter');
+  await expect.poll(currentScreen).toBe('together_mode_select');
+  await clickLogical(640, 560);
+  await expect.poll(currentScreen).toBe('main_menu');
+
+  await page.keyboard.press('Enter');
+  await expect.poll(currentScreen).toBe('together_mode_select');
+  await clickLogical(372, 360);
+  await expect.poll(currentScreen).toBe('together_guide');
+});
+
 test('너랑 나랑 안내 화면은 조작키 안내와 규칙·색상 수 선택을 보여 준다', async ({ page }) => {
   await openTogetherGuide(page);
   const guideTexts = await Promise.all([
+    translated(page, '오프라인 너랑 나랑 플레이'),
     translated(page, '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.'),
     translated(page, '이동: 방향키 또는 F(좌) H(우) B(아래)'),
     translated(page, '이동: 키패드 4(좌) 6(우) 2(아래)'),
@@ -239,7 +304,9 @@ test('너랑 나랑 결과 화면은 다시 플레이로 승패 현황을 잇고
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 
-  // 메인 메뉴 포커스는 "너랑 나랑"에 그대로 남아 있으므로 Enter만 눌러 안내 화면을 다시 연다.
+  // 메인 메뉴 포커스는 "너랑 나랑"에 그대로 남아 있으므로 Enter로 방식 선택을 열고, 첫 포커스인 오프라인 플레이로 안내 화면을 다시 연다.
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_mode_select');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
   await startTogetherGame(page);

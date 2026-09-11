@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 49;
+    const BUILDNO = 50;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -491,6 +491,7 @@
     // "너랑 나랑"(한 컴퓨터 2인 대전) 관련 문구다. 독일어·프랑스어 표도 위에서 영어 표를 복사한 뒤이므로 언어별로 각각 추가한다.
     Object.assign(stringTable.en, {
         '너랑 나랑': 'Play Together', '다시 플레이': 'Play Again', '전적': 'Record', '%1승': '%1 W',
+        '오프라인 플레이': 'Offline Play', '온라인 플레이': 'Online Play', '준비 중': 'Coming Soon', '오프라인 너랑 나랑 플레이': 'Offline-Based Play Together',
         '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.': 'Two players share one computer for a head-to-head match.',
         '키보드 하나를 둘이 나눠 사용합니다.': 'Both players share the same keyboard.',
         '이동: 방향키 또는 F(좌) H(우) B(아래)': 'Move: arrow keys, or F (left), H (right), B (down)',
@@ -502,6 +503,7 @@
     });
     Object.assign(stringTable.ja, {
         '너랑 나랑': '二人プレイ', '다시 플레이': 'もう一度プレイ', '전적': '戦績', '%1승': '%1勝',
+        '오프라인 플레이': 'オフラインプレイ', '온라인 플레이': 'オンラインプレイ', '준비 중': '準備中', '오프라인 너랑 나랑 플레이': 'オフライン二人プレイ',
         '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.': '一台のコンピューターで二人が対戦します。',
         '키보드 하나를 둘이 나눠 사용합니다.': 'キーボード一つを二人で分けて使います。',
         '이동: 방향키 또는 F(좌) H(우) B(아래)': '移動: 方向キー または F(左) H(右) B(下)',
@@ -513,6 +515,7 @@
     });
     Object.assign(stringTable.zh, {
         '너랑 나랑': '双人对战', '다시 플레이': '再玩一次', '전적': '战绩', '%1승': '%1胜',
+        '오프라인 플레이': '离线对战', '온라인 플레이': '在线对战', '준비 중': '敬请期待', '오프라인 너랑 나랑 플레이': '离线双人对战',
         '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.': '两名玩家在同一台电脑上对战。',
         '키보드 하나를 둘이 나눠 사용합니다.': '两名玩家共用一个键盘。',
         '이동: 방향키 또는 F(좌) H(우) B(아래)': '移动：方向键，或 F（左）H（右）B（下）',
@@ -524,6 +527,7 @@
     });
     Object.assign(stringTable.de, {
         '너랑 나랑': 'Zusammen spielen', '다시 플레이': 'Nochmal spielen', '전적': 'Bilanz', '%1승': '%1 S',
+        '오프라인 플레이': 'Offline spielen', '온라인 플레이': 'Online spielen', '준비 중': 'Demnächst', '오프라인 너랑 나랑 플레이': 'Offline zusammen spielen',
         '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.': 'Zwei Personen spielen an einem Computer gegeneinander.',
         '키보드 하나를 둘이 나눠 사용합니다.': 'Beide teilen sich dieselbe Tastatur.',
         '이동: 방향키 또는 F(좌) H(우) B(아래)': 'Bewegen: Pfeiltasten oder F (links), H (rechts), B (runter)',
@@ -535,6 +539,7 @@
     });
     Object.assign(stringTable.fr, {
         '너랑 나랑': 'Jouer à deux', '다시 플레이': 'Rejouer', '전적': 'Bilan', '%1승': '%1 V',
+        '오프라인 플레이': 'Jouer hors ligne', '온라인 플레이': 'Jouer en ligne', '준비 중': 'Bientôt', '오프라인 너랑 나랑 플레이': 'Jouer à deux hors ligne',
         '한 대의 컴퓨터에서 두 사람이 함께 대전합니다.': 'Deux joueurs s’affrontent sur un même ordinateur.',
         '키보드 하나를 둘이 나눠 사용합니다.': 'Les deux joueurs partagent le même clavier.',
         '이동: 방향키 또는 F(좌) H(우) B(아래)': 'Déplacer : flèches, ou F (gauche), H (droite), B (bas)',
@@ -729,6 +734,20 @@
     let watchSelectionFocus = 0;
     /** 구경 설정 하단에서 포커스된 동작이다. 0: 시작, 1: 취소. @type {number} */
     let watchSelectedAction = 0;
+    /** 메인 메뉴의 "너랑 나랑" 방식(오프라인·온라인) 선택 오버레이가 열려 있는지 여부다. @type {boolean} */
+    let togetherModeSelectionOpen = false;
+    /** "너랑 나랑" 방식 선택 오버레이에서 포커스된 TOGETHER_MODE_OPTIONS 순번이다. @type {number} */
+    let togetherModeSelectionFocus = 0;
+    /**
+     * "너랑 나랑" 방식 선택지다. 오프라인 플레이는 기존 한 컴퓨터 2인 대전 안내 화면으로 이어진다.
+     * 온라인 플레이는 추후 구현 예정이라 비활성화해 두며, 포커스 이동에서 건너뛰고 클릭·Enter로도 실행하지 않는다.
+     * @type {{key:'offline'|'online'|'cancel', label:string, backgroundColor:string, disabled?:boolean, statusLabel?:string}[]}
+     */
+    const TOGETHER_MODE_OPTIONS = [
+        { key: 'offline', label: '오프라인 플레이', backgroundColor: '#7e57c2' },
+        { key: 'online', label: '온라인 플레이', backgroundColor: '#236a8b', disabled: true, statusLabel: '준비 중' },
+        { key: 'cancel', label: '취소', backgroundColor: '#455a64' }
+    ];
     /** "너랑 나랑" 안내 화면에서 선택한 대전 규칙이다. @type {'standard'|'fever'|'feverStart'} */
     let togetherRule = 'standard';
     /** "너랑 나랑" 안내 화면에서 선택한 색상 수의 DIFFICULTIES 배열 인덱스다. @type {number} */
@@ -2238,6 +2257,7 @@
         if (game) return null;
         if (menuScreen === 'title' && ruleSelectionOpen) return `rule:${ruleSelectionFocus}`;
         if (menuScreen === 'title' && watchSelectionOpen) return `watch:${watchSelectionFocus}:${watchDifficulty}:${watchRule}:${watchSelectedAction}`;
+        if (menuScreen === 'title' && togetherModeSelectionOpen) return `togetherMode:${togetherModeSelectionFocus}`;
         if (menuScreen === 'togetherGuide') return `togetherGuide:${togetherGuideFocus}:${togetherRule}:${togetherDifficulty}:${togetherGuideAction}`;
         if (menuScreen === 'title') return `title:${titleMenuFocus}`;
         if (menuScreen === 'opponent') return `opponent:${opponentMenuFocus}:${selectedDifficulty}:${selectedAiDifficulty}:${selectedOpponent}:${selectedOpponentAction}`;
@@ -8770,6 +8790,7 @@
         simulator = null;
         gallery = null;
         ruleSelectionOpen = false;
+        togetherModeSelectionOpen = false;
         togetherWinCounts = [0, 0];
         if (settingsResetTimer !== null) window.clearTimeout(settingsResetTimer);
         settingsResetTimer = window.setTimeout(() => {
@@ -10171,6 +10192,7 @@
     /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 연다. @returns {void} */
     function openRuleSelection() {
         watchSelectionOpen = false;
+        togetherModeSelectionOpen = false;
         ruleSelectionOpen = true;
         ruleSelectionFocus = getSelectableRuleOptionIndices()[0] ?? 0;
     }
@@ -10185,6 +10207,7 @@
     /** 메인 메뉴 위에 구경 모드 설정 오버레이를 연다. @returns {void} */
     function openWatchSelection() {
         ruleSelectionOpen = false;
+        togetherModeSelectionOpen = false;
         watchSelectionOpen = true;
         watchDifficulty = 1;
         watchRule = 'standard';
@@ -10282,6 +10305,82 @@
         });
     }
 
+    /** 포커스할 수 있는 "너랑 나랑" 방식 선택지의 순번을 반환한다. 비활성 선택지(온라인 플레이)는 빠진다. @returns {number[]} 포커스 가능한 선택지 순번 */
+    function getSelectableTogetherModeIndices() {
+        return TOGETHER_MODE_OPTIONS.map((option, index) => option.disabled ? -1 : index).filter((index) => index >= 0);
+    }
+
+    /** "너랑 나랑" 방식 선택 오버레이의 버튼 영역을 반환한다. 그리기와 클릭 판정이 함께 쓴다. @param {number} index TOGETHER_MODE_OPTIONS 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getTogetherModeButtonBounds(index) {
+        const width = 250;
+        const gap = 18;
+        const totalWidth = TOGETHER_MODE_OPTIONS.length * width + (TOGETHER_MODE_OPTIONS.length - 1) * gap;
+        return { x: (WIDTH - totalWidth) / 2 + index * (width + gap), y: 321, width, height: 78 };
+    }
+
+    /** 메인 메뉴 위에 "너랑 나랑" 방식 선택 오버레이를 연다. 첫 포커스는 선택 가능한 첫 항목(오프라인 플레이)이다. @returns {void} */
+    function openTogetherModeSelection() {
+        ruleSelectionOpen = false;
+        watchSelectionOpen = false;
+        togetherModeSelectionOpen = true;
+        togetherModeSelectionFocus = getSelectableTogetherModeIndices()[0] ?? 0;
+    }
+
+    /** "너랑 나랑" 방식 선택 오버레이를 닫고 메인 메뉴에 머문다. @returns {void} */
+    function closeTogetherModeSelection() {
+        togetherModeSelectionOpen = false;
+        togetherModeSelectionFocus = 0;
+    }
+
+    /** "너랑 나랑" 방식 선택에서 포커스된 항목을 실행한다. 비활성 항목은 아무 동작도 하지 않는다. @returns {void} */
+    function activateTogetherModeSelection() {
+        const option = TOGETHER_MODE_OPTIONS[togetherModeSelectionFocus];
+        if (!option || option.disabled) return;
+        if (option.key === 'cancel') {
+            playMenuCancelSound();
+            closeTogetherModeSelection();
+            return;
+        }
+        playMenuSelectSound();
+        closeTogetherModeSelection();
+        openTogetherGuide();
+    }
+
+    /** "너랑 나랑" 방식 선택 오버레이의 키보드·게임패드 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
+    function handleTogetherModeSelectionKey(key) {
+        if (key === 'escape') { playMenuCancelSound(); closeTogetherModeSelection(); return; }
+        if (key === 'enter' || key === ' ') { activateTogetherModeSelection(); return; }
+        if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
+        // 한 줄로 놓인 선택지이므로 왼쪽·위는 이전, 오른쪽·아래는 다음 항목이며 비활성 항목은 건너뛴다.
+        const direction = key === 'arrowleft' || key === 'arrowup' ? -1 : 1;
+        const choices = getSelectableTogetherModeIndices();
+        const nextIndex = choices[choices.indexOf(togetherModeSelectionFocus) + direction];
+        if (nextIndex !== undefined) togetherModeSelectionFocus = nextIndex;
+    }
+
+    /** 메인 메뉴를 음영 처리하고 오프라인 플레이·온라인 플레이·취소 선택지를 그린다. @returns {void} */
+    function drawTogetherModeSelectionOverlay() {
+        context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        // 제목이 음영 뒤 메인 메뉴 버튼과 겹쳐 보이지 않도록 선택지 전체를 불투명한 패널 위에 놓는다.
+        context.fillStyle = '#0b1b26'; context.fillRect(WIDTH / 2 - 430, 214, 860, 208);
+        context.strokeStyle = '#3b6070'; context.lineWidth = 2; context.strokeRect(WIDTH / 2 - 430, 214, 860, 208);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `38px ${TITLE_FONT}`;
+        context.fillText(translate('너랑 나랑'), WIDTH / 2, 280);
+        TOGETHER_MODE_OPTIONS.forEach((option, index) => {
+            const bounds = getTogetherModeButtonBounds(index);
+            const disabled = option.disabled === true;
+            const focused = !disabled && index === togetherModeSelectionFocus;
+            context.fillStyle = disabled ? '#3c4650' : option.backgroundColor; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = disabled ? '#7c8791' : focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = disabled ? '#c4cbd0' : '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
+            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (option.statusLabel ? 32 : 47));
+            if (option.statusLabel) {
+                context.fillStyle = '#f0c674'; context.font = `15px ${BUTTON_FONT}`;
+                context.fillText(translate(option.statusLabel), bounds.x + bounds.width / 2, bounds.y + 59);
+            }
+        });
+    }
+
     /** 포커스할 수 있는 "너랑 나랑" 규칙 선택지의 순번을 반환한다. @returns {number[]} 포커스 가능한 선택지 순번 */
     function getSelectableTogetherRuleIndices() {
         return TOGETHER_RULE_OPTIONS.map((option, index) => isGameRuleOptionDisabled(option) ? -1 : index).filter((index) => index >= 0);
@@ -10296,13 +10395,14 @@
     }
 
     /**
-     * 메인 메뉴에서 곧바로 "너랑 나랑" 안내 화면을 연다. 규칙과 색상 수는 이 화면에서 함께 고른다.
+     * "너랑 나랑" 방식 선택에서 오프라인 플레이를 고르면 기존 한 컴퓨터 2인 대전 안내 화면을 연다. 규칙과 색상 수는 이 화면에서 함께 고른다.
      * 안내 화면으로 새로 들어올 때마다 누적 승수를 초기화하므로, 승수를 이어가려면 결과 화면의 "다시 플레이"를 쓴다.
      * @returns {void}
      */
     function openTogetherGuide() {
         ruleSelectionOpen = false;
         watchSelectionOpen = false;
+        togetherModeSelectionOpen = false;
         togetherRule = TOGETHER_RULE_OPTIONS[getSelectableTogetherRuleIndices()[0] ?? 0].key;
         togetherDifficulty = 1;
         togetherGuideFocus = 0;
@@ -10372,7 +10472,7 @@
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
         context.textAlign = 'center';
         context.fillStyle = '#d8f2f5'; context.font = `36px ${TITLE_FONT}`;
-        context.fillText(translate('너랑 나랑'), WIDTH / 2, 100);
+        context.fillText(translate('오프라인 너랑 나랑 플레이'), WIDTH / 2, 100);
         context.fillStyle = '#b8dbe2'; context.font = `18px ${MESSAGE_FONT}`;
         context.fillText(translate('한 대의 컴퓨터에서 두 사람이 함께 대전합니다.'), WIDTH / 2, 146);
         context.fillText(translate('키보드 하나를 둘이 나눠 사용합니다.'), WIDTH / 2, 174);
@@ -10847,6 +10947,7 @@
         if (menuScreen === 'title') drawNotice();
         if (menuScreen === 'title' && ruleSelectionOpen) drawRuleSelectionOverlay();
         if (menuScreen === 'title' && watchSelectionOpen) drawWatchSelectionOverlay();
+        if (menuScreen === 'title' && togetherModeSelectionOpen) drawTogetherModeSelectionOverlay();
     }
 
     /** 일시정지 화면의 조작 버튼과 논리 캔버스 좌표를 반환한다. @returns {{key:'resume'|'restart'|'exit',label:string,color:string,x:number,y:number,width:number,height:number}[]} 버튼 목록 */
@@ -11771,6 +11872,10 @@
                 handleWatchSelectionKey(key);
                 return;
             }
+            if (menuScreen === 'title' && togetherModeSelectionOpen) {
+                handleTogetherModeSelectionKey(key);
+                return;
+            }
             if (menuScreen === 'togetherGuide') {
                 handleTogetherGuideKey(key);
                 return;
@@ -11956,7 +12061,7 @@
         if (isTitleMenuItemLocked(titleMenuFocus)) return;
         playMenuSelectSound();
         if (titleMenuFocus === 0) openRuleSelection();
-        else if (titleMenuFocus === 1) openTogetherGuide();
+        else if (titleMenuFocus === 1) openTogetherModeSelection();
         else if (titleMenuFocus === 2) openSimulator();
         else if (titleMenuFocus === 3) openTutorial();
         else if (titleMenuFocus === TITLE_WATCH_MENU_INDEX) openWatchSelection();
@@ -12296,6 +12401,23 @@
             }
             return;
         }
+        if (menuScreen === 'title' && togetherModeSelectionOpen) {
+            const selectedIndex = TOGETHER_MODE_OPTIONS.findIndex((option, index) => {
+                const bounds = getTogetherModeButtonBounds(index);
+                return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+            });
+            if (selectedIndex >= 0) {
+                // 비활성 선택지(온라인 플레이)는 클릭해도 포커스·실행 모두 바꾸지 않는다.
+                if (!TOGETHER_MODE_OPTIONS[selectedIndex].disabled) {
+                    togetherModeSelectionFocus = selectedIndex;
+                    activateTogetherModeSelection();
+                }
+            } else {
+                playMenuCancelSound();
+                closeTogetherModeSelection();
+            }
+            return;
+        }
         if (menuScreen === 'togetherGuide') {
             const ruleIndex = TOGETHER_RULE_OPTIONS.findIndex((option, index) => {
                 const bounds = getTogetherGuideRuleButtonBounds(index);
@@ -12588,7 +12710,7 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_mode_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
         if (settingsResetting) return { screen: 'settings_resetting', playerCanControl: false };
@@ -12596,6 +12718,7 @@
             if (menuScreen === 'initialTitle') return { screen: 'initial_title', playerCanControl: false };
             if (menuScreen === 'title' && ruleSelectionOpen) return { screen: 'rule_select', playerCanControl: false };
             if (menuScreen === 'title' && watchSelectionOpen) return { screen: 'watch_select', playerCanControl: false };
+            if (menuScreen === 'title' && togetherModeSelectionOpen) return { screen: 'together_mode_select', playerCanControl: false };
             if (menuScreen === 'togetherGuide') return { screen: 'together_guide', playerCanControl: false };
             if (menuScreen === 'opponent') return { screen: opponentMenuRule !== 'standard' ? 'fever_opponent_select' : 'opponent_select', playerCanControl: false };
             if (menuScreen === 'practiceDifficulty') return { screen: 'practice_difficulty', playerCanControl: false };
@@ -12737,7 +12860,7 @@
     /**
      * 현재 표시 중인 화면과 플레이어 조작 가능 여부를 반환한다.
      * 메뉴, 튜토리얼, 대전 진행 상태 모두에서 사용할 수 있다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_mode_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getScreenState() {
         return getNowScreen();
@@ -12954,7 +13077,7 @@
         webMcpAbortController = new AbortController();
         const emptyInput = { type: 'object', properties: {}, additionalProperties: false };
         // getNowScreen()이 돌려줄 수 있는 화면 이름을 모두 담는다. 화면을 더하면 이 목록도 함께 고친다.
-        const screenNames = ['initial_title', 'main_menu', 'rule_select', 'watch_select', 'together_guide', 'practice_difficulty', 'puzzle_stage_select', 'opponent_select', 'fever_opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'settings_resetting', 'gallery', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'];
+        const screenNames = ['initial_title', 'main_menu', 'rule_select', 'watch_select', 'together_mode_select', 'together_guide', 'practice_difficulty', 'puzzle_stage_select', 'opponent_select', 'fever_opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'settings_resetting', 'gallery', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'];
         const modeNames = ['versus', 'together', 'practice', 'watch', 'continuous_fever', 'puzzle'];
         const ruleNames = ['standard', 'fever', 'fever_start', 'continuous_fever'];
         const playerCanControlSchema = { type: 'boolean', description: 'True only while the left human player (1P) controls an active pair. Always false in watch mode and during replay playback. In together mode it describes 1P only.' };
@@ -12962,7 +13085,7 @@
         const screenSchema = {
             type: 'object',
             properties: {
-                screen: { type: 'string', enum: screenNames, description: 'The exact visible title, menu, together-mode guide, puzzle-stage selection, gallery, simulator, tutorial, or match screen. game_over is the match result screen.' },
+                screen: { type: 'string', enum: screenNames, description: 'The exact visible title, menu, together-mode selection or guide, puzzle-stage selection, gallery, simulator, tutorial, or match screen. game_over is the match result screen.' },
                 playerCanControl: playerCanControlSchema,
                 mode: { type: ['string', 'null'], enum: [...modeNames, null], description: 'Match mode, or null outside a match (menus, simulator, gallery, settings, tutorial).' },
                 rule: { type: ['string', 'null'], enum: [...ruleNames, null], description: 'Match rule, or null outside a match.' },
@@ -13104,14 +13227,15 @@
                     'A player loses when cell (2, 11) is filled. FEVER rules and continuous fever also use cell (3, 11).',
                     'Keyboard: Left and Right move, Z rotates one way while X and Up rotate the other way, holding Down drops faster, and Escape pauses. Gamepads and an on-screen virtual joystick with Z, X, and ESC buttons also work.',
                     'Modes: the standard rule, FEVER rule, and FEVER rule (start) are matches against a CPU opponent. In the standard rule an all-clear grants a ticket that adds 2100 points and 30 ATTACK to your next colored-puyo explosion. In FEVER rules each player has a FEVER gauge; when it fills, the player plays preset chain patterns on a separate FEVER field under a time limit, and FEVER rule (start) begins both players inside FEVER with 60 seconds. Practice is solo play. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result.',
-                    'Together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',
+                    'Choosing Together mode in the main menu first opens a selection of Offline Play, Online Play, and Cancel (together_mode_select). Online Play is not available yet and cannot be focused or chosen. Offline Play opens the offline together guide (together_guide), where the rule and color count are chosen.',
+                    'Offline together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',
                     'Replays of recorded matches can be played back from the main menu; during playback no input is accepted except Escape, which skips to the result screen. The tutorial, simulator, gallery, and settings are separate menu screens. Some menus open a confirmation dialog that captures all input until it is answered.',
                     'Tools: now_screen returns the exact screen, the match mode and rule, and whether a replay, ONNX model loading, or confirmation dialog is in progress. now_game_status works only while a match is playing or paused, in every mode including watch, together, and replay playback. point_recommend works only while now_screen reports playerCanControl, and marks one cell on the left field until the active pair locks. show_message displays already-localized text at the top of the current screen.'
                 ].join('\n\n')
             },
             {
                 name: 'now_screen',
-                description: 'Get the exact visible Puyo W screen: initial title, main menu, rule or watch selection, together-mode guide, standard or FEVER opponent selection, practice or continuous-fever color selection, Puzzle Puyo stage selection, simulator modes, settings, gallery, tutorial phases, match countdown, playing, pause, ending animation, or the result screen (game_over). Also reports the match mode and rule, replay playback, ONNX model loading, and whether a confirmation dialog is open. playerCanControl is true only while the left human player (1P) controls an active pair.',
+                description: 'Get the exact visible Puyo W screen: initial title, main menu, rule or watch selection, together-mode selection or offline together guide, standard or FEVER opponent selection, practice or continuous-fever color selection, Puzzle Puyo stage selection, simulator modes, settings, gallery, tutorial phases, match countdown, playing, pause, ending animation, or the result screen (game_over). Also reports the match mode and rule, replay playback, ONNX model loading, and whether a confirmation dialog is open. playerCanControl is true only while the left human player (1P) controls an active pair.',
                 inputSchema: emptyInput,
                 outputSchema: screenSchema,
                 execute: getWebMcpScreen
@@ -13230,6 +13354,8 @@
         watchSelectionOpen = false;
         watchSelectionFocus = 0;
         watchSelectedAction = 0;
+        togetherModeSelectionOpen = false;
+        togetherModeSelectionFocus = 0;
         togetherRule = 'standard';
         togetherDifficulty = 1;
         togetherGuideFocus = 0;

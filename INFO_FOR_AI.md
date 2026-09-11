@@ -87,11 +87,13 @@
 | 연속 피버 | 단독 플레이 피버 스테이지. 목표 5연쇄·60초로 시작하며 두 패배 칸을 쓴다. |
 | 퍼즐뿌요 | 항상 5색, `PuzzlePuyoStage` 기반 단독 스테이지다. 오른쪽 영역은 적 필드가 아니라 목표/턴 상태 표시다. |
 | 구경 | 선택 가능한 두 CPU가 자동 대전한다. 플레이 조작은 막고 ESC 일시정지만 허용한다. 결과 뒤 5초면 다음 대전을 자동 시작한다. |
-| 너랑 나랑 | 한 컴퓨터에서 두 사람이 대전한다. 규칙은 기본 룰·피버 룰·피버 룰 (시작)과 같고 양쪽 모두 사람이 조작한다. 진행도·GOLD·AI 학습은 모두 대상이 아니다. |
+| 너랑 나랑 | 메인 메뉴에서 오프라인 플레이·온라인 플레이(비활성, 추후 구현 예정)를 고른다. 오프라인 플레이는 한 컴퓨터에서 두 사람이 대전한다. 규칙은 기본 룰·피버 룰·피버 룰 (시작)과 같고 양쪽 모두 사람이 조작한다. 진행도·GOLD·AI 학습은 모두 대상이 아니다. |
 
 ### 너랑 나랑 (한 컴퓨터 2인 대전)
 
-- 메인 메뉴 두 번째 항목이며 `openTogetherGuide()`가 별도 선택 오버레이 없이 곧바로 안내 화면(`menuScreen`이 `togetherGuide`)을 연다.
+- 메인 메뉴 두 번째 항목이다. BUILDNO 50부터 "너랑 나랑"은 **오프라인 플레이**(기존 한 컴퓨터 2인 대전)와 **온라인 플레이**(추후 구현 예정) 두 방식으로 나뉜다. 항목을 고르면 `openTogetherModeSelection()`이 메인 메뉴를 음영 처리한 방식 선택 오버레이(`togetherModeSelectionOpen`, `getNowScreen()` 화면 이름 `together_mode_select`)를 연다.
+- 방식 선택지는 `TOGETHER_MODE_OPTIONS`의 `오프라인 플레이`·`온라인 플레이`·`취소`를 한 줄로 놓는다. 버튼 영역은 그리기와 클릭 판정이 함께 쓰는 `getTogetherModeButtonBounds()`다. 온라인 플레이는 `disabled: true`와 `준비 중` 표시를 가지며, `getSelectableTogetherModeIndices()`에서 빠지므로 방향키 포커스 이동에서 건너뛰고(왼쪽·위는 이전, 오른쪽·아래는 다음, 순환하지 않는다) 클릭해도 포커스·실행이 바뀌지 않는다. 첫 포커스는 오프라인 플레이다. 오프라인 플레이는 `openTogetherGuide()`로 기존 안내 화면(`menuScreen`이 `togetherGuide`)을 열고, `취소`·ESC·버튼 밖 클릭은 오버레이만 닫고 메인 메뉴에 머문다. 온라인 플레이를 구현할 때는 이 선택지의 `disabled`를 풀고 `activateTogetherModeSelection()`의 분기를 더한다.
+- 안내 화면의 제목은 `오프라인 너랑 나랑 플레이`(영어 `Offline-Based Play Together`)다. 메인 메뉴 항목 이름과 방식 선택 오버레이 제목은 여전히 `너랑 나랑`이다.
 - 안내 화면은 조작키 안내와 규칙·색상 수·동작 세 행으로 구성하며 타이틀 화면 대신 전체를 그린다. 포커스(`togetherGuideFocus`)는 0이 규칙, 1이 색상 수, 2가 시작·취소다. 위아래 방향키로 행을 옮기고 좌우 방향키로 값을 고르며, 규칙·색상 수 행에서 Enter를 누르면 다음 행으로 내려간다. 취소와 ESC는 메인 메뉴로 돌아간다.
 - 규칙 선택지는 `TOGETHER_RULE_OPTIONS`의 기본 룰·피버 룰·피버 룰 (시작)이고, 피버 룰 (시작)의 잠금 조건은 기존 규칙 선택과 같은 `isFeverStartRuleUnlocked()`다. 잠긴 선택지는 `잠김` 표시와 함께 좌우 이동에서 건너뛴다.
 - `startTogetherGame()`이 양쪽 `PlayerState`의 컨트롤러를 모두 `null`로 두고 `game.together = { rule, wins }`를 만든다. 이름은 번역하지 않는 `1P`·`2P`(`TOGETHER_PLAYER_NAMES`)이고, 배경·배경음에 쓸 `themeController`만 `PracticeEnemy`로 채운다. 그래서 배경음악은 연습과 같은 공통 곡을 쓴다.
@@ -102,7 +104,7 @@
 - 조작키는 `resolveTogetherKeyInput()` 한 곳에서 판정한다. 1P는 `TOGETHER_PLAYER_ONE_KEY_CODES`(방향키·Z·X와 F·G·H·B), 2P는 `TOGETHER_PLAYER_TWO_KEY_CODES`(키패드 4·6·2·5와 `[`·`]`)를 쓰며 **반드시 물리 키 코드로 판정한다**. NumLock이 꺼져 있으면 키패드가 방향키 문자값을 보내므로, 문자값으로 판정하면 2P 조작이 1P로 새어 들어간다.
 - 방향 홀드 상태는 `playerDirectionInputs[0|1]`에 플레이어별로 있다. 좌우 홀드 반복·빠른 하강·리플레이의 빠른 하강 기록이 모두 `getPlayerDirectionInput(player)`를 거치므로, 새 입력 수단을 붙일 때도 이 배열을 사용한다. 가상 컨트롤러 입력은 1P 전용이다.
 - 게임패드는 `updateGamepadInput()`이 "너랑 나랑"에서만 `navigator.getGamepads()`의 0번을 1P, 1번을 2P로 고정해 읽는다. 그 밖의 화면에서는 예전처럼 첫 번째로 연결된 게임패드 하나만 1P 자리에 쓴다. 게임패드가 만든 내부 이벤트는 `gamepadPlayerIndex`로 조작 대상을 전달한다.
-- `getGameState()`의 `mode`는 `together`, `getNowScreen()`의 화면 이름은 `together_guide`다.
+- `getGameState()`의 `mode`는 `together`, `getNowScreen()`의 화면 이름은 방식 선택이 `together_mode_select`, 안내 화면이 `together_guide`다. 두 이름 모두 WebMCP `now_screen`의 `screenNames`와 `manual` 문구에 들어 있다.
 
 ### 피버와 연속 피버
 
