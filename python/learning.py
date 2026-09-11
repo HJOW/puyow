@@ -51,7 +51,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from collections import deque
+from collections import Counter, deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Deque, List, Optional, Sequence, Tuple
@@ -212,6 +212,45 @@ def load_fever_stage_definitions() -> list[dict[str, Any]]:
 	return _FEVER_STAGES
 
 
+def _fever_stage_source_colors(stage: dict[str, Any]) -> List[str]:
+	"""피버 패턴이 쓰는 일반 색 이름을 처음 나온 순서대로 중복 없이 모은다."""
+	colors = list(stage.get("usingColors", []))
+	colors.extend(puyo.get("color") for puyo in stage["stageData"].get("puyos", []))
+	return [color for color in dict.fromkeys(colors) if color and color != "garbage"]
+
+
+def build_chain_seed_board(rng: random.Random, color_count: int) -> Optional[List[List[int]]]:
+	"""실제 피버 패턴 하나를 연쇄 씨앗으로 깔아 둔 일반 필드를 만든다. 쓸 수 있는 패턴이 없으면 None이다.
+
+	연쇄 커리큘럼 학습 방식이 에피소드의 시작 보드로 쓴다. 피버 패턴은 지급쌍으로 곧바로 터지도록
+	만든 것이지만, 여기서는 색을 지급쌍과 무관하게 무작위로 섞는다. 첫 수에 바로 터지면 그 앞 상태가
+	없어 가치망이 배울 표본이 생기지 않으므로, 몇 수에 걸쳐 방아쇠 색을 맞춰 터뜨리는 경험을 만들기
+	위해서다. 섞은 결과가 이미 폭발하거나 패배 칸을 막으면 쓰지 않는다.
+	"""
+	candidates = [stage for stage in load_fever_stage_definitions() if len(_fever_stage_source_colors(stage)) <= color_count]
+	if not candidates:
+		return None
+	stage = rng.choice(candidates)
+	palette = list(range(color_count))
+	rng.shuffle(palette)
+	color_map = {source: palette[index] for index, source in enumerate(_fever_stage_source_colors(stage))}
+	board = bundledenemy.new_empty_board()
+	for puyo in stage["stageData"].get("puyos", []):
+		x, y = puyo.get("x"), puyo.get("y")
+		if not isinstance(x, int) or not isinstance(y, int) or not (0 <= x < BOARD_WIDTH and 0 <= y < BOARD_HEIGHT):
+			continue
+		board[y][x] = bundledenemy.GARBAGE if puyo.get("color") == "garbage" else color_map[puyo["color"]]
+	board = bundledenemy.collapse_board(board)
+	if bundledenemy.find_explosion_groups(board) or bundledenemy.is_defeat_board(board):
+		return None
+	return board
+
+
+def _placement_action(placement: Optional[bundledenemy.Placement]) -> Optional[int]:
+	"""적 AI가 고른 배치(열·회전)를 이 학습기의 행동 번호로 바꾼다. 배치가 없으면 None이다."""
+	return None if placement is None else placement.x * ROTATION_COUNT + placement.rotation
+
+
 @dataclass
 class FeverState:
 	"""Puyo W 플레이어별 피버 룰 상태."""
@@ -245,9 +284,13 @@ class PuyoEnvironment:
 	# 상대가 없어 승패 보상이 없으므로, 패배만 대전과 같은 크기로 벌한다.
 	DEFEAT_REWARD = DUEL_LOSS_REWARD
 
-	def __init__(self, seed: int | None = None) -> None:
-		"""시드로 난수 생성기를 만들고 초기 상태로 리셋한다."""
+	def __init__(self, seed: int | None = None, chain_seed_ratio: float = 0.0) -> None:
+		"""시드로 난수 생성기를 만들고 초기 상태로 리셋한다.
+
+		`chain_seed_ratio`는 에피소드 시작 보드에 연쇄 씨앗(build_chain_seed_board)을 깔 확률이다.
+		"""
 		self.random = random.Random(seed)
+		self.chain_seed_ratio = chain_seed_ratio
 		self.board: List[List[int]] = []
 		self.current_pair: Tuple[int, int] = (0, 0)
 		self.next_pair: Tuple[int, int] = (0, 0)
@@ -264,6 +307,9 @@ class PuyoEnvironment:
 		bundledenemy.configure_rule(False)
 		bundledenemy.configure_timing(get_margin_rate(0), get_time_progress_multiplier(0))
 		self.board = bundledenemy.new_empty_board()
+		# 비율이 0이면 난수를 뽑지 않아, 기본 학습 방식의 에피소드 진행이 예전과 같게 유지된다.
+		if self.chain_seed_ratio > 0.0 and self.random.random() < self.chain_seed_ratio:
+			self.board = build_chain_seed_board(self.random, COLORS) or self.board
 		self.current_pair = self._pair()
 		self.next_pair = self._pair()
 		self.attack = 0.0
@@ -277,6 +323,11 @@ class PuyoEnvironment:
 	def next_pair_for_agent(self) -> Tuple[int, int]:
 		"""애프터스테이트에 담을 다음 턴의 조작 쌍을 알려 준다."""
 		return self.next_pair
+
+	def suggest_agent_action(self, guide: bundledenemy.BaseEnemy) -> Optional[int]:
+		"""안내 역할의 적 AI가 이번 수에 고를 배치를 행동 번호로 알려 준다. 둘 곳이 없으면 None이다."""
+		bundledenemy.configure_rule(False)
+		return _placement_action(guide.decide(self.board, self.current_pair, [self.next_pair], 0.0))
 
 	def step(self, action: int) -> Tuple[torch.Tensor, float, bool, dict]:
 		"""행동을 착지시키고 연쇄를 해소한 뒤, 다음 관측·보상·종료 여부·정보를 반환한다."""
@@ -358,9 +409,15 @@ class PuyoDuelEnvironment:
 		fever_rule: Optional[bool] = None,
 		color_count: Optional[int] = None,
 		self_play_action_fn: Optional[Callable[[torch.Tensor, Sequence[Any]], int]] = None,
+		chain_seed_ratio: float = 0.0,
 	) -> None:
-		"""대전 설정(상대·시드·피버 룰·색상 수·self-play 콜백)을 받아 초기 상태로 리셋한다."""
+		"""대전 설정(상대·시드·피버 룰·색상 수·self-play 콜백)을 받아 초기 상태로 리셋한다.
+
+		`chain_seed_ratio`는 에피소드마다 에이전트의 일반 필드에 연쇄 씨앗(build_chain_seed_board)을
+		깔고 시작할 확률이다. 상대 필드는 건드리지 않는다.
+		"""
 		self.random = random.Random(seed)
+		self.chain_seed_ratio = chain_seed_ratio
 		self.opponent_type = opponent_type
 		self._fever_rule_setting = fever_rule
 		self._color_count_setting = color_count
@@ -414,6 +471,9 @@ class PuyoDuelEnvironment:
 		self.color_count = self._color_count_setting or self.random.choice(self.COLOR_COUNT_CHOICES)
 		self.agent_board = bundledenemy.new_empty_board()
 		self.enemy_board = bundledenemy.new_empty_board()
+		# 비율이 0이면 난수를 뽑지 않아, 기본 학습 방식의 에피소드 진행이 예전과 같게 유지된다.
+		if self.chain_seed_ratio > 0.0 and self.random.random() < self.chain_seed_ratio:
+			self.agent_board = build_chain_seed_board(self.random, self.color_count) or self.agent_board
 		self.agent_damage = 0.0
 		self.enemy_damage = 0.0
 		self.agent_attack = 0.0
@@ -440,6 +500,12 @@ class PuyoDuelEnvironment:
 	def next_pair_for_agent(self) -> Tuple[int, int]:
 		"""애프터스테이트에 담을 다음 턴의 조작 쌍을 알려 준다."""
 		return self.agent_next_pairs[0]
+
+	def suggest_agent_action(self, guide: bundledenemy.BaseEnemy) -> Optional[int]:
+		"""안내 역할의 적 AI가 에이전트 자리에서 이번 수에 고를 배치를 행동 번호로 알려 준다. 둘 곳이 없으면 None이다."""
+		bundledenemy.configure_rule(self.fever_rule, self.agent_fever.active)
+		placement = guide.decide(self._board("agent"), self.agent_pair, self.agent_next_pairs, self._damage("agent"))
+		return _placement_action(placement)
 
 	def _fever(self, side: str) -> FeverState:
 		"""side에 해당하는 피버 상태 객체를 반환한다."""
@@ -906,10 +972,13 @@ def score_afterstates(
 def select_afterstate(
 	policy: ValueNetwork, observation: Any, next_pair: Sequence[Any], device: torch.device, *,
 	usable_actions: Optional[set[int]] = None, epsilon: float = 0.0,
+	explore_fn: Optional[Callable[[Sequence[Afterstate]], Optional[Afterstate]]] = None,
 ) -> Tuple[int, Optional[Afterstate]]:
 	"""이번 수의 배치를 고르고, 고른 수의 애프터스테이트를 함께 돌려준다.
 
 	`epsilon`이 0보다 크면 그 확률로 놓을 수 있는 후보 중 하나를 무작위로 고른다(탐험).
+	`explore_fn`을 주면 탐험하는 수에서 먼저 그 함수에 후보를 물어보고, None을 돌려주면 무작위로
+	고른다. 연쇄 유도 탐험 학습 방식이 이 자리에 적 AI의 배치를 넣는다.
 	놓을 자리가 하나도 없으면 애프터스테이트 없이 게임의 스폰 위치(X=2)를 돌려주어, 환경이 이
 	턴을 평소와 같은 패배 결과로 끝내게 한다.
 	"""
@@ -917,7 +986,9 @@ def select_afterstate(
 	if not afterstates:
 		return (min(usable_actions) if usable_actions else 2 * ROTATION_COUNT + ROTATION_UP), None
 	if epsilon > 0.0 and random.random() < epsilon:
-		chosen = random.choice(afterstates)
+		chosen = explore_fn(afterstates) if explore_fn is not None else None
+		if chosen is None:
+			chosen = random.choice(afterstates)
 		return chosen.action, chosen
 	scores = score_afterstates(policy, afterstates, device)
 	chosen = afterstates[int(torch.argmax(scores).item())]
@@ -956,8 +1027,13 @@ def infer_observation(checkpoint_path: Path, observation_path: Path, device_name
 
 def evaluate_policy(
 	checkpoint_path: Path, episodes: int, seed: int, device_name: str, opponent: str = "random",
-) -> dict[str, float | int]:
-	"""탐험 없이(epsilon=0) 대전하고 승·패·무승부와 승률을 집계한다."""
+) -> dict[str, Any]:
+	"""탐험 없이(epsilon=0) 대전하고 승·패·무승부와 승률, 연쇄 분포를 집계한다.
+
+	연쇄 통계는 에이전트 쪽 수만 센다. `max_combo_distribution`은 에피소드별 최대 연쇄 수(연쇄를 한 번도
+	못 냈으면 0)마다 에피소드 수를, `combo_distribution`은 실제로 터진 수의 연쇄 수마다 그 횟수를 담는다.
+	`average_combo`는 터진 수만의 평균이며 터진 수가 없으면 0이다.
+	"""
 	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
 	policy = load_policy_checkpoint(checkpoint_path, device)
 
@@ -966,28 +1042,45 @@ def evaluate_policy(
 		return choose_policy_action(policy, observation, device, next_pair)
 
 	wins = losses = draws = 0
+	max_combo_counts: Counter[int] = Counter()
+	combo_counts: Counter[int] = Counter()
 	for episode in range(episodes):
 		environment = _make_environment(opponent, seed + episode, greedy_action)
 		state = environment.reset()
 		result = "timeout"
+		episode_max_combo = 0
 		max_steps = 100 if opponent == "solo" else PuyoDuelEnvironment.MAX_TURNS_PER_EPISODE
 		for _ in range(max_steps):
 			action = greedy_action(state, environment.next_pair_for_agent())
 			state, _reward, done, info = environment.step(action)
+			# 놓을 자리가 없어 끝난 수는 info에 연쇄 수가 없다.
+			combo = int(info.get("combo", 0))
+			if combo > 0:
+				combo_counts[combo] += 1
+				episode_max_combo = max(episode_max_combo, combo)
 			if done:
 				result = info.get("result", "invalid" if info.get("invalid") else "done")
 				break
+		max_combo_counts[episode_max_combo] += 1
 		if result in ("enemy_defeated", "enemy_no_moves", "enemy_invalid_self_play"):
 			wins += 1
 		elif result in ("agent_defeated", "invalid"):
 			losses += 1
 		else:
 			draws += 1
-	return {"episodes": episodes, "wins": wins, "losses": losses, "draws": draws, "win_rate": wins / episodes}
+	fired_count = sum(combo_counts.values())
+	return {
+		"episodes": episodes, "wins": wins, "losses": losses, "draws": draws, "win_rate": wins / episodes,
+		"average_max_combo": sum(combo * count for combo, count in max_combo_counts.items()) / episodes,
+		"max_combo_distribution": dict(sorted(max_combo_counts.items())),
+		"average_combo": sum(combo * count for combo, count in combo_counts.items()) / fired_count if fired_count else 0.0,
+		"combo_distribution": dict(sorted(combo_counts.items())),
+	}
 
 
 def _make_environment(
 	opponent: str, seed: int, self_play_action_fn: Optional[Callable[[torch.Tensor, Sequence[Any]], int]] = None,
+	chain_seed_ratio: float = 0.0,
 ) -> "PuyoEnvironment | PuyoDuelEnvironment":
 	"""--opponent 선택에 맞는 학습 환경을 만든다.
 
@@ -996,11 +1089,12 @@ def _make_environment(
 	골라 대전하는 PuyoDuelEnvironment를 만들고, 'self'는 항상 self-play, 그 밖의 값은
 	해당 적 하나로 고정해 계속 대전하는 PuyoDuelEnvironment를 만든다. 기본 룰/피버 룰과
 	색상 수(3~5색)는 PuyoDuelEnvironment가 에피소드마다 알아서 무작위로 고른다.
+	`chain_seed_ratio`는 두 환경 모두에 그대로 넘기는 연쇄 씨앗 시작 확률이다.
 	"""
 	if opponent == "solo":
-		return PuyoEnvironment(seed)
+		return PuyoEnvironment(seed, chain_seed_ratio=chain_seed_ratio)
 	resolved_opponent = None if opponent == "random" else opponent
-	return PuyoDuelEnvironment(resolved_opponent, seed, self_play_action_fn=self_play_action_fn)
+	return PuyoDuelEnvironment(resolved_opponent, seed, self_play_action_fn=self_play_action_fn, chain_seed_ratio=chain_seed_ratio)
 
 
 class TrainingAbort(Exception):
@@ -1074,6 +1168,78 @@ class TrainingControl:
 # 걸쳐 쌓았다가 한 번에 터지므로, 한 수만 보고 배우는 것보다 보상이 앞 수까지 빨리 전달된다.
 N_STEP_RETURN = 3
 
+# 연쇄 유도 탐험에서 안내 역할을 맡는 적이다. 목표 연쇄를 두고 연쇄를 쌓는 적 중에서 턴을 넘나드는
+# 상태가 없는 적만 골랐다. 탐험하는 수에서만 띄엄띄엄 불리므로, 단탈리온처럼 단계를 기억하는 적은
+# 판단이 어긋난다.
+CHAIN_GUIDE_ENEMY_TYPES: Tuple[str, ...] = ("Amdusias", "Kimaris", "Andrealphus")
+
+
+@dataclass(frozen=True)
+class TrainingStrategy:
+	"""학습 방식 하나의 설정이다. 추론 계약(보상·감가율·관측값·행동)은 건드리지 않고 학습 과정만 바꾼다.
+
+	그래서 어떤 방식으로 학습한 체크포인트든 서버·브라우저 추론에 그대로 쓸 수 있고, 기존 체크포인트를
+	다른 방식으로 이어 학습해도 된다. 새 방식은 TRAINING_STRATEGIES에 항목만 더하면 CLI의
+	--training-strategy 선택지와 lngui.py의 콤보박스에 함께 나타난다.
+	"""
+	name: str
+	# lngui.py 콤보박스에 보여 줄 이름과 설명이다. GUI 문구는 영어로 쓰는 규칙을 따른다.
+	label: str
+	summary: str
+	# CLI 도움말과 학습 로그에 쓰는 한국어 설명이다.
+	description: str
+	# 탐험하는 수 중에서 무작위 대신 연쇄를 쌓는 적 AI(CHAIN_GUIDE_ENEMY_TYPES)의 배치를 따르는 비율이다.
+	guided_exploration_ratio: float = 0.0
+	# 에이전트의 시작 필드에 실제 피버 패턴을 연쇄 씨앗으로 깔아 두는 에피소드 비율이다.
+	chain_seed_ratio: float = 0.0
+	# 방해뿌요 교환 없이 혼자 쌓는 solo 에피소드로 바꾸는 비율이다. --opponent solo면 의미가 없다.
+	solo_episode_ratio: float = 0.0
+	# 목표값을 만들 때 실제 보상을 이어 보는 수의 개수다.
+	n_step: int = N_STEP_RETURN
+
+
+DEFAULT_TRAINING_STRATEGY = "standard"
+# CLI 도움말과 lngui.py 콤보박스가 이 순서를 그대로 쓴다.
+TRAINING_STRATEGIES: dict[str, TrainingStrategy] = {strategy.name: strategy for strategy in (
+	TrainingStrategy(
+		"standard", "Standard", "Random exploration among placeable moves and a 3-step return (previous behavior).",
+		"기존 방식이다. 탐험은 놓을 수 있는 후보 중 무작위이고 n스텝은 3이다.",
+	),
+	TrainingStrategy(
+		"chain-guided", "Chain-guided exploration",
+		"Half of the exploration moves follow a chain-building enemy AI (Amdusias, Kimaris or Andrealphus).",
+		"탐험하는 수의 절반을 연쇄를 쌓는 적 AI(암두시아스·키마리스·안드레알푸스)의 배치로 둔다.",
+		guided_exploration_ratio=0.5,
+	),
+	TrainingStrategy(
+		"chain-curriculum", "Chain curriculum",
+		"30% of episodes start from a fever-pattern chain seed and 20% are played solo without garbage.",
+		"에피소드의 30%는 피버 패턴을 연쇄 씨앗으로 깔고 시작하고, 20%는 방해뿌요 없는 solo로 진행한다.",
+		chain_seed_ratio=0.3, solo_episode_ratio=0.2,
+	),
+	TrainingStrategy(
+		"long-nstep", "Long n-step return", "Value targets sum the actual rewards of the next 8 moves instead of 3.",
+		"목표값을 만들 때 3수 대신 8수까지의 실제 보상을 이어 본다.",
+		n_step=8,
+	),
+	TrainingStrategy(
+		"chain-all", "All chain strategies",
+		"Chain-guided exploration, the chain curriculum and the 8-step return together.",
+		"연쇄 유도 탐험·연쇄 커리큘럼·8스텝 목표값을 모두 함께 쓴다.",
+		guided_exploration_ratio=0.5, chain_seed_ratio=0.3, solo_episode_ratio=0.2, n_step=8,
+	),
+)}
+
+
+def resolve_training_strategy(strategy: "str | TrainingStrategy") -> TrainingStrategy:
+	"""학습 방식 이름(또는 이미 만든 설정)을 설정 객체로 바꾼다. 모르는 이름이면 ValueError를 올린다."""
+	if isinstance(strategy, TrainingStrategy):
+		return strategy
+	resolved = TRAINING_STRATEGIES.get(strategy)
+	if resolved is None:
+		raise ValueError(f"알 수 없는 학습 방식입니다: {strategy} (사용 가능: {', '.join(TRAINING_STRATEGIES)})")
+	return resolved
+
 
 def build_value_samples(
 	trajectory: Sequence[Tuple[Optional[List[float]], float]], terminal_value: Optional[float],
@@ -1134,14 +1300,18 @@ def train(
 	episodes: int, seed: int, output: Path, device_name: str, server_url: str = "", api_token: str = "", opponent: str = "random", *,
 	control: Optional[TrainingControl] = None, log: Callable[[str], None] = print,
 	on_progress: Optional[Callable[[int, int, dict], None]] = None,
+	strategy: "str | TrainingStrategy" = DEFAULT_TRAINING_STRATEGY,
 ) -> None:
 	"""애프터스테이트 가치망을 학습하고 체크포인트를 저장한다.
 
 	`control`을 넘기면 lngui.py 같은 GUI가 별도 쓰레드에서 일시정지·중단·강제 포기를 요청할 수
 	있다. `log`는 기본이 `print`라 CLI 동작은 그대로이며, GUI는 큐에 적재하는 콜백을 넘겨 로그
 	패널에 표시한다. `on_progress`는 매 에피소드가 끝날 때 (완료 수, 전체 수, 통계) 로 호출되어
-	GUI 진행 게이지를 갱신한다.
+	GUI 진행 게이지를 갱신한다. `strategy`는 TRAINING_STRATEGIES의 이름 또는 TrainingStrategy이며,
+	기본값 "standard"는 이 인자가 없던 때와 같은 학습을 한다.
 	"""
+	# 잘못된 이름이면 모델을 만들기 전에 바로 알린다.
+	training_strategy = resolve_training_strategy(strategy)
 	random.seed(seed)
 	torch.manual_seed(seed)
 	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
@@ -1158,7 +1328,9 @@ def train(
 	epsilon_start, epsilon_end = 1.0, 0.05
 	# 전체 에피소드의 절반을 지나면 탐험 비율이 최저가 되고, 남은 절반은 거의 자기 판단으로 둔다.
 	exploration_episodes = max(1, episodes // 2)
-	max_steps_per_episode = 100 if opponent == "solo" else PuyoDuelEnvironment.MAX_TURNS_PER_EPISODE
+	# 학습 방식이 쓰는 확률 판정은 전역 random과 따로 둔다. 기본 방식은 이 생성기를 전혀 쓰지 않으므로
+	# 전역 난수 흐름이 예전과 같게 유지된다.
+	strategy_random = random.Random(f"training-strategy-{seed}")
 	# 애프터스테이트가 그대로 다음 학습 입력이 되므로, 부트스트랩할 상태가 없을 때 쓸 0 벡터 하나만
 	# 만들어 두고 모든 표본이 나눠 쓴다(가중치 0으로 곱해져 목표값에 영향을 주지 않는다).
 	zero_state = torch.zeros(OBSERVATION_SIZE, dtype=torch.float32)
@@ -1172,6 +1344,7 @@ def train(
 		log(f"resume={output} 기존 모델 가중치로 추가 학습을 시작합니다.")
 	else:
 		log(f"new_model={output} 새 모델 가중치로 학습을 시작합니다.")
+	log(f"training_strategy={training_strategy.name} {training_strategy.description}")
 
 	# self-play(PuyoDuelEnvironment.SELF_PLAY_OPPONENT) 에피소드에서 상대측 행동을 고르는
 	# 콜백이다. 매 스텝 최신 epsilon으로 갱신되는 epsilon_holder를 통해, 학습 중인 에이전트와
@@ -1185,13 +1358,36 @@ def train(
 	for episode in range(episodes):
 		if control is not None:
 			control.check_abort()
-		environment = _make_environment(opponent, seed + episode, self_play_action)
+		# solo 비율이 있는 학습 방식은 일부 에피소드를 방해뿌요 없는 혼자 쌓기로 바꾼다.
+		episode_opponent = opponent
+		if opponent != "solo" and training_strategy.solo_episode_ratio > 0.0 and strategy_random.random() < training_strategy.solo_episode_ratio:
+			episode_opponent = "solo"
+		environment = _make_environment(episode_opponent, seed + episode, self_play_action, training_strategy.chain_seed_ratio)
+		max_steps_per_episode = 100 if episode_opponent == "solo" else PuyoDuelEnvironment.MAX_TURNS_PER_EPISODE
+		explore_fn: Optional[Callable[[Sequence[Afterstate]], Optional[Afterstate]]] = None
+		if training_strategy.guided_exploration_ratio > 0.0:
+			# 안내 적도 판단에 난수를 쓰므로 에피소드마다 새로 만들어 대전 사이에 상태가 이어지지 않게 한다.
+			guide = bundledenemy.create_enemy(
+				strategy_random.choice(CHAIN_GUIDE_ENEMY_TYPES), random.Random(strategy_random.randrange(2 ** 30)),
+			)
+
+			def guided_exploration(
+				afterstates: Sequence[Afterstate], environment: Any = environment, guide: bundledenemy.BaseEnemy = guide,
+			) -> Optional[Afterstate]:
+				"""탐험하는 수의 일부를 안내 적의 배치로 바꾼다. 해당하지 않으면 None을 돌려 무작위 탐험에 맡긴다."""
+				if strategy_random.random() >= training_strategy.guided_exploration_ratio:
+					return None
+				action = environment.suggest_agent_action(guide)
+				return next((afterstate for afterstate in afterstates if afterstate.action == action), None)
+
+			explore_fn = guided_exploration
 		state = environment.reset()
 		session_id = f"puyow-training-{seed}-{episode}"
 		if api_client:
 			api_client.reset(session_id, state)
 		episode_reward = 0.0
 		episode_result = "timeout"
+		episode_max_combo = 0
 		# 승부가 난 에피소드의 마지막 애프터스테이트 가치다. 최대 턴에서 잘리면 None으로 남는다.
 		terminal_value: Optional[float] = None
 		# 이번 에피소드에서 지나온 (애프터스테이트, 그 수가 만든 보상) 기록이다. 에피소드가 끝난 뒤
@@ -1204,8 +1400,11 @@ def train(
 		for _ in range(max_steps_per_episode):
 			if control is not None:
 				control.check_abort()
-			action, afterstate = select_afterstate(policy, state, environment.next_pair_for_agent(), device, epsilon=epsilon)
+			action, afterstate = select_afterstate(
+				policy, state, environment.next_pair_for_agent(), device, epsilon=epsilon, explore_fn=explore_fn,
+			)
 			next_state, reward, done, info = environment.step(action)
+			episode_max_combo = max(episode_max_combo, int(info.get("combo", 0)))
 			if api_client:
 				api_client.step(session_id, state, action, reward, next_state, done)
 			# 승패 보상은 마지막 상태의 가치로 따로 쓰므로, 기록에는 이 수가 만든 보상만 남긴다.
@@ -1234,7 +1433,7 @@ def train(
 				terminal_value = step_terminal_value
 				episode_result = info.get("result", "invalid" if info.get("invalid") else "done")
 				break
-		replay.extend(build_value_samples(trajectory, terminal_value, zero_state))
+		replay.extend(build_value_samples(trajectory, terminal_value, zero_state, n_step=training_strategy.n_step))
 		if episode_result in ("enemy_defeated", "enemy_no_moves", "enemy_invalid_self_play"):
 			win_count += 1
 		elif episode_result in ("agent_defeated", "invalid"):
@@ -1244,7 +1443,7 @@ def train(
 		if on_progress is not None:
 			on_progress(episode + 1, episodes, {
 				"reward": episode_reward, "epsilon": epsilon, "result": episode_result,
-				"wins": win_count, "losses": loss_count,
+				"wins": win_count, "losses": loss_count, "max_combo": episode_max_combo,
 			})
 		if (episode + 1) % log_interval == 0 or episode == 0:
 			progress_log_count += 1
@@ -1255,7 +1454,7 @@ def train(
 				eta_seconds = elapsed / (episode + 1) * remaining_episodes
 				eta_text = f" eta={_format_eta(eta_seconds)}"
 			log(f"episode={episode + 1}/{episodes} reward={episode_reward:.1f} epsilon={epsilon:.3f} "
-				f"result={episode_result} wins={win_count} losses={loss_count}{eta_text}")
+				f"result={episode_result} max_combo={episode_max_combo} wins={win_count} losses={loss_count}{eta_text}")
 		if control is not None and control.check_at_episode_boundary():
 			log(f"stopped_by_user episode={episode + 1}/{episodes}")
 			break
@@ -1294,7 +1493,7 @@ def main() -> None:
 	parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default=DEFAULT_DEVICE)
 	parser.add_argument("--server-url", default="", help="학습 이벤트를 전송할 pythonserver.py 주소(예: http://localhost:9891)")
 	parser.add_argument("--api-token", default="", help="pythonserver.py의 learning_token 값. 로컬 서버라면 \"localhost\"로도 인증할 수 있다(미지정 시 PUYOW_AI_TOKEN 환경변수 사용)")
-	parser.add_argument("--evaluate-episodes", type=int, default=0, help="학습하지 않고 epsilon=0으로 평가할 에피소드 수")
+	parser.add_argument("--evaluate-episodes", type=int, default=0, help="학습하지 않고 epsilon=0으로 평가할 에피소드 수(승패와 함께 연쇄 분포도 출력)")
 	parser.add_argument("--infer-observation", type=Path, metavar="JSON", help="서버 없이 공통 관측 JSON 하나를 직접 추론")
 	parser.add_argument("--export-gguf", type=Path, metavar="MODEL_DIR", help="Hugging Face Transformer 모델 디렉터리를 GGUF로 변환")
 	parser.add_argument("--gguf-output", type=Path, default=Path("python/model-f16.gguf"), help="GGUF 출력 경로")
@@ -1305,6 +1504,13 @@ def main() -> None:
 		help="대전 상대. 'random'은 매 에피소드 self-play(자기 자신과 대전) 또는 bundledenemy의 적 "
 			"중 하나를 무작위로 고르고(기본값), 'self'는 항상 self-play, 'solo'는 상대 없이 "
 			"버티기만 학습하는 옛 방식이며, 그 밖에는 지정한 적 하나로 고정한다.",
+	)
+	parser.add_argument(
+		"--training-strategy", default=DEFAULT_TRAINING_STRATEGY, choices=tuple(TRAINING_STRATEGIES),
+		# argparse는 도움말을 % 형식 문자열로 다루므로 설명에 든 "30%" 같은 문자를 이스케이프한다.
+		help="학습 방식(학습에만 적용). " + " ".join(
+			f"'{name}': {strategy.description}" for name, strategy in TRAINING_STRATEGIES.items()
+		).replace("%", "%%"),
 	)
 	args = parser.parse_args()
 	if args.export_gguf:
@@ -1320,7 +1526,10 @@ def main() -> None:
 		return
 	if args.episodes < 1:
 		parser.error("--episodes는 1 이상이어야 합니다.")
-	train(args.episodes, args.seed, args.output, args.device, args.server_url, args.api_token, args.opponent)
+	train(
+		args.episodes, args.seed, args.output, args.device, args.server_url, args.api_token, args.opponent,
+		strategy=args.training_strategy,
+	)
 if __name__ == "__main__":
 	main()
 

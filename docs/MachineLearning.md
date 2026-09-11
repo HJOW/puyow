@@ -72,13 +72,14 @@ python/puyow/default.json
 
 ## 3. `lngui.py`의 간단한 사용 방법
 
-GUI에는 모델 저장 경로, 에피소드 수, Start/Pause/Stop 버튼, 진행 막대, 로그, CPU/RAM 표시가 있다. **서버 주소 입력란은 없으며**, GUI는 로컬 학습만 실행한다. 시드·장치·상대는 `learning.py`의 기본값인 `2026`, `auto`, `random`을 사용한다.
+GUI에는 모델 저장 경로, 에피소드 수, 학습 방식, Start/Pause/Stop 버튼, 진행 막대, 로그, CPU/RAM 표시가 있다. **서버 주소 입력란은 없으며**, GUI는 로컬 학습만 실행한다. 시드·장치·상대는 `learning.py`의 기본값인 `2026`, `auto`, `random`을 사용한다.
 
 | 화면 항목 | 하는 일 |
 | --- | --- |
 | `Model output path` | 학습 결과를 저장할 `.pt` 파일 경로다. `Browse...`로 선택할 수도 있다. |
 | `Episodes` | 학습할 판 수다. 1 이상의 정수만 입력한다. 설치 확인에는 10, 실제 학습에는 1000 이상처럼 더 큰 값을 쓴다. |
-| `Start` | 학습을 시작한다. 학습 중에는 경로와 에피소드 수를 바꿀 수 없다. |
+| `Training strategy` | 학습 방식을 고른다. 기본값 `Standard`는 기존 학습과 같다. 고른 방식의 설명이 콤보박스 아래에 표시된다. 자세한 내용은 8절의 「연쇄를 더 노리도록 돕는 학습 방식」을 참고한다. |
+| `Start` | 학습을 시작한다. 학습 중에는 경로·에피소드 수·학습 방식을 바꿀 수 없다. |
 | `Pause` / `Resume` | 현재 에피소드가 끝난 뒤 멈추거나 다시 시작한다. |
 | `Stop` | 현재 에피소드가 끝난 뒤 중단하고, 그때까지의 모델을 저장한다. |
 | 진행 막대와 로그 | 완료된 에피소드, 승패 수, 오류와 저장 결과를 확인한다. |
@@ -124,9 +125,10 @@ python python/learning.py --help
 | `--output 경로` | `python/puyow/default.pt` | 모델 저장 파일. 파일이 이미 있으면 그 가중치를 읽고 추가 학습한다. 예: `--output python/puyow/kimaris.pt` |
 | `--device auto\|cpu\|cuda` | `auto` | 계산 장치. `auto`는 CUDA를 사용할 수 있으면 GPU, 아니면 CPU를 고른다. GPU 설정이 불확실하면 `cpu`를 쓴다. |
 | `--opponent 값` | `random` | 학습 상대. 아래 상세 설명의 상대 표를 참고한다. 예: `--opponent Kimaris` |
+| `--training-strategy 값` | `standard` | 학습 방식. `standard`, `chain-guided`, `chain-curriculum`, `long-nstep`, `chain-all` 중 하나이며 학습에만 적용된다. 8절의 「연쇄를 더 노리도록 돕는 학습 방식」을 참고한다. 예: `--training-strategy chain-all` |
 | `--server-url URL` | 없음 | 학습 이벤트를 `pythonserver.py`에 전송한다. 일반 로컬 학습에는 지정하지 않는다. 자세한 내용은 뒤의 서버 절을 참고한다. |
 | `--api-token 토큰` | 없음 | `--server-url`을 쓸 때의 인증 토큰. 환경 변수 `PUYOW_AI_TOKEN`으로도 지정할 수 있다. |
-| `--evaluate-episodes 수` | `0` | 학습하지 않고 저장된 모델을 평가한다. 1 이상을 지정하면 승·패·무승부·승률을 JSON으로 출력한다. |
+| `--evaluate-episodes 수` | `0` | 학습하지 않고 저장된 모델을 평가한다. 1 이상을 지정하면 승·패·무승부·승률과 연쇄 분포를 JSON으로 출력한다(13절 참고). |
 | `--infer-observation JSON파일` | 없음 | 저장된 모델로 관측 JSON 한 건을 직접 추론한다. 학습은 하지 않는다. |
 | `--export-gguf 모델폴더` | 없음 | Hugging Face Transformer 모델을 GGUF로 변환한다. 이 학습기가 만든 `.pt` 파일에는 사용할 수 없다. |
 | `--gguf-output 경로` | `python/model-f16.gguf` | `--export-gguf` 결과 파일 경로다. |
@@ -220,6 +222,28 @@ Content-Type: application/json
 - **탐험**: 학습 중에는 일정 확률로 후보 중 하나를 무작위로 고른다. 이 확률은 1.0에서 시작해 전체 에피소드의 절반 지점에서 0.05까지 내려가며, 남은 절반은 거의 모델 자신의 판단으로 둔다. 무작위로 고를 때도 놓을 수 있는 후보 안에서만 고른다.
 
 방해뿌요 낙하는 무작위라서 애프터스테이트에 반영하지 않고, 상쇄하고 남은 피해량만 상태의 스칼라로 남긴다. 이 근사는 학습기와 서버가 같은 함수(`learning.enumerate_afterstates()`)를 쓰므로 어느 쪽에서도 같게 적용된다.
+
+### 연쇄를 더 노리도록 돕는 학습 방식
+
+`lngui.py`의 `Training strategy` 콤보박스나 `learning.py`의 `--training-strategy` 옵션으로 학습 방식을 고를 수 있다. 기본값 `standard`는 이 옵션이 생기기 전과 같은 학습이다.
+
+| 값 | GUI 표시 | 동작 |
+| --- | --- | --- |
+| `standard` (기본값) | `Standard` | 기존 방식이다. 탐험은 놓을 수 있는 후보 중 무작위이고 n스텝은 3이다. |
+| `chain-guided` | `Chain-guided exploration` | 탐험하는 수의 절반을 연쇄를 쌓는 적 AI의 배치로 둔다. 안내 적은 에피소드마다 암두시아스·키마리스·안드레알푸스 중 하나를 고른다. 무작위 탐험만으로는 5연쇄 이상을 거의 경험하지 못해, 가치망이 "연쇄를 쌓아 둔 보드"의 가치를 배우기 어렵기 때문이다. |
+| `chain-curriculum` | `Chain curriculum` | 에피소드의 30%는 실제 피버 패턴을 연쇄 씨앗으로 깐 필드에서 시작하고, 20%는 방해뿌요 교환이 없는 `solo`로 진행한다. 씨앗의 색은 무작위로 섞으므로 곧바로 터지지 않고 몇 수에 걸쳐 방아쇠 색을 맞춰야 한다. |
+| `long-nstep` | `Long n-step return` | 목표값을 만들 때 3수 대신 8수까지의 실제 보상을 이어 본다. 연쇄 보상이 앞 수까지 더 빨리 전달된다. |
+| `chain-all` | `All chain strategies` | 위 세 방식을 모두 함께 쓴다. |
+
+```powershell
+python python/learning.py --episodes 5000 --output python/puyow/chain.pt --training-strategy chain-all
+```
+
+- 모든 방식은 **학습 과정만** 바꾼다. 보상(`ATTACK + 연쇄^2`)·감가율(0.70)·관측값·행동 계약은 그대로이므로, 어떤 방식으로 학습한 모델이든 서버·브라우저 추론에 그대로 쓸 수 있고 기존 모델을 다른 방식으로 이어 학습해도 된다.
+- 반대로 "가장 좋은 수"를 판단하는 기준 자체는 바뀌지 않는다. 이 방식들은 모델이 그 기준에 더 빨리, 더 제대로 도달하도록 돕는다. 효과는 `--evaluate-episodes`의 연쇄 분포로 비교한다(13절 참고).
+- `chain-guided`는 탐험하는 수마다 적 AI가 판단하므로, 탐험 비율이 높은 학습 초반이 느려진다.
+- `chain-curriculum`의 연쇄 씨앗은 피버 룰과 같은 방식으로 게임 소스의 피버 패턴을 읽으므로 Node.js가 필요하다. `solo` 에피소드는 이길 수 없으므로 로그의 승수가 그만큼 줄어든다.
+- 학습 로그에는 에피소드의 최대 연쇄 수가 `max_combo=`로 함께 출력된다.
 
 ## 9. 상세: 관측값과 행동
 
@@ -355,6 +379,15 @@ python python/learning.py --output python/puyow/default.pt --infer-observation o
 ```powershell
 python python/learning.py --output python/puyow/default.pt --evaluate-episodes 100 --opponent random
 ```
+
+출력 JSON에는 승·패·무승부·승률과 함께 학습 중인 모델 쪽의 연쇄 통계가 들어 있다. 학습 방식을 바꿔 가며 모델이 고연쇄를 더 노리게 되었는지 비교할 때 쓴다.
+
+| 키 | 내용 |
+| --- | --- |
+| `average_max_combo` | 에피소드별 최대 연쇄 수의 평균 |
+| `max_combo_distribution` | 에피소드별 최대 연쇄 수(연쇄를 한 번도 못 냈으면 `0`)마다 그 에피소드 수 |
+| `average_combo` | 실제로 터진 수만의 평균 연쇄 수. 터진 수가 없으면 `0` |
+| `combo_distribution` | 실제로 터진 수의 연쇄 수마다 그 횟수 |
 
 ## 14. 참고: 도움말
 

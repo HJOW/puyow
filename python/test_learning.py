@@ -1,8 +1,10 @@
 """learning.py의 모델 계약과 JS/Python 규칙 일치를 확인하는 단위 테스트다."""
 
+import dataclasses
 import importlib.util
 import io
 import json
+import random
 import shutil
 import subprocess
 import tempfile
@@ -356,6 +358,181 @@ class AfterstateValueTest(unittest.TestCase):
 		self.assertEqual(1, len(samples))
 		self.assertAlmostEqual(0.5 * common.LOSS_REWARD, samples[0].partial_return, places=6)
 		self.assertEqual(0.0, samples[0].discount)
+
+
+class TrainingStrategyTest(unittest.TestCase):
+	"""연쇄를 더 노리도록 돕는 학습 방식 선택과, 평가가 내는 연쇄 통계를 확인한다."""
+
+	class _ScriptedEnvironment:
+		"""정해 둔 연쇄 수를 차례로 돌려주고 마지막 수에 승리로 끝나는 환경 대역이다."""
+
+		def __init__(self, combos: list[int]) -> None:
+			self.combos = list(combos)
+			self.observation = torch.tensor(
+				common.encode_observation_values(training.bundledenemy.new_empty_board(), (0, 1)), dtype=torch.float32,
+			)
+
+		def reset(self) -> torch.Tensor:
+			return self.observation
+
+		def next_pair_for_agent(self) -> tuple[int, int]:
+			return (1, 2)
+
+		def suggest_agent_action(self, _guide: object) -> None:
+			return None
+
+		def step(self, _action: int) -> tuple[torch.Tensor, float, bool, dict]:
+			combo = self.combos.pop(0)
+			if self.combos:
+				return self.observation, 0.0, False, {"combo": combo}
+			return self.observation, 0.0, True, {"combo": combo, "result": "enemy_defeated", "terminal_value": common.WIN_REWARD}
+
+	def _observation(self) -> list[float]:
+		return common.encode_observation_values(training.bundledenemy.new_empty_board(), (0, 1))
+
+	def _train_with_scripted_environment(self, strategy: object, episodes: int) -> dict:
+		"""환경을 대역으로 바꿔 학습을 짧게 돌리고, 학습 방식이 건드린 지점을 모아 돌려준다."""
+		record: dict = {"created": [], "suggestions": [], "logs": [], "progress": []}
+
+		def make_environment(opponent: str, _seed: int, _self_play: object, chain_seed_ratio: float) -> object:
+			record["created"].append((opponent, chain_seed_ratio))
+			environment = self._ScriptedEnvironment([0, 0, 3, 0])
+			environment.suggest_agent_action = lambda guide: record["suggestions"].append(guide)
+			return environment
+
+		with tempfile.TemporaryDirectory() as directory, \
+			mock.patch.object(training, "_make_environment", side_effect=make_environment), \
+			mock.patch.object(training, "build_value_samples", wraps=training.build_value_samples) as build_samples:
+			output = Path(directory) / "strategy.pt"
+			training.train(
+				episodes, 11, output, "cpu", opponent="Seere", strategy=strategy, log=record["logs"].append,
+				on_progress=lambda _done, _total, stats: record["progress"].append(stats),
+			)
+			record["saved"] = output.is_file()
+		record["n_steps"] = [call.kwargs["n_step"] for call in build_samples.call_args_list]
+		return record
+
+	def test_standard_strategy_keeps_the_previous_training_settings(self) -> None:
+		strategy = training.resolve_training_strategy(training.DEFAULT_TRAINING_STRATEGY)
+
+		self.assertEqual(training.N_STEP_RETURN, strategy.n_step)
+		self.assertEqual((0.0, 0.0, 0.0), (strategy.guided_exploration_ratio, strategy.chain_seed_ratio, strategy.solo_episode_ratio))
+
+	def test_unknown_strategy_is_rejected_before_training(self) -> None:
+		with tempfile.TemporaryDirectory() as directory:
+			output = Path(directory) / "unused.pt"
+			with self.assertRaises(ValueError):
+				training.train(1, 1, output, "cpu", strategy="missing")
+			self.assertFalse(output.exists())
+
+	def test_exploration_follows_the_suggested_afterstate(self) -> None:
+		observation = self._observation()
+		target = training.enumerate_afterstates(observation, (1, 2))[-1]
+
+		for _ in range(5):
+			action, chosen = training.select_afterstate(
+				AfterstateValueTest._ZeroValueNetwork(), observation, (1, 2), torch.device("cpu"), epsilon=1.0,
+				explore_fn=lambda afterstates: next(item for item in afterstates if item.action == target.action),
+			)
+			self.assertEqual(target.action, action)
+			self.assertEqual(target.action, chosen.action)
+
+	def test_exploration_falls_back_to_a_random_candidate_without_a_suggestion(self) -> None:
+		observation = self._observation()
+		legal = {afterstate.action for afterstate in training.enumerate_afterstates(observation, (1, 2))}
+
+		action, chosen = training.select_afterstate(
+			AfterstateValueTest._ZeroValueNetwork(), observation, (1, 2), torch.device("cpu"), epsilon=1.0,
+			explore_fn=lambda _afterstates: None,
+		)
+
+		self.assertIn(action, legal)
+		self.assertIsNotNone(chosen)
+
+	def test_guide_enemies_suggest_placeable_actions_in_both_environments(self) -> None:
+		environments = (
+			training.PuyoDuelEnvironment("Seere", seed=3, fever_rule=False, color_count=4),
+			training.PuyoEnvironment(seed=3),
+		)
+		for environment in environments:
+			for guide_type in training.CHAIN_GUIDE_ENEMY_TYPES:
+				guide = training.bundledenemy.create_enemy(guide_type, random.Random(1))
+				action = environment.suggest_agent_action(guide)
+				legal = {
+					afterstate.action
+					for afterstate in training.enumerate_afterstates(environment.observe(), environment.next_pair_for_agent())
+				}
+				self.assertIn(action, legal, f"{type(environment).__name__} / {guide_type}")
+
+	def test_chain_seed_ratio_changes_only_the_agent_start_board(self) -> None:
+		seed_board = training.bundledenemy.new_empty_board()
+		seed_board[0][0] = 1
+		with mock.patch.object(training, "build_chain_seed_board", return_value=seed_board):
+			duel = training.PuyoDuelEnvironment("Seere", seed=5, fever_rule=False, color_count=4, chain_seed_ratio=1.0)
+			solo = training.PuyoEnvironment(seed=5, chain_seed_ratio=1.0)
+
+		self.assertEqual(seed_board, duel.agent_board)
+		self.assertTrue(training.bundledenemy.is_board_empty(duel.enemy_board))
+		self.assertEqual(seed_board, solo.board)
+		# 비율이 0인 기본 방식은 씨앗 보드를 만들지 않는다.
+		with mock.patch.object(training, "build_chain_seed_board") as build:
+			training.PuyoDuelEnvironment("Seere", seed=5, fever_rule=False, color_count=4)
+			training.PuyoEnvironment(seed=5)
+		build.assert_not_called()
+
+	@unittest.skipUnless(shutil.which("node"), "Node.js가 없어 실제 피버 패턴을 읽을 수 없습니다.")
+	def test_chain_seed_board_is_a_quiet_fever_pattern(self) -> None:
+		for color_count in (3, 4, 5):
+			boards = [training.build_chain_seed_board(random.Random(seed), color_count) for seed in range(10)]
+			seeded = [board for board in boards if board is not None]
+			self.assertTrue(seeded)
+			for board in seeded:
+				cells = [cell for row in board for cell in row if cell != training.bundledenemy.EMPTY]
+				self.assertTrue(cells)
+				self.assertTrue(all(cell == training.bundledenemy.GARBAGE or 0 <= cell < color_count for cell in cells))
+				# 깔자마자 터지거나 패배 칸을 막는 씨앗은 쓰지 않는다.
+				self.assertEqual([], training.bundledenemy.find_explosion_groups(board))
+				self.assertFalse(training.bundledenemy.is_defeat_board(board))
+
+	def test_standard_training_uses_no_chain_strategy(self) -> None:
+		record = self._train_with_scripted_environment(training.DEFAULT_TRAINING_STRATEGY, 3)
+
+		self.assertTrue(record["saved"])
+		self.assertEqual([("Seere", 0.0)] * 3, record["created"])
+		self.assertEqual([], record["suggestions"])
+		self.assertEqual([training.N_STEP_RETURN] * 3, record["n_steps"])
+		self.assertEqual([3] * 3, [stats["max_combo"] for stats in record["progress"]])
+
+	def test_training_applies_every_chain_strategy_setting(self) -> None:
+		strategy = dataclasses.replace(training.TRAINING_STRATEGIES["chain-all"], solo_episode_ratio=0.5)
+		record = self._train_with_scripted_environment(strategy, 6)
+
+		self.assertTrue(record["saved"])
+		self.assertTrue(any(line.startswith("training_strategy=chain-all") for line in record["logs"]))
+		self.assertEqual({"Seere", "solo"}, {opponent for opponent, _ratio in record["created"]})
+		self.assertTrue(all(ratio == strategy.chain_seed_ratio for _opponent, ratio in record["created"]))
+		self.assertTrue(record["suggestions"])
+		self.assertTrue(all(type(guide).__name__ in training.CHAIN_GUIDE_ENEMY_TYPES for guide in record["suggestions"]))
+		self.assertEqual([8] * 6, record["n_steps"])
+
+	def test_evaluation_reports_the_chain_distribution(self) -> None:
+		scripts = [[0, 2, 0, 5], [1, 0, 1], [0, 0]]
+		with tempfile.TemporaryDirectory() as directory, \
+			mock.patch.object(training, "_make_environment", side_effect=lambda *_args: self._ScriptedEnvironment(scripts.pop(0))):
+			checkpoint = Path(directory) / "evaluate.pt"
+			torch.save({
+				"model": training.ValueNetwork().state_dict(), "model_version": training.MODEL_VERSION,
+				"observation_size": training.OBSERVATION_SIZE, "action_count": training.ACTION_COUNT, "seed": 1,
+			}, checkpoint)
+			result = training.evaluate_policy(checkpoint, 3, 1, "cpu", "Seere")
+
+		self.assertEqual(3, result["wins"])
+		self.assertEqual({0: 1, 1: 1, 5: 1}, result["max_combo_distribution"])
+		self.assertAlmostEqual(2.0, result["average_max_combo"])
+		# 터진 수만 센다: 1연쇄 2번, 2연쇄 1번, 5연쇄 1번.
+		self.assertEqual({1: 2, 2: 1, 5: 1}, result["combo_distribution"])
+		self.assertAlmostEqual(9 / 4, result["average_combo"])
+		json.dumps(result)
 
 
 class UsablePlacementTest(unittest.TestCase):
@@ -738,6 +915,34 @@ class TrainerMenuTest(unittest.TestCase):
 		self.assertEqual([lngui.SAVE_AS_MENU_LABEL, lngui.EXIT_MENU_LABEL], labels)
 		self.assertEqual("normal", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
 		self.assertEqual("normal", self._menu_state(lngui.EXIT_MENU_LABEL))
+
+	def test_training_strategy_combobox_lists_every_strategy(self) -> None:
+		"""콤보박스는 학습기의 등록표를 그대로 나열하고, 기본 방식을 고른 채 다른 입력란과 함께 잠겨야 한다."""
+		labels = [str(label) for label in self.app.strategy_combobox.cget("values")]
+		self.assertEqual([strategy.label for strategy in training.TRAINING_STRATEGIES.values()], labels)
+		self.assertEqual(training.DEFAULT_TRAINING_STRATEGY, self.app._selected_strategy_name())
+		self.assertEqual(
+			training.TRAINING_STRATEGIES[training.DEFAULT_TRAINING_STRATEGY].summary, self.app.strategy_summary_var.get(),
+		)
+		self.app._set_inputs_enabled(False)
+		self.assertEqual("disabled", str(self.app.strategy_combobox.cget("state")))
+		self.app._set_inputs_enabled(True)
+		self.assertEqual("readonly", str(self.app.strategy_combobox.cget("state")))
+
+	def test_start_passes_the_selected_strategy_to_training(self) -> None:
+		"""Start는 표시 라벨이 아니라 학습 방식 이름을 학습 쓰레드와 learning.train()에 넘겨야 한다."""
+		chain_all = training.TRAINING_STRATEGIES["chain-all"]
+		self.app.strategy_combobox.set(chain_all.label)
+		self.app._on_strategy_selected()
+		self.app.episodes_var.set("1")
+		with mock.patch.object(lngui.threading, "Thread") as thread_class:
+			self.app._on_start()
+		self.assertEqual("chain-all", thread_class.call_args.kwargs["args"][-1])
+		self.assertEqual(chain_all.summary, self.app.strategy_summary_var.get())
+
+		with mock.patch.object(lngui.learning, "train") as train:
+			self.app._run_training(1, self.source, "", training.TrainingControl(), "chain-all")
+		self.assertEqual("chain-all", train.call_args.kwargs["strategy"])
 
 	def test_save_as_locks_while_training_and_unlocks_after(self) -> None:
 		"""Save As...는 학습 중에 잠기고 학습이 끝나면 다시 열려야 한다."""

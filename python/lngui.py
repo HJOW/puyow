@@ -16,7 +16,7 @@
 #
 #     python python/lngui.py
 #
-#     GUI 창이 뜨면, 모델을 저장할 파일 경로를 입력하고, 에피소드 수를 지정한 후 "Start" 버튼을 클릭한다.
+#     GUI 창이 뜨면, 모델을 저장할 파일 경로를 입력하고, 에피소드 수와 학습 방식을 지정한 후 "Start" 버튼을 클릭한다.
 #
 #     학습한 모델을 다른 이름이나 ONNX 형식으로 내보내려면 File > Save As... 메뉴를 사용한다.
 #     프로그램을 끝낼 때는 File > Exit 메뉴를 쓰면 학습 중이라도 마지막 에피소드까지 저장한 뒤 종료한다.
@@ -45,6 +45,10 @@
 창을 닫아 학습을 포기하는 경우에만 learning.TrainingAbort로 즉시 중단되며 이때는 어떤 파일도
 저장하지 않는다. CLI에서 `python python/learning.py ...`로 직접 학습하는 기존 방식은 이 GUI와
 무관하게 그대로 동작한다.
+
+Training strategy 콤보박스는 learning.TRAINING_STRATEGIES를 그대로 나열한다. 선택지는 표시용 영어
+라벨이고 실제로 train()에 넘기는 값은 학습 방식 이름이다. 학습기에 새 방식이 등록되면 이 GUI는 고칠
+필요 없이 목록에 함께 나타나며, 학습 중·일시정지 중에는 다른 입력란과 함께 잠긴다.
 
 메뉴바에는 File 그룹 하나가 있고 그 안에 Save As...와 Exit 두 항목이 있다. Save As...는 학습
 중·일시정지 중에는 잠기며, Model output path의 체크포인트를 .pt로 그대로 복사하거나 .onnx로
@@ -205,8 +209,8 @@ class TrainerApp:
 	def __init__(self, root: tk.Tk) -> None:
 		self.root = root
 		self.root.title("Puyo W Model Trainer")
-		self.root.geometry("720x520")
-		self.root.minsize(560, 420)
+		self.root.geometry("720x580")
+		self.root.minsize(560, 480)
 
 		self.log_queue: "queue.Queue[tuple]" = queue.Queue()
 		self.control: learning.TrainingControl | None = None
@@ -266,11 +270,28 @@ class TrainerApp:
 		self.episodes_entry = ttk.Entry(form, textvariable=self.episodes_var)
 		self.episodes_entry.grid(row=1, column=1, sticky="ew", **padding)
 
+		# 학습 방식은 앞으로 늘어날 수 있으므로 등록표를 그대로 읽는 읽기 전용 콤보박스로 고르게 한다.
+		ttk.Label(form, text="Training strategy:").grid(row=2, column=0, sticky="w", **padding)
+		self._strategy_names_by_label = {
+			strategy.label: name for name, strategy in learning.TRAINING_STRATEGIES.items()
+		}
+		self.strategy_var = tk.StringVar(value=learning.TRAINING_STRATEGIES[learning.DEFAULT_TRAINING_STRATEGY].label)
+		self.strategy_combobox = ttk.Combobox(
+			form, textvariable=self.strategy_var, values=list(self._strategy_names_by_label), state="readonly",
+		)
+		self.strategy_combobox.grid(row=2, column=1, columnspan=2, sticky="ew", **padding)
+		self.strategy_combobox.bind("<<ComboboxSelected>>", self._on_strategy_selected)
+		self.strategy_summary_var = tk.StringVar(value="")
+		ttk.Label(form, textvariable=self.strategy_summary_var, foreground="gray40", wraplength=560).grid(
+			row=3, column=1, columnspan=2, sticky="w", padx=8,
+		)
+		self._on_strategy_selected()
+
 		server_url_label = ttk.Label(form, text="Server URL:")
-		server_url_label.grid(row=2, column=0, sticky="w", **padding)
+		server_url_label.grid(row=4, column=0, sticky="w", **padding)
 		self.server_url_var = tk.StringVar(value="")
 		self.server_url_entry = ttk.Entry(form, textvariable=self.server_url_var)
-		self.server_url_entry.grid(row=2, column=1, columnspan=2, sticky="ew", **padding)
+		self.server_url_entry.grid(row=4, column=1, columnspan=2, sticky="ew", **padding)
 		server_url_label.grid_remove()
 		self.server_url_entry.grid_remove()
 
@@ -329,6 +350,14 @@ class TrainerApp:
 		if path:
 			self.output_var.set(path)
 
+	def _selected_strategy_name(self) -> str:
+		"""콤보박스에서 고른 라벨을 learning.train()에 넘길 학습 방식 이름으로 바꾼다."""
+		return self._strategy_names_by_label.get(self.strategy_var.get(), learning.DEFAULT_TRAINING_STRATEGY)
+
+	def _on_strategy_selected(self, _event: object = None) -> None:
+		"""고른 학습 방식의 설명을 콤보박스 아래에 보여 준다."""
+		self.strategy_summary_var.set(learning.TRAINING_STRATEGIES[self._selected_strategy_name()].summary)
+
 	def _append_log(self, message: str) -> None:
 		self.log_text.configure(state="normal")
 		self.log_text.insert("end", message + "\n")
@@ -340,6 +369,8 @@ class TrainerApp:
 		self.output_entry.configure(state=state)
 		self.browse_button.configure(state=state)
 		self.episodes_entry.configure(state=state)
+		# 콤보박스를 "normal"로 두면 목록에 없는 글자를 직접 입력할 수 있으므로 켤 때도 읽기 전용이다.
+		self.strategy_combobox.configure(state="readonly" if enabled else "disabled")
 		self.server_url_entry.configure(state=state)
 
 	def _set_save_as_enabled(self, enabled: bool) -> None:
@@ -544,6 +575,7 @@ class TrainerApp:
 
 		output_path = Path(output_text)
 		server_url = self.server_url_var.get().strip()
+		strategy_name = self._selected_strategy_name()
 
 		local_port = _parse_local_server_port(server_url)
 		if local_port is not None:
@@ -561,7 +593,10 @@ class TrainerApp:
 		self.control = learning.TrainingControl()
 		self.progress.configure(maximum=episodes, value=0)
 		self.status_var.set("Starting...")
-		self._append_log(f"Starting training: episodes={episodes} output={output_path} server={server_url or '(none)'}")
+		self._append_log(
+			f"Starting training: episodes={episodes} output={output_path} strategy={strategy_name} "
+			f"server={server_url or '(none)'}"
+		)
 		self.start_button.configure(state="disabled")
 		self.pause_button.configure(text="Pause", state="normal")
 		self.stop_button.configure(state="normal")
@@ -569,12 +604,13 @@ class TrainerApp:
 		self._set_save_as_enabled(False)
 
 		self.thread = threading.Thread(
-			target=self._run_training, args=(episodes, output_path, server_url, self.control), daemon=True,
+			target=self._run_training, args=(episodes, output_path, server_url, self.control, strategy_name), daemon=True,
 		)
 		self.thread.start()
 
 	def _run_training(
 		self, episodes: int, output: Path, server_url: str, control: learning.TrainingControl,
+		strategy: str = learning.DEFAULT_TRAINING_STRATEGY,
 	) -> None:
 		"""백그라운드 학습 쓰레드. 위젯을 직접 건드리지 않고 큐에만 결과를 적재한다."""
 
@@ -591,7 +627,7 @@ class TrainerApp:
 			learning.train(
 				episodes, learning.DEFAULT_SEED, output, learning.DEFAULT_DEVICE,
 				server_url, "localhost", learning.DEFAULT_OPPONENT,
-				control=control, log=log, on_progress=on_progress,
+				control=control, log=log, on_progress=on_progress, strategy=strategy,
 			)
 		except learning.TrainingAbort:
 			# 창 닫기로 인한 강제 포기: 저장 코드에 닿지 않았으므로 조용히 끝낸다. 창이 이미

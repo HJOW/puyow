@@ -72,13 +72,14 @@ The `.pt` file is the trained model, and the `.json` file records the model vers
 
 ## 3. Basic usage of `lngui.py`
 
-The GUI has a model save path, an episode count, Start/Pause/Stop buttons, a progress bar, a log, and CPU/RAM readouts. **There is no server address field**; the GUI only ever runs local training. The seed, device, and opponent use `learning.py`'s defaults: `2026`, `auto`, and `random`.
+The GUI has a model save path, an episode count, a training strategy, Start/Pause/Stop buttons, a progress bar, a log, and CPU/RAM readouts. **There is no server address field**; the GUI only ever runs local training. The seed, device, and opponent use `learning.py`'s defaults: `2026`, `auto`, and `random`.
 
 | Field | What it does |
 | --- | --- |
 | `Model output path` | The `.pt` file path where the training result is saved. You can also pick it with `Browse...`. |
 | `Episodes` | The number of matches to train on. Only a positive integer is accepted. Use 10 to verify the install and a larger value such as 1000 or more for real training. |
-| `Start` | Starts training. The path and episode count cannot be changed while training is running. |
+| `Training strategy` | Picks the training strategy. The default, `Standard`, trains the same way as before. A description of the selected strategy is shown under the combo box. See "Training strategies that encourage longer chains" in section 8 for details. |
+| `Start` | Starts training. The path, episode count, and training strategy cannot be changed while training is running. |
 | `Pause` / `Resume` | Pauses or resumes after the current episode finishes. |
 | `Stop` | Stops after the current episode finishes and saves the model up to that point. |
 | Progress bar and log | Shows completed episodes, win/loss counts, errors, and save results. |
@@ -124,9 +125,10 @@ python python/learning.py --help
 | `--output PATH` | `python/puyow/default.pt` | The file the model is saved to. If the file already exists, its weights are loaded and training continues from there. Example: `--output python/puyow/kimaris.pt` |
 | `--device auto\|cpu\|cuda` | `auto` | The compute device. `auto` picks the GPU if CUDA is available, otherwise the CPU. Use `cpu` if you're unsure about your GPU setup. |
 | `--opponent VALUE` | `random` | The training opponent. See the opponent table in the detailed section below. Example: `--opponent Kimaris` |
+| `--training-strategy VALUE` | `standard` | The training strategy: one of `standard`, `chain-guided`, `chain-curriculum`, `long-nstep`, or `chain-all`. It only affects training. See "Training strategies that encourage longer chains" in section 8. Example: `--training-strategy chain-all` |
 | `--server-url URL` | none | Sends training events to `pythonserver.py`. Leave unset for ordinary local training. See the server section further below for details. |
 | `--api-token TOKEN` | none | The authentication token used with `--server-url`. Can also be set via the `PUYOW_AI_TOKEN` environment variable. |
-| `--evaluate-episodes N` | `0` | Evaluates the saved model instead of training. Setting this to 1 or more prints wins/losses/draws/win rate as JSON. |
+| `--evaluate-episodes N` | `0` | Evaluates the saved model instead of training. Setting this to 1 or more prints wins/losses/draws/win rate and the chain distribution as JSON (see section 13). |
 | `--infer-observation JSON_FILE` | none | Runs a single inference on one observation JSON using the saved model, without training. |
 | `--export-gguf MODEL_DIR` | none | Converts a Hugging Face Transformer model to GGUF. This cannot be used on `.pt` files produced by this trainer. |
 | `--gguf-output PATH` | `python/model-f16.gguf` | The output file path for `--export-gguf`. |
@@ -220,6 +222,28 @@ For this game, the resulting board after a move (landing, popping, chains, ATTAC
 - **Exploration**: during training, a candidate is picked at random with a certain probability. That probability starts at 1.0 and decays down to 0.05 by the halfway point of all episodes, so for the remaining half, the model is playing almost entirely on its own judgment. Even when picking randomly, only legal candidates are considered.
 
 Garbage-puyo drops are random, so they aren't reflected in the afterstate — only the remaining damage after any offsetting is kept as a scalar in the state. Because this approximation is applied through the same function (`learning.enumerate_afterstates()`) in both the trainer and the server, it's applied identically on both sides.
+
+### Training strategies that encourage longer chains
+
+You can pick a training strategy with the `Training strategy` combo box in `lngui.py` or the `--training-strategy` option of `learning.py`. The default, `standard`, trains exactly as before this option existed.
+
+| Value | GUI label | Behavior |
+| --- | --- | --- |
+| `standard` (default) | `Standard` | The previous behavior: exploration picks a random placeable move, and the n-step return is 3. |
+| `chain-guided` | `Chain-guided exploration` | Half of the exploration moves follow the placement of a chain-building enemy AI. The guide is chosen per episode from Amdusias, Kimaris, and Andrealphus. Random exploration alone almost never produces chains of 5 or more, so the value network has a hard time learning what a board with a chain built up is worth. |
+| `chain-curriculum` | `Chain curriculum` | 30% of episodes start from a field with a real fever pattern laid out as a chain seed, and 20% are played `solo`, with no garbage exchange. The seed's colors are shuffled at random, so it doesn't pop right away; the trigger colors have to be lined up over several moves. |
+| `long-nstep` | `Long n-step return` | Value targets chain together the actual rewards of up to 8 moves instead of 3, so chain rewards propagate back to earlier moves faster. |
+| `chain-all` | `All chain strategies` | Uses all three strategies above together. |
+
+```powershell
+python python/learning.py --episodes 5000 --output python/puyow/chain.pt --training-strategy chain-all
+```
+
+- Every strategy changes **only the training process**. The reward (`ATTACK + chain^2`), the discount rate (0.70), and the observation/action contract stay the same, so a model trained with any strategy works as-is for server and browser inference, and an existing model can continue training with a different strategy.
+- Conversely, the criterion for judging "the best move" itself does not change. These strategies help the model reach that criterion faster and more reliably. Compare their effect with the chain distribution from `--evaluate-episodes` (see section 13).
+- `chain-guided` asks an enemy AI to decide on every guided exploration move, so the early part of training, where the exploration rate is high, runs slower.
+- The chain seeds of `chain-curriculum` read the fever patterns from the game source the same way fever rules do, so Node.js is required. `solo` episodes can't be won, so the win count in the log drops accordingly.
+- The training log also prints each episode's longest chain as `max_combo=`.
 
 ## 9. Details: observations and actions
 
@@ -357,6 +381,15 @@ To check the epsilon=0 win rate without training, use:
 ```powershell
 python python/learning.py --output python/puyow/default.pt --evaluate-episodes 100 --opponent random
 ```
+
+Besides wins, losses, draws, and win rate, the output JSON contains chain statistics for the model being evaluated. Use them to compare whether a training strategy made the model go for longer chains.
+
+| Key | Contents |
+| --- | --- |
+| `average_max_combo` | The average of each episode's longest chain |
+| `max_combo_distribution` | For each longest-chain length per episode (`0` if no chain was made at all), the number of episodes |
+| `average_combo` | The average chain length over moves that actually popped. `0` if nothing popped |
+| `combo_distribution` | For each chain length among moves that actually popped, how many times it happened |
 
 ## 14. Reference: help
 
