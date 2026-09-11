@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 44;
+    const BUILDNO = 45;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -250,6 +250,9 @@
     const SOUND_DATA_URL_MAX_LENGTH = 200;
     /** 새 설정 및 비어 있거나 잘못된 이름에 사용할 기본 플레이어 이름이다. */
     const DEFAULT_PLAYER_NAME = 'PLAYER 1';
+    /** Windows·Linux 파일 이름과 닉네임에 함께 쓸 수 없는 문자다. 제어 문자도 파일 이름으로 저장할 수 없으므로 막는다. */
+    // eslint-disable-next-line no-control-regex -- 이름을 운영체제 파일명에도 안전하게 쓸 수 있도록 제어 문자를 함께 거부한다.
+    const PLAYER_NAME_FORBIDDEN_PATTERN = /[\\/:*?"<>|'!|\u0000-\u001F\u007F]/u;
     /** 가상 컨트롤러 표시 크기 선택지다. 기존 true/false 저장값은 normal/none으로 이관한다. @type {{key:'none'|'normal'|'large', label:string}[]} */
     const VIRTUAL_CONTROLLER_OPTIONS = [
         { key: 'none', label: '없음' },
@@ -337,7 +340,7 @@
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
             'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
             '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
-            '설정': 'Settings', '이름': 'Name', '코드': 'Code', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '없음': 'None', '크게': 'Large', '그래픽 설정': 'Graphics quality', '사운드 데이터 URL': 'Sound data URL', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
+            '설정': 'Settings', '이름': 'Name', '이름 또는 닉네임을 입력하세요': 'Enter your name or nickname', '이름은 게임에서 표시됩니다.': 'Your name is shown in the game.', '이름 또는 닉네임을 입력해 주세요.': 'Enter a name or nickname.', '이름에 사용할 수 없는 문자가 있습니다.': 'The name contains characters that cannot be used.', '코드': 'Code', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '없음': 'None', '크게': 'Large', '그래픽 설정': 'Graphics quality', '사운드 데이터 URL': 'Sound data URL', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
             '플레이 방법': 'How to Play', '갤러리': 'Gallery', '대상 유형': 'Category', '대상': 'Item', '일반뿌요': 'Puyos', '예고뿌요': 'Warning Puyos', '적': 'Enemies', '빨강뿌요': 'Red Puyo', '초록뿌요': 'Green Puyo', '노랑뿌요': 'Yellow Puyo', '파랑뿌요': 'Blue Puyo', '보라뿌요': 'Purple Puyo', '방해뿌요': 'Garbage Puyo', '딱딱뿌요': 'Hard Puyo', '작은 예고뿌요': 'Small Warning Puyo', '큰 예고뿌요': 'Large Warning Puyo', '빨간 돌': 'Red Rock', '별': 'Star', '태양': 'Sun', '중성자별': 'Neutron Star', '블랙홀': 'Black Hole', '위기': 'Crisis', '다시보기': 'Replay',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': 'An all clear makes your next attack much stronger.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
             '은하': 'Galaxy', '빅뱅': 'Big Bang',
@@ -350,7 +353,7 @@
         ja: {
             '솔로몬': 'ソロモン', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'ソロモンAIの応答エラー：代替AIで続行します。',
             '인공지능 모델을 불러오는 중...': 'AIモデルを読み込み中…', '인공지능 모델을 불러오지 못했습니다.': 'AIモデルを読み込めませんでした。',
-            '이름': '名前',
+            '이름': '名前', '이름 또는 닉네임을 입력하세요': '名前またはニックネームを入力してください', '이름은 게임에서 표시됩니다.': '名前はゲーム内に表示されます。', '이름 또는 닉네임을 입력해 주세요.': '名前またはニックネームを入力してください。', '이름에 사용할 수 없는 문자가 있습니다.': '名前に使用できない文字が含まれています。',
             '뿌요 W': 'Puyo W',
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
             '게임 시작': 'ゲーム開始', '구경': '観戦', '모드': 'モード', '규칙': 'ルール', '색상 수': '色数', '다음 대전까지 %1초': '次の対戦まで%1秒', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '현재 턴 %1 / %2': 'ターン %1 / %2', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一度に%1色のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
@@ -375,7 +378,7 @@
         zh: {
             '솔로몬': '所罗门', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': '所罗门 AI 响应错误：将使用备用 AI 继续。',
             '인공지능 모델을 불러오는 중...': '正在加载 AI 模型…', '인공지능 모델을 불러오지 못했습니다.': '无法加载 AI 模型。',
-            '이름': '名称',
+            '이름': '名称', '이름 또는 닉네임을 입력하세요': '请输入名称或昵称', '이름은 게임에서 표시됩니다.': '名称会显示在游戏中。', '이름 또는 닉네임을 입력해 주세요.': '请输入名称或昵称。', '이름에 사용할 수 없는 문자가 있습니다.': '名称中含有不能使用的字符。',
             '뿌요 W': 'Puyo W',
             '초기화': '重置', '이 게임의 모든 설정을 초기화하시겠습니까?': '要重置此游戏的所有设置吗？', '초기화 중...': '正在重置…',
             '게임 시작': '开始游戏', '구경': '观战', '모드': '模式', '규칙': '规则', '색상 수': '颜色数', '다음 대전까지 %1초': '距离下一场对战还有%1秒', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '퍼즐뿌요': '益智魔法气泡', '퍼즐뿌요 스테이지': '益智魔法气泡关卡', '스테이지 %1': '关卡 %1', '권장 턴 수 %1': '推荐回合数: %1', '현재 턴 %1': '第 %1 回合', '현재 턴 %1 / %2': '第 %1 / %2 回合', '%1 연쇄 해봐': '试试 %1 连锁！', '싹쓸이 해봐': '试试全消！', '한 번에 %1개 뿌요를 터뜨려봐': '一次消除 %1 个魔法气泡！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一次消除 %1 种颜色的魔法气泡！', '방해뿌요 %1개를 발생 시켜봐': '发送 %1 个垃圾魔法气泡！', '스테이지 클리어': '关卡完成', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
@@ -604,6 +607,10 @@
     let settingsCursor = 0;
     /** 설정 텍스트 입력의 선택 시작 위치다. 선택이 없으면 null이다. @type {number|null} */
     let settingsSelectionAnchor = null;
+    /** 저장된 이름이 없거나 사용할 수 없는 경우 강제로 표시할 이름 입력 대화상자다. @type {{value:string,cursor:number,error:string|null}|null} */
+    let playerNamePrompt = null;
+    /** 저장소의 이름이 필수 입력 조건을 충족하는지 여부다. @type {boolean} */
+    let playerNameSetupRequired = false;
     /** 화면 최상단에 표시할 외부 메시지다. @type {{message:string,color:string,backgroundColor:string|null,elapsed:number,duration:number}|null} */
     let screenMessage = null;
     /** 현재 표시 중인 공용 확인 대화상자다. @type {{message:string,choice:number,resolve:(value:boolean)=>void}|null} */
@@ -1228,11 +1235,18 @@
         }
     }
 
+    /** 플레이어 이름을 저장 가능한 값인지 검사한다. @param {unknown} value 검사할 값 @returns {{name:string|null,error:string|null}} 검사 결과 */
+    function validatePlayerName(value) {
+        if (typeof value !== 'string') return { name: null, error: '이름 또는 닉네임을 입력해 주세요.' };
+        if (PLAYER_NAME_FORBIDDEN_PATTERN.test(value)) return { name: null, error: '이름에 사용할 수 없는 문자가 있습니다.' };
+        const name = Array.from(value.trim()).slice(0, PLAYER_NAME_MAX_LENGTH).join('');
+        if (!name) return { name: null, error: '이름 또는 닉네임을 입력해 주세요.' };
+        return { name, error: null };
+    }
+
     /** 저장된 플레이어 이름을 표시 가능한 기본값과 최대 길이로 정규화한다. @param {unknown} value 저장값 @returns {string} 플레이어 이름 */
     function normalizePlayerName(value) {
-        if (typeof value !== 'string') return DEFAULT_PLAYER_NAME;
-        const name = Array.from(value).slice(0, PLAYER_NAME_MAX_LENGTH).join('');
-        return name.trim() ? name : DEFAULT_PLAYER_NAME;
+        return validatePlayerName(value).name || DEFAULT_PLAYER_NAME;
     }
 
     /** 저장된 사운드 데이터 URL을 최대 길이로 정규화한다. @param {unknown} value 저장값 @returns {string} 사운드 데이터 URL */
@@ -1602,6 +1616,8 @@
      * @returns {void}
      */
     function saveStore() {
+        // 이름 입력 대화상자를 아직 통과하지 않은 저장값을 기본 이름으로 덮어쓰면, 새로고침만으로 필수 입력을 우회할 수 있다.
+        if (playerNameSetupRequired) return;
         try {
             storageManager.setItem(STORE_KEY, JSON.stringify(store));
         } catch (error) {
@@ -1618,6 +1634,7 @@
             const serialized = storageManager.getItem(STORE_KEY);
             if (!serialized) {
                 store = createInitialStore();
+                playerNameSetupRequired = true;
                 return;
             }
             const parsed = parseJSON(serialized);
@@ -1653,6 +1670,7 @@
                     : []
             ]));
             const settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
+            playerNameSetupRequired = !validatePlayerName(settings.playerName).name;
             const puzzleClearStages = Array.isArray(parsed.puzzleClearStages)
                 ? [...new Set(parsed.puzzleClearStages.filter((index) => Number.isInteger(index) && index >= 0))]
                 : [];
@@ -1690,6 +1708,7 @@
         } catch (error) {
             console.error('Puyo W 저장 데이터 불러오기에 실패했습니다.', error);
             store = createInitialStore();
+            playerNameSetupRequired = true;
         }
     }
 
@@ -8574,11 +8593,19 @@
         menuScreen = 'settings';
     }
 
-    /** 설정 화면의 변경 사항을 저장한다. @returns {void} */
+    /** 설정 화면의 변경 사항을 저장한다. @returns {boolean} 저장 성공 여부 */
     function saveSettings() {
+        const playerNameResult = validatePlayerName(settingsDraft.playerName);
+        if (!playerNameResult.name) {
+            settingsFocus = 0;
+            settingsEditing = false;
+            clearSettingsTextSelection();
+            showMessage(translate(playerNameResult.error), '#fff', 3000, '#7d2630');
+            return false;
+        }
         playMenuSelectSound();
         clearSettingsApiTest();
-        settingsDraft.playerName = normalizePlayerName(settingsDraft.playerName);
+        settingsDraft.playerName = playerNameResult.name;
         settingsDraft.soundDataURL = normalizeSoundDataURL(settingsDraft.soundDataURL);
         settingsDraft.aiApiURL = normalizeAiApiURL(settingsDraft.aiApiURL);
         const convertedSoundDataURL = convertURL(settingsDraft.soundDataURL);
@@ -8596,6 +8623,7 @@
         }
         settingsDraft = null; settingsEditing = false; clearSettingsTextSelection();
         menuScreen = 'title'; loadNotice();
+        return true;
     }
 
     /** 설정 화면을 저장하지 않고 닫는다. @returns {void} */
@@ -8640,6 +8668,8 @@
         clearSettingsTextSelection();
         settingsResetting = true;
         store = createInitialStore();
+        playerNameSetupRequired = true;
+        playerNamePrompt = null;
         ownedCards = [];
         applyCanvasOutputResolution();
         updateCanvasOrientation();
@@ -10846,6 +10876,44 @@
         });
     }
 
+    /** 이름 입력 대화상자의 입력란·확인 버튼 영역을 반환한다. @returns {{input:{x:number,y:number,width:number,height:number},confirm:{x:number,y:number,width:number,height:number}}} */
+    function getPlayerNamePromptBounds() {
+        return {
+            input: { x: 410, y: 345, width: 460, height: 52 },
+            confirm: { x: 560, y: 440, width: 160, height: 58 }
+        };
+    }
+
+    /** 이름 또는 닉네임 필수 입력 대화상자를 모든 메뉴 위에 그린다. @returns {void} */
+    function drawPlayerNamePrompt() {
+        if (!playerNamePrompt) return;
+        const bounds = getPlayerNamePromptBounds();
+        context.fillStyle = 'rgba(2, 8, 13, 0.82)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.fillStyle = '#102c3b'; context.fillRect(340, 205, 600, 355);
+        context.strokeStyle = '#6ea2b8'; context.lineWidth = 3; context.strokeRect(340, 205, 600, 355);
+        context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `28px ${TITLE_FONT}`;
+        context.fillText(translate('이름 또는 닉네임을 입력하세요'), WIDTH / 2, 270);
+        context.fillStyle = '#c9e3ea'; context.font = `18px ${MESSAGE_FONT}`;
+        context.fillText(translate('이름은 게임에서 표시됩니다.'), WIDTH / 2, 310);
+        context.fillStyle = '#071621'; context.fillRect(bounds.input.x, bounds.input.y, bounds.input.width, bounds.input.height);
+        context.strokeStyle = playerNamePrompt.error ? '#ef5350' : '#6ea2b8'; context.lineWidth = playerNamePrompt.error ? 3 : 2;
+        context.strokeRect(bounds.input.x, bounds.input.y, bounds.input.width, bounds.input.height);
+        context.save();
+        context.beginPath(); context.rect(bounds.input.x + 10, bounds.input.y + 2, bounds.input.width - 20, bounds.input.height - 4); context.clip();
+        context.textAlign = 'left'; context.textBaseline = 'middle'; context.fillStyle = '#f5fbfc'; context.font = `22px ${MESSAGE_FONT}`;
+        context.fillText(playerNamePrompt.value, bounds.input.x + 12, bounds.input.y + bounds.input.height / 2);
+        const cursorX = bounds.input.x + 12 + context.measureText(Array.from(playerNamePrompt.value).slice(0, playerNamePrompt.cursor).join('')).width;
+        context.strokeStyle = '#f7c843'; context.lineWidth = 2; context.beginPath(); context.moveTo(cursorX, bounds.input.y + 11); context.lineTo(cursorX, bounds.input.y + bounds.input.height - 11); context.stroke();
+        context.restore();
+        if (playerNamePrompt.error) {
+            context.fillStyle = '#ffb4b4'; context.font = `17px ${MESSAGE_FONT}`;
+            context.fillText(translate(playerNamePrompt.error), WIDTH / 2, 425);
+        }
+        context.fillStyle = '#4cc9b0'; context.fillRect(bounds.confirm.x, bounds.confirm.y, bounds.confirm.width, bounds.confirm.height);
+        context.strokeStyle = '#7ae3cb'; context.lineWidth = 2; context.strokeRect(bounds.confirm.x, bounds.confirm.y, bounds.confirm.width, bounds.confirm.height);
+        context.fillStyle = '#fff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('확인'), bounds.confirm.x + bounds.confirm.width / 2, bounds.confirm.y + 37);
+    }
+
     /**
      * 현재 메뉴 또는 실행 중인 게임의 한 프레임을 렌더링한다.
      * @returns {void}
@@ -10862,6 +10930,7 @@
             else if (menuScreen === 'settings' && settingsDraft) drawSettings();
             else if (menuScreen === 'gallery' && gallery) drawGallery();
             else drawMenu();
+            drawPlayerNamePrompt();
         } else if (game.tutorial) {
             drawTutorial();
         } else if (!game.running) {
@@ -11338,7 +11407,7 @@
 
     /** 실제 텍스트 입력 중에는 Z 키를 메뉴 확인 키로 바꾸지 않아야 하는지 확인한다. @param {KeyboardEvent|{target?:EventTarget|null}} event 입력 이벤트 @returns {boolean} */
     function isTextInputInProgress(event) {
-        if (settingsEditing) return true;
+        if (settingsEditing || playerNamePrompt) return true;
         const target = event.target;
         if (!target || typeof target !== 'object') return false;
         if (target.isContentEditable) return true;
@@ -11364,6 +11433,9 @@
         menuScreen = 'title';
         loadNotice();
         syncBackgroundMusic();
+        if (playerNameSetupRequired) {
+            playerNamePrompt = { value: '', cursor: 0, error: null };
+        }
     }
 
     /** 승리한 대전의 적 선택 상태를 복원하고, 새로 열렸으면 다음 적에 포커스를 둔다. @param {{difficulty:number,aiDifficulty:number,opponentIndex:number|null,feverRule:boolean,feverStart?:boolean,winner:PlayerState|null,players:PlayerState[]}} finishedGame 종료된 게임 상태 @returns {void} */
@@ -11498,6 +11570,62 @@
         }
     }
 
+    /** 이름 입력 대화상자의 값을 현재 커서 위치에 넣는다. @param {string} text 삽입할 문자열 @returns {void} */
+    function insertPlayerNamePromptText(text) {
+        if (!playerNamePrompt) return;
+        const characters = Array.from(playerNamePrompt.value);
+        const before = characters.slice(0, playerNamePrompt.cursor);
+        const after = characters.slice(playerNamePrompt.cursor);
+        const inserted = Array.from(text).slice(0, Math.max(0, PLAYER_NAME_MAX_LENGTH - before.length - after.length));
+        playerNamePrompt.value = before.concat(inserted, after).join('');
+        playerNamePrompt.cursor += inserted.length;
+    }
+
+    /** 이름 입력을 검사하여 통과하면 즉시 저장하고 대화상자를 닫는다. @returns {boolean} 저장 성공 여부 */
+    function submitPlayerNamePrompt() {
+        if (!playerNamePrompt) return false;
+        const result = validatePlayerName(playerNamePrompt.value);
+        if (!result.name) {
+            playerNamePrompt.error = result.error;
+            return false;
+        }
+        store.settings.playerName = result.name;
+        playerNameSetupRequired = false;
+        playerNamePrompt = null;
+        saveStore();
+        playMenuSelectSound();
+        return true;
+    }
+
+    /** 이름 입력 대화상자의 키보드 입력을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @param {string} key 소문자 키 이름 @returns {void} */
+    function handlePlayerNamePromptKeydown(event, key) {
+        if (!playerNamePrompt) return;
+        event.preventDefault();
+        if (event.ctrlKey && key === 'a') {
+            playerNamePrompt.value = '';
+            playerNamePrompt.cursor = 0;
+            return;
+        }
+        if (key === 'enter') { submitPlayerNamePrompt(); return; }
+        if (key === 'arrowleft') playerNamePrompt.cursor = Math.max(0, playerNamePrompt.cursor - 1);
+        else if (key === 'arrowright') playerNamePrompt.cursor = Math.min(Array.from(playerNamePrompt.value).length, playerNamePrompt.cursor + 1);
+        else if (key === 'home') playerNamePrompt.cursor = 0;
+        else if (key === 'end') playerNamePrompt.cursor = Array.from(playerNamePrompt.value).length;
+        else if (key === 'backspace' && playerNamePrompt.cursor > 0) {
+            const characters = Array.from(playerNamePrompt.value);
+            characters.splice(playerNamePrompt.cursor - 1, 1);
+            playerNamePrompt.value = characters.join('');
+            playerNamePrompt.cursor -= 1;
+        } else if (key === 'delete') {
+            const characters = Array.from(playerNamePrompt.value);
+            characters.splice(playerNamePrompt.cursor, 1);
+            playerNamePrompt.value = characters.join('');
+        } else if (!event.ctrlKey && !event.altKey && event.key.length === 1) {
+            insertPlayerNamePromptText(event.key);
+        }
+        playerNamePrompt.error = null;
+    }
+
     /** 키 입력의 실제 화면 동작을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @returns {void} */
     function handleKeydownCore(event) {
         const textInputInProgress = isTextInputInProgress(event);
@@ -11514,6 +11642,7 @@
             if (key === 'enter') enterMainMenu();
             return;
         }
+        if (playerNamePrompt) { handlePlayerNamePromptKeydown(event, key); return; }
         if (!game && menuScreen === 'simulator') { handleSimulatorKeydown(key); return; }
         if (!game && menuScreen === 'gallery') { handleGalleryKeydown(key); return; }
         if (game?.tutorial) {
@@ -11851,6 +11980,12 @@
         if (settingsResetting) return;
         if (!game && menuScreen === 'initialTitle') {
             enterMainMenu();
+            return;
+        }
+        if (playerNamePrompt) {
+            const { x, y } = getCanvasEventCoordinates(event);
+            const bounds = getPlayerNamePromptBounds().confirm;
+            if (x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height) submitPlayerNamePrompt();
             return;
         }
         if (game?.tutorial) {
@@ -12865,6 +13000,8 @@
         gallery = null;
         initialGalleryPreview = { loaded: false, items: [], startIndex: 0, elapsed: 0 };
         settingsDraft = null;
+        playerNamePrompt = null;
+        playerNameSetupRequired = false;
         recommendedPoint = null;
         menuScreen = 'initialTitle';
         hasUserStarted = false;

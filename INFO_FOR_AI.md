@@ -581,6 +581,12 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 
 `lngui.py`의 메뉴 동작과 ONNX 변환은 `python/test_learning.py`의 `TrainerMenuTest`·`OnnxExportTest`가 확인한다. 앞쪽은 실제 Tk 창을 만들어 위젯·메뉴 상태를 검사하므로 화면이 없는 환경에서는 통째로 건너뛴다(`_TK_AVAILABLE`). ONNX 변환 자체를 확인하는 테스트는 `onnx` 패키지가 있을 때만 돌고, 미설치 안내를 확인하는 테스트는 반대로 없을 때만 돈다.
 
+### 플레이어 이름 필수 입력 (BUILDNO 45)
+
+`puyow_store.settings.playerName`이 없거나 `null`·빈 문자열·금지 문자를 포함하면, 저장값을 표시용 기본 이름으로 보정하더라도 `playerNameSetupRequired`를 유지한다. 이 경우에는 정규화한 기본 이름을 저장소에 다시 쓰지 않아 새로고침으로 필수 입력을 우회할 수 없게 한다. 초기 타이틀에서 메인 메뉴로 들어간 직후 `playerNamePrompt`가 메뉴 위에 취소 불가로 표시되며, Enter 또는 확인 버튼으로만 제출할 수 있다. 유효한 이름을 입력하면 즉시 `puyow_store`에 저장하고 대화상자를 닫는다.
+
+이름은 공백을 제외하고 최대 10자로 저장하며 Windows·Linux 파일명에 쓸 수 없는 `\\ / : * ? " < > |`와 작은따옴표, 느낌표, 제어 문자를 거부한다. 같은 `validatePlayerName()`을 설정 화면 저장에도 사용하므로, 잘못된 이름을 저장하려 하면 설정 화면을 닫지 않고 안내 메시지를 표시한다. UI 문자열은 `translate()` 키로 관리한다. 회귀는 `tests/test01_menu.spec.js`의 이름 입력·설정 저장 테스트가 담당하고, 공통 `enterMainMenu()`는 기존 메뉴 시나리오가 첫 실행 대화상자에 막히지 않도록 테스트 이름을 입력한다.
+
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.

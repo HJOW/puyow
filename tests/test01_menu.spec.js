@@ -277,12 +277,21 @@ test('observation 코드는 진행도를 바꾸지 않고 출시된 표시 적�
   await page.evaluate(() => localStorage.removeItem('puyow_code'));
 });
 
-test('플레이어 이름은 설정에 저장되며 게임 화면에 적용되고 최대 10자로 제한된다', async ({ page }) => {
+test('플레이어 이름은 설정에 저장되며 금지 문자를 거부하고 게임 화면에 적용되며 최대 10자로 제한된다', async ({ page }) => {
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('PLAYER 1'))).toBe(true);
 
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 82 } });
-  for (let index = 0; index < 8; index += 1) await page.keyboard.press('Backspace');
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('BAD/NAME');
+  await page.keyboard.press('Enter');
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.playerName)).toBe('PLAYER 1');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('이름에 사용할 수 없는 문자가 있습니다.')))).toBe(true);
+
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 82 } });
+  await page.keyboard.press('Control+A');
   await page.keyboard.type('ABCDEFGHIJK');
   await page.keyboard.press('Enter');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
@@ -295,6 +304,30 @@ test('플레이어 이름은 설정에 저장되며 게임 화면에 적용되�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
   expect(await page.evaluate(() => window.WebPuyo.getNextPairs().player.name)).toBe('ABCDEFGHIJ');
+});
+
+test('저장된 이름이 없으면 메인 메뉴 진입 뒤 필수 입력 대화상자에서 유효한 이름을 저장해야 한다', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: '' } })));
+  await page.reload();
+  await page.keyboard.press('Enter');
+  const promptTitle = await page.evaluate(() => window.WebPuyo.translate('이름 또는 닉네임을 입력하세요'));
+  const invalidMessage = await page.evaluate(() => window.WebPuyo.translate('이름에 사용할 수 없는 문자가 있습니다.'));
+  await expect.poll(() => page.evaluate((title) => window.testCanvasTexts.includes(title), promptTitle)).toBe(true);
+
+  await page.keyboard.type('BAD/NAME');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate((message) => window.testCanvasTexts.includes(message), invalidMessage)).toBe(true);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.playerName)).toBe('');
+  await page.reload();
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate((title) => window.testCanvasTexts.includes(title), promptTitle)).toBe(true);
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('VALIDNAME');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.playerName)).toBe('VALIDNAME');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
 });
 
 test('사운드 데이터 URL은 최대 200자로 저장되고 초기화 시 변환된 주소에서 읽는다', async ({ page }) => {

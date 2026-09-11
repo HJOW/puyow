@@ -86,7 +86,16 @@ export function setupGamePage() {
 }
 
 export async function enterMainMenu(page) {
+  const canvasTextCount = await page.evaluate(() => window.testCanvasTexts.length);
   await page.keyboard.press('Enter');
+  // 첫 실행 또는 오래된 저장값은 메인 메뉴 위에 필수 이름 입력 대화상자를 띄운다.
+  // 기존 시나리오는 메뉴 동작 자체를 검증하므로 여기서 기본 테스트 이름을 한 번만 입력한다.
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+  const promptTitle = await page.evaluate(() => window.WebPuyo.translate('이름 또는 닉네임을 입력하세요'));
+  if (await page.evaluate(({ title, start }) => window.testCanvasTexts.slice(start).includes(title), { title: promptTitle, start: canvasTextCount })) {
+    await page.keyboard.type('PLAYER 1');
+    await page.keyboard.press('Enter');
+  }
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 }
 
