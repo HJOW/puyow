@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 45;
+    const BUILDNO = 46;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -107,6 +107,8 @@
     const BUTTON_FONT_NAME = 'Noto Sans KR';
     /** 메시지용 기본 글꼴 이름이다. @type {string} */
     const MESSAGE_FONT_NAME = 'D2Coding';
+    /** 숫자 데이터 및 금액 표시에 사용되는 기본 글꼴 이름이다. @type {string} */
+    const NUMBER_FONT_NAME = 'ShareTechMono';
     /** 글꼴 지정 시 기본 글꼴 뒤에 대체 글꼴로 붙일 글꼴 이름 목록이다. 배열 내부와 세 글꼴 이름 모두와 중복되지 않도록 자동으로 걸러진다. @type {string[]} */
     const FALLBACK_FONTS = ['Nanum Gothic Coding', 'Nanum Gothic', 'Noto Sans Mono', 'Noto Sans SC', 'Noto Sans JP', 'Black Han Sans', 'monospace', 'sans-serif'];
     /** 화면 제목이나 절 제목처럼 강조가 필요한 큰 헤더에 사용할 글꼴 목록이다. @type {string} */
@@ -115,6 +117,8 @@
     const BUTTON_FONT = buildFontStack(BUTTON_FONT_NAME);
     /** 이름표, 점수, 안내 문구 등 일반 메시지 표시에 사용할 글꼴 목록이다. @type {string} */
     const MESSAGE_FONT = buildFontStack(MESSAGE_FONT_NAME);
+    /** 숫자만 표시하는 점수·시간·수치에 사용할 글꼴 목록이다. @type {string} */
+    const NUMBER_FONT = buildFontStack(NUMBER_FONT_NAME);
     /** 4방향 인접 좌표 계산에 사용할 X, Y 변화량이다. @type {number[][]} */
     const DIRECTIONS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     /** 싹쓸이 티켓을 사용한 폭발에 직접 더할 ATTACK이다. 마진 레이트·시간 배율은 적용하지 않는다. @type {number} */
@@ -1037,7 +1041,7 @@
      * @returns {string} 콤마로 구분된 글꼴 목록 문자열
      */
     function buildFontStack(primaryFontName) {
-        const reserved = new Set([primaryFontName, TITLE_FONT_NAME, BUTTON_FONT_NAME, MESSAGE_FONT_NAME]);
+        const reserved = new Set([primaryFontName, TITLE_FONT_NAME, BUTTON_FONT_NAME, MESSAGE_FONT_NAME, NUMBER_FONT_NAME]);
         const uniqueFallbacks = [...new Set(FALLBACK_FONTS)].filter((fontName) => !reserved.has(fontName));
         return [primaryFontName, ...uniqueFallbacks].map(quoteFontNameIfNeeded).join(', ');
     }
@@ -6744,7 +6748,7 @@
             context.stroke();
         }
         context.fillStyle = '#f5fbfc';
-        context.font = `17px ${MESSAGE_FONT}`;
+        context.font = `17px ${NUMBER_FONT}`;
         context.textAlign = 'center';
         context.fillText(String(player.fever.nextTime).padStart(2, '0'), centerX, topY + FEVER_GAUGE_MAX * 34 + 4);
     }
@@ -6951,7 +6955,7 @@
         drawFeverGauge(player);
         if (game?.feverRule && player.fever?.active) {
             context.fillStyle = player.fever.leftTime <= 10000 ? '#ef5350' : '#f5fbfc';
-            context.font = `28px ${MESSAGE_FONT}`;
+            context.font = `28px ${NUMBER_FONT}`;
             context.textAlign = 'center';
             context.fillText(String(Math.ceil(player.fever.leftTime / 1000)), x + COLUMNS * CELL / 2, FIELD_TOP + 31);
         }
@@ -7097,7 +7101,7 @@
             });
         }
         if (game.continuousFever && game.fever) {
-            context.fillStyle = game.fever.leftTime <= 10000 ? '#ef5350' : '#f5fbfc'; context.font = `48px ${MESSAGE_FONT}`;
+            context.fillStyle = game.fever.leftTime <= 10000 ? '#ef5350' : '#f5fbfc'; context.font = `48px ${NUMBER_FONT}`;
             context.fillText(String(Math.ceil(game.fever.leftTime / 1000)), WIDTH / 2, 396);
         } else if (game.watch) {
             // 구경은 두 CPU가 모두 적이므로, 중앙 좌우에 각자의 현재 표정을 함께 표시한다.
@@ -7119,7 +7123,7 @@
             context.fillStyle = '#0b202c'; context.fillRect(x, 492, width, 92);
             context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, 492, width, 92);
             context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(player.name, x + width / 2, 516);
-            context.fillStyle = '#f5fbfc'; context.font = `22px ${MESSAGE_FONT}`; context.fillText(formatPoint(player.point), x + width / 2, 557);
+            context.fillStyle = '#f5fbfc'; context.font = `22px ${NUMBER_FONT}`; context.fillText(formatPoint(player.point), x + width / 2, 557);
         });
     }
 
@@ -8970,7 +8974,7 @@
             if (row.kind === 'slider') {
                 context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(layout.controlX, row.y - 7, layout.sliderWidth, 14);
                 context.fillStyle = '#4cc9b0'; context.fillRect(layout.controlX + 2, row.y - 5, (layout.sliderWidth - 4) * row.value / 100, 10);
-                context.fillStyle = '#f5fbfc'; context.textAlign = 'right'; context.fillText(String(row.value), 920, row.y + 4);
+                context.fillStyle = '#f5fbfc'; context.font = `12px ${NUMBER_FONT}`; context.textAlign = 'right'; context.fillText(String(row.value), 920, row.y + 4);
             } else if (row.kind === 'radio') {
                 // 아무 선택지도 고르지 않은 상태에서는 포커스를 표시할 선택지가 없으므로 모든 선택지에 포커스 테두리를 그린다.
                 const noneSelected = !row.options.some((option) => row.value === option.value);
@@ -9718,7 +9722,7 @@
             context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(600, 145, 150, 58);
             context.fillStyle = '#fff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('그리기'), 675, 183);
         }
-        context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`; context.fillText(simulator.mode === 'draw' ? translate('그리기') : translate('시뮬레이션'), 675, 486); context.font = `30px ${MESSAGE_FONT}`; context.fillStyle = '#f7c843'; context.fillText(formatPoint(player.point), 675, 536); context.font = `17px ${MESSAGE_FONT}`; context.fillStyle = '#a9d9e5'; context.fillText('POINT', 675, 566);
+        context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`; context.fillText(simulator.mode === 'draw' ? translate('그리기') : translate('시뮬레이션'), 675, 486); context.font = `30px ${NUMBER_FONT}`; context.fillStyle = '#f7c843'; context.fillText(formatPoint(player.point), 675, 536); context.font = `17px ${MESSAGE_FONT}`; context.fillStyle = '#a9d9e5'; context.fillText('POINT', 675, 566);
     }
 
     // ------------------------------------------------------------------
@@ -10949,7 +10953,7 @@
             // 시작 또는 재개 카운트다운 중에는 카운트다운 오버레이를 최상단에 표시한다.
             } else if (game.countdown > 0) {
                 context.fillStyle = 'rgba(3, 11, 19, 0.62)'; context.fillRect(0, 0, WIDTH, HEIGHT);
-                context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `76px ${TITLE_FONT}`;
+                context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `76px ${NUMBER_FONT}`;
                 context.fillText(String(Math.ceil(game.countdown / 1000)), WIDTH / 2, 390);
             } else if (game.paused) {
                 drawPauseOverlay();
@@ -13038,6 +13042,27 @@
         style.className = 'puyow_font_import';
         style.textContent = `
             @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic&family=Nanum+Gothic+Coding&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans+Mono:wght@100..900&family=Noto+Sans+SC:wght@100..900&display=swap');
+
+            @font-face {
+                font-family: 'D2Coding';
+                font-style: normal;
+                font-weight: normal;
+                src : url('../fonts/D2Coding.woff2') format('woff2')
+            }
+
+            @font-face {
+                font-family: 'D2Coding';
+                font-style: normal;
+                font-weight: bold;
+                src : url('../fonts/D2CodingBold.woff2') format('woff2')
+            }
+
+            @font-face {
+                font-family: 'ShareTechMono';
+                font-style: normal;
+                font-weight: normal;
+                src : url('../fonts/ShareTechMono-Regular.ttf') format('truetype')
+            }
         `;
         document.head.appendChild(style);
     }

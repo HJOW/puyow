@@ -581,6 +581,10 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 
 `lngui.py`의 메뉴 동작과 ONNX 변환은 `python/test_learning.py`의 `TrainerMenuTest`·`OnnxExportTest`가 확인한다. 앞쪽은 실제 Tk 창을 만들어 위젯·메뉴 상태를 검사하므로 화면이 없는 환경에서는 통째로 건너뛴다(`_TK_AVAILABLE`). ONNX 변환 자체를 확인하는 테스트는 `onnx` 패키지가 있을 때만 돌고, 미설치 안내를 확인하는 테스트는 반대로 없을 때만 돈다.
 
+### 숫자 전용 표시 글꼴 (BUILDNO 46)
+
+숫자 전용 글꼴은 `NUMBER_FONT_NAME`에서 만든 `NUMBER_FONT` 스택을 사용한다. 필드·중앙·시뮬레이터 점수, 피버 타이머, 게임 시작 카운트다운, 설정 슬라이더 수치처럼 출력 문자열이 숫자만인 경우에만 적용한다. `최종 점수 123`, `5연쇄`, `100 GOLD`, `POINT`, `NEXT`처럼 한글·영어와 숫자가 섞인 문자열은 기존 `MESSAGE_FONT` 또는 해당 UI 글꼴을 유지한다.
+
 ### 플레이어 이름 필수 입력 (BUILDNO 45)
 
 `puyow_store.settings.playerName`이 없거나 `null`·빈 문자열·금지 문자를 포함하면, 저장값을 표시용 기본 이름으로 보정하더라도 `playerNameSetupRequired`를 유지한다. 이 경우에는 정규화한 기본 이름을 저장소에 다시 쓰지 않아 새로고침으로 필수 입력을 우회할 수 없게 한다. 초기 타이틀에서 메인 메뉴로 들어간 직후 `playerNamePrompt`가 메뉴 위에 취소 불가로 표시되며, Enter 또는 확인 버튼으로만 제출할 수 있다. 유효한 이름을 입력하면 즉시 `puyow_store`에 저장하고 대화상자를 닫는다.
