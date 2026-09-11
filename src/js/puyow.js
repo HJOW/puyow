@@ -15826,30 +15826,102 @@
             return { bezel: '#123048', field: '#1b4463', center: '#08192a' };
         }
 
-        /** 은빛 말과 그리폰 날개, 차가운 눈을 귀엽게 표현한 세레의 세 표정 */
+        /**
+         * 날개 달린 은빛 말을 타고 순식간에 달려오는 미남 왕자 세레의 일반·위기·패배 초상화를 그린다.
+         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+         * @param {number} centerX 캐릭터 중심 X 좌표
+         * @param {number} centerY 캐릭터 중심 Y 좌표
+         * @param {number} scale 기본 크기 대비 배율
+         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+         * @returns {void}
+         */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
             const size = 72 * scale;
+            const outline = '#0c1c2c';
             drawingContext.save();
             drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round';
-            drawingContext.fillStyle = '#1b3046';
-            drawingContext.beginPath();
-            drawingContext.moveTo(-size * 0.55, size * 0.78);
-            drawingContext.quadraticCurveTo(0, size * 0.3, size * 0.55, size * 0.78);
-            drawingContext.closePath(); drawingContext.fill();
-            drawingContext.strokeStyle = '#83d5df'; drawingContext.lineWidth = 3 * scale; drawingContext.stroke();
-            drawingContext.fillStyle = '#d7e8da'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.1, size * 0.48, size * 0.58, 0, 0, Math.PI * 2); drawingContext.fill();
-            drawingContext.strokeStyle = '#35556a'; drawingContext.lineWidth = 4 * scale; drawingContext.stroke();
-            drawingContext.fillStyle = '#ecd98b'; drawingContext.beginPath(); drawingContext.moveTo(-size * 0.37, -size * 0.37); drawingContext.quadraticCurveTo(0, -size * 0.75, size * 0.37, -size * 0.37); drawingContext.lineTo(0, -size * 0.48); drawingContext.closePath(); drawingContext.fill();
-            drawingContext.fillStyle = '#c7d0dc'; [-1, 1].forEach((direction) => { drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.42, size * 0.15); drawingContext.lineTo(direction * size * 0.82, -size * 0.25); drawingContext.lineTo(direction * size * 0.58, size * 0.45); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke(); });
-            drawingContext.fillStyle = '#77cfd5'; drawingContext.beginPath(); drawingContext.arc(0, size * 0.66, size * 0.23, 0, Math.PI * 2); drawingContext.fill();
-            drawingContext.strokeStyle = '#d7ffff'; drawingContext.lineWidth = 2 * scale; drawingContext.stroke();
-            const eyeY = -size * 0.16;
+            drawingContext.lineJoin = 'round'; drawingContext.lineCap = 'round';
+
+            // 어디든 순식간에 오가는 전승을 꼬리 뒤의 바람 줄기로 암시한다.
+            drawingContext.strokeStyle = '#5fb3de'; drawingContext.lineWidth = 3 * scale;
+            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.96, size * 0.64); drawingContext.lineTo(-size * 0.64, size * 0.64); drawingContext.moveTo(-size * 0.9, size * 0.76); drawingContext.lineTo(-size * 0.7, size * 0.76); drawingContext.stroke();
+
+            // 깃털 끝이 층진 하늘빛 날개다.
+            drawingContext.strokeStyle = outline; drawingContext.lineWidth = 4 * scale;
+            [-1, 1].forEach((direction) => {
+                drawingContext.fillStyle = '#7ec4e8';
+                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.14, size * 0.26);
+                drawingContext.quadraticCurveTo(direction * size * 0.42, -size * 0.34, direction * size * 0.9, -size * 0.68);
+                drawingContext.quadraticCurveTo(direction * size * 0.96, -size * 0.4, direction * size * 0.8, -size * 0.3);
+                drawingContext.quadraticCurveTo(direction * size * 0.9, -size * 0.1, direction * size * 0.68, -size * 0.04);
+                drawingContext.quadraticCurveTo(direction * size * 0.76, size * 0.14, direction * size * 0.52, size * 0.16);
+                drawingContext.quadraticCurveTo(direction * size * 0.46, size * 0.3, direction * size * 0.24, size * 0.34);
+                drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+                drawingContext.strokeStyle = '#d4f1fb'; drawingContext.lineWidth = 1.6 * scale;
+                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.28, size * 0.12); drawingContext.lineTo(direction * size * 0.76, -size * 0.5);
+                drawingContext.moveTo(direction * size * 0.32, size * 0.22); drawingContext.lineTo(direction * size * 0.64, -size * 0.1); drawingContext.stroke();
+                drawingContext.strokeStyle = outline; drawingContext.lineWidth = 4 * scale;
+            });
+
+            // 푸른 꼬리와 은빛 말의 몸통이다.
+            drawingContext.fillStyle = '#4f9ad6';
+            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.5, size * 0.34); drawingContext.quadraticCurveTo(-size * 0.86, size * 0.26, -size * 0.94, size * 0.52); drawingContext.quadraticCurveTo(-size * 0.78, size * 0.44, -size * 0.52, size * 0.52); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#dde6ee';
+            drawingContext.beginPath(); drawingContext.ellipse(size * 0.02, size * 0.47, size * 0.6, size * 0.27, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+
+            // 바람에 날리는 왕자의 망토와 갑주다.
+            drawingContext.fillStyle = '#24507e';
+            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.2, -size * 0.12); drawingContext.quadraticCurveTo(-size * 0.62, size * 0.0, -size * 0.68, size * 0.38); drawingContext.lineTo(-size * 0.42, size * 0.3); drawingContext.lineTo(-size * 0.3, size * 0.44); drawingContext.lineTo(size * 0.08, size * 0.3); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#4a78b0';
+            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.3, size * 0.38); drawingContext.lineTo(-size * 0.22, -size * 0.1); drawingContext.lineTo(size * 0.1, -size * 0.1); drawingContext.lineTo(size * 0.18, size * 0.38); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#c9d6e2'; drawingContext.lineWidth = 2.5 * scale;
+            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.18, -size * 0.07); drawingContext.lineTo(size * 0.06, -size * 0.07); drawingContext.lineTo(-size * 0.06, size * 0.2); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#e6bd47'; drawingContext.beginPath(); drawingContext.arc(-size * 0.06, size * 0.02, size * 0.045, 0, Math.PI * 2); drawingContext.fill();
+
+            // 오른쪽으로 달려 나가는 말의 목·갈기·머리다.
+            drawingContext.lineWidth = 4 * scale; drawingContext.fillStyle = '#dde6ee';
+            drawingContext.beginPath(); drawingContext.moveTo(size * 0.26, size * 0.34); drawingContext.quadraticCurveTo(size * 0.34, 0, size * 0.46, -size * 0.16); drawingContext.lineTo(size * 0.72, -size * 0.06); drawingContext.quadraticCurveTo(size * 0.66, size * 0.18, size * 0.62, size * 0.42); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.beginPath(); drawingContext.moveTo(size * 0.54, -size * 0.3); drawingContext.lineTo(size * 0.57, -size * 0.52); drawingContext.lineTo(size * 0.67, -size * 0.34); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.beginPath(); drawingContext.ellipse(size * 0.66, -size * 0.2, size * 0.2, size * 0.17, 0.45, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#c3d0dc'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.8, -size * 0.06, size * 0.12, size * 0.1, 0.45, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = outline; drawingContext.beginPath(); drawingContext.arc(size * 0.85, -size * 0.04, size * 0.025, 0, Math.PI * 2); drawingContext.fill();
+            drawingContext.fillStyle = '#4f9ad6';
+            drawingContext.beginPath(); drawingContext.moveTo(size * 0.5, -size * 0.38); drawingContext.quadraticCurveTo(size * 0.3, -size * 0.3, size * 0.3, -size * 0.02); drawingContext.quadraticCurveTo(size * 0.22, size * 0.14, size * 0.28, size * 0.32); drawingContext.lineTo(size * 0.37, size * 0.2); drawingContext.quadraticCurveTo(size * 0.38, size * 0.0, size * 0.48, -size * 0.14); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            const horseEyeX = size * 0.66; const horseEyeY = -size * 0.22;
             if (expression === 'defeated') {
-                drawingContext.fillStyle = '#6cbce6'; [-size * 0.19, size * 0.19].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY + size * 0.13, size * 0.1, size * 0.23, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.strokeStyle = outline; drawingContext.lineWidth = 2.5 * scale;
+                drawingContext.beginPath(); drawingContext.moveTo(horseEyeX - size * 0.045, horseEyeY - size * 0.045); drawingContext.lineTo(horseEyeX + size * 0.045, horseEyeY + size * 0.045); drawingContext.moveTo(horseEyeX + size * 0.045, horseEyeY - size * 0.045); drawingContext.lineTo(horseEyeX - size * 0.045, horseEyeY + size * 0.045); drawingContext.stroke();
             } else {
-                drawingContext.fillStyle = '#203d56'; [-size * 0.19, size * 0.19].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.08, 0, Math.PI * 2); drawingContext.fill(); });
-                if (expression === 'crisis') { drawingContext.fillStyle = '#87dff1'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.42, -size * 0.34, size * 0.07, size * 0.13, 0.2, 0, Math.PI * 2); drawingContext.fill(); }
+                drawingContext.fillStyle = '#f8fbff'; drawingContext.beginPath(); drawingContext.ellipse(horseEyeX, horseEyeY, size * 0.05, expression === 'crisis' ? size * 0.075 : size * 0.06, 0, 0, Math.PI * 2); drawingContext.fill();
+                drawingContext.fillStyle = expression === 'crisis' ? '#d32f2f' : '#1b3a66'; drawingContext.beginPath(); drawingContext.arc(horseEyeX + size * 0.01, horseEyeY, size * 0.03, 0, Math.PI * 2); drawingContext.fill();
+            }
+
+            // 푸른 머리칼과 작은 왕관을 쓴 왕자의 얼굴이다.
+            drawingContext.strokeStyle = outline; drawingContext.lineWidth = 4 * scale;
+            drawingContext.fillStyle = '#f0d0b0'; drawingContext.beginPath(); drawingContext.arc(-size * 0.06, -size * 0.34, size * 0.25, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#2c4f8a';
+            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.33, -size * 0.32); drawingContext.quadraticCurveTo(-size * 0.36, -size * 0.66, -size * 0.06, -size * 0.64); drawingContext.quadraticCurveTo(size * 0.24, -size * 0.66, size * 0.21, -size * 0.32);
+            drawingContext.lineTo(size * 0.12, -size * 0.44); drawingContext.lineTo(size * 0.02, -size * 0.38); drawingContext.lineTo(-size * 0.08, -size * 0.47); drawingContext.lineTo(-size * 0.18, -size * 0.39); drawingContext.lineTo(-size * 0.25, -size * 0.46); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#e6bd47'; drawingContext.lineWidth = 3 * scale;
+            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.2, -size * 0.6); drawingContext.lineTo(-size * 0.19, -size * 0.8); drawingContext.lineTo(-size * 0.11, -size * 0.69); drawingContext.lineTo(-size * 0.06, -size * 0.86); drawingContext.lineTo(-size * 0.01, -size * 0.69); drawingContext.lineTo(size * 0.07, -size * 0.8); drawingContext.lineTo(size * 0.08, -size * 0.6); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
+            drawingContext.fillStyle = '#7ec4e8'; drawingContext.beginPath(); drawingContext.arc(-size * 0.06, -size * 0.66, size * 0.03, 0, Math.PI * 2); drawingContext.fill();
+
+            const eyeY = -size * 0.3;
+            const eyeXs = [-size * 0.15, size * 0.03];
+            // 왕자의 얼굴은 다른 적보다 작으므로 표정 선도 가늘고 작게 그려 입이 뭉개지지 않게 한다.
+            drawingContext.strokeStyle = '#1b2a3a'; drawingContext.lineWidth = 2 * scale;
+            if (expression === 'defeated') {
+                eyeXs.forEach((eyeX) => { drawingContext.beginPath(); drawingContext.moveTo(eyeX - size * 0.045, eyeY - size * 0.04); drawingContext.lineTo(eyeX + size * 0.045, eyeY + size * 0.04); drawingContext.moveTo(eyeX + size * 0.045, eyeY - size * 0.04); drawingContext.lineTo(eyeX - size * 0.045, eyeY + size * 0.04); drawingContext.stroke(); });
+                drawingContext.fillStyle = '#75c9f0'; eyeXs.forEach((eyeX, index) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX + (index ? size * 0.03 : -size * 0.03), eyeY + size * 0.1, size * 0.03, size * 0.065, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.beginPath(); drawingContext.arc(-size * 0.06, -size * 0.14, size * 0.04, Math.PI, Math.PI * 2); drawingContext.stroke();
+            } else {
+                drawingContext.fillStyle = '#f8fbff'; eyeXs.forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.06, expression === 'crisis' ? size * 0.09 : size * 0.07, 0, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.fillStyle = expression === 'crisis' ? '#d32f2f' : '#1b3a66'; eyeXs.forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX + size * 0.01, eyeY + size * 0.005, size * 0.036, 0, Math.PI * 2); drawingContext.fill(); });
+                drawingContext.beginPath();
+                if (expression === 'crisis') drawingContext.arc(-size * 0.06, -size * 0.15, size * 0.04, Math.PI, Math.PI * 2);
+                else drawingContext.arc(-size * 0.06, -size * 0.21, size * 0.05, 0.2, Math.PI - 0.2);
+                drawingContext.stroke();
+                if (expression === 'crisis') { drawingContext.fillStyle = '#7adcf4'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.2, -size * 0.42, size * 0.045, size * 0.09, 0.2, 0, Math.PI * 2); drawingContext.fill(); }
             }
             drawingContext.restore();
         }
