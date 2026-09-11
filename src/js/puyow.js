@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 46;
+    const BUILDNO = 47;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -9262,7 +9262,7 @@
         context.textAlign = 'left';
         context.textBaseline = 'alphabetic';
         context.fillStyle = '#f7c843';
-        context.font = `13px ${MESSAGE_FONT}`;
+        context.font = `13px ${NUMBER_FONT}`;
         context.fillText(`${normalizeGold(store.gold).toLocaleString('en-US')} GOLD`, 18, 26);
         context.restore();
     }
@@ -9392,7 +9392,7 @@
             context.fillStyle = focused ? '#563068' : '#173848'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.strokeStyle = focused ? '#f7c843' : '#4d7180'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.font = `20px ${BUTTON_FONT}`; context.fillText(translate(label), bounds.x + bounds.width / 2, bounds.y + 32);
-            context.fillStyle = '#c9dce2'; context.font = `12px ${MESSAGE_FONT}`; context.fillText(buttonCosts[index], bounds.x + bounds.width / 2, bounds.y + 59);
+            context.fillStyle = '#c9dce2'; context.font = `12px ${index < 2 ? NUMBER_FONT : MESSAGE_FONT}`; context.fillText(buttonCosts[index], bounds.x + bounds.width / 2, bounds.y + 59);
         });
         context.fillStyle = '#102c3b'; context.fillRect(414, 180, 832, 500);
         context.strokeStyle = gallery.focus === 'cards' ? '#f7c843' : '#3b6070'; context.lineWidth = gallery.focus === 'cards' ? 3 : 2; context.strokeRect(414, 180, 832, 500);
