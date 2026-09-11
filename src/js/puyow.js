@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 47;
+    const BUILDNO = 48;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -338,7 +338,7 @@
             '게임 시작': 'Game Start', '구경': 'Watch', '모드': 'Mode', '규칙': 'Rules', '색상 수': 'Colors', '다음 대전까지 %1초': 'Next match in %1 sec', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Pop %1 colors at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '안드레알푸스': 'Andrealphus', '플라우로스': 'Flauros', '안드라스': 'Andras', '발라크': 'Valak', '자간': 'Zagan', '시작': 'Start', '이전': 'Back',
             '극한': 'Extreme',
-            '일시정지': 'Paused', '재개': 'Resume', '종료': 'Exit', 'GitHub': 'GitHub',
+            '일시정지': 'Paused', '재개': 'Resume', '다시하기': 'Restart', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
             '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked', '두 번째에 터뜨려': 'Pop on the second turn.', '한 번만 회전해': 'Rotate only once.', '마지막 폭발은 초록색으로': 'Make the last pop green.', '마지막 파란색 폭발 후를 생각해': 'Think about what comes after the final blue pop.', '3, 4연쇄째에 보충이 필요해': 'You need a refill on the 3rd or 4th chain.', '방해뿌요는 터뜨려야 제맛': 'Pop the garbage puyos too.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Where should you pop first? The right side?', '저 위의 빨간 색은 왜 있을까?': 'Why is there red up there?', '최초 폭발은 빨간색': 'Make the first pop red.', '최초 폭발은 초록색': 'Make the first pop green.', '최초 폭발은 노란색': 'Make the first pop yellow.', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Place four green puyos somewhere in the right three columns.', '그냥 내려 봐': 'Just drop it.',
             '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
@@ -363,7 +363,7 @@
             '게임 시작': 'ゲーム開始', '구경': '観戦', '모드': 'モード', '규칙': 'ルール', '색상 수': '色数', '다음 대전까지 %1초': '次の対戦まで%1秒', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '현재 턴 %1 / %2': 'ターン %1 / %2', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一度に%1色のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '안드레알푸스': 'アンドレアルフス', '플라우로스': 'フラウロス', '안드라스': 'アンドラス', '발라크': 'ヴァラク', '자간': 'ザガン', '시작': '開始', '이전': '戻る',
             '극한': '極限',
-            '일시정지': '一時停止', '재개': '再開', '종료': '終了', 'GitHub': 'GitHub',
+            '일시정지': '一時停止', '재개': '再開', '다시하기': 'やり直す', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
             '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中', '두 번째에 터뜨려': '2回目で消そう。', '한 번만 회전해': '一度だけ回転しよう。', '마지막 폭발은 초록색으로': '最後は緑で消そう。', '마지막 파란색 폭발 후를 생각해': '最後の青ぷよ消去の後を考えよう。', '3, 4연쇄째에 보충이 필요해': '3・4連鎖目に補充が必要です。', '방해뿌요는 터뜨려야 제맛': 'おじゃまぷよも消そう。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'どこから消そう？右側かな？', '저 위의 빨간 색은 왜 있을까?': '上の赤いぷよはなぜあるのかな？', '최초 폭발은 빨간색': '最初は赤で消そう。', '최초 폭발은 초록색': '最初は緑で消そう。', '최초 폭발은 노란색': '最初は黄で消そう。', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': '右3列のどこかに緑ぷよ4個を置こう。', '그냥 내려 봐': 'そのまま落としてみよう。',
             '시뮬레이터': 'シミュレーター', '팔레트': 'パレット', '재생': '再生', '그리기': '描画', '시뮬레이션': 'シミュレーション', '지우개': '消しゴム',
@@ -389,7 +389,7 @@
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯', '안드레알푸스': '安德雷阿尔弗斯', '플라우로스': '弗劳洛斯', '안드라스': '安德拉斯', '발라크': '瓦拉克', '자간': '扎甘',
             '극한': '极限',
-            '일시정지': '暂停', '재개': '继续', '종료': '退出', 'GitHub': 'GitHub',
+            '일시정지': '暂停', '재개': '继续', '다시하기': '重新开始', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
             '연습 상대': '练习对手', '추후 출시예정': '即将推出', '잠김': '已锁定', '두 번째에 터뜨려': '在第二次消除。', '한 번만 회전해': '只旋转一次。', '마지막 폭발은 초록색으로': '最后用绿色消除。', '마지막 파란색 폭발 후를 생각해': '想想最后一次蓝色魔法气泡消除之后。', '3, 4연쇄째에 보충이 필요해': '第3或第4连锁需要补充。', '방해뿌요는 터뜨려야 제맛': '也消除垃圾噗哟吧。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': '从哪里开始消除？右边？', '저 위의 빨간 색은 왜 있을까?': '上面的红噗哟为什么会在那里？', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': '需要把4个绿色魔法气泡放在右侧三列的某处。', '그냥 내려 봐': '直接落下试试。',
             '시뮬레이터': '模拟器', '팔레트': '调色板', '재생': '播放', '그리기': '绘制', '시뮬레이션': '模拟', '지우개': '橡皮擦',
@@ -415,7 +415,7 @@
         '초기화': 'Zurücksetzen', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Alle Spieleinstellungen zurücksetzen?', '초기화 중...': 'Wird zurückgesetzt…',
         '게임 시작': 'Spiel starten', '구경': 'Zuschauen', '모드': 'Modus', '규칙': 'Regeln', '색상 수': 'Farben', '다음 대전까지 %1초': 'Nächstes Duell in %1 Sek.', '기본 룰': 'Standardregeln', '피버 룰': 'FEVER-Regeln', '연속 피버': 'Dauer-FEVER', '퍼즐뿌요': 'Puzzle-Puyo', '퍼즐뿌요 스테이지': 'Puzzle-Puyo-Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Empfohlene Züge: %1', '현재 턴 %1': 'Zug %1', '현재 턴 %1 / %2': 'Zug %1 / %2', '%1 연쇄 해봐': 'Mache eine %1er-Kette!', '싹쓸이 해봐': 'Schaffe einen All Clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Lass %1 Puyos auf einmal platzen!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Lass %1 Farben auf einmal platzen!', '방해뿌요 %1개를 발생 시켜봐': 'Sende %1 Müll-Puyos!', '스테이지 클리어': 'Stage geschafft', '(출시 예정)': '(Bald verfügbar)', '목표 연쇄': 'ZIELKETTE', '남은 시간': 'RESTZEIT', '연습': 'Übung', '선택': 'Auswählen', '난이도': 'Schwierigkeit', '적 선택': 'Gegner', 'ENTER 혹은 클릭하여 시작': 'Zum Start ENTER drücken oder klicken',
         '3색': '3 Farben', '4색': '4 Farben', '5색': '5 Farben', '쉬움': 'Leicht', '보통': 'Normal', '어려움': 'Schwer', '시작': 'Start', '이전': 'Zurück', '극한': 'Extrem',
-        '일시정지': 'Pausiert', '재개': 'Fortsetzen', '종료': 'Beenden', '승리': 'Sieg', '패배': 'Niederlage', '최종 점수 %1': 'Endpunktzahl: %1', '게임 시간 %1초': 'Spielzeit: %1 Sek.', '%1연쇄': '%1-Kette',
+        '일시정지': 'Pausiert', '재개': 'Fortsetzen', '다시하기': 'Neu starten', '종료': 'Beenden', '승리': 'Sieg', '패배': 'Niederlage', '최종 점수 %1': 'Endpunktzahl: %1', '게임 시간 %1초': 'Spielzeit: %1 Sek.', '%1연쇄': '%1-Kette',
         '연습 상대': 'Übungsgegner', '추후 출시예정': 'Bald verfügbar', '잠김': 'Gesperrt', '두 번째에 터뜨려': 'Lass sie beim zweiten Zug platzen.', '한 번만 회전해': 'Drehe nur einmal.', '마지막 폭발은 초록색으로': 'Die letzte Explosion muss grün sein.', '마지막 파란색 폭발 후를 생각해': 'Denke an das Ende nach der letzten blauen Explosion.', '3, 4연쇄째에 보충이 필요해': 'Bei der 3. oder 4. Kette ist Nachschub nötig.', '방해뿌요는 터뜨려야 제맛': 'Lass auch die Müll-Puyos platzen.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Wo solltest du anfangen? Rechts?', '저 위의 빨간 색은 왜 있을까?': 'Warum ist dort oben ein roter Puyo?', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Platziere vier grüne Puyos irgendwo in den drei rechten Spalten.', '그냥 내려 봐': 'Lass sie einfach fallen.',
         '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Abspielen', '그리기': 'Zeichnen', '시뮬레이션': 'Simulation', '지우개': 'Radierer', 'JSON복사': 'JSON kopieren', 'JSON넣기': 'JSON einfügen', '배치가 클립보드에 복사됨': 'Anordnung in die Zwischenablage kopiert', '클립보드 복사 실패': 'Kopieren in die Zwischenablage fehlgeschlagen', 'JSON 파싱 실패': 'JSON-Analyse fehlgeschlagen', '배치 JSON을 입력하세요.': 'Anordnungs-JSON eingeben',
         '설정': 'Einstellungen', '이름': 'Name', '배경음악 볼륨': 'Musiklautstärke', '효과음 볼륨': 'Effektlautstärke', '가상 컨트롤러 사용': 'Virtuellen Controller verwenden', '없음': 'Keine', '크게': 'Groß', '그래픽 설정': 'Grafikeinstellungen', '사운드 데이터 URL': 'Audiodaten-URL', '낮음': 'Niedrig', '중간': 'Mittel', '높음': 'Hoch', 'AI 서비스 제공자': 'KI-Anbieter', 'AI API 키': 'KI-API-Schlüssel', '사용 모델명': 'Modellname', 'AI API 테스트': 'KI-API testen', '저장': 'Speichern', '취소': 'Abbrechen', '사운드 관련 기능은 추후 제공 예정': 'Audiofunktionen folgen später.', '설정 저장 후 다시 시도해 주세요': 'Speichere die Einstellungen und versuche es erneut.', 'AI API 테스트 요청 중...': 'KI-API wird getestet…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'KI-API-Test erfolgreich (JSON-Schema: bestanden)', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'KI-API-Test fehlgeschlagen (JSON-Schema: fehlgeschlagen)', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'KI-API-Test fehlgeschlagen (JSON-Schema: nicht geprüft)',
@@ -429,7 +429,7 @@
         '초기화': 'Réinitialiser', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Réinitialiser tous les réglages du jeu ?', '초기화 중...': 'Réinitialisation…',
         '게임 시작': 'Commencer', '구경': 'Regarder', '모드': 'Mode', '규칙': 'Règles', '색상 수': 'Couleurs', '다음 대전까지 %1초': 'Prochain duel dans %1 s', '기본 룰': 'Règles standard', '피버 룰': 'Règles FEVER', '연속 피버': 'FEVER continu', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Stage Puzzle Puyo', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Tours recommandés : %1', '현재 턴 %1': 'Tour %1', '현재 턴 %1 / %2': 'Tour %1 / %2', '%1 연쇄 해봐': 'Fais une chaîne de %1 !', '싹쓸이 해봐': 'Fais un Tout Effacé !', '한 번에 %1개 뿌요를 터뜨려봐': 'Fais éclater %1 Puyos à la fois !', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Fais éclater %1 couleurs à la fois !', '방해뿌요 %1개를 발생 시켜봐': 'Envoie %1 Puyos-ordures !', '스테이지 클리어': 'Stage réussi', '(출시 예정)': '(Bientôt disponible)', '목표 연쇄': 'CHAÎNE CIBLE', '남은 시간': 'TEMPS RESTANT', '연습': 'Entraînement', '선택': 'Sélectionner', '난이도': 'Difficulté', '적 선택': 'Adversaire', 'ENTER 혹은 클릭하여 시작': 'Appuie sur ENTRÉE ou clique pour commencer',
         '3색': '3 couleurs', '4색': '4 couleurs', '5색': '5 couleurs', '쉬움': 'Facile', '보통': 'Normal', '어려움': 'Difficile', '시작': 'Commencer', '이전': 'Retour', '극한': 'Extrême',
-        '일시정지': 'En pause', '재개': 'Reprendre', '종료': 'Quitter', '승리': 'Victoire', '패배': 'Défaite', '최종 점수 %1': 'Score final : %1', '게임 시간 %1초': 'Durée : %1 s', '%1연쇄': 'Chaîne de %1',
+        '일시정지': 'En pause', '재개': 'Reprendre', '다시하기': 'Recommencer', '종료': 'Quitter', '승리': 'Victoire', '패배': 'Défaite', '최종 점수 %1': 'Score final : %1', '게임 시간 %1초': 'Durée : %1 s', '%1연쇄': 'Chaîne de %1',
         '연습 상대': 'Adversaire d’entraînement', '추후 출시예정': 'Bientôt disponible', '잠김': 'Verrouillé', '두 번째에 터뜨려': 'Fais-les éclater au deuxième tour.', '한 번만 회전해': 'Ne tourne qu’une fois.', '마지막 폭발은 초록색으로': 'Fais éclater le dernier en vert.', '마지막 파란색 폭발 후를 생각해': 'Pense à ce qui suit la dernière explosion bleue.', '3, 4연쇄째에 보충이 필요해': 'Un ravitaillement est nécessaire à la 3e ou 4e chaîne.', '방해뿌요는 터뜨려야 제맛': 'Fais aussi éclater les Puyos-ordures.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Par où commencer ? À droite ?', '저 위의 빨간 색은 왜 있을까?': 'Pourquoi ce Puyo rouge est-il là-haut ?', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Place quatre Puyos verts quelque part dans les trois colonnes de droite.', '그냥 내려 봐': 'Laisse-les simplement tomber.',
         '시뮬레이터': 'Simulateur', '팔레트': 'Palette', '재생': 'Lire', '그리기': 'Dessiner', '시뮬레이션': 'Simulation', '지우개': 'Gomme', 'JSON복사': 'Copier le JSON', 'JSON넣기': 'Coller le JSON', '배치가 클립보드에 복사됨': 'Disposition copiée dans le presse-papiers', '클립보드 복사 실패': 'Échec de la copie', 'JSON 파싱 실패': 'Échec de l’analyse JSON', '배치 JSON을 입력하세요.': 'Saisis le JSON de disposition',
         '설정': 'Réglages', '이름': 'Nom', '배경음악 볼륨': 'Volume de la musique', '효과음 볼륨': 'Volume des effets', '가상 컨트롤러 사용': 'Utiliser une manette virtuelle', '없음': 'Aucun', '크게': 'Grand', '그래픽 설정': 'Réglages graphiques', '사운드 데이터 URL': 'URL des données audio', '낮음': 'Bas', '중간': 'Moyen', '높음': 'Élevé', 'AI 서비스 제공자': 'Fournisseur d’IA', 'AI API 키': 'Clé API IA', '사용 모델명': 'Nom du modèle', 'AI API 테스트': 'Tester l’API IA', '저장': 'Enregistrer', '취소': 'Annuler', '사운드 관련 기능은 추후 제공 예정': 'Les fonctions audio seront disponibles plus tard.', '설정 저장 후 다시 시도해 주세요': 'Enregistre les réglages puis réessaie.', 'AI API 테스트 요청 중...': 'Test de l’API IA en cours…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'Test de l’API IA réussi (schéma JSON valide)', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'Échec du test de l’API IA (schéma JSON invalide)', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'Échec du test de l’API IA (schéma JSON non vérifié)',
@@ -1979,14 +1979,14 @@
         return message.includes('worker') && (message.includes('blob') || message.includes('content security') || message.includes('csp') || message.includes('construct'));
     }
 
-    /** `acquireOnnxSession()`으로 빌린 세션 하나를 반납하고, 마지막 사용자가 떠나면 wasm 리소스를 해제한다. @param {string} modelPath 모델 상대 경로 @returns {void} */
+    /** `acquireOnnxSession()`으로 빌린 세션 하나를 반납하고, 마지막 사용자가 떠나면 wasm 리소스를 해제한다. @param {string} modelPath 모델 상대 경로 @returns {Promise<void>} */
     function releaseOnnxSession(modelPath) {
         const entry = onnxSessionCache.get(modelPath);
-        if (!entry) return;
+        if (!entry) return Promise.resolve();
         entry.leases = Math.max(0, entry.leases - 1);
-        if (entry.leases > 0) return;
+        if (entry.leases > 0) return Promise.resolve();
         onnxSessionCache.delete(modelPath);
-        void (async () => {
+        return (async () => {
             try {
                 const session = await entry.loading;
                 const running = onnxSessionRunPromises.get(session);
@@ -2798,9 +2798,27 @@
         };
     }
 
-    /** 현재 게임이 빌린 ONNX 모델 세션을 모두 반납한다. @param {object|null} targetGame 종료할 게임 상태 @returns {void} */
+    /** 현재 게임이 빌린 ONNX 모델 세션을 모두 반납한다. @param {object|null} targetGame 종료할 게임 상태 @returns {Promise<void>} */
     function releaseGameOnnxModels(targetGame) {
-        targetGame?.players?.forEach((player) => player.controller?.releaseModel?.());
+        const releases = targetGame?.players?.map((player) => player.controller?.releaseModel?.()) || [];
+        return Promise.all(releases).then(() => undefined);
+    }
+
+    /**
+     * 중단한 게임이 남긴 비동기 AI 작업과 ONNX 모델 대여를 모두 정리한다.
+     *
+     * 다시하기는 기존 게임 객체를 새 객체로 바꾸므로, 늦게 도착한 AI 응답·Worker 결과가 새 게임에
+     * 영향을 주거나 ONNX 세션 대여가 남지 않도록 먼저 취소한다.
+     * @param {object|null} targetGame 정리할 게임 상태
+     * @returns {Promise<void>}
+     */
+    function releaseGameRuntimeResources(targetGame) {
+        targetGame?.players?.forEach((player) => {
+            const controller = player.controller;
+            controller?.cancelPendingRequest?.(player, 'replaced');
+            cancelPendingWorkerSearch(controller, player, 'replaced');
+        });
+        return releaseGameOnnxModels(targetGame);
     }
 
     /**
@@ -3200,9 +3218,25 @@
         return [left, right];
     }
 
-    /** 현재 구경 설정으로 서로 다른 적 두 명의 자동 대전을 시작한다. @param {boolean} [playSelectionSound=true] 메뉴 선택음을 재생할지 여부 @returns {boolean} 시작 성공 여부 */
-    function startWatchGame(playSelectionSound = true) {
-        const selectedEntries = selectWatchOpponents();
+    /**
+     * 저장한 적 종류 두 개로 구경 대전을 다시 만들 때의 등록 항목을 찾는다.
+     * @param {string[]|null} opponentTypes 좌·우 적 클래스 타입
+     * @returns {object[]|null} 같은 순서의 적 등록 항목, 찾지 못하면 null
+     */
+    function getWatchOpponentEntries(opponentTypes) {
+        if (!Array.isArray(opponentTypes) || opponentTypes.length !== 2 || opponentTypes[0] === opponentTypes[1]) return null;
+        const entries = opponentTypes.map((classType) => OPPONENTS.find((entry) => entry.classType === classType));
+        return entries.every(Boolean) ? entries : null;
+    }
+
+    /**
+     * 현재 구경 설정으로 서로 다른 적 두 명의 자동 대전을 시작한다.
+     * @param {boolean} [playSelectionSound=true] 메뉴 선택음을 재생할지 여부
+     * @param {string[]|null} [fixedOpponentTypes=null] 다시하기에서 유지할 좌·우 적 클래스 타입
+     * @returns {boolean} 시작 성공 여부
+     */
+    function startWatchGame(playSelectionSound = true, fixedOpponentTypes = null) {
+        const selectedEntries = getWatchOpponentEntries(fixedOpponentTypes) || selectWatchOpponents();
         if (!selectedEntries) return false;
         if (playSelectionSound) playMenuSelectSound();
         resetVirtualControllerInput();
@@ -8049,6 +8083,7 @@
         players.forEach((player) => { player.phase = 'idle'; player.nextPairs = []; });
         resetKeyboardDirectionInput();
         resetVirtualControllerInput();
+        resetGamepadInput();
         resultScreenFocus = 0;
         game = {
             running: true,
@@ -8107,9 +8142,12 @@
     /** 현재 재생 중이던 리플레이를 처음부터 다시 재현한다. @returns {void} */
     function restartReplayPlayback() {
         const playback = game?.replayPlayback;
-        if (!playback) return;
+        if (!playback || game?.restartPending) return;
         playMenuSelectSound();
-        startReplayPlayback(playback.replay);
+        const replay = playback.replay;
+        const previousGame = game;
+        stopBackgroundMusic();
+        scheduleGameRestart(previousGame, () => startReplayPlayback(replay));
     }
 
     /** 리플레이 재현을 끝내고 결과 화면으로 넘어간다. @returns {void} */
@@ -9985,7 +10023,7 @@
         selectedDifficulty = Math.max(0, DIFFICULTIES.findIndex((difficulty) => difficulty.colors.length >= colorCount));
         startGame(false, true);
         if (!game?.fever) throw new Error('연속 피버 테스트를 시작하지 못했습니다.');
-        game.toolsTest = { kind: 'fever', pendingStage: feverStage, finishAfterStage: false, finishTimer: null, result: null };
+        game.toolsTest = { kind: 'fever', sourceStage: feverStage, pendingStage: feverStage, finishAfterStage: false, finishTimer: null, result: null };
         game.pairQueueColors = colors;
         game.players.forEach((player) => { player.colors = colors; });
         game.fever.targetCombo = feverStage.targetCombo;
@@ -10006,7 +10044,7 @@
         prepareToolsTest(onFinish);
         startPuzzleStageGame(puzzleStage, -1, 0);
         if (!game?.puzzle) throw new Error('퍼즐뿌요 테스트를 시작하지 못했습니다.');
-        game.toolsTest = { kind: 'puzzle', pendingStage: null, finishAfterStage: false, finishTimer: null, result: null };
+        game.toolsTest = { kind: 'puzzle', sourceStage: puzzleStage, pendingStage: null, finishAfterStage: false, finishTimer: null, result: null };
     }
 
     /**
@@ -10762,6 +10800,15 @@
         if (menuScreen === 'title' && watchSelectionOpen) drawWatchSelectionOverlay();
     }
 
+    /** 일시정지 화면의 조작 버튼과 논리 캔버스 좌표를 반환한다. @returns {{key:'resume'|'restart'|'exit',label:string,color:string,x:number,y:number,width:number,height:number}[]} 버튼 목록 */
+    function getPauseMenuButtons() {
+        return [
+            { key: 'resume', label: '재개', color: '#4cc9b0', x: 375, y: 376, width: 150, height: 64 },
+            { key: 'restart', label: '다시하기', color: '#5c6bc0', x: 565, y: 376, width: 150, height: 64 },
+            { key: 'exit', label: '종료', color: '#ef5350', x: 755, y: 376, width: 150, height: 64 }
+        ];
+    }
+
     /**
      * 진행 중인 화면 위에 일시정지 오버레이와 조작 버튼을 그린다.
      * @returns {void}
@@ -10773,20 +10820,16 @@
         context.fillStyle = '#f5fbfc';
         context.font = `48px ${TITLE_FONT}`;
         context.fillText(translate('일시정지'), WIDTH / 2, 322);
-        context.fillStyle = '#4cc9b0';
-        context.fillRect(470, 376, 150, 64);
-        context.strokeStyle = pauseMenuFocus === 0 ? '#f7c843' : '#4cc9b0';
-        context.lineWidth = pauseMenuFocus === 0 ? 4 : 2;
-        context.strokeRect(470, 376, 150, 64);
-        context.fillStyle = '#ef5350';
-        context.fillRect(660, 376, 150, 64);
-        context.strokeStyle = pauseMenuFocus === 1 ? '#f7c843' : '#ef5350';
-        context.lineWidth = pauseMenuFocus === 1 ? 4 : 2;
-        context.strokeRect(660, 376, 150, 64);
-        context.fillStyle = '#ffffff';
-        context.font = `23px ${BUTTON_FONT}`;
-        context.fillText(translate('재개'), 545, 417);
-        context.fillText(translate('종료'), 735, 417);
+        getPauseMenuButtons().forEach((button, index) => {
+            context.fillStyle = button.color;
+            context.fillRect(button.x, button.y, button.width, button.height);
+            context.strokeStyle = pauseMenuFocus === index ? '#f7c843' : button.color;
+            context.lineWidth = pauseMenuFocus === index ? 4 : 2;
+            context.strokeRect(button.x, button.y, button.width, button.height);
+            context.fillStyle = '#ffffff';
+            context.font = `23px ${BUTTON_FONT}`;
+            context.fillText(translate(button.label), button.x + button.width / 2, button.y + 41);
+        });
     }
 
     /**
@@ -11658,6 +11701,8 @@
             }
             return;
         }
+        // 다시하기 전 비동기 자원을 해제하는 동안에는 기존 게임을 바꾸는 추가 입력을 받지 않는다.
+        if (game?.restartPending) return;
         // 결과 화면에서는 ESC로 바로 나가고, 방향키로 버튼을 옮긴 뒤 Enter로 실행한다.
         // 기본 포커스는 종료 버튼이므로 Enter만 눌러도 기존처럼 이전 화면으로 돌아간다.
         if (game && !game.running) {
@@ -11759,9 +11804,19 @@
             } else if (key === 'escape' && menuScreen === 'opponent') { playMenuCancelSound(); menuScreen = 'title'; loadNotice(); }
             return;
         }
-        // 리플레이 재현 중에는 ESC로 결과 화면으로 넘어가는 입력만 받는다.
+        // 리플레이 재현은 기록된 조작만 반영하므로, 카운트다운 뒤에는 일시정지 메뉴만 조작할 수 있다.
         if (game.replayPlayback) {
-            if (key === 'escape') finishReplayPlayback();
+            if (game.countdown > 0) return;
+            if (game.paused) {
+                handlePauseMenuKeydown(key);
+                return;
+            }
+            if (key === 'escape' && !game.ending) {
+                resetVirtualControllerInput();
+                game.paused = true;
+                pauseMenuFocus = 0;
+                pauseBackgroundMusic();
+            }
             return;
         }
         // 시작 또는 재개 카운트다운 중에는 일시정지를 포함한 게임 조작을 받지 않는다.
@@ -11779,11 +11834,7 @@
         }
         // 일시정지 중에는 방향키와 Enter로만 오버레이의 버튼을 조작한다.
         if (game.paused) {
-            if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
-                pauseMenuFocus = pauseMenuFocus === 0 ? 1 : 0;
-            } else if (key === 'enter' || key === ' ') {
-                activatePauseMenu();
-            }
+            handlePauseMenuKeydown(key);
             return;
         }
         // 종료 연출이 아닐 때 ESC로 일시정지를 시작한다.
@@ -11871,25 +11922,140 @@
         }
     }
 
+    /** 일시정지 메뉴에서 방향키로 포커스를 옮긴다. @param {string} key 누른 방향키 @returns {void} */
+    function movePauseMenuFocus(key) {
+        const buttons = getPauseMenuButtons();
+        const direction = key === 'arrowleft' || key === 'arrowup' ? -1 : 1;
+        pauseMenuFocus = (pauseMenuFocus + direction + buttons.length) % buttons.length;
+    }
+
+    /** 일시정지 메뉴의 키 입력을 처리한다. @param {string} key 누른 키 @returns {void} */
+    function handlePauseMenuKeydown(key) {
+        if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) movePauseMenuFocus(key);
+        else if (key === 'enter' || key === ' ') activatePauseMenu();
+    }
+
+    /**
+     * 현재 게임의 비동기 자원을 모두 해제한 뒤에만 새 게임을 시작한다.
+     *
+     * ONNX의 session.release()는 실행 중인 run()이 끝날 때까지 기다릴 수 있다. 그동안 기존 일시정지
+     * 화면을 유지해, 해제 전 새 모델 세션을 만들거나 카운트다운이 먼저 흐르는 일을 막는다.
+     * @param {object} previousGame 교체할 기존 게임
+     * @param {()=>void} start 새 게임을 만드는 함수
+     * @returns {void}
+     */
+    function scheduleGameRestart(previousGame, start) {
+        if (!previousGame || previousGame.restartPending) return;
+        previousGame.restartPending = true;
+        void Promise.resolve()
+            .then(() => releaseGameRuntimeResources(previousGame))
+            .catch((error) => { console.error('다시하기 전 게임 자원을 정리하지 못했습니다.', error); })
+            .then(() => {
+                // 해제 대기 중 다른 화면으로 옮겨졌다면 늦은 콜백이 새 게임을 덮어쓰지 않는다.
+                if (game !== previousGame || !previousGame.restartPending) return;
+                game = null;
+                start();
+            });
+    }
+
+    /** 현재 진행 중인 게임을 같은 모드·규칙·설정으로 처음부터 다시 시작한다. @returns {void} */
+    function restartPausedGame() {
+        const previousGame = game;
+        if (!previousGame?.paused || previousGame.restartPending) return;
+        // 리플레이 재생은 기록 데이터 자체를 다시 해석해야 하므로 일반 게임 생성 경로를 쓰지 않는다.
+        if (previousGame.replayPlayback) {
+            restartReplayPlayback();
+            return;
+        }
+
+        // 도구 테스트는 화면 밖 공개 게임이 아니지만, 재시작을 눌러도 편집 대상·완료 콜백을 잃지 않는다.
+        const toolsTest = previousGame.toolsTest;
+        const toolsOnFinish = simulator?.tools?.onTestFinish;
+        const watch = previousGame.watch ? {
+            difficulty: previousGame.watch.difficulty,
+            rule: previousGame.watch.rule,
+            opponentTypes: [...previousGame.watch.opponentTypes]
+        } : null;
+        const together = previousGame.together ? {
+            rule: previousGame.together.rule,
+            difficulty: previousGame.difficulty
+        } : null;
+        const puzzle = previousGame.puzzle ? {
+            stage: previousGame.puzzle.stage,
+            stageIndex: previousGame.puzzle.stageIndex,
+            returnFocusIndex: previousGame.puzzle.returnFocusIndex
+        } : null;
+        const normalGame = {
+            practice: previousGame.practice,
+            continuousFever: previousGame.continuousFever,
+            feverRule: previousGame.feverRule,
+            feverStart: previousGame.feverStart,
+            difficulty: previousGame.difficulty,
+            aiDifficulty: previousGame.aiDifficulty,
+            opponentIndex: previousGame.opponentIndex
+        };
+
+        resetKeyboardDirectionInput();
+        resetVirtualControllerInput();
+        resetGamepadInput();
+        stopBackgroundMusic();
+        scheduleGameRestart(previousGame, () => {
+            if (toolsTest?.kind === 'fever' && toolsTest.sourceStage instanceof FeverStageState) {
+                startToolsFeverTest(toolsTest.sourceStage, toolsOnFinish);
+                return;
+            }
+            if (toolsTest?.kind === 'puzzle' && toolsTest.sourceStage instanceof PuzzlePuyoStage) {
+                startToolsPuzzleTest(toolsTest.sourceStage, toolsOnFinish);
+                return;
+            }
+            if (watch) {
+                watchDifficulty = watch.difficulty;
+                watchRule = watch.rule;
+                startWatchGame(true, watch.opponentTypes);
+                return;
+            }
+            if (together) {
+                togetherRule = together.rule;
+                togetherDifficulty = together.difficulty;
+                // togetherWinCounts는 유지해 일시정지에서 다시하기를 골라도 현재 대전 묶음의 전적이 이어진다.
+                startTogetherGame();
+                return;
+            }
+            if (puzzle) {
+                startPuzzleStageGame(puzzle.stage, puzzle.stageIndex, puzzle.returnFocusIndex);
+                return;
+            }
+            selectedDifficulty = normalGame.difficulty;
+            selectedAiDifficulty = normalGame.aiDifficulty;
+            if (Number.isInteger(normalGame.opponentIndex)) selectedOpponent = normalGame.opponentIndex;
+            opponentMenuRule = normalGame.feverStart ? 'feverStart' : normalGame.feverRule ? 'fever' : 'standard';
+            startGame(normalGame.practice, normalGame.continuousFever, normalGame.feverRule, normalGame.feverStart);
+        });
+    }
+
     /**
      * 일시정지 오버레이에서 포커스된 명령을 실행한다.
      * @returns {void}
      */
     function activatePauseMenu() {
-        if (pauseMenuFocus === 0) {
+        const action = getPauseMenuButtons()[pauseMenuFocus]?.key;
+        if (!game || game.restartPending || !action) return;
+        if (action === 'resume') {
             playMenuSelectSound();
             resetVirtualControllerInput();
             game.paused = false;
             game.countdown = 3000;
             game.countdownStartsGame = false;
             resumeBackgroundMusic();
+        } else if (action === 'restart') {
+            restartPausedGame();
         } else {
             playMenuCancelSound();
             resetVirtualControllerInput();
             // 개발용 도구의 테스트는 메인 화면 대신 편집 모드로 돌아간다.
             if (game?.toolsTest) { returnFromToolsTest(); return; }
             stopBackgroundMusic();
-            releaseGameOnnxModels(game);
+            releaseGameRuntimeResources(game);
             game = null;
             menuScreen = 'title'; loadNotice();
             syncBackgroundMusic();
@@ -12000,6 +12166,7 @@
             }
             return;
         }
+        if (game?.restartPending) return;
         // 결과 화면에서는 표시 중인 버튼 영역 클릭만 처리한다.
         if (game && !game.running) {
             const { x, y } = getCanvasEventCoordinates(event);
@@ -12012,13 +12179,11 @@
             return;
         }
         const { x, y } = getCanvasEventCoordinates(event);
-        // 일시정지 중에는 재개와 종료 버튼의 클릭만 처리한다.
+        // 일시정지 중에는 오버레이에 표시한 세 버튼만 처리한다.
         if (game && game.paused) {
-            if (x >= 470 && x <= 620 && y >= 376 && y <= 440) {
-                pauseMenuFocus = 0;
-                activatePauseMenu();
-            } else if (x >= 660 && x <= 810 && y >= 376 && y <= 440) {
-                pauseMenuFocus = 1;
+            const buttonIndex = getPauseMenuButtons().findIndex((button) => x >= button.x && x <= button.x + button.width && y >= button.y && y <= button.y + button.height);
+            if (buttonIndex >= 0) {
+                pauseMenuFocus = buttonIndex;
                 activatePauseMenu();
             }
             return;
@@ -16539,12 +16704,12 @@
             return this.modelLoadPromise;
         }
 
-        /** 현재 대전에서 빌린 모델 세션을 반납한다. @returns {void} */
+        /** 현재 대전에서 빌린 모델 세션을 반납한다. @returns {Promise<void>} */
         releaseModel() {
-            if (!this.modelLeaseHeld) return;
+            if (!this.modelLeaseHeld) return Promise.resolve();
             this.modelLeaseHeld = false;
             this.session = null;
-            releaseOnnxSession(this.modelPath);
+            return releaseOnnxSession(this.modelPath);
         }
 
         /** 프록시 Worker를 만들 수 없을 때 이번 대전만 기존 시뮬레이션 AI로 전환한다. @returns {void} */

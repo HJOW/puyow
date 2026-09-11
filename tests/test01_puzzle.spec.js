@@ -28,6 +28,9 @@ test('퍼즐뿌요는 스테이지 선택, 잠금 해제, 5색 지급과 두 번
 
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 408 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().puzzle)).toMatchObject({ stageIndex: 0, turn: 1 });
 });
 
 test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 표시하고 연습 상대 문구를 숨긴다', async ({ page }) => {

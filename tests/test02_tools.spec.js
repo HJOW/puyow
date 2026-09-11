@@ -429,6 +429,7 @@ test('피버 테스트는 편집한 패턴과 목표 연쇄로 피버 상태에 
   // ESC 로 일시정지한 뒤 종료를 고르면 메인 화면이 아니라 편집 모드로 돌아온다.
   await page.keyboard.press('Escape');
   await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('simulator_draw');
   await expect(page.getByRole('button', { name: '스크립트 생성' })).toBeEnabled();
@@ -448,6 +449,7 @@ test('퍼즐뿌요 테스트는 편집한 스테이지로 진행하고 클리어
   await page.getByRole('button', { name: '테스트' }).click();
   await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('playing');
   await page.keyboard.press('Escape');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('simulator_draw');

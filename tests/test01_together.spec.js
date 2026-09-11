@@ -221,10 +221,20 @@ test('너랑 나랑 결과 화면은 다시 플레이로 승패 현황을 잇고
   await page.evaluate(() => { window.testCanvasTexts = []; });
   await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), winLabel)).toBe(true);
 
-  // 일시정지에서 종료해 메인 메뉴로 돌아간 뒤 다시 고르면 승패 현황이 초기화된다.
+  // 일시정지의 다시하기도 같은 대전 묶음의 승패 현황을 유지한다.
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await page.evaluate(() => { window.testCanvasTexts = []; });
+  await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), winLabel)).toBe(true);
+
+  // 종료는 세 번째 버튼이므로 두 번 이동한 뒤 메인 메뉴로 돌아간다.
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
@@ -264,12 +274,11 @@ test('너랑 나랑 대전도 새 형식으로 기록하고 재생하면 승패 
   await page.evaluate(() => { window.testCanvasTexts = []; });
   await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), recordLabel)).toBe(true);
 
-  // 재생 결과 화면에는 다시보기만 붙고, 종료하면 메인 메뉴로 돌아간다.
+  // 재생 중에도 일시정지 메뉴에서 종료하면 메인 메뉴로 돌아간다.
   await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('game_over');
-  const playbackLabels = await readTogetherResultButtonLabels(page);
-  expect(playbackLabels).toContain(await translated(page, '다시보기'));
-  expect(playbackLabels).not.toContain(await translated(page, '다시 플레이'));
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });

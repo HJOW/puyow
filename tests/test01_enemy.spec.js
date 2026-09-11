@@ -1364,6 +1364,7 @@ test('구경 설정은 키보드와 마우스로 색상 수·규칙·취소를 �
   expect(initialState.player.name).not.toBe(initialState.opponent.name);
   expect(['데카라비아', '벨리알']).toContain(initialState.player.name);
   expect(['데카라비아', '벨리알']).toContain(initialState.opponent.name);
+  const initialWatchNames = [initialState.player.name, initialState.opponent.name];
 
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('playing');
   await page.keyboard.press('ArrowLeft');
@@ -1397,6 +1398,23 @@ test('구경 설정은 키보드와 마우스로 색상 수·규칙·취소를 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  expect(await page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return [state.player.name, state.opponent.name];
+  })).toEqual(initialWatchNames);
+  expect(await page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return state.player.placedPairCount + state.opponent.placedPairCount;
+  })).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('playing');
+
+  // 세 번째 버튼인 종료는 오른쪽으로 두 칸 옮겨 선택한다.
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
   expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty())).toEqual({ key: 'normal', name: '보통', fastDownDelay: 1500 });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 468 } });
@@ -1411,7 +1429,7 @@ test('구경 설정은 키보드와 마우스로 색상 수·규칙·취소를 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('playing');
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 735, y: 408 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 830, y: 408 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 

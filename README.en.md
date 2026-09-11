@@ -45,7 +45,7 @@ With two gamepads connected, the first one is 1P and the second is 2P. The virtu
 | ESC | Open the pause screen during a game |
 | Enter | Activate the focused button in menus and on the pause screen |
 
-On the pause screen, use the arrow keys to choose `Resume` or `Quit`, then press `Enter`. On the game-over screen, click the `Quit` button in the center, or press `Enter` or `ESC` to return to the opponent selection screen.
+On the pause screen, use the arrow keys to choose `Resume`, `Restart`, or `Quit`, then press `Enter`. `Restart` creates a fresh game with the same mode and settings and begins with a three-second countdown. On the game-over screen, click the `Quit` button in the center, or press `Enter` or `ESC` to return to the opponent selection screen.
 
 ## Game Rules
 
