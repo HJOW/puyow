@@ -54,7 +54,7 @@ First, run a short training session to confirm the install worked.
    python python/lngui.py
    ```
 
-3. When the **Puyo W Model Trainer** window opens, change `Episodes` from `5000` to `10` for now. An episode is one full simulated match the computer plays out.
+3. When the **Puyo W Model Trainer** window opens, change `Episodes` from `5000` to `10` for now (on Korean Windows, the window is titled **Puyo W 모델 학습기** and the field is labeled `에피소드 수`). An episode is one full simulated match the computer plays out.
 4. Leave `Model output path` at its default value (`python\puyow\default.pt`) for now. To save to a different name or location, type a path or click `Browse...`.
 5. Click **Start**. Training has begun once you see `Starting training` in the log and the progress bar starts moving.
 6. Wait for it to finish. You're done once `Training finished and checkpoint saved.` appears in the log.
@@ -73,6 +73,10 @@ The `.pt` file is the trained model, and the `.json` file records the model vers
 ## 3. Basic usage of `lngui.py`
 
 The GUI has a model save path, an episode count, a training strategy, Start/Pause/Stop buttons, a progress bar, a log, and CPU/RAM readouts. **There is no server address field**; the GUI only ever runs local training. The seed, device, and opponent use `learning.py`'s defaults: `2026`, `auto`, and `random`.
+
+The window's text is shown in Korean when the operating system's display language is Korean, and in English otherwise. You can switch between `English` and `한국어` at any time from the `Language` menu (shown as `언어 (Language)` in Korean). On Windows, Korean text is drawn with the `python/PretendardVariable.ttf` font, which does not need to be installed; other operating systems use their system fonts.
+
+The table below uses the English names. In Korean they appear as `모델 저장 경로`, `에피소드 수`, `학습 방식`, `시작`, `일시정지`/`재개`, `중단`, and `파일 > 다른 이름으로 저장...`/`종료`. The training log written by the trainer itself is always in Korean, regardless of the language setting.
 
 | Field | What it does |
 | --- | --- |
@@ -227,13 +231,13 @@ Garbage-puyo drops are random, so they aren't reflected in the afterstate — on
 
 You can pick a training strategy with the `Training strategy` combo box in `lngui.py` or the `--training-strategy` option of `learning.py`. The default, `standard`, trains exactly as before this option existed.
 
-| Value | GUI label | Behavior |
+| Value | GUI label (English / Korean) | Behavior |
 | --- | --- | --- |
-| `standard` (default) | `Standard` | The previous behavior: exploration picks a random placeable move, and the n-step return is 3. |
-| `chain-guided` | `Chain-guided exploration` | Half of the exploration moves follow the placement of a chain-building enemy AI. The guide is chosen per episode from Amdusias, Kimaris, and Andrealphus. Random exploration alone almost never produces chains of 5 or more, so the value network has a hard time learning what a board with a chain built up is worth. |
-| `chain-curriculum` | `Chain curriculum` | 30% of episodes start from a field with a real fever pattern laid out as a chain seed, and 20% are played `solo`, with no garbage exchange. The seed's colors are shuffled at random, so it doesn't pop right away; the trigger colors have to be lined up over several moves. |
-| `long-nstep` | `Long n-step return` | Value targets chain together the actual rewards of up to 8 moves instead of 3, so chain rewards propagate back to earlier moves faster. |
-| `chain-all` | `All chain strategies` | Uses all three strategies above together. |
+| `standard` (default) | `Standard` / `기본` | The previous behavior: exploration picks a random placeable move, and the n-step return is 3. |
+| `chain-guided` | `Chain-guided exploration` / `연쇄 유도 탐험` | Half of the exploration moves follow the placement of a chain-building enemy AI. The guide is chosen per episode from Amdusias, Kimaris, and Andrealphus. Random exploration alone almost never produces chains of 5 or more, so the value network has a hard time learning what a board with a chain built up is worth. |
+| `chain-curriculum` | `Chain curriculum` / `연쇄 커리큘럼` | 30% of episodes start from a field with a real fever pattern laid out as a chain seed, and 20% are played `solo`, with no garbage exchange. The seed's colors are shuffled at random, so it doesn't pop right away; the trigger colors have to be lined up over several moves. |
+| `long-nstep` | `Long n-step return` / `긴 n스텝 목표값` | Value targets chain together the actual rewards of up to 8 moves instead of 3, so chain rewards propagate back to earlier moves faster. |
+| `chain-all` | `All chain strategies` / `연쇄 방식 모두 사용` | Uses all three strategies above together. |
 
 ```powershell
 python python/learning.py --episodes 5000 --output python/puyow/chain.pt --training-strategy chain-all

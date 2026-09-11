@@ -6,6 +6,7 @@ import io
 import json
 import random
 import shutil
+import string
 import subprocess
 import tempfile
 import threading
@@ -424,6 +425,10 @@ class TrainingStrategyTest(unittest.TestCase):
 			with self.assertRaises(ValueError):
 				training.train(1, 1, output, "cpu", strategy="missing")
 			self.assertFalse(output.exists())
+
+	def test_every_strategy_has_a_korean_label(self) -> None:
+		# lngui.py의 한국어 표시는 label_ko가 비면 영어 이름으로 대신하지만, 등록된 방식은 모두 한국어 이름을 갖는다.
+		self.assertTrue(all(strategy.label_ko for strategy in training.TRAINING_STRATEGIES.values()))
 
 	def test_exploration_follows_the_suggested_afterstate(self) -> None:
 		observation = self._observation()
@@ -874,7 +879,8 @@ class TrainerMenuTest(unittest.TestCase):
 	def setUp(self) -> None:
 		self.root = lngui.tk.Tk()
 		self.root.withdraw()
-		self.app = lngui.TrainerApp(self.root)
+		# 이 클래스는 영어 문구를 기준으로 확인한다. 한국어 표시는 TrainerLanguageTest가 맡는다.
+		self.app = lngui.TrainerApp(self.root, language=lngui.LANGUAGE_ENGLISH)
 		self.directory = Path(tempfile.mkdtemp())
 		self.source = self.directory / "model.pt"
 		# 실제로 다시 불러올 수 있는 체크포인트를 만들어 둔다.
@@ -896,8 +902,9 @@ class TrainerMenuTest(unittest.TestCase):
 			pass
 		shutil.rmtree(self.directory, ignore_errors=True)
 
-	def _menu_state(self, label: str) -> str:
-		return str(self.app.file_menu.entrycget(label, "state"))
+	def _menu_state(self, index: int) -> str:
+		# 메뉴 라벨은 언어마다 달라지므로 앱이 기록한 인덱스로 찾는다.
+		return str(self.app.file_menu.entrycget(index, "state"))
 
 	def _drain_queue(self, timeout: float = 30.0) -> None:
 		"""저장 쓰레드가 끝나 큐가 비고 잠금이 풀릴 때까지 _poll_queue를 직접 돌린다."""
@@ -912,9 +919,10 @@ class TrainerMenuTest(unittest.TestCase):
 	def test_file_menu_has_save_as_and_exit(self) -> None:
 		"""File 메뉴에 요구한 두 항목만 있고, 처음에는 둘 다 쓸 수 있어야 한다."""
 		labels = [self.app.file_menu.entrycget(index, "label") for index in range(self.app.file_menu.index("end") + 1)]
-		self.assertEqual([lngui.SAVE_AS_MENU_LABEL, lngui.EXIT_MENU_LABEL], labels)
-		self.assertEqual("normal", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
-		self.assertEqual("normal", self._menu_state(lngui.EXIT_MENU_LABEL))
+		self.assertEqual(["Save As...", "Exit"], labels)
+		self.assertEqual([self.app._save_as_menu_index, self.app._exit_menu_index], [0, 1])
+		self.assertEqual("normal", self._menu_state(self.app._save_as_menu_index))
+		self.assertEqual("normal", self._menu_state(self.app._exit_menu_index))
 
 	def test_training_strategy_combobox_lists_every_strategy(self) -> None:
 		"""콤보박스는 학습기의 등록표를 그대로 나열하고, 기본 방식을 고른 채 다른 입력란과 함께 잠겨야 한다."""
@@ -947,11 +955,11 @@ class TrainerMenuTest(unittest.TestCase):
 	def test_save_as_locks_while_training_and_unlocks_after(self) -> None:
 		"""Save As...는 학습 중에 잠기고 학습이 끝나면 다시 열려야 한다."""
 		self.app._set_save_as_enabled(False)
-		self.assertEqual("disabled", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+		self.assertEqual("disabled", self._menu_state(self.app._save_as_menu_index))
 		self.app._reset_controls()
-		self.assertEqual("normal", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+		self.assertEqual("normal", self._menu_state(self.app._save_as_menu_index))
 		# Exit는 학습 상태와 무관하게 항상 활성 상태를 유지한다.
-		self.assertEqual("normal", self._menu_state(lngui.EXIT_MENU_LABEL))
+		self.assertEqual("normal", self._menu_state(self.app._exit_menu_index))
 
 	def test_save_as_without_model_file_only_logs(self) -> None:
 		"""Model output path에 파일이 없으면 대화상자를 열지 않고 안내만 남긴다."""
@@ -990,13 +998,13 @@ class TrainerMenuTest(unittest.TestCase):
 			self.app._on_save_as()
 		# 저장이 도는 동안에는 Start와 Save As...가 모두 잠겨 있어야 한다.
 		self.assertEqual("disabled", str(self.app.start_button["state"]))
-		self.assertEqual("disabled", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+		self.assertEqual("disabled", self._menu_state(self.app._save_as_menu_index))
 		self._drain_queue()
 		self.assertEqual(self.source.read_bytes(), destination.read_bytes())
 		# 복사본도 기존 체크포인트 형식 그대로라 다시 불러올 수 있어야 한다.
 		training.load_policy_checkpoint(destination, torch.device("cpu"))
 		self.assertEqual("normal", str(self.app.start_button["state"]))
-		self.assertEqual("normal", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+		self.assertEqual("normal", self._menu_state(self.app._save_as_menu_index))
 
 	def test_save_as_onnx_uses_progress_bar_and_restores_it(self) -> None:
 		"""onnx를 고르면 게이지바로 진행률을 보여 주고, 끝나면 원래 표시로 되돌린다."""
@@ -1005,7 +1013,7 @@ class TrainerMenuTest(unittest.TestCase):
 		with mock.patch.object(lngui.filedialog, "asksaveasfilename", return_value=str(destination)), \
 			mock.patch.object(lngui, "export_checkpoint_to_onnx") as export:
 			# 실제 변환은 onnx 패키지가 있어야 하므로, 여기서는 진행 콜백 계약만 확인한다.
-			export.side_effect = lambda source, target, progress: [progress(45, "Converting..."), progress(100, "done")]
+			export.side_effect = lambda source, target, progress, **_options: [progress(45, "Converting..."), progress(100, "done")]
 			self.app._on_save_as()
 			self.assertEqual((5000.0, 1234.0), self.app._progress_backup)
 			self._drain_queue()
@@ -1026,7 +1034,7 @@ class TrainerMenuTest(unittest.TestCase):
 			self._drain_queue()
 		self.assertIn("Save As failed: boom", self.app.log_text.get("1.0", "end"))
 		self.assertEqual("normal", str(self.app.start_button["state"]))
-		self.assertEqual("normal", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
+		self.assertEqual("normal", self._menu_state(self.app._save_as_menu_index))
 
 	def test_exit_while_idle_closes_immediately(self) -> None:
 		"""학습 중이 아니면 Exit는 곧바로 창을 닫는다."""
@@ -1050,8 +1058,8 @@ class TrainerMenuTest(unittest.TestCase):
 			# 종료 절차에 들어가면 모든 버튼과 메뉴가 잠긴다.
 			self.assertEqual("disabled", str(self.app.start_button["state"]))
 			self.assertEqual("disabled", str(self.app.stop_button["state"]))
-			self.assertEqual("disabled", self._menu_state(lngui.SAVE_AS_MENU_LABEL))
-			self.assertEqual("disabled", self._menu_state(lngui.EXIT_MENU_LABEL))
+			self.assertEqual("disabled", self._menu_state(self.app._save_as_menu_index))
+			self.assertEqual("disabled", self._menu_state(self.app._exit_menu_index))
 
 			# learning.train()이 체크포인트를 저장하고 끝난 상황을 재현한다.
 			self.app.thread.alive = False
@@ -1070,6 +1078,147 @@ class TrainerMenuTest(unittest.TestCase):
 			self.app.save_thread.alive = False
 			self.app._poll_queue()
 			destroy.assert_called_once()
+
+
+class TrainerLocalizationHelperTest(unittest.TestCase):
+	"""lngui.py의 번역표·언어 감지·표준 스트림 정리처럼 창 없이 확인할 수 있는 계약을 확인한다."""
+
+	@staticmethod
+	def _fields(text: str) -> list[str]:
+		return sorted(field for _literal, field, _spec, _conversion in string.Formatter().parse(text) if field)
+
+	def test_both_languages_have_the_same_keys_and_placeholders(self) -> None:
+		english = lngui.MESSAGES[lngui.LANGUAGE_ENGLISH]
+		korean = lngui.MESSAGES[lngui.LANGUAGE_KOREAN]
+		self.assertEqual(set(english), set(korean))
+		for key, text in english.items():
+			self.assertEqual(self._fields(text), self._fields(korean[key]), key)
+
+	def test_missing_translation_falls_back_to_english(self) -> None:
+		with mock.patch.dict(lngui.MESSAGES[lngui.LANGUAGE_KOREAN], clear=True):
+			self.assertEqual("Episode 1/2 (wins=0, losses=1)", lngui.translate(
+				lngui.LANGUAGE_KOREAN, "status_episode", done=1, total=2, wins=0, losses=1,
+			))
+
+	def test_language_is_detected_from_windows_language_ids_and_locale_names(self) -> None:
+		self.assertEqual(lngui.LANGUAGE_KOREAN, lngui.language_from_windows_language_id(0x0412))
+		self.assertEqual(lngui.LANGUAGE_KOREAN, lngui.language_from_windows_language_id(0x0812))
+		self.assertEqual(lngui.LANGUAGE_ENGLISH, lngui.language_from_windows_language_id(0x0409))
+		self.assertEqual(lngui.LANGUAGE_ENGLISH, lngui.language_from_windows_language_id(0x0411))
+		for name in ("ko_KR.UTF-8", "Korean_Korea", "ko", "ko-KR"):
+			self.assertEqual(lngui.LANGUAGE_KOREAN, lngui.language_from_locale_name(name), name)
+		for name in ("en_US.UTF-8", "kok_IN", "", None):
+			self.assertEqual(lngui.LANGUAGE_ENGLISH, lngui.language_from_locale_name(name), name)
+		self.assertIn(lngui.detect_language(), lngui.LANGUAGE_NAMES)
+
+	def test_standard_streams_survive_characters_outside_the_code_page(self) -> None:
+		buffer = io.BytesIO()
+		cp949_stream = io.TextIOWrapper(buffer, encoding="cp949")
+		with mock.patch.object(lngui.sys, "stdout", cp949_stream), mock.patch.object(lngui.sys, "stderr", None):
+			lngui.configure_standard_streams()
+			# cp949에 없는 이모지를 써도 예외 없이 이스케이프되어야 한다.
+			lngui.sys.stdout.write("학습 완료 ✅\n")
+			lngui.sys.stdout.flush()
+			# 콘솔이 없어 None이던 표준 오류에는 버리는 스트림이 달린다.
+			replaced_stderr = lngui.sys.stderr
+			replaced_stderr.write("서버 로그\n")
+		replaced_stderr.close()
+		self.assertIn("학습 완료".encode("cp949"), buffer.getvalue())
+		self.assertIn(b"\\u2705", buffer.getvalue())
+		self.assertEqual("cp949", cp949_stream.encoding)
+
+
+@unittest.skipUnless(_TK_AVAILABLE, "화면이 없는 환경에서는 Tk 창을 만들 수 없다.")
+class TrainerLanguageTest(unittest.TestCase):
+	"""lngui.py의 한국어 표시·실행 중 언어 전환·동봉 글꼴 적용을 확인한다."""
+
+	def setUp(self) -> None:
+		self.root = lngui.tk.Tk()
+		self.root.withdraw()
+		self.app = lngui.TrainerApp(self.root, language=lngui.LANGUAGE_KOREAN)
+
+	def tearDown(self) -> None:
+		self.app._closed = True
+		self.root.destroy()
+
+	def test_korean_texts_are_applied_to_the_window_menus_and_widgets(self) -> None:
+		self.assertEqual("Puyo W 모델 학습기", self.root.title())
+		self.assertEqual("파일", self.app.menubar.entrycget(self.app._file_cascade_index, "label"))
+		self.assertEqual("언어 (Language)", self.app.menubar.entrycget(self.app._language_cascade_index, "label"))
+		self.assertEqual("다른 이름으로 저장...", self.app.file_menu.entrycget(self.app._save_as_menu_index, "label"))
+		self.assertEqual("종료", self.app.file_menu.entrycget(self.app._exit_menu_index, "label"))
+		self.assertEqual(["시작", "일시정지", "중단"], [
+			str(button["text"]) for button in (self.app.start_button, self.app.pause_button, self.app.stop_button)
+		])
+		self.assertEqual("대기 중.", self.app.status_var.get())
+		labels = [str(label) for label in self.app.strategy_combobox.cget("values")]
+		self.assertEqual([strategy.label_ko for strategy in training.TRAINING_STRATEGIES.values()], labels)
+		self.assertEqual(training.DEFAULT_TRAINING_STRATEGY, self.app._selected_strategy_name())
+		self.assertEqual(
+			training.TRAINING_STRATEGIES[training.DEFAULT_TRAINING_STRATEGY].description, self.app.strategy_summary_var.get(),
+		)
+		# 언어 이름은 번역하지 않는다.
+		self.assertEqual(["English", "한국어"], [
+			self.app.language_menu.entrycget(index, "label") for index in range(self.app.language_menu.index("end") + 1)
+		])
+
+	def test_switching_language_keeps_the_selected_strategy_and_status(self) -> None:
+		long_nstep = training.TRAINING_STRATEGIES["long-nstep"]
+		self.app.strategy_combobox.set(long_nstep.label_ko)
+		self.app._on_strategy_selected()
+		self.app._set_status("status_episode", done=3, total=10, wins=2, losses=1)
+		self.assertEqual("에피소드 3/10 (승 2, 패 1)", self.app.status_var.get())
+
+		self.app.set_language(lngui.LANGUAGE_ENGLISH)
+
+		self.assertEqual("long-nstep", self.app._selected_strategy_name())
+		self.assertEqual(long_nstep.label, self.app.strategy_var.get())
+		self.assertEqual(long_nstep.summary, self.app.strategy_summary_var.get())
+		self.assertEqual("Episode 3/10 (wins=2, losses=1)", self.app.status_var.get())
+		self.assertEqual("Start", str(self.app.start_button["text"]))
+		self.assertEqual("Puyo W Model Trainer", self.root.title())
+		self.assertEqual(lngui.LANGUAGE_ENGLISH, self.app.language_var.get())
+		self.assertEqual("Save As...", self.app.file_menu.entrycget(self.app._save_as_menu_index, "label"))
+		# 메뉴를 켜고 끄는 코드는 번역된 라벨이 아니라 인덱스로 찾으므로 언어를 바꿔도 그대로 동작한다.
+		self.app._set_save_as_enabled(False)
+		self.assertEqual("disabled", str(self.app.file_menu.entrycget(self.app._save_as_menu_index, "state")))
+		with self.assertRaises(ValueError):
+			self.app.set_language("ja")
+
+	def test_language_menu_switches_the_language(self) -> None:
+		self.app.language_var.set(lngui.LANGUAGE_ENGLISH)
+		self.app._on_language_selected()
+		self.assertEqual(lngui.LANGUAGE_ENGLISH, self.app.language)
+		self.assertEqual("Idle.", self.app.status_var.get())
+
+	def test_pause_toggle_does_not_depend_on_the_button_text(self) -> None:
+		control = training.TrainingControl()
+		self.app.control = control
+		self.app._on_pause_resume()
+		self.assertTrue(self.app._pause_requested)
+		self.assertEqual("재개", str(self.app.pause_button["text"]))
+		self.assertEqual("일시정지하는 중 (현재 에피소드를 마치는 중)...", self.app.status_var.get())
+
+		self.app.set_language(lngui.LANGUAGE_ENGLISH)
+		self.assertEqual("Resume", str(self.app.pause_button["text"]))
+		self.app._on_pause_resume()
+		self.assertFalse(self.app._pause_requested)
+		self.assertEqual("Pause", str(self.app.pause_button["text"]))
+		self.assertEqual("Training...", self.app.status_var.get())
+
+	def test_korean_save_as_messages_are_logged(self) -> None:
+		with tempfile.TemporaryDirectory() as directory:
+			self.app.output_var.set(str(Path(directory) / "없는 모델.pt"))
+			self.app._on_save_as()
+		self.assertIn("모델 파일이 없는 경로입니다", self.app.log_text.get("1.0", "end"))
+
+	def test_bundled_font_is_used_when_it_can_be_registered(self) -> None:
+		if not lngui.register_bundled_font():
+			self.skipTest("동봉 글꼴을 등록할 수 없는 환경이다(Windows가 아니거나 글꼴 파일이 없음).")
+		self.assertEqual(lngui.FONT_FAMILY, self.app.font_family)
+		self.assertEqual(lngui.FONT_FAMILY, lngui.tkfont.nametofont("TkDefaultFont", root=self.root).actual("family"))
+		log_font = lngui.tkfont.Font(root=self.root, font=self.app.log_text.cget("font"))
+		self.assertEqual(lngui.FONT_FAMILY, log_font.actual("family"))
 
 
 class OnnxExportTest(unittest.TestCase):
@@ -1097,6 +1246,17 @@ class OnnxExportTest(unittest.TestCase):
 		self.assertEqual(self.source.read_bytes(), destination.read_bytes())
 		self.assertEqual(100, reported[-1])
 		self.assertEqual(sorted(reported), reported, "진행률은 줄어들지 않아야 한다")
+
+	def test_copy_to_a_korean_path_reports_korean_progress(self) -> None:
+		"""한글이 들어간 경로에도 복사하고, 한국어로 고르면 진행 문구도 한국어다."""
+		destination = self.directory / "한글 폴더" / "복사본 모델.pt"
+		messages: list[str] = []
+		lngui.save_checkpoint_copy(
+			self.source, destination, lambda percent, message: messages.append(message), language=lngui.LANGUAGE_KOREAN,
+		)
+		self.assertEqual(self.source.read_bytes(), destination.read_bytes())
+		self.assertTrue(messages[0].startswith("체크포인트를 복사하는 중"))
+		self.assertIn(str(destination), messages[-1])
 
 	@unittest.skipIf(importlib.util.find_spec("onnx") is not None, "onnx가 설치된 환경에서는 안내 경로를 확인할 수 없다.")
 	def test_onnx_export_without_package_explains_installation(self) -> None:

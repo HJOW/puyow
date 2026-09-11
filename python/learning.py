@@ -1183,11 +1183,13 @@ class TrainingStrategy:
 	--training-strategy 선택지와 lngui.py의 콤보박스에 함께 나타난다.
 	"""
 	name: str
-	# lngui.py 콤보박스에 보여 줄 이름과 설명이다. GUI 문구는 영어로 쓰는 규칙을 따른다.
+	# lngui.py가 영어로 표시할 때 콤보박스에 보여 줄 이름과 설명이다.
 	label: str
 	summary: str
-	# CLI 도움말과 학습 로그에 쓰는 한국어 설명이다.
+	# CLI 도움말과 학습 로그에 쓰는 한국어 설명이다. lngui.py가 한국어로 표시할 때의 설명도 이 값이다.
 	description: str
+	# lngui.py가 한국어로 표시할 때의 이름이다. 비워 두면 영어 label을 쓴다.
+	label_ko: str = ""
 	# 탐험하는 수 중에서 무작위 대신 연쇄를 쌓는 적 AI(CHAIN_GUIDE_ENEMY_TYPES)의 배치를 따르는 비율이다.
 	guided_exploration_ratio: float = 0.0
 	# 에이전트의 시작 필드에 실제 피버 패턴을 연쇄 씨앗으로 깔아 두는 에피소드 비율이다.
@@ -1204,29 +1206,30 @@ TRAINING_STRATEGIES: dict[str, TrainingStrategy] = {strategy.name: strategy for 
 	TrainingStrategy(
 		"standard", "Standard", "Random exploration among placeable moves and a 3-step return (previous behavior).",
 		"기존 방식이다. 탐험은 놓을 수 있는 후보 중 무작위이고 n스텝은 3이다.",
+		label_ko="기본",
 	),
 	TrainingStrategy(
 		"chain-guided", "Chain-guided exploration",
 		"Half of the exploration moves follow a chain-building enemy AI (Amdusias, Kimaris or Andrealphus).",
 		"탐험하는 수의 절반을 연쇄를 쌓는 적 AI(암두시아스·키마리스·안드레알푸스)의 배치로 둔다.",
-		guided_exploration_ratio=0.5,
+		label_ko="연쇄 유도 탐험", guided_exploration_ratio=0.5,
 	),
 	TrainingStrategy(
 		"chain-curriculum", "Chain curriculum",
 		"30% of episodes start from a fever-pattern chain seed and 20% are played solo without garbage.",
 		"에피소드의 30%는 피버 패턴을 연쇄 씨앗으로 깔고 시작하고, 20%는 방해뿌요 없는 solo로 진행한다.",
-		chain_seed_ratio=0.3, solo_episode_ratio=0.2,
+		label_ko="연쇄 커리큘럼", chain_seed_ratio=0.3, solo_episode_ratio=0.2,
 	),
 	TrainingStrategy(
 		"long-nstep", "Long n-step return", "Value targets sum the actual rewards of the next 8 moves instead of 3.",
 		"목표값을 만들 때 3수 대신 8수까지의 실제 보상을 이어 본다.",
-		n_step=8,
+		label_ko="긴 n스텝 목표값", n_step=8,
 	),
 	TrainingStrategy(
 		"chain-all", "All chain strategies",
 		"Chain-guided exploration, the chain curriculum and the 8-step return together.",
 		"연쇄 유도 탐험·연쇄 커리큘럼·8스텝 목표값을 모두 함께 쓴다.",
-		guided_exploration_ratio=0.5, chain_seed_ratio=0.3, solo_episode_ratio=0.2, n_step=8,
+		label_ko="연쇄 방식 모두 사용", guided_exploration_ratio=0.5, chain_seed_ratio=0.3, solo_episode_ratio=0.2, n_step=8,
 	),
 )}
 
