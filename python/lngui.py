@@ -85,6 +85,7 @@ import locale
 import os
 import queue
 import shutil
+import subprocess
 import sys
 import threading
 import tkinter as tk
@@ -137,6 +138,11 @@ _FR_PRIVATE = 0x10
 # Windows LANGID의 하위 10비트가 주 언어이며, 한국어는 0x12다(0x0412 등).
 _WINDOWS_PRIMARY_LANGUAGE_MASK = 0x3FF
 _WINDOWS_PRIMARY_LANGUAGE_KOREAN = 0x12
+# macOS 표시 언어는 로캘이나 환경 변수가 아니라 NSGlobalDomain의 AppleLanguages에 선호 순서대로 들어 있다.
+# (터미널이 아닌 Finder에서 띄우면 LANG조차 없으므로 이 값을 직접 읽어야 한다.)
+_MACOS_UI_LANGUAGE_COMMAND = ("defaults", "read", "-g", "AppleLanguages")
+# 위 명령이 어떤 이유로 응답하지 않아도 창이 뜨는 것을 막지 않도록 기다릴 시간을 제한한다.
+_MACOS_UI_LANGUAGE_TIMEOUT_SEC = 3.0
 _bundled_font_registered: bool | None = None
 
 LANGUAGE_ENGLISH = "en"
@@ -295,12 +301,41 @@ def language_from_locale_name(name: str | None) -> str:
 	return LANGUAGE_ENGLISH
 
 
+def language_from_macos_languages(output: str | None) -> str | None:
+	"""`defaults read -g AppleLanguages` 출력에서 첫 번째 언어를 골라 판별한다.
+
+	출력은 `(\\n    "ko-KR",\\n    "en-US"\\n)` 같은 옛 plist 형식이라 괄호·따옴표·쉼표를 털어 낸 첫
+	줄이 가장 선호하는 언어다. 값이 비었거나 형식이 예상과 다르면 None을 돌려주어 부르는 쪽이 다른
+	기준으로 넘어가게 한다.
+	"""
+	for line in (output or "").splitlines():
+		token = line.strip().strip("(),").strip('"')
+		if token:
+			return language_from_locale_name(token)
+	return None
+
+
+def macos_ui_language() -> str | None:
+	"""macOS 표시 언어(AppleLanguages)를 읽어 언어를 고른다. 읽지 못하면 None이다."""
+	try:
+		result = subprocess.run(
+			_MACOS_UI_LANGUAGE_COMMAND,
+			capture_output=True, text=True, timeout=_MACOS_UI_LANGUAGE_TIMEOUT_SEC,
+		)
+	except (OSError, subprocess.SubprocessError):
+		return None
+	if result.returncode != 0:
+		return None
+	return language_from_macos_languages(result.stdout)
+
+
 def detect_language() -> str:
 	"""운영체제 표시 언어로 처음 보여 줄 언어를 정한다.
 
 	Windows는 로캘(숫자·날짜 형식)과 표시 언어가 따로 설정되므로, 메뉴·대화상자가 쓰는 표시 언어
-	(GetUserDefaultUILanguage)를 기준으로 삼는다. 그 밖의 운영체제는 LC_ALL·LC_MESSAGES·LANG 환경
-	변수와 로캘 이름을 본다.
+	(GetUserDefaultUILanguage)를 기준으로 삼는다. macOS도 마찬가지로 로캘과 표시 언어가 따로이며
+	LANG이 없거나 `C.UTF-8`인 채로 실행되는 일이 흔하므로 표시 언어 목록(AppleLanguages)을 먼저 본다.
+	그 밖의 운영체제는 LC_ALL·LC_MESSAGES·LANG 환경 변수와 로캘 이름을 본다.
 	"""
 	if sys.platform == "win32":
 		try:
@@ -309,6 +344,10 @@ def detect_language() -> str:
 			return language_from_windows_language_id(ctypes.windll.kernel32.GetUserDefaultUILanguage())
 		except (AttributeError, OSError):
 			pass
+	if sys.platform == "darwin":
+		language = macos_ui_language()
+		if language is not None:
+			return language
 	for variable in ("LC_ALL", "LC_MESSAGES", "LANG"):
 		if os.environ.get(variable):
 			return language_from_locale_name(os.environ[variable])

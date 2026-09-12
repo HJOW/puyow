@@ -1415,6 +1415,23 @@ class TrainerLocalizationHelperTest(unittest.TestCase):
 			self.assertEqual(lngui.LANGUAGE_ENGLISH, lngui.language_from_locale_name(name), name)
 		self.assertIn(lngui.detect_language(), lngui.LANGUAGE_NAMES)
 
+	def test_language_is_detected_from_macos_display_languages(self) -> None:
+		# macOS는 `defaults read -g AppleLanguages`가 옛 plist 형식으로 선호 순서를 돌려준다.
+		self.assertEqual(lngui.LANGUAGE_KOREAN, lngui.language_from_macos_languages('(\n    "ko-KR",\n    "en-US"\n)\n'))
+		self.assertEqual(lngui.LANGUAGE_ENGLISH, lngui.language_from_macos_languages('(\n    "en-US",\n    "ko-KR"\n)\n'))
+		self.assertIsNone(lngui.language_from_macos_languages("(\n)\n"))
+		self.assertIsNone(lngui.language_from_macos_languages(None))
+		# 터미널 밖에서 띄우면 LANG이 없거나 C.UTF-8이라, 표시 언어를 환경 변수보다 먼저 봐야 한다.
+		with mock.patch.object(lngui.sys, "platform", "darwin"), \
+				mock.patch.dict(lngui.os.environ, {"LANG": "C.UTF-8"}), \
+				mock.patch.object(lngui, "macos_ui_language", return_value=lngui.LANGUAGE_KOREAN):
+			self.assertEqual(lngui.LANGUAGE_KOREAN, lngui.detect_language())
+		# 표시 언어를 읽지 못하면 기존대로 환경 변수로 넘어간다.
+		with mock.patch.object(lngui.sys, "platform", "darwin"), \
+				mock.patch.dict(lngui.os.environ, {"LANG": "ko_KR.UTF-8"}), \
+				mock.patch.object(lngui, "macos_ui_language", return_value=None):
+			self.assertEqual(lngui.LANGUAGE_KOREAN, lngui.detect_language())
+
 	def test_standard_streams_survive_characters_outside_the_code_page(self) -> None:
 		buffer = io.BytesIO()
 		cp949_stream = io.TextIOWrapper(buffer, encoding="cp949")
