@@ -251,7 +251,7 @@ python python/learning.py --episodes 5000 --output python/puyow/chain.pt --train
 - Conversely, the criterion for judging "the best move" itself does not change. These strategies help the model reach that criterion faster and more reliably. Compare their effect with the chain distribution from `--evaluate-episodes` (see section 13).
 - `chain-guided` asks an enemy AI to decide on every guided exploration move, so the early part of training, where the exploration rate is high, runs slower.
 - The chain seeds of `chain-curriculum` read the fever patterns from the game source the same way fever rules do, so Node.js is required. `solo` episodes can't be won, so the win count in the log drops accordingly.
-- The training log also prints each episode's longest chain as `max_combo=`.
+- The training log prints that episode's longest chain as `max_combo=`, and **the longest chain across every episode since the previous log line** as `recent_max_combo=`. Progress lines appear every 500 episodes on CPU (and always for the first episode), or every 1% of the run on GPU, so the episodes in between never show up in `max_combo=` on their own. Reading both together tells you whether chains are actually getting longer. Episodes discarded because of an alternate-model error count toward neither value.
 
 `alternate-model` picks its opponent by these rules.
 

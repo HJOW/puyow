@@ -669,9 +669,13 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 
 GUI(`lngui.py`)는 `TRAINING_STRATEGIES` 등록표를 그대로 나열하므로 두 방식이 자동으로 콤보박스에 나타난다. GUI 쪽에 새로 고친 코드는 없다.
 
+#### 진행 로그
+
+`train()`의 진행 로그 한 줄에는 그 에피소드의 최대 연쇄(`max_combo=`)와 **직전 로그 출력 이후 지나온 모든 에피소드의 최대 연쇄**(`recent_max_combo=`)가 함께 나온다. 로그 간격은 `resolve_log_interval()`이 정하며 CPU는 `CPU_LOG_INTERVAL`(500) 고정, GPU는 전체의 1%다(첫 에피소드는 간격과 무관하게 항상 낸다). 간격 사이의 에피소드는 로그에 나타나지 않으므로 `max_combo=`만으로는 연쇄가 느는지 알 수 없어 두 번째 값을 함께 낸다. 누적 변수 `interval_max_combo`는 로그를 낼 때마다 0으로 되돌리고, 대체 모델 오류로 버린 에피소드는 `continue`로 빠져 두 값 모두에 들어가지 않는다. 표시용 값이라 체크포인트 내용·모델 계약과는 무관하다. 로그 간격을 함수로 뽑아 둔 것은 테스트가 간격을 바꿔 이 동작을 확인할 수 있게 하기 위함이다.
+
 #### 회귀 테스트
 
-`python/test_learning.py`에 `RewardWeightTest`, `QuietEdgeEnemyTest`, `AlternateModelOpponentTest`, `NewTrainingStrategyTest`와 GUI 오류 표시 테스트 하나를 추가했다(전체 114개). `python -m unittest test_learning`을 `python/` 디렉터리에서 실행한다. 가중치 비율(피버 1/5, 승패 = 7연쇄, 2연쇄 = 120초)과 `modelNN.pt` 자릿수 규칙은 이 테스트가 고정한다.
+`python/test_learning.py`에 `ProgressLogTest`, `RewardWeightTest`, `QuietEdgeEnemyTest`, `AlternateModelOpponentTest`, `NewTrainingStrategyTest`와 GUI 오류 표시 테스트 하나를 추가했다(전체 118개). `python -m unittest test_learning`을 `python/` 디렉터리에서 실행한다. 가중치 비율(피버 1/5, 승패 = 7연쇄, 2연쇄 = 120초), `modelNN.pt` 자릿수 규칙, 진행 로그의 `recent_max_combo=` 계산은 이 테스트가 고정한다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 

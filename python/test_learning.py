@@ -540,6 +540,49 @@ class TrainingStrategyTest(unittest.TestCase):
 		json.dumps(result)
 
 
+class ProgressLogTest(unittest.TestCase):
+	"""진행 로그가 직전 로그 이후 에피소드들의 최고 연쇄까지 함께 알리는지 확인한다."""
+
+	def _train_with_scripts(self, scripts: list[list[int]], log_interval: int) -> list[str]:
+		"""에피소드마다 정해 둔 연쇄 수열을 쓰는 환경으로 학습을 돌리고 로그를 모은다."""
+		logs: list[str] = []
+		remaining = list(scripts)
+		with tempfile.TemporaryDirectory() as directory, \
+			mock.patch.object(training, "resolve_log_interval", return_value=log_interval), \
+			mock.patch.object(
+				training, "_make_environment",
+				side_effect=lambda *_args: TrainingStrategyTest._ScriptedEnvironment(remaining.pop(0)),
+			):
+			training.train(len(scripts), 11, Path(directory) / "log.pt", "cpu", log=logs.append)
+		return [line for line in logs if line.startswith("episode=")]
+
+	@staticmethod
+	def _combos(line: str) -> tuple[int, int]:
+		"""로그 한 줄에서 이번 에피소드의 최고 연쇄와 직전 로그 이후의 최고 연쇄를 읽는다."""
+		fields = dict(item.split("=", 1) for item in line.split(" ") if "=" in item)
+		return int(fields["max_combo"]), int(fields["recent_max_combo"])
+
+	def test_recent_max_combo_covers_every_episode_since_the_previous_log(self) -> None:
+		# 에피소드별 최고 연쇄는 차례로 2, 5, 1, 0이고 두 에피소드마다(첫 에피소드는 항상) 로그를 낸다.
+		lines = self._train_with_scripts([[0, 2], [5, 0], [1, 0], [0, 0]], log_interval=2)
+
+		self.assertEqual(3, len(lines), lines)
+		# 1번째: 자기 자신만. 2번째: 자기 자신(5)이 더 큼. 3번째(4번째 에피소드): 로그에 없던 3번째 에피소드의 1이 남는다.
+		self.assertEqual([(2, 2), (5, 5), (0, 1)], [self._combos(line) for line in lines])
+
+	def test_recent_max_combo_matches_the_episode_when_every_episode_is_logged(self) -> None:
+		lines = self._train_with_scripts([[0, 2], [5, 0], [1, 0]], log_interval=1)
+
+		self.assertEqual(3, len(lines), lines)
+		self.assertEqual([(2, 2), (5, 5), (1, 1)], [self._combos(line) for line in lines])
+
+	def test_log_interval_is_fixed_on_cpu_and_one_percent_on_gpu(self) -> None:
+		self.assertEqual(training.CPU_LOG_INTERVAL, training.resolve_log_interval(torch.device("cpu"), 10_000))
+		self.assertEqual(100, training.resolve_log_interval(torch.device("cuda"), 10_000))
+		# 에피소드가 100개 미만이어도 간격은 1 아래로 내려가지 않는다.
+		self.assertEqual(1, training.resolve_log_interval(torch.device("cuda"), 10))
+
+
 class RewardWeightTest(unittest.TestCase):
 	"""승패·게임 시간·연쇄가 가중치에 반영되는 비율을 확인한다."""
 

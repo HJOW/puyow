@@ -1310,6 +1310,10 @@ class TrainingControl:
 # 걸쳐 쌓았다가 한 번에 터지므로, 한 수만 보고 배우는 것보다 보상이 앞 수까지 빨리 전달된다.
 N_STEP_RETURN = 3
 
+# CPU 학습은 에피소드 하나가 느려 로그가 잦으면 오히려 진행을 보기 어렵다. 그래서 CPU에서는 고정
+# 간격으로, GPU에서는 전체의 1%마다 진행 로그를 낸다.
+CPU_LOG_INTERVAL = 500
+
 # 연쇄 유도 탐험에서 안내 역할을 맡는 적이다. 목표 연쇄를 두고 연쇄를 쌓는 적 중에서 턴을 넘나드는
 # 상태가 없는 적만 골랐다. 탐험하는 수에서만 띄엄띄엄 불리므로, 단탈리온처럼 단계를 기억하는 적은
 # 판단이 어긋난다.
@@ -1449,6 +1453,11 @@ def build_value_samples(
 	return samples
 
 
+def resolve_log_interval(device: torch.device, episodes: int) -> int:
+	"""진행 로그를 몇 에피소드마다 낼지 정한다. 1 이상이며, 첫 에피소드는 간격과 무관하게 항상 낸다."""
+	return CPU_LOG_INTERVAL if device.type == "cpu" else max(1, episodes // 100)
+
+
 def _format_eta(seconds: float) -> str:
 	"""남은 시간을(초) H:MM:SS 형태의 문자열로 바꾼다."""
 	total_seconds = max(0, int(seconds))
@@ -1494,7 +1503,7 @@ def train(
 				f"대체 모델 상대로 쓸 파일이 없습니다: {ALTERNATE_MODEL_DIRECTORY}에 modelNN.pt "
 				"(예: model01.pt) 형식의 체크포인트를 두세요. default.pt는 이름 규칙에 맞지 않아 쓰지 않습니다."
 			)
-	log_interval = 500 if device.type == "cpu" else max(1, episodes // 100)
+	log_interval = resolve_log_interval(device, episodes)
 	api_client = LearningApiClient(server_url, api_token or os.environ.get("PUYOW_AI_TOKEN", "")) if server_url else None
 	policy = ValueNetwork().to(device)
 	# --output 파일이 실제로 있으면 새 초기 가중치를 버리고 그 모델부터 추가 학습을 시작한다.
@@ -1518,6 +1527,11 @@ def train(
 	loss_count = 0
 	training_start_time = time.monotonic()
 	progress_log_count = 0
+	# 직전 로그 출력 이후에 지나온 에피소드들의 최고 연쇄 수다. 로그 간격(log_interval)이 넓으면
+	# 그 사이의 에피소드는 로그에 전혀 나타나지 않아, 한 줄에 찍히는 max_combo만 보고는 연쇄가
+	# 늘고 있는지 알기 어렵다. 로그를 한 번 낼 때마다 0으로 되돌린다. 학습에 쓰는 값이 아니라
+	# 표시용이므로 체크포인트 내용과 모델 계약에는 영향을 주지 않는다.
+	interval_max_combo = 0
 	if resumed:
 		# 체크포인트에는 가중치만 있으므로 optimizer·replay buffer·epsilon은 이번 실행에서 새로 시작한다.
 		log(f"resume={output} 기존 모델 가중치로 추가 학습을 시작합니다.")
@@ -1644,6 +1658,8 @@ def train(
 				break
 			continue
 		replay.extend(build_value_samples(trajectory, terminal_value, zero_state, n_step=training_strategy.n_step))
+		# 학습에 쓴 에피소드만 센다. 대체 모델 오류로 버린 에피소드는 위에서 이미 continue로 빠졌다.
+		interval_max_combo = max(interval_max_combo, episode_max_combo)
 		if episode_result in ("enemy_defeated", "enemy_no_moves", "enemy_invalid_self_play"):
 			win_count += 1
 		elif episode_result in ("agent_defeated", "invalid"):
@@ -1664,7 +1680,9 @@ def train(
 				eta_seconds = elapsed / (episode + 1) * remaining_episodes
 				eta_text = f" eta={_format_eta(eta_seconds)}"
 			log(f"episode={episode + 1}/{episodes} reward={episode_reward:.1f} epsilon={epsilon:.3f} "
-				f"result={episode_result} max_combo={episode_max_combo} wins={win_count} losses={loss_count}{eta_text}")
+				f"result={episode_result} max_combo={episode_max_combo} recent_max_combo={interval_max_combo} "
+				f"wins={win_count} losses={loss_count}{eta_text}")
+			interval_max_combo = 0
 		if control is not None and control.check_at_episode_boundary():
 			log(f"stopped_by_user episode={episode + 1}/{episodes}")
 			break
