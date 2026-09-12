@@ -86,3 +86,4 @@ puyow_sound_sample.html
 .tmp/**
 *.cpython-*.pyc
 __pycache__/**
+.DS_Store
