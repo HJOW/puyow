@@ -636,7 +636,7 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 
 ### TODO 학습 방식·가중치 변경 결과 (2026-09-13, BUILDNO 51)
 
-2026-09-13 `TODO.md`의 두 항목(학습 방식 2개 추가, 가중치 항목 수정)을 구현했다. 관측 벡터(528개)·행동(24개)·`MODEL_VERSION`(3)·`ValueNetwork` 구조는 그대로라 기존 체크포인트(`default.pt`, `model01.pt`)를 그대로 읽고 이어 학습할 수 있다. 다만 보상의 **의미**는 바뀌었으므로, 옛 기준으로 학습한 가중치가 새 기준에서 곧바로 최적은 아니다.
+2026-09-13 `TODO.md`로 학습 방식 5개 추가(상대 고정 2개 + 대전 규칙 고정 3개)와 가중치 항목 수정, 진행 로그 보강을 구현했다. 등록된 학습 방식은 `standard`·`chain-guided`·`chain-curriculum`·`long-nstep`·`chain-all`·`solo-play`·`alternate-model`·`fever-only`·`fever-start`·`standard-only` 열 가지다. 관측 벡터(528개)·행동(24개)·`MODEL_VERSION`(3)·`ValueNetwork` 구조는 그대로라 기존 체크포인트(`default.pt`, `model01.pt`)를 그대로 읽고 이어 학습할 수 있다. 다만 보상의 **의미**는 바뀌었으므로, 옛 기준으로 학습한 가중치가 새 기준에서 곧바로 최적은 아니다.
 
 #### 보상(가중치) 계약
 
@@ -650,9 +650,9 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 - `PuyoEnvironment`(상대 없는 옛 solo 환경)는 경과 시간을 재지 않아 관측값의 `elapsed_ms`가 늘 0이므로, `_defeat_value()`가 `턴 수 × 3초`를 생존 시간으로 환산해 쓴다. 관측값의 `turn` 스칼라가 같은 정보를 담고 있어 가치망이 구분할 수 있다.
 - `pythonserver.record_solomon_step()`은 종료 가치의 시간 항을 만들려고 각 수에 `elapsed_ms`를 함께 적어 둔다. 브라우저가 보내는 요청 형식은 바뀌지 않았다(관측 벡터에서 읽는다).
 
-#### 추가한 학습 방식 두 가지
+#### 상대를 고정하는 학습 방식 두 가지
 
-`TrainingStrategy`에 `opponent` 필드가 생겼다. 비어 있지 않으면 그 값이 `train()`의 `opponent` 인자(CLI `--opponent`, GUI 기본값 `random`)보다 우선한다. 기존 다섯 방식은 모두 빈 문자열이라 동작이 그대로다.
+`TrainingStrategy`에 `opponent` 필드가 생겼다. 비어 있지 않으면 그 값이 `train()`의 `opponent` 인자(CLI `--opponent`, GUI 기본값 `random`)보다 우선한다. 다른 방식은 모두 빈 문자열이라 동작이 그대로다.
 
 - `solo-play`(솔로 플레이): `bundledenemy.QuietEdgeEnemy`하고만 대전한다. 이 적은 즉시 패배하지 않는 후보 중 연쇄가 나지 않는 배치를 우선하고, 그중 중앙 두 열(`CENTER_COLUMNS` = X 2,3)에서 가장 먼 열을, 같은 거리면 낮은 자리를 고른다. 터뜨리지 않는 후보가 하나도 없으면 연쇄·ATTACK이 가장 작은 후보로 물러선다. `BaseEnemy.decide()`의 "피버 중 최대 연쇄 우선" 분기는 이 적의 목적과 반대라 `decide()`를 통째로 재정의해 쓰지 않는다. 실제로는 양 끝 열(X=0,5)부터 고르게 채워 올라가며 40턴 안팎에 스스로 막힌다.
 - `alternate-model`(대체 모델과 플레이): `ALTERNATE_MODEL_DIRECTORY`(= `python/puyow`, **이 스크립트 파일 기준**이라 작업 디렉터리와 무관하다) 바로 아래에서 `ALTERNATE_MODEL_PATTERN`(`^model\d{2,}\.pt$`)에 맞는 파일만 상대 후보로 삼는다. `default.pt`·`model1.pt`·`model01.txt`는 이름 규칙에서 빠진다. 파일 탐색 단계에서는 체크포인트 내용을 전혀 보지 않는다.
@@ -669,13 +669,39 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 
 GUI(`lngui.py`)는 `TRAINING_STRATEGIES` 등록표를 그대로 나열하므로 두 방식이 자동으로 콤보박스에 나타난다. GUI 쪽에 새로 고친 코드는 없다.
 
+#### 대전 규칙 고정 학습 방식 (2026-09-13 추가)
+
+`TrainingStrategy`에 `rules` 필드(DUEL_RULES 후보 튜플)가 생겼다. 비어 있지 않으면 모든 에피소드가 그 규칙으로 진행되고, 후보가 여럿이면 에피소드마다 그중 하나를 무작위로 고른다. 비어 있으면 예전처럼 환경이 기본 룰/피버 룰을 절반씩 고른다. 상대와 색상 수(3~5색)는 어느 경우에도 `standard` 방식과 똑같이 에피소드마다 무작위다.
+
+- `fever-only`(피버 위주): `(RULE_FEVER, RULE_RELAXED_FEVER)`
+- `fever-start`(피버 강화 학습): `(RULE_FEVER_START,)`
+- `standard-only`(기본 룰 위주): `(RULE_STANDARD,)`
+
+`learning.py`의 `DUEL_RULES`는 `puyow.js`의 규칙 식별자를 그대로 쓴다.
+
+| 값 | puyow.js 대응 | 학습 환경 동작 |
+| --- | --- | --- |
+| `standard` | 기본 룰 | `fever_rule=False`. 피버 필드를 쓰지 않는다. |
+| `fever` | 피버 룰 | 전등 `FEVER_LIGHT_STARTS`(0)로 시작해 상쇄 7회에 피버가 발동한다. |
+| `relaxedFever` | 피버 (완화) | 전등 `RELAXED_FEVER_LIGHT_STARTS`(= `min(6, FEVER_LIGHT_STARTS + 3)` = 3)로 시작해 상쇄 4회에 발동한다. 원작에서는 구경 설정 전용 규칙이지만 학습 환경에서는 대전 규칙으로도 쓸 수 있다. |
+| `feverStart` | 피버 룰 (시작) | `FeverState.next_time`을 `FEVER_START_INITIAL_TIME`(60초)로 두고 `reset()` 끝에서 양쪽 `_activate_fever()`를 부른다. `puyow.js`의 `beginGame()` feverStart 분기와 같아, 남은 시간 60초·다음 피버 시간 15초·목표 5연쇄의 피버 스테이지에서 즉시 시작한다. |
+
+구현상 주의할 점은 다음과 같다.
+
+- `PuyoDuelEnvironment.__init__`의 `rule` 인자는 문자열 하나이거나 후보 목록이며, 기존 `fever_rule` 불리언 인자보다 우선한다. 둘 다 생략한 기본 경로는 `random.random() < 0.5` 한 번만 소비해 예전 학습의 난수 흐름과 재현성이 그대로다. 후보가 하나뿐이면 난수를 아예 쓰지 않는다.
+- `FeverState.light_start`는 `puyow.js`의 `fever.lightStart`에 대응한다. `_activate_fever()`와 `_finish_fever()`가 전등을 0이 아니라 이 값으로 되돌리므로(원작 `activatePlayerFever`/`finishPlayerFever`와 동일), "피버 (완화)"는 피버가 끝난 뒤에도 전등 3개에서 다시 센다.
+- 피버 룰 (시작)의 첫 제한 시간 60,000ms는 관측 스칼라 `fever_left_time`의 정규화 상한(`common.FEVER_LEFT_TIME_SCALE`)과 정확히 같아 값이 잘리지 않는다. `puyow.js`도 같은 상수(`FEVER_START_INITIAL_TIME`)로 정규화한다. 관측 벡터 길이·의미는 바뀌지 않았으므로 기존 체크포인트와 완전히 호환된다.
+- `_activate_fever()`는 `_prepare_fever_stage()`에서 현재 조작 쌍을 보고 스테이지를 고르므로, `reset()`에서는 반드시 양측 `agent_pair`/`enemy_pair`와 예고쌍을 모두 정한 뒤에 불러야 한다.
+- `step()`의 `info`에 `rule` 키가 추가되었다. 기존 `fever_rule` 키도 그대로 남아 있다.
+- `_make_environment()`에 `rule` 인자가 5번째 위치 인자로 붙었다. 이 함수를 대역으로 바꾸는 테스트는 인자 개수를 맞춰야 한다.
+
 #### 진행 로그
 
 `train()`의 진행 로그 한 줄에는 그 에피소드의 최대 연쇄(`max_combo=`)와 **직전 로그 출력 이후 지나온 모든 에피소드의 최대 연쇄**(`recent_max_combo=`)가 함께 나온다. 로그 간격은 `resolve_log_interval()`이 정하며 CPU는 `CPU_LOG_INTERVAL`(500) 고정, GPU는 전체의 1%다(첫 에피소드는 간격과 무관하게 항상 낸다). 간격 사이의 에피소드는 로그에 나타나지 않으므로 `max_combo=`만으로는 연쇄가 느는지 알 수 없어 두 번째 값을 함께 낸다. 누적 변수 `interval_max_combo`는 로그를 낼 때마다 0으로 되돌리고, 대체 모델 오류로 버린 에피소드는 `continue`로 빠져 두 값 모두에 들어가지 않는다. 표시용 값이라 체크포인트 내용·모델 계약과는 무관하다. 로그 간격을 함수로 뽑아 둔 것은 테스트가 간격을 바꿔 이 동작을 확인할 수 있게 하기 위함이다.
 
 #### 회귀 테스트
 
-`python/test_learning.py`에 `ProgressLogTest`, `RewardWeightTest`, `QuietEdgeEnemyTest`, `AlternateModelOpponentTest`, `NewTrainingStrategyTest`와 GUI 오류 표시 테스트 하나를 추가했다(전체 118개). `python -m unittest test_learning`을 `python/` 디렉터리에서 실행한다. 가중치 비율(피버 1/5, 승패 = 7연쇄, 2연쇄 = 120초), `modelNN.pt` 자릿수 규칙, 진행 로그의 `recent_max_combo=` 계산은 이 테스트가 고정한다.
+`python/test_learning.py`에 `DuelRuleTest`, `RuleTrainingStrategyTest`, `ProgressLogTest`, `RewardWeightTest`, `QuietEdgeEnemyTest`, `AlternateModelOpponentTest`, `NewTrainingStrategyTest`와 GUI 오류 표시 테스트 하나를 추가했다(전체 134개). `python -m unittest test_learning`을 `python/` 디렉터리에서 실행한다. 가중치 비율(피버 1/5, 승패 = 7연쇄, 2연쇄 = 120초), `modelNN.pt` 자릿수 규칙, 진행 로그의 `recent_max_combo=` 계산, 네 가지 대전 규칙의 초기 피버 상태와 기본 규칙 선택의 재현성은 이 테스트가 고정한다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 

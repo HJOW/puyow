@@ -393,10 +393,13 @@ class TrainingStrategyTest(unittest.TestCase):
 
 	def _train_with_scripted_environment(self, strategy: object, episodes: int) -> dict:
 		"""환경을 대역으로 바꿔 학습을 짧게 돌리고, 학습 방식이 건드린 지점을 모아 돌려준다."""
-		record: dict = {"created": [], "suggestions": [], "logs": [], "progress": []}
+		record: dict = {"created": [], "rules": [], "suggestions": [], "logs": [], "progress": []}
 
-		def make_environment(opponent: str, _seed: int, _self_play: object, chain_seed_ratio: float) -> object:
+		def make_environment(
+			opponent: str, _seed: int, _self_play: object, chain_seed_ratio: float, rule: object = None,
+		) -> object:
 			record["created"].append((opponent, chain_seed_ratio))
+			record["rules"].append(rule)
 			environment = self._ScriptedEnvironment([0, 0, 3, 0])
 			environment.suggest_agent_action = lambda guide: record["suggestions"].append(guide)
 			return environment
@@ -504,6 +507,8 @@ class TrainingStrategyTest(unittest.TestCase):
 
 		self.assertTrue(record["saved"])
 		self.assertEqual([("Seere", 0.0)] * 3, record["created"])
+		# 기본 방식은 규칙을 고정하지 않으므로 환경이 에피소드마다 기본 룰/피버 룰을 스스로 고른다.
+		self.assertEqual([None] * 3, record["rules"])
 		self.assertEqual([], record["suggestions"])
 		self.assertEqual([training.N_STEP_RETURN] * 3, record["n_steps"])
 		self.assertEqual([3] * 3, [stats["max_combo"] for stats in record["progress"]])
@@ -538,6 +543,160 @@ class TrainingStrategyTest(unittest.TestCase):
 		self.assertEqual({1: 2, 2: 1, 5: 1}, result["combo_distribution"])
 		self.assertAlmostEqual(9 / 4, result["average_combo"])
 		json.dumps(result)
+
+
+class DuelRuleTest(unittest.TestCase):
+	"""대전 규칙(기본 룰·피버 룰·피버 (완화)·피버 룰 (시작))을 고정해 학습할 때의 환경 상태를 확인한다."""
+
+	def _environment(self, rule: object, seed: int = 3) -> object:
+		return training.PuyoDuelEnvironment("Seere", seed=seed, rule=rule)
+
+	def test_standard_rule_uses_no_fever_field(self) -> None:
+		environment = self._environment(training.RULE_STANDARD)
+
+		self.assertEqual(training.RULE_STANDARD, environment.rule)
+		self.assertFalse(environment.fever_rule)
+		self.assertFalse(environment.agent_fever.active)
+
+	def test_fever_rule_starts_with_no_lights_and_an_inactive_fever(self) -> None:
+		environment = self._environment(training.RULE_FEVER)
+
+		self.assertTrue(environment.fever_rule)
+		self.assertFalse(environment.agent_fever.active)
+		self.assertEqual(training.FEVER_LIGHT_STARTS, environment.agent_fever.gauge)
+		self.assertEqual(training.FEVER_INITIAL_TIME, environment.agent_fever.next_time)
+
+	def test_relaxed_fever_starts_with_three_lights_on_both_sides(self) -> None:
+		environment = self._environment(training.RULE_RELAXED_FEVER)
+
+		self.assertTrue(environment.fever_rule)
+		self.assertFalse(environment.agent_fever.active)
+		for state in (environment.agent_fever, environment.enemy_fever):
+			self.assertEqual(training.RELAXED_FEVER_LIGHT_STARTS, state.gauge)
+			self.assertEqual(training.RELAXED_FEVER_LIGHT_STARTS, state.light_start)
+		# 전등이 3개에서 시작하므로 상쇄 4회로 피버가 발동한다.
+		self.assertEqual(4, training.FEVER_GAUGE_MAX - training.RELAXED_FEVER_LIGHT_STARTS)
+
+	def test_relaxed_fever_returns_to_its_light_start_after_a_fever_ends(self) -> None:
+		environment = self._environment(training.RULE_RELAXED_FEVER)
+		environment._activate_fever("agent")
+		self.assertTrue(environment.agent_fever.active)
+		self.assertEqual(training.RELAXED_FEVER_LIGHT_STARTS, environment.agent_fever.gauge)
+
+		environment._finish_fever("agent")
+
+		self.assertFalse(environment.agent_fever.active)
+		self.assertEqual(training.RELAXED_FEVER_LIGHT_STARTS, environment.agent_fever.gauge)
+
+	def test_fever_start_begins_both_sides_inside_a_sixty_second_fever_stage(self) -> None:
+		environment = self._environment(training.RULE_FEVER_START)
+
+		self.assertTrue(environment.fever_rule)
+		for side in ("agent", "enemy"):
+			state = environment._fever(side)
+			self.assertTrue(state.active, side)
+			# puyow.js activatePlayerFever()와 같이 60초를 남은 시간으로 쓰고 다음 피버 시간은 기본값으로 돌아간다.
+			self.assertAlmostEqual(training.FEVER_START_INITIAL_TIME * 1000.0, state.left_time_ms)
+			self.assertEqual(training.FEVER_INITIAL_TIME, state.next_time)
+			self.assertEqual(training.FEVER_INITIAL_TARGET_COMBO, state.target_combo)
+			# 피버 스테이지 패턴이 실제로 깔려 있어야 한다.
+			self.assertTrue(any(cell != training.bundledenemy.EMPTY for row in state.field for cell in row), side)
+			self.assertIs(state.field, environment._board(side))
+
+	def test_fever_start_observation_reports_the_active_fever(self) -> None:
+		environment = self._environment(training.RULE_FEVER_START)
+		scalars = common.decode_observation_scalars(training.observation_values(environment.observe()))
+
+		self.assertTrue(scalars["fever_rule"])
+		self.assertTrue(scalars["fever_active"])
+		# 남은 시간 스칼라의 정규화 상한과 피버 룰 (시작)의 첫 제한 시간이 같아야 값이 잘리지 않는다.
+		self.assertEqual(common.FEVER_LEFT_TIME_SCALE, training.FEVER_START_INITIAL_TIME * 1000.0)
+		self.assertAlmostEqual(training.FEVER_START_INITIAL_TIME * 1000.0, scalars["fever_left_time"], places=3)
+
+	def test_a_rule_list_is_drawn_per_episode_and_reproducible(self) -> None:
+		choices = (training.RULE_FEVER, training.RULE_RELAXED_FEVER)
+		drawn = [training.PuyoDuelEnvironment("Seere", seed=seed, rule=choices).rule for seed in range(30)]
+
+		self.assertEqual(set(choices), set(drawn))
+		self.assertEqual(drawn, [training.PuyoDuelEnvironment("Seere", seed=seed, rule=choices).rule for seed in range(30)])
+
+	def test_unknown_rules_are_rejected(self) -> None:
+		for rule in ("continuousFever", "", ("fever", "puzzle")):
+			with self.assertRaises(ValueError, msg=rule):
+				training.PuyoDuelEnvironment("Seere", seed=1, rule=rule)
+		with self.assertRaises(ValueError):
+			training.PuyoDuelEnvironment("Seere", seed=1, rule=())
+
+	def test_default_rule_selection_is_unchanged(self) -> None:
+		# 규칙을 지정하지 않으면 예전처럼 기본 룰/피버 룰만 절반씩 나오고, fever_rule 인자도 그대로 듣는다.
+		drawn = {training.PuyoDuelEnvironment("Seere", seed=seed).rule for seed in range(30)}
+		self.assertEqual({training.RULE_STANDARD, training.RULE_FEVER}, drawn)
+		self.assertEqual(training.RULE_STANDARD, training.PuyoDuelEnvironment("Seere", seed=1, fever_rule=False).rule)
+		self.assertEqual(training.RULE_FEVER, training.PuyoDuelEnvironment("Seere", seed=1, fever_rule=True).rule)
+
+	def test_every_rule_still_randomises_the_colour_count(self) -> None:
+		for rule in training.DUEL_RULES:
+			counts = {training.PuyoDuelEnvironment("Seere", seed=seed, rule=rule).color_count for seed in range(40)}
+			self.assertEqual(set(training.PuyoDuelEnvironment.COLOR_COUNT_CHOICES), counts, rule)
+
+	def test_step_reports_the_rule_in_the_episode_info(self) -> None:
+		environment = self._environment(training.RULE_FEVER_START)
+		_state, _reward, _done, info = environment.step(2 * common.ROTATION_COUNT + common.ROTATION_UP)
+
+		self.assertEqual(training.RULE_FEVER_START, info["rule"])
+		self.assertTrue(info["fever_rule"])
+
+
+class RuleTrainingStrategyTest(unittest.TestCase):
+	"""규칙을 고정하는 학습 방식 세 가지의 등록 내용과 실제 적용을 확인한다."""
+
+	def _rules_used(self, strategy: str, episodes: int) -> list[str]:
+		"""학습을 짧게 돌리고 에피소드마다 실제로 쓰인 규칙을 모은다."""
+		used: list[str] = []
+		original = training._make_environment
+
+		def spy(*args: object, **kwargs: object) -> object:
+			environment = original(*args, **kwargs)
+			used.append(environment.rule)
+			return environment
+
+		with tempfile.TemporaryDirectory() as directory, \
+			mock.patch.object(training, "_make_environment", side_effect=spy):
+			training.train(
+				episodes, 5, Path(directory) / "rule.pt", "cpu", opponent="Seere", strategy=strategy,
+				log=lambda _message: None,
+			)
+		return used
+
+	def test_all_three_strategies_are_registered_with_korean_labels(self) -> None:
+		expected = {
+			"fever-only": ("피버 위주", (training.RULE_FEVER, training.RULE_RELAXED_FEVER)),
+			"fever-start": ("피버 강화 학습", (training.RULE_FEVER_START,)),
+			"standard-only": ("기본 룰 위주", (training.RULE_STANDARD,)),
+		}
+		for name, (label_ko, rules) in expected.items():
+			strategy = training.TRAINING_STRATEGIES[name]
+			self.assertEqual(label_ko, strategy.label_ko)
+			self.assertEqual(rules, strategy.rules)
+			# 상대는 "기본" 방식과 같게 두어야 하므로 상대를 고정하지 않는다.
+			self.assertEqual("", strategy.opponent, name)
+			self.assertTrue(strategy.label and strategy.summary and strategy.description, name)
+
+	def test_other_strategies_do_not_fix_the_rule(self) -> None:
+		for name in ("standard", "chain-guided", "chain-curriculum", "long-nstep", "chain-all", "solo-play", "alternate-model"):
+			self.assertEqual((), training.TRAINING_STRATEGIES[name].rules, name)
+
+	def test_fever_only_uses_both_fever_rules_and_never_the_standard_rule(self) -> None:
+		used = self._rules_used("fever-only", 12)
+
+		self.assertEqual(12, len(used))
+		self.assertEqual({training.RULE_FEVER, training.RULE_RELAXED_FEVER}, set(used))
+
+	def test_fever_start_uses_only_the_fever_start_rule(self) -> None:
+		self.assertEqual([training.RULE_FEVER_START] * 4, self._rules_used("fever-start", 4))
+
+	def test_standard_only_uses_only_the_standard_rule(self) -> None:
+		self.assertEqual([training.RULE_STANDARD] * 4, self._rules_used("standard-only", 4))
 
 
 class ProgressLogTest(unittest.TestCase):
@@ -851,7 +1010,9 @@ class NewTrainingStrategyTest(unittest.TestCase):
 	def test_the_strategy_opponent_overrides_the_opponent_argument(self) -> None:
 		created: list[str] = []
 
-		def make_environment(opponent: str, _seed: int, _action_fn: object, _chain_seed_ratio: float) -> object:
+		def make_environment(
+			opponent: str, _seed: int, _action_fn: object, _chain_seed_ratio: float, _rule: object = None,
+		) -> object:
 			created.append(opponent)
 			return TrainingStrategyTest._ScriptedEnvironment([0, 1])
 

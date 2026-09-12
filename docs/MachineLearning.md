@@ -129,7 +129,7 @@ python python/learning.py --help
 | `--output 경로` | `python/puyow/default.pt` | 모델 저장 파일. 파일이 이미 있으면 그 가중치를 읽고 추가 학습한다. 예: `--output python/puyow/kimaris.pt` |
 | `--device auto\|cpu\|cuda` | `auto` | 계산 장치. `auto`는 CUDA를 사용할 수 있으면 GPU, 아니면 CPU를 고른다. GPU 설정이 불확실하면 `cpu`를 쓴다. |
 | `--opponent 값` | `random` | 학습 상대. 아래 상세 설명의 상대 표를 참고한다. 예: `--opponent Kimaris` |
-| `--training-strategy 값` | `standard` | 학습 방식. `standard`, `chain-guided`, `chain-curriculum`, `long-nstep`, `chain-all`, `solo-play`, `alternate-model` 중 하나이며 학습에만 적용된다. `solo-play`와 `alternate-model`은 상대도 함께 정하므로 `--opponent`보다 우선한다. 8절의 「학습 방식」 표를 참고한다. 예: `--training-strategy chain-all` |
+| `--training-strategy 값` | `standard` | 학습 방식. `standard`, `chain-guided`, `chain-curriculum`, `long-nstep`, `chain-all`, `solo-play`, `alternate-model`, `fever-only`, `fever-start`, `standard-only` 중 하나이며 학습에만 적용된다. `solo-play`와 `alternate-model`은 상대도 함께 정하므로 `--opponent`보다 우선하고, 뒤의 세 가지는 대전 규칙을 고정한다. 8절의 「학습 방식」 표를 참고한다. 예: `--training-strategy chain-all` |
 | `--server-url URL` | 없음 | 학습 이벤트를 `pythonserver.py`에 전송한다. 일반 로컬 학습에는 지정하지 않는다. 자세한 내용은 뒤의 서버 절을 참고한다. |
 | `--api-token 토큰` | 없음 | `--server-url`을 쓸 때의 인증 토큰. 환경 변수 `PUYOW_AI_TOKEN`으로도 지정할 수 있다. |
 | `--evaluate-episodes 수` | `0` | 학습하지 않고 저장된 모델을 평가한다. 1 이상을 지정하면 승·패·무승부·승률과 연쇄 분포를 JSON으로 출력한다(13절 참고). |
@@ -160,7 +160,7 @@ python python/learning.py --episodes 1000 --opponent Kimaris
 
 `solo` 이외의 대전 모드에서는 상대 선택과 별개로 다음 값도 매 에피소드마다 무작위로 정해진다.
 
-- **룰**: 기본 룰과 피버 룰 중 하나를 50%씩 고른다. 피버 룰은 일반/피버 필드 이원화, 상쇄 7회 게이지, 플레이어별 다음 피버 시간, 제한 시간, 목표 연쇄 변경, 피버 중 최대 연쇄 우선 적 판단을 실행한다. 피버 패턴은 별도 복사본이 아니라 실행 시 `PuyoW.common.getFeverStageDefinitions()`로 실제 게임 데이터 54개를 읽어 색상 수와 지급쌍에 맞춰 배치한다.
+- **룰**: 학습 방식이 규칙을 고정하지 않으면 기본 룰과 피버 룰 중 하나를 50%씩 고른다(`fever-only`·`fever-start`·`standard-only`는 이 선택을 대신한다). 학습 환경이 지원하는 규칙은 `learning.DUEL_RULES`의 `standard`(기본 룰)·`fever`(피버 룰)·`relaxedFever`(피버 (완화), 전등 3개로 시작해 상쇄 4회면 피버 발동)·`feverStart`(피버 룰 (시작), 양쪽이 목표 5연쇄·60초 피버 스테이지에서 즉시 시작) 네 가지다. 피버 룰은 일반/피버 필드 이원화, 상쇄 7회 게이지, 플레이어별 다음 피버 시간, 제한 시간, 목표 연쇄 변경, 피버 중 최대 연쇄 우선 적 판단을 실행한다. 피버 패턴은 별도 복사본이 아니라 실행 시 `PuyoW.common.getFeverStageDefinitions()`로 실제 게임 데이터 54개를 읽어 색상 수와 지급쌍에 맞춰 배치한다.
 - **색상 수**: 3색, 4색, 5색 중 하나를 무작위로 골라 그 수만큼의 색으로만 뿌요 쌍을 생성한다(관측 벡터 채널 수 자체는 항상 5색 기준으로 고정이며, 쓰지 않는 채널은 0으로 남는다).
 
 브라우저 게임은 `game.elapsed`의 실제 경과 밀리초를 관측값에 넣는다. CPU 속도로 즉시 진행되는 오프라인 학습에는 벽시계 시간이 의미 없으므로 양측 한 턴을 3초로 간주해 마진 레이트와 시간 진행 배율, 피버 제한 시간을 결정적으로 진행한다.
@@ -231,7 +231,7 @@ Content-Type: application/json
 
 ### 학습 방식
 
-`lngui.py`의 `Training strategy` 콤보박스나 `learning.py`의 `--training-strategy` 옵션으로 학습 방식을 고를 수 있다. 기본값 `standard`는 이 옵션이 생기기 전과 같은 학습이다. 앞의 네 방식은 연쇄를 더 노리도록 학습 과정을 바꾸고, 뒤의 두 방식은 대전 상대를 바꾼다.
+`lngui.py`의 `Training strategy` 콤보박스나 `learning.py`의 `--training-strategy` 옵션으로 학습 방식을 고를 수 있다. 기본값 `standard`는 이 옵션이 생기기 전과 같은 학습이다. 앞의 다섯 방식은 연쇄를 더 노리도록 학습 과정을 바꾸고, `solo-play`·`alternate-model`은 대전 상대를, 마지막 세 방식은 대전 규칙을 바꾼다.
 
 | 값 | GUI 표시 (영어 / 한국어) | 동작 |
 | --- | --- | --- |
@@ -242,12 +242,16 @@ Content-Type: application/json
 | `chain-all` | `All chain strategies` / `연쇄 방식 모두 사용` | 위 세 방식을 모두 함께 쓴다. |
 | `solo-play` | `Solo play` / `솔로 플레이` | 뿌요를 터뜨리지 않으려 하고 중앙(X=2,3)에서 먼 열부터 채우는 연습 상대(`QuietEdgeEnemy`)하고만 대전한다. 상대가 거의 공격하지 않으므로 방해뿌요에 쫓기지 않고 자기 연쇄를 쌓아 이기는 수순만 연습할 수 있다. |
 | `alternate-model` | `Play against saved models` / `대체 모델과 플레이` | `python/puyow/`의 `modelNN.pt` 체크포인트 중 하나를 에피소드마다 무작위로 골라 상대로 세운다. 아래의 주의 사항을 참고한다. |
+| `fever-only` | `Fever rules only` / `피버 위주` | 상대는 `standard`와 같게 고르되, 모든 에피소드를 피버 룰 또는 피버 (완화) 룰로만 대전한다. 둘 중 어느 쪽을 쓸지는 에피소드마다 무작위다. |
+| `fever-start` | `Fever start rules only` / `피버 강화 학습` | 상대는 `standard`와 같게 고르되, 모든 에피소드를 피버 룰 (시작)으로 대전한다. 양쪽이 목표 5연쇄·60초의 피버 스테이지에서 곧바로 시작하므로 고연쇄를 집중적으로 연습한다. |
+| `standard-only` | `Standard rules only` / `기본 룰 위주` | 상대는 `standard`와 같게 고르되, 모든 에피소드를 피버 필드가 없는 기본 룰로만 대전한다. |
 
 ```powershell
 python python/learning.py --episodes 5000 --output python/puyow/chain.pt --training-strategy chain-all
 ```
 
-- 모든 방식은 **학습 과정과 상대만** 바꾼다. 보상·감가율·관측값·행동 계약은 그대로이므로, 어떤 방식으로 학습한 모델이든 서버·브라우저 추론에 그대로 쓸 수 있고 기존 모델을 다른 방식으로 이어 학습해도 된다.
+- 모든 방식은 **학습 과정·상대·대전 규칙만** 바꾼다. 보상·감가율·관측값·행동 계약은 그대로이므로, 어떤 방식으로 학습한 모델이든 서버·브라우저 추론에 그대로 쓸 수 있고 기존 모델을 다른 방식으로 이어 학습해도 된다.
+- 규칙을 고정하는 세 방식(`fever-only`·`fever-start`·`standard-only`)도 색상 수(3~5색)와 상대는 에피소드마다 무작위로 정한다. 규칙만 고정할 뿐 나머지는 `standard`와 같다. 게임 시간 보정을 포함한 종료 가치도 다른 방식과 똑같이 적용된다.
 - 반대로 "가장 좋은 수"를 판단하는 기준 자체는 바뀌지 않는다. 이 방식들은 모델이 그 기준에 더 빨리, 더 제대로 도달하도록 돕는다. 효과는 `--evaluate-episodes`의 연쇄 분포로 비교한다(13절 참고).
 - `chain-guided`는 탐험하는 수마다 적 AI가 판단하므로, 탐험 비율이 높은 학습 초반이 느려진다.
 - `chain-curriculum`의 연쇄 씨앗은 피버 룰과 같은 방식으로 게임 소스의 피버 패턴을 읽으므로 Node.js가 필요하다. `solo` 에피소드는 이길 수 없으므로 로그의 승수가 그만큼 줄어든다.

@@ -129,7 +129,7 @@ python python/learning.py --help
 | `--output PATH` | `python/puyow/default.pt` | The file the model is saved to. If the file already exists, its weights are loaded and training continues from there. Example: `--output python/puyow/kimaris.pt` |
 | `--device auto\|cpu\|cuda` | `auto` | The compute device. `auto` picks the GPU if CUDA is available, otherwise the CPU. Use `cpu` if you're unsure about your GPU setup. |
 | `--opponent VALUE` | `random` | The training opponent. See the opponent table in the detailed section below. Example: `--opponent Kimaris` |
-| `--training-strategy VALUE` | `standard` | The training strategy: one of `standard`, `chain-guided`, `chain-curriculum`, `long-nstep`, `chain-all`, `solo-play`, or `alternate-model`. `solo-play` and `alternate-model` also pick the opponent, so they take precedence over `--opponent`. See "Training strategies" in section 8. Example: `--training-strategy chain-all` |
+| `--training-strategy VALUE` | `standard` | The training strategy: one of `standard`, `chain-guided`, `chain-curriculum`, `long-nstep`, `chain-all`, `solo-play`, `alternate-model`, `fever-only`, `fever-start`, or `standard-only`. `solo-play` and `alternate-model` also pick the opponent, so they take precedence over `--opponent`; the last three fix the duel rules. See "Training strategies" in section 8. Example: `--training-strategy chain-all` |
 | `--server-url URL` | none | Sends training events to `pythonserver.py`. Leave unset for ordinary local training. See the server section further below for details. |
 | `--api-token TOKEN` | none | The authentication token used with `--server-url`. Can also be set via the `PUYOW_AI_TOKEN` environment variable. |
 | `--evaluate-episodes N` | `0` | Evaluates the saved model instead of training. Setting this to 1 or more prints wins/losses/draws/win rate and the chain distribution as JSON (see section 13). |
@@ -160,7 +160,7 @@ For anything other than `solo`, the training environment is `PuyoDuelEnvironment
 
 In duel modes other than `solo`, the following values are also chosen at random for every episode, independently of the opponent choice.
 
-- **Rule**: standard rules or fever rules, each with a 50% chance. Fever rules run the split between the normal field and the fever field, the 7-hit offset gauge, each player's next fever timer, the time limit, target-chain changes, and enemy decisions that prioritize the largest chain while in fever. Fever patterns aren't a separate copy — at runtime, the actual game's 54 fever stage entries are read via `PuyoW.common.getFeverStageDefinitions()` and laid out to match the chosen color count and supplied pair.
+- **Rule**: unless the training strategy fixes the rule, standard rules or fever rules, each with a 50% chance (`fever-only`, `fever-start`, and `standard-only` replace this choice). The rules the training environment supports are listed in `learning.DUEL_RULES`: `standard`, `fever`, `relaxedFever` (starts with 3 lights, so 4 offsets trigger a fever) and `feverStart` (both sides start immediately in a 5-chain, 60-second fever stage). Fever rules run the split between the normal field and the fever field, the 7-hit offset gauge, each player's next fever timer, the time limit, target-chain changes, and enemy decisions that prioritize the largest chain while in fever. Fever patterns aren't a separate copy — at runtime, the actual game's 54 fever stage entries are read via `PuyoW.common.getFeverStageDefinitions()` and laid out to match the chosen color count and supplied pair.
 - **Color count**: one of 3, 4, or 5 colors is chosen at random, and puyo pairs are generated using only that many colors (the observation vector's channel count is always fixed for 5 colors; unused channels are simply left at 0).
 
 The browser game feeds the actual elapsed milliseconds from `game.elapsed` into the observation. Wall-clock time is meaningless for offline training, which runs as fast as the CPU allows, so each pair of turns (one from each side) is treated as 3 seconds, and the margin rate, time-progress multiplier, and fever time limit are all advanced deterministically from that.
@@ -231,7 +231,7 @@ Garbage-puyo drops are random, so they aren't reflected in the afterstate — on
 
 ### Training strategies
 
-You can pick a training strategy with the `Training strategy` combo box in `lngui.py` or the `--training-strategy` option of `learning.py`. The default, `standard`, trains exactly as before this option existed. The first four strategies change the training process to encourage longer chains; the last two change the opponent.
+You can pick a training strategy with the `Training strategy` combo box in `lngui.py` or the `--training-strategy` option of `learning.py`. The default, `standard`, trains exactly as before this option existed. The first five strategies change the training process to encourage longer chains, `solo-play` and `alternate-model` change the opponent, and the last three change the duel rules.
 
 | Value | GUI label (English / Korean) | Behavior |
 | --- | --- | --- |
@@ -242,12 +242,16 @@ You can pick a training strategy with the `Training strategy` combo box in `lngu
 | `chain-all` | `All chain strategies` / `연쇄 방식 모두 사용` | Uses all three strategies above together. |
 | `solo-play` | `Solo play` / `솔로 플레이` | Duels only the sparring opponent (`QuietEdgeEnemy`) that avoids popping puyos and fills the columns farthest from the centre (X=2,3) first. Because it barely attacks, the model can practise building and firing its own chains without being pressured by garbage. |
 | `alternate-model` | `Play against saved models` / `대체 모델과 플레이` | Faces one of the `modelNN.pt` checkpoints in `python/puyow/`, drawn at random each episode. See the notes below. |
+| `fever-only` | `Fever rules only` / `피버 위주` | Picks opponents the same way as `standard`, but every episode uses either the FEVER rules or the relaxed FEVER rules, drawn at random per episode. |
+| `fever-start` | `Fever start rules only` / `피버 강화 학습` | Picks opponents the same way as `standard`, but every episode uses FEVER Rules (Start): both sides begin right inside a 5-chain, 60-second fever stage, which drills long chains. |
+| `standard-only` | `Standard rules only` / `기본 룰 위주` | Picks opponents the same way as `standard`, but every episode uses the standard rules, with no fever field. |
 
 ```powershell
 python python/learning.py --episodes 5000 --output python/puyow/chain.pt --training-strategy chain-all
 ```
 
-- Every strategy changes **only the training process and the opponent**. The reward, the discount rate, and the observation/action contract stay the same, so a model trained with any strategy works as-is for server and browser inference, and an existing model can continue training with a different strategy.
+- Every strategy changes **only the training process, the opponent, and the duel rules**. The reward, the discount rate, and the observation/action contract stay the same, so a model trained with any strategy works as-is for server and browser inference, and an existing model can continue training with a different strategy.
+- The three rule-fixing strategies (`fever-only`, `fever-start`, `standard-only`) still randomise the colour count (3-5) and the opponent per episode; only the rule is fixed. The terminal value, including the elapsed-time adjustment, applies exactly as it does elsewhere.
 - Conversely, the criterion for judging "the best move" itself does not change. These strategies help the model reach that criterion faster and more reliably. Compare their effect with the chain distribution from `--evaluate-episodes` (see section 13).
 - `chain-guided` asks an enemy AI to decide on every guided exploration move, so the early part of training, where the exploration rate is high, runs slower.
 - The chain seeds of `chain-curriculum` read the fever patterns from the game source the same way fever rules do, so Node.js is required. `solo` episodes can't be won, so the win count in the log drops accordingly.

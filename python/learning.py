@@ -182,6 +182,22 @@ FEVER_MAX_TIME = 30
 FEVER_MIN_TARGET_COMBO = 4
 FEVER_MAX_TARGET_COMBO = 12
 FEVER_CHAIN_TIME_BONUS_MS = 2_000
+# 피버 룰의 게임 시작·피버 종료 직후 켜져 있는 상쇄 전등 수다(puyow.js FEVER_LIGHT_STARTS).
+FEVER_LIGHT_STARTS = 0
+# "피버 (완화)" 룰의 시작 전등 수다. puyow.js의 구경 설정과 같은 min(6, FEVER_LIGHT_STARTS + 3)이라
+# 상쇄 4회로 피버가 발동해 일반 피버 룰보다 피버에 자주 들어간다.
+RELAXED_FEVER_LIGHT_STARTS = min(6, FEVER_LIGHT_STARTS + 3)
+# "피버 룰 (시작)"의 첫 피버 제한 시간(초)이다. puyow.js FEVER_START_INITIAL_TIME(60000ms)에 대응한다.
+FEVER_START_INITIAL_TIME = 60
+
+# puyow.js의 대전 규칙 식별자다. 게임의 규칙 선택(기본 룰·피버 룰·피버 룰 (시작))과 구경 설정의
+# "피버 (완화)"를 학습 환경에서도 같은 이름으로 고를 수 있게 한다.
+RULE_STANDARD = "standard"
+RULE_FEVER = "fever"
+RULE_RELAXED_FEVER = "relaxedFever"
+RULE_FEVER_START = "feverStart"
+# 학습 환경이 지원하는 모든 규칙이다. RULE_STANDARD만 피버 필드를 쓰지 않는다.
+DUEL_RULES: Tuple[str, ...] = (RULE_STANDARD, RULE_FEVER, RULE_RELAXED_FEVER, RULE_FEVER_START)
 _FEVER_STAGES: Optional[list[dict[str, Any]]] = None
 
 
@@ -274,6 +290,9 @@ class FeverState:
 	field: Optional[List[List[int]]] = None
 	damage: float = 0.0
 	turn: int = 0
+	# 게임 시작·피버 종료 직후로 되돌릴 전등 수다. puyow.js의 fever.lightStart에 대응하며,
+	# "피버 (완화)" 룰만 0이 아닌 값을 쓴다. 관측값에는 현재 gauge만 들어가므로 계약은 그대로다.
+	light_start: int = 0
 
 	def observation(self) -> dict[str, Any]:
 		"""이 피버 상태를 관측 인코딩용 딕셔너리로 변환한다."""
@@ -441,21 +460,28 @@ class PuyoDuelEnvironment:
 		color_count: Optional[int] = None,
 		self_play_action_fn: Optional[Callable[[torch.Tensor, Sequence[Any]], int]] = None,
 		chain_seed_ratio: float = 0.0,
+		rule: "str | Sequence[str] | None" = None,
 	) -> None:
-		"""대전 설정(상대·시드·피버 룰·색상 수·self-play 콜백)을 받아 초기 상태로 리셋한다.
+		"""대전 설정(상대·시드·룰·색상 수·self-play 콜백)을 받아 초기 상태로 리셋한다.
 
 		`chain_seed_ratio`는 에피소드마다 에이전트의 일반 필드에 연쇄 씨앗(build_chain_seed_board)을
 		깔고 시작할 확률이다. 상대 필드는 건드리지 않는다.
+
+		`rule`은 DUEL_RULES 중 하나이거나 여러 개를 담은 목록이며, 목록이면 에피소드마다 그중 하나를
+		무작위로 고른다. 지정하면 `fever_rule`보다 우선한다. 둘 다 생략하면 예전처럼 기본 룰과
+		피버 룰을 50%씩 고른다(난수 소비까지 같아 기존 학습 재현성이 유지된다).
 		"""
 		self.random = random.Random(seed)
 		self.chain_seed_ratio = chain_seed_ratio
 		self.opponent_type = opponent_type
 		self._fever_rule_setting = fever_rule
+		self._rule_choices = self._resolve_rule_choices(rule)
 		self._color_count_setting = color_count
 		self.self_play_action_fn = self_play_action_fn
 		self.opponent: Optional[bundledenemy.BaseEnemy] = None
 		self.is_self_play = False
 		self.policy_opponent_type = ""
+		self.rule = RULE_STANDARD
 		self.fever_rule = False
 		self.color_count = COLORS
 		self.agent_board: List[List[int]] = []
@@ -478,6 +504,31 @@ class PuyoDuelEnvironment:
 		self.turn = 0
 		self.reset()
 
+	@staticmethod
+	def _resolve_rule_choices(rule: "str | Sequence[str] | None") -> Tuple[str, ...]:
+		"""`rule` 인자를 후보 규칙 튜플로 정규화한다. 지정하지 않았으면 빈 튜플이다."""
+		if rule is None:
+			return ()
+		choices = (rule,) if isinstance(rule, str) else tuple(rule)
+		if not choices:
+			raise ValueError("rule에 빈 목록을 줄 수 없습니다.")
+		unknown = [name for name in choices if name not in DUEL_RULES]
+		if unknown:
+			raise ValueError(f"알 수 없는 대전 규칙입니다: {', '.join(unknown)} (사용 가능: {', '.join(DUEL_RULES)})")
+		return choices
+
+	def _select_rule(self) -> str:
+		"""이번 에피소드의 대전 규칙을 정한다.
+
+		후보가 하나뿐이면 난수를 쓰지 않는다. 규칙을 지정하지 않은 기본 경로는 예전과 똑같이
+		random() 한 번으로 기본 룰/피버 룰을 절반씩 고르므로 기존 학습의 난수 흐름이 유지된다.
+		"""
+		if self._rule_choices:
+			return self._rule_choices[0] if len(self._rule_choices) == 1 else self.random.choice(self._rule_choices)
+		if self._fever_rule_setting is not None:
+			return RULE_FEVER if self._fever_rule_setting else RULE_STANDARD
+		return RULE_FEVER if self.random.random() < 0.5 else RULE_STANDARD
+
 	def _pair(self) -> Tuple[int, int]:
 		"""현재 색상 수 범위에서 무작위 뿌요 쌍을 만든다."""
 		return self.random.randrange(self.color_count), self.random.randrange(self.color_count)
@@ -498,7 +549,8 @@ class PuyoDuelEnvironment:
 		# 적 인스턴스는 단탈리온의 진행 단계, 세레의 공격 시뮬레이션 주기처럼 턴을 넘나드는
 		# 상태를 인스턴스에 보관하므로, 매 에피소드(=매 대전)마다 새로 만들어야 한다.
 		self.opponent = None if self.is_self_play else bundledenemy.create_enemy(selected_opponent, random.Random(self.random.randrange(2 ** 30)))
-		self.fever_rule = self._fever_rule_setting if self._fever_rule_setting is not None else self.random.random() < 0.5
+		self.rule = self._select_rule()
+		self.fever_rule = self.rule != RULE_STANDARD
 		# bundledenemy는 프로세스 전역 상태 하나로 현재 룰을 추적한다(모듈의 configure_rule
 		# docstring 참고). 이 학습 스크립트는 한 번에 환경 하나만 순차로 진행하므로 안전하다.
 		bundledenemy.configure_rule(self.fever_rule)
@@ -514,8 +566,16 @@ class PuyoDuelEnvironment:
 		self.enemy_attack = 0.0
 		self.agent_all_clear_ticket = False
 		self.enemy_all_clear_ticket = False
-		self.agent_fever = FeverState(field=bundledenemy.new_empty_board())
-		self.enemy_fever = FeverState(field=bundledenemy.new_empty_board())
+		# "피버 (완화)"는 전등 3개로 시작해 상쇄 4회면 피버가 발동하고, "피버 룰 (시작)"은 첫 피버
+		# 제한 시간을 60초로 들고 시작한다. 나머지 규칙은 puyow.js의 기본값과 같다.
+		light_start = RELAXED_FEVER_LIGHT_STARTS if self.rule == RULE_RELAXED_FEVER else FEVER_LIGHT_STARTS
+		initial_next_time = FEVER_START_INITIAL_TIME if self.rule == RULE_FEVER_START else FEVER_INITIAL_TIME
+		self.agent_fever = FeverState(
+			field=bundledenemy.new_empty_board(), gauge=light_start, light_start=light_start, next_time=initial_next_time,
+		)
+		self.enemy_fever = FeverState(
+			field=bundledenemy.new_empty_board(), gauge=light_start, light_start=light_start, next_time=initial_next_time,
+		)
 		self.elapsed_ms = 0.0
 		self.margin_rate = get_margin_rate(self.elapsed_ms)
 		self.time_progress_multiplier = get_time_progress_multiplier(self.elapsed_ms)
@@ -524,6 +584,12 @@ class PuyoDuelEnvironment:
 		self.enemy_pair = self._pair()
 		self.agent_next_pairs = [self._pair() for _ in range(self.NEXT_PAIR_LOOKAHEAD)]
 		self.enemy_next_pairs = [self._pair() for _ in range(self.NEXT_PAIR_LOOKAHEAD)]
+		# "피버 룰 (시작)"은 카운트다운이 끝나면 양쪽이 곧바로 피버 스테이지에서 시작한다
+		# (puyow.js beginGame()의 feverStart 분기). 피버 패턴은 현재 쌍을 보고 고르므로
+		# 조작 쌍을 모두 정한 뒤에 발동시킨다.
+		if self.rule == RULE_FEVER_START:
+			self._activate_fever("agent")
+			self._activate_fever("enemy")
 		self.turn = 0
 		return self.observe()
 
@@ -689,7 +755,7 @@ class PuyoDuelEnvironment:
 		state.active = True
 		state.field = bundledenemy.new_empty_board()
 		state.damage = 0.0
-		state.gauge = 0
+		state.gauge = state.light_start
 		state.left_time_ms = state.next_time * 1000.0
 		state.next_time = FEVER_INITIAL_TIME
 		self._prepare_fever_stage(side, state.target_combo)
@@ -706,7 +772,7 @@ class PuyoDuelEnvironment:
 		state.active = False
 		state.field = bundledenemy.new_empty_board()
 		state.damage = 0.0
-		state.gauge = 0
+		state.gauge = state.light_start
 		state.left_time_ms = 0.0
 
 	def _register_offset(self, side: str, opponent_side: str) -> bool:
@@ -783,7 +849,7 @@ class PuyoDuelEnvironment:
 		info = {
 			"combo": combo, "attack": attack,
 			"opponent": self.policy_opponent_type if self.is_self_play else self.opponent.get_class_type(),
-			"fever_rule": self.fever_rule, "color_count": self.color_count,
+			"rule": self.rule, "fever_rule": self.fever_rule, "color_count": self.color_count,
 			"elapsed_ms": self.elapsed_ms, "margin_rate": self.margin_rate,
 			"time_progress_multiplier": self.time_progress_multiplier,
 		}
@@ -1221,7 +1287,7 @@ def evaluate_policy(
 
 def _make_environment(
 	opponent: str, seed: int, self_play_action_fn: Optional[Callable[[torch.Tensor, Sequence[Any]], int]] = None,
-	chain_seed_ratio: float = 0.0,
+	chain_seed_ratio: float = 0.0, rule: "str | Sequence[str] | None" = None,
 ) -> "PuyoEnvironment | PuyoDuelEnvironment":
 	"""--opponent 선택에 맞는 학습 환경을 만든다.
 
@@ -1232,11 +1298,15 @@ def _make_environment(
 	고정해 계속 대전하는 PuyoDuelEnvironment를 만든다. 기본 룰/피버 룰과 색상 수(3~5색)는
 	PuyoDuelEnvironment가 에피소드마다 알아서 무작위로 고른다.
 	`chain_seed_ratio`는 두 환경 모두에 그대로 넘기는 연쇄 씨앗 시작 확률이다.
+	`rule`은 PuyoDuelEnvironment에 그대로 넘기는 대전 규칙(또는 후보 목록)이다. 생략하면 예전처럼
+	에피소드마다 기본 룰/피버 룰을 절반씩 고른다. 피버 필드가 없는 'solo' 환경에는 의미가 없다.
 	"""
 	if opponent == "solo":
 		return PuyoEnvironment(seed, chain_seed_ratio=chain_seed_ratio)
 	resolved_opponent = None if opponent == "random" else opponent
-	return PuyoDuelEnvironment(resolved_opponent, seed, self_play_action_fn=self_play_action_fn, chain_seed_ratio=chain_seed_ratio)
+	return PuyoDuelEnvironment(
+		resolved_opponent, seed, self_play_action_fn=self_play_action_fn, chain_seed_ratio=chain_seed_ratio, rule=rule,
+	)
 
 
 class TrainingAbort(Exception):
@@ -1348,6 +1418,10 @@ class TrainingStrategy:
 	# opponent(CLI의 --opponent, GUI의 기본값)를 그대로 쓴다. 상대만 바꾸므로 보상·관측·행동
 	# 계약은 그대로이고, 여기서 학습한 체크포인트도 다른 방식으로 이어 학습할 수 있다.
 	opponent: str = ""
+	# 이 학습 방식이 대전 규칙을 고정하는 경우의 DUEL_RULES 후보다. 비어 있으면 예전처럼 에피소드마다
+	# 기본 룰/피버 룰을 절반씩 고른다. 후보가 여럿이면 에피소드마다 그중 하나를 무작위로 고른다.
+	# 색상 수(3~5색)는 어느 경우에도 PuyoDuelEnvironment가 에피소드마다 무작위로 정한다.
+	rules: Tuple[str, ...] = ()
 
 
 DEFAULT_TRAINING_STRATEGY = "standard"
@@ -1392,6 +1466,24 @@ TRAINING_STRATEGIES: dict[str, TrainingStrategy] = {strategy.name: strategy for 
 		"Faces a modelNN.pt checkpoint from python/puyow/, drawn at random each episode.",
 		"python/puyow/의 modelNN.pt 체크포인트 중 하나를 에피소드마다 무작위로 골라 상대한다.",
 		label_ko="대체 모델과 플레이", opponent=ALTERNATE_MODEL_OPPONENT,
+	),
+	TrainingStrategy(
+		"fever-only", "Fever rules only",
+		"Picks opponents like Standard, but every episode uses the FEVER rules or the relaxed FEVER rules.",
+		"기본 방식처럼 상대를 고르되, 모든 에피소드를 피버 룰 또는 피버 (완화) 룰로만 대전한다.",
+		label_ko="피버 위주", rules=(RULE_FEVER, RULE_RELAXED_FEVER),
+	),
+	TrainingStrategy(
+		"fever-start", "Fever start rules only",
+		"Picks opponents like Standard, but every episode starts both sides inside a FEVER stage (FEVER Rules (Start)).",
+		"기본 방식처럼 상대를 고르되, 모든 에피소드를 양쪽이 피버 스테이지에서 곧바로 시작하는 피버 룰 (시작)으로 대전한다.",
+		label_ko="피버 강화 학습", rules=(RULE_FEVER_START,),
+	),
+	TrainingStrategy(
+		"standard-only", "Standard rules only",
+		"Picks opponents like Standard, but every episode uses the standard rules with no fever field.",
+		"기본 방식처럼 상대를 고르되, 모든 에피소드를 피버 필드가 없는 기본 룰로만 대전한다.",
+		label_ko="기본 룰 위주", rules=(RULE_STANDARD,),
 	),
 )}
 
@@ -1480,7 +1572,9 @@ def train(
 	GUI 진행 게이지를 갱신한다. `strategy`는 TRAINING_STRATEGIES의 이름 또는 TrainingStrategy이며,
 	기본값 "standard"는 이 인자가 없던 때와 같은 학습을 한다.
 
-	학습 방식이 상대를 직접 정하면(TrainingStrategy.opponent) 그 값이 `opponent` 인자보다 우선한다.
+	학습 방식이 상대를 직접 정하면(TrainingStrategy.opponent) 그 값이 `opponent` 인자보다 우선하고,
+	대전 규칙을 고정하면(TrainingStrategy.rules) 모든 에피소드가 그 규칙(후보가 여럿이면 그중 하나를
+	무작위로 고른 규칙)으로 진행된다. 색상 수는 어느 경우에도 에피소드마다 3~5색 중 무작위다.
 	"대체 모델과 플레이"(alternate-model)는 python/puyow/의 modelNN.pt 중 하나를 에피소드마다
 	무작위로 골라 상대로 세우며, 쓸 파일이 하나도 없으면 체크포인트를 건드리기 전에 ValueError로
 	끝난다. 대전 중 그 모델이 오류를 내면 해당 에피소드는 학습에 쓰지 않고 그 파일을 선정 대상에서
@@ -1563,7 +1657,10 @@ def train(
 				log(f"alternate_model_exhausted episode={episode + 1}/{episodes} 남은 대체 모델이 없어 학습을 중단합니다.")
 				break
 			enemy_action_fn = alternate_models.action_fn(alternate_models.select(strategy_random))
-		environment = _make_environment(episode_opponent, seed + episode, enemy_action_fn, training_strategy.chain_seed_ratio)
+		environment = _make_environment(
+			episode_opponent, seed + episode, enemy_action_fn, training_strategy.chain_seed_ratio,
+			training_strategy.rules or None,
+		)
 		max_steps_per_episode = 100 if episode_opponent == "solo" else PuyoDuelEnvironment.MAX_TURNS_PER_EPISODE
 		explore_fn: Optional[Callable[[Sequence[Afterstate]], Optional[Afterstate]]] = None
 		if training_strategy.guided_exploration_ratio > 0.0:
