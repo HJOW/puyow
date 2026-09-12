@@ -82,7 +82,7 @@ The table below uses the English names. In Korean they appear as `모델 저장 
 | --- | --- |
 | `Model output path` | The `.pt` file path where the training result is saved. You can also pick it with `Browse...`. |
 | `Episodes` | The number of matches to train on. Only a positive integer is accepted. Use 10 to verify the install and a larger value such as 1000 or more for real training. |
-| `Training strategy` | Picks the training strategy. The default, `Standard`, trains the same way as before. A description of the selected strategy is shown under the combo box. See "Training strategies that encourage longer chains" in section 8 for details. |
+| `Training strategy` | Picks the training strategy. The default, `Standard`, trains the same way as before. A description of the selected strategy is shown under the combo box. See "Training strategies" in section 8 for details. |
 | `Start` | Starts training. The path, episode count, and training strategy cannot be changed while training is running. |
 | `Pause` / `Resume` | Pauses or resumes after the current episode finishes. |
 | `Stop` | Stops after the current episode finishes and saves the model up to that point. |
@@ -129,7 +129,7 @@ python python/learning.py --help
 | `--output PATH` | `python/puyow/default.pt` | The file the model is saved to. If the file already exists, its weights are loaded and training continues from there. Example: `--output python/puyow/kimaris.pt` |
 | `--device auto\|cpu\|cuda` | `auto` | The compute device. `auto` picks the GPU if CUDA is available, otherwise the CPU. Use `cpu` if you're unsure about your GPU setup. |
 | `--opponent VALUE` | `random` | The training opponent. See the opponent table in the detailed section below. Example: `--opponent Kimaris` |
-| `--training-strategy VALUE` | `standard` | The training strategy: one of `standard`, `chain-guided`, `chain-curriculum`, `long-nstep`, or `chain-all`. It only affects training. See "Training strategies that encourage longer chains" in section 8. Example: `--training-strategy chain-all` |
+| `--training-strategy VALUE` | `standard` | The training strategy: one of `standard`, `chain-guided`, `chain-curriculum`, `long-nstep`, `chain-all`, `solo-play`, or `alternate-model`. `solo-play` and `alternate-model` also pick the opponent, so they take precedence over `--opponent`. See "Training strategies" in section 8. Example: `--training-strategy chain-all` |
 | `--server-url URL` | none | Sends training events to `pythonserver.py`. Leave unset for ordinary local training. See the server section further below for details. |
 | `--api-token TOKEN` | none | The authentication token used with `--server-url`. Can also be set via the `PUYOW_AI_TOKEN` environment variable. |
 | `--evaluate-episodes N` | `0` | Evaluates the saved model instead of training. Setting this to 1 or more prints wins/losses/draws/win rate and the chain distribution as JSON (see section 13). |
@@ -150,6 +150,7 @@ python python/learning.py --help
 | `self` | Always duels via self-play. Since the opposing side also picks actions using the policy being trained (applying the same epsilon-greedy exploration), the opponent winning is effectively the same policy losing to itself. |
 | `solo` | Uses the old mode (`PuyoEnvironment`), which trains only to survive without an opponent. |
 | `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus` | Fixes the opponent to the specified enemy for the whole run. |
+| `QuietEdgeEnemy` | Duels a training-only sparring opponent that avoids popping puyos and fills the columns farthest from the centre (X=2,3) first. It does not exist in the game itself, so `random` never picks it. `--training-strategy solo-play` selects it automatically. |
 
 ```powershell
 python python/learning.py --episodes 1000 --opponent Kimaris
@@ -221,15 +222,16 @@ For this game, the resulting board after a move (landing, popping, chains, ATTAC
 - **The pair recorded in the resulting state is the "next pair"**: an afterstate is effectively "my state as the next turn begins," so the slot for the current pair in the observation vector actually holds the pair after this move. This means evaluating just one move already accounts for the pair that comes next. This is the same value found in `next_1` of the `suppliedPuyos` that the game's Solomon prompt already sends.
 - **A convolutional network that sees the board in 2D as-is**: instead of flattening the 6×12 board into one dimension, it's fed into the convolution as-is, across 7 channels (empty, garbage, and the 5 colors). Whether same-colored puyos are adjacent, or which column is taller, are the kinds of chain-relevant features that stay the same regardless of where they occur on the board. The current pair and the 24 scalar state values are concatenated after the features that come out of the convolution.
 - **n-step targets**: because chains build up over several moves before popping all at once, the target value is built not from just the next move but by chaining together the actual rewards over up to `learning.N_STEP_RETURN` (3 by default) moves. This lets reward propagate back to earlier moves that much faster.
-- **Reward contract**: the immediate reward for one move is `ATTACK + chain^2`, from `common.move_reward()`. The discount rate is `common.DISCOUNT_GAMMA` (0.70). Offline training, server inference, and the server's online training all share these same constants.
-- **Win/loss is the value of the final state**: winning (`+50`, `WIN_REWARD`) and losing (`-50`, `LOSS_REWARD`) are trained not as the reward for the last move, but as **the value of the state where the match ended**. If they were given only as a reward, a dead board's value would end up at 0, which would create a problem where, among the candidates, "the move that loses the instant you play it" could look better than a safe move.
+- **Reward contract**: the immediate reward for one move is `ATTACK + chain weight`, from `common.move_reward()`. The chain weight is `common.chain_reward()`: `5 x chain^2` outside fever, and one fifth of that (`1 x chain^2`) during fever, because a fever field arrives with the target chain already laid out, making the same chain easier than one you built yourself. The discount rate is `common.DISCOUNT_GAMMA` (0.70). Offline training, server inference, the server's online training, and browser ONNX inference all share this contract.
+- **Win/loss is the value of the final state**: winning (`+245`, `WIN_REWARD`) and losing (`-245`, `LOSS_REWARD`) are trained not as the reward for the last move, but as **the value of the state where the match ended**. If they were given only as a reward, a dead board's value would end up at 0, which would create a problem where, among the candidates, "the move that loses the instant you play it" could look better than a safe move. 245 is the weight of a 7-chain outside fever (`5 x 7^2`), which means winning a match is valued the same as landing one 7-chain.
+- **Game time**: the terminal value also carries an elapsed-time adjustment (`common.terminal_reward()`). A win scores higher the sooner it arrives; a loss scores higher the longer the agent held out. Its size is calibrated so that a 2-chain outside fever (20) equals 120 seconds of game time, which keeps it far below the chain and win/loss weights, and it is clamped at the same 10-minute ceiling as the `elapsed_ms` observation scalar. The time adjustment therefore never flips the sign of a win or a loss.
 - **Exploration**: during training, a candidate is picked at random with a certain probability. That probability starts at 1.0 and decays down to 0.05 by the halfway point of all episodes, so for the remaining half, the model is playing almost entirely on its own judgment. Even when picking randomly, only legal candidates are considered.
 
 Garbage-puyo drops are random, so they aren't reflected in the afterstate — only the remaining damage after any offsetting is kept as a scalar in the state. Because this approximation is applied through the same function (`learning.enumerate_afterstates()`) in both the trainer and the server, it's applied identically on both sides.
 
-### Training strategies that encourage longer chains
+### Training strategies
 
-You can pick a training strategy with the `Training strategy` combo box in `lngui.py` or the `--training-strategy` option of `learning.py`. The default, `standard`, trains exactly as before this option existed.
+You can pick a training strategy with the `Training strategy` combo box in `lngui.py` or the `--training-strategy` option of `learning.py`. The default, `standard`, trains exactly as before this option existed. The first four strategies change the training process to encourage longer chains; the last two change the opponent.
 
 | Value | GUI label (English / Korean) | Behavior |
 | --- | --- | --- |
@@ -238,16 +240,31 @@ You can pick a training strategy with the `Training strategy` combo box in `lngu
 | `chain-curriculum` | `Chain curriculum` / `연쇄 커리큘럼` | 30% of episodes start from a field with a real fever pattern laid out as a chain seed, and 20% are played `solo`, with no garbage exchange. The seed's colors are shuffled at random, so it doesn't pop right away; the trigger colors have to be lined up over several moves. |
 | `long-nstep` | `Long n-step return` / `긴 n스텝 목표값` | Value targets chain together the actual rewards of up to 8 moves instead of 3, so chain rewards propagate back to earlier moves faster. |
 | `chain-all` | `All chain strategies` / `연쇄 방식 모두 사용` | Uses all three strategies above together. |
+| `solo-play` | `Solo play` / `솔로 플레이` | Duels only the sparring opponent (`QuietEdgeEnemy`) that avoids popping puyos and fills the columns farthest from the centre (X=2,3) first. Because it barely attacks, the model can practise building and firing its own chains without being pressured by garbage. |
+| `alternate-model` | `Play against saved models` / `대체 모델과 플레이` | Faces one of the `modelNN.pt` checkpoints in `python/puyow/`, drawn at random each episode. See the notes below. |
 
 ```powershell
 python python/learning.py --episodes 5000 --output python/puyow/chain.pt --training-strategy chain-all
 ```
 
-- Every strategy changes **only the training process**. The reward (`ATTACK + chain^2`), the discount rate (0.70), and the observation/action contract stay the same, so a model trained with any strategy works as-is for server and browser inference, and an existing model can continue training with a different strategy.
+- Every strategy changes **only the training process and the opponent**. The reward, the discount rate, and the observation/action contract stay the same, so a model trained with any strategy works as-is for server and browser inference, and an existing model can continue training with a different strategy.
 - Conversely, the criterion for judging "the best move" itself does not change. These strategies help the model reach that criterion faster and more reliably. Compare their effect with the chain distribution from `--evaluate-episodes` (see section 13).
 - `chain-guided` asks an enemy AI to decide on every guided exploration move, so the early part of training, where the exploration rate is high, runs slower.
 - The chain seeds of `chain-curriculum` read the fever patterns from the game source the same way fever rules do, so Node.js is required. `solo` episodes can't be won, so the win count in the log drops accordingly.
 - The training log also prints each episode's longest chain as `max_combo=`.
+
+`alternate-model` picks its opponent by these rules.
+
+- Candidates are only the files **directly under** `python/puyow/` whose names match `modelNN.pt` (two or more digits, e.g. `model01.pt`, `model02.pt`, `model100.pt`). Only the filename is checked at this stage; the checkpoint contents are not. `default.pt` does not match the naming rule and so never becomes an opponent.
+- If there is no usable file at all, training fails before it starts and the `--output` checkpoint is left untouched.
+- One of the remaining candidates is drawn at random each episode. The draw derives from the training seed, so it is reproducible.
+- If loading the opponent model or asking it for a move raises an error, **that whole episode is discarded**: its partial trajectory never becomes a training sample and never enters the win/loss counts, `alternate_model_failed` is written to the log, and that file is dropped from later draws.
+- Once every candidate has been dropped, the trainer logs `alternate_model_exhausted` and stops. The weights learned up to that point are still saved to `--output`.
+- The opponent model uses the same `ValueNetwork`, afterstate, and action-number contract as the agent being trained, and picks its moves greedily (no exploration) from the observation of its own field.
+
+```powershell
+python python/learning.py --episodes 2000 --output python/puyow/default.pt --training-strategy alternate-model
+```
 
 ## 9. Details: observations and actions
 
@@ -327,8 +344,8 @@ What you need to prepare is the same as the "Dueling the game with your trained 
 Here's how it behaves.
 
 1. The game creates a training session ID per match and sends it along with the Solomon placement request. For matches that don't meet the conditions (a different provider, a difficulty other than extreme, an enemy other than Solomon, or `Train model in reverse` turned off), this value is not sent, so the request is exactly the same as before.
-2. On every request, the server stores the afterstate and immediate reward (`ATTACK + chain^2`) of the move it chose, in order, in the session. Because this uses the same function as offline training, the training sample format is identical between the two paths.
-3. Training doesn't happen on every move. Once the win/loss is decided, **at the moment the game-over screen appears**, the moves collected from that match are turned into samples and applied all at once, and the result is saved to the checkpoint at `SERVER_CONFIG["model_path"]`. The target value for a move is the reward of the very next move plus the discounted value of the following afterstate; the last move has no further state to look ahead to, so only `WIN_REWARD` (+50) or `LOSS_REWARD` (-50) becomes its target.
+2. On every request, the server stores the afterstate and immediate reward (`ATTACK + chain weight`) of the move it chose, in order, in the session. Because this uses the same function as offline training, the training sample format is identical between the two paths.
+3. Training doesn't happen on every move. Once the win/loss is decided, **at the moment the game-over screen appears**, the moves collected from that match are turned into samples and applied all at once, and the result is saved to the checkpoint at `SERVER_CONFIG["model_path"]`. The target value for a move is the reward of the very next move plus the discounted value of the following afterstate; the last move has no further state to look ahead to, so only the terminal value that combines win/loss and elapsed time (`common.terminal_reward()`, +245 for a win before the time adjustment) becomes its target. The elapsed time is read from that side's last recorded move.
 4. There is no request at all for a turn where Solomon fell back to an alternative AI due to a dangerous board height or a response error. Since the move right before such a turn has no known next state, it is not turned into a sample.
 
 ### Also training on the moves from a match the human won
@@ -338,8 +355,8 @@ There is no value in the observation vector or the action number that indicates 
 This sub-feature has no separate setting of its own. The single `Train model in reverse` checkbox described above turns both Solomon's own training and the human's move training on and off together.
 
 1. Every time the human locks in a puyo during the match, the game sends the observation and placement (`column*4+rotation`) at that moment to the same training session. Since Solomon's moves and the human's moves don't lead into each other's next state, they're accumulated **separately, per side**, within the session.
-2. Just like Solomon's moves, the server recomputes the afterstate and the `ATTACK + chain^2` reward for the human's moves as well. This keeps the basis for the value estimate from skewing toward one side. The request for a move the human made also carries that move's next pair (`nextPair`), and the server places that value into the afterstate's current-pair slot.
-3. When the match ends, **only if the human won**, the human-side samples are added to training with `WIN_REWARD` (+50) attached to the last move. The human-side moves from a match the human did not win are simply discarded.
+2. Just like Solomon's moves, the server recomputes the afterstate and the `ATTACK + chain weight` reward for the human's moves as well. This keeps the basis for the value estimate from skewing toward one side. The request for a move the human made also carries that move's next pair (`nextPair`), and the server places that value into the afterstate's current-pair slot.
+3. When the match ends, **only if the human won**, the human-side samples are added to training with the winning terminal value (+245 before the time adjustment) attached to the last move. The human-side moves from a match the human did not win are simply discarded.
 4. The human's winning sequence is trained with a higher weight than Solomon's own moves. This weight is controlled by `pythonserver.py`'s `SOLOMON_PLAYER_WIN_TRAINING_WEIGHT` (`10.0` by default), while Solomon's own moves always use `1.0`. The higher this value, the more strongly the model follows the human's winning sequence, and setting it to `1.0` trains both sides with equal weight.
 
 The weights are normalized to average 1 before the loss is computed, so changing the value doesn't require re-tuning the learning rate. In a match with no human-side samples, every weight becomes 1, so it behaves exactly like existing training.

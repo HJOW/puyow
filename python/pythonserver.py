@@ -44,9 +44,9 @@ from typing import Any, Callable, Sequence
 from urllib.parse import unquote, urlsplit
 
 from common import (
-	ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, DISCOUNT_GAMMA, LOSS_REWARD, MODEL_VERSION, OBSERVATION_SIZE,
-	ROTATION_COUNT, WIN_REWARD, action_to_placement, decode_observation_scalars, encode_observation_values,
-	is_legal_observation_action, validate_observation,
+	ACTION_COUNT, BOARD_HEIGHT, BOARD_WIDTH, DISCOUNT_GAMMA, MODEL_VERSION, OBSERVATION_SIZE,
+	ROTATION_COUNT, action_to_placement, decode_observation_scalars, encode_observation_values,
+	is_legal_observation_action, terminal_reward, validate_observation,
 )
 
 
@@ -571,9 +571,10 @@ def _get_or_create_solomon_session(session_id: str) -> dict[str, Any]:
 def build_solomon_afterstate(observation: list[float], action: int, next_pair: Sequence[Any]) -> Any:
 	"""이번에 둔 수의 애프터스테이트와 즉시 보상을 오프라인 학습과 같은 규칙으로 만든다.
 
-	learning.PuyoDuelEnvironment.step()과 같은 `ATTACK + 연쇄^2` 보상 계약과 같은 애프터스테이트
-	인코딩을 쓰기 위해 학습기의 공용 함수를 그대로 호출한다. 오프라인 학습과 계약이 같아야 같은
-	체크포인트를 이어서 학습해도 가치의 기준이 흔들리지 않는다. 놓을 자리가 없으면 None이다.
+	learning.PuyoDuelEnvironment.step()과 같은 `ATTACK + 연쇄 가중치` 보상 계약(피버 중의 연쇄는
+	5분의 1)과 같은 애프터스테이트 인코딩을 쓰기 위해 학습기의 공용 함수를 그대로 호출한다. 오프라인
+	학습과 계약이 같아야 같은 체크포인트를 이어서 학습해도 가치의 기준이 흔들리지 않는다.
+	놓을 자리가 없으면 None이다.
 	"""
 	# 모델 파일이 없는 환경에서도 정적 웹 서비스가 동작하도록 학습 관련 모듈은 필요할 때만 읽는다.
 	from learning import build_afterstate
@@ -598,7 +599,8 @@ def record_solomon_step(
 	with solomon_sessions_lock:
 		session_side = _get_or_create_solomon_session(session_id)[side]
 		moves = session_side["moves"]
-		turn = round(decode_observation_scalars(observation)["turn"])
+		scalars = decode_observation_scalars(observation)
+		turn = round(scalars["turn"])
 		linked = bool(moves) and session_side["linked"] and turn - moves[-1]["turn"] < 2
 		afterstate = build_solomon_afterstate(observation, action, next_pair)
 		# 착지할 자리가 없는 배치는 추론 단계에서 이미 걸러지므로 사실상 오지 않는다. 그래도 이런 수가
@@ -606,7 +608,11 @@ def record_solomon_step(
 		if afterstate is None or len(moves) >= SOLOMON_SESSION_MAX_TRANSITIONS:
 			session_side["linked"] = False
 			return
-		moves.append({"afterstate": afterstate.observation, "reward": afterstate.reward, "turn": turn, "linked": linked})
+		# 종료 가치의 게임 시간 항을 만들 때 쓰려고 이 수 시점의 경과 시간도 함께 적어 둔다.
+		moves.append({
+			"afterstate": afterstate.observation, "reward": afterstate.reward, "turn": turn,
+			"linked": linked, "elapsed_ms": scalars["elapsed_ms"],
+		})
 		session_side["linked"] = True
 
 
@@ -655,7 +661,13 @@ def train_solomon_samples(samples: list[dict[str, Any]]) -> float:
 	return last_loss
 
 
-def _close_solomon_side(session_side: dict[str, Any], terminal_reward: float, weight: float) -> list[dict[str, Any]]:
+def _side_elapsed_ms(session_side: dict[str, Any]) -> float:
+	"""한쪽이 마지막으로 둔 수의 경과 시간을 돌려준다. 둔 수가 없으면 0이다."""
+	moves = session_side["moves"]
+	return float(moves[-1]["elapsed_ms"]) if moves else 0.0
+
+
+def _close_solomon_side(session_side: dict[str, Any], side_terminal_reward: float, weight: float) -> list[dict[str, Any]]:
 	"""한쪽이 둔 수들을 가치망 학습 표본으로 바꾸고 학습 비중을 매긴다.
 
 	애프터스테이트 하나의 가치는 그 뒤에 이어지는 보상의 합이므로, 목표값은 바로 다음 수의 보상과
@@ -674,7 +686,7 @@ def _close_solomon_side(session_side: dict[str, Any], terminal_reward: float, we
 			})
 		elif following is None:
 			samples.append({
-				"afterstate": move["afterstate"], "reward": terminal_reward, "bootstrap": None, "weight": weight,
+				"afterstate": move["afterstate"], "reward": side_terminal_reward, "bootstrap": None, "weight": weight,
 			})
 	return samples
 
@@ -685,15 +697,23 @@ def finish_solomon_session(session_id: str, result: str) -> dict[str, Any]:
 	`result`는 솔로몬 기준의 승패다. 솔로몬이 진 대전(`loss`)에서는 사람이 이겼다는 뜻이므로, 그 사람이
 	둔 수도 "모델이 플레이어 쪽을 조작해 이긴 수순"으로 보고 SOLOMON_PLAYER_WIN_TRAINING_WEIGHT의
 	비중으로 함께 학습한다. 사람이 이기지 못한 대전의 사람 쪽 수는 그대로 버린다.
+
+	종료 가치는 오프라인 학습과 같은 common.terminal_reward()이므로 승패뿐 아니라 게임 시간도 반영한다.
+	경과 시간은 그 쪽이 마지막으로 둔 수의 관측값에서 읽는다(둔 수가 없으면 0으로 본다).
 	"""
 	with solomon_sessions_lock:
 		session = solomon_sessions.pop(session_id, None)
 		if session is None:
 			return {"trained": False, "transitions": 0, "reason": "해당 세션의 학습 데이터가 없습니다."}
-		terminal_reward = WIN_REWARD if result == "win" else LOSS_REWARD if result == "loss" else 0.0
-		solomon_samples = _close_solomon_side(session["solomon"], terminal_reward, SOLOMON_DEFAULT_TRAINING_WEIGHT)
+		solomon_terminal = (
+			terminal_reward(result == "win", _side_elapsed_ms(session["solomon"])) if result in ("win", "loss") else 0.0
+		)
+		solomon_samples = _close_solomon_side(session["solomon"], solomon_terminal, SOLOMON_DEFAULT_TRAINING_WEIGHT)
 		player_samples = (
-			_close_solomon_side(session["player"], WIN_REWARD, SOLOMON_PLAYER_WIN_TRAINING_WEIGHT)
+			_close_solomon_side(
+				session["player"], terminal_reward(True, _side_elapsed_ms(session["player"])),
+				SOLOMON_PLAYER_WIN_TRAINING_WEIGHT,
+			)
 			if result == "loss" else []
 		)
 		samples = solomon_samples + player_samples

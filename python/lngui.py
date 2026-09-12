@@ -63,7 +63,10 @@ log 콜백 출력)는 언어와 무관하게 한국어다. 문구가 언어마�
 Training strategy 콤보박스는 learning.TRAINING_STRATEGIES를 그대로 나열한다. 선택지는 현재 언어의
 표시용 라벨(영어 label, 한국어 label_ko)이고 실제로 train()에 넘기는 값은 학습 방식 이름이다.
 학습기에 새 방식이 등록되면 이 GUI는 고칠 필요 없이 목록에 함께 나타나며, 학습 중·일시정지 중에는
-다른 입력란과 함께 잠긴다.
+다른 입력란과 함께 잠긴다. 이 GUI에는 상대 선택란이 없지만, 학습 방식 중에는 상대를 직접 정하는
+것도 있다(예: "솔로 플레이"는 연습용 상대와만, "대체 모델과 플레이"는 python/puyow/의 modelNN.pt
+체크포인트와 대전한다). 쓸 수 있는 모델 파일이 없는 등 학습을 시작할 수 없는 경우 learning.train()이
+예외로 끝나고, _run_training이 그 메시지를 로그·상태 표시로 알린 뒤 잠갔던 조작을 되살린다.
 
 메뉴바에는 File과 Language 두 그룹이 있다. File에는 Save As...와 Exit 두 항목이 있다. Save As...는
 학습 중·일시정지 중에는 잠기며, Model output path의 체크포인트를 .pt로 그대로 복사하거나 .onnx로

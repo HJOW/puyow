@@ -490,7 +490,7 @@ Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 �
 
 ## 머신러닝 작업 참고
 
-머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. 승·패 보상(`WIN_REWARD`, `LOSS_REWARD`), 한 수의 즉시 보상 계약 `move_reward()`(= `ATTACK + 연쇄^2`), 감가율 `DISCOUNT_GAMMA`(0.70)와 스칼라 관측값의 정규화 기준(`ATTACK_SCALE` 등), 관측 벡터를 보드·쌍·상태로 되돌리는 `decode_observation_board()`·`decode_observation_pair()`·`decode_observation_scalars()`는 `python/common.py`에 있다. 오프라인 학습과 서버의 온라인 학습이 같은 보상 크기를 써야 하므로 `PuyoDuelEnvironment.WIN_REWARD`도 이 공통 상수를 그대로 참조한다. `pythonserver.py`와 `nodeserver.js`는 모두 `/apis/localmodelinfo`를 제공하며 `{ "available": boolean }`만 응답한다. `pythonserver.py`는 `SERVER_CONFIG['model_path']`가 실제 파일이고 `get_value_model()` 로드까지 성공할 때만, `nodeserver.js`는 `LOCAL_AI_MODEL_PATH`(`src/onnx/default.onnx`)가 실제 파일이고 ONNX 세션 생성까지 성공할 때만 `true`다(아래 「Node 서버의 Local AI」 절). `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스이며, 솔로몬·안드로말리우스와 브라우저 ONNX 추론 적은 제외한다. `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 일곱 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. 피버 룰은 일반/피버 필드, 게이지, 제한 시간, 목표 연쇄 및 JS의 실제 피버 패턴을 사용한다. 브라우저 관측은 `game.elapsed`의 실제 시간을 쓰고, 벽시계와 무관하게 고속 실행되는 오프라인 학습은 양측 한 턴을 3초로 진행한다. `src/js/puyow.js`의 적 AI 판단 로직이나 피버 패턴을 바꾸면 `bundledenemy.py`와 학습 회귀 테스트를 함께 확인한다. 숨김 행 없는 12행 보드, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등 의도적인 제한은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
+머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. 승·패 보상(`WIN_REWARD`, `LOSS_REWARD`), 연쇄 가중치 `chain_reward()`, 한 수의 즉시 보상 계약 `move_reward()`(= `ATTACK + 연쇄 가중치`), 게임 시간 보정 `game_time_reward()`, 승패와 시간을 합친 종료 가치 `terminal_reward()`, 감가율 `DISCOUNT_GAMMA`(0.70)와 스칼라 관측값의 정규화 기준(`ATTACK_SCALE` 등), 관측 벡터를 보드·쌍·상태로 되돌리는 `decode_observation_board()`·`decode_observation_pair()`·`decode_observation_scalars()`는 `python/common.py`에 있다. 오프라인 학습과 서버의 온라인 학습이 같은 보상 크기를 써야 하므로 `PuyoDuelEnvironment.WIN_REWARD`도 이 공통 상수를 그대로 참조한다. `pythonserver.py`와 `nodeserver.js`는 모두 `/apis/localmodelinfo`를 제공하며 `{ "available": boolean }`만 응답한다. `pythonserver.py`는 `SERVER_CONFIG['model_path']`가 실제 파일이고 `get_value_model()` 로드까지 성공할 때만, `nodeserver.js`는 `LOCAL_AI_MODEL_PATH`(`src/onnx/default.onnx`)가 실제 파일이고 ONNX 세션 생성까지 성공할 때만 `true`다(아래 「Node 서버의 Local AI」 절). `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스이며, 솔로몬·안드로말리우스와 브라우저 ONNX 추론 적은 제외한다. 여기에 더해 원작에 없는 학습 전용 연습 상대 `QuietEdgeEnemy`가 `ENEMY_FACTORIES`에만 들어 있고 `TRAINABLE_ENEMY_TYPES`에는 없다(아래 「TODO 학습 방식·가중치 변경 결과」 절 참고). `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 일곱 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. 피버 룰은 일반/피버 필드, 게이지, 제한 시간, 목표 연쇄 및 JS의 실제 피버 패턴을 사용한다. 브라우저 관측은 `game.elapsed`의 실제 시간을 쓰고, 벽시계와 무관하게 고속 실행되는 오프라인 학습은 양측 한 턴을 3초로 진행한다. `src/js/puyow.js`의 적 AI 판단 로직이나 피버 패턴을 바꾸면 `bundledenemy.py`와 학습 회귀 테스트를 함께 확인한다. 숨김 행 없는 12행 보드, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등 의도적인 제한은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
 
 모델 버전 3의 관측값은 528개다. 빈 칸·방해뿌요·5색 보드 채널 504개, 현재 쌍 10개, ATTACK/턴/DAMAGE/룰/티켓/경과시간/마진/시간 배율/피버 상태 14개 순서이며 JS 학습 전이, Python 환경, Solomon 서버가 `python/common.py`의 같은 계약을 사용한다. `learning.py`의 `--output` 경로가 실제 체크포인트 파일이면 `MODEL_VERSION`·`OBSERVATION_SIZE`·`ACTION_COUNT`를 검증한 후 가중치를 복원한다. 관측 계약은 버전 2와 같지만 신경망 종류가 달라 버전 2 이하 체크포인트는 호환하지 않으며 다시 학습해야 한다. `--evaluate-episodes`는 탐험 없이 승률을 집계하고, `--infer-observation`은 LM Studio/HTTP 없이 관측 JSON을 직접 추론한다(숫자 배열 또는 `{observation, nextPair}` 객체). 체크포인트에는 optimizer·replay buffer·epsilon 상태를 저장하지 않는다.
 
@@ -633,6 +633,45 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 `puyow_store.settings.playerName`이 없거나 `null`·빈 문자열·금지 문자를 포함하면, 저장값을 표시용 기본 이름으로 보정하더라도 `playerNameSetupRequired`를 유지한다. 이 경우에는 정규화한 기본 이름을 저장소에 다시 쓰지 않아 새로고침으로 필수 입력을 우회할 수 없게 한다. 초기 타이틀에서 메인 메뉴로 들어간 직후 `playerNamePrompt`가 메뉴 위에 취소 불가로 표시되며, Enter 또는 확인 버튼으로만 제출할 수 있다. 유효한 이름을 입력하면 즉시 `puyow_store`에 저장하고 대화상자를 닫는다.
 
 이름은 공백을 제외하고 최대 10자로 저장하며 Windows·Linux 파일명에 쓸 수 없는 `\\ / : * ? " < > |`와 작은따옴표, 느낌표, 제어 문자를 거부한다. 같은 `validatePlayerName()`을 설정 화면 저장에도 사용하므로, 잘못된 이름을 저장하려 하면 설정 화면을 닫지 않고 안내 메시지를 표시한다. UI 문자열은 `translate()` 키로 관리한다. 회귀는 `tests/test01_menu.spec.js`의 이름 입력·설정 저장 테스트가 담당하고, 공통 `enterMainMenu()`는 기존 메뉴 시나리오가 첫 실행 대화상자에 막히지 않도록 테스트 이름을 입력한다.
+
+### TODO 학습 방식·가중치 변경 결과 (2026-09-13, BUILDNO 51)
+
+2026-09-13 `TODO.md`의 두 항목(학습 방식 2개 추가, 가중치 항목 수정)을 구현했다. 관측 벡터(528개)·행동(24개)·`MODEL_VERSION`(3)·`ValueNetwork` 구조는 그대로라 기존 체크포인트(`default.pt`, `model01.pt`)를 그대로 읽고 이어 학습할 수 있다. 다만 보상의 **의미**는 바뀌었으므로, 옛 기준으로 학습한 가중치가 새 기준에서 곧바로 최적은 아니다.
+
+#### 보상(가중치) 계약
+
+`python/common.py` 한 곳이 계약의 원본이고, `learning.py`·`pythonserver.py`·`nodeserver.js`·`src/js/puyow.js`의 ONNX 추론이 모두 같은 값을 쓴다. JS 두 곳은 상수를 직접 복제하므로(`CHAIN_REWARD_WEIGHT`/`ONNX_CHAIN_REWARD_WEIGHT`, `FEVER_CHAIN_REWARD_RATIO`/`ONNX_FEVER_CHAIN_REWARD_RATIO`) `common.py`를 고치면 반드시 함께 고친다.
+
+- 연쇄 가중치 `chain_reward(combo, fever_active)` = `CHAIN_REWARD_WEIGHT(5.0) * combo^2`이고, 피버 중에는 `FEVER_CHAIN_REWARD_RATIO(0.2)`를 곱해 5분의 1이 된다. 피버 밖 2연쇄는 20, 7연쇄는 245다.
+- 한 수의 즉시 보상 `move_reward(attack, combo, fever_active)` = `ATTACK + chain_reward(...)`다. ATTACK 항은 예전과 같게 남겨 두었다. TODO가 열거한 항목(승패·시간·연쇄)에는 없지만, 싹쓸이 티켓·상쇄처럼 연쇄 수만으로는 설명되지 않는 가치를 담고 있어 빼지 않았다.
+- 승·패 보상은 `WIN_REWARD = +245`, `LOSS_REWARD = -245`로, 피버 밖 7연쇄 가중치와 같은 크기다(`WIN_LOSS_REFERENCE_COMBO = 7`).
+- 게임 시간 보정 `game_time_reward(win, elapsed_ms)`는 승리면 경과 시간만큼 깎고 패배면 그만큼 덜 깎는다. 비율은 피버 밖 2연쇄(20)가 120초에 해당하도록 정했고(`GAME_TIME_REFERENCE_COMBO`, `GAME_TIME_REFERENCE_MS`), `GAME_TIME_REWARD_MAX_MS`(= `ELAPSED_MS_SCALE`, 10분)에서 잘린다. 상한까지 가도 100이라 승패 항의 부호를 뒤집지 못한다. 상한을 관측값의 `elapsed_ms` 정규화 상한과 같게 둔 것은 의도적이다. 가치망이 상태에서 이 항을 읽어 낼 수 있어야 하기 때문이다.
+- 종료 가치 `terminal_reward(win, elapsed_ms)` = 승패 항 + 시간 항이다. 오프라인 학습은 `PuyoDuelEnvironment.terminal_value()`가, 서버 온라인 학습은 `finish_solomon_session()`이 이 함수를 쓴다. 무승부(`draw`)와 최대 턴 초과(`timeout`)는 예전처럼 종료 가치를 만들지 않는다.
+- `PuyoEnvironment`(상대 없는 옛 solo 환경)는 경과 시간을 재지 않아 관측값의 `elapsed_ms`가 늘 0이므로, `_defeat_value()`가 `턴 수 × 3초`를 생존 시간으로 환산해 쓴다. 관측값의 `turn` 스칼라가 같은 정보를 담고 있어 가치망이 구분할 수 있다.
+- `pythonserver.record_solomon_step()`은 종료 가치의 시간 항을 만들려고 각 수에 `elapsed_ms`를 함께 적어 둔다. 브라우저가 보내는 요청 형식은 바뀌지 않았다(관측 벡터에서 읽는다).
+
+#### 추가한 학습 방식 두 가지
+
+`TrainingStrategy`에 `opponent` 필드가 생겼다. 비어 있지 않으면 그 값이 `train()`의 `opponent` 인자(CLI `--opponent`, GUI 기본값 `random`)보다 우선한다. 기존 다섯 방식은 모두 빈 문자열이라 동작이 그대로다.
+
+- `solo-play`(솔로 플레이): `bundledenemy.QuietEdgeEnemy`하고만 대전한다. 이 적은 즉시 패배하지 않는 후보 중 연쇄가 나지 않는 배치를 우선하고, 그중 중앙 두 열(`CENTER_COLUMNS` = X 2,3)에서 가장 먼 열을, 같은 거리면 낮은 자리를 고른다. 터뜨리지 않는 후보가 하나도 없으면 연쇄·ATTACK이 가장 작은 후보로 물러선다. `BaseEnemy.decide()`의 "피버 중 최대 연쇄 우선" 분기는 이 적의 목적과 반대라 `decide()`를 통째로 재정의해 쓰지 않는다. 실제로는 양 끝 열(X=0,5)부터 고르게 채워 올라가며 40턴 안팎에 스스로 막힌다.
+- `alternate-model`(대체 모델과 플레이): `ALTERNATE_MODEL_DIRECTORY`(= `python/puyow`, **이 스크립트 파일 기준**이라 작업 디렉터리와 무관하다) 바로 아래에서 `ALTERNATE_MODEL_PATTERN`(`^model\d{2,}\.pt$`)에 맞는 파일만 상대 후보로 삼는다. `default.pt`·`model1.pt`·`model01.txt`는 이름 규칙에서 빠진다. 파일 탐색 단계에서는 체크포인트 내용을 전혀 보지 않는다.
+
+`ALTERNATE_MODEL_OPPONENT`(`"model"`)는 `PuyoDuelEnvironment.POLICY_OPPONENTS`에 `SELF_PLAY_OPPONENT`와 함께 들어 있어, 상대 자리를 `self_play_action_fn` 콜백으로 채우는 같은 경로를 탄다. `info["opponent"]`에는 `policy_opponent_type`이 들어가 self-play와 구분된다. 기존 `--opponent solo`(상대 없이 버티는 `PuyoEnvironment`)와는 다른 식별자이므로 `chain-curriculum`의 `solo_episode_ratio` 동작은 그대로다.
+
+대체 모델 상대의 오류 처리는 다음과 같다.
+
+- `AlternateModelOpponents.action_fn()`이 만든 콜백은 체크포인트 로드·추론 중의 모든 예외를 `AlternateModelError(path, error)`로 바꾼다.
+- `train()`의 에피소드 스텝 루프가 이 예외를 받아 그 에피소드를 통째로 버린다. `build_value_samples()`를 부르지 않아 부분 trajectory가 학습 표본이 되지 않고, 승·패 카운트도 올라가지 않는다. 로그에는 `alternate_model_failed`가 남고 해당 파일은 `exclude()`로 제외된다. 진행 게이지는 한 칸 나아가고(`result="alternate_model_failed"`), 서버 세션이 열려 있으면 `episode_end`만 보내 닫는다.
+- 남은 후보가 없으면 `alternate_model_exhausted`를 남기고 루프를 빠져나가며, 사용자가 Stop을 누른 경우와 같이 그때까지의 가중치를 저장한다.
+- 시작 시점에 후보가 하나도 없으면 모델을 만들기 전에 `ValueError`를 올린다. `--output` 파일은 전혀 건드리지 않는다. GUI는 `_run_training`이 이 예외를 잡아 로그·상태 표시로 알리고 조작을 되살린다.
+- 선택은 `strategy_random`(시드 파생) 하나만 쓰므로 같은 시드로 재현된다. 한 번 읽은 체크포인트는 인스턴스 캐시에 남아 에피소드마다 다시 읽지 않는다.
+
+GUI(`lngui.py`)는 `TRAINING_STRATEGIES` 등록표를 그대로 나열하므로 두 방식이 자동으로 콤보박스에 나타난다. GUI 쪽에 새로 고친 코드는 없다.
+
+#### 회귀 테스트
+
+`python/test_learning.py`에 `RewardWeightTest`, `QuietEdgeEnemyTest`, `AlternateModelOpponentTest`, `NewTrainingStrategyTest`와 GUI 오류 표시 테스트 하나를 추가했다(전체 114개). `python -m unittest test_learning`을 `python/` 디렉터리에서 실행한다. 가중치 비율(피버 1/5, 승패 = 7연쇄, 2연쇄 = 120초)과 `modelNN.pt` 자릿수 규칙은 이 테스트가 고정한다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 

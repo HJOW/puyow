@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 50;
+    const BUILDNO = 51;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -289,6 +289,26 @@
      * 파이썬 학습기가 배운 기준 그대로 배치를 비교할 수 있다. @type {number}
      */
     const ONNX_DISCOUNT_GAMMA = 0.70;
+    /**
+     * 피버 상태가 아닐 때의 연쇄 가중치 기준값이다. `python/common.py`의 `CHAIN_REWARD_WEIGHT`와
+     * 같아야 학습기가 배운 기준 그대로 배치를 비교할 수 있다. @type {number}
+     */
+    const ONNX_CHAIN_REWARD_WEIGHT = 5.0;
+    /**
+     * 피버 중 연쇄 가중치를 피버 밖의 몇 배로 볼지 정한다. 피버 필드는 목표 연쇄가 이미 깔린 상태로
+     * 주어지므로 같은 연쇄라도 낮게 친다. `python/common.py`의 `FEVER_CHAIN_REWARD_RATIO`와 같다. @type {number}
+     */
+    const ONNX_FEVER_CHAIN_REWARD_RATIO = 0.2;
+
+    /**
+     * 연쇄 수 하나의 가중치를 계산한다. `python/common.py`의 `chain_reward()`와 같은 계약이다.
+     * @param {number} combo 연쇄 수
+     * @param {boolean} feverActive 이 수를 둔 필드가 피버 중인지 여부
+     * @returns {number} 연쇄 가중치
+     */
+    function getOnnxChainReward(combo, feverActive) {
+        return ONNX_CHAIN_REWARD_WEIGHT * (feverActive ? ONNX_FEVER_CHAIN_REWARD_RATIO : 1) * combo * combo;
+    }
     /** ONNX 모델이 받는 관측 벡터의 길이다. `python/common.py`의 `OBSERVATION_SIZE`와 같아야 한다. @type {number} */
     const ONNX_OBSERVATION_SIZE = VISIBLE_ROWS * COLUMNS * (COLORS.length + 2) + COLORS.length * 2 + 14;
     /** ONNX 모델 입력 텐서의 이름이다. `lngui.py`가 내보낸 그래프의 입력 이름과 같아야 한다. @type {string} */
@@ -17011,8 +17031,9 @@
                 timeProgressMultiplier: game?.timeProgressMultiplier,
                 fever: feverRule ? fever : null
             });
-            // common.py의 move_reward()와 같은 계약이다. 같은 ATTACK이라도 더 긴 연쇄를 높게 본다.
-            return { simulation, reward: result.attack + result.combo * result.combo, observation };
+            // common.py의 move_reward()와 같은 계약이다. 같은 ATTACK이라도 더 긴 연쇄를 높게 보고,
+            // 피버 중에 터진 연쇄는 피버 밖 연쇄의 5분의 1로만 친다.
+            return { simulation, reward: result.attack + getOnnxChainReward(result.combo, feverActive), observation };
         }
 
         /**

@@ -262,6 +262,20 @@ const OBSERVATION_SCALES = {
 };
 /** 즉시 보상과 애프터스테이트 가치를 합칠 때 쓰는 감가율(common.py DISCOUNT_GAMMA). */
 const DISCOUNT_GAMMA = 0.70;
+/** 피버 상태가 아닐 때의 연쇄 가중치 기준값(common.py CHAIN_REWARD_WEIGHT). */
+const CHAIN_REWARD_WEIGHT = 5.0;
+/** 피버 중 연쇄 가중치를 피버 밖의 몇 배로 볼지 정한다(common.py FEVER_CHAIN_REWARD_RATIO). */
+const FEVER_CHAIN_REWARD_RATIO = 0.2;
+
+/**
+ * 연쇄 수 하나의 가중치를 계산한다(common.py chain_reward).
+ * @param {number} combo 연쇄 수
+ * @param {boolean} feverActive 이 수를 둔 필드가 피버 중인지 여부
+ * @returns {number} 연쇄 가중치
+ */
+function chainReward(combo, feverActive) {
+    return CHAIN_REWARD_WEIGHT * (feverActive ? FEVER_CHAIN_REWARD_RATIO : 1) * combo * combo;
+}
 /** 싹쓸이 티켓을 쓴 폭발에 더하는 ATTACK(learning.py ALL_CLEAR_TICKET_ATTACK). */
 const ALL_CLEAR_TICKET_ATTACK = 30;
 /** 행동 번호의 회전별 두 번째 뿌요 위치다. 0: 위, 1: 오른쪽, 2: 아래, 3: 왼쪽. */
@@ -573,8 +587,8 @@ function buildAfterstate(board, pair, scalars, action, nextPair) {
         feverRule, allClearTicket: ticket, elapsedMs: scalars.elapsedMs, marginRate: scalars.marginRate,
         timeProgressMultiplier: scalars.timeProgressMultiplier, fever: feverRule ? fever : null
     });
-    // common.py move_reward(): 같은 ATTACK이라도 더 긴 연쇄를 높게 본다.
-    return { action, reward: attack + combo * combo, observation };
+    // common.py move_reward(): 같은 ATTACK이라도 더 긴 연쇄를 높게 보고, 피버 중의 연쇄는 5분의 1로 친다.
+    return { action, reward: attack + chainReward(combo, feverActive), observation };
 }
 
 /**

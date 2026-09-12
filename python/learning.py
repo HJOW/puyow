@@ -45,6 +45,7 @@ import json
 import math
 import random
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -64,7 +65,8 @@ from common import (
 	ACTION_COUNT, BOARD_CHANNELS, BOARD_HEIGHT, BOARD_WIDTH, COLORS, DISCOUNT_GAMMA, MODEL_VERSION,
 	OBSERVATION_EXTRA_SIZE, OBSERVATION_SIZE, ROTATION_COUNT, ROTATION_UP, action_to_placement,
 	decode_observation_board, decode_observation_pair, decode_observation_scalars,
-	encode_observation_values, is_legal_observation_action, move_reward, validate_observation,
+	encode_observation_values, is_legal_observation_action, move_reward, terminal_reward,
+	validate_observation,
 )
 from common import LOSS_REWARD as DUEL_LOSS_REWARD, WIN_REWARD as DUEL_WIN_REWARD
 
@@ -74,6 +76,16 @@ DEFAULT_SEED = 2026
 DEFAULT_DEVICE = "auto"
 DEFAULT_OPPONENT = "random"
 DEFAULT_OUTPUT = Path("python/puyow/default.pt")
+
+# 학습된 다른 체크포인트를 상대로 세우는 대전 상대 식별자다. bundledenemy에 대응하는 클래스가
+# 없고 self-play와도 다르므로(상대만 별도 모델이다) 이 모듈에서만 쓴다.
+ALTERNATE_MODEL_OPPONENT = "model"
+# 대체 모델 상대를 찾는 디렉터리와 파일명 규칙이다. modelNN.pt 형식(숫자 두 자리 이상)만 쓰며,
+# default.pt는 이름 규칙에 맞지 않아 자연히 빠진다. DEFAULT_OUTPUT과 달리 현재 작업 디렉터리와
+# 무관하게 같은 곳을 보아야 하므로(GUI 학습기는 프로젝트 최상위에서 실행되지 않을 수 있다)
+# 이 스크립트 파일 위치를 기준으로 잡는다.
+ALTERNATE_MODEL_DIRECTORY = Path(__file__).resolve().parent / "puyow"
+ALTERNATE_MODEL_PATTERN = re.compile(r"^model\d{2,}\.pt$")
 
 
 class LearningApiClient:
@@ -281,7 +293,8 @@ class PuyoEnvironment:
 	가치망이 보는 애프터스테이트와 학습에 쓰는 보상이 어느 모드에서든 같은 규칙이어야 하기 때문이다.
 	"""
 
-	# 상대가 없어 승패 보상이 없으므로, 패배만 대전과 같은 크기로 벌한다.
+	# 상대가 없어 승패 보상이 없으므로, 패배만 대전과 같은 크기로 벌한다. 실제 종료 가치는 여기에
+	# 생존 시간 보상을 더한 _defeat_value()이며, 이 상수는 그 기준(시간 보정 전) 값이다.
 	DEFEAT_REWARD = DUEL_LOSS_REWARD
 
 	def __init__(self, seed: int | None = None, chain_seed_ratio: float = 0.0) -> None:
@@ -329,25 +342,37 @@ class PuyoEnvironment:
 		bundledenemy.configure_rule(False)
 		return _placement_action(guide.decide(self.board, self.current_pair, [self.next_pair], 0.0))
 
+	def _defeat_value(self) -> float:
+		"""패배로 끝나는 상태의 종료 가치다. 오래 버틸수록 덜 낮아진다.
+
+		이 환경은 경과 시간을 따로 재지 않아 관측값의 elapsed_ms가 늘 0이므로, 대전 환경과 같은
+		한 턴 3초 기준으로 지금까지 둔 턴 수를 시간으로 환산해 쓴다. 관측값의 turn 스칼라가 같은
+		정보를 담고 있어 가치망이 이 항을 상태에서 읽어 낼 수 있다.
+		"""
+		return terminal_reward(False, self.turn * PuyoDuelEnvironment.DUEL_TURN_DURATION_MS)
+
 	def step(self, action: int) -> Tuple[torch.Tensor, float, bool, dict]:
 		"""행동을 착지시키고 연쇄를 해소한 뒤, 다음 관측·보상·종료 여부·정보를 반환한다."""
 		bundledenemy.configure_rule(False)
 		bundledenemy.configure_timing(get_margin_rate(0), get_time_progress_multiplier(0))
 		landing = bundledenemy.find_landing_placement(self.board, *action_to_placement(action))
 		if landing is None:
-			return self.observe(), self.DEFEAT_REWARD, True, {"invalid": True, "terminal_value": self.DEFEAT_REWARD}
+			defeat_value = self._defeat_value()
+			return self.observe(), defeat_value, True, {"invalid": True, "terminal_value": defeat_value}
 		result_board, combo, attack = bundledenemy.resolve_placement(self.board, self.current_pair, [landing[0], landing[1]])
 		self.board = result_board
 		self.attack = attack
 		self.current_pair = self.next_pair
 		self.next_pair = self._pair()
 		self.turn += 1
+		# 이 환경은 피버 룰을 쓰지 않으므로 연쇄 가중치는 항상 피버 밖 기준이다.
 		reward = move_reward(attack, combo)
 		defeated = bundledenemy.is_defeat_board(self.board)
 		info = {"combo": combo, "attack": attack}
 		if defeated:
-			return self.observe(), reward + self.DEFEAT_REWARD, True, {
-				**info, "result": "agent_defeated", "terminal_value": self.DEFEAT_REWARD,
+			defeat_value = self._defeat_value()
+			return self.observe(), reward + defeat_value, True, {
+				**info, "result": "agent_defeated", "terminal_value": defeat_value,
 			}
 		return self.observe(), reward, False, info
 
@@ -381,15 +406,20 @@ class PuyoDuelEnvironment:
 	기본 룰/피버 룰, 색상 수(3~5색)는 에피소드(대전)마다 무작위로 정해진다. 이 포팅의 피버
 	룰이 실제로 얼마나 단순화되어 있는지는 bundledenemy.py 모듈 docstring을 참고한다.
 
-	보상은 이번 수의 ATTACK(연쇄가 클수록, 많이 지울수록 커진다)과 연쇄 수 제곱에 비례하는
-	보너스를 기본으로 하고, 상대를 이기거나 지면 WIN_REWARD/LOSS_REWARD를 더한다. TODO.md가
-	이 모델의 목적으로 "게임 승리가 연쇄보다 더 중요하다"를 명시하고 있어, 승패 보너스를
-	한 수의 전형적인 ATTACK 보상보다 훨씬 크게 잡았다.
+	보상은 이번 수의 ATTACK(연쇄가 클수록, 많이 지울수록 커진다)과 연쇄 가중치(common.chain_reward,
+	피버 중에는 5분의 1)를 기본으로 하고, 승부가 나면 승패와 경과 시간을 합친 종료 가치
+	(common.terminal_reward)를 마지막 상태의 가치로 쓴다. 종료 가치의 승패 항은 피버 밖 7연쇄와
+	같은 크기여서 한 수의 전형적인 보상보다 훨씬 크고, 게임 시간 항은 피버 밖 2연쇄가 120초에
+	해당하는 작은 보정이라 "이길 거면 빨리, 질 거면 오래 버티기"만 거든다.
 	"""
 
 	# 학습 중인 정책이 자기 자신과 대전하는 self-play를 나타내는 opponent_type 값이다.
 	# bundledenemy에는 대응하는 클래스가 없으므로(신경망 기반 결정이라) 이 모듈에서만 쓴다.
 	SELF_PLAY_OPPONENT = "self"
+	# 상대 자리를 가치망 콜백(self_play_action_fn)으로 채우는 상대 식별자들이다. self-play는 학습
+	# 중인 정책 자신이고, ALTERNATE_MODEL_OPPONENT는 학습기가 골라 넘긴 다른 체크포인트다. 둘 다
+	# bundledenemy 인스턴스를 만들지 않고 같은 경로로 동작한다.
+	POLICY_OPPONENTS: Tuple[str, ...] = (SELF_PLAY_OPPONENT, ALTERNATE_MODEL_OPPONENT)
 	COLOR_COUNT_CHOICES: Tuple[int, ...] = (3, 4, 5)
 
 	MAX_TURNS_PER_EPISODE = 150
@@ -397,7 +427,8 @@ class PuyoDuelEnvironment:
 	# 의미 없으므로 한 번의 양측 턴을 실제 플레이의 대표값인 3초로 진행시킨다.
 	DUEL_TURN_DURATION_MS = 3_000
 	# 승패 보상은 common.py의 공통 계약을 그대로 쓴다. pythonserver.py가 실제 대전에서 모은
-	# 전이로 같은 체크포인트를 추가 학습하므로 양쪽 보상 크기가 같아야 한다.
+	# 전이로 같은 체크포인트를 추가 학습하므로 양쪽 보상 크기가 같아야 한다. 실제 종료 가치는
+	# 여기에 게임 시간 보정을 더한 terminal_value()이며, 이 두 상수는 그 기준값이다.
 	WIN_REWARD = DUEL_WIN_REWARD
 	LOSS_REWARD = DUEL_LOSS_REWARD
 	NEXT_PAIR_LOOKAHEAD = 8
@@ -424,6 +455,7 @@ class PuyoDuelEnvironment:
 		self.self_play_action_fn = self_play_action_fn
 		self.opponent: Optional[bundledenemy.BaseEnemy] = None
 		self.is_self_play = False
+		self.policy_opponent_type = ""
 		self.fever_rule = False
 		self.color_count = COLORS
 		self.agent_board: List[List[int]] = []
@@ -460,7 +492,9 @@ class PuyoDuelEnvironment:
 	def reset(self) -> torch.Tensor:
 		"""상대·룰·색상 수·양측 보드와 다음 쌍을 새로 뽑아 에피소드를 시작한다."""
 		selected_opponent = self._select_opponent_type()
-		self.is_self_play = selected_opponent == self.SELF_PLAY_OPPONENT
+		# 상대가 가치망 콜백으로 움직이는지(self-play·대체 모델), bundledenemy 인스턴스인지 구분한다.
+		self.is_self_play = selected_opponent in self.POLICY_OPPONENTS
+		self.policy_opponent_type = selected_opponent if self.is_self_play else ""
 		# 적 인스턴스는 단탈리온의 진행 단계, 세레의 공격 시뮬레이션 주기처럼 턴을 넘나드는
 		# 상태를 인스턴스에 보관하므로, 매 에피소드(=매 대전)마다 새로 만들어야 한다.
 		self.opponent = None if self.is_self_play else bundledenemy.create_enemy(selected_opponent, random.Random(self.random.randrange(2 ** 30)))
@@ -492,6 +526,14 @@ class PuyoDuelEnvironment:
 		self.enemy_next_pairs = [self._pair() for _ in range(self.NEXT_PAIR_LOOKAHEAD)]
 		self.turn = 0
 		return self.observe()
+
+	def terminal_value(self, win: bool) -> float:
+		"""이번 판이 지금 끝났을 때 마지막 애프터스테이트가 가질 종료 가치다.
+
+		승패 항(피버 밖 7연쇄와 같은 크기)에 지금까지의 경과 시간 보정을 더한다. step()은 판정
+		전에 _advance_time()을 먼저 부르므로, 여기서 보는 elapsed_ms에는 이번 턴이 이미 포함된다.
+		"""
+		return terminal_reward(win, self.elapsed_ms)
 
 	def observe(self) -> torch.Tensor:
 		"""학습 중인 에이전트(agent) 쪽 관측값을 반환한다."""
@@ -717,12 +759,16 @@ class PuyoDuelEnvironment:
 	def step(self, action: int) -> Tuple[torch.Tensor, float, bool, dict]:
 		"""에이전트가 한 수를 두고 판정한 뒤 상대의 수까지 처리해, 다음 관측·보상·종료 여부·정보를 반환한다."""
 		self._advance_time()
+		# 이번 수의 연쇄 가중치 기준이 되는 피버 상태다. _after_resolve()가 피버를 켜고 끄기 전의
+		# 값이어야 실제로 그 수를 둔 필드의 기준과 같다.
+		agent_fever_active = self.fever_rule and self.agent_fever.active
 		bundledenemy.configure_rule(self.fever_rule, self.agent_fever.active)
 		column, rotation = action_to_placement(action)
 		landing = bundledenemy.find_landing_placement(self._board("agent"), column, rotation)
 		if landing is None:
 			# 놓을 자리가 하나도 없는 상태는 실제 게임의 패배와 같다.
-			return self.observe(), self.LOSS_REWARD, True, {"invalid": True, "terminal_value": self.LOSS_REWARD}
+			loss_value = self.terminal_value(False)
+			return self.observe(), loss_value, True, {"invalid": True, "terminal_value": loss_value}
 		positions = [landing[0], landing[1]]
 		result_board, combo, attack = bundledenemy.resolve_placement(self._board("agent"), self.agent_pair, positions)
 		self._set_board("agent", result_board)
@@ -732,11 +778,11 @@ class PuyoDuelEnvironment:
 			attack += ALL_CLEAR_TICKET_ATTACK
 			self.agent_all_clear_ticket = False
 		self.agent_attack = attack
-		reward = move_reward(attack, combo)
+		reward = move_reward(attack, combo, agent_fever_active)
 		agent_all_clear = combo > 0 and all(cell == bundledenemy.EMPTY for row in result_board for cell in row)
 		info = {
 			"combo": combo, "attack": attack,
-			"opponent": self.SELF_PLAY_OPPONENT if self.is_self_play else self.opponent.get_class_type(),
+			"opponent": self.policy_opponent_type if self.is_self_play else self.opponent.get_class_type(),
 			"fever_rule": self.fever_rule, "color_count": self.color_count,
 			"elapsed_ms": self.elapsed_ms, "margin_rate": self.margin_rate,
 			"time_progress_multiplier": self.time_progress_multiplier,
@@ -752,8 +798,9 @@ class PuyoDuelEnvironment:
 			self._set_damage("agent", damage - dropped)
 
 		if bundledenemy.is_defeat_board(self._board("agent")):
-			return self.observe(), reward + self.LOSS_REWARD, True, {
-				**info, "result": "agent_defeated", "terminal_value": self.LOSS_REWARD,
+			loss_value = self.terminal_value(False)
+			return self.observe(), reward + loss_value, True, {
+				**info, "result": "agent_defeated", "terminal_value": loss_value,
 			}
 
 		self.agent_pair = self._refill(self.agent_next_pairs)
@@ -761,9 +808,12 @@ class PuyoDuelEnvironment:
 
 		enemy_positions = self._select_enemy_positions()
 		if enemy_positions is None:
-			# 상대 필드에 더 이상 둘 곳이 없다: 상대의 패배로 처리한다.
+			# 상대 필드에 더 이상 둘 곳이 없다: 상대의 패배로 처리한다. 가치망이 상대를 맡은 경우
+			# (self-play·대체 모델)는 예전부터 쓰던 result 값을 그대로 유지한다. 두 값 모두 학습기와
+			# 평가가 "승리"로 세므로 구분이 필요하지 않고, 실제 상대는 info["opponent"]에 남는다.
 			result = "enemy_invalid_self_play" if self.is_self_play else "enemy_no_moves"
-			return self.observe(), reward + self.WIN_REWARD, True, {**info, "result": result, "terminal_value": self.WIN_REWARD}
+			win_value = self.terminal_value(True)
+			return self.observe(), reward + win_value, True, {**info, "result": result, "terminal_value": win_value}
 
 		bundledenemy.configure_rule(self.fever_rule, self.enemy_fever.active)
 		enemy_result_board, enemy_combo, enemy_attack = bundledenemy.resolve_placement(self._board("enemy"), self.enemy_pair, enemy_positions)
@@ -789,8 +839,9 @@ class PuyoDuelEnvironment:
 			self._set_damage("enemy", damage - dropped)
 
 		if bundledenemy.is_defeat_board(self._board("enemy")):
-			return self.observe(), reward + self.WIN_REWARD, True, {
-				**info, "result": "enemy_defeated", "terminal_value": self.WIN_REWARD,
+			win_value = self.terminal_value(True)
+			return self.observe(), reward + win_value, True, {
+				**info, "result": "enemy_defeated", "terminal_value": win_value,
 			}
 
 		self.enemy_pair = self._refill(self.enemy_next_pairs)
@@ -853,7 +904,7 @@ def _build_afterstate(
 		margin_rate=scalars["margin_rate"], time_progress_multiplier=scalars["time_progress_multiplier"],
 		fever=fever if fever_rule else None,
 	)
-	return Afterstate(action, move_reward(attack, combo), observation)
+	return Afterstate(action, move_reward(attack, combo, fever_active), observation)
 
 
 def enumerate_afterstates(
@@ -956,6 +1007,96 @@ def load_policy_checkpoint(checkpoint_path: Path, device: torch.device) -> Value
 		raise FileNotFoundError(f"체크포인트를 찾을 수 없습니다: {checkpoint_path}")
 	policy.eval()
 	return policy
+
+
+class AlternateModelError(RuntimeError):
+	"""대체 모델 상대가 이번 에피소드를 진행할 수 없을 때 올린다.
+
+	체크포인트를 읽지 못했거나 추론 중 오류가 난 경우다. 학습기는 이 예외를 잡아 진행 중이던
+	에피소드를 통째로 버리고, 원인이 된 파일을 다음 에피소드의 선정 대상에서 제외한다.
+	"""
+
+	def __init__(self, path: Path, error: BaseException) -> None:
+		"""문제가 생긴 체크포인트 경로와 원래 예외를 담는다."""
+		super().__init__(f"대체 모델 상대 오류({path.name}): {error}")
+		self.path = path
+
+
+def find_alternate_model_files(directory: Optional[Path] = None) -> List[Path]:
+	"""대체 모델 상대로 쓸 modelNN.pt 파일을 이름순으로 찾는다.
+
+	디렉터리 바로 아래만 보고, 파일명이 ALTERNATE_MODEL_PATTERN에 맞는지만 확인한다. 체크포인트
+	내용은 여기서 검사하지 않는다. 실제로 대전에 쓸 수 있는지는 그 모델을 상대로 세운 에피소드에서
+	드러나며, 그때 오류가 나면 AlternateModelOpponents가 그 파일을 제외한다. `default.pt`는 이름
+	규칙에 맞지 않으므로 자연히 빠진다.
+
+	`directory`를 생략하면 호출 시점의 ALTERNATE_MODEL_DIRECTORY를 본다(기본값으로 묶어 두면
+	테스트에서 다른 디렉터리로 바꿀 수 없다).
+	"""
+	directory = directory if directory is not None else ALTERNATE_MODEL_DIRECTORY
+	if not directory.is_dir():
+		return []
+	return sorted(
+		(entry for entry in directory.iterdir() if entry.is_file() and ALTERNATE_MODEL_PATTERN.match(entry.name)),
+		key=lambda entry: entry.name,
+	)
+
+
+class AlternateModelOpponents:
+	"""대체 모델 상대 목록을 관리한다. 매 에피소드 하나를 고르고, 오류가 난 파일은 영구히 제외한다.
+
+	고르는 순서는 학습 시드에서 파생된 난수 생성기 하나에만 의존하므로 같은 시드로 재현된다.
+	한 번 읽은 체크포인트는 캐시에 두어 에피소드마다 다시 읽지 않는다.
+	"""
+
+	def __init__(
+		self, device: torch.device, files: Optional[Sequence[Path]] = None,
+		directory: Optional[Path] = None,
+	) -> None:
+		"""추론에 쓸 디바이스와 후보 파일 목록(생략하면 디렉터리에서 탐색)으로 초기화한다."""
+		self.device = device
+		self.remaining: List[Path] = list(files if files is not None else find_alternate_model_files(directory))
+		self._policies: dict[Path, ValueNetwork] = {}
+
+	def has_candidates(self) -> bool:
+		"""아직 상대로 고를 수 있는 파일이 남아 있는지 확인한다."""
+		return bool(self.remaining)
+
+	def select(self, rng: random.Random) -> Path:
+		"""남은 파일 중 하나를 무작위로 고른다. 남은 파일이 없으면 예외를 올린다."""
+		if not self.remaining:
+			raise RuntimeError("상대로 쓸 수 있는 대체 모델이 더 이상 없습니다.")
+		return rng.choice(self.remaining)
+
+	def exclude(self, path: Path) -> None:
+		"""오류가 난 파일을 선정 대상에서 빼고 캐시에서도 지운다."""
+		self.remaining = [entry for entry in self.remaining if entry != path]
+		self._policies.pop(path, None)
+
+	def _policy(self, path: Path) -> ValueNetwork:
+		"""체크포인트를 한 번만 읽어 캐시해 둔 가치망을 돌려준다."""
+		policy = self._policies.get(path)
+		if policy is None:
+			policy = load_policy_checkpoint(path, self.device)
+			self._policies[path] = policy
+		return policy
+
+	def action_fn(self, path: Path) -> Callable[[torch.Tensor, Sequence[Any]], int]:
+		"""이 체크포인트가 상대 자리에서 탐험 없이 수를 고르는 콜백을 만든다.
+
+		학습 중인 에이전트와 같은 애프터스테이트·행동 계약을 쓰므로, PuyoDuelEnvironment의
+		self-play 콜백 자리에 그대로 넣을 수 있다. 모델을 읽거나 추론하는 중의 모든 오류는
+		AlternateModelError로 바꿔, 호출부가 에피소드를 버리고 이 파일을 제외하게 한다.
+		"""
+
+		def decide(observation: torch.Tensor, next_pair: Sequence[Any]) -> int:
+			"""상대 필드의 관측값과 다음 쌍으로 greedy 배치를 고른다."""
+			try:
+				return choose_policy_action(self._policy(path), observation, self.device, next_pair)
+			except Exception as error:
+				raise AlternateModelError(path, error) from error
+
+		return decide
 
 
 def score_afterstates(
@@ -1086,9 +1227,10 @@ def _make_environment(
 
 	'solo'는 상대 없이 버티기만 학습하는 옛 PuyoEnvironment다. 'random'은 매 에피소드
 	self-play(자기 자신과 대전)와 bundledenemy.TRAINABLE_ENEMY_TYPES 중 하나를 무작위로
-	골라 대전하는 PuyoDuelEnvironment를 만들고, 'self'는 항상 self-play, 그 밖의 값은
-	해당 적 하나로 고정해 계속 대전하는 PuyoDuelEnvironment를 만든다. 기본 룰/피버 룰과
-	색상 수(3~5색)는 PuyoDuelEnvironment가 에피소드마다 알아서 무작위로 고른다.
+	골라 대전하는 PuyoDuelEnvironment를 만들고, 'self'는 항상 self-play, 'model'은
+	`self_play_action_fn`으로 받은 대체 모델을 상대 자리에 세우며, 그 밖의 값은 해당 적 하나로
+	고정해 계속 대전하는 PuyoDuelEnvironment를 만든다. 기본 룰/피버 룰과 색상 수(3~5색)는
+	PuyoDuelEnvironment가 에피소드마다 알아서 무작위로 고른다.
 	`chain_seed_ratio`는 두 환경 모두에 그대로 넘기는 연쇄 씨앗 시작 확률이다.
 	"""
 	if opponent == "solo":
@@ -1198,6 +1340,10 @@ class TrainingStrategy:
 	solo_episode_ratio: float = 0.0
 	# 목표값을 만들 때 실제 보상을 이어 보는 수의 개수다.
 	n_step: int = N_STEP_RETURN
+	# 이 학습 방식이 상대를 직접 정하는 경우의 --opponent 값이다. 빈 문자열이면 호출자가 준
+	# opponent(CLI의 --opponent, GUI의 기본값)를 그대로 쓴다. 상대만 바꾸므로 보상·관측·행동
+	# 계약은 그대로이고, 여기서 학습한 체크포인트도 다른 방식으로 이어 학습할 수 있다.
+	opponent: str = ""
 
 
 DEFAULT_TRAINING_STRATEGY = "standard"
@@ -1230,6 +1376,18 @@ TRAINING_STRATEGIES: dict[str, TrainingStrategy] = {strategy.name: strategy for 
 		"Chain-guided exploration, the chain curriculum and the 8-step return together.",
 		"연쇄 유도 탐험·연쇄 커리큘럼·8스텝 목표값을 모두 함께 쓴다.",
 		label_ko="연쇄 방식 모두 사용", guided_exploration_ratio=0.5, chain_seed_ratio=0.3, solo_episode_ratio=0.2, n_step=8,
+	),
+	TrainingStrategy(
+		"solo-play", "Solo play",
+		"Always faces an opponent that avoids popping puyos and fills the columns farthest from the centre (X=2,3) first.",
+		"뿌요를 터뜨리지 않으려 하고 중앙(X=2,3)에서 먼 열부터 채우는 상대하고만 대전한다.",
+		label_ko="솔로 플레이", opponent=bundledenemy.QUIET_EDGE_ENEMY_TYPE,
+	),
+	TrainingStrategy(
+		"alternate-model", "Play against saved models",
+		"Faces a modelNN.pt checkpoint from python/puyow/, drawn at random each episode.",
+		"python/puyow/의 modelNN.pt 체크포인트 중 하나를 에피소드마다 무작위로 골라 상대한다.",
+		label_ko="대체 모델과 플레이", opponent=ALTERNATE_MODEL_OPPONENT,
 	),
 )}
 
@@ -1312,12 +1470,30 @@ def train(
 	패널에 표시한다. `on_progress`는 매 에피소드가 끝날 때 (완료 수, 전체 수, 통계) 로 호출되어
 	GUI 진행 게이지를 갱신한다. `strategy`는 TRAINING_STRATEGIES의 이름 또는 TrainingStrategy이며,
 	기본값 "standard"는 이 인자가 없던 때와 같은 학습을 한다.
+
+	학습 방식이 상대를 직접 정하면(TrainingStrategy.opponent) 그 값이 `opponent` 인자보다 우선한다.
+	"대체 모델과 플레이"(alternate-model)는 python/puyow/의 modelNN.pt 중 하나를 에피소드마다
+	무작위로 골라 상대로 세우며, 쓸 파일이 하나도 없으면 체크포인트를 건드리기 전에 ValueError로
+	끝난다. 대전 중 그 모델이 오류를 내면 해당 에피소드는 학습에 쓰지 않고 그 파일을 선정 대상에서
+	제외하며, 남은 파일이 모두 사라지면 그때까지의 결과를 저장하고 학습을 중단한다.
 	"""
 	# 잘못된 이름이면 모델을 만들기 전에 바로 알린다.
 	training_strategy = resolve_training_strategy(strategy)
 	random.seed(seed)
 	torch.manual_seed(seed)
 	device = torch.device(device_name if device_name != "auto" else ("cuda" if torch.cuda.is_available() else "cpu"))
+	# 학습 방식이 상대를 직접 정하면 그 값이 --opponent보다 우선한다.
+	opponent = training_strategy.opponent or opponent
+	# 대체 모델 상대는 쓸 파일이 하나도 없으면 학습을 시작할 수 없다. 체크포인트를 만들거나
+	# 덮어쓰기 전에 먼저 확인해, 실패했을 때 --output 파일이 손대지지 않게 한다.
+	alternate_models: Optional[AlternateModelOpponents] = None
+	if opponent == ALTERNATE_MODEL_OPPONENT:
+		alternate_models = AlternateModelOpponents(device)
+		if not alternate_models.has_candidates():
+			raise ValueError(
+				f"대체 모델 상대로 쓸 파일이 없습니다: {ALTERNATE_MODEL_DIRECTORY}에 modelNN.pt "
+				"(예: model01.pt) 형식의 체크포인트를 두세요. default.pt는 이름 규칙에 맞지 않아 쓰지 않습니다."
+			)
 	log_interval = 500 if device.type == "cpu" else max(1, episodes // 100)
 	api_client = LearningApiClient(server_url, api_token or os.environ.get("PUYOW_AI_TOKEN", "")) if server_url else None
 	policy = ValueNetwork().to(device)
@@ -1365,7 +1541,15 @@ def train(
 		episode_opponent = opponent
 		if opponent != "solo" and training_strategy.solo_episode_ratio > 0.0 and strategy_random.random() < training_strategy.solo_episode_ratio:
 			episode_opponent = "solo"
-		environment = _make_environment(episode_opponent, seed + episode, self_play_action, training_strategy.chain_seed_ratio)
+		# 대체 모델 상대는 에피소드마다 남은 파일 중 하나를 무작위로 고른다. 모두 제외되어 고를
+		# 파일이 없으면 지금까지 학습한 결과를 저장하고 여기서 끝낸다.
+		enemy_action_fn = self_play_action
+		if alternate_models is not None and episode_opponent == ALTERNATE_MODEL_OPPONENT:
+			if not alternate_models.has_candidates():
+				log(f"alternate_model_exhausted episode={episode + 1}/{episodes} 남은 대체 모델이 없어 학습을 중단합니다.")
+				break
+			enemy_action_fn = alternate_models.action_fn(alternate_models.select(strategy_random))
+		environment = _make_environment(episode_opponent, seed + episode, enemy_action_fn, training_strategy.chain_seed_ratio)
 		max_steps_per_episode = 100 if episode_opponent == "solo" else PuyoDuelEnvironment.MAX_TURNS_PER_EPISODE
 		explore_fn: Optional[Callable[[Sequence[Afterstate]], Optional[Afterstate]]] = None
 		if training_strategy.guided_exploration_ratio > 0.0:
@@ -1400,42 +1584,65 @@ def train(
 		# 달라서 스텝 기준으로는 학습이 끝날 때까지 탐험 비율이 거의 내려가지 않기 때문이다.
 		epsilon = max(epsilon_end, epsilon_start - (epsilon_start - epsilon_end) * episode / exploration_episodes)
 		epsilon_holder[0] = epsilon
-		for _ in range(max_steps_per_episode):
-			if control is not None:
-				control.check_abort()
-			action, afterstate = select_afterstate(
-				policy, state, environment.next_pair_for_agent(), device, epsilon=epsilon, explore_fn=explore_fn,
-			)
-			next_state, reward, done, info = environment.step(action)
-			episode_max_combo = max(episode_max_combo, int(info.get("combo", 0)))
+		# 대체 모델 상대가 도중에 오류를 내면 이 에피소드는 통째로 버린다. 부분 trajectory와
+		# 승패 통계를 학습에 넣지 않기 위해 예외를 여기서 받아 다음 에피소드로 넘어간다.
+		try:
+			for _ in range(max_steps_per_episode):
+				if control is not None:
+					control.check_abort()
+				action, afterstate = select_afterstate(
+					policy, state, environment.next_pair_for_agent(), device, epsilon=epsilon, explore_fn=explore_fn,
+				)
+				next_state, reward, done, info = environment.step(action)
+				episode_max_combo = max(episode_max_combo, int(info.get("combo", 0)))
+				if api_client:
+					api_client.step(session_id, state, action, reward, next_state, done)
+				# 승패 보상은 마지막 상태의 가치로 따로 쓰므로, 기록에는 이 수가 만든 보상만 남긴다.
+				step_terminal_value = info.get("terminal_value")
+				trajectory.append((
+					afterstate.observation if afterstate is not None else None,
+					reward - (step_terminal_value if step_terminal_value is not None else 0.0),
+				))
+				state, episode_reward, steps = next_state, episode_reward + reward, steps + 1
+				if len(replay) >= batch_size:
+					batch = random.sample(replay, batch_size)
+					states = torch.stack([item.state for item in batch]).to(device)
+					returns = torch.tensor([item.partial_return for item in batch], dtype=torch.float32, device=device)
+					bootstraps = torch.stack([item.bootstrap for item in batch]).to(device)
+					discounts = torch.tensor([item.discount for item in batch], dtype=torch.float32, device=device)
+					with torch.no_grad():
+						expected = returns + discounts * target(bootstraps)
+					loss = nn.functional.smooth_l1_loss(policy(states), expected)
+					optimizer.zero_grad()
+					loss.backward()
+					nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
+					optimizer.step()
+				if steps % 250 == 0:
+					target.load_state_dict(policy.state_dict())
+				if done:
+					terminal_value = step_terminal_value
+					episode_result = info.get("result", "invalid" if info.get("invalid") else "done")
+					break
+		except AlternateModelError as error:
+			# 원인이 된 파일만 선정 대상에서 빼고, 남은 파일로 다음 에피소드를 계속한다.
+			# 이 예외는 AlternateModelOpponents가 만든 콜백에서만 나오므로 목록은 반드시 있다.
+			if alternate_models is None:
+				raise
+			alternate_models.exclude(error.path)
+			log(f"alternate_model_failed episode={episode + 1}/{episodes} {error} "
+				f"이번 에피소드를 학습에 쓰지 않고 이 파일을 제외합니다(남은 모델 {len(alternate_models.remaining)}개).")
 			if api_client:
-				api_client.step(session_id, state, action, reward, next_state, done)
-			# 승패 보상은 마지막 상태의 가치로 따로 쓰므로, 기록에는 이 수가 만든 보상만 남긴다.
-			step_terminal_value = info.get("terminal_value")
-			trajectory.append((
-				afterstate.observation if afterstate is not None else None,
-				reward - (step_terminal_value if step_terminal_value is not None else 0.0),
-			))
-			state, episode_reward, steps = next_state, episode_reward + reward, steps + 1
-			if len(replay) >= batch_size:
-				batch = random.sample(replay, batch_size)
-				states = torch.stack([item.state for item in batch]).to(device)
-				returns = torch.tensor([item.partial_return for item in batch], dtype=torch.float32, device=device)
-				bootstraps = torch.stack([item.bootstrap for item in batch]).to(device)
-				discounts = torch.tensor([item.discount for item in batch], dtype=torch.float32, device=device)
-				with torch.no_grad():
-					expected = returns + discounts * target(bootstraps)
-				loss = nn.functional.smooth_l1_loss(policy(states), expected)
-				optimizer.zero_grad()
-				loss.backward()
-				nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
-				optimizer.step()
-			if steps % 250 == 0:
-				target.load_state_dict(policy.state_dict())
-			if done:
-				terminal_value = step_terminal_value
-				episode_result = info.get("result", "invalid" if info.get("invalid") else "done")
+				# 서버에 이미 연 세션이 남지 않도록 종료만 알린다. 이 에피소드의 표본은 만들지 않는다.
+				api_client.episode_end(session_id)
+			if on_progress is not None:
+				on_progress(episode + 1, episodes, {
+					"reward": 0.0, "epsilon": epsilon, "result": "alternate_model_failed",
+					"wins": win_count, "losses": loss_count, "max_combo": 0,
+				})
+			if control is not None and control.check_at_episode_boundary():
+				log(f"stopped_by_user episode={episode + 1}/{episodes}")
 				break
+			continue
 		replay.extend(build_value_samples(trajectory, terminal_value, zero_state, n_step=training_strategy.n_step))
 		if episode_result in ("enemy_defeated", "enemy_no_moves", "enemy_invalid_self_play"):
 			win_count += 1
@@ -1503,10 +1710,16 @@ def main() -> None:
 	parser.add_argument("--llama-cpp-converter", type=Path, default=Path("llama.cpp") / "convert_hf_to_gguf.py", help="llama.cpp의 convert_hf_to_gguf.py 경로")
 	parser.add_argument(
 		"--opponent", default=DEFAULT_OPPONENT,
-		choices=("random", "solo", PuyoDuelEnvironment.SELF_PLAY_OPPONENT) + bundledenemy.TRAINABLE_ENEMY_TYPES,
+		choices=(
+			("random", "solo", PuyoDuelEnvironment.SELF_PLAY_OPPONENT)
+			+ bundledenemy.TRAINABLE_ENEMY_TYPES + (bundledenemy.QUIET_EDGE_ENEMY_TYPE,)
+		),
 		help="대전 상대. 'random'은 매 에피소드 self-play(자기 자신과 대전) 또는 bundledenemy의 적 "
 			"중 하나를 무작위로 고르고(기본값), 'self'는 항상 self-play, 'solo'는 상대 없이 "
-			"버티기만 학습하는 옛 방식이며, 그 밖에는 지정한 적 하나로 고정한다.",
+			"버티기만 학습하는 옛 방식이며, 그 밖에는 지정한 적 하나로 고정한다. "
+			f"'{bundledenemy.QUIET_EDGE_ENEMY_TYPE}'는 터뜨리지 않고 가장자리부터 쌓는 연습용 상대로 "
+			"'random'에서는 뽑히지 않는다. 학습 방식(--training-strategy)이 상대를 정하는 경우에는 "
+			"그쪽이 이 값보다 우선한다.",
 	)
 	parser.add_argument(
 		"--training-strategy", default=DEFAULT_TRAINING_STRATEGY, choices=tuple(TRAINING_STRATEGIES),

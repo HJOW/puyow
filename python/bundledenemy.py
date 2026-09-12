@@ -1233,9 +1233,74 @@ class PracticeEnemy(BundledEnemy):
         return 'PracticeEnemy'
 
 
+# QuietEdgeEnemy가 "중앙"으로 보는 열이다. 조작 뿌요의 스폰 열(X=2)과 피버 룰의 두 번째
+# 패배 칸(X=3)이며, 이 두 열에서 먼 열부터 채운다.
+CENTER_COLUMNS: Tuple[int, ...] = (DEFEAT_COLUMN, SECOND_DEFEAT_COLUMN)
+
+
+def get_center_distance(x: int) -> int:
+    """열 x가 중앙 두 열(X=2,3)에서 얼마나 떨어져 있는지 구한다. 중앙 열 자신은 0이다."""
+    return min(abs(x - column) for column in CENTER_COLUMNS)
+
+
+class QuietEdgeEnemy(BundledEnemy):
+    """뿌요를 터뜨리지 않으면서 중앙(X=2,3)에서 먼 열부터 채우는 학습용 연습 상대다.
+
+    learning.py의 "솔로 플레이" 학습 방식에서만 쓰는 상대다. 원작 puyow.js에는 대응하는 적이
+    없고, 공격을 거의 하지 않는 대신 필드를 꾸준히 채워 가므로, 학습 중인 모델이 방해뿌요에
+    쫓기지 않고 자기 연쇄를 쌓아 이기는 수순만 연습할 수 있다. 이 상대가 `--opponent random`
+    으로 뽑히면 기존 학습 방식의 상대 분포가 달라지므로 TRAINABLE_ENEMY_TYPES에는 넣지 않는다.
+
+    판단 순서는 다음과 같다.
+
+    1. 즉시 패배하지 않는 후보만 남긴다(모두 즉시 패배라면 전체 후보를 그대로 쓴다).
+    2. 그중 연쇄가 하나도 일어나지 않는 후보를 우선하고, 중앙에서 먼 열, 그다음 낮은 자리를 고른다.
+    3. 터뜨리지 않는 후보가 하나도 없으면 어쩔 수 없이 연쇄가 가장 작은(그다음 ATTACK이 가장
+       작은) 후보를 고른다. 같은 조건이면 2번과 같은 기준으로 중앙에서 먼 쪽을 쓴다.
+
+    BaseEnemy.decide()의 피버 중 최대 연쇄 우선 분기는 이 상대의 목적과 정반대이므로 쓰지 않고,
+    decide()를 직접 재정의해 피버 여부와 무관하게 같은 기준으로 판단한다.
+    """
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'QuietEdgeEnemy'
+
+    @staticmethod
+    def _quiet_key(sim: Placement) -> Tuple[int, ...]:
+        """터뜨리지 않는 후보끼리의 우선순위다. 값이 클수록 먼저 고른다.
+
+        두 칸 중 중앙에 더 가까운 쪽의 거리를 기준으로 삼아, 그 값이 큰(=전체가 중앙에서 먼)
+        배치를 고른다. 같은 거리면 낮은 자리부터 채워 한 열만 빨리 솟지 않게 한다.
+        """
+        distance = min(get_center_distance(x) for x, _y in sim.positions)
+        height = max(y for _x, y in sim.positions)
+        return (distance, -height, sim.x, sim.rotation)
+
+    @classmethod
+    def _fallback_key(cls, sim: Placement) -> Tuple[float, ...]:
+        """터뜨리지 않는 후보가 하나도 없을 때의 우선순위다. 연쇄와 ATTACK이 작을수록 먼저 고른다."""
+        return (-sim.combo, -sim.attack) + cls._quiet_key(sim)
+
+    def decide(self, board, colors, next_pairs, incoming_garbage: float = 0.0) -> Optional[Placement]:
+        """터뜨리지 않는 배치를 우선해, 중앙에서 먼 열부터 채운다. 둘 곳이 없으면 None이다."""
+        simulations = prepare_simulations(board, colors)
+        if not simulations:
+            return None
+        safe = [sim for sim in simulations if not causes_immediate_defeat(board, colors, sim.positions)]
+        candidates = safe or simulations
+        quiet = [sim for sim in candidates if sim.combo == 0]
+        if quiet:
+            return max(quiet, key=self._quiet_key)
+        return max(candidates, key=self._fallback_key)
+
+
 # 학습에서 대전 상대로 고를 수 있는 적 목록이다. puyow.js OPPONENTS 등록 순서에서
 # 솔로몬·안드로말리우스(사용자 요청으로 제외)와 연습 상대(PracticeEnemy, 비경쟁 상대)를 뺐다.
 # 플라우로스(Flauros)를 비롯해 ONNX 추론으로 판단하는 적은 사용자 요청에 따라 모두 학습 상대에서 뺐다.
+# QuietEdgeEnemy는 원작에 없는 학습 전용 연습 상대라 만들 수는 있지만 무작위 선택에서는 뺀다.
+QUIET_EDGE_ENEMY_TYPE = 'QuietEdgeEnemy'
+
 ENEMY_FACTORIES = {
     'Dantalion': Dantalion,
     'Seere': Seere,
@@ -1244,9 +1309,12 @@ ENEMY_FACTORIES = {
     'Amdusias': Amdusias,
     'Kimaris': Kimaris,
     'Andrealphus': Andrealphus,
+    QUIET_EDGE_ENEMY_TYPE: QuietEdgeEnemy,
 }
 
-TRAINABLE_ENEMY_TYPES: Tuple[str, ...] = tuple(ENEMY_FACTORIES.keys())
+TRAINABLE_ENEMY_TYPES: Tuple[str, ...] = tuple(
+    name for name in ENEMY_FACTORIES if name != QUIET_EDGE_ENEMY_TYPE
+)
 
 
 def create_enemy(class_type: str, rng: Optional[random.Random] = None) -> BaseEnemy:

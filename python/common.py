@@ -57,10 +57,31 @@ FEVER_NEXT_TIME_SCALE = 30.0
 FEVER_TARGET_COMBO_SCALE = 12.0
 FEVER_LEFT_TIME_SCALE = 60_000.0
 
+# 한 수의 연쇄 보상 기준값이다. 피버 상태가 아닐 때의 연쇄 보상은 이 값에 연쇄 수의 제곱을 곱한
+# 값이며(2연쇄 20, 7연쇄 245), 피버 중에는 FEVER_CHAIN_REWARD_RATIO를 곱해 5분의 1로 낮춘다.
+# 피버 필드는 이미 목표 연쇄가 깔린 상태로 주어져 같은 연쇄라도 스스로 쌓아 만든 연쇄보다 쉽기 때문이다.
+CHAIN_REWARD_WEIGHT = 5.0
+# 피버 중 연쇄 보상을 피버가 아닐 때의 몇 배로 볼지 정한다.
+FEVER_CHAIN_REWARD_RATIO = 0.2
+
+# 승·패 보상의 기준이 되는 연쇄 수다. 승패는 "피버 상태가 아닐 때의 7연쇄"와 같은 크기로 본다.
+WIN_LOSS_REFERENCE_COMBO = 7
+
 # 대전 한 판의 승·패에 주는 보상이다. 오프라인 학습(learning.PuyoDuelEnvironment)과 실제 대전에서
 # 모은 전이로 추가 학습하는 서버가 같은 크기를 써야 가치의 기준이 흔들리지 않는다.
-WIN_REWARD = 50.0
-LOSS_REWARD = -50.0
+WIN_REWARD = CHAIN_REWARD_WEIGHT * float(WIN_LOSS_REFERENCE_COMBO * WIN_LOSS_REFERENCE_COMBO)
+LOSS_REWARD = -WIN_REWARD
+
+# 게임 시간 보상의 기준점이다. "피버 상태가 아닐 때의 2연쇄"가 게임 시간 120초와 같은 크기가 되도록
+# 1밀리초당 보상을 정한다. 연쇄 보상보다 훨씬 작아야 하므로 기준 연쇄를 낮게 잡았다.
+GAME_TIME_REFERENCE_COMBO = 2
+GAME_TIME_REFERENCE_MS = 120_000.0
+GAME_TIME_REWARD_PER_MS = (
+	CHAIN_REWARD_WEIGHT * float(GAME_TIME_REFERENCE_COMBO * GAME_TIME_REFERENCE_COMBO) / GAME_TIME_REFERENCE_MS
+)
+# 게임 시간 항이 승패 보상을 넘어설 만큼 커지지 않도록 경과 시간을 여기서 자른다. 관측 벡터의
+# elapsed_ms도 같은 상한으로 정규화되므로, 가치망이 이 항을 상태에서 읽어 낼 수 있는 범위와 같다.
+GAME_TIME_REWARD_MAX_MS = ELAPSED_MS_SCALE
 
 # 한 수의 가치를 미래 보상까지 합산할 때 쓰는 감가율이다. 오프라인 학습과 서버 추론(즉시 보상 +
 # 감가된 애프터스테이트 가치로 배치를 고른다)이 같은 값을 써야 같은 기준으로 수를 비교한다.
@@ -72,13 +93,46 @@ LOSS_REWARD = -50.0
 DISCOUNT_GAMMA = 0.70
 
 
-def move_reward(attack: float, combo: int) -> float:
+def chain_reward(combo: int, fever_active: bool = False) -> float:
+	"""연쇄 수 하나의 가중치를 계산한다. 피버 중에는 5분의 1로 낮춘다.
+
+	연쇄 수의 제곱에 비례하므로 긴 연쇄일수록 가파르게 커진다. 승·패 보상(WIN_REWARD/LOSS_REWARD)은
+	여기서 나오는 피버 밖 7연쇄 가중치와 같은 크기이고, 게임 시간 보상은 피버 밖 2연쇄 가중치가
+	120초에 해당하도록 맞춰져 있어 연쇄 가중치보다 훨씬 작다.
+	"""
+	weight = CHAIN_REWARD_WEIGHT * (FEVER_CHAIN_REWARD_RATIO if fever_active else 1.0)
+	return weight * float(combo) * float(combo)
+
+
+def move_reward(attack: float, combo: int, fever_active: bool = False) -> float:
 	"""한 수가 만든 ATTACK과 연쇄로 그 수의 즉시 보상을 계산한다.
 
 	오프라인 학습 환경, 서버의 온라인 학습, 서버 추론의 배치 비교가 모두 이 계약 하나를 쓴다.
-	연쇄 수의 제곱을 더해 같은 ATTACK이라도 더 긴 연쇄를 높게 본다.
+	연쇄 가중치(chain_reward)를 더해 같은 ATTACK이라도 더 긴 연쇄를 높게 보며, 피버 중에 터진
+	연쇄는 피버 밖 연쇄의 5분의 1로만 친다. `fever_active`를 생략하면 피버 밖 계산이다.
 	"""
-	return float(attack) + float(combo) * float(combo)
+	return float(attack) + chain_reward(combo, fever_active)
+
+
+def game_time_reward(win: bool, elapsed_ms: float) -> float:
+	"""한 판의 경과 시간을 승패에 맞는 가중치로 바꾼다.
+
+	이긴 판은 빨리 끝낼수록 좋으므로 경과 시간만큼 깎고(음수), 진 판은 오래 버틸수록 좋으므로 경과
+	시간만큼 덜 깎는다(양수). 반환값은 terminal_reward()가 승패 보상에 더할 보정 항이며, 크기는
+	GAME_TIME_REWARD_MAX_MS에서 잘려 승패 항의 부호를 뒤집지 못한다.
+	"""
+	elapsed = min(max(float(elapsed_ms or 0.0), 0.0), GAME_TIME_REWARD_MAX_MS)
+	amount = GAME_TIME_REWARD_PER_MS * elapsed
+	return -amount if win else amount
+
+
+def terminal_reward(win: bool, elapsed_ms: float = 0.0) -> float:
+	"""승패와 경과 시간을 합친 한 판의 종료 가치를 계산한다.
+
+	승패 항은 피버 밖 7연쇄와 같은 크기이고, 거기에 게임 시간 항을 더한다. 그래서 같은 승리라도
+	빨리 끝낸 판이, 같은 패배라도 오래 버틴 판이 높은 값을 받는다.
+	"""
+	return (WIN_REWARD if win else LOSS_REWARD) + game_time_reward(win, elapsed_ms)
 
 
 def _clamp_ratio(value: Any, maximum: float) -> float:

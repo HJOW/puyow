@@ -540,6 +540,291 @@ class TrainingStrategyTest(unittest.TestCase):
 		json.dumps(result)
 
 
+class RewardWeightTest(unittest.TestCase):
+	"""승패·게임 시간·연쇄가 가중치에 반영되는 비율을 확인한다."""
+
+	def test_fever_chain_weight_is_one_fifth_of_the_normal_chain_weight(self) -> None:
+		for combo in (1, 2, 5, 7):
+			self.assertAlmostEqual(common.chain_reward(combo) / 5.0, common.chain_reward(combo, True), places=6)
+
+	def test_win_and_loss_weight_match_a_seven_chain_outside_fever(self) -> None:
+		self.assertAlmostEqual(common.chain_reward(7), common.WIN_REWARD, places=6)
+		self.assertAlmostEqual(-common.chain_reward(7), common.LOSS_REWARD, places=6)
+
+	def test_two_chain_weight_matches_one_hundred_twenty_seconds_of_game_time(self) -> None:
+		self.assertAlmostEqual(common.chain_reward(2), common.game_time_reward(False, 120_000), places=6)
+		self.assertAlmostEqual(-common.chain_reward(2), common.game_time_reward(True, 120_000), places=6)
+
+	def test_game_time_weight_stays_far_below_the_chain_weight(self) -> None:
+		# 상한까지 간 게임 시간 항이라도 승패(=비피버 7연쇄) 가중치의 절반을 넘지 않아야 한다.
+		longest = common.game_time_reward(False, common.GAME_TIME_REWARD_MAX_MS * 10)
+		self.assertLess(longest, common.WIN_REWARD / 2)
+		self.assertAlmostEqual(common.game_time_reward(False, common.GAME_TIME_REWARD_MAX_MS), longest, places=6)
+
+	def test_shorter_wins_and_longer_losses_score_higher(self) -> None:
+		self.assertGreater(common.terminal_reward(True, 30_000), common.terminal_reward(True, 300_000))
+		self.assertGreater(common.terminal_reward(False, 300_000), common.terminal_reward(False, 30_000))
+		# 시간 보정이 승패의 부호를 뒤집지는 않는다.
+		self.assertGreater(common.terminal_reward(True, common.GAME_TIME_REWARD_MAX_MS), 0.0)
+		self.assertLess(common.terminal_reward(False, common.GAME_TIME_REWARD_MAX_MS), 0.0)
+
+	def test_move_reward_keeps_the_attack_term_and_scales_only_the_chain(self) -> None:
+		self.assertAlmostEqual(12.0 + common.chain_reward(3), common.move_reward(12.0, 3), places=6)
+		self.assertAlmostEqual(12.0 + common.chain_reward(3, True), common.move_reward(12.0, 3, True), places=6)
+
+	def test_afterstate_reward_uses_the_fever_chain_weight(self) -> None:
+		board = training.bundledenemy.new_empty_board()
+		for x in range(3):
+			board[0][x] = 0
+		fever = {"active": True, "gauge": 0, "nextTime": 15, "targetCombo": 5, "leftTime": 30_000, "damage": 0}
+		normal = training.enumerate_afterstates(common.encode_observation_values(board, (0, 1)), (1, 2))
+		feverish = training.enumerate_afterstates(
+			common.encode_observation_values(board, (0, 1), fever_rule=True, fever=fever), (1, 2),
+		)
+		popped = [afterstate for afterstate in normal if afterstate.reward > 0]
+		self.assertTrue(popped, "1연쇄가 나는 배치가 있어야 이 비교가 의미를 갖는다.")
+		for afterstate in popped:
+			same = next(item for item in feverish if item.action == afterstate.action)
+			# ATTACK은 그대로이고 연쇄 항만 5분의 1이 된다.
+			self.assertLess(same.reward, afterstate.reward)
+
+	def test_duel_terminal_value_falls_for_a_slow_win_and_rises_for_a_long_loss(self) -> None:
+		environment = training.PuyoDuelEnvironment("Seere", seed=4, fever_rule=False, color_count=4)
+		environment.elapsed_ms = 0.0
+		early_win, early_loss = environment.terminal_value(True), environment.terminal_value(False)
+		environment.elapsed_ms = 240_000.0
+		self.assertLess(environment.terminal_value(True), early_win)
+		self.assertGreater(environment.terminal_value(False), early_loss)
+
+	def test_solo_defeat_value_rises_the_longer_the_agent_survives(self) -> None:
+		environment = training.PuyoEnvironment(seed=4)
+		environment.turn = 0
+		immediate = environment._defeat_value()
+		environment.turn = 80
+		self.assertGreater(environment._defeat_value(), immediate)
+		self.assertAlmostEqual(common.LOSS_REWARD, immediate, places=6)
+
+
+class QuietEdgeEnemyTest(unittest.TestCase):
+	"""솔로 플레이 학습 방식이 쓰는 연습 상대의 판단을 확인한다."""
+
+	def test_is_not_picked_by_the_random_opponent_pool(self) -> None:
+		self.assertNotIn(training.bundledenemy.QUIET_EDGE_ENEMY_TYPE, training.bundledenemy.TRAINABLE_ENEMY_TYPES)
+		self.assertIn(training.bundledenemy.QUIET_EDGE_ENEMY_TYPE, training.bundledenemy.ENEMY_FACTORIES)
+
+	def test_never_pops_while_a_quiet_placement_exists(self) -> None:
+		enemy = training.bundledenemy.create_enemy(training.bundledenemy.QUIET_EDGE_ENEMY_TYPE, random.Random(5))
+		board = training.bundledenemy.new_empty_board()
+		pops = 0
+		for turn in range(24):
+			pair = (turn % 3, (turn + 1) % 3)
+			placement = enemy.decide(board, pair, [(0, 1)], 0.0)
+			self.assertIsNotNone(placement)
+			quiet_exists = any(
+				simulation.combo == 0
+				for simulation in training.bundledenemy.prepare_simulations(board, pair)
+			)
+			board, combo, _attack = training.bundledenemy.resolve_placement(board, pair, placement.positions)
+			if combo > 0:
+				pops += 1
+				self.assertFalse(quiet_exists, f"{turn}턴: 터뜨리지 않는 후보가 있는데도 연쇄를 냈다.")
+		self.assertEqual(0, pops)
+
+	def test_fills_the_columns_farthest_from_the_centre_first(self) -> None:
+		enemy = training.bundledenemy.create_enemy(training.bundledenemy.QUIET_EDGE_ENEMY_TYPE, random.Random(5))
+		board = training.bundledenemy.new_empty_board()
+		for turn in range(8):
+			pair = (turn % 3, (turn + 1) % 3)
+			placement = enemy.decide(board, pair, [(0, 1)], 0.0)
+			board, _combo, _attack = training.bundledenemy.resolve_placement(board, pair, placement.positions)
+		heights = [sum(1 for row in board if row[x] != training.bundledenemy.EMPTY) for x in range(common.BOARD_WIDTH)]
+
+		# 중앙(X=2,3)에서 가장 먼 양 끝 열부터 고르게 채우고, 그 안쪽과 중앙은 아직 비어 있다.
+		self.assertEqual([0, 0, 0, 0], heights[1:5])
+		self.assertEqual(heights[0], heights[common.BOARD_WIDTH - 1])
+		self.assertGreater(heights[0], 0)
+
+	def test_pops_only_when_no_quiet_placement_is_left(self) -> None:
+		# 어떤 자리에 놓아도 터지는 보드를 만들어 대체 판단(가장 작은 연쇄)이 동작하는지 본다.
+		board = training.bundledenemy.new_empty_board()
+		for x in range(common.BOARD_WIDTH):
+			for y in range(3):
+				board[y][x] = 0
+		enemy = training.bundledenemy.create_enemy(training.bundledenemy.QUIET_EDGE_ENEMY_TYPE, random.Random(5))
+		placement = enemy.decide(board, (0, 0), [(0, 1)], 0.0)
+
+		self.assertIsNotNone(placement)
+		self.assertGreater(placement.combo, 0)
+
+	def test_returns_none_when_the_field_is_full(self) -> None:
+		board = [[0 for _x in range(common.BOARD_WIDTH)] for _y in range(common.BOARD_HEIGHT)]
+		enemy = training.bundledenemy.create_enemy(training.bundledenemy.QUIET_EDGE_ENEMY_TYPE, random.Random(5))
+
+		self.assertIsNone(enemy.decide(board, (0, 1), [(0, 1)], 0.0))
+
+
+class AlternateModelOpponentTest(unittest.TestCase):
+	"""대체 모델 상대의 파일 선정·오류 제외·중단 동작을 확인한다."""
+
+	def _write_checkpoint(self, path: Path) -> None:
+		"""현재 계약에 맞는 정상 체크포인트 하나를 만든다."""
+		torch.save({
+			"model": training.ValueNetwork().state_dict(), "model_version": training.MODEL_VERSION,
+			"observation_size": training.OBSERVATION_SIZE, "action_count": training.ACTION_COUNT, "seed": 1,
+		}, path)
+
+	def test_only_two_or_more_digit_model_files_are_candidates(self) -> None:
+		with tempfile.TemporaryDirectory() as directory:
+			pool = Path(directory)
+			for name in ("model01.pt", "model02.pt", "model100.pt", "default.pt", "model1.pt", "model01.txt", "modelAB.pt"):
+				(pool / name).write_bytes(b"x")
+			(pool / "model03").mkdir()
+
+			found = [path.name for path in training.find_alternate_model_files(pool)]
+
+		self.assertEqual(["model01.pt", "model02.pt", "model100.pt"], found)
+
+	def test_missing_directory_has_no_candidates(self) -> None:
+		with tempfile.TemporaryDirectory() as directory:
+			self.assertEqual([], training.find_alternate_model_files(Path(directory) / "absent"))
+
+	def test_selection_is_reproducible_for_the_same_seed(self) -> None:
+		files = [Path(f"model{index:02d}.pt") for index in range(1, 6)]
+		picks = [
+			[
+				training.AlternateModelOpponents(torch.device("cpu"), files=files).select(random.Random(seed))
+				for _ in range(5)
+			]
+			for seed in (3, 3)
+		]
+
+		self.assertEqual(picks[0], picks[1])
+
+	def test_excluding_a_file_removes_it_from_later_selections(self) -> None:
+		opponents = training.AlternateModelOpponents(
+			torch.device("cpu"), files=[Path("model01.pt"), Path("model02.pt")],
+		)
+		opponents.exclude(Path("model01.pt"))
+
+		self.assertEqual([Path("model02.pt")], opponents.remaining)
+		self.assertEqual(Path("model02.pt"), opponents.select(random.Random(1)))
+		opponents.exclude(Path("model02.pt"))
+		self.assertFalse(opponents.has_candidates())
+		with self.assertRaises(RuntimeError):
+			opponents.select(random.Random(1))
+
+	def test_a_broken_checkpoint_raises_the_alternate_model_error(self) -> None:
+		with tempfile.TemporaryDirectory() as directory:
+			broken = Path(directory) / "model01.pt"
+			broken.write_bytes(b"not a checkpoint")
+			decide = training.AlternateModelOpponents(torch.device("cpu"), files=[broken]).action_fn(broken)
+			observation = torch.tensor(
+				common.encode_observation_values(training.bundledenemy.new_empty_board(), (0, 1)), dtype=torch.float32,
+			)
+			with self.assertRaises(training.AlternateModelError) as caught:
+				decide(observation, (1, 2))
+
+		self.assertEqual(broken, caught.exception.path)
+
+	def test_training_without_any_model_file_stops_before_touching_the_output(self) -> None:
+		with tempfile.TemporaryDirectory() as directory:
+			pool = Path(directory) / "pool"
+			pool.mkdir()
+			(pool / "default.pt").write_bytes(b"x")
+			output = Path(directory) / "out.pt"
+			with mock.patch.object(training, "ALTERNATE_MODEL_DIRECTORY", pool):
+				with self.assertRaises(ValueError):
+					training.train(1, 1, output, "cpu", strategy="alternate-model")
+
+			self.assertFalse(output.exists())
+
+	def test_failing_models_are_excluded_and_training_stops_when_none_are_left(self) -> None:
+		logs: list[str] = []
+		progress: list[dict] = []
+		with tempfile.TemporaryDirectory() as directory, \
+			mock.patch.object(training, "build_value_samples", wraps=training.build_value_samples) as build_samples:
+			pool = Path(directory) / "pool"
+			pool.mkdir()
+			for name in ("model01.pt", "model02.pt"):
+				(pool / name).write_bytes(b"not a checkpoint")
+			output = Path(directory) / "out.pt"
+			with mock.patch.object(training, "ALTERNATE_MODEL_DIRECTORY", pool):
+				training.train(
+					5, 7, output, "cpu", strategy="alternate-model", log=logs.append,
+					on_progress=lambda done, _total, stats: progress.append({"done": done, **stats}),
+				)
+			saved = output.is_file()
+
+		# 두 파일 모두 대전 중 오류로 제외되고, 세 번째 에피소드를 시작하기 전에 학습이 끝난다.
+		self.assertEqual(2, sum(1 for line in logs if line.startswith("alternate_model_failed")))
+		self.assertTrue(any(line.startswith("alternate_model_exhausted") for line in logs))
+		# 버린 에피소드는 학습 표본을 만들지 않으며, 진행 표시만 다음 칸으로 넘어간다.
+		build_samples.assert_not_called()
+		self.assertEqual([1, 2], [item["done"] for item in progress])
+		self.assertEqual(["alternate_model_failed"] * 2, [item["result"] for item in progress])
+		self.assertEqual([0, 0], [item["wins"] + item["losses"] for item in progress])
+		# 중단해도 그때까지의 가중치는 정상적으로 저장한다.
+		self.assertTrue(saved)
+
+	def test_a_working_model_plays_the_enemy_side_for_a_whole_episode(self) -> None:
+		logs: list[str] = []
+		with tempfile.TemporaryDirectory() as directory:
+			pool = Path(directory) / "pool"
+			pool.mkdir()
+			self._write_checkpoint(pool / "model01.pt")
+			output = Path(directory) / "out.pt"
+			with mock.patch.object(training, "ALTERNATE_MODEL_DIRECTORY", pool):
+				training.train(1, 7, output, "cpu", strategy="alternate-model", log=logs.append)
+			saved = output.is_file()
+
+		self.assertTrue(saved)
+		self.assertEqual([], [line for line in logs if line.startswith("alternate_model_")])
+
+
+class NewTrainingStrategyTest(unittest.TestCase):
+	"""TODO로 추가한 학습 방식 두 가지의 등록 내용과 상대 지정을 확인한다."""
+
+	def test_both_strategies_are_registered_with_korean_labels(self) -> None:
+		for name in ("solo-play", "alternate-model"):
+			strategy = training.TRAINING_STRATEGIES[name]
+			self.assertTrue(strategy.label_ko)
+			self.assertTrue(strategy.label)
+			self.assertTrue(strategy.summary)
+			self.assertTrue(strategy.description)
+
+	def test_solo_play_uses_the_quiet_edge_enemy_and_nothing_else(self) -> None:
+		strategy = training.TRAINING_STRATEGIES["solo-play"]
+
+		self.assertEqual(training.bundledenemy.QUIET_EDGE_ENEMY_TYPE, strategy.opponent)
+		self.assertEqual(
+			(0.0, 0.0, 0.0), (strategy.guided_exploration_ratio, strategy.chain_seed_ratio, strategy.solo_episode_ratio),
+		)
+
+	def test_alternate_model_strategy_selects_the_model_opponent(self) -> None:
+		self.assertEqual(training.ALTERNATE_MODEL_OPPONENT, training.TRAINING_STRATEGIES["alternate-model"].opponent)
+		# 기존 --opponent solo(상대 없이 버티기)와 다른 식별자를 써야 커리큘럼 동작이 깨지지 않는다.
+		self.assertNotIn(training.ALTERNATE_MODEL_OPPONENT, ("solo", training.PuyoDuelEnvironment.SELF_PLAY_OPPONENT))
+
+	def test_the_strategy_opponent_overrides_the_opponent_argument(self) -> None:
+		created: list[str] = []
+
+		def make_environment(opponent: str, _seed: int, _action_fn: object, _chain_seed_ratio: float) -> object:
+			created.append(opponent)
+			return TrainingStrategyTest._ScriptedEnvironment([0, 1])
+
+		with tempfile.TemporaryDirectory() as directory, \
+			mock.patch.object(training, "_make_environment", side_effect=make_environment):
+			training.train(
+				2, 3, Path(directory) / "out.pt", "cpu", opponent="Seere", strategy="solo-play", log=lambda _message: None,
+			)
+
+		self.assertEqual([training.bundledenemy.QUIET_EDGE_ENEMY_TYPE] * 2, created)
+
+	def test_existing_strategies_keep_using_the_given_opponent(self) -> None:
+		for name in ("standard", "chain-guided", "chain-curriculum", "long-nstep", "chain-all"):
+			self.assertEqual("", training.TRAINING_STRATEGIES[name].opponent, name)
+
+
 class UsablePlacementTest(unittest.TestCase):
 	"""게임이 보낸 배치 후보 안에서만 행동을 고르는지 확인한다."""
 
@@ -936,6 +1221,25 @@ class TrainerMenuTest(unittest.TestCase):
 		self.assertEqual("disabled", str(self.app.strategy_combobox.cget("state")))
 		self.app._set_inputs_enabled(True)
 		self.assertEqual("readonly", str(self.app.strategy_combobox.cget("state")))
+
+	def test_alternate_model_strategy_reports_a_missing_model_pool_and_unlocks(self) -> None:
+		"""대체 모델 상대로 쓸 파일이 없으면 학습 쓰레드가 오류를 로그로 알리고 조작을 되살려야 한다."""
+		alternate = training.TRAINING_STRATEGIES["alternate-model"]
+		self.app.strategy_combobox.set(alternate.label)
+		self.app._on_strategy_selected()
+		self.assertEqual("alternate-model", self.app._selected_strategy_name())
+		self.app._set_inputs_enabled(False)
+		empty_pool = self.directory / "empty-pool"
+		empty_pool.mkdir()
+		with mock.patch.object(training, "ALTERNATE_MODEL_DIRECTORY", empty_pool):
+			# 학습 쓰레드 본문을 그대로 호출한다. train()이 ValueError로 끝나면 큐에 error가 쌓인다.
+			self.app._run_training(1, self.source, "", training.TrainingControl(), "alternate-model")
+		self.app._poll_queue()
+
+		self.assertIn("Error:", self.app.log_text.get("1.0", "end"))
+		self.assertEqual("Failed.", self.app.status_var.get())
+		self.assertEqual("readonly", str(self.app.strategy_combobox.cget("state")))
+		self.assertEqual("normal", str(self.app.start_button.cget("state")))
 
 	def test_start_passes_the_selected_strategy_to_training(self) -> None:
 		"""Start는 표시 라벨이 아니라 학습 방식 이름을 학습 쓰레드와 learning.train()에 넘겨야 한다."""
