@@ -63,7 +63,9 @@ const CORS_HEADERS = {
 // 포트
 let PORT = 9891;
 // 웹 경로
-const WEB_ROOT = path.join(__dirname, './src');
+// 서버 소스는 nodeserver 디렉터리에 있으므로, 정적 파일과 모델은 프로젝트 루트를 기준으로 찾는다.
+const PROJECT_ROOT = path.resolve(__dirname, '..');
+const WEB_ROOT = path.join(PROJECT_ROOT, 'src');
 
 // 매개변수 검사
 if(process.argv.length >= 3) { // process.argv 배열 1, 2번은 예약되어 있음, 3번부터 매개변수가 들어오기 시작함

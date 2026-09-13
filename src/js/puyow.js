@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 51;
+    const BUILDNO = 52;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -2989,7 +2989,7 @@
      * (머신러닝 관련)
      * 브라우저 게임의 학습 API 전송 설정을 지정한다.
      * 토큰은 저장하지 않으며 호출자가 현재 실행 중인 페이지에서 직접 제공해야 한다.
-     * @param {{serverUrl:string, token:string}} config nodeserver.js 주소와 인증 토큰
+     * @param {{serverUrl:string, token:string}} config Node 서버 주소와 인증 토큰
      * @returns {void}
      */
     function configureLearningApi(config) {

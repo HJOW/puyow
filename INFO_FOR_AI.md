@@ -550,7 +550,7 @@ Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 �
 
 `SOLOMON_PLACEMENT_JSON_SCHEMA`(응답 형식)는 바꾸지 않았다. 이 항목은 요청 프롬프트에만 추가된다.
 
-### Node 서버의 Local AI (`nodeserver.js`)
+### Node 서버의 Local AI (`nodeserver/server.js`)
 
 `npm start`로 띄우는 `nodeserver.js`도 파이썬 서버와 같은 `/apis/localmodelinfo`·`/v1/chat/completions` 계약을 제공한다. 게임 소스는 바꾸지 않았고 서버만 구현했으므로, 게임 쪽 Local AI 동작(고정 URL·키·모델명, 솔로몬 해금, `usablePlacements`)은 서버 종류와 무관하게 같다.
 
@@ -702,6 +702,10 @@ GUI(`lngui.py`)는 `TRAINING_STRATEGIES` 등록표를 그대로 나열하므로 
 #### 회귀 테스트
 
 `python/test_learning.py`에 `DuelRuleTest`, `RuleTrainingStrategyTest`, `ProgressLogTest`, `RewardWeightTest`, `QuietEdgeEnemyTest`, `AlternateModelOpponentTest`, `NewTrainingStrategyTest`와 GUI 오류 표시 테스트 하나를 추가했다(전체 134개). `python -m unittest test_learning`을 `python/` 디렉터리에서 실행한다. 가중치 비율(피버 1/5, 승패 = 7연쇄, 2연쇄 = 120초), `modelNN.pt` 자릿수 규칙, 진행 로그의 `recent_max_combo=` 계산, 네 가지 대전 규칙의 초기 피버 상태와 기본 규칙 선택의 재현성은 이 테스트가 고정한다.
+
+### Node 서버 소스 경로 (2026-09-13)
+
+Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에서 `nodeserver/server.js`로 이동했다. `npm start`는 이 새 경로를 실행하며, 서버 안에서는 `__dirname`의 상위 디렉터리를 프로젝트 루트로 계산해 `src/`의 정적 파일·ONNX 모델·게임 핵심 코드를 찾는다. 이 문서에서 이 변경 전 기록을 설명하며 쓰는 `nodeserver.js` 표기는 현재의 `nodeserver/server.js`를 뜻한다. 서버 파일 경로를 참조하거나 서버만 임시 복사해 실행하는 테스트를 수정할 때도 이 디렉터리 구조를 유지한다. 이 작업에서 `src/js/puyow.js`의 JSDoc 주석도 함께 정리했으므로 BUILDNO는 52이고 패키지 버전은 `0.0.52`다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
