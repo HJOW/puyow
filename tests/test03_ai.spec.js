@@ -306,6 +306,7 @@ test('Local AI는 현재 서버의 Chat Completions로 AI API 테스트를 보�
 test('Node 서버는 default.onnx로 Local AI 확인·API 테스트·솔로몬 배치에 응답하고 역학습 요청은 받기만 한다', async ({ request }) => {
   const info = await request.get('/apis/localmodelinfo');
   expect(await info.json()).toEqual({ available: true });
+  expect(await (await request.get('/apis/onlineplayinfo')).json()).toEqual({ available: false });
 
   const headers = { Authorization: 'Bearer localhost' };
   const chatBody = (schemaName, content) => ({
@@ -371,6 +372,7 @@ test('Node 서버는 Local AI 모델 파일이 없으면 사용 불가로 응답
     }).toBe(200);
 
     expect(await (await request.get(`${baseURL}/apis/localmodelinfo`)).json()).toEqual({ available: false });
+    expect(await (await request.get(`${baseURL}/apis/onlineplayinfo`)).json()).toEqual({ available: false });
     const chat = await request.post(`${baseURL}/v1/chat/completions`, {
       headers: { Authorization: 'Bearer localhost' },
       data: { model: 'puyow', messages: [{ role: 'user', content: 'x' }], response_format: { type: 'json_schema', json_schema: { name: 'ai_api_test_result' } } },

@@ -44,23 +44,25 @@ test('너랑 나랑의 오프라인 플레이 안내 화면은 취소로 메인 
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
-test('너랑 나랑 방식 선택은 비활성 온라인 플레이를 건너뛰고 키보드·마우스로 오프라인 플레이와 취소를 고른다', async ({ page }) => {
+test('너랑 나랑 방식 선택은 온라인 플레이를 지원하지 않으면 해당 선택지를 숨긴다', async ({ page }) => {
   const currentScreen = () => page.evaluate(() => window.WebPuyo.getScreenState().screen);
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(currentScreen).toBe('together_mode_select');
   const selectionTexts = await Promise.all([
-    translated(page, '너랑 나랑'), translated(page, '오프라인 플레이'), translated(page, '온라인 플레이'), translated(page, '준비 중'), translated(page, '취소'),
+    translated(page, '너랑 나랑'), translated(page, '오프라인 플레이'), translated(page, '취소'),
   ]);
   await expect.poll(() => page.evaluate((texts) => texts.every((text) => window.testCanvasTexts.includes(text)), selectionTexts)).toBe(true);
+  const onlineLabel = await translated(page, '온라인 플레이');
+  expect(await page.evaluate((text) => window.testCanvasTexts.includes(text), onlineLabel)).toBe(false);
 
-  // 첫 포커스는 오프라인 플레이이며, 오른쪽으로 한 번 이동하면 비활성 온라인 플레이를 건너뛰고 취소에 닿는다.
+  // 온라인 선택지가 숨겨져 있으므로 첫 포커스인 오프라인 플레이에서 오른쪽으로 한 번 이동하면 취소에 닿는다.
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(currentScreen).toBe('main_menu');
 
-  // 아래 방향키도 온라인 플레이를 건너뛰고 끝에서는 더 이동하지 않으며, 위 방향키로 오프라인 플레이에 돌아온다.
+  // 아래 방향키도 취소로 이동하고 끝에서는 더 이동하지 않으며, 위 방향키로 오프라인 플레이에 돌아온다.
   await page.keyboard.press('Enter');
   await expect.poll(currentScreen).toBe('together_mode_select');
   await page.keyboard.press('ArrowDown');
@@ -79,17 +81,14 @@ test('너랑 나랑 방식 선택은 비활성 온라인 플레이를 건너뛰�
   await page.keyboard.press('Escape');
   await expect.poll(currentScreen).toBe('main_menu');
 
-  // 버튼은 논리 좌표 Y 321~399에 폭 250, 간격 18로 가운데 정렬된다(오프라인 X 247, 온라인 X 515, 취소 X 783).
+  // 두 선택지는 논리 좌표 Y 321~399에 폭 250, 간격 18로 가운데 정렬된다(오프라인 X 381, 취소 X 649).
   const box = await page.locator('[data-puyow-canvas="2d"]').boundingBox();
   const scale = box.width / 1280;
   const clickLogical = (logicalX, logicalY) => page.mouse.click(box.x + logicalX * scale, box.y + logicalY * scale);
   await page.keyboard.press('Enter');
   await expect.poll(currentScreen).toBe('together_mode_select');
-  // 비활성 온라인 플레이는 클릭해도 아무 화면으로도 넘어가지 않는다.
+  // 두 버튼 사이의 빈 공간을 클릭하면 기존 선택지 밖 클릭 규칙대로 메인 메뉴로 돌아간다.
   await clickLogical(640, 360);
-  await page.waitForTimeout(300);
-  expect(await currentScreen()).toBe('together_mode_select');
-  await clickLogical(908, 360);
   await expect.poll(currentScreen).toBe('main_menu');
 
   // 버튼 밖을 클릭하면 취소와 같이 메인 메뉴로 돌아간다.
@@ -100,8 +99,28 @@ test('너랑 나랑 방식 선택은 비활성 온라인 플레이를 건너뛰�
 
   await page.keyboard.press('Enter');
   await expect.poll(currentScreen).toBe('together_mode_select');
-  await clickLogical(372, 360);
+  await clickLogical(506, 360);
   await expect.poll(currentScreen).toBe('together_guide');
+});
+
+test('너랑 나랑 방식 선택은 온라인 플레이를 지원하면 표시하고 선택해도 아직 화면을 바꾸지 않는다', async ({ page }) => {
+  await page.route('**/apis/onlineplayinfo', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ available: true }) });
+  });
+  const onlineInfo = page.waitForResponse((response) => new URL(response.url()).pathname === '/apis/onlineplayinfo');
+  await page.reload();
+  expect(await (await onlineInfo).json()).toEqual({ available: true });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_mode_select');
+  const onlineLabel = await translated(page, '온라인 플레이');
+  await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), onlineLabel)).toBe(true);
+
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_mode_select');
 });
 
 test('너랑 나랑 안내 화면은 조작키 안내와 규칙·색상 수 선택을 보여 준다', async ({ page }) => {

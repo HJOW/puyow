@@ -707,6 +707,10 @@ GUI(`lngui.py`)는 `TRAINING_STRATEGIES` 등록표를 그대로 나열하므로 
 
 Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에서 `nodeserver/server.js`로 이동했다. `npm start`는 이 새 경로를 실행하며, 서버 안에서는 `__dirname`의 상위 디렉터리를 프로젝트 루트로 계산해 `src/`의 정적 파일·ONNX 모델·게임 핵심 코드를 찾는다. 이 문서에서 이 변경 전 기록을 설명하며 쓰는 `nodeserver.js` 표기는 현재의 `nodeserver/server.js`를 뜻한다. 서버 파일 경로를 참조하거나 서버만 임시 복사해 실행하는 테스트를 수정할 때도 이 디렉터리 구조를 유지한다. 이 작업에서 `src/js/puyow.js`의 JSDoc 주석도 함께 정리했으므로 BUILDNO는 52이고 패키지 버전은 `0.0.52`다.
 
+### 온라인 플레이 사용 가능 여부 API (2026-09-13, BUILDNO 53)
+
+온라인 플레이 자체는 아직 구현하지 않았다. Node 서버 `nodeserver/server.js`와 Python 서버 `python/pythonserver.py`는 인증 없이 `GET /apis/onlineplayinfo`에 `{ "available": false }`를 응답한다. `puyow.js`는 초기화할 때 이 API를 조회하며, `false`이거나 API 호출에 실패하면 "너랑 나랑" 방식 선택지에서 온라인 플레이를 숨긴다. 나중에 서버가 `true`를 반환하면 선택지는 보이고 포커스를 받을 수 있지만, 온라인 로그인·대기실 구현 전까지 선택해도 화면 전환 없이 끝난다.
+
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.

@@ -771,6 +771,14 @@ async function localModelInfoApi() {
 }
 
 /**
+ * 온라인 플레이 기능이 아직 구현되지 않았음을 게임 클라이언트에 알리는 API 핸들러다.
+ * @returns {{available:boolean}} 온라인 플레이 사용 가능 여부
+ */
+function onlinePlayInfoApi() {
+    return { available: false };
+}
+
+/**
  * 극한 난이도 솔로몬 대전의 역학습 요청을 받는 API 핸들러.
  * 이 Node 서버는 역학습을 구현하지 않으므로 요청 내용을 처리하지 않고 성공만 응답한다.
  * 게임은 응답의 ok가 true가 아니면 콘솔에 오류를 남기므로 ok만은 true로 돌려준다.
@@ -797,8 +805,8 @@ function sendJson(res, status, payload) {
 
 /**************************************** Local AI(솔로몬) API 구현 끝 ***************************************/
 
-// 학습 이벤트 API, 로컬 모델 사용 가능 여부 확인 API, 솔로몬 역학습 API(요청만 받음)다.
-const apis = { learning: learningApi, localmodelinfo: localModelInfoApi, solomonlearning: solomonLearningApi };
+// 학습 이벤트 API, 로컬 모델·온라인 플레이 사용 가능 여부 확인 API, 솔로몬 역학습 API(요청만 받음)다.
+const apis = { learning: learningApi, localmodelinfo: localModelInfoApi, onlineplayinfo: onlinePlayInfoApi, solomonlearning: solomonLearningApi };
 
 // 서버 구동 시작 (종료 시에는 CTRL+C 단축키를 입력할 것)
 const server = http.createServer((req, res) => {

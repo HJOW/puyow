@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 52;
+    const BUILDNO = 53;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -240,6 +240,8 @@
     const LOCAL_AI_MODEL = 'puyow';
     /** 게임 서버의 로컬 모델 사용 가능 여부를 확인하는 API 경로다. @type {string} */
     const LOCAL_AI_INFO_API_PATH = 'apis/localmodelinfo';
+    /** 게임 서버의 온라인 플레이 사용 가능 여부를 확인하는 API 경로다. @type {string} */
+    const ONLINE_PLAY_INFO_API_PATH = 'apis/onlineplayinfo';
     /** 그래픽 품질별 캔버스 출력 해상도다. 게임 내부 좌표는 항상 WIDTH x HEIGHT를 사용한다. @type {{key:'low'|'medium'|'high', label:string, width:number, height:number}[]} */
     const GRAPHICS_QUALITY_OPTIONS = [
         { key: 'low', label: '낮음', width: WIDTH, height: HEIGHT },
@@ -656,6 +658,8 @@
     let settingsApiTestPending = false;
     /** 초기화 시 게임 서버에 확인한 Local AI 사용 가능 여부다. @type {boolean} */
     let localAiAvailable = false;
+    /** 초기화 시 게임 서버에 확인한 온라인 플레이 사용 가능 여부다. @type {boolean} */
+    let onlinePlayAvailable = false;
     /** 현재 페이지 접속 중 AI API 테스트를 통과해 솔로몬을 사용할 수 있는지 여부다. 저장하지 않는다. @type {boolean} */
     let solomonSessionUnlocked = false;
     /** 초기화 시 확인한 ONNX Runtime for Web(전역 `ort`) 사용 가능 여부다. 저장하지 않는다. @type {boolean} */
@@ -760,12 +764,12 @@
     let togetherModeSelectionFocus = 0;
     /**
      * "너랑 나랑" 방식 선택지다. 오프라인 플레이는 기존 한 컴퓨터 2인 대전 안내 화면으로 이어진다.
-     * 온라인 플레이는 추후 구현 예정이라 비활성화해 두며, 포커스 이동에서 건너뛰고 클릭·Enter로도 실행하지 않는다.
-     * @type {{key:'offline'|'online'|'cancel', label:string, backgroundColor:string, disabled?:boolean, statusLabel?:string}[]}
+     * 온라인 플레이는 서버가 지원한다고 확인한 경우에만 표시한다.
+     * @type {{key:'offline'|'online'|'cancel', label:string, backgroundColor:string}[]}
      */
     const TOGETHER_MODE_OPTIONS = [
         { key: 'offline', label: '오프라인 플레이', backgroundColor: '#7e57c2' },
-        { key: 'online', label: '온라인 플레이', backgroundColor: '#236a8b', disabled: true, statusLabel: '준비 중' },
+        { key: 'online', label: '온라인 플레이', backgroundColor: '#236a8b' },
         { key: 'cancel', label: '취소', backgroundColor: '#455a64' }
     ];
     /** "너랑 나랑" 안내 화면에서 선택한 대전 규칙이다. @type {'standard'|'fever'|'feverStart'} */
@@ -1145,6 +1149,27 @@
             }
         }
         applyLocalAiAvailability();
+    }
+
+    /**
+     * 게임 서버에 온라인 플레이 기능 사용 가능 여부를 물어 방식 선택지 표시 여부를 정한다.
+     * @returns {Promise<void>} 확인 완료 시점
+     */
+    async function refreshOnlinePlayAvailability() {
+        const serverURL = getLocalAiServerURL();
+        onlinePlayAvailable = false;
+        if (serverURL && typeof fetch === 'function') {
+            try {
+                const response = await fetch(new URL(ONLINE_PLAY_INFO_API_PATH, `${serverURL}/`).href);
+                if (!response.ok) throw new Error(`${ONLINE_PLAY_INFO_API_PATH} 요청 실패 (${response.status})`);
+                const info = await response.json();
+                onlinePlayAvailable = info?.available === true;
+            } catch (error) {
+                // 온라인 플레이 API가 없는 일반 정적 서버에서는 선택지를 숨긴 채 게임을 계속 진행한다.
+                console.info('Puyo W 온라인 플레이를 사용할 수 없습니다.', error);
+                onlinePlayAvailable = false;
+            }
+        }
     }
 
     /**
@@ -10326,15 +10351,20 @@
     }
 
     /** 포커스할 수 있는 "너랑 나랑" 방식 선택지의 순번을 반환한다. 비활성 선택지(온라인 플레이)는 빠진다. @returns {number[]} 포커스 가능한 선택지 순번 */
+    function getTogetherModeOptions() {
+        return TOGETHER_MODE_OPTIONS.filter((option) => option.key !== 'online' || onlinePlayAvailable);
+    }
+
     function getSelectableTogetherModeIndices() {
-        return TOGETHER_MODE_OPTIONS.map((option, index) => option.disabled ? -1 : index).filter((index) => index >= 0);
+        return getTogetherModeOptions().map((_, index) => index);
     }
 
     /** "너랑 나랑" 방식 선택 오버레이의 버튼 영역을 반환한다. 그리기와 클릭 판정이 함께 쓴다. @param {number} index TOGETHER_MODE_OPTIONS 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
     function getTogetherModeButtonBounds(index) {
         const width = 250;
         const gap = 18;
-        const totalWidth = TOGETHER_MODE_OPTIONS.length * width + (TOGETHER_MODE_OPTIONS.length - 1) * gap;
+        const options = getTogetherModeOptions();
+        const totalWidth = options.length * width + (options.length - 1) * gap;
         return { x: (WIDTH - totalWidth) / 2 + index * (width + gap), y: 321, width, height: 78 };
     }
 
@@ -10354,11 +10384,15 @@
 
     /** "너랑 나랑" 방식 선택에서 포커스된 항목을 실행한다. 비활성 항목은 아무 동작도 하지 않는다. @returns {void} */
     function activateTogetherModeSelection() {
-        const option = TOGETHER_MODE_OPTIONS[togetherModeSelectionFocus];
-        if (!option || option.disabled) return;
+        const option = getTogetherModeOptions()[togetherModeSelectionFocus];
+        if (!option) return;
         if (option.key === 'cancel') {
             playMenuCancelSound();
             closeTogetherModeSelection();
+            return;
+        }
+        if (option.key === 'online') {
+            // TODO: 온라인 플레이 로그인·대기실·대전 기능 구현 뒤 이 분기에 화면 전환을 추가한다.
             return;
         }
         playMenuSelectSound();
@@ -10386,18 +10420,13 @@
         context.strokeStyle = '#3b6070'; context.lineWidth = 2; context.strokeRect(WIDTH / 2 - 430, 214, 860, 208);
         context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `38px ${TITLE_FONT}`;
         context.fillText(translate('너랑 나랑'), WIDTH / 2, 280);
-        TOGETHER_MODE_OPTIONS.forEach((option, index) => {
+        getTogetherModeOptions().forEach((option, index) => {
             const bounds = getTogetherModeButtonBounds(index);
-            const disabled = option.disabled === true;
-            const focused = !disabled && index === togetherModeSelectionFocus;
-            context.fillStyle = disabled ? '#3c4650' : option.backgroundColor; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-            context.strokeStyle = disabled ? '#7c8791' : focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
-            context.fillStyle = disabled ? '#c4cbd0' : '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
-            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (option.statusLabel ? 32 : 47));
-            if (option.statusLabel) {
-                context.fillStyle = '#f0c674'; context.font = `15px ${BUTTON_FONT}`;
-                context.fillText(translate(option.statusLabel), bounds.x + bounds.width / 2, bounds.y + 59);
-            }
+            const focused = index === togetherModeSelectionFocus;
+            context.fillStyle = option.backgroundColor; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
+            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + 47);
         });
     }
 
@@ -12422,16 +12451,13 @@
             return;
         }
         if (menuScreen === 'title' && togetherModeSelectionOpen) {
-            const selectedIndex = TOGETHER_MODE_OPTIONS.findIndex((option, index) => {
+            const selectedIndex = getTogetherModeOptions().findIndex((option, index) => {
                 const bounds = getTogetherModeButtonBounds(index);
                 return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
             });
             if (selectedIndex >= 0) {
-                // 비활성 선택지(온라인 플레이)는 클릭해도 포커스·실행 모두 바꾸지 않는다.
-                if (!TOGETHER_MODE_OPTIONS[selectedIndex].disabled) {
-                    togetherModeSelectionFocus = selectedIndex;
-                    activateTogetherModeSelection();
-                }
+                togetherModeSelectionFocus = selectedIndex;
+                activateTogetherModeSelection();
             } else {
                 playMenuCancelSound();
                 closeTogetherModeSelection();
@@ -13568,6 +13594,7 @@
         registerWebMcpTools();
         loadNotice();
         refreshLocalAiAvailability();
+        refreshOnlinePlayAvailability();
         // 첫 화면은 제목과 시작 문구만 즉시 표시한 뒤 갤러리 미리보기를 비동기로 준비한다.
         render();
         scheduleFeverStageValidation();

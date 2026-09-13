@@ -828,8 +828,13 @@ def local_model_info_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 	return HTTPStatus.OK, {"available": True}
 
 
+def online_play_info_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str, Any]]:
+	"""온라인 플레이 기능이 아직 구현되지 않았음을 게임 클라이언트에 알린다."""
+	return HTTPStatus.OK, {"available": False}
+
+
 # nodeserver/server.js의 apis 객체와 같은 역할을 하는 동적 API 등록 컬렉션이다.
-apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple[int, dict[str, Any]]]] = {"learning": learning_api, "localmodelinfo": local_model_info_api, "solomonlearning": solomon_learning_api}
+apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple[int, dict[str, Any]]]] = {"learning": learning_api, "localmodelinfo": local_model_info_api, "onlineplayinfo": online_play_info_api, "solomonlearning": solomon_learning_api}
 
 
 class PuyoRequestHandler(BaseHTTPRequestHandler):
