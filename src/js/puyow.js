@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 54;
+    const BUILDNO = 55;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -10698,6 +10698,7 @@
 
     /** 갤러리를 닫고 메인 메뉴로 돌아간다. @returns {void} */
     function closeGallery() {
+        threeEffectManager?.cancelReveal?.();
         playMenuCancelSound();
         gallery = null;
         menuScreen = 'title';
@@ -10771,8 +10772,8 @@
         gallery.cardScrollRow = Math.max(0, Math.min(maxScroll, gallery.cardScrollRow));
     }
 
-    /** 카드의 대상 그림을 카드 중앙에 그린다. @param {{type:string}} card 카드 인스턴스 @param {object} bounds 카드 영역 @returns {void} */
-    function drawCardTarget(card, bounds) {
+    /** 카드의 대상 그림을 카드 중앙에 그린다. @param {{type:string}} card 카드 인스턴스 @param {object} bounds 카드 영역 @param {CanvasRenderingContext2D} context 출력 대상(기본값은 게임 캔버스) @returns {void} */
+    function drawCardTarget(card, bounds, context = canvas.getContext('2d')) {
         const definition = getCardDefinitions().find((candidate) => candidate.type === card.type);
         if (!definition) return;
         const centerX = bounds.x + bounds.width / 2;
@@ -10792,6 +10793,18 @@
             entry?.createController().drawPortrait(context, centerX, centerY, 0.17, 'normal');
         }
         context.restore();
+    }
+
+    /** 저장을 마친 새 카드만 선택적 효과 모듈에 전달한다. THREE 객체는 여기서 만들지 않는다. @param {object[]} cards 지급된 카드 */
+    function revealGrantedCards(cards) {
+        if (!threeEffectManager?.playCardReveal) return;
+        const definitions = getCardDefinitions();
+        const appearances = cards.map((card) => {
+            const definition = definitions.find((candidate) => candidate.type === card.type);
+            const rarity = getCardRarity(definition.weight);
+            return { rarity: rarity.key, color: rarity.color, draw: (target, bounds) => drawCardTarget(card, bounds, target) };
+        });
+        threeEffectManager.playCardReveal(appearances);
     }
 
     /** 공용 확인 대화상자의 버튼 영역을 반환한다. @param {number} index 0=확인, 1=취소 @returns {{x:number,y:number,width:number,height:number}} */
@@ -10820,10 +10833,11 @@
             store.gold -= price;
             saveStore();
             const firstNewIndex = ownedCards.length;
-            grantRandomCards(count);
+            const granted = grantRandomCards(count);
             gallery.cardIndex = firstNewIndex;
             gallery.focus = 'cards';
             ensureCardFocusVisible();
+            revealGrantedCards(granted);
             return;
         }
         const selectedIds = gallery.selectedCardIds;
@@ -10835,10 +10849,11 @@
         ownedCards = ownedCards.filter((card) => !selectedIds.has(card.id));
         selectedIds.clear();
         const firstNewIndex = ownedCards.length;
-        grantRandomCards(resultCount);
+        const granted = grantRandomCards(resultCount);
         gallery.cardIndex = Math.max(0, firstNewIndex);
         gallery.focus = ownedCards.length ? 'cards' : 'cardButtons';
         ensureCardFocusVisible();
+        revealGrantedCards(granted);
     }
 
     /** 카드 갤러리 작업을 검증한 뒤 공용 확인 대화상자를 요청한다. @param {number} index 0=1장, 1=10장, 2=합성 @returns {void} */
@@ -12747,6 +12762,11 @@
         } while (remaining > 0);
         syncBackgroundMusic();
         render();
+        // 선택적 효과는 프레임당 한 번만 그리고 실제 시각으로 종료한다.
+        if (threeEffectManager?.active) {
+            if (game || menuScreen !== 'gallery' || getGalleryTypes()[gallery?.typeIndex]?.key !== 'card') threeEffectManager.cancelReveal();
+            else threeEffectManager.update(time);
+        }
         animationFrameId = requestAnimationFrame(frame);
     }
 
@@ -12792,6 +12812,11 @@
     /** 갤러리의 키보드·게임패드 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
     function handleGalleryKeydown(key) {
         if (!gallery) return;
+        // 확인·취소 입력은 연출만 건너뛰고, 뒤쪽 카드 선택이나 추가 구매로 전달하지 않는다.
+        if (threeEffectManager?.active) {
+            if (key === 'escape' || key === 'enter' || key === ' ') threeEffectManager.cancelReveal();
+            return;
+        }
         if (key === 'escape') { closeGallery(); return; }
         const cardTypeSelected = getGalleryTypes()[gallery.typeIndex]?.key === 'card';
         if (gallery.focus === 'type') {
@@ -13678,6 +13703,7 @@
 
     /** 카드 갤러리에서 마우스 휠로 카드 행을 스크롤한다. @param {WheelEvent} event 휠 이벤트 @returns {void} */
     function handleCanvasWheel(event) {
+        if (threeEffectManager?.active) { if (event.cancelable) event.preventDefault(); return; }
         if (confirmDialog || game || menuScreen !== 'gallery' || !gallery || getGalleryTypes()[gallery.typeIndex]?.key !== 'card') return;
         const { x, y } = getCanvasEventCoordinates(event);
         if (x < 414 || x > 1246 || y < 180 || y > 680) return;
@@ -13689,6 +13715,7 @@
 
     /** 캔버스 클릭의 실제 화면 동작을 처리한다. @param {MouseEvent} event 마우스 이벤트 @returns {void} */
     function handleCanvasClickCore(event) {
+        if (threeEffectManager?.active) { threeEffectManager.cancelReveal(); return; }
         if (confirmDialog) {
             const { x, y } = getCanvasEventCoordinates(event);
             const choice = [0, 1].find((index) => {
@@ -14892,7 +14919,8 @@
         if (!threeAvailable || !canvas || !threeCanvas) return false;
         canvas.style.zIndex = active ? '1' : '2';
         threeCanvas.style.zIndex = active ? '2' : '1';
-        threeCanvas.style.pointerEvents = active ? 'auto' : 'none';
+        // 3D 연출 중에도 기존 2D 캔버스의 좌표 변환과 클릭 처리 경로를 사용한다.
+        threeCanvas.style.pointerEvents = 'none';
         return true;
     }
 
@@ -14941,14 +14969,14 @@
         canvas.dataset.puyowCanvas = '2d';
         canvas.setAttribute('aria-label', 'Web Puyo puzzle game');
         puyowRoot.append(threeCanvas, canvas);
-        // 3D 연출은 아직 구현하지 않는다. THREE가 없으면 canvas는 그대로 두고 renderer·레이어 교환만 생략한다.
+        // THREE와 효과 모듈은 선택 사항이며, 렌더러는 실제 연출 때 효과 모듈이 만든다.
         threeAvailable = Boolean(getThreeLibrary());
         threeCanvas.dataset.threeAvailable = String(threeAvailable);
         context = canvas.getContext('2d');
         if (!context) throw new Error('2D 캔버스 컨텍스트를 만들 수 없습니다.');
         // puyow_3d.js 존재여부 체크해 초기화
         if(typeof(window.PuyoW3DEffect) !== 'undefined') {
-            threeEffectManager = window.PuyoW3DEffect.initialize(threeCanvas);
+            threeEffectManager = window.PuyoW3DEffect.initialize(threeCanvas, { onActiveChange: setThreeCanvasLayerActive });
         }
         // 캔버스 크기 및 방향조정
         applyCanvasOutputResolution();

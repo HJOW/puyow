@@ -136,6 +136,182 @@ test('카드 5장을 선택해 합성하면 원본을 제거하고 새 카드 1�
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards'))[0].type)).toBe('puyo:red');
 });
 
+test.describe('카드 3D 등장 연출', () => {
+  test.use({ viewport: { width: 1280, height: 720 } });
+
+  /** 저장 상태만 준비하고 구매·합성은 실제 갤러리 입력을 통해 실행한다. */
+  async function openCards(page, cards = []) {
+    await page.evaluate((owned) => {
+      localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], gold: 10000 }));
+      localStorage.setItem('puyow_cards', JSON.stringify(owned));
+    }, cards);
+    await page.reload();
+    await enterMainMenu(page);
+    for (let i = 0; i < 4; i += 1) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    for (let i = 0; i < 3; i += 1) await page.keyboard.press('ArrowRight');
+  }
+
+  /** 추첨 결과를 고정한 뒤 확인창에서 구매한다. */
+  async function drawCards(page, count = 1, random = 0) {
+    await page.evaluate((value) => { Math.random = () => value; }, random);
+    await page.keyboard.press('ArrowDown');
+    if (count === 10) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+  }
+
+  /** 테스트에서만 매니저를 읽고 실제 GPU 렌더링·해제 시점을 관찰한다. */
+  async function observeEffect(page) {
+    await page.evaluate(() => {
+      window.testCardEffect = PUYOW_3D_INSTANCES;
+      const manager = window.testCardEffect;
+      const cancel = manager.cancelReveal.bind(manager);
+      manager.cancelReveal = () => {
+        if (manager.active) window.testCardEffectElapsed = performance.now() - manager.reveal.started;
+        cancel();
+      };
+    });
+  }
+
+  test('일반 카드가 실제 WebGL로 나타나고 4초 안에 자원과 입력 레이어를 복원한다', async ({ page }, testInfo) => {
+    await openCards(page);
+    await observeEffect(page);
+    await drawCards(page);
+    await expect.poll(() => page.evaluate(() => window.testCardEffect.active)).toBe(true);
+    await page.waitForTimeout(800);
+    const rendered = await page.evaluate(() => {
+      const manager = window.testCardEffect;
+      manager.update(performance.now());
+      const gl = manager.renderer.getContext();
+      const pixel = new Uint8Array(4);
+      gl.readPixels(gl.drawingBufferWidth / 2, gl.drawingBufferHeight / 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+      return { alpha: pixel[3], draws: manager.renderer.info.render.calls, level: manager.reveal.cards[0].level };
+    });
+    expect(rendered.alpha).toBeGreaterThan(0);
+    expect(rendered.draws).toBeGreaterThan(3);
+    expect(rendered.level).toBe(0);
+    await page.screenshot({ path: testInfo.outputPath('common-card.png') });
+    await expect.poll(() => page.evaluate(() => window.testCardEffect.active), { timeout: 4000 }).toBe(false);
+    expect(await page.evaluate(() => window.testCardEffectElapsed)).toBeLessThanOrEqual(4000);
+    expect(await page.evaluate(() => window.testCardEffect.renderer.info.memory)).toMatchObject({ geometries: 0, textures: 0 });
+    await expect(page.locator('[data-puyow-canvas="2d"]')).toHaveCSS('z-index', '2');
+    await page.keyboard.press('Escape');
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards')).length)).toBe(1);
+  });
+
+  test('EPIC 10장은 강화된 효과로 함께 등장하고 세로 회전 후 클릭을 건너뛰기로만 처리한다', async ({ page }, testInfo) => {
+    await openCards(page);
+    await observeEffect(page);
+    await drawCards(page, 10, 0.999999);
+    await expect.poll(() => page.evaluate(() => window.testCardEffect.reveal?.cards.length)).toBe(10);
+    const batch = await page.evaluate(() => ({
+      duration: window.testCardEffect.reveal.duration,
+      levels: window.testCardEffect.reveal.cards.map((item) => item.level),
+      gold: JSON.parse(localStorage.getItem('puyow_store')).gold,
+      count: JSON.parse(localStorage.getItem('puyow_cards')).length,
+      particles: window.testCardEffect.reveal.cards[0].points.geometry.attributes.position.count,
+    }));
+    expect(batch).toMatchObject({ levels: Array(10).fill(3), gold: 1000, count: 10 });
+    expect(batch.duration).toBeLessThanOrEqual(4000);
+    expect(batch.particles).toBeGreaterThan(24);
+    await page.waitForTimeout(750);
+    await page.screenshot({ path: testInfo.outputPath('epic-ten-cards.png') });
+    await page.setViewportSize({ width: 720, height: 1280 });
+    const two = page.locator('[data-puyow-canvas="2d"]');
+    const three = page.locator('[data-puyow-canvas="3d"]');
+    expect(await three.boundingBox()).toEqual(await two.boundingBox());
+    expect(await page.evaluate(() => {
+      const canvas = document.querySelector('[data-puyow-canvas="3d"]');
+      return { width: canvas.width, height: canvas.height, aspect: window.testCardEffect.camera.aspect };
+    })).toEqual({ width: 1280, height: 720, aspect: 1280 / 720 });
+    await page.screenshot({ path: testInfo.outputPath('epic-portrait.png') });
+    await two.click({ position: { x: 360, y: 640 } });
+    expect(await page.evaluate(() => window.testCardEffect.active)).toBe(false);
+    expect(await page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('gallery');
+    // 회전된 2D 캔버스의 닫기 버튼을 실제 화면 좌표로 눌러 마우스 입력 복원을 확인한다.
+    const bounds = await two.boundingBox();
+    await page.mouse.click(bounds.x + bounds.width * (1 - 28 / 720), bounds.y + bounds.height * (1235 / 1280));
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
+  });
+
+  test('합성 결과만 연출하며 게임패드로 건너뛰어도 지급을 반복하지 않는다', async ({ page }) => {
+    await openCards(page, Array.from({ length: 5 }, (_, i) => ({ id: `synthesis-${i}`, type: 'puyo:blue' })));
+    await observeEffect(page);
+    await page.keyboard.press('ArrowDown');
+    for (let i = 0; i < 5; i += 1) {
+      await page.keyboard.press('Enter');
+      if (i < 4) await page.keyboard.press('ArrowRight');
+    }
+    for (let i = 0; i < 5; i += 1) await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    expect(await page.evaluate(() => window.testCardEffect.active)).toBe(false);
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.testCardEffect.reveal?.cards.length)).toBe(1);
+    await page.evaluate(() => window.setTestGamepad([], [0]));
+    await expect.poll(() => page.evaluate(() => window.testCardEffect.active)).toBe(false);
+    await page.evaluate(() => window.setTestGamepad());
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards')));
+    expect(saved).toHaveLength(1);
+    expect(saved[0].id).not.toContain('synthesis-');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).gold)).toBe(10000);
+  });
+
+  for (const missing of ['THREE', '효과 모듈', 'WebGL']) {
+    test(`${missing} 없이도 카드 구매·저장·2D 갤러리가 동작한다`, async ({ page }) => {
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      if (missing === 'WebGL') {
+        await page.addInitScript(() => {
+          const original = HTMLCanvasElement.prototype.getContext;
+          HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+            if (type.includes('webgl')) throw new Error('검증용 WebGL 초기화 실패');
+            return original.call(this, type, ...args);
+          };
+        });
+      } else {
+        await page.route(missing === 'THREE' ? '**/js/three.min.js' : '**/js/puyow_3d.js', (route) => route.fulfill({ contentType: 'application/javascript', body: '' }));
+      }
+      await openCards(page);
+      await drawCards(page);
+      await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards')).length)).toBe(1);
+      expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).gold)).toBe(9000);
+      await page.keyboard.press('Escape');
+      await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
+      expect(errors).toEqual([]);
+    });
+  }
+
+  test('프레임 지연·GPU 손실·destroy 후에도 연출을 정리하고 재초기화할 수 있다', async ({ page }) => {
+    await openCards(page);
+    await observeEffect(page);
+    await drawCards(page, 1, 0.999999);
+    await expect.poll(() => page.evaluate(() => window.testCardEffect.active)).toBe(true);
+    const result = await page.evaluate(() => {
+      const manager = window.testCardEffect;
+      const cards = manager.reveal.cards.map((item) => item.card);
+      manager.update(manager.reveal.started + 4001);
+      const expired = !manager.active;
+      manager.playCardReveal(cards);
+      document.querySelector('[data-puyow-canvas="3d"]').dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+      const lost = !manager.active && !manager.renderer;
+      window.PuyoW.destroy();
+      const cleaned = manager.canvas3d === null && manager.finishTimer === null;
+      window.PuyoW.initialize(document.getElementById('puyow_target'));
+      const restarted = manager.playCardReveal(cards);
+      // 실제 렌더러의 런타임 오류도 게임 루프 밖으로 전파하지 않는다.
+      manager.renderer.render = () => { throw new Error('검증용 렌더 오류'); };
+      manager.update(performance.now());
+      return { expired, lost, cleaned, restarted, failed: manager.failed, active: manager.active };
+    });
+    expect(result).toEqual({ expired: true, lost: true, cleaned: true, restarted: true, failed: true, active: false });
+    await expect(page.locator('[data-puyow-canvas="2d"]')).toHaveCSS('z-index', '2');
+  });
+});
+
 test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여백에 표시한다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { musicVolume: 42, effectsVolume: 73 } }));
