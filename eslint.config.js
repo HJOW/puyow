@@ -8,6 +8,7 @@ module.exports = [
             'src/js/three.min.js',
             'src/js/json5.min.js',
             'src/js/ort.all.min.js',
+            'src/js/crypto-js.min.js',
             'src/bundle/**'
         ],
     },

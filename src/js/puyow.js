@@ -19,7 +19,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 53;
+    const BUILDNO = 54;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -353,6 +353,13 @@
     /** 한국어 원문을 키로 하는 화면 문구 번역표다. (다국어 데이터) @type {Record<string, Record<string, string>>} */
     const stringTable = {
         en: {
+            '회원가입': 'Sign Up', '아이디': 'ID', '비밀번호': 'Password', '닉네임': 'Nickname', '로그인': 'Log In', '가입': 'Sign Up', '나가기': 'Leave', '방 생성': 'Create Room', '생성': 'Create', '%1색': '%1 Colors', '나': 'You', '상대': 'Opponent', '무승부': 'Draw',
+            '온라인 플레이 대기실': 'Online Lobby', '온라인 플레이 방': 'Online Room', '들어갈 수 있는 방이 없습니다.': 'There are no rooms to join.', '상대를 기다리는 중...': 'Waiting for an opponent...', '곧 게임이 시작됩니다.': 'The match is about to start.', '결과를 기다리는 중...': 'Waiting for the result...',
+            '가입이 완료되었습니다.': 'Your account has been created.', '상대방과의 연결이 끊어졌습니다.': 'The connection to your opponent was lost.', '서버와의 연결이 끊어졌습니다.': 'The connection to the server was lost.', '다른 곳에서 같은 계정으로 로그인했습니다.': 'This account was logged in somewhere else.', '설정 화면의 이름은 온라인 플레이에서 사용하지 않습니다.': 'The name from the settings screen is not used in online play.',
+            '아이디는 영문·숫자·언더바 4~20자여야 합니다.': 'The ID must be 4-20 letters, digits, or underscores.', '닉네임은 영문·숫자·언더바 3~20자여야 합니다.': 'The nickname must be 3-20 letters, digits, or underscores.', '비밀번호는 영문·숫자·언더바와 일부 특수문자 4~30자여야 합니다.': 'The password must be 4-30 letters, digits, underscores, or !@#$%^&*?.',
+            '이미 사용 중인 아이디입니다.': 'That ID is already taken.', '이미 사용 중인 닉네임입니다.': 'That nickname is already taken.', '아이디 또는 비밀번호가 올바르지 않습니다.': 'The ID or password is incorrect.', '비밀번호를 여러 번 틀려 5분 동안 로그인할 수 없습니다.': 'Too many failed attempts. Try again in 5 minutes.', '로그인 정보가 만료되었습니다. 다시 로그인해 주세요.': 'Your session has expired. Please log in again.',
+            '이미 다른 방에 들어가 있습니다.': 'You are already in another room.', '방을 찾을 수 없습니다.': 'The room could not be found.', '이미 다른 사람이 들어간 방입니다.': 'Someone else already joined that room.', '서버에 방이 너무 많습니다. 잠시 후 다시 시도해 주세요.': 'The server has too many rooms. Please try again later.',
+            '방장만 게임을 시작할 수 있습니다.': 'Only the room host can start the match.', '상대가 들어와야 시작할 수 있습니다.': 'You need an opponent to start.', '이미 게임이 시작되었습니다.': 'The match has already started.', '이 서버는 온라인 플레이를 지원하지 않습니다.': 'This server does not support online play.', '서버에서 오류가 발생했습니다.': 'A server error occurred.', '서버와 통신하지 못했습니다.': 'Could not reach the server.',
             '솔로몬': 'Solomon', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'Solomon AI response error: continuing with the fallback AI.',
             '인공지능 모델을 불러오는 중...': 'Loading the AI model…', '인공지능 모델을 불러오지 못했습니다.': 'Failed to load the AI model.', 'ONNX 워커를 시작하지 못해 기본 인공지능으로 진행합니다.': 'The ONNX worker could not start; continuing with the standard AI.',
             '뿌요 W': 'Puyo W',
@@ -377,6 +384,13 @@
             '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': 'This is a high-difficulty opponent powered by deep learning. Gameplay may be unstable.', '계속': 'Continue',
         },
         ja: {
+            '회원가입': '新規登録', '아이디': 'ID', '비밀번호': 'パスワード', '닉네임': 'ニックネーム', '로그인': 'ログイン', '가입': '登録', '나가기': '退出', '방 생성': '部屋作成', '생성': '作成', '%1색': '%1色', '나': '自分', '상대': '相手', '무승부': '引き分け',
+            '온라인 플레이 대기실': 'オンライン待合室', '온라인 플레이 방': 'オンライン部屋', '들어갈 수 있는 방이 없습니다.': '入れる部屋がありません。', '상대를 기다리는 중...': '相手を待っています…', '곧 게임이 시작됩니다.': 'まもなく対戦が始まります。', '결과를 기다리는 중...': '結果を待っています…',
+            '가입이 완료되었습니다.': '登録が完了しました。', '상대방과의 연결이 끊어졌습니다.': '相手との接続が切れました。', '서버와의 연결이 끊어졌습니다.': 'サーバーとの接続が切れました。', '다른 곳에서 같은 계정으로 로그인했습니다.': '別の場所で同じアカウントにログインしました。', '설정 화면의 이름은 온라인 플레이에서 사용하지 않습니다.': '設定画面の名前はオンラインプレイでは使用しません。',
+            '아이디는 영문·숫자·언더바 4~20자여야 합니다.': 'IDは英数字とアンダーバー4~20文字にしてください。', '닉네임은 영문·숫자·언더바 3~20자여야 합니다.': 'ニックネームは英数字とアンダーバー3~20文字にしてください。', '비밀번호는 영문·숫자·언더바와 일부 특수문자 4~30자여야 합니다.': 'パスワードは英数字・アンダーバー・一部の記号4~30文字にしてください。',
+            '이미 사용 중인 아이디입니다.': 'すでに使われているIDです。', '이미 사용 중인 닉네임입니다.': 'すでに使われているニックネームです。', '아이디 또는 비밀번호가 올바르지 않습니다.': 'IDまたはパスワードが正しくありません。', '비밀번호를 여러 번 틀려 5분 동안 로그인할 수 없습니다.': 'パスワードを何度も間違えたため、5分間ログインできません。', '로그인 정보가 만료되었습니다. 다시 로그인해 주세요.': 'ログイン情報の期限が切れました。もう一度ログインしてください。',
+            '이미 다른 방에 들어가 있습니다.': 'すでに別の部屋に入っています。', '방을 찾을 수 없습니다.': '部屋が見つかりません。', '이미 다른 사람이 들어간 방입니다.': 'すでに他の人が入った部屋です。', '서버에 방이 너무 많습니다. 잠시 후 다시 시도해 주세요.': 'サーバーの部屋が多すぎます。しばらくしてからお試しください。',
+            '방장만 게임을 시작할 수 있습니다.': '部屋主だけが対戦を開始できます。', '상대가 들어와야 시작할 수 있습니다.': '相手が入るまで開始できません。', '이미 게임이 시작되었습니다.': 'すでに対戦が始まっています。', '이 서버는 온라인 플레이를 지원하지 않습니다.': 'このサーバーはオンラインプレイに対応していません。', '서버에서 오류가 발생했습니다.': 'サーバーでエラーが発生しました。', '서버와 통신하지 못했습니다.': 'サーバーと通信できませんでした。',
             '솔로몬': 'ソロモン', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'ソロモンAIの応答エラー：代替AIで続行します。',
             '인공지능 모델을 불러오는 중...': 'AIモデルを読み込み中…', '인공지능 모델을 불러오지 못했습니다.': 'AIモデルを読み込めませんでした。',
             '이름': '名前', '이름 또는 닉네임을 입력하세요': '名前またはニックネームを入力してください', '이름은 게임에서 표시됩니다.': '名前はゲーム内に表示されます。', '이름 또는 닉네임을 입력해 주세요.': '名前またはニックネームを入力してください。', '이름에 사용할 수 없는 문자가 있습니다.': '名前に使用できない文字が含まれています。',
@@ -402,6 +416,13 @@
             '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': 'ディープラーニングを用いた高難易度の敵のため、ゲームプレイが不安定になる場合があります。', '계속': '続ける',
         },
         zh: {
+            '회원가입': '注册', '아이디': '账号', '비밀번호': '密码', '닉네임': '昵称', '로그인': '登录', '가입': '注册', '나가기': '退出', '방 생성': '创建房间', '생성': '创建', '%1색': '%1色', '나': '我', '상대': '对手', '무승부': '平局',
+            '온라인 플레이 대기실': '在线大厅', '온라인 플레이 방': '在线房间', '들어갈 수 있는 방이 없습니다.': '没有可加入的房间。', '상대를 기다리는 중...': '正在等待对手…', '곧 게임이 시작됩니다.': '对战即将开始。', '결과를 기다리는 중...': '正在等待结果…',
+            '가입이 완료되었습니다.': '注册完成。', '상대방과의 연결이 끊어졌습니다.': '与对手的连接已断开。', '서버와의 연결이 끊어졌습니다.': '与服务器的连接已断开。', '다른 곳에서 같은 계정으로 로그인했습니다.': '该账号已在别处登录。', '설정 화면의 이름은 온라인 플레이에서 사용하지 않습니다.': '设置界面的名称不会用于在线对战。',
+            '아이디는 영문·숫자·언더바 4~20자여야 합니다.': '账号需为4~20位英文、数字或下划线。', '닉네임은 영문·숫자·언더바 3~20자여야 합니다.': '昵称需为3~20位英文、数字或下划线。', '비밀번호는 영문·숫자·언더바와 일부 특수문자 4~30자여야 합니다.': '密码需为4~30位英文、数字、下划线或部分符号。',
+            '이미 사용 중인 아이디입니다.': '该账号已被使用。', '이미 사용 중인 닉네임입니다.': '该昵称已被使用。', '아이디 또는 비밀번호가 올바르지 않습니다.': '账号或密码不正确。', '비밀번호를 여러 번 틀려 5분 동안 로그인할 수 없습니다.': '密码错误次数过多，5分钟内无法登录。', '로그인 정보가 만료되었습니다. 다시 로그인해 주세요.': '登录信息已过期，请重新登录。',
+            '이미 다른 방에 들어가 있습니다.': '您已在其他房间中。', '방을 찾을 수 없습니다.': '找不到该房间。', '이미 다른 사람이 들어간 방입니다.': '该房间已有其他玩家加入。', '서버에 방이 너무 많습니다. 잠시 후 다시 시도해 주세요.': '服务器房间过多，请稍后再试。',
+            '방장만 게임을 시작할 수 있습니다.': '只有房主可以开始对战。', '상대가 들어와야 시작할 수 있습니다.': '需要对手加入后才能开始。', '이미 게임이 시작되었습니다.': '对战已经开始。', '이 서버는 온라인 플레이를 지원하지 않습니다.': '此服务器不支持在线对战。', '서버에서 오류가 발생했습니다.': '服务器发生错误。', '서버와 통신하지 못했습니다.': '无法与服务器通信。',
             '솔로몬': '所罗门', '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': '所罗门 AI 响应错误：将使用备用 AI 继续。',
             '인공지능 모델을 불러오는 중...': '正在加载 AI 模型…', '인공지능 모델을 불러오지 못했습니다.': '无法加载 AI 模型。',
             '이름': '名称', '이름 또는 닉네임을 입력하세요': '请输入名称或昵称', '이름은 게임에서 표시됩니다.': '名称会显示在游戏中。', '이름 또는 닉네임을 입력해 주세요.': '请输入名称或昵称。', '이름에 사용할 수 없는 문자가 있습니다.': '名称中含有不能使用的字符。',
@@ -660,6 +681,33 @@
     let localAiAvailable = false;
     /** 초기화 시 게임 서버에 확인한 온라인 플레이 사용 가능 여부다. @type {boolean} */
     let onlinePlayAvailable = false;
+    /**
+     * 온라인 플레이 로그인 세션이다. 토큰은 메모리에만 두며 puyow_store 등 저장소에 남기지 않는다.
+     * @type {{token:string, nickname:string, winPoint:number}|null}
+     */
+    let onlineSession = null;
+    /** 대기실·방·대전에 함께 쓰는 WebSocket 연결이다. @type {WebSocket|null} */
+    let onlineSocket = null;
+    /** 서버가 밀어 준 대기실 방 목록이다. 클라이언트가 주기적으로 다시 묻지 않는다. @type {{id:string, rule:string, colorCount:number, hostNickname:string}[]} */
+    let onlineRooms = [];
+    /** 현재 들어가 있는 방 상태다. 방 밖(대기실)에서는 null이다. @type {{room:object, youAreHost:boolean}|null} */
+    let onlineRoom = null;
+    /** 로그인·가입 화면의 입력값과 포커스 상태다. @type {{fields:{key:string, value:string, masked:boolean, label:string}[], focus:number, cursor:number, error:string|null}|null} */
+    let onlineForm = null;
+    /** 대기실 화면에서 포커스된 위치다. 0: 나가기, 1: 방 생성, 2 이상: 방 목록 순번. @type {number} */
+    let onlineLobbyFocus = 0;
+    /** 대기실 방 목록의 세로 스크롤 시작 순번이다. @type {number} */
+    let onlineLobbyScroll = 0;
+    /** 방 생성 팝업 상태다. 열려 있지 않으면 null이다. @type {{rule:string, colorCount:number, focus:number, action:number}|null} */
+    let onlineCreatePopup = null;
+    /** 방 화면에서 포커스된 위치다. 0: 나가기, 1: 시작(방장만). @type {number} */
+    let onlineRoomFocus = 0;
+    /** 게임 시작 전 음영처리 상태다. 서버가 game_prepare를 보내면 켜지고 game_start·game_cancel로 꺼진다. @type {{elapsed:number}|null} */
+    let onlinePrepare = null;
+    /** 서버 응답을 기다리는 동안 같은 버튼을 다시 누르지 못하게 막는 표시다. @type {boolean} */
+    let onlineBusy = false;
+    /** 온라인 대전이 끝난 뒤 결과 화면에 보여 줄 서버 판정 결과다. @type {{result:'win'|'lose'|'draw', delta:number, winPoint:number}|null} */
+    let onlineResult = null;
     /** 현재 페이지 접속 중 AI API 테스트를 통과해 솔로몬을 사용할 수 있는지 여부다. 저장하지 않는다. @type {boolean} */
     let solomonSessionUnlocked = false;
     /** 초기화 시 확인한 ONNX Runtime for Web(전역 `ort`) 사용 가능 여부다. 저장하지 않는다. @type {boolean} */
@@ -839,7 +887,8 @@
         if (!game || !player || player.controller) return -1;
         const index = game.players ? game.players.indexOf(player) : -1;
         if (index === 0) return 0;
-        return game.together && index === 1 ? 1 : -1;
+        // "너랑 나랑"은 2P가 같은 키보드를 쓰고, 온라인 대전은 중계받은 상대 조작을 같은 자리에 적용한다.
+        return (game.together || game.online) && index === 1 ? 1 : -1;
     }
     /**
      * 사람이 조작하는 플레이어의 방향 입력 상태를 반환한다.
@@ -1169,6 +1218,1259 @@
                 console.info('Puyo W 온라인 플레이를 사용할 수 없습니다.', error);
                 onlinePlayAvailable = false;
             }
+        }
+    }
+
+    /*
+     * 온라인 플레이 통신 계층이다.
+     * 가입·로그인·로그아웃만 HTTP POST로 처리하고, 대기실·방·대전은 WebSocket 하나로 주고받는다.
+     * 서버 구현은 nodeserver/onlineplay.js 와 python/onlineplay.py 이며 메시지 이름과 오류 코드가 셋 다 같아야 한다.
+     */
+
+    /** 대기실에서 방 목록보다 앞에 오는 버튼(나가기·방 생성)의 개수다. 방 목록 포커스는 이 값부터 시작한다. @type {number} */
+    const ONLINE_LOBBY_ROOM_FOCUS_BASE = 2;
+    /** 대기실 화면에 한 번에 보여 주는 방의 개수다. 그보다 많으면 세로로 스크롤한다. @type {number} */
+    const ONLINE_LOBBY_VISIBLE_ROOMS = 7;
+    /** 대기실 방 목록 한 줄의 배치다. 그리기와 클릭 판정이 함께 쓴다. @type {{x:number,y:number,width:number,height:number,gap:number}} */
+    const ONLINE_LOBBY_ROOM_LAYOUT = { x: 240, y: 176, width: 800, height: 56, gap: 8 };
+    /** 방 생성 팝업에서 고를 수 있는 대전 규칙이다. "너랑 나랑"과 같은 선택지를 쓴다. @type {{key:string,label:string}[]} */
+    const ONLINE_ROOM_RULE_OPTIONS = [
+        { key: 'standard', label: '기본 룰' },
+        { key: 'fever', label: '피버 룰' },
+        { key: 'feverStart', label: '피버 룰 (시작)' }
+    ];
+    /** 온라인 플레이 HTTP API의 경로 앞부분이다. @type {string} */
+    const ONLINE_PLAY_API_PATH = 'apis/onlineplay';
+    /** 대기실부터 대전까지 함께 쓰는 WebSocket 경로다. @type {string} */
+    const ONLINE_PLAY_SOCKET_PATH = '/apis/onlineplay/socket';
+    /** 계정 ID 규칙이다. 서버도 같은 기준으로 다시 검사한다. @type {RegExp} */
+    const ONLINE_ID_PATTERN = /^[A-Za-z0-9_]{4,20}$/;
+    /** 닉네임 규칙이다. ID와 달리 대소문자를 가린다. @type {RegExp} */
+    const ONLINE_NICKNAME_PATTERN = /^[A-Za-z0-9_]{3,20}$/;
+    /** 비밀번호 원문 규칙이다. 서버에는 sha256 해시만 보낸다. @type {RegExp} */
+    const ONLINE_PASSWORD_PATTERN = /^[A-Za-z0-9_!@#$%^&*?]{4,30}$/;
+    /** 서버가 보낸 오류 코드를 화면 문구로 바꾸는 표다. 서버가 함께 보낸 message는 화면에 쓰지 않는다. @type {Record<string,string>} */
+    const ONLINE_ERROR_TEXTS = {
+        invalid_id: '아이디는 영문·숫자·언더바 4~20자여야 합니다.',
+        invalid_nickname: '닉네임은 영문·숫자·언더바 3~20자여야 합니다.',
+        invalid_password: '비밀번호는 영문·숫자·언더바와 일부 특수문자 4~30자여야 합니다.',
+        duplicate_id: '이미 사용 중인 아이디입니다.',
+        duplicate_nickname: '이미 사용 중인 닉네임입니다.',
+        login_failed: '아이디 또는 비밀번호가 올바르지 않습니다.',
+        account_locked: '비밀번호를 여러 번 틀려 5분 동안 로그인할 수 없습니다.',
+        invalid_token: '로그인 정보가 만료되었습니다. 다시 로그인해 주세요.',
+        already_in_room: '이미 다른 방에 들어가 있습니다.',
+        room_not_found: '방을 찾을 수 없습니다.',
+        room_full: '이미 다른 사람이 들어간 방입니다.',
+        room_limit: '서버에 방이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+        not_host: '방장만 게임을 시작할 수 있습니다.',
+        no_guest: '상대가 들어와야 시작할 수 있습니다.',
+        already_playing: '이미 게임이 시작되었습니다.',
+        online_play_disabled: '이 서버는 온라인 플레이를 지원하지 않습니다.',
+        server_error: '서버에서 오류가 발생했습니다.'
+    };
+
+    /**
+     * 서버 오류 코드를 사용자에게 보여 줄 문구로 바꾼다.
+     * @param {string} code 서버가 보낸 오류 코드
+     * @returns {string} 번역된 화면 문구
+     */
+    function getOnlineErrorText(code) {
+        return translate(ONLINE_ERROR_TEXTS[code] || '서버와 통신하지 못했습니다.');
+    }
+
+    /**
+     * 비밀번호를 서버로 보내기 전에 sha256으로 한 번 해시한다.
+     * 서버는 여기에 bcrypt를 한 번 더 적용해 저장하므로 원문 비밀번호는 네트워크에 나가지 않는다.
+     * 브라우저의 Web Crypto(crypto.subtle)는 보안 컨텍스트(https 또는 localhost)에서만 쓸 수 있어,
+     * 평문 http로 접속한 경우를 위해 함께 불러 둔 CryptoJS를 먼저 사용한다.
+     * @param {string} password 사용자가 입력한 비밀번호 원문
+     * @returns {Promise<string>} 64자리 16진수 해시 문자열
+     */
+    async function hashOnlinePassword(password) {
+        const cryptoJs = typeof window !== 'undefined' ? window.CryptoJS : null;
+        if (cryptoJs?.SHA256) return cryptoJs.SHA256(password).toString(cryptoJs.enc.Hex);
+        const subtle = typeof window !== 'undefined' ? window.crypto?.subtle : null;
+        if (!subtle) throw new Error('이 브라우저에서는 비밀번호를 안전하게 전송할 수 없습니다.');
+        const digest = await subtle.digest('SHA-256', new TextEncoder().encode(password));
+        return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    /**
+     * 온라인 플레이 HTTP API를 호출한다.
+     * @param {string} action signup·login·logout 중 하나
+     * @param {object} payload 요청 본문
+     * @returns {Promise<{ok:boolean, code?:string, [key:string]:*}>} 서버 응답 본문
+     */
+    async function requestOnlinePlayApi(action, payload) {
+        const serverURL = getLocalAiServerURL();
+        if (!serverURL) return { ok: false, code: 'online_play_disabled' };
+        try {
+            const response = await fetch(new URL(`${ONLINE_PLAY_API_PATH}/${action}`, `${serverURL}/`).href, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            return await response.json();
+        } catch (error) {
+            console.info('온라인 플레이 서버와 통신하지 못했습니다.', error);
+            return { ok: false, code: 'server_error' };
+        }
+    }
+
+    /**
+     * 대기실·대전에 사용할 WebSocket 주소를 만든다. 페이지가 https면 wss가 되어 통신도 함께 암호화된다.
+     * @returns {string} WebSocket 주소. 만들 수 없으면 빈 문자열
+     */
+    function getOnlineSocketURL() {
+        const serverURL = getLocalAiServerURL();
+        if (!serverURL) return '';
+        return `${serverURL.replace(/^http/, 'ws')}${ONLINE_PLAY_SOCKET_PATH}`;
+    }
+
+    /**
+     * 로그인으로 받은 토큰으로 WebSocket을 열고 인증 메시지를 보낸다.
+     * @returns {Promise<boolean>} 연결과 인증 요청까지 성공했는지 여부
+     */
+    function connectOnlineSocket() {
+        return new Promise((resolve) => {
+            const url = getOnlineSocketURL();
+            if (!url || typeof WebSocket !== 'function' || !onlineSession) { resolve(false); return; }
+            closeOnlineSocket();
+            let settled = false;
+            const socket = new WebSocket(url);
+            onlineSocket = socket;
+            socket.addEventListener('open', () => {
+                // 연결 직후 첫 메시지로 인증해야 한다. 서버는 5초 안에 오지 않으면 연결을 끊는다.
+                socket.send(JSON.stringify({ type: 'auth', token: onlineSession.token }));
+                if (!settled) { settled = true; resolve(true); }
+            });
+            socket.addEventListener('message', (event) => {
+                let message = null;
+                try {
+                    message = JSON.parse(event.data);
+                } catch {
+                    return;
+                }
+                handleOnlineMessage(message);
+            });
+            socket.addEventListener('close', () => {
+                if (onlineSocket === socket) handleOnlineDisconnected();
+                if (!settled) { settled = true; resolve(false); }
+            });
+            socket.addEventListener('error', () => {
+                if (!settled) { settled = true; resolve(false); }
+            });
+        });
+    }
+
+    /**
+     * 열려 있는 WebSocket을 닫는다. 닫힘 처리에서 화면을 되돌리지 않도록 참조를 먼저 비운다.
+     * @returns {void}
+     */
+    function closeOnlineSocket() {
+        const socket = onlineSocket;
+        onlineSocket = null;
+        if (!socket) return;
+        try {
+            socket.close();
+        } catch {
+            // 이미 닫힌 연결이면 그대로 둔다.
+        }
+    }
+
+    /**
+     * 서버로 메시지 하나를 보낸다.
+     * @param {object} message 보낼 메시지
+     * @returns {boolean} 실제로 보냈는지 여부
+     */
+    function sendOnlineMessage(message) {
+        if (!onlineSocket || onlineSocket.readyState !== 1) return false;
+        try {
+            onlineSocket.send(JSON.stringify(message));
+            return true;
+        } catch (error) {
+            console.info('온라인 플레이 메시지를 보내지 못했습니다.', error);
+            return false;
+        }
+    }
+
+    /**
+     * 온라인 플레이 상태를 모두 비운다. 연결을 끊고 화면 상태도 함께 지운다.
+     * @returns {void}
+     */
+    function clearOnlineState() {
+        closeOnlineSocket();
+        onlineSession = null;
+        onlineRooms = [];
+        onlineRoom = null;
+        onlineForm = null;
+        onlineCreatePopup = null;
+        onlinePrepare = null;
+        onlineResult = null;
+        onlineBusy = false;
+        onlineLobbyFocus = 0;
+        onlineLobbyScroll = 0;
+        onlineRoomFocus = 0;
+    }
+
+    /**
+     * 서버가 보낸 메시지 하나를 화면 상태에 반영한다.
+     * @param {object} message 서버 메시지
+     * @returns {void}
+     */
+    function handleOnlineMessage(message) {
+        const type = typeof message?.type === 'string' ? message.type : '';
+        if (type === 'auth_ok') {
+            if (onlineSession) {
+                onlineSession.nickname = message.nickname;
+                onlineSession.winPoint = message.winPoint;
+            }
+            openOnlineLobby();
+            return;
+        }
+        if (type === 'room_list') {
+            onlineRooms = Array.isArray(message.rooms) ? message.rooms : [];
+            // 목록이 짧아지면 포커스와 스크롤이 목록 밖을 가리키지 않도록 맞춘다.
+            onlineLobbyFocus = Math.min(onlineLobbyFocus, ONLINE_LOBBY_ROOM_FOCUS_BASE + Math.max(0, onlineRooms.length - 1));
+            onlineLobbyScroll = Math.max(0, Math.min(onlineLobbyScroll, Math.max(0, onlineRooms.length - ONLINE_LOBBY_VISIBLE_ROOMS)));
+            return;
+        }
+        if (type === 'room_state') {
+            onlineRoom = { room: message.room, youAreHost: message.youAreHost === true };
+            onlineCreatePopup = null;
+            // 대전이 끝나 방으로 돌아오는 경우가 아니면 방 화면으로 들어간다.
+            if (!game) {
+                menuScreen = 'onlineRoom';
+                onlineRoomFocus = 0;
+            }
+            return;
+        }
+        if (type === 'room_closed') {
+            onlineRoom = null;
+            if (!game) openOnlineLobby();
+            return;
+        }
+        if (type === 'opponent_left') {
+            // 승패 처리 없이 대기실로 돌아간다. WIN POINT도 바뀌지 않는다.
+            showMessage(translate('상대방과의 연결이 끊어졌습니다.'), '#fff', 3000, '#7d2630');
+            onlineRoom = null;
+            finishOnlineGameLocally();
+            openOnlineLobby();
+            return;
+        }
+        if (type === 'game_prepare') {
+            onlinePrepare = { elapsed: 0 };
+            return;
+        }
+        if (type === 'game_cancel') {
+            onlinePrepare = null;
+            return;
+        }
+        if (type === 'game_start') {
+            startOnlineGame(message);
+            return;
+        }
+        if (type === 'game_result') {
+            applyOnlineGameResult(message);
+            return;
+        }
+        if (type === 'session_closed') {
+            // 같은 계정으로 다른 곳에서 로그인해 이 세션이 무효화된 경우다.
+            showMessage(translate('다른 곳에서 같은 계정으로 로그인했습니다.'), '#fff', 4000, '#7d2630');
+            finishOnlineGameLocally();
+            clearOnlineState();
+            openOnlineLogin();
+            return;
+        }
+        if (type === 'error') {
+            showMessage(getOnlineErrorText(message.code), '#fff', 3000, '#7d2630');
+            onlineBusy = false;
+            return;
+        }
+        handleOnlineGameMessage(message);
+    }
+
+    /**
+     * 연결이 끊겼을 때 메시지를 보여 주고 로그인 화면으로 되돌린다.
+     * @returns {void}
+     */
+    function handleOnlineDisconnected() {
+        onlineSocket = null;
+        if (!onlineSession) return;
+        showMessage(translate('서버와의 연결이 끊어졌습니다.'), '#fff', 3000, '#7d2630');
+        finishOnlineGameLocally();
+        clearOnlineState();
+        openOnlineLogin();
+    }
+
+    /**
+     * 온라인 플레이 로그인 화면을 연다.
+     * @returns {void}
+     */
+    function openOnlineLogin() {
+        togetherModeSelectionOpen = false;
+        onlineForm = {
+            mode: 'login',
+            fields: [
+                { key: 'id', label: '아이디', value: '', masked: false },
+                { key: 'password', label: '비밀번호', value: '', masked: true }
+            ],
+            buttons: [
+                { key: 'login', label: '로그인', color: '#4cc9b0' },
+                { key: 'signup', label: '가입', color: '#7e57c2' },
+                { key: 'cancel', label: '취소', color: '#455a64' }
+            ],
+            focus: 0,
+            cursor: 0,
+            editing: false,
+            error: null
+        };
+        menuScreen = 'onlineLogin';
+    }
+
+    /**
+     * 회원가입 화면을 연다. 비밀번호 입력칸은 마스킹한다.
+     * @returns {void}
+     */
+    function openOnlineSignup() {
+        onlineForm = {
+            mode: 'signup',
+            fields: [
+                { key: 'id', label: '아이디', value: '', masked: false },
+                { key: 'nickname', label: '닉네임', value: '', masked: false },
+                { key: 'password', label: '비밀번호', value: '', masked: true }
+            ],
+            buttons: [
+                { key: 'signup', label: '가입', color: '#4cc9b0' },
+                { key: 'cancel', label: '취소', color: '#455a64' }
+            ],
+            focus: 0,
+            cursor: 0,
+            editing: false,
+            error: null
+        };
+        menuScreen = 'onlineSignup';
+    }
+
+    /**
+     * 대기실 화면을 연다.
+     * @returns {void}
+     */
+    function openOnlineLobby() {
+        onlineRoom = null;
+        onlineCreatePopup = null;
+        onlinePrepare = null;
+        onlineLobbyFocus = 0;
+        onlineLobbyScroll = 0;
+        onlineBusy = false;
+        menuScreen = 'onlineLobby';
+        // 목록은 서버가 밀어 주지만, 화면에 들어올 때 한 번은 직접 요청해 최신 상태로 맞춘다.
+        sendOnlineMessage({ type: 'room_list' });
+    }
+
+    /**
+     * 온라인 플레이를 끝내고 메인 메뉴로 돌아간다. 서버에는 로그아웃을 알린다.
+     * @returns {void}
+     */
+    function exitOnlinePlay() {
+        const token = onlineSession?.token;
+        clearOnlineState();
+        if (token) void requestOnlinePlayApi('logout', { token });
+        menuScreen = 'title';
+        loadNotice();
+    }
+
+    /**
+     * 로그인 화면의 입력값을 검사하고 서버에 로그인을 요청한다.
+     * @returns {Promise<void>} 처리 완료 시점
+     */
+    async function submitOnlineLogin() {
+        if (!onlineForm || onlineBusy) return;
+        const [idField, passwordField] = onlineForm.fields;
+        if (!ONLINE_ID_PATTERN.test(idField.value)) { onlineForm.error = '아이디는 영문·숫자·언더바 4~20자여야 합니다.'; return; }
+        if (!ONLINE_PASSWORD_PATTERN.test(passwordField.value)) { onlineForm.error = '비밀번호는 영문·숫자·언더바와 일부 특수문자 4~30자여야 합니다.'; return; }
+        onlineBusy = true;
+        onlineForm.error = null;
+        try {
+            const password = await hashOnlinePassword(passwordField.value);
+            const result = await requestOnlinePlayApi('login', { id: idField.value, password });
+            if (result?.ok !== true) {
+                onlineForm.error = ONLINE_ERROR_TEXTS[result?.code] || '서버와 통신하지 못했습니다.';
+                return;
+            }
+            onlineSession = { token: result.token, nickname: result.nickname, winPoint: result.winPoint };
+            // 연결에 성공하면 서버가 보내는 auth_ok에서 대기실로 넘어간다.
+            if (!(await connectOnlineSocket())) {
+                onlineSession = null;
+                onlineForm.error = '서버와 통신하지 못했습니다.';
+            }
+        } finally {
+            onlineBusy = false;
+        }
+    }
+
+    /**
+     * 회원가입 화면의 입력값을 검사하고 서버에 가입을 요청한다. 성공하면 로그인 화면으로 돌아간다.
+     * @returns {Promise<void>} 처리 완료 시점
+     */
+    async function submitOnlineSignup() {
+        if (!onlineForm || onlineBusy) return;
+        const [idField, nicknameField, passwordField] = onlineForm.fields;
+        if (!ONLINE_ID_PATTERN.test(idField.value)) { onlineForm.error = '아이디는 영문·숫자·언더바 4~20자여야 합니다.'; return; }
+        if (!ONLINE_NICKNAME_PATTERN.test(nicknameField.value)) { onlineForm.error = '닉네임은 영문·숫자·언더바 3~20자여야 합니다.'; return; }
+        if (!ONLINE_PASSWORD_PATTERN.test(passwordField.value)) { onlineForm.error = '비밀번호는 영문·숫자·언더바와 일부 특수문자 4~30자여야 합니다.'; return; }
+        onlineBusy = true;
+        onlineForm.error = null;
+        try {
+            const password = await hashOnlinePassword(passwordField.value);
+            const result = await requestOnlinePlayApi('signup', { id: idField.value, nickname: nicknameField.value, password });
+            if (result?.ok !== true) {
+                onlineForm.error = ONLINE_ERROR_TEXTS[result?.code] || '서버와 통신하지 못했습니다.';
+                return;
+            }
+            playMenuSelectSound();
+            showMessage(translate('가입이 완료되었습니다.'), '#fff', 2500, '#1d5e4a');
+            openOnlineLogin();
+        } finally {
+            onlineBusy = false;
+        }
+    }
+
+    /**
+     * 서버가 보낸 game_start로 온라인 대전을 시작한다.
+     * 뿌요 지급 덱은 서버가 정한 것을 그대로 쓰고, 좌측이 본인·우측이 상대다.
+     * 진행도·GOLD·AI 학습·리플레이는 "너랑 나랑"과 같게 모두 대상이 아니다.
+     * @param {{rule:string, colorCount:number, deck:string[][], youAreHost:boolean, opponent:object|null}} message 서버가 보낸 시작 메시지
+     * @returns {void}
+     */
+    function startOnlineGame(message) {
+        resetKeyboardDirectionInput();
+        resetVirtualControllerInput();
+        resetGamepadInput();
+        menuScreen = 'title';
+        onlinePrepare = null;
+        onlineResult = null;
+        learningEpisodeStarted = false;
+        learningPendingTransition = null;
+        resultScreenFocus = 0;
+        const rule = ONLINE_ROOM_RULE_OPTIONS.some((option) => option.key === message.rule) ? message.rule : 'standard';
+        const feverStart = rule === 'feverStart';
+        const usesFeverRule = rule !== 'standard';
+        // DIFFICULTIES는 3색·4색·5색 순서이므로 색상 수에서 바로 순번을 구한다.
+        const colorCount = Math.max(3, Math.min(5, Math.floor(Number(message.colorCount)) || 4));
+        const difficultyIndex = colorCount - 3;
+        const colors = DIFFICULTIES[difficultyIndex].colors;
+        // 클라이언트가 자체 난수로 뿌요를 만들지 않고 서버가 보낸 덱을 그대로 소비한다.
+        const pairQueue = (Array.isArray(message.deck) ? message.deck : []).map((pair) => [...pair]);
+        const themeController = new PracticeEnemy();
+        const players = [
+            new PlayerState(onlineSession?.nickname || '1P', FIELD_LEFT, null, colors),
+            new PlayerState(message.opponent?.nickname || '2P', FIELD_RIGHT, null, colors)
+        ];
+        if (usesFeverRule) players.forEach((player) => {
+            player.fever = createFeverRuleState();
+            if (feverStart) player.fever.nextTime = FEVER_START_INITIAL_TIME / 1000;
+        });
+        game = {
+            running: true,
+            paused: false,
+            winner: null,
+            goldAwarded: false,
+            ending: null,
+            countdown: 3000,
+            countdownStartsGame: true,
+            elapsed: 0,
+            marginRate: MARGIN_RATE_SCHEDULE[0].rate,
+            timeProgressMultiplier: 1,
+            practice: false,
+            continuousFever: false,
+            feverRule: usesFeverRule,
+            feverStart,
+            fever: null,
+            together: null,
+            /**
+             * 이 대전이 온라인 플레이임을 나타낸다.
+             * defeatSent는 패배를 서버에 한 번만 보고하기 위한 표시다.
+             */
+            online: {
+                rule,
+                youAreHost: message.youAreHost === true,
+                opponent: message.opponent || null,
+                defeatSent: false
+            },
+            difficulty: difficultyIndex,
+            aiDifficulty: selectedAiDifficulty,
+            opponentIndex: null,
+            themeController,
+            pairQueueColors: colors,
+            pairQueue,
+            energyTransfers: [],
+            players
+        };
+        players.forEach(updateNextPairs);
+        // 온라인 대전은 리플레이를 기록하지 않으므로 beginReplayRecording()을 부르지 않는다.
+        syncBackgroundMusic();
+    }
+
+    /**
+     * 서버가 확정한 대전 결과를 받아 결과 화면으로 넘어간다.
+     * 승패와 WIN POINT는 서버만 계산하므로 받은 값을 그대로 보여 준다.
+     * @param {{result:'win'|'lose'|'draw', delta:number, winPoint:number}} message 서버가 보낸 결과
+     * @returns {void}
+     */
+    function applyOnlineGameResult(message) {
+        onlineResult = { result: message.result, delta: Number(message.delta) || 0, winPoint: Number(message.winPoint) || 0 };
+        if (onlineSession) onlineSession.winPoint = onlineResult.winPoint;
+        if (!game || !game.online) return;
+        // 아직 패배 연출이 끝나지 않았더라도 결과는 서버 판정을 따른다.
+        game.ending = null;
+        game.running = false;
+        game.winner = onlineResult.result === 'win' ? game.players[0] : onlineResult.result === 'lose' ? game.players[1] : null;
+        resultScreenFocus = 0;
+        stopBackgroundMusic();
+    }
+
+    /**
+     * 서버 판정 없이 온라인 대전을 화면에서만 끝낸다.
+     * 상대 이탈·연결 끊김·세션 무효화처럼 승패를 매기지 않는 경우에 사용한다.
+     * @returns {void}
+     */
+    function finishOnlineGameLocally() {
+        if (!game || !game.online) return;
+        stopBackgroundMusic();
+        releaseGameOnnxModels(game);
+        game = null;
+        onlineResult = null;
+    }
+
+    /**
+     * 내 조작을 서버에 보낸다. 화면에는 이미 즉시 반영했으므로 여기서는 전달만 한다.
+     * 서버는 내용을 해석하지 않고 상대에게 그대로 중계한다.
+     * @param {PlayerState} player 조작한 플레이어
+     * @param {string} kind 조작 종류
+     * @param {number} [value=0] 조작 값
+     * @returns {void}
+     */
+    function sendOnlineInput(player, kind, value = 0) {
+        if (!game?.online || player !== game.players[0]) return;
+        sendOnlineMessage({ type: 'input', time: Math.round(game.elapsed), kind, value });
+    }
+
+    /**
+     * 내 패배를 서버에 한 번만 보고한다. 승패 확정은 서버가 한다.
+     * @param {PlayerState} loser 패배한 플레이어
+     * @returns {void}
+     */
+    function reportOnlineDefeat(loser) {
+        if (!game?.online || game.online.defeatSent) return;
+        // 상대의 패배는 상대 클라이언트가 보고한다. 내 쪽 패배만 보낸다.
+        if (loser !== game.players[0]) return;
+        game.online.defeatSent = true;
+        sendOnlineMessage({ type: 'defeat', time: Math.round(game.elapsed) });
+    }
+
+    /**
+     * 대전 중에 오는 메시지를 처리한다.
+     * 상대 조작은 우측 플레이어에 그대로 적용한다. 양쪽이 같은 덱과 같은 조작을 쓰므로 결과도 같아진다.
+     * @param {object} message 서버 메시지
+     * @returns {void}
+     */
+    function handleOnlineGameMessage(message) {
+        if (!game?.online) return;
+        if (message.type === 'opponent_input') {
+            const opponent = game.players[1];
+            const kind = message.kind;
+            // 빠른 하강은 누름과 뗌이 따로 오므로 홀드 상태로 바꿔 준다.
+            if (kind === 'downStart') { pressPlayerDirection(1, 'down'); return; }
+            if (kind === 'downEnd') { releasePlayerDirection(1, 'down'); return; }
+            applyPlayerControlAction(opponent, kind, false);
+            return;
+        }
+        // 연쇄 정산 결과는 내 쪽 시뮬레이션이 같은 값을 이미 만들어 내므로 다시 적용하지 않는다.
+        // 두 번 적용하면 공격이 두 배가 되기 때문이며, 이 메시지는 계약 유지와 이후 검증용으로만 받는다.
+    }
+
+    /*
+     * 온라인 플레이 화면 그리기다.
+     * 로그인·회원가입은 같은 입력 폼을 쓰고, 대기실·방은 각자 전용 화면을 그린다.
+     */
+
+    /** 온라인 화면 상단 "나가기" 버튼의 영역이다. @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getOnlineExitButtonBounds() {
+        return { x: 32, y: 36, width: 130, height: 44 };
+    }
+
+    /** 대기실 상단 "방 생성" 버튼의 영역이다. @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getOnlineCreateButtonBounds() {
+        return { x: 178, y: 36, width: 150, height: 44 };
+    }
+
+    /** 로그인·회원가입 화면 입력칸의 영역이다. @param {number} index 입력칸 순번 @returns {{x:number,y:number,width:number,height:number}} 입력칸 영역 */
+    function getOnlineFormFieldBounds(index) {
+        return { x: 460, y: 236 + index * 72, width: 420, height: 50 };
+    }
+
+    /** 로그인·회원가입 화면 버튼의 영역이다. @param {number} index 버튼 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getOnlineFormButtonBounds(index) {
+        const count = onlineForm ? onlineForm.buttons.length : 1;
+        const width = 160;
+        const gap = 20;
+        const totalWidth = count * width + (count - 1) * gap;
+        return { x: (WIDTH - totalWidth) / 2 + index * (width + gap), y: 520, width, height: 56 };
+    }
+
+    /** 대기실 방 목록 한 줄의 영역이다. @param {number} visibleIndex 화면에 보이는 순번 @returns {{x:number,y:number,width:number,height:number}} 목록 줄 영역 */
+    function getOnlineRoomRowBounds(visibleIndex) {
+        const layout = ONLINE_LOBBY_ROOM_LAYOUT;
+        return { x: layout.x, y: layout.y + visibleIndex * (layout.height + layout.gap), width: layout.width, height: layout.height };
+    }
+
+    /** 방 화면 "시작" 버튼의 영역이다. 방장에게만 보인다. @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getOnlineStartButtonBounds() {
+        return { x: WIDTH / 2 - 90, y: 566, width: 180, height: 60 };
+    }
+
+    /** 방 생성 팝업의 "생성"·"취소" 버튼 영역이다. @param {number} index 0이면 생성, 1이면 취소 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getOnlineCreatePopupButtonBounds(index) {
+        return { x: WIDTH / 2 - 170 + index * 190, y: 470, width: 150, height: 54 };
+    }
+
+    /** 방 생성 팝업의 색상 수 선택 버튼 영역이다. @param {number} index DIFFICULTIES 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getOnlineCreateColorButtonBounds(index) {
+        return { x: WIDTH / 2 - 240 + index * 165, y: 300, width: 150, height: 50 };
+    }
+
+    /** 방 생성 팝업의 규칙 선택 버튼 영역이다. @param {number} index ONLINE_ROOM_RULE_OPTIONS 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    function getOnlineCreateRuleButtonBounds(index) {
+        return { x: WIDTH / 2 - 285 + index * 195, y: 392, width: 180, height: 50 };
+    }
+
+    /**
+     * 화면에 표시할 입력칸 내용을 만든다. 비밀번호 입력칸은 마스킹한다.
+     * @param {{value:string, masked:boolean}} field 입력칸
+     * @returns {string} 표시 문자열
+     */
+    function getOnlineFieldDisplayText(field) {
+        return field.masked ? '•'.repeat(Array.from(field.value).length) : field.value;
+    }
+
+    /**
+     * 로그인·회원가입 화면을 그린다.
+     * @returns {void}
+     */
+    function drawOnlineForm() {
+        if (!onlineForm) return;
+        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `40px ${TITLE_FONT}`;
+        context.fillText(translate(onlineForm.mode === 'signup' ? '회원가입' : '온라인 플레이'), WIDTH / 2, 150);
+
+        onlineForm.fields.forEach((field, index) => {
+            const bounds = getOnlineFormFieldBounds(index);
+            const focused = onlineForm.focus === index;
+            context.textAlign = 'right'; context.fillStyle = '#c9e3ea'; context.font = `18px ${BUTTON_FONT}`;
+            context.fillText(translate(field.label), bounds.x - 24, bounds.y + 32);
+            context.fillStyle = '#0b202c'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2;
+            context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.save();
+            context.beginPath(); context.rect(bounds.x + 8, bounds.y + 2, bounds.width - 16, bounds.height - 4); context.clip();
+            context.textAlign = 'left'; context.fillStyle = '#f5fbfc'; context.font = `20px ${MESSAGE_FONT}`;
+            const text = getOnlineFieldDisplayText(field);
+            context.fillText(text, bounds.x + 12, bounds.y + 32);
+            // 편집 중인 입력칸에만 커서를 그린다.
+            if (focused && onlineForm.editing) {
+                const cursorX = bounds.x + 12 + context.measureText(Array.from(text).slice(0, onlineForm.cursor).join('')).width;
+                context.fillStyle = '#ffd54f'; context.fillRect(cursorX, bounds.y + 12, 2, 26);
+            }
+            context.restore();
+        });
+
+        if (onlineForm.error) {
+            context.textAlign = 'center'; context.fillStyle = '#ffb4b4'; context.font = `17px ${MESSAGE_FONT}`;
+            context.fillText(translate(onlineForm.error), WIDTH / 2, 486);
+        }
+
+        onlineForm.buttons.forEach((button, index) => {
+            const bounds = getOnlineFormButtonBounds(index);
+            const focused = onlineForm.focus === onlineForm.fields.length + index;
+            context.fillStyle = button.color; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#ffd54f' : button.color; context.lineWidth = focused ? 4 : 2;
+            context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.textAlign = 'center';
+            context.fillText(translate(button.label), bounds.x + bounds.width / 2, bounds.y + 36);
+        });
+
+        context.textAlign = 'center'; context.fillStyle = '#8aa6af'; context.font = `13px ${MESSAGE_FONT}`;
+        context.fillText(translate('설정 화면의 이름은 온라인 플레이에서 사용하지 않습니다.'), WIDTH / 2, 640);
+    }
+
+    /**
+     * 대기실·방 화면 위쪽의 공통 정보(닉네임과 WIN POINT)를 그린다.
+     * @returns {void}
+     */
+    function drawOnlineHeaderAccount() {
+        if (!onlineSession) return;
+        context.textAlign = 'right'; context.fillStyle = '#d8f2f5'; context.font = `20px ${BUTTON_FONT}`;
+        context.fillText(onlineSession.nickname, WIDTH - 32, 56);
+        context.fillStyle = '#f7c843'; context.font = `16px ${NUMBER_FONT}`;
+        context.fillText(`WIN POINT ${onlineSession.winPoint.toLocaleString()}`, WIDTH - 32, 80);
+    }
+
+    /**
+     * 버튼 하나를 공통 모양으로 그린다.
+     * @param {{x:number,y:number,width:number,height:number}} bounds 버튼 영역
+     * @param {string} label 버튼 문구
+     * @param {string} color 버튼 배경색
+     * @param {boolean} focused 포커스 여부
+     * @param {number} [fontSize=20] 글자 크기
+     * @returns {void}
+     */
+    function drawOnlineButton(bounds, label, color, focused, fontSize = 20) {
+        context.fillStyle = color; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        context.strokeStyle = focused ? '#ffd54f' : color; context.lineWidth = focused ? 4 : 2;
+        context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        context.fillStyle = '#fff'; context.font = `${fontSize}px ${BUTTON_FONT}`; context.textAlign = 'center';
+        context.fillText(translate(label), bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 + fontSize / 3);
+    }
+
+    /**
+     * 대기실 화면을 그린다. 방 목록에는 한 자리가 남은 방만 나타난다.
+     * @returns {void}
+     */
+    function drawOnlineLobby() {
+        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `32px ${TITLE_FONT}`;
+        context.fillText(translate('온라인 플레이 대기실'), WIDTH / 2, 62);
+        drawOnlineButton(getOnlineExitButtonBounds(), '나가기', '#455a64', onlineLobbyFocus === 0, 18);
+        drawOnlineButton(getOnlineCreateButtonBounds(), '방 생성', '#4cc9b0', onlineLobbyFocus === 1, 18);
+        drawOnlineHeaderAccount();
+
+        if (onlineRooms.length === 0) {
+            context.textAlign = 'center'; context.fillStyle = '#8aa6af'; context.font = `20px ${MESSAGE_FONT}`;
+            context.fillText(translate('들어갈 수 있는 방이 없습니다.'), WIDTH / 2, 330);
+        }
+        const visibleRooms = onlineRooms.slice(onlineLobbyScroll, onlineLobbyScroll + ONLINE_LOBBY_VISIBLE_ROOMS);
+        visibleRooms.forEach((room, visibleIndex) => {
+            const bounds = getOnlineRoomRowBounds(visibleIndex);
+            const focused = onlineLobbyFocus === ONLINE_LOBBY_ROOM_FOCUS_BASE + onlineLobbyScroll + visibleIndex;
+            context.fillStyle = '#0b202c'; context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            context.strokeStyle = focused ? '#ffd54f' : '#3b6070'; context.lineWidth = focused ? 4 : 2;
+            context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            // 1:1 대결이므로 참여자 수는 표시하지 않고 방장 닉네임과 규칙·색상 수만 보여 준다.
+            context.textAlign = 'left'; context.fillStyle = '#f5fbfc'; context.font = `20px ${BUTTON_FONT}`;
+            context.fillText(room.hostNickname, bounds.x + 20, bounds.y + 35);
+            const ruleOption = ONLINE_ROOM_RULE_OPTIONS.find((option) => option.key === room.rule);
+            context.textAlign = 'right'; context.fillStyle = '#a9d9e5'; context.font = `17px ${MESSAGE_FONT}`;
+            context.fillText(`${translate(ruleOption ? ruleOption.label : room.rule)} / ${translate('%1색', room.colorCount)}`, bounds.x + bounds.width - 20, bounds.y + 35);
+        });
+        // 목록이 화면보다 길면 위아래에 더 있음을 알린다.
+        if (onlineLobbyScroll > 0) {
+            context.textAlign = 'center'; context.fillStyle = '#8aa6af'; context.font = `14px ${MESSAGE_FONT}`;
+            context.fillText('▲', WIDTH / 2, ONLINE_LOBBY_ROOM_LAYOUT.y - 10);
+        }
+        if (onlineLobbyScroll + ONLINE_LOBBY_VISIBLE_ROOMS < onlineRooms.length) {
+            context.textAlign = 'center'; context.fillStyle = '#8aa6af'; context.font = `14px ${MESSAGE_FONT}`;
+            context.fillText('▼', WIDTH / 2, ONLINE_LOBBY_ROOM_LAYOUT.y + ONLINE_LOBBY_VISIBLE_ROOMS * (ONLINE_LOBBY_ROOM_LAYOUT.height + ONLINE_LOBBY_ROOM_LAYOUT.gap) + 8);
+        }
+        if (onlineCreatePopup) drawOnlineCreatePopup();
+    }
+
+    /**
+     * 방 생성 팝업을 대기실 위에 그린다.
+     * @returns {void}
+     */
+    function drawOnlineCreatePopup() {
+        if (!onlineCreatePopup) return;
+        context.fillStyle = 'rgba(3, 11, 19, 0.78)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.fillStyle = '#0b1b26'; context.fillRect(WIDTH / 2 - 330, 180, 660, 380);
+        context.strokeStyle = '#3b6070'; context.lineWidth = 2; context.strokeRect(WIDTH / 2 - 330, 180, 660, 380);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `30px ${TITLE_FONT}`;
+        context.fillText(translate('방 생성'), WIDTH / 2, 238);
+
+        context.textAlign = 'left'; context.fillStyle = '#c9e3ea'; context.font = `16px ${BUTTON_FONT}`;
+        context.fillText(translate('색상 수'), WIDTH / 2 - 300, 282);
+        DIFFICULTIES.forEach((difficulty, index) => {
+            const bounds = getOnlineCreateColorButtonBounds(index);
+            const selected = onlineCreatePopup.colorCount === difficulty.colors.length;
+            const focused = onlineCreatePopup.focus === 0 && selected;
+            drawOnlineButton(bounds, difficulty.name, selected ? '#563068' : '#25323b', focused, 18);
+        });
+
+        context.textAlign = 'left'; context.fillStyle = '#c9e3ea'; context.font = `16px ${BUTTON_FONT}`;
+        context.fillText(translate('규칙'), WIDTH / 2 - 300, 374);
+        ONLINE_ROOM_RULE_OPTIONS.forEach((option, index) => {
+            const bounds = getOnlineCreateRuleButtonBounds(index);
+            const selected = onlineCreatePopup.rule === option.key;
+            const focused = onlineCreatePopup.focus === 1 && selected;
+            const locked = option.key === 'feverStart' && !isFeverStartRuleUnlocked();
+            drawOnlineButton(bounds, locked ? '잠김' : option.label, locked ? '#37474f' : (selected ? '#563068' : '#25323b'), focused, 17);
+        });
+
+        ['생성', '취소'].forEach((label, index) => {
+            const bounds = getOnlineCreatePopupButtonBounds(index);
+            const focused = onlineCreatePopup.focus === 2 && onlineCreatePopup.action === index;
+            drawOnlineButton(bounds, label, index === 0 ? '#4cc9b0' : '#455a64', focused, 19);
+        });
+    }
+
+    /**
+     * 방 화면을 그린다. 좌측이 본인, 우측이 상대이며 방장에게만 "시작" 버튼이 보인다.
+     * @returns {void}
+     */
+    function drawOnlineRoom() {
+        context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `32px ${TITLE_FONT}`;
+        context.fillText(translate('온라인 플레이 방'), WIDTH / 2, 62);
+        drawOnlineButton(getOnlineExitButtonBounds(), '나가기', '#455a64', onlineRoomFocus === 0, 18);
+        drawOnlineHeaderAccount();
+
+        const room = onlineRoom?.room;
+        const me = onlineRoom?.youAreHost ? room?.host : room?.guest;
+        const opponent = onlineRoom?.youAreHost ? room?.guest : room?.host;
+        const ruleOption = ONLINE_ROOM_RULE_OPTIONS.find((option) => option.key === room?.rule);
+        context.textAlign = 'center'; context.fillStyle = '#a9d9e5'; context.font = `18px ${MESSAGE_FONT}`;
+        if (room) context.fillText(`${translate(ruleOption ? ruleOption.label : room.rule)} / ${translate('%1색', room.colorCount)}`, WIDTH / 2, 130);
+
+        [[me, 320, '나'], [opponent, 960, '상대']].forEach(([member, centerX, label]) => {
+            context.fillStyle = '#0b202c'; context.fillRect(centerX - 200, 200, 400, 260);
+            context.strokeStyle = '#3b6070'; context.lineWidth = 2; context.strokeRect(centerX - 200, 200, 400, 260);
+            context.textAlign = 'center'; context.fillStyle = '#8aa6af'; context.font = `16px ${BUTTON_FONT}`;
+            context.fillText(translate(label), centerX, 240);
+            if (member) {
+                context.fillStyle = '#f5fbfc'; context.font = `28px ${BUTTON_FONT}`;
+                context.fillText(member.nickname, centerX, 316);
+                context.fillStyle = '#f7c843'; context.font = `20px ${NUMBER_FONT}`;
+                context.fillText(`WIN POINT ${Number(member.winPoint || 0).toLocaleString()}`, centerX, 372);
+            } else {
+                context.fillStyle = '#6f858e'; context.font = `20px ${MESSAGE_FONT}`;
+                context.fillText(translate('상대를 기다리는 중...'), centerX, 330);
+            }
+        });
+
+        // 참여자가 없는 동안에도 버튼은 보이되 잠긴 상태로 둔다.
+        if (onlineRoom?.youAreHost) {
+            const ready = Boolean(opponent);
+            drawOnlineButton(getOnlineStartButtonBounds(), '시작', ready ? '#ef5350' : '#5d3a3a', ready && onlineRoomFocus === 1, 22);
+        }
+        if (onlinePrepare) drawOnlinePrepareOverlay();
+    }
+
+    /**
+     * 게임 시작 전 3초 동안 화면을 음영 처리한다.
+     * 이 사이에 누군가 나가면 서버가 game_cancel을 보내 음영이 풀린다.
+     * @returns {void}
+     */
+    function drawOnlinePrepareOverlay() {
+        context.fillStyle = 'rgba(3, 11, 19, 0.72)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `36px ${TITLE_FONT}`;
+        context.fillText(translate('곧 게임이 시작됩니다.'), WIDTH / 2, HEIGHT / 2);
+    }
+
+    /**
+     * 온라인 대전 결과 화면 가운데에 서버가 확정한 승패와 WIN POINT 변화를 그린다.
+     * 승패·WIN POINT 계산은 서버만 하므로 받은 값을 그대로 보여 준다.
+     * @param {number} centerY 패널의 세로 중심 좌표
+     * @returns {void}
+     */
+    function drawOnlineMatchPanel(y) {
+        const x = 482;
+        const width = 316;
+        const height = 150;
+        context.fillStyle = 'rgba(7, 22, 33, 0.72)'; context.fillRect(x, y, width, height);
+        context.strokeStyle = '#3b6070'; context.lineWidth = 2; context.strokeRect(x, y, width, height);
+        const rows = [
+            { name: game.players[0].name, winPoint: onlineSession?.winPoint ?? 0, color: '#ef8aa0' },
+            { name: game.players[1].name, winPoint: Number(game.online?.opponent?.winPoint || 0), color: '#7fd3e8' }
+        ];
+        rows.forEach((row, index) => {
+            const rowY = y + 52 + index * 56;
+            context.textAlign = 'left'; context.fillStyle = row.color; context.font = `20px ${BUTTON_FONT}`;
+            context.fillText(row.name, x + 20, rowY);
+            context.textAlign = 'right'; context.fillStyle = '#f7c843'; context.font = `15px ${NUMBER_FONT}`;
+            context.fillText(`WIN POINT ${row.winPoint.toLocaleString()}`, x + width - 20, rowY + 22);
+        });
+    }
+
+    /**
+     * 온라인 대전 결과 화면 가운데에 서버가 확정한 승패와 WIN POINT 변화를 그린다.
+     * @param {number} centerY 패널의 세로 중심 좌표
+     * @returns {void}
+     */
+    function drawOnlineResultPanel(centerY) {
+        context.textAlign = 'center';
+        // 패배 연출이 서버 판정보다 먼저 끝나면 결과가 아직 없을 수 있다.
+        if (!onlineResult) {
+            context.fillStyle = '#b8dbe2'; context.font = `20px ${MESSAGE_FONT}`;
+            context.fillText(translate('결과를 기다리는 중...'), WIDTH / 2, centerY);
+            return;
+        }
+        const resultLabel = onlineResult.result === 'win' ? '승리' : onlineResult.result === 'lose' ? '패배' : '무승부';
+        context.fillStyle = onlineResult.result === 'win' ? '#f7c843' : '#d8f2f5';
+        context.font = `34px ${TITLE_FONT}`;
+        context.fillText(translate(resultLabel), WIDTH / 2, centerY - 40);
+        context.fillStyle = onlineResult.delta > 0 ? '#4cc9b0' : onlineResult.delta < 0 ? '#ef5350' : '#b8dbe2';
+        context.font = `26px ${NUMBER_FONT}`;
+        context.fillText(`${onlineResult.delta > 0 ? '+' : ''}${onlineResult.delta}`, WIDTH / 2, centerY + 10);
+        context.fillStyle = '#f7c843'; context.font = `20px ${NUMBER_FONT}`;
+        context.fillText(`WIN POINT ${onlineResult.winPoint.toLocaleString()}`, WIDTH / 2, centerY + 50);
+    }
+
+    /*
+     * 온라인 플레이 화면의 키보드·마우스 처리다.
+     * 입력칸과 버튼 모두 방향키로 옮기고 엔터로 고르며, 마우스 클릭으로도 같은 동작을 한다. (설정 화면과 같은 방식)
+     */
+
+    /**
+     * 로그인·회원가입 화면에서 포커스된 항목을 실행한다.
+     * @returns {void}
+     */
+    function activateOnlineFormFocus() {
+        if (!onlineForm) return;
+        const fieldCount = onlineForm.fields.length;
+        if (onlineForm.focus < fieldCount) {
+            // 입력칸에서 엔터를 누르면 편집을 시작한다.
+            onlineForm.editing = true;
+            onlineForm.cursor = Array.from(onlineForm.fields[onlineForm.focus].value).length;
+            return;
+        }
+        const button = onlineForm.buttons[onlineForm.focus - fieldCount];
+        if (!button) return;
+        if (button.key === 'cancel') {
+            playMenuCancelSound();
+            if (onlineForm.mode === 'signup') openOnlineLogin();
+            else exitOnlinePlay();
+            return;
+        }
+        if (button.key === 'signup' && onlineForm.mode === 'login') { playMenuSelectSound(); openOnlineSignup(); return; }
+        if (button.key === 'signup') { void submitOnlineSignup(); return; }
+        if (button.key === 'login') void submitOnlineLogin();
+    }
+
+    /**
+     * 로그인·회원가입 화면의 키 입력을 처리한다.
+     * @param {KeyboardEvent} event 키보드 이벤트
+     * @param {string} key 소문자 키 이름
+     * @returns {void}
+     */
+    function handleOnlineFormKeydown(event, key) {
+        if (!onlineForm) return;
+        const fieldCount = onlineForm.fields.length;
+        const focusCount = fieldCount + onlineForm.buttons.length;
+        const field = onlineForm.focus < fieldCount ? onlineForm.fields[onlineForm.focus] : null;
+
+        // 입력칸을 편집하는 중에는 문자 입력이 우선이다.
+        if (onlineForm.editing && field) {
+            event.preventDefault();
+            const characters = Array.from(field.value);
+            if (key === 'enter' || key === 'escape') { onlineForm.editing = false; return; }
+            if (key === 'arrowleft') { onlineForm.cursor = Math.max(0, onlineForm.cursor - 1); return; }
+            if (key === 'arrowright') { onlineForm.cursor = Math.min(characters.length, onlineForm.cursor + 1); return; }
+            if (key === 'home') { onlineForm.cursor = 0; return; }
+            if (key === 'end') { onlineForm.cursor = characters.length; return; }
+            if (key === 'arrowup' || key === 'arrowdown') {
+                onlineForm.editing = false;
+                onlineForm.focus = (onlineForm.focus + (key === 'arrowup' ? -1 : 1) + focusCount) % focusCount;
+                return;
+            }
+            if (key === 'backspace') {
+                if (onlineForm.cursor > 0) {
+                    characters.splice(onlineForm.cursor - 1, 1);
+                    field.value = characters.join('');
+                    onlineForm.cursor -= 1;
+                }
+                return;
+            }
+            if (key === 'delete') {
+                characters.splice(onlineForm.cursor, 1);
+                field.value = characters.join('');
+                return;
+            }
+            // 아이디·닉네임·비밀번호 모두 한 글자 키 입력만 받는다. 길이 상한은 규칙의 최대 길이와 같다.
+            if (!event.ctrlKey && !event.altKey && event.key.length === 1 && characters.length < 30) {
+                characters.splice(onlineForm.cursor, 0, event.key);
+                field.value = characters.join('');
+                onlineForm.cursor += 1;
+                onlineForm.error = null;
+            }
+            return;
+        }
+
+        if (key === 'escape') {
+            playMenuCancelSound();
+            if (onlineForm.mode === 'signup') openOnlineLogin();
+            else exitOnlinePlay();
+            return;
+        }
+        if (key === 'enter' || key === ' ') { activateOnlineFormFocus(); return; }
+        if (key === 'arrowup' || key === 'arrowleft') { onlineForm.focus = (onlineForm.focus - 1 + focusCount) % focusCount; return; }
+        if (key === 'arrowdown' || key === 'arrowright') { onlineForm.focus = (onlineForm.focus + 1) % focusCount; return; }
+        // 입력칸에 포커스가 있을 때 글자를 누르면 바로 편집을 시작해 그 글자부터 입력한다.
+        if (field && !event.ctrlKey && !event.altKey && event.key.length === 1) {
+            onlineForm.editing = true;
+            onlineForm.cursor = Array.from(field.value).length;
+            handleOnlineFormKeydown(event, key);
+        }
+    }
+
+    /**
+     * 로그인·회원가입 화면의 클릭을 처리한다.
+     * @param {number} x 논리 X 좌표
+     * @param {number} y 논리 Y 좌표
+     * @returns {void}
+     */
+    function handleOnlineFormClick(x, y) {
+        if (!onlineForm) return;
+        const fieldIndex = onlineForm.fields.findIndex((field, index) => {
+            const bounds = getOnlineFormFieldBounds(index);
+            return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+        });
+        if (fieldIndex >= 0) {
+            onlineForm.focus = fieldIndex;
+            onlineForm.editing = true;
+            onlineForm.cursor = Array.from(onlineForm.fields[fieldIndex].value).length;
+            return;
+        }
+        const buttonIndex = onlineForm.buttons.findIndex((button, index) => {
+            const bounds = getOnlineFormButtonBounds(index);
+            return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+        });
+        if (buttonIndex >= 0) {
+            onlineForm.editing = false;
+            onlineForm.focus = onlineForm.fields.length + buttonIndex;
+            activateOnlineFormFocus();
+        }
+    }
+
+    /**
+     * 방 생성 팝업을 연다. 기본값은 4색·기본 룰이다.
+     * @returns {void}
+     */
+    function openOnlineCreatePopup() {
+        onlineCreatePopup = { rule: 'standard', colorCount: 4, focus: 0, action: 0 };
+    }
+
+    /**
+     * 방 생성 팝업을 닫고 대기실로 돌아간다.
+     * @returns {void}
+     */
+    function closeOnlineCreatePopup() {
+        onlineCreatePopup = null;
+    }
+
+    /**
+     * 팝업에서 고른 규칙·색상 수로 방 생성을 요청한다. 성공하면 서버가 보내는 room_state로 방에 들어간다.
+     * @returns {void}
+     */
+    function submitOnlineCreateRoom() {
+        if (!onlineCreatePopup) return;
+        playMenuSelectSound();
+        sendOnlineMessage({ type: 'room_create', rule: onlineCreatePopup.rule, colorCount: onlineCreatePopup.colorCount });
+        closeOnlineCreatePopup();
+    }
+
+    /**
+     * 방 생성 팝업의 키 입력을 처리한다.
+     * @param {string} key 소문자 키 이름
+     * @returns {void}
+     */
+    function handleOnlineCreatePopupKeydown(key) {
+        if (!onlineCreatePopup) return;
+        if (key === 'escape') { playMenuCancelSound(); closeOnlineCreatePopup(); return; }
+        if (key === 'arrowup') { onlineCreatePopup.focus = Math.max(0, onlineCreatePopup.focus - 1); return; }
+        if (key === 'arrowdown') { onlineCreatePopup.focus = Math.min(2, onlineCreatePopup.focus + 1); return; }
+        if (key === 'enter' || key === ' ') {
+            if (onlineCreatePopup.focus < 2) { onlineCreatePopup.focus += 1; return; }
+            if (onlineCreatePopup.action === 0) submitOnlineCreateRoom();
+            else { playMenuCancelSound(); closeOnlineCreatePopup(); }
+            return;
+        }
+        if (key !== 'arrowleft' && key !== 'arrowright') return;
+        const direction = key === 'arrowleft' ? -1 : 1;
+        if (onlineCreatePopup.focus === 0) {
+            const index = DIFFICULTIES.findIndex((difficulty) => difficulty.colors.length === onlineCreatePopup.colorCount);
+            const nextIndex = Math.max(0, Math.min(DIFFICULTIES.length - 1, index + direction));
+            onlineCreatePopup.colorCount = DIFFICULTIES[nextIndex].colors.length;
+            return;
+        }
+        if (onlineCreatePopup.focus === 1) {
+            // 잠긴 "피버 룰 (시작)"은 건너뛴다. 잠금 기준은 오프라인과 같다.
+            const index = ONLINE_ROOM_RULE_OPTIONS.findIndex((option) => option.key === onlineCreatePopup.rule);
+            for (let next = index + direction; next >= 0 && next < ONLINE_ROOM_RULE_OPTIONS.length; next += direction) {
+                const option = ONLINE_ROOM_RULE_OPTIONS[next];
+                if (option.key === 'feverStart' && !isFeverStartRuleUnlocked()) continue;
+                onlineCreatePopup.rule = option.key;
+                return;
+            }
+            return;
+        }
+        onlineCreatePopup.action = onlineCreatePopup.action === 0 ? 1 : 0;
+    }
+
+    /**
+     * 방 생성 팝업의 클릭을 처리한다.
+     * @param {number} x 논리 X 좌표
+     * @param {number} y 논리 Y 좌표
+     * @returns {void}
+     */
+    function handleOnlineCreatePopupClick(x, y) {
+        if (!onlineCreatePopup) return;
+        const colorIndex = DIFFICULTIES.findIndex((difficulty, index) => {
+            const bounds = getOnlineCreateColorButtonBounds(index);
+            return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+        });
+        if (colorIndex >= 0) { onlineCreatePopup.focus = 0; onlineCreatePopup.colorCount = DIFFICULTIES[colorIndex].colors.length; return; }
+        const ruleIndex = ONLINE_ROOM_RULE_OPTIONS.findIndex((option, index) => {
+            const bounds = getOnlineCreateRuleButtonBounds(index);
+            return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+        });
+        if (ruleIndex >= 0) {
+            const option = ONLINE_ROOM_RULE_OPTIONS[ruleIndex];
+            if (option.key === 'feverStart' && !isFeverStartRuleUnlocked()) return;
+            onlineCreatePopup.focus = 1;
+            onlineCreatePopup.rule = option.key;
+            return;
+        }
+        const actionIndex = [0, 1].find((index) => {
+            const bounds = getOnlineCreatePopupButtonBounds(index);
+            return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+        });
+        if (actionIndex === undefined) return;
+        onlineCreatePopup.focus = 2;
+        onlineCreatePopup.action = actionIndex;
+        if (actionIndex === 0) submitOnlineCreateRoom();
+        else { playMenuCancelSound(); closeOnlineCreatePopup(); }
+    }
+
+    /**
+     * 대기실에서 포커스된 항목을 실행한다.
+     * @returns {void}
+     */
+    function activateOnlineLobbyFocus() {
+        if (onlineLobbyFocus === 0) { playMenuCancelSound(); exitOnlinePlay(); return; }
+        if (onlineLobbyFocus === 1) { playMenuSelectSound(); openOnlineCreatePopup(); return; }
+        const room = onlineRooms[onlineLobbyFocus - ONLINE_LOBBY_ROOM_FOCUS_BASE];
+        if (!room) return;
+        playMenuSelectSound();
+        sendOnlineMessage({ type: 'room_join', roomId: room.id });
+    }
+
+    /**
+     * 대기실 화면의 키 입력을 처리한다.
+     * @param {string} key 소문자 키 이름
+     * @returns {void}
+     */
+    function handleOnlineLobbyKeydown(key) {
+        if (onlineCreatePopup) { handleOnlineCreatePopupKeydown(key); return; }
+        if (key === 'escape') { playMenuCancelSound(); exitOnlinePlay(); return; }
+        if (key === 'enter' || key === ' ') { activateOnlineLobbyFocus(); return; }
+        const lastFocus = ONLINE_LOBBY_ROOM_FOCUS_BASE + onlineRooms.length - 1;
+        if (key === 'arrowleft' || key === 'arrowright') {
+            // 상단 두 버튼 사이만 좌우로 오간다.
+            if (onlineLobbyFocus <= 1) onlineLobbyFocus = onlineLobbyFocus === 0 ? 1 : 0;
+            return;
+        }
+        if (key !== 'arrowup' && key !== 'arrowdown') return;
+        const direction = key === 'arrowup' ? -1 : 1;
+        onlineLobbyFocus = Math.max(0, Math.min(Math.max(1, lastFocus), onlineLobbyFocus + direction));
+        // 포커스가 화면 밖으로 나가면 목록을 스크롤한다.
+        const roomIndex = onlineLobbyFocus - ONLINE_LOBBY_ROOM_FOCUS_BASE;
+        if (roomIndex >= 0) {
+            if (roomIndex < onlineLobbyScroll) onlineLobbyScroll = roomIndex;
+            else if (roomIndex >= onlineLobbyScroll + ONLINE_LOBBY_VISIBLE_ROOMS) onlineLobbyScroll = roomIndex - ONLINE_LOBBY_VISIBLE_ROOMS + 1;
+        }
+    }
+
+    /**
+     * 대기실 화면의 클릭을 처리한다.
+     * @param {number} x 논리 X 좌표
+     * @param {number} y 논리 Y 좌표
+     * @returns {void}
+     */
+    function handleOnlineLobbyClick(x, y) {
+        if (onlineCreatePopup) { handleOnlineCreatePopupClick(x, y); return; }
+        const exitBounds = getOnlineExitButtonBounds();
+        if (x >= exitBounds.x && x <= exitBounds.x + exitBounds.width && y >= exitBounds.y && y <= exitBounds.y + exitBounds.height) {
+            onlineLobbyFocus = 0;
+            activateOnlineLobbyFocus();
+            return;
+        }
+        const createBounds = getOnlineCreateButtonBounds();
+        if (x >= createBounds.x && x <= createBounds.x + createBounds.width && y >= createBounds.y && y <= createBounds.y + createBounds.height) {
+            onlineLobbyFocus = 1;
+            activateOnlineLobbyFocus();
+            return;
+        }
+        const visibleRooms = onlineRooms.slice(onlineLobbyScroll, onlineLobbyScroll + ONLINE_LOBBY_VISIBLE_ROOMS);
+        const visibleIndex = visibleRooms.findIndex((room, index) => {
+            const bounds = getOnlineRoomRowBounds(index);
+            return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
+        });
+        if (visibleIndex < 0) return;
+        onlineLobbyFocus = ONLINE_LOBBY_ROOM_FOCUS_BASE + onlineLobbyScroll + visibleIndex;
+        activateOnlineLobbyFocus();
+    }
+
+    /**
+     * 방에서 나간다. 방장이 나가면 서버가 참여자에게 방장 권한을 넘긴다.
+     * @returns {void}
+     */
+    function leaveOnlineRoom() {
+        playMenuCancelSound();
+        sendOnlineMessage({ type: 'room_leave' });
+        openOnlineLobby();
+    }
+
+    /**
+     * 방장이 게임 시작을 요청한다. 실제 시작 시점은 서버가 정한다.
+     * @returns {void}
+     */
+    function requestOnlineGameStart() {
+        if (!onlineRoom?.youAreHost || !onlineRoom.room?.guest) return;
+        playMenuSelectSound();
+        sendOnlineMessage({ type: 'game_start_request' });
+    }
+
+    /**
+     * 방 화면의 키 입력을 처리한다.
+     * @param {string} key 소문자 키 이름
+     * @returns {void}
+     */
+    function handleOnlineRoomKeydown(key) {
+        // 시작 준비(음영처리) 중에는 조작을 받지 않는다.
+        if (onlinePrepare) return;
+        if (key === 'escape') { leaveOnlineRoom(); return; }
+        if (key === 'enter' || key === ' ') {
+            if (onlineRoomFocus === 0) leaveOnlineRoom();
+            else requestOnlineGameStart();
+            return;
+        }
+        if (!['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) return;
+        // 참여자가 없으면 시작 버튼은 잠긴 상태이므로 포커스를 받지 않는다.
+        const canStart = Boolean(onlineRoom?.youAreHost && onlineRoom.room?.guest);
+        if (!canStart) { onlineRoomFocus = 0; return; }
+        onlineRoomFocus = onlineRoomFocus === 0 ? 1 : 0;
+    }
+
+    /**
+     * 방 화면의 클릭을 처리한다.
+     * @param {number} x 논리 X 좌표
+     * @param {number} y 논리 Y 좌표
+     * @returns {void}
+     */
+    function handleOnlineRoomClick(x, y) {
+        if (onlinePrepare) return;
+        const exitBounds = getOnlineExitButtonBounds();
+        if (x >= exitBounds.x && x <= exitBounds.x + exitBounds.width && y >= exitBounds.y && y <= exitBounds.y + exitBounds.height) {
+            onlineRoomFocus = 0;
+            leaveOnlineRoom();
+            return;
+        }
+        if (!onlineRoom?.youAreHost || !onlineRoom.room?.guest) return;
+        const startBounds = getOnlineStartButtonBounds();
+        if (x >= startBounds.x && x <= startBounds.x + startBounds.width && y >= startBounds.y && y <= startBounds.y + startBounds.height) {
+            onlineRoomFocus = 1;
+            requestOnlineGameStart();
         }
     }
 
@@ -2304,6 +3606,9 @@
         if (menuScreen === 'title' && watchSelectionOpen) return `watch:${watchSelectionFocus}:${watchDifficulty}:${watchRule}:${watchSelectedAction}`;
         if (menuScreen === 'title' && togetherModeSelectionOpen) return `togetherMode:${togetherModeSelectionFocus}`;
         if (menuScreen === 'togetherGuide') return `togetherGuide:${togetherGuideFocus}:${togetherRule}:${togetherDifficulty}:${togetherGuideAction}`;
+        if (menuScreen === 'onlineLogin' || menuScreen === 'onlineSignup') return `onlineForm:${onlineForm?.mode}:${onlineForm?.focus}:${onlineForm?.editing}`;
+        if (menuScreen === 'onlineLobby') return `onlineLobby:${onlineLobbyFocus}:${onlineLobbyScroll}:${onlineCreatePopup ? `${onlineCreatePopup.focus}:${onlineCreatePopup.rule}:${onlineCreatePopup.colorCount}:${onlineCreatePopup.action}` : 'none'}`;
+        if (menuScreen === 'onlineRoom') return `onlineRoom:${onlineRoomFocus}`;
         if (menuScreen === 'title') return `title:${titleMenuFocus}`;
         if (menuScreen === 'opponent') return `opponent:${opponentMenuFocus}:${selectedDifficulty}:${selectedAiDifficulty}:${selectedOpponent}:${selectedOpponentAction}`;
         if (menuScreen === 'practiceDifficulty') return `difficulty:${colorSelectionFocus}:${selectedDifficulty}`;
@@ -3026,8 +4331,8 @@
 
     /** 현재 사용자 게임이 API 학습 전송 대상인지 확인한다. @returns {boolean} 전송 대상이면 true */
     function shouldSendLearningEvent() {
-        // "너랑 나랑"은 AI 모델 관련 기능을 쓰지 않으므로 역방향 학습 전송에서도 제외한다.
-        return Boolean(learningApiConfig && game && !game.tutorial && !game.watch && !game.together && game.players?.[0]?.controller === null);
+        // "너랑 나랑"과 온라인 플레이는 AI 모델 관련 기능을 쓰지 않으므로 역방향 학습 전송에서도 제외한다.
+        return Boolean(learningApiConfig && game && !game.tutorial && !game.watch && !game.together && !game.online && game.players?.[0]?.controller === null);
     }
 
     /**
@@ -3583,6 +4888,14 @@
      * @returns {void}
      */
     function ensurePairQueue(requiredPosition) {
+        // 온라인 대전은 서버가 정한 덱만 쓴다. 여기서 무작위로 만들면 양쪽 화면이 어긋나므로,
+        // 덱을 다 쓰면 앞에서부터 다시 사용해 양쪽이 언제나 같은 뿌요를 받게 한다.
+        if (game.online) {
+            const deckLength = game.pairQueue.length;
+            if (deckLength === 0) return;
+            while (game.pairQueue.length <= requiredPosition) game.pairQueue.push([...game.pairQueue[game.pairQueue.length % deckLength]]);
+            return;
+        }
         while (game.pairQueue.length <= requiredPosition) game.pairQueue.push(createRandomPair(game.pairQueueColors));
     }
 
@@ -4175,6 +5488,8 @@
         if (!canPlace(player, candidate)) return false;
         player.active = candidate;
         recordReplayInput(player, REPLAY_INPUT.move, horizontal);
+        // 온라인 대전에서는 내 조작을 서버로 보내 상대 화면에도 같은 조작이 적용되게 한다.
+        sendOnlineInput(player, horizontal < 0 ? 'left' : 'right', horizontal);
         return true;
     }
 
@@ -4193,6 +5508,7 @@
             player.active = candidate;
             playSound(commonSoundPool?.puyoRotate, 'effects', '뿌요 회전 효과음');
             recordReplayInput(player, REPLAY_INPUT.rotate, direction);
+            sendOnlineInput(player, direction < 0 ? 'rotateLeft' : 'rotateRight', direction);
             return true;
         }
         const horizontalKick = candidate.rotation === 1 ? -1 : candidate.rotation === 3 ? 1 : 0;
@@ -4202,6 +5518,7 @@
             player.active = kicked;
             playSound(commonSoundPool?.puyoRotate, 'effects', '뿌요 회전 효과음');
             recordReplayInput(player, REPLAY_INPUT.rotate, direction);
+            sendOnlineInput(player, direction < 0 ? 'rotateLeft' : 'rotateRight', direction);
             return true;
         }
         const flipped = { ...player.active, rotation: (player.active.rotation + direction * 2 + 4) % 4 };
@@ -5789,8 +7106,8 @@
      * @returns {void}
      */
     function recordEnemyClear(winner) {
-        // "너랑 나랑"은 적이 없으므로 적 진행도를 저장하지 않는다.
-        if (game.practice || game.watch || game.together || winner !== game.players[0]) return;
+        // "너랑 나랑"과 온라인 플레이는 적이 없으므로 적 진행도를 저장하지 않는다.
+        if (game.practice || game.watch || game.together || game.online || winner !== game.players[0]) return;
         const enemyController = game.players[1].controller;
         const enemyClassName = enemyController.constructor.name;
         unlockGalleryEnemy(enemyController.getClassType());
@@ -5889,8 +7206,8 @@
     /** 종료된 현재 게임에서 지급할 GOLD를 계산한다. @returns {number} 지급 GOLD */
     function calculateCurrentGameGoldReward() {
         const player = game?.players?.[0];
-        // "너랑 나랑"은 진행도와 마찬가지로 GOLD 지급 대상이 아니다.
-        if (!player || game.watch || game.puzzle || game.together || (!game.practice && game.winner !== player)) return 0;
+        // "너랑 나랑"과 온라인 플레이는 진행도와 마찬가지로 GOLD 지급 대상이 아니다.
+        if (!player || game.watch || game.puzzle || game.together || game.online || (!game.practice && game.winner !== player)) return 0;
         const soloMode = game.practice === true;
         const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key || 'normal';
         const difficultyBonus = soloMode ? 1 : (AI_DIFFICULTY_GOLD_BONUSES[difficultyKey] || 1);
@@ -6077,6 +7394,8 @@
      */
     function updateDefeatSequence(delta) {
         const ending = game.ending;
+        // 온라인 대전은 패배가 확정되는 즉시 서버에 보고한다. 중복 전송은 defeatSent가 막는다.
+        reportOnlineDefeat(ending.loser);
         ending.elapsed += delta;
         // 승자의 연쇄 단계는 계속 갱신한다. 그 밖의 단계에서도 싹쓸이 효과와 예약 공격을
         // 별도로 진행한다. 시작 시점의 스냅샷에 의존하지 않고 매 프레임 정산 상태를 확인해야
@@ -7258,6 +8577,9 @@
         } else if (game.together) {
             // "너랑 나랑"은 적이 없으므로 초상화 자리에 두 사람의 승패 현황을 표시한다.
             drawTogetherRecordPanel(305);
+        } else if (game.online) {
+            // 온라인 대전도 적 컨트롤러가 없으므로 초상화 자리에 양측 닉네임과 WIN POINT를 표시한다.
+            drawOnlineMatchPanel(305);
         } else {
             right.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, getEnemyPortraitExpression(right, left));
         }
@@ -7277,8 +8599,8 @@
 
     /** 가상 컨트롤러를 표시할 수 있는 게임 진행 상태인지 확인한다. @returns {boolean} */
     function shouldShowVirtualController() {
-        // "너랑 나랑"은 두 사람이 키보드·게임패드를 나눠 쓰므로 가상 컨트롤러를 지원하지 않는다.
-        return Boolean(game && !game.tutorial && !game.together && !game.replayPlayback && game.running && !game.paused && !game.ending && game.countdown <= 0 && store.settings.virtualController !== 'none');
+        // "너랑 나랑"은 두 사람이 키보드·게임패드를 나눠 쓰므로 가상 컨트롤러를 지원하지 않는다. 온라인 플레이도 같게 제외한다.
+        return Boolean(game && !game.tutorial && !game.together && !game.online && !game.replayPlayback && game.running && !game.paused && !game.ending && game.countdown <= 0 && store.settings.virtualController !== 'none');
     }
 
     /** 선택된 가상 컨트롤러의 렌더링·입력 배율을 반환한다. @returns {number} */
@@ -7636,6 +8958,8 @@
         const enemy = game.players[1];
         // "너랑 나랑"은 적 초상화 대신 누적 승수를 결과 화면에서도 이어서 보여 준다.
         if (game.together) drawTogetherRecordPanel(400);
+        // 온라인 대전도 적 컨트롤러가 없으므로 초상화 대신 서버가 확정한 WIN POINT 변화를 보여 준다.
+        else if (game.online) drawOnlineResultPanel(380);
         else if (!game.puzzle && enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
         context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
         context.fillText(translate('게임 시간 %1초', Math.floor(game.elapsed / 1000)), WIDTH / 2, 145);
@@ -10392,7 +11716,9 @@
             return;
         }
         if (option.key === 'online') {
-            // TODO: 온라인 플레이 로그인·대기실·대전 기능 구현 뒤 이 분기에 화면 전환을 추가한다.
+            playMenuSelectSound();
+            closeTogetherModeSelection();
+            openOnlineLogin();
             return;
         }
         playMenuSelectSound();
@@ -11175,6 +12501,9 @@
             else if (menuScreen === 'simulator' && simulator) drawSimulator();
             else if (menuScreen === 'settings' && settingsDraft) drawSettings();
             else if (menuScreen === 'gallery' && gallery) drawGallery();
+            else if (menuScreen === 'onlineLogin' || menuScreen === 'onlineSignup') drawOnlineForm();
+            else if (menuScreen === 'onlineLobby') drawOnlineLobby();
+            else if (menuScreen === 'onlineRoom') drawOnlineRoom();
             else drawMenu();
             drawPlayerNamePrompt();
         } else if (game.tutorial) {
@@ -11717,6 +13046,15 @@
         stopBackgroundMusic();
         releaseGameOnnxModels(finishedGame);
         game = null;
+        // 온라인 대전은 방이 그대로 유지되므로 메인 메뉴가 아니라 방 화면으로 돌아간다.
+        // 다시 대전하려면 방장이 방에서 "시작"을 다시 누른다.
+        if (finishedGame.online) {
+            onlineResult = null;
+            if (onlineRoom) { menuScreen = 'onlineRoom'; onlineRoomFocus = 0; }
+            else if (onlineSession) openOnlineLobby();
+            else { menuScreen = 'title'; loadNotice(); }
+            return;
+        }
         if (returnToPuzzleStages) openPuzzleStageSelection(puzzleFocusIndex);
         else if (returnToTitle) { menuScreen = 'title'; loadNotice(); }
         else restoreOpponentMenuAfterResult(finishedGame);
@@ -11889,6 +13227,9 @@
             return;
         }
         if (playerNamePrompt) { handlePlayerNamePromptKeydown(event, key); return; }
+        if (!game && (menuScreen === 'onlineLogin' || menuScreen === 'onlineSignup')) { handleOnlineFormKeydown(event, key); return; }
+        if (!game && menuScreen === 'onlineLobby') { handleOnlineLobbyKeydown(key); return; }
+        if (!game && menuScreen === 'onlineRoom') { handleOnlineRoomKeydown(key); return; }
         if (!game && menuScreen === 'simulator') { handleSimulatorKeydown(key); return; }
         if (!game && menuScreen === 'gallery') { handleGalleryKeydown(key); return; }
         if (game?.tutorial) {
@@ -12030,7 +13371,11 @@
             if (togetherControl && TOGETHER_HOLD_ACTIONS.includes(togetherControl.action)) pressPlayerDirection(togetherControl.playerIndex, togetherControl.action);
         } else {
             if (key === 'arrowleft' || key === 'arrowright') pressPlayerDirection(0, key === 'arrowleft' ? 'left' : 'right');
-            if (key === 'arrowdown') pressPlayerDirection(0, 'down');
+            if (key === 'arrowdown') {
+                pressPlayerDirection(0, 'down');
+                // 빠른 하강은 누름과 뗌을 따로 보내야 상대 화면에서도 같은 구간만 빨리 떨어진다.
+                if (!event.repeat) sendOnlineInput(game.players[0], 'downStart');
+            }
         }
         if (game.countdown > 0) {
             return;
@@ -12041,7 +13386,8 @@
             return;
         }
         // 종료 연출이 아닐 때 ESC로 일시정지를 시작한다.
-        if (key === 'escape' && !game.ending) {
+        // 온라인 대전은 상대를 기다리게 할 수 없으므로 ESC로도 일시정지할 수 없다.
+        if (key === 'escape' && !game.ending && !game.online) {
             resetVirtualControllerInput();
             game.paused = true;
             pauseMenuFocus = 0;
@@ -12079,7 +13425,10 @@
             if (control && TOGETHER_HOLD_ACTIONS.includes(control.action)) releasePlayerDirection(control.playerIndex, control.action);
             return;
         }
-        if (key === 'arrowdown') releasePlayerDirection(0, 'down');
+        if (key === 'arrowdown') {
+            releasePlayerDirection(0, 'down');
+            if (game?.online) sendOnlineInput(game.players[0], 'downEnd');
+        }
         if (key === 'arrowleft' || key === 'arrowright') releasePlayerDirection(0, key === 'arrowleft' ? 'left' : 'right');
     }
 
@@ -12393,6 +13742,9 @@
         }
         // 실행 중인 게임 화면의 일반 클릭은 메뉴 동작으로 처리하지 않는다.
         if (game) return;
+        if (menuScreen === 'onlineLogin' || menuScreen === 'onlineSignup') { handleOnlineFormClick(x, y); return; }
+        if (menuScreen === 'onlineLobby') { handleOnlineLobbyClick(x, y); return; }
+        if (menuScreen === 'onlineRoom') { handleOnlineRoomClick(x, y); return; }
         if (menuScreen === 'title' && watchSelectionOpen) {
             const difficultyIndex = DIFFICULTIES.findIndex((difficulty, index) => {
                 const buttonX = getColorDifficultyButtonX(index);
@@ -12766,6 +14118,10 @@
             if (menuScreen === 'title' && watchSelectionOpen) return { screen: 'watch_select', playerCanControl: false };
             if (menuScreen === 'title' && togetherModeSelectionOpen) return { screen: 'together_mode_select', playerCanControl: false };
             if (menuScreen === 'togetherGuide') return { screen: 'together_guide', playerCanControl: false };
+            if (menuScreen === 'onlineLogin') return { screen: 'online_login', playerCanControl: false };
+            if (menuScreen === 'onlineSignup') return { screen: 'online_signup', playerCanControl: false };
+            if (menuScreen === 'onlineLobby') return { screen: 'online_lobby', playerCanControl: false };
+            if (menuScreen === 'onlineRoom') return { screen: 'online_room', playerCanControl: false };
             if (menuScreen === 'opponent') return { screen: opponentMenuRule !== 'standard' ? 'fever_opponent_select' : 'opponent_select', playerCanControl: false };
             if (menuScreen === 'practiceDifficulty') return { screen: 'practice_difficulty', playerCanControl: false };
             if (menuScreen === 'puzzleStage') return { screen: 'puzzle_stage_select', playerCanControl: false };
@@ -12882,7 +14238,8 @@
         return {
             ...state,
             replayPlayback: Boolean(game.replayPlayback),
-            together: game.together ? { rule: game.together.rule, wins: [...getTogetherWinCounts()] } : null
+            together: game.together ? { rule: game.together.rule, wins: [...getTogetherWinCounts()] } : null,
+            online: game.online ? { rule: game.online.rule, youAreHost: game.online.youAreHost, opponentNickname: game.online.opponent?.nickname ?? null } : null
         };
     }
 
@@ -13123,7 +14480,7 @@
         webMcpAbortController = new AbortController();
         const emptyInput = { type: 'object', properties: {}, additionalProperties: false };
         // getNowScreen()이 돌려줄 수 있는 화면 이름을 모두 담는다. 화면을 더하면 이 목록도 함께 고친다.
-        const screenNames = ['initial_title', 'main_menu', 'rule_select', 'watch_select', 'together_mode_select', 'together_guide', 'practice_difficulty', 'puzzle_stage_select', 'opponent_select', 'fever_opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'settings_resetting', 'gallery', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'];
+        const screenNames = ['initial_title', 'main_menu', 'rule_select', 'watch_select', 'together_mode_select', 'together_guide', 'online_login', 'online_signup', 'online_lobby', 'online_room', 'practice_difficulty', 'puzzle_stage_select', 'opponent_select', 'fever_opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'settings_resetting', 'gallery', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'];
         const modeNames = ['versus', 'together', 'practice', 'watch', 'continuous_fever', 'puzzle'];
         const ruleNames = ['standard', 'fever', 'fever_start', 'continuous_fever'];
         const playerCanControlSchema = { type: 'boolean', description: 'True only while the left human player (1P) controls an active pair. Always false in watch mode and during replay playback. In together mode it describes 1P only.' };
@@ -13247,6 +14604,11 @@
                 rule: { type: 'string', enum: TOGETHER_RULE_OPTIONS.map((option) => option.key) },
                 wins: { type: 'array', items: { type: 'integer', minimum: 0 }, minItems: 2, maxItems: 2 }
             }, required: ['rule', 'wins'] },
+            online: { type: ['object', 'null'], description: 'Online play state (two humans on different computers through this server), or null. youAreHost tells whether this client created the room.', properties: {
+                rule: { type: 'string', enum: ONLINE_ROOM_RULE_OPTIONS.map((option) => option.key) },
+                youAreHost: { type: 'boolean' },
+                opponentNickname: { type: ['string', 'null'] }
+            }, required: ['rule', 'youAreHost', 'opponentNickname'] },
             puzzle: puzzleSchema,
             fever: feverSchema,
             player: playerSchema,
@@ -13257,7 +14619,7 @@
         };
         const statusSchema = {
             type: 'object',
-            description: 'Match mode and rule, time and ATTACK scaling, both current, normal, and FEVER fields, scores, ATTACK and DAMAGE, all-clear tickets, upcoming pairs, warning puyos, FEVER, Puzzle Puyo, and together-mode state, and both active pairs. Board coordinates start at the bottom-left.',
+            description: 'Match mode and rule, time and ATTACK scaling, both current, normal, and FEVER fields, scores, ATTACK and DAMAGE, all-clear tickets, upcoming pairs, warning puyos, FEVER, Puzzle Puyo, together-mode and online-play state, and both active pairs. Board coordinates start at the bottom-left.',
             properties: statusProperties,
             // getNowGameStatus()는 모든 항목을 항상 채우므로 required도 properties 전체다.
             required: Object.keys(statusProperties)

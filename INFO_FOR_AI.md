@@ -711,6 +711,34 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 
 온라인 플레이 자체는 아직 구현하지 않았다. Node 서버 `nodeserver/server.js`와 Python 서버 `python/pythonserver.py`는 인증 없이 `GET /apis/onlineplayinfo`에 `{ "available": false }`를 응답한다. `puyow.js`는 초기화할 때 이 API를 조회하며, `false`이거나 API 호출에 실패하면 "너랑 나랑" 방식 선택지에서 온라인 플레이를 숨긴다. 나중에 서버가 `true`를 반환하면 선택지는 보이고 포커스를 받을 수 있지만, 온라인 로그인·대기실 구현 전까지 선택해도 화면 전환 없이 끝난다.
 
+### 온라인 플레이 세부 사양 결정 (2026-09-14, 문서 작업)
+
+`MAY_BE_LATER.md`의 온라인 플레이 항목에 "세부 결정 사항" 절을 더해, 구현 전에 정해야 했던 모호한 부분을 보편적인 온라인 대전 게임 방식으로 확정했다. 소스 코드는 바꾸지 않았으므로 BUILDNO와 패키지 버전은 53 그대로다. 온라인 플레이를 구현할 때는 이 절이 기준이며, 요점은 다음과 같다.
+
+- 로그인·가입은 HTTP POST(`/apis/onlineplay/signup`·`login`·`logout`), 대기실부터 게임까지는 WebSocket 하나(`/apis/onlineplay/socket`)를 유지한다. 방 목록은 폴링이 아니라 서버 푸시다. WebSocket은 추가 의존성 없이 RFC 6455 최소 구현을 `onlineplay.js`·`onlineplay.py`에 직접 만든다(python 서버에 라이브러리 설치를 요구하지 않기 위함, `bcrypt`만 pip 안내를 추가한다).
+- 로그인하면 서버가 메모리에만 두는 난수 세션 토큰을 발급하고, 클라이언트도 토큰을 저장소에 남기지 않는다. 연결 판정은 5초 ping·15초 무응답 기준이며 이 기준이 "상대방 연결 끊김" 판정도 겸한다.
+- 계정 디렉터리 이름은 ID 소문자, 닉네임 색인은 메모리에 만든다. 방 파일의 정본은 서버 메모리이고 파일은 스냅샷이라 서버 시작 시 `rooms/`를 비운다.
+- 게임 시작·뿌요 지급 덱·승패 확정·WIN POINT 계산은 서버가 한다. 조작은 각자 화면에 즉시 반영한 뒤 서버가 상대에게 중계하고, 패배 보고가 50ms 이내로 겹치면 무승부로 보아 WIN POINT를 바꾸지 않는다.
+- 온라인 대전은 리플레이를 기록하지 않으며, 진행도·GOLD·AI 학습 제외는 오프라인 "너랑 나랑"과 같다. 결과 화면은 "종료"만 두고 방 화면으로 돌아가며(방 유지), 재대전은 방장이 다시 "시작"을 누른다. 이 두 가지는 기존 "너랑 나랑" 결과 화면·리플레이 규칙과 달라지는 지점이므로 `MAY_BE_LATER.md` 최하단 "변경 사유"에도 적어 두었다.
+
+### 온라인 플레이 구현 (2026-09-14, BUILDNO 54)
+
+`MAY_BE_LATER.md`의 온라인 플레이를 실제로 구현했다. 계약은 그 문서의 "세부 결정 사항" 절을 그대로 따른다.
+
+**서버 상수** — Node는 `nodeserver/server.js` 상단의 `ONLINE_PLAY_ENABLED`, Python은 `SERVER_CONFIG["online_play_enabled"]` 하나로 기능 전체를 켜고 끈다. 기본값은 둘 다 꺼짐이며, 꺼져 있으면 `/apis/onlineplayinfo`가 `{"available": false}`를 응답하고 저장 디렉터리도 만들지 않는다. SSL은 Node가 `SSL_KEY_FILE`·`SSL_CERT_FILE`·`SSL_CA_FILE`, Python이 `SERVER_CONFIG`의 `ssl_cert_file`·`ssl_key_file`·`ssl_ca_file`을 쓰며, **필수 파일이 모두 실제로 존재할 때만** 그 포트를 HTTPS로 서비스하고 하나라도 없으면 조용히 HTTP로 내려간다. Node는 `https.createServer`, Python은 `ssl.SSLContext.wrap_socket`이라 인증서 파일 구성 방식이 서로 다르다. HTTPS로 서비스하면 WebSocket도 같은 포트라 자동으로 WSS가 된다.
+
+**백엔드 분리** — 구현은 `nodeserver/onlineplay.js`와 `python/onlineplay.py`에 있고, 기존 서버 파일은 모듈 연결(API 등록과 Upgrade 라우팅)만 최소로 고쳤다. WebSocket은 추가 의존성 없이 RFC 6455 최소 구현(핸드셰이크와 텍스트·핑·퐁·클로즈 프레임)을 두 파일에 직접 넣었다. Python은 `bcrypt`만 추가로 필요하며 `pythonserver.py` 상단 주석에 적어 두었다(지연 import라 기능을 끄면 설치하지 않아도 서버가 돈다).
+
+**프로토콜** — 가입·로그인·로그아웃만 HTTP POST(`/apis/onlineplay/signup`·`login`·`logout`)이고, 대기실부터 대전까지는 WebSocket 하나(`/apis/onlineplay/socket`)를 유지한다. 클라이언트→서버는 `auth`·`room_list`·`room_create`·`room_join`·`room_leave`·`game_start_request`·`input`·`chain_result`·`defeat`, 서버→클라이언트는 `auth_ok`·`room_list`·`room_state`·`room_closed`·`opponent_left`·`game_prepare`·`game_cancel`·`game_start`·`game_result`·`session_closed`·`error`·`opponent_input`·`opponent_chain`이다. **세 구현(두 서버와 `puyow.js`)이 같은 이름과 오류 코드를 쓰므로 하나를 바꾸면 셋 다 고쳐야 한다.**
+
+**저장** — 계정은 `[홈]/.puyowserver/account/<ID 소문자>/account.json`(`id`·`nickname`·`password`·`winPoint`·`createdAt`), 방은 `[홈]/.puyowserver/rooms/<방ID>.json`이다. 방의 정본은 서버 메모리이고 파일은 스냅샷이라 **서버 시작 시 방 디렉터리를 비운다**. 닉네임은 대소문자를 가려 디렉터리 이름으로 쓸 수 없으므로 시작할 때 계정을 한 번 읽어 메모리 색인을 만든다.
+
+**게임 쪽(`src/js/puyow.js`)** — 화면은 `menuScreen`의 `onlineLogin`·`onlineSignup`·`onlineLobby`·`onlineRoom`이고 `getNowScreen()` 이름은 `online_login`·`online_signup`·`online_lobby`·`online_room`이다(WebMCP `screenNames`에도 넣었다). 상태는 `onlineSession`·`onlineSocket`·`onlineRooms`·`onlineRoom`·`onlineForm`·`onlineCreatePopup`·`onlinePrepare`·`onlineResult`에 있으며 **토큰은 메모리에만 두고 저장소에 남기지 않는다**. 비밀번호는 `hashOnlinePassword()`가 sha256으로 한 번 해시해 보내는데, 평문 http에서는 `crypto.subtle`을 쓸 수 없으므로 `puyow.html`이 함께 불러오는 CryptoJS를 먼저 쓰고 Web Crypto는 대비책이다.
+
+**대전 진행** — `startOnlineGame()`이 `game.online = {rule, youAreHost, opponent, defeatSent}`을 만든다. 뿌요 지급 덱은 서버가 준 것을 `game.pairQueue`에 그대로 넣고, `ensurePairQueue()`는 온라인일 때 무작위 생성 대신 덱을 앞에서부터 다시 써서 양쪽이 언제나 같은 뿌요를 받게 한다. 내 조작은 `moveActive()`·`rotateActive()`와 아래 방향키 누름·뗌에서 `sendOnlineInput()`으로 보내고, 받은 상대 조작은 `applyPlayerControlAction()`과 방향 홀드로 우측 플레이어에 적용한다(그래서 `getPlayerInputIndex()`가 `game.online`에서도 1번 자리를 허용한다). 연쇄 결과(`opponent_chain`)는 **다시 적용하지 않는다** — 내 쪽 시뮬레이션이 이미 같은 값을 만들어 두 번 적용하면 공격이 두 배가 된다. 패배는 `updateDefeatSequence()`에서 `reportOnlineDefeat()`으로 한 번만 보고하고, 승패와 WIN POINT는 서버가 확정해 `game_result`로 돌려준다.
+
+**제외와 차이** — 진행도(`recordEnemyClear`), GOLD(`calculateCurrentGameGoldReward`), 역방향 학습(`shouldSendLearningEvent`), 가상 컨트롤러(`shouldShowVirtualController`)는 "너랑 나랑"과 같게 `game.online`도 제외한다. 리플레이는 기록하지 않으며 ESC 일시정지도 막는다. 결과 화면에서는 적 컨트롤러가 없으므로 `drawResultCenter()`가 초상화 대신 `drawOnlineResultPanel()`로 WIN POINT 변화를 그린다(이 분기를 빼면 이겼을 때 널 참조로 터진다). `closeResultScreen()`의 "종료"는 메인 메뉴가 아니라 방 화면으로 돌아가며, 재대전은 방장이 방에서 "시작"을 다시 누른다.
+
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.

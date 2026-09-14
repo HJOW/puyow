@@ -25,6 +25,8 @@
 # 
 # 의존성
 #     common.py
+#     onlineplay.py
+#     bcrypt  (온라인 플레이를 켠 경우에만 필요합니다. 설치: pip install bcrypt)
 
 # Puyo W 웹 서버 역할 뿐 아니라 학습 API 서버 역할도 수행한다.
 
@@ -34,6 +36,7 @@ import ipaddress
 import json
 import math
 import mimetypes
+import ssl
 import threading
 import traceback
 from datetime import datetime, timezone
@@ -48,6 +51,8 @@ from common import (
 	ROTATION_COUNT, action_to_placement, decode_observation_scalars, encode_observation_values,
 	is_legal_observation_action, terminal_reward, validate_observation,
 )
+# 온라인 플레이(계정·대기실·방·대전 중계) 구현은 이 파일에 두지 않고 onlineplay.py에 분리해 두었다.
+from onlineplay import OnlinePlayService
 
 
 # 서버 운영자가 이 컬렉션의 값을 수정해 포트와 인증 토큰을 설정한다.
@@ -57,6 +62,23 @@ SERVER_CONFIG = {
 	"learning_token": "change-this-token",
 	"model_path": Path(__file__).resolve().parent / "puyow" / "default.pt", # 실제 모델 파일을 지정
 	"max_body_size": 1024 * 1024,
+	# 온라인 플레이(계정·로그인·대기실·방·대전) 지원 여부다. 서버 운영자가 이 값만 바꿔 기능 전체를 켜고 끈다.
+	#   True  : /apis/onlineplayinfo 가 {"available": True} 를 응답하고, 온라인 플레이 HTTP API와
+	#           WebSocket 대전 중계를 모두 제공한다. 계정과 방 정보는 [홈디렉토리]/.puyowserver/ 아래에 저장된다.
+	#   False : 온라인 플레이 관련 요청을 일절 받지 않는다. 게임은 "너랑 나랑" 방식 선택에서 온라인 플레이 항목을 숨긴다.
+	"online_play_enabled": False,
+	# SSL(HTTPS) 인증서 파일의 전체 경로다. (모두 PEM 형식)
+	#   ssl_cert_file : 서버 인증서 파일      (필수)
+	#   ssl_key_file  : 개인 키 파일          (필수)
+	#   ssl_ca_file   : 중간 CA 체인 파일     (선택, 필요 없으면 빈 문자열로 둔다)
+	# 필수 파일이 모두 실제로 존재할 때에만 해당 포트를 HTTPS 로 서비스하며, 하나라도 비어 있거나
+	# 파일이 없으면 평소처럼 HTTP 로 서비스한다. (경로를 지정한 선택 파일이 없을 때도 HTTP 로 내려간다.)
+	# HTTPS 로 서비스하면 온라인 플레이 WebSocket 도 같은 포트를 쓰므로 자동으로 WSS(암호화)가 된다.
+	# 파이썬은 ssl.SSLContext.load_cert_chain(certfile, keyfile) 로 인증서를 읽으므로 node.js 서버와
+	# 파일 구성 방식이 다르다. 두 서버의 인증서 파일을 똑같이 맞출 수는 없으니 각 서버 주석을 따로 확인할 것.
+	"ssl_cert_file": "",
+	"ssl_key_file": "",
+	"ssl_ca_file": "",
 }
 
 # nodeserver/server.js와 동일하게 학습 API에서 접근을 차단할 경로 조각이다.
@@ -829,12 +851,16 @@ def local_model_info_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 
 
 def online_play_info_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str, Any]]:
-	"""온라인 플레이 기능이 아직 구현되지 않았음을 게임 클라이언트에 알린다."""
-	return HTTPStatus.OK, {"available": False}
+	"""이 서버가 온라인 플레이를 지원하는지 알린다. 응답값은 SERVER_CONFIG['online_play_enabled'] 하나로 결정된다."""
+	return HTTPStatus.OK, {"available": SERVER_CONFIG.get("online_play_enabled") is True}
+
+
+# 온라인 플레이 서비스다. online_play_enabled가 False면 저장 디렉터리도 만들지 않고 모든 요청을 거절한다.
+online_play_service = OnlinePlayService(SERVER_CONFIG.get("online_play_enabled") is True)
 
 
 # nodeserver/server.js의 apis 객체와 같은 역할을 하는 동적 API 등록 컬렉션이다.
-apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple[int, dict[str, Any]]]] = {"learning": learning_api, "localmodelinfo": local_model_info_api, "onlineplayinfo": online_play_info_api, "solomonlearning": solomon_learning_api}
+apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple[int, dict[str, Any]]]] = {"learning": learning_api, "localmodelinfo": local_model_info_api, "onlineplayinfo": online_play_info_api, "onlineplay": online_play_service.handle_api, "solomonlearning": solomon_learning_api}
 
 
 class PuyoRequestHandler(BaseHTTPRequestHandler):
@@ -900,6 +926,11 @@ class PuyoRequestHandler(BaseHTTPRequestHandler):
 				status, payload = HTTPStatus.INTERNAL_SERVER_ERROR, {"error": {"message": "Chat Completions 처리 중 오류가 발생했습니다.", "type": "server_error"}}
 			self._send_json(status, payload)
 			return
+		# 온라인 플레이 WebSocket 연결 요청은 일반 HTTP 응답 대신 소켓을 그대로 넘겨 처리한다.
+		# HTTPS로 서비스 중이면 이 연결도 그대로 WSS가 된다.
+		if path == "/apis/onlineplay/socket":
+			online_play_service.handle_upgrade(self)
+			return
 		# /apis/ 아래는 등록된 동적 API 이름으로 찾아 실행한다.
 		if path.startswith("/apis/"):
 			api_name = path[6:].split("/", 1)[0]
@@ -946,6 +977,35 @@ class PuyoRequestHandler(BaseHTTPRequestHandler):
 			self.wfile.write(data)
 
 
+# SSL 인증서 설정을 확인해 HTTPS 서비스에 사용할 SSLContext를 만든다.
+def create_ssl_context() -> ssl.SSLContext | None:
+	"""인증서 파일이 모두 갖춰졌을 때만 SSLContext를 만든다. 쓸 수 없으면 None을 돌려주어 HTTP로 서비스하게 한다."""
+	cert_file = str(SERVER_CONFIG.get("ssl_cert_file") or "")
+	key_file = str(SERVER_CONFIG.get("ssl_key_file") or "")
+	ca_file = str(SERVER_CONFIG.get("ssl_ca_file") or "")
+	# 인증서와 키 경로가 모두 지정되어야 HTTPS를 시도한다. 지정하지 않은 것은 설정하지 않은 것으로 본다.
+	if not cert_file or not key_file:
+		return None
+	# 경로를 적어 둔 파일은 모두 실제로 존재해야 한다. 지정했는데 없는 파일은 설정 실수이므로 HTTPS를 켜지 않는다.
+	required_files = [cert_file, key_file] + ([ca_file] if ca_file else [])
+	for file_path in required_files:
+		if not Path(file_path).is_file():
+			print(f"SSL 인증서 파일이 없어 HTTP로 서비스합니다 : {file_path}")
+			return None
+	try:
+		context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+		context.load_cert_chain(certfile=cert_file, keyfile=key_file)
+		# 중간 CA 체인을 따로 둔 경우에만 추가로 읽는다. 인증서 파일에 체인이 포함되어 있으면 지정할 필요가 없다.
+		if ca_file:
+			context.load_verify_locations(cafile=ca_file)
+		return context
+	except Exception:
+		# 파일은 있으나 권한·형식 문제로 읽지 못한 경우에도 서버는 HTTP로 계속 구동한다.
+		print("SSL 인증서 파일을 읽지 못해 HTTP로 서비스합니다.")
+		print(traceback.format_exc())
+		return None
+
+
 # 명령행 포트 설정을 읽고 ThreadingHTTPServer의 수명주기를 관리하는 실행 진입점이다.
 def main() -> None:
 	"""명령행 포트를 반영해 Python HTTP 서버를 시작한다."""
@@ -955,7 +1015,12 @@ def main() -> None:
 	# 명령행 인자가 있으면 우선하고, 없으면 SERVER_CONFIG의 기본 포트를 사용한다.
 	port = args.port if args.port is not None else SERVER_CONFIG["port"]
 	server = ThreadingHTTPServer(("", port), PuyoRequestHandler)
-	print(f"Server is running on port {port}.")
+	# 인증서가 모두 준비된 경우에만 수신 소켓을 TLS로 감싸 같은 포트를 HTTPS로 서비스한다.
+	ssl_context = create_ssl_context()
+	if ssl_context is not None:
+		server.socket = ssl_context.wrap_socket(server.socket, server_side=True)
+	scheme = "https" if ssl_context is not None else "http"
+	print(f"Server is running on port {port}. ({scheme})")
 	print(f"Web root: {Path(SERVER_CONFIG['web_root']).resolve()}")
 	try:
 		server.serve_forever()

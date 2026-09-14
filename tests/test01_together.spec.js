@@ -103,7 +103,7 @@ test('너랑 나랑 방식 선택은 온라인 플레이를 지원하지 않으�
   await expect.poll(currentScreen).toBe('together_guide');
 });
 
-test('너랑 나랑 방식 선택은 온라인 플레이를 지원하면 표시하고 선택해도 아직 화면을 바꾸지 않는다', async ({ page }) => {
+test('너랑 나랑 방식 선택은 온라인 플레이를 지원하면 표시하고 선택 시 로그인 화면으로 넘어간다', async ({ page }) => {
   await page.route('**/apis/onlineplayinfo', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ available: true }) });
   });
@@ -118,9 +118,18 @@ test('너랑 나랑 방식 선택은 온라인 플레이를 지원하면 표시�
   const onlineLabel = await translated(page, '온라인 플레이');
   await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), onlineLabel)).toBe(true);
 
+  // 온라인 플레이를 고르면 온라인 로그인 화면으로 넘어간다.
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_mode_select');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('online_login');
+  const loginLabels = await Promise.all([translated(page, '아이디'), translated(page, '비밀번호'), translated(page, '로그인'), translated(page, '가입')]);
+  for (const label of loginLabels) {
+    await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), label)).toBe(true);
+  }
+
+  // 로그인 화면에서 ESC는 온라인 플레이를 끝내고 메인 메뉴로 돌아간다.
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
 test('너랑 나랑 안내 화면은 조작키 안내와 규칙·색상 수 선택을 보여 준다', async ({ page }) => {

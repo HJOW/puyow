@@ -33,7 +33,8 @@ module.exports = {
                 "exclude" : [
                     '/node_modules/',
                     '/src/bundle/',
-                    '/src/js/ort.all.min.js'
+                    '/src/js/ort.all.min.js',
+                    '/src/js/crypto-js.min.js'
                 ],
                 "use" : {
                     "loader" : "babel-loader"
@@ -48,7 +49,7 @@ module.exports = {
         }),
         new ESLintPlugin({
             "extensions" : ["js", "mjs", "ts"],
-            "exclude" : ["node_modules", "three.min.js", "json5.min.js"]
+            "exclude" : ["node_modules", "three.min.js", "json5.min.js", "crypto-js.min.js"]
         }),
         new webpack.BannerPlugin({
             "banner" : `/** Shutting Stars

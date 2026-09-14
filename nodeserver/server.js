@@ -44,9 +44,12 @@ limitations under the License.
  */
 
 const http = require('http')
+const https = require('https');
 const crypto = require('crypto');
 const fs   = require('fs');
 const path = require('path');
+// 온라인 플레이(계정·대기실·방·대전 중계) 구현은 이 파일에 두지 않고 onlineplay.js 에 분리해 두었다.
+const onlinePlay = require('./onlineplay.js');
 
 /*
 로컬 게임 테스트를 위한 CORS 응답 헤더. 
@@ -70,6 +73,61 @@ const WEB_ROOT = path.join(PROJECT_ROOT, 'src');
 // 매개변수 검사
 if(process.argv.length >= 3) { // process.argv 배열 1, 2번은 예약되어 있음, 3번부터 매개변수가 들어오기 시작함
     PORT = parseInt(process.argv[2]); // 첫 번째 매개변수로 포트 입력
+}
+
+/*
+온라인 플레이(계정·로그인·대기실·방·대전) 지원 여부다. 서버 운영자가 이 값만 바꿔 기능 전체를 켜고 끈다.
+true  : /apis/onlineplayinfo 가 { "available": true } 를 응답하고, 온라인 플레이 HTTP API와
+        WebSocket 대전 중계를 모두 제공한다. 계정과 방 정보는 [홈디렉토리]/.puyowserver/ 아래에 저장된다.
+false : 온라인 플레이 관련 요청을 일절 받지 않는다. 게임은 "너랑 나랑" 방식 선택에서 온라인 플레이 항목을 숨긴다.
+*/
+const ONLINE_PLAY_ENABLED = false;
+
+/*
+SSL(HTTPS) 설정이다. 아래 세 상수에 인증서 파일의 전체 경로를 적는다. (모두 PEM 형식)
+    SSL_KEY_FILE  : 개인 키 파일          (필수)
+    SSL_CERT_FILE : 서버 인증서 파일      (필수)
+    SSL_CA_FILE   : 중간 CA 체인 파일     (선택, 필요 없으면 빈 문자열로 둔다)
+필수 파일이 모두 실제로 존재할 때에만 해당 포트를 HTTPS 로 서비스하며,
+하나라도 비어 있거나 파일이 없으면 평소처럼 HTTP 로 서비스한다. (경로를 지정한 선택 파일이 없을 때도 HTTP 로 내려간다.)
+HTTPS 로 서비스하면 온라인 플레이 WebSocket 도 같은 포트를 쓰므로 자동으로 WSS(암호화)가 된다.
+파이썬 서버는 ssl.SSLContext.load_cert_chain() 을 사용해 인증서 파일 구성 방식이 다르므로,
+두 서버의 인증서 파일을 똑같이 맞출 수는 없다. 각 서버의 주석을 따로 확인할 것.
+*/
+const SSL_KEY_FILE  = '';
+const SSL_CERT_FILE = '';
+const SSL_CA_FILE   = '';
+
+/**
+ * SSL 인증서 파일이 모두 갖춰졌는지 확인하고 https.createServer 에 넘길 옵션을 만든다.
+ * 필요한 파일이 하나라도 없거나 읽지 못하면 null 을 반환해 HTTP 로 서비스하게 한다.
+ * @returns {{key:Buffer, cert:Buffer, ca?:Buffer}|null} SSL 옵션 객체, HTTPS 를 쓸 수 없으면 null
+ */
+function loadSslOptions() {
+    // 키와 인증서 경로가 모두 지정되어야 HTTPS 를 시도한다. 지정하지 않은 것은 설정하지 않은 것으로 본다.
+    if(!SSL_KEY_FILE || !SSL_CERT_FILE) return null;
+
+    // 경로를 적어 둔 파일은 모두 실제로 존재해야 한다. 지정했는데 없는 파일은 설정 실수이므로 HTTPS 를 켜지 않는다.
+    const requiredFiles = [SSL_KEY_FILE, SSL_CERT_FILE];
+    if(SSL_CA_FILE) requiredFiles.push(SSL_CA_FILE);
+    for(let idx=0; idx<requiredFiles.length; idx++) {
+        const filePath = requiredFiles[idx];
+        if(!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+            console.log('SSL 인증서 파일이 없어 HTTP 로 서비스합니다 : ' + filePath);
+            return null;
+        }
+    }
+
+    try {
+        const options = { key: fs.readFileSync(SSL_KEY_FILE), cert: fs.readFileSync(SSL_CERT_FILE) };
+        if(SSL_CA_FILE) options.ca = fs.readFileSync(SSL_CA_FILE);
+        return options;
+    } catch(error) {
+        // 파일은 있으나 권한·형식 문제로 읽지 못한 경우에도 서버는 HTTP 로 계속 구동한다.
+        console.log('SSL 인증서 파일을 읽지 못해 HTTP 로 서비스합니다.');
+        console.error(error);
+        return null;
+    }
 }
 
 // 이 문구들이 들어간 URL은 서비스 되지 않음
@@ -771,11 +829,12 @@ async function localModelInfoApi() {
 }
 
 /**
- * 온라인 플레이 기능이 아직 구현되지 않았음을 게임 클라이언트에 알리는 API 핸들러다.
+ * 이 서버가 온라인 플레이를 지원하는지 게임 클라이언트에 알리는 API 핸들러다.
+ * 응답값은 서버 상단의 ONLINE_PLAY_ENABLED 상수 하나로 결정된다.
  * @returns {{available:boolean}} 온라인 플레이 사용 가능 여부
  */
 function onlinePlayInfoApi() {
-    return { available: false };
+    return { available: ONLINE_PLAY_ENABLED === true };
 }
 
 /**
@@ -805,11 +864,22 @@ function sendJson(res, status, payload) {
 
 /**************************************** Local AI(솔로몬) API 구현 끝 ***************************************/
 
-// 학습 이벤트 API, 로컬 모델·온라인 플레이 사용 가능 여부 확인 API, 솔로몬 역학습 API(요청만 받음)다.
-const apis = { learning: learningApi, localmodelinfo: localModelInfoApi, onlineplayinfo: onlinePlayInfoApi, solomonlearning: solomonLearningApi };
+// 온라인 플레이 서비스다. ONLINE_PLAY_ENABLED 가 false 면 저장 디렉터리도 만들지 않고 모든 요청을 거절한다.
+const onlinePlayService = onlinePlay.createService({ enabled: ONLINE_PLAY_ENABLED });
+
+// 학습 이벤트 API, 로컬 모델·온라인 플레이 사용 가능 여부 확인 API, 솔로몬 역학습 API(요청만 받음),
+// 온라인 플레이 로그인·가입·로그아웃 API다.
+const apis = {
+    learning: learningApi,
+    localmodelinfo: localModelInfoApi,
+    onlineplayinfo: onlinePlayInfoApi,
+    onlineplay: (req, res) => onlinePlayService.handleApi(req, res),
+    solomonlearning: solomonLearningApi
+};
 
 // 서버 구동 시작 (종료 시에는 CTRL+C 단축키를 입력할 것)
-const server = http.createServer((req, res) => {
+// 요청 처리 본체다. HTTP 로 서비스하든 HTTPS 로 서비스하든 같은 함수를 사용한다.
+const requestListener = (req, res) => {
     // 모든 정적·동적 응답에 CORS 헤더를 먼저 설정한다.
     Object.entries(CORS_HEADERS).forEach(([name, value]) => res.setHeader(name, value));
 
@@ -947,6 +1017,15 @@ const server = http.createServer((req, res) => {
             res.end(content, 'utf-8');
         }
     });
+};
+
+// SSL 인증서가 모두 준비된 경우에만 HTTPS 로 서비스하고, 그렇지 않으면 기존처럼 HTTP 로 서비스한다.
+const sslOptions = loadSslOptions();
+const server = sslOptions ? https.createServer(sslOptions, requestListener) : http.createServer(requestListener);
+
+// 온라인 플레이 WebSocket 연결 요청이다. HTTPS 로 서비스 중이면 이 연결도 그대로 WSS 가 된다.
+server.on('upgrade', (req, socket) => {
+    onlinePlayService.handleUpgrade(req, socket);
 });
 
 server.on('close', () => {
@@ -959,6 +1038,6 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, () => {
-    console.log('Server in running with ' + PORT + ' port !');
+    console.log('Server in running with ' + PORT + ' port ! (' + (sslOptions ? 'https' : 'http') + ')');
     console.log('    WEB ROOT : ' + WEB_ROOT);
 });
