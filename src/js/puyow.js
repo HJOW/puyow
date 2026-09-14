@@ -6,11 +6,12 @@
  * 
  * 뿌요 W 2D 버전 스크립트
  *     의존성
- *         three.min.js (선택사항, 3D 효과를 위해 사용)
  *         json5.min.js (선택사항, JSON5 형식 사용을 위함)
  *         ort.all.min.js, ort.webgl.min.js, ort.wasm.min.js (선택사항, ONNX Runtime 사용을 위함)
  *         puyow.css (선택사항, 캔버스 영역이 화면 100%를 차지하게 만들고, 기본 뒷배경 색 변경)
  *         notice_ko.txt, notice_en.txt (선택사항으로 공지사항 존재 시 이 곳에 기재)
+ *         three.min.js (선택사항, 3D 효과를 위해 사용)
+ *         puyow_3d.js (선택사항, 3D 효과 실제 구현을 위함)
  *     html 예제
  *         puyow.html
  */
@@ -769,6 +770,8 @@
     let selectedOpponentAction = 0;
     /** 적 선택 화면에서 시작할 대전 규칙이다. @type {'standard'|'fever'|'feverStart'} */
     let opponentMenuRule = 'standard';
+    /** @type{object|null} 3D 효과를 담당하는 매니저 객체 (puyow_3d.js 에서 정의) */
+    let threeEffectManager = null;
     /** 메인 메뉴에서 포커스된 항목이다. @type {number} */
     let titleMenuFocus = 0;
     /** 메인 메뉴 목록 항목의 라벨과 색이다. 포커스 순번은 이 배열의 순서와 같다. @type {{label:string,color:string}[]} */
@@ -2721,6 +2724,7 @@
     /** 뷰포트 방향에 맞춰 게임 화면 회전 클래스를 갱신한다. @returns {void} */
     function updateCanvasOrientation() {
         document.body?.classList.toggle('puyow-portrait', shouldRotateCanvasForViewport());
+        if(threeEffectManager != null) threeEffectManager.onWindowResize();
     }
 
     /** 캔버스 입력 이벤트를 게임의 논리 좌표로 변환한다. @param {MouseEvent|PointerEvent} event 입력 이벤트 @returns {{x:number,y:number}} 게임 논리 좌표 */
@@ -14727,6 +14731,10 @@
         canvas.removeEventListener('pointermove', handleVirtualPointerMove);
         canvas.removeEventListener('pointerup', handleVirtualPointerUp);
         canvas.removeEventListener('pointercancel', handleVirtualPointerUp);
+        if(threeEffectManager != null) {
+            try { threeEffectManager.dispose(); } catch(ex) { console.error(ex); }
+            threeEffectManager = null;
+        }
         resetKeyboardDirectionInput();
         resetVirtualControllerInput();
         resetGamepadInput();
@@ -14906,6 +14914,7 @@
         if (typeof document === 'undefined' || typeof window === 'undefined') {
             throw new Error('Web Puyo 초기화에는 브라우저 DOM 환경이 필요합니다.');
         }
+
         // ONNX 런타임은 선택 라이브러리다. 여기서 한 번 확인한 결과로 추론 기반 적의 표시 여부를 정한다.
         refreshOnnxRuntimeAvailability();
         prepareFontImportStyle();
@@ -14937,9 +14946,18 @@
         threeCanvas.dataset.threeAvailable = String(threeAvailable);
         context = canvas.getContext('2d');
         if (!context) throw new Error('2D 캔버스 컨텍스트를 만들 수 없습니다.');
+        // puyow_3d.js 존재여부 체크해 초기화
+        if(typeof(window.PuyoW3DEffect) !== 'undefined') {
+            threeEffectManager = window.PuyoW3DEffect.initialize(threeCanvas);
+        }
+        // 캔버스 크기 및 방향조정
         applyCanvasOutputResolution();
         updateCanvasOrientation();
-        initialized = true;
+        // 사운드풀 준비
+        prepareSoundPools();
+        // WebMCP 등록
+        registerWebMcpTools();
+        // 이벤트 부여
         window.addEventListener('keydown', handleKeydown);
         window.addEventListener('keyup', handleKeyup);
         window.addEventListener('blur', resetKeyboardDirectionInput);
@@ -14952,9 +14970,9 @@
         canvas.addEventListener('pointerup', handleVirtualPointerUp);
         canvas.addEventListener('pointercancel', handleVirtualPointerUp);
         initializeGamepadInput();
-        prepareSoundPools();
-        registerWebMcpTools();
+        // 공지사항 로드
         loadNotice();
+        // AI 및 온라인 플레이 가능여부 새로고침
         refreshLocalAiAvailability();
         refreshOnlinePlayAvailability();
         // 첫 화면은 제목과 시작 문구만 즉시 표시한 뒤 갤러리 미리보기를 비동기로 준비한다.
@@ -14962,6 +14980,8 @@
         scheduleFeverStageValidation();
         loadInitialGalleryPreview();
         animationFrameId = requestAnimationFrame(frame);
+        // 초기화 완료 표시
+        initialized = true;
     }
 
     /**
