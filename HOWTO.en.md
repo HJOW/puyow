@@ -36,6 +36,7 @@ You can also use `puyow.js` from a CDN.
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/css/puyow.css"/>
 <script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/js/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/js/json5.min.js"></script>
+<script src='https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/js/puyow_3d.js'></script>
 <script src='https://cdn.jsdelivr.net/gh/HJOW/puyow@main/src/js/puyow.js'></script>
 ```
 
