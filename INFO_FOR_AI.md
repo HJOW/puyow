@@ -20,6 +20,7 @@
 
 - 2D 게임 페이지: `src/puyow.html`
 - 핵심 엔진·캔버스 UI: `src/js/puyow.js`
+- 선택적 3D 효과 구현: `src/js/puyow_3d.js` (`puyow.js`와 분리된 확장 모듈)
 - 개발용 도구 페이지: `src/tools.html`, `src/js/puyow_tools.js` (피버 패턴·퍼즐뿌요 제작용, 게임 페이지는 이 스크립트를 읽지 않는다)
 - 스타일: `src/css/puyow.css`
 - 선택적 라이브러리: `src/js/three.min.js`, `src/js/json5.min.js`
@@ -435,7 +436,11 @@ aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
 
 N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, turnCount)`와 `findBestNMovePlacement(player, targetCombo, turnCount)`로 재사용한다. 목표 연쇄 수는 두 번째 매개변수이며, 반환값은 이번 수의 `simulation`과 이후 경로·점수를 함께 가진다. 기본 룰·피버 룰 대전(구경 포함)은 각 플레이어의 내부 `nextPairs`에 현재 수 뒤 20쌍을 미리 확정해 유지한다. `getGameState()`는 브라우저 기반 학습 환경 확장과 적 AI에 모드와 룰, 양측 현재·일반·피버 필드, 피버 시간, 싹쓸이 티켓, 앞 두 쌍의 NEXT를 공통으로 제공하는 읽기 전용 snapshot이다. 현재 Python `PuyoDuelEnvironment`는 이 API를 호출하지 않고 Python 보드를 직접 시뮬레이션한다. 중앙 화면과 `getNextPairs()`는 대전에서 앞 두 쌍을 보이며, 단독 모드의 `getNextPairs()`는 기존 호환성을 위해 네 쌍을 보인다. 동기 N수 탐색과 Worker snapshot은 20쌍 전체를 사용한다. 3수 이상 비동기 탐색은 `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)`를 사용한다. 이 함수는 Blob Worker에 현재·상대 필드, 공격·피해, 피버 필드·상태, 예고뿌요, 룰 정보를 JSON snapshot으로 보내고, 깊이별 현재 1수 결과를 `onProgress`로 전달한다. 탐색량은 착지 후보 수에 따라 지수적으로 늘어나므로, 일반 실시간 적은 기존처럼 2수 수준을 사용한다.
 
-공통 계산을 수정하면 2D 게임, CPU 미리보기, 시뮬레이터, 피버 패턴 검증에 미치는 영향을 확인한다. 독립 3D 게임 버전은 개발 대상에서 철회했다. 다만 2D 초기화는 같은 8자리 접미사의 2D·투명 3D canvas를 최상위 `div_puyow_root` 아래에 만들며, 후자는 Three.js가 있을 때만 선택적 연출에 사용한다. 실행용 동적 스타일은 남는 세로 공간에서도 두 canvas의 실제 표시 영역을 화면 상단에 맞추고, 세로 화면에서는 회전 후 보이는 좌측 경계도 화면 좌측에 맞춘다. 클릭 좌표는 계속 2D canvas의 실제 bounding rect를 기준으로 변환한다. 새 독립 3D API·게임·소비자 호환성을 전제로 작업하지 않는다.
+공통 계산을 수정하면 2D 게임, CPU 미리보기, 시뮬레이터, 피버 패턴 검증에 미치는 영향을 확인한다. 독립 3D 게임 버전은 개발 대상에서 철회했다. 선택적 3D 효과는 독립 게임이 아니라 기존 2D 게임 위에 얹는 연출이며, **새 3D 효과와 THREE 객체를 다루는 구현은 `src/js/puyow_3d.js`에 둔다.** `src/js/puyow.js`에는 2D 게임 동작이 유지되는 데 필요한 캔버스 준비, 선택적 효과 모듈 연결, 크기 변경·정리 같은 최소한의 접점만 둔다. 2D 게임 핵심 코드에 THREE를 직접 의존시키거나 THREE가 있다고 가정하는 코드를 추가하지 않는다.
+
+`puyow.js`는 같은 8자리 접미사의 2D·투명 3D canvas를 최상위 `div_puyow_root` 아래에 만들지만, `three.min.js`와 `puyow_3d.js`는 모두 선택 사항이다. THREE가 없거나 3D 효과 모듈이 빠져 있어도 2D 캔버스 초기화·입력·게임 진행은 정상 동작해야 한다. 효과 모듈이 로드된 경우 `window.PuyoW3DEffect.initialize(threeCanvas)`로 초기화하고, 반환된 매니저의 `onWindowResize()`와 `dispose()`를 수명주기 접점으로 사용한다. `puyow_3d.js`도 THREE가 없으면 효과 초기화를 건너뛰어야 하며, 2D 게임 동작을 막아서는 안 된다. 효과 구현 시 이 선택 의존성 계약과 2D 우선 입력·레이어 동작을 보존한다.
+
+실행용 동적 스타일은 남는 세로 공간에서도 두 canvas의 실제 표시 영역을 화면 상단에 맞추고, 세로 화면에서는 회전 후 보이는 좌측 경계도 화면 좌측에 맞춘다. 클릭 좌표는 계속 2D canvas의 실제 bounding rect를 기준으로 변환한다. 새 독립 3D 게임·규칙 엔진·기존에 없는 소비자 호환성을 전제로 작업하지 않는다.
 
 ## 테스트 작업 체크리스트
 
