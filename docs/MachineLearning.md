@@ -36,7 +36,7 @@ node --version
 
 ```powershell
 python -m pip install --upgrade pip
-python -m pip install torch psutil onnx onnxscript
+python -m pip install torch psutil onnx onnxscript bcrypt
 ```
 
 `torch`는 학습에, `psutil`은 GUI의 CPU·메모리 표시 기능에 필요하다. `onnx` 및 `onnxscript`는 모델을 ONNX (Open Neural Network Exchange) 형식으로 저장할 때 사용된다.

@@ -36,7 +36,7 @@ Finally, install the required Python packages.
 
 ```powershell
 python -m pip install --upgrade pip
-python -m pip install torch psutil onnx onnxscript
+python -m pip install torch psutil onnx onnxscript bcrypt
 ```
 
 `torch` is needed for training, and `psutil` is needed for the GUI's CPU/memory display. `onnx` and `onnxscript` are used when saving the model in ONNX (Open Neural Network Exchange) format.

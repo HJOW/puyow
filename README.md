@@ -115,7 +115,7 @@ Bun (https://bun.com/) 을 사용하여 서버 구동을 더 빠르게 진행할
 파이썬으로도 서버 구동이 가능합니다.
 공식 홈페이지에서 Python 을 설치 (3.10 이상 버전 필요) 하신 후
 다음 명령어를 입력 (명령 프롬프트, 터미널 창에서) 하여 필요한 패키지를 설치해 주세요.
-`python -m pip install torch psutil onnx onnxscript`
+`python -m pip install torch psutil onnx onnxscript bcrypt`
 그 다음, 명령어 `python python/pythonserver.py` 를 이용하여 서버를 실행할 수 있습니다.
 
 웹 브라우저로 주소 `localhost:9891` 입력해 접속해 즐기고, 
@@ -161,6 +161,12 @@ Node 서버 소스는 `nodeserver/server.js`에 있으며 `src/onnx/default.onnx
 + ONNX Runtime
   MIT License, Copyright (c) 2011 Jerome Etienne, http://jetienne.com
   https://github.com/microsoft/onnxruntime/blob/gh-pages/LICENSE
+
++ Crypto-JS (Only for crypto API not supported browsers)
+  MIT License
+  Copyright (c) 2009-2013 Jeff Mott  
+  Copyright (c) 2013-2016 Evan Vosberg
+  https://github.com/brix/crypto-js/blob/develop/LICENSE
 
 + The MIT License
 

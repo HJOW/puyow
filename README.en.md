@@ -92,7 +92,7 @@ Open `localhost:9891` in a web browser to play. Press `CTRL + C` in Command Prom
 
 ## Running the Server with Python
 
-You can also run the server with Python. Install Python 3.10 or later from its official website, then install the required packages with `python -m pip install torch psutil onnx onnxscript`. Start the server with `python python/pythonserver.py`.
+You can also run the server with Python. Install Python 3.10 or later from its official website, then install the required packages with `python -m pip install torch psutil onnx onnxscript bcrypt`. Start the server with `python python/pythonserver.py`.
 
 Open `localhost:9891` in a web browser to play. Press `CTRL + C` in Command Prompt (Windows) or the terminal (macOS/Linux) to stop the server.
 
@@ -133,6 +133,12 @@ This project is distributed under the [Apache License 2.0](LICENSE).
 + ONNX Runtime
   MIT License, Copyright (c) Microsoft Corporation.
   https://github.com/microsoft/onnxruntime/blob/gh-pages/LICENSE
+
++ Crypto-JS (Only for crypto API not supported browsers)
+  MIT License
+  Copyright (c) 2009-2013 Jeff Mott  
+  Copyright (c) 2013-2016 Evan Vosberg
+  https://github.com/brix/crypto-js/blob/develop/LICENSE
 
 + The MIT License
 
