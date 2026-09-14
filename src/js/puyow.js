@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 55;
+    const BUILDNO = 56;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -16581,28 +16581,7 @@
 
         /** 인간 왕의 왕관·망토를 바탕으로 솔로몬의 일반·위기·우는 표정을 그린다. */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round';
-            drawingContext.fillStyle = '#38275f'; drawingContext.strokeStyle = '#201536'; drawingContext.lineWidth = 4 * scale;
-            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.62, size * 0.72); drawingContext.lineTo(-size * 0.47, -size * 0.05); drawingContext.lineTo(0, size * 0.13); drawingContext.lineTo(size * 0.47, -size * 0.05); drawingContext.lineTo(size * 0.62, size * 0.72); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#e7b58f'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.07, size * 0.4, size * 0.49, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#352334'; drawingContext.beginPath(); drawingContext.arc(0, -size * 0.2, size * 0.43, Math.PI, Math.PI * 2); drawingContext.fill();
-            drawingContext.fillStyle = '#e9c95f'; drawingContext.beginPath(); drawingContext.moveTo(-size * 0.38, -size * 0.46); drawingContext.lineTo(-size * 0.3, -size * 0.9); drawingContext.lineTo(-size * 0.08, -size * 0.59); drawingContext.lineTo(0, -size * 0.96); drawingContext.lineTo(size * 0.12, -size * 0.59); drawingContext.lineTo(size * 0.36, -size * 0.88); drawingContext.lineTo(size * 0.38, -size * 0.46); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            const eyeY = -size * 0.08;
-            if (expression === 'defeated') {
-                drawingContext.strokeStyle = '#38233d'; drawingContext.lineWidth = 3 * scale;
-                [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.moveTo(eyeX - size * 0.07, eyeY - size * 0.05); drawingContext.lineTo(eyeX + size * 0.07, eyeY + size * 0.05); drawingContext.moveTo(eyeX + size * 0.07, eyeY - size * 0.05); drawingContext.lineTo(eyeX - size * 0.07, eyeY + size * 0.05); drawingContext.stroke(); });
-                drawingContext.fillStyle = '#78d5f4'; [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY + size * 0.2, size * 0.055, size * 0.14, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.beginPath(); drawingContext.arc(0, size * 0.29, size * 0.11, Math.PI, Math.PI * 2); drawingContext.stroke();
-            } else {
-                drawingContext.fillStyle = expression === 'crisis' ? '#7b2636' : '#38233d';
-                [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.065, expression === 'crisis' ? size * 0.12 : size * 0.075, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.strokeStyle = '#7b2636'; drawingContext.lineWidth = 3 * scale; drawingContext.beginPath();
-                if (expression === 'crisis') drawingContext.arc(0, size * 0.3, size * 0.11, Math.PI, Math.PI * 2); else drawingContext.arc(0, size * 0.15, size * 0.12, 0, Math.PI); drawingContext.stroke();
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Solomon');
         }
     }
 
@@ -16668,7 +16647,7 @@
         }
 
         /**
-         * 초상화 색과 어울리는 집게와 뱀의 짙은 초록 계열로 맞춘다.
+         * 초상화 색과 어울리는 제복과 뱀 목도리의 짙은 초록 계열로 맞춘다.
          * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
          */
         getFieldThemeColors() {
@@ -16684,46 +16663,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.strokeStyle = '#164c50';
-            drawingContext.fillStyle = '#237f79';
-            drawingContext.lineWidth = 9 * scale;
-            // 양쪽 집게를 대칭으로 그려 갑각형 실루엣을 만든다.
-            for (const direction of [-1, 1]) {
-                drawingContext.beginPath();
-                drawingContext.moveTo(direction * size * 0.32, size * 0.1);
-                drawingContext.quadraticCurveTo(direction * size * 0.9, size * 0.22, direction * size * 0.78, size * 0.68);
-                drawingContext.stroke();
-            }
-            drawingContext.beginPath();
-            drawingContext.ellipse(0, size * 0.18, size * 0.56, size * 0.63, 0, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.stroke();
-            // 도둑을 찾아주는 정의의 백작답게 한 손의 작은 뱀과 별 배지를 더한다.
-            drawingContext.strokeStyle = '#b7d65b'; drawingContext.lineWidth = 5 * scale;
-            drawingContext.beginPath(); drawingContext.arc(size * 0.58, size * 0.22, size * 0.18, 0, Math.PI * 1.8); drawingContext.stroke();
-            drawingContext.fillStyle = '#f3d46b'; drawingContext.beginPath(); drawingContext.arc(-size * 0.3, size * 0.35, size * 0.1, 0, Math.PI * 2); drawingContext.fill();
-            drawingContext.fillStyle = '#9ad9b8';
-            drawingContext.beginPath();
-            drawingContext.arc(-size * 0.19, -size * 0.06, size * 0.16, 0, Math.PI * 2);
-            drawingContext.arc(size * 0.19, -size * 0.06, size * 0.16, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.fillStyle = '#172535';
-            drawingContext.beginPath();
-            drawingContext.arc(-size * 0.17, -size * 0.04, size * 0.07, 0, Math.PI * 2);
-            drawingContext.arc(size * 0.17, -size * 0.04, size * 0.07, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.fillStyle = '#d6a63a';
-            drawingContext.beginPath();
-            drawingContext.moveTo(0, size * 0.12);
-            drawingContext.lineTo(-size * 0.12, size * 0.42);
-            drawingContext.lineTo(size * 0.12, size * 0.42);
-            drawingContext.closePath();
-            drawingContext.fill();
-            drawPortraitEmotion(drawingContext, size, expression, -size * 0.06, size * 0.19);
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Andromalius');
         }
     }
 
@@ -16841,7 +16781,7 @@
         }
 
         /**
-         * 여러 얼굴과 비밀의 책을 가진 단탈리온의 일반·위기·우는 표정을 그린다.
+         * 베레모와 비밀의 책을 가진 인간형 단탈리온의 일반·위기·우는 표정을 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -16849,115 +16789,278 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineCap = 'round';
-            drawingContext.strokeStyle = '#3d204d';
-            drawingContext.lineWidth = 14 * scale;
-            drawingContext.beginPath();
-            drawingContext.moveTo(-size * 0.33, size * 0.34);
-            drawingContext.lineTo(-size * 0.5, size * 0.82);
-            drawingContext.moveTo(size * 0.33, size * 0.34);
-            drawingContext.lineTo(size * 0.5, size * 0.82);
-            drawingContext.stroke();
-            drawingContext.fillStyle = '#563068';
-            drawingContext.beginPath();
-            drawingContext.moveTo(-size * 0.52, size * 0.34);
-            drawingContext.lineTo(-size * 0.92, size * 0.04);
-            drawingContext.moveTo(size * 0.52, size * 0.34);
-            drawingContext.lineTo(size * 0.92, size * 0.04);
-            drawingContext.lineWidth = 15 * scale;
-            drawingContext.stroke();
-            drawingContext.beginPath();
-            drawingContext.moveTo(-size * 0.5, size * 0.28);
-            drawingContext.quadraticCurveTo(0, -size * 0.02, size * 0.5, size * 0.28);
-            drawingContext.lineTo(size * 0.35, size * 0.72);
-            drawingContext.quadraticCurveTo(0, size * 0.88, -size * 0.35, size * 0.72);
-            drawingContext.closePath();
-            drawingContext.fillStyle = '#6e3f8b';
-            drawingContext.fill();
-            drawingContext.strokeStyle = '#bd87e8';
-            drawingContext.lineWidth = 3 * scale;
-            drawingContext.stroke();
-            drawingContext.fillStyle = '#303752';
-            drawingContext.beginPath();
-            drawingContext.arc(0, -size * 0.28, size * 0.43, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.strokeStyle = '#bd87e8';
-            drawingContext.lineWidth = 3 * scale;
-            drawingContext.stroke();
-            // '서로 다름'의 공작: 옆에 겹친 작은 얼굴들과 미래를 적은 책을 보인다.
-            drawingContext.fillStyle = '#48506d'; [-size * 0.48, size * 0.48].forEach((faceX) => { drawingContext.beginPath(); drawingContext.arc(faceX, -size * 0.21, size * 0.16, 0, Math.PI * 2); drawingContext.fill(); });
-            drawingContext.fillStyle = '#d8a968'; drawingContext.fillRect(-size * 0.34, size * 0.36, size * 0.68, size * 0.2); drawingContext.strokeStyle = '#563068'; drawingContext.strokeRect(-size * 0.34, size * 0.36, size * 0.68, size * 0.2);
-            drawingContext.fillStyle = '#ef5350';
-            drawingContext.beginPath();
-            drawingContext.moveTo(-size * 0.27, -size * 0.6);
-            drawingContext.lineTo(-size * 0.08, -size * 0.93);
-            drawingContext.lineTo(size * 0.03, -size * 0.55);
-            drawingContext.closePath();
-            drawingContext.moveTo(size * 0.27, -size * 0.6);
-            drawingContext.lineTo(size * 0.08, -size * 0.93);
-            drawingContext.lineTo(-size * 0.03, -size * 0.55);
-            drawingContext.closePath();
-            drawingContext.fill();
-            drawingContext.fillStyle = '#f5fbfc';
-            drawingContext.beginPath();
-            drawingContext.arc(-size * 0.16, -size * 0.31, size * 0.12, 0, Math.PI * 2);
-            drawingContext.arc(size * 0.16, -size * 0.31, size * 0.12, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.fillStyle = '#ef5350';
-            drawingContext.beginPath();
-            drawingContext.arc(-size * 0.13, -size * 0.29, size * 0.055, 0, Math.PI * 2);
-            drawingContext.arc(size * 0.13, -size * 0.29, size * 0.055, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawPortraitEmotion(drawingContext, size, expression, -size * 0.31, size * 0.16);
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Dantalion');
         }
     }
 
+    /** 적별 의상·머리칼·소품 색이다. 전승의 동물과 여러 얼굴은 장식으로만 재해석한다. */
+    const ENEMY_PORTRAIT_STYLES = {
+        Solomon: { hair: '#735044', light: '#ba8970', coat: '#7964b7', accent: '#f6ce70', skin: '#f8d5bc', motif: 'king' },
+        Andromalius: { hair: '#306958', light: '#65a68a', coat: '#3b9272', accent: '#e3d77e', skin: '#ffdfc9', motif: 'snake' },
+        Dantalion: { hair: '#82629d', light: '#ba9cd4', coat: '#7953a0', accent: '#f2bbd8', skin: '#ffe0d3', motif: 'book' },
+        Seere: { hair: '#78b7dc', light: '#c9edfa', coat: '#569dcc', accent: '#fbe0a0', skin: '#ffe2ce', motif: 'prince' },
+        Decarabia: { hair: '#c774a3', light: '#f6b1ce', coat: '#b6619e', accent: '#ffe394', skin: '#ffe1d6', motif: 'star' },
+        Belial: { hair: '#e8bfd2', light: '#fff0e7', coat: '#8b547e', accent: '#f4cb84', skin: '#ffdeca', motif: 'angel' },
+        Amdusias: { hair: '#939fdb', light: '#dce3ff', coat: '#626fa9', accent: '#f9dda0', skin: '#ffe3d2', motif: 'music' },
+        Kimaris: { hair: '#494653', light: '#8d8797', coat: '#6a6a7c', accent: '#e7bc76', skin: '#dca885', motif: 'knight' },
+        Andrealphus: { hair: '#4a9a9b', light: '#9fdbcb', coat: '#397f93', accent: '#f6d477', skin: '#ffe1c9', motif: 'peacock' },
+        Flauros: { hair: '#e59951', light: '#ffd097', coat: '#da8853', accent: '#ffe3a2', skin: '#ffdbb9', motif: 'leopard' },
+        Andras: { hair: '#8496b8', light: '#ccd9ee', coat: '#526486', accent: '#f9c185', skin: '#ffe1d0', motif: 'owl' },
+        Valak: { hair: '#edc17a', light: '#fff0bf', coat: '#b76668', accent: '#f6d788', skin: '#ffe0c9', motif: 'dragon' },
+        Zagan: { hair: '#bd8b58', light: '#eed0a0', coat: '#ad7f4d', accent: '#ffe6a4', skin: '#f3c5a3', motif: 'bull' },
+        ChainBuildingEnemy: { hair: '#8389b8', light: '#c6ccee', coat: '#71679e', accent: '#e7ccfa', skin: '#ffe0cf', motif: 'oracle' }
+    };
+
+    /** 매 프레임 같은 윤곽 경로를 재생성하지 않도록 보관한다. */
+    const enemyPortraitPaths = new Map();
+
     /**
-     * 적 초상화 위에 위기 또는 패배 표정을 겹쳐 그린다.
-     * @param {CanvasRenderingContext2D} drawingContext 캔버스 2D 컨텍스트
-     * @param {number} size 초상화 기준 크기
+     * 머리 하나의 작은 인간형 캐릭터를 캔버스 도형만으로 그린다.
+     * 일반은 웃음과 열린 자세, 위기는 움츠린 팔·땀, 패배는 처진 자세·눈물로 구별한다.
+     * 좌표와 선 두께를 함께 확대하므로 카드부터 갤러리까지 같은 그림을 사용한다.
+     * @param {CanvasRenderingContext2D} context 캔버스 2D 컨텍스트
+     * @param {number} centerX 캐릭터 중심 X 좌표
+     * @param {number} centerY 캐릭터 중심 Y 좌표
+     * @param {number} scale 기본 크기 대비 배율
      * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
-     * @param {number} eyeY 눈 중심 Y 좌표
-     * @param {number} eyeSpacing 눈 중심의 X축 거리
+     * @param {string} type 기본 제공 적 클래스 이름
      * @returns {void}
      */
-    function drawPortraitEmotion(drawingContext, size, expression, eyeY, eyeSpacing) {
-        if (expression === 'crisis') {
-            drawingContext.strokeStyle = '#172535';
-            drawingContext.lineWidth = Math.max(2, size * 0.045);
-            drawingContext.beginPath();
-            drawingContext.moveTo(-eyeSpacing * 1.65, eyeY - size * 0.19);
-            drawingContext.lineTo(-eyeSpacing * 0.35, eyeY - size * 0.13);
-            drawingContext.moveTo(eyeSpacing * 1.65, eyeY - size * 0.19);
-            drawingContext.lineTo(eyeSpacing * 0.35, eyeY - size * 0.13);
-            drawingContext.stroke();
-            drawingContext.fillStyle = '#8dd8ef';
-            drawingContext.beginPath();
-            drawingContext.ellipse(eyeSpacing * 1.85, eyeY + size * 0.18, size * 0.075, size * 0.12, 0.25, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.strokeStyle = '#d9f8ff';
-            drawingContext.lineWidth = Math.max(1, size * 0.018);
-            drawingContext.stroke();
-        } else if (expression === 'defeated') {
-            drawingContext.fillStyle = '#75c9f0';
-            [-eyeSpacing, eyeSpacing].forEach((eyeX) => {
-                drawingContext.beginPath();
-                drawingContext.ellipse(eyeX, eyeY + size * 0.2, size * 0.09, size * 0.2, 0, 0, Math.PI * 2);
-                drawingContext.fill();
-            });
-            drawingContext.strokeStyle = '#e7f8fa';
-            drawingContext.lineWidth = Math.max(1, size * 0.018);
-            drawingContext.beginPath();
-            drawingContext.moveTo(-eyeSpacing, eyeY + size * 0.04);
-            drawingContext.lineTo(-eyeSpacing, eyeY + size * 0.3);
-            drawingContext.moveTo(eyeSpacing, eyeY + size * 0.04);
-            drawingContext.lineTo(eyeSpacing, eyeY + size * 0.3);
-            drawingContext.stroke();
+    function drawCuteEnemyPortrait(context, centerX, centerY, scale, expression, type) {
+        const style = ENEMY_PORTRAIT_STYLES[type];
+        const { hair, light, coat, accent, skin, motif } = style;
+        const ink = '#343047';
+        const crisis = expression === 'crisis';
+        const defeated = expression === 'defeated';
+        const path = (data, fill, stroke = ink, width = 3.4) => {
+            if (!enemyPortraitPaths.has(data)) enemyPortraitPaths.set(data, new Path2D(data));
+            const shape = enemyPortraitPaths.get(data);
+            if (fill) { context.fillStyle = fill; context.fill(shape); }
+            if (stroke) { context.strokeStyle = stroke; context.lineWidth = width; context.stroke(shape); }
+        };
+        const oval = (x, y, rx, ry, fill, stroke = ink, width = 3.4, angle = 0) => {
+            context.beginPath(); context.ellipse(x, y, rx, ry, angle, 0, Math.PI * 2);
+            if (fill) { context.fillStyle = fill; context.fill(); }
+            if (stroke) { context.strokeStyle = stroke; context.lineWidth = width; context.stroke(); }
+        };
+        const star = (x, y, radius, fill = accent) => {
+            context.save(); context.translate(x, y); context.scale(radius / 15, radius / 15);
+            path('M0 -15 L4 -5 L14 -5 L7 3 L9 14 L0 8 L-9 14 L-7 3 L-14 -5 L-4 -5 Z', fill, ink, 2.4);
+            context.restore();
+        };
+        const featherWing = (direction, color, droop = 0) => {
+            context.save(); context.scale(direction, 1); context.translate(0, droop);
+            path('M28 32 Q51 25 72 -5 Q79 17 67 34 Q82 27 77 39 Q74 53 58 57 Q67 62 57 66 Q42 68 29 51 Z', color);
+            path('M38 48 Q55 39 63 21 M44 54 L62 44', null, coat, 2);
+            context.restore();
+        };
+
+        context.save();
+        context.translate(centerX, centerY);
+        context.scale(scale * 0.8, scale * 0.8);
+        context.lineJoin = 'round'; context.lineCap = 'round';
+        oval(0, 88, 42, 6, 'rgba(27,25,47,0.16)', null);
+        context.translate(0, defeated ? 5 : 0);
+        context.rotate(defeated ? -0.07 : crisis ? 0.035 : 0);
+
+        // 얼굴을 더 만들지 않고 날개·꼬리·망토에 원작의 실루엣을 담는다.
+        if (motif === 'peacock') {
+            for (const angle of [-0.9, -0.45, 0, 0.45, 0.9]) {
+                context.save(); context.translate(0, 51); context.rotate(angle);
+                oval(0, -52, 17, 50, '#58ab9e');
+                oval(0, -79, 10, 15, accent, null);
+                oval(0, -80, 5, 8, '#4b67a0', null);
+                context.restore();
+            }
         }
+        if (['prince', 'angel', 'owl', 'dragon', 'bull'].includes(motif)) {
+            for (const direction of [-1, 1]) featherWing(direction, motif === 'owl' ? '#b6c5dc' : motif === 'bull' ? '#f3d58e' : '#f8eef3', defeated ? 9 : 0);
+        }
+        if (motif === 'leopard') {
+            path('M28 63 C79 83 83 35 61 43', null, ink, 15);
+            path('M28 63 C79 83 83 35 61 43', null, hair, 9);
+            path('M64 65 L70 68 M71 49 L78 49', null, '#79523d', 5);
+        }
+        if (motif === 'dragon') {
+            path('M29 69 Q66 85 66 50 L77 42 L73 62 Q61 94 29 80 Z', '#c77878');
+            path('M60 75 L62 65 L70 69 M48 81 L51 73 L57 80', accent, ink, 2);
+        }
+        if (['king', 'prince', 'knight', 'angel', 'oracle'].includes(motif)) {
+            path('M-24 22 Q-41 37 -49 75 Q-22 87 0 70 Q22 87 49 75 Q41 37 24 22 Z', coat);
+            path('M-29 42 L-38 73 M29 42 L38 73', null, light, 2.4);
+        }
+        if (['book', 'music', 'star'].includes(motif)) {
+            oval(-32, 1, 18, 42, hair); oval(32, 1, 18, 42, hair);
+        }
+
+        // 작고 둥근 부츠, 튜닉, 깃과 소매를 얼굴보다 먼저 그린다.
+        oval(-17, 78, 13, 10, coat); oval(17, 78, 13, 10, coat);
+        path('M-27 31 Q0 18 27 31 L32 65 Q0 78 -32 65 Z', coat);
+        path('M-18 31 L0 50 L18 31 M0 50 L0 68', null, accent, 3);
+        path('M-22 28 L-6 25 L0 39 L-13 42 Z M22 28 L6 25 L0 39 L13 42 Z', '#fff1dc', ink, 2.2);
+        for (const direction of [-1, 1]) {
+            context.save(); context.scale(direction, 1);
+            if (crisis) {
+                path('M25 32 Q45 42 40 19', null, ink, 16);
+                path('M25 32 Q45 42 40 19', null, coat, 10);
+                oval(39, 16, 8, 9, skin);
+            } else if (defeated) {
+                path('M24 34 Q35 47 35 57', null, ink, 16);
+                path('M24 34 Q35 47 35 57', null, coat, 10);
+                oval(35, 60, 8, 9, skin);
+            } else {
+                path('M24 33 Q39 39 46 31', null, ink, 16);
+                path('M24 33 Q39 39 46 31', null, coat, 10);
+                oval(47, 29, 8, 8, skin);
+            }
+            context.restore();
+        }
+
+        // 큰 머리와 부드러운 앞머리 안에 사람 얼굴 하나만 배치한다.
+        oval(0, -29, 43, 43, hair);
+        oval(-38, -17, 7, 10, skin); oval(38, -17, 7, 10, skin);
+        path('M-36 -38 Q-38 -1 -24 13 Q0 30 24 13 Q38 -1 36 -38 Q0 -58 -36 -38 Z', skin);
+        if (['book', 'angel', 'music', 'peacock'].includes(motif)) {
+            path('M-41 -20 Q-51 -66 -13 -72 Q22 -83 40 -48 L41 -15 Q25 -27 16 -50 Q-1 -23 -24 -27 L-14 -47 Q-27 -30 -41 -20 Z', hair);
+            path('M-30 -47 Q-17 -64 6 -62 M23 -57 Q30 -48 33 -38', null, light, 4);
+        } else {
+            path('M-42 -20 Q-47 -57 -28 -65 L-30 -76 L-10 -69 Q13 -81 34 -58 L44 -56 L37 -17 L22 -39 L16 -27 L1 -46 L-10 -30 L-16 -43 Z', hair);
+            path('M-30 -50 Q-16 -61 -5 -57 M9 -62 L23 -52', null, light, 4);
+        }
+
+        // 적마다 다른 머리 장식이 작은 카드에서도 형태 차이를 만든다.
+        if (motif === 'king' || motif === 'prince') {
+            path('M-27 -64 L-31 -86 L-14 -76 L0 -96 L14 -76 L31 -86 L27 -64 Z', accent);
+            path('M-23 -68 L23 -68', null, '#fff3c6', 3);
+            oval(0, -77, 5, 7, coat, ink, 2);
+        } else if (motif === 'snake') {
+            path('M-39 -57 Q-24 -89 14 -77 L32 -60 Q2 -66 -39 -57 Z', coat);
+            path('M-40 -56 Q-7 -70 34 -59', null, ink, 7);
+            star(-19, -68, 8);
+        } else if (motif === 'book') {
+            path('M-35 -64 Q-46 -84 -22 -87 L-9 -74 Q10 -93 37 -77 L33 -64 Z', coat);
+            oval(27, -69, 7, 7, accent, ink, 2);
+            path('M-27 -66 Q-13 -74 4 -72', null, light, 3);
+        } else if (motif === 'star' || motif === 'oracle') {
+            path('M-37 -59 Q-22 -77 -13 -96 Q0 -91 7 -78 L35 -60 Z', coat);
+            path('M-49 -55 Q-8 -74 47 -54 Q18 -43 -49 -55 Z', coat);
+            star(-13, -77, 9);
+        } else if (motif === 'angel') {
+            path('M-27 -85 C-50 -102 39 -110 31 -87 M24 -84 L31 -82', null, ink, 7);
+            path('M-27 -85 C-50 -102 39 -110 31 -87 M24 -84 L31 -82', null, accent, 3.5);
+            star(30, -53, 9);
+        } else if (motif === 'music') {
+            path('M-10 -65 L0 -100 L12 -66 Z', accent);
+            path('M-5 -80 L6 -75 M-2 -89 L3 -86', null, '#bd986b', 2);
+            path('M-35 -54 Q-58 -82 -37 -83 L-20 -65 M35 -54 Q58 -82 37 -83 L20 -65', light);
+        } else if (motif === 'knight') {
+            path('M-35 -52 L-31 -81 L-15 -66 M35 -52 L31 -81 L15 -66', hair);
+            path('M-41 -48 Q0 -68 41 -48 L37 -40 Q0 -54 -37 -40 Z', '#a2a7b7');
+            path('M-7 -57 L0 -65 L7 -57 L0 -46 Z', accent, ink, 2);
+        } else if (motif === 'peacock') {
+            path('M22 -60 Q46 -92 41 -98 Q20 -93 17 -70', '#71baa8');
+            oval(34, -85, 7, 10, accent, ink, 2, 0.5);
+            oval(34, -85, 3, 5, '#4b67a0', null, 0, 0.5);
+        } else if (motif === 'leopard') {
+            oval(-32, -65, 14, 14, hair); oval(32, -65, 14, 14, hair);
+            oval(-32, -65, 7, 7, '#f5c0a4', null); oval(32, -65, 7, 7, '#f5c0a4', null);
+            for (const [x, y] of [[-23, -50], [26, -44], [9, -57]]) oval(x, y, 4, 3, '#86513c', null);
+        } else if (motif === 'owl') {
+            path('M-37 -49 L-47 -83 L-20 -69 Q0 -76 20 -69 L47 -83 L37 -49 L16 -60 L0 -50 L-16 -60 Z', light);
+            path('M-36 -66 L-27 -59 M36 -66 L27 -59 M-5 -61 L0 -55 L5 -61', null, coat, 2.5);
+        } else if (motif === 'dragon') {
+            path('M-29 -60 Q-51 -67 -40 -88 L-22 -70 M29 -60 Q51 -67 40 -88 L22 -70', accent);
+            path('M-20 -65 L-9 -75 L0 -66 L9 -75 L20 -65', '#c77878');
+        } else if (motif === 'bull') {
+            path('M-30 -58 Q-64 -57 -52 -86 Q-45 -70 -28 -75 Z M30 -58 Q64 -57 52 -86 Q45 -70 28 -75 Z', accent);
+            path('M-38 -41 Q-61 -48 -53 -62 L-34 -54 M38 -41 Q61 -48 53 -62 L34 -54', hair);
+            path('M-12 -63 Q0 -79 14 -63 L6 -49 L0 -55 L-6 -49 Z', light);
+        }
+
+        // 표정을 덧칠하지 않고 눈·눈썹·입을 상태에 맞춰 한 번씩 그린다.
+        for (const direction of [-1, 1]) {
+            context.save(); context.scale(direction, 1);
+            oval(25, 1, 8, 4, '#efa7aa', null);
+            if (defeated) {
+                path('M9 -10 Q17 -3 25 -11', null, ink, 3);
+                path('M12 -6 Q11 8 13 14 Q17 20 21 14 L22 -6 Z', '#8edcec', null);
+                path('M15 0 L15 10', null, '#eefcff', 2);
+                path('M9 -23 Q18 -28 25 -22', null, ink, 2.5);
+            } else {
+                oval(17, -12, crisis ? 10 : 9, crisis ? 13 : 11, '#fffaf4', ink, 2.5);
+                oval(17, -10, crisis ? 4 : 5, crisis ? 8 : 8.5, coat, null);
+                oval(17, -9, 2.5, 5, ink, null);
+                oval(15, -16, 2.8, 3, '#ffffff', null);
+                path(crisis ? 'M9 -29 L25 -25' : 'M10 -27 Q17 -30 24 -26', null, ink, 2.5);
+            }
+            context.restore();
+        }
+        if (defeated) path('M-8 11 Q0 3 8 11', null, ink, 3);
+        else if (crisis) {
+            oval(0, 10, 5, 6, '#ba6e7c', ink, 2);
+            path('M36 -29 Q47 -15 43 -8 Q36 -3 33 -10 Q30 -16 36 -29 Z', '#8edcec', ink, 2);
+            path('M38 -18 L39 -12', null, '#effcff', 2);
+        } else {
+            path('M-9 5 Q0 10 9 5 Q7 19 0 18 Q-7 18 -9 5 Z', '#b76578', ink, 2.2);
+            path('M-4 14 Q0 11 4 14', null, '#ffc0c3', 2.8);
+        }
+
+        // 얼굴 아래의 상징 소품은 어느 표정에서도 눈과 입을 가리지 않는다.
+        context.save(); context.translate(0, defeated ? 5 : crisis ? -2 : 0);
+        if (motif === 'book' || motif === 'oracle') {
+            path('M0 45 Q-15 34 -29 39 L-28 61 Q-12 58 0 66 Q12 58 28 61 L29 39 Q15 34 0 45 Z', accent);
+            path('M0 45 L0 66 M-22 45 L-7 49 M-22 51 L-8 54 M8 49 L21 45 M8 54 L21 51', null, coat, 2);
+        } else if (motif === 'snake') {
+            path('M-26 49 C-12 68 27 64 29 46 C30 31 50 33 47 45', null, ink, 13);
+            path('M-26 49 C-12 68 27 64 29 46 C30 31 50 33 47 45', null, '#bbd980', 8);
+            path('M-17 58 L-15 54 M-1 62 L0 57 M15 59 L13 55', null, '#75a567', 2);
+            // 머리 모양 없이 뱀의 곡선을 수놓은 목도리로 표현한다.
+            star(-15, 31, 8);
+        } else if (motif === 'king') {
+            path('M-21 46 Q0 59 21 46 L18 65 Q0 74 -18 65 Z', accent);
+            oval(0, 57, 8, 8, '#b98ccf', ink, 2); star(0, 57, 4, '#fff2cd');
+        } else if (motif === 'prince') {
+            path('M-19 44 L0 37 L19 44 L14 62 L0 70 L-14 62 Z', '#e2eff7');
+            path('M-9 50 Q-18 42 -12 41 Q-1 43 0 54 Q1 43 12 41 Q18 42 9 50 L0 59 Z', accent, ink, 2);
+        } else if (motif === 'star') {
+            path('M40 53 L54 21', null, ink, 6); path('M40 53 L54 21', null, accent, 3);
+            star(55, 15, 14);
+            path('M-19 49 Q-10 35 0 48 Q10 35 19 49 Q8 58 0 53 Q-8 58 -19 49 Z', '#fff0d5', ink, 2);
+        } else if (motif === 'music') {
+            path('M-16 41 Q0 51 16 41 L11 65 Q0 74 -11 65 Z', accent);
+            path('M-8 48 L-6 62 M0 49 L0 65 M8 48 L6 62', null, coat, 2);
+            path('M48 11 L48 -8 L60 -12 L60 5', null, accent, 3);
+            oval(44, 12, 5, 3.5, accent, null); oval(56, 6, 5, 3.5, accent, null);
+        } else if (motif === 'knight') {
+            path('M-24 42 L-8 38 L7 44 L23 40 L23 62 L7 66 L-8 60 L-24 64 Z', '#f4dfb1');
+            path('M-8 38 L-8 60 M7 44 L7 66 M-18 51 Q-5 45 0 54 L13 53 M10 49 L17 57 M17 49 L10 57', null, '#a97854', 2);
+        } else if (motif === 'peacock') {
+            oval(0, 53, 23, 12, null, accent, 3, -0.4);
+            oval(0, 53, 12, 19, null, accent, 2, 0.4);
+            star(0, 53, 7);
+            oval(17, -11, 12, 15, null, accent, 2);
+            path('M29 -5 L34 16', null, accent, 2);
+        } else if (motif === 'leopard') {
+            path('M-17 37 L0 65 L17 37 Z', accent);
+            for (const [x, y] of [[-22, 47], [24, 54], [-18, 63]]) oval(x, y, 4, 3, '#86513c', null);
+            path('M47 15 Q33 4 46 -11 Q46 0 55 -3 Q67 13 47 15 Z', '#f7ad73', ink, 2);
+        } else if (motif === 'owl') {
+            path('M43 48 L56 3 L63 -6 L64 8 L49 51 Z', '#e7effb');
+            path('M40 43 L56 48 M45 48 L42 58', null, accent, 5);
+            path('M-16 49 L-21 39 L-4 44 L4 44 L21 39 L16 49 L0 60 Z', '#b9c7df', ink, 2);
+            path('M60 -13 Q45 -17 56 -33 Q53 -22 63 -25 Q70 -16 60 -13 Z', '#ffc68e', ink, 2);
+        } else if (motif === 'dragon') {
+            path('M-21 39 L0 47 L21 39 L16 61 L0 72 L-16 61 Z', '#d58a86');
+            path('M-12 48 L0 55 L12 48 M-9 57 L0 63 L9 57', null, accent, 2.5);
+        } else if (motif === 'bull') {
+            path('M-12 39 L12 39 L10 52 Q0 65 -10 52 Z', accent);
+            path('M0 60 L0 70 M-10 71 L10 71', null, accent, 4);
+        } else if (motif === 'angel') {
+            path('M-21 40 Q0 30 21 40 L15 55 L0 49 L-15 55 Z', accent);
+            oval(0, 42, 7, 8, '#d997ae', ink, 2);
+        }
+        context.restore();
+        context.restore();
     }
 
     /**
@@ -17116,7 +17219,7 @@
         }
 
         /**
-         * 가면과 수정구를 가진 예지자 모습 및 표정별 얼굴을 그린다.
+         * 별 모자와 예언서를 가진 인간형 예지자의 세 표정을 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -17125,88 +17228,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round';
-
-            drawingContext.fillStyle = '#1b3046';
-            drawingContext.beginPath();
-            drawingContext.moveTo(-size * 0.55, size * 0.78);
-            drawingContext.quadraticCurveTo(0, size * 0.3, size * 0.55, size * 0.78);
-            drawingContext.closePath();
-            drawingContext.fill();
-            drawingContext.strokeStyle = '#83d5df';
-            drawingContext.lineWidth = 3 * scale;
-            drawingContext.stroke();
-
-            drawingContext.fillStyle = '#d7e8da';
-            drawingContext.beginPath();
-            drawingContext.ellipse(0, -size * 0.1, size * 0.48, size * 0.58, 0, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.strokeStyle = '#35556a';
-            drawingContext.lineWidth = 4 * scale;
-            drawingContext.stroke();
-
-            drawingContext.fillStyle = '#77cfd5';
-            drawingContext.beginPath();
-            drawingContext.arc(0, size * 0.66, size * 0.23, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.strokeStyle = '#d7ffff';
-            drawingContext.lineWidth = 2 * scale;
-            drawingContext.stroke();
-            drawingContext.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            drawingContext.beginPath();
-            drawingContext.arc(-size * 0.075, size * 0.58, size * 0.055, 0, Math.PI * 2);
-            drawingContext.fill();
-
-            const eyeY = -size * 0.16;
-            if (expression === 'defeated') {
-                drawingContext.fillStyle = '#6cbce6';
-                [-size * 0.19, size * 0.19].forEach((eyeX) => {
-                    drawingContext.beginPath();
-                    drawingContext.ellipse(eyeX, eyeY + size * 0.13, size * 0.1, size * 0.23, 0, 0, Math.PI * 2);
-                    drawingContext.fill();
-                });
-                drawingContext.strokeStyle = '#35556a';
-                drawingContext.lineWidth = 3 * scale;
-                drawingContext.beginPath();
-                drawingContext.arc(0, size * 0.25, size * 0.13, Math.PI, Math.PI * 2);
-                drawingContext.stroke();
-            } else if (expression === 'crisis') {
-                drawingContext.fillStyle = '#203d56';
-                [-size * 0.19, size * 0.19].forEach((eyeX) => {
-                    drawingContext.beginPath();
-                    drawingContext.arc(eyeX, eyeY, size * 0.08, 0, Math.PI * 2);
-                    drawingContext.fill();
-                });
-                drawingContext.fillStyle = '#87dff1';
-                drawingContext.beginPath();
-                drawingContext.ellipse(size * 0.42, -size * 0.34, size * 0.07, size * 0.13, 0.2, 0, Math.PI * 2);
-                drawingContext.fill();
-                drawingContext.fillStyle = '#35556a';
-                drawingContext.beginPath();
-                drawingContext.ellipse(0, size * 0.25, size * 0.11, size * 0.14, 0, 0, Math.PI * 2);
-                drawingContext.fill();
-            } else {
-                drawingContext.fillStyle = '#203d56';
-                [-size * 0.19, size * 0.19].forEach((eyeX) => {
-                    drawingContext.beginPath();
-                    drawingContext.moveTo(eyeX, eyeY - size * 0.11);
-                    drawingContext.lineTo(eyeX + size * 0.07, eyeY);
-                    drawingContext.lineTo(eyeX, eyeY + size * 0.11);
-                    drawingContext.lineTo(eyeX - size * 0.07, eyeY);
-                    drawingContext.closePath();
-                    drawingContext.fill();
-                });
-                drawingContext.strokeStyle = '#35556a';
-                drawingContext.lineWidth = 3 * scale;
-                drawingContext.beginPath();
-                drawingContext.moveTo(-size * 0.13, size * 0.26);
-                drawingContext.quadraticCurveTo(0, size * 0.34, size * 0.13, size * 0.26);
-                drawingContext.stroke();
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'ChainBuildingEnemy');
         }
     }
 
@@ -17410,7 +17432,7 @@
         }
 
         /**
-         * 날개 달린 은빛 말을 타고 순식간에 달려오는 미남 왕자 세레의 일반·위기·패배 초상화를 그린다.
+         * 날개 망토와 작은 왕관을 쓴 인간형 왕자 세레의 일반·위기·패배 초상화를 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -17419,94 +17441,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            const outline = '#0c1c2c';
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round'; drawingContext.lineCap = 'round';
-
-            // 어디든 순식간에 오가는 전승을 꼬리 뒤의 바람 줄기로 암시한다.
-            drawingContext.strokeStyle = '#5fb3de'; drawingContext.lineWidth = 3 * scale;
-            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.96, size * 0.64); drawingContext.lineTo(-size * 0.64, size * 0.64); drawingContext.moveTo(-size * 0.9, size * 0.76); drawingContext.lineTo(-size * 0.7, size * 0.76); drawingContext.stroke();
-
-            // 깃털 끝이 층진 하늘빛 날개다.
-            drawingContext.strokeStyle = outline; drawingContext.lineWidth = 4 * scale;
-            [-1, 1].forEach((direction) => {
-                drawingContext.fillStyle = '#7ec4e8';
-                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.14, size * 0.26);
-                drawingContext.quadraticCurveTo(direction * size * 0.42, -size * 0.34, direction * size * 0.9, -size * 0.68);
-                drawingContext.quadraticCurveTo(direction * size * 0.96, -size * 0.4, direction * size * 0.8, -size * 0.3);
-                drawingContext.quadraticCurveTo(direction * size * 0.9, -size * 0.1, direction * size * 0.68, -size * 0.04);
-                drawingContext.quadraticCurveTo(direction * size * 0.76, size * 0.14, direction * size * 0.52, size * 0.16);
-                drawingContext.quadraticCurveTo(direction * size * 0.46, size * 0.3, direction * size * 0.24, size * 0.34);
-                drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-                drawingContext.strokeStyle = '#d4f1fb'; drawingContext.lineWidth = 1.6 * scale;
-                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.28, size * 0.12); drawingContext.lineTo(direction * size * 0.76, -size * 0.5);
-                drawingContext.moveTo(direction * size * 0.32, size * 0.22); drawingContext.lineTo(direction * size * 0.64, -size * 0.1); drawingContext.stroke();
-                drawingContext.strokeStyle = outline; drawingContext.lineWidth = 4 * scale;
-            });
-
-            // 푸른 꼬리와 은빛 말의 몸통이다.
-            drawingContext.fillStyle = '#4f9ad6';
-            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.5, size * 0.34); drawingContext.quadraticCurveTo(-size * 0.86, size * 0.26, -size * 0.94, size * 0.52); drawingContext.quadraticCurveTo(-size * 0.78, size * 0.44, -size * 0.52, size * 0.52); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#dde6ee';
-            drawingContext.beginPath(); drawingContext.ellipse(size * 0.02, size * 0.47, size * 0.6, size * 0.27, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-
-            // 바람에 날리는 왕자의 망토와 갑주다.
-            drawingContext.fillStyle = '#24507e';
-            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.2, -size * 0.12); drawingContext.quadraticCurveTo(-size * 0.62, size * 0.0, -size * 0.68, size * 0.38); drawingContext.lineTo(-size * 0.42, size * 0.3); drawingContext.lineTo(-size * 0.3, size * 0.44); drawingContext.lineTo(size * 0.08, size * 0.3); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#4a78b0';
-            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.3, size * 0.38); drawingContext.lineTo(-size * 0.22, -size * 0.1); drawingContext.lineTo(size * 0.1, -size * 0.1); drawingContext.lineTo(size * 0.18, size * 0.38); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#c9d6e2'; drawingContext.lineWidth = 2.5 * scale;
-            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.18, -size * 0.07); drawingContext.lineTo(size * 0.06, -size * 0.07); drawingContext.lineTo(-size * 0.06, size * 0.2); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#e6bd47'; drawingContext.beginPath(); drawingContext.arc(-size * 0.06, size * 0.02, size * 0.045, 0, Math.PI * 2); drawingContext.fill();
-
-            // 오른쪽으로 달려 나가는 말의 목·갈기·머리다.
-            drawingContext.lineWidth = 4 * scale; drawingContext.fillStyle = '#dde6ee';
-            drawingContext.beginPath(); drawingContext.moveTo(size * 0.26, size * 0.34); drawingContext.quadraticCurveTo(size * 0.34, 0, size * 0.46, -size * 0.16); drawingContext.lineTo(size * 0.72, -size * 0.06); drawingContext.quadraticCurveTo(size * 0.66, size * 0.18, size * 0.62, size * 0.42); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.beginPath(); drawingContext.moveTo(size * 0.54, -size * 0.3); drawingContext.lineTo(size * 0.57, -size * 0.52); drawingContext.lineTo(size * 0.67, -size * 0.34); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.beginPath(); drawingContext.ellipse(size * 0.66, -size * 0.2, size * 0.2, size * 0.17, 0.45, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#c3d0dc'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.8, -size * 0.06, size * 0.12, size * 0.1, 0.45, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = outline; drawingContext.beginPath(); drawingContext.arc(size * 0.85, -size * 0.04, size * 0.025, 0, Math.PI * 2); drawingContext.fill();
-            drawingContext.fillStyle = '#4f9ad6';
-            drawingContext.beginPath(); drawingContext.moveTo(size * 0.5, -size * 0.38); drawingContext.quadraticCurveTo(size * 0.3, -size * 0.3, size * 0.3, -size * 0.02); drawingContext.quadraticCurveTo(size * 0.22, size * 0.14, size * 0.28, size * 0.32); drawingContext.lineTo(size * 0.37, size * 0.2); drawingContext.quadraticCurveTo(size * 0.38, size * 0.0, size * 0.48, -size * 0.14); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            const horseEyeX = size * 0.66; const horseEyeY = -size * 0.22;
-            if (expression === 'defeated') {
-                drawingContext.strokeStyle = outline; drawingContext.lineWidth = 2.5 * scale;
-                drawingContext.beginPath(); drawingContext.moveTo(horseEyeX - size * 0.045, horseEyeY - size * 0.045); drawingContext.lineTo(horseEyeX + size * 0.045, horseEyeY + size * 0.045); drawingContext.moveTo(horseEyeX + size * 0.045, horseEyeY - size * 0.045); drawingContext.lineTo(horseEyeX - size * 0.045, horseEyeY + size * 0.045); drawingContext.stroke();
-            } else {
-                drawingContext.fillStyle = '#f8fbff'; drawingContext.beginPath(); drawingContext.ellipse(horseEyeX, horseEyeY, size * 0.05, expression === 'crisis' ? size * 0.075 : size * 0.06, 0, 0, Math.PI * 2); drawingContext.fill();
-                drawingContext.fillStyle = expression === 'crisis' ? '#d32f2f' : '#1b3a66'; drawingContext.beginPath(); drawingContext.arc(horseEyeX + size * 0.01, horseEyeY, size * 0.03, 0, Math.PI * 2); drawingContext.fill();
-            }
-
-            // 푸른 머리칼과 작은 왕관을 쓴 왕자의 얼굴이다.
-            drawingContext.strokeStyle = outline; drawingContext.lineWidth = 4 * scale;
-            drawingContext.fillStyle = '#f0d0b0'; drawingContext.beginPath(); drawingContext.arc(-size * 0.06, -size * 0.34, size * 0.25, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#2c4f8a';
-            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.33, -size * 0.32); drawingContext.quadraticCurveTo(-size * 0.36, -size * 0.66, -size * 0.06, -size * 0.64); drawingContext.quadraticCurveTo(size * 0.24, -size * 0.66, size * 0.21, -size * 0.32);
-            drawingContext.lineTo(size * 0.12, -size * 0.44); drawingContext.lineTo(size * 0.02, -size * 0.38); drawingContext.lineTo(-size * 0.08, -size * 0.47); drawingContext.lineTo(-size * 0.18, -size * 0.39); drawingContext.lineTo(-size * 0.25, -size * 0.46); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#e6bd47'; drawingContext.lineWidth = 3 * scale;
-            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.2, -size * 0.6); drawingContext.lineTo(-size * 0.19, -size * 0.8); drawingContext.lineTo(-size * 0.11, -size * 0.69); drawingContext.lineTo(-size * 0.06, -size * 0.86); drawingContext.lineTo(-size * 0.01, -size * 0.69); drawingContext.lineTo(size * 0.07, -size * 0.8); drawingContext.lineTo(size * 0.08, -size * 0.6); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#7ec4e8'; drawingContext.beginPath(); drawingContext.arc(-size * 0.06, -size * 0.66, size * 0.03, 0, Math.PI * 2); drawingContext.fill();
-
-            const eyeY = -size * 0.3;
-            const eyeXs = [-size * 0.15, size * 0.03];
-            // 왕자의 얼굴은 다른 적보다 작으므로 표정 선도 가늘고 작게 그려 입이 뭉개지지 않게 한다.
-            drawingContext.strokeStyle = '#1b2a3a'; drawingContext.lineWidth = 2 * scale;
-            if (expression === 'defeated') {
-                eyeXs.forEach((eyeX) => { drawingContext.beginPath(); drawingContext.moveTo(eyeX - size * 0.045, eyeY - size * 0.04); drawingContext.lineTo(eyeX + size * 0.045, eyeY + size * 0.04); drawingContext.moveTo(eyeX + size * 0.045, eyeY - size * 0.04); drawingContext.lineTo(eyeX - size * 0.045, eyeY + size * 0.04); drawingContext.stroke(); });
-                drawingContext.fillStyle = '#75c9f0'; eyeXs.forEach((eyeX, index) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX + (index ? size * 0.03 : -size * 0.03), eyeY + size * 0.1, size * 0.03, size * 0.065, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.beginPath(); drawingContext.arc(-size * 0.06, -size * 0.14, size * 0.04, Math.PI, Math.PI * 2); drawingContext.stroke();
-            } else {
-                drawingContext.fillStyle = '#f8fbff'; eyeXs.forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.06, expression === 'crisis' ? size * 0.09 : size * 0.07, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.fillStyle = expression === 'crisis' ? '#d32f2f' : '#1b3a66'; eyeXs.forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX + size * 0.01, eyeY + size * 0.005, size * 0.036, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.beginPath();
-                if (expression === 'crisis') drawingContext.arc(-size * 0.06, -size * 0.15, size * 0.04, Math.PI, Math.PI * 2);
-                else drawingContext.arc(-size * 0.06, -size * 0.21, size * 0.05, 0.2, Math.PI - 0.2);
-                drawingContext.stroke();
-                if (expression === 'crisis') { drawingContext.fillStyle = '#7adcf4'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.2, -size * 0.42, size * 0.045, size * 0.09, 0.2, 0, Math.PI * 2); drawingContext.fill(); }
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Seere');
         }
     }
 
@@ -17618,85 +17553,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round';
-            drawingContext.fillStyle = '#5c354e';
-            drawingContext.strokeStyle = '#2b1a31';
-            drawingContext.lineWidth = 4 * scale;
-            [-1, 1].forEach((direction) => {
-                drawingContext.beginPath();
-                drawingContext.moveTo(direction * size * 0.3, -size * 0.05);
-                drawingContext.lineTo(direction * size * 0.92, -size * 0.48);
-                drawingContext.lineTo(direction * size * 0.7, size * 0.4);
-                drawingContext.lineTo(direction * size * 0.27, size * 0.32);
-                drawingContext.closePath();
-                drawingContext.fill();
-                drawingContext.stroke();
-            });
-            drawingContext.fillStyle = '#a55b80';
-            drawingContext.beginPath();
-            drawingContext.arc(0, 0, size * 0.52, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.stroke();
-            drawingContext.fillStyle = '#ffd76b';
-            drawingContext.beginPath();
-            for (let index = 0; index < 10; index += 1) {
-                const angle = -Math.PI / 2 + index * Math.PI / 5;
-                const radius = index % 2 ? size * 0.15 : size * 0.31;
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius - size * 0.58;
-                if (index === 0) drawingContext.moveTo(x, y);
-                else drawingContext.lineTo(x, y);
-            }
-            drawingContext.closePath();
-            drawingContext.fill();
-            drawingContext.stroke();
-            drawingContext.fillStyle = '#b9d7f0'; drawingContext.beginPath(); drawingContext.arc(size * 0.72, -size * 0.42, size * 0.11, 0, Math.PI * 2); drawingContext.fill(); drawingContext.beginPath(); drawingContext.moveTo(size * 0.75, -size * 0.42); drawingContext.lineTo(size * 0.98, -size * 0.52); drawingContext.lineTo(size * 0.78, -size * 0.3); drawingContext.closePath(); drawingContext.fill();
-
-            if (expression === 'defeated') {
-                drawingContext.strokeStyle = '#f3edff';
-                drawingContext.lineWidth = 3 * scale;
-                [-size * 0.18, size * 0.18].forEach((eyeX) => {
-                    drawingContext.beginPath();
-                    drawingContext.moveTo(eyeX - size * 0.09, -size * 0.1);
-                    drawingContext.lineTo(eyeX + size * 0.09, size * 0.1);
-                    drawingContext.moveTo(eyeX + size * 0.09, -size * 0.1);
-                    drawingContext.lineTo(eyeX - size * 0.09, size * 0.1);
-                    drawingContext.stroke();
-                });
-                drawingContext.fillStyle = '#75c9f0';
-                drawingContext.beginPath();
-                drawingContext.ellipse(0, size * 0.27, size * 0.13, size * 0.08, 0, 0, Math.PI * 2);
-                drawingContext.fill();
-            } else {
-                drawingContext.fillStyle = expression === 'crisis' ? '#fff5bb' : '#f7efff';
-                [-size * 0.18, size * 0.18].forEach((eyeX) => {
-                    drawingContext.beginPath();
-                    drawingContext.ellipse(eyeX, -size * 0.1, size * 0.11, size * 0.14, 0, 0, Math.PI * 2);
-                    drawingContext.fill();
-                });
-                drawingContext.fillStyle = expression === 'crisis' ? '#ef5350' : '#3c2347';
-                [-size * 0.18, size * 0.18].forEach((eyeX) => {
-                    drawingContext.beginPath();
-                    drawingContext.arc(eyeX, -size * 0.08, size * 0.047, 0, Math.PI * 2);
-                    drawingContext.fill();
-                });
-                drawingContext.strokeStyle = '#3c2347';
-                drawingContext.lineWidth = 3 * scale;
-                drawingContext.beginPath();
-                if (expression === 'crisis') drawingContext.arc(0, size * 0.32, size * 0.12, Math.PI, Math.PI * 2);
-                else drawingContext.arc(0, size * 0.16, size * 0.12, 0, Math.PI);
-                drawingContext.stroke();
-                if (expression === 'crisis') {
-                    drawingContext.fillStyle = '#82d9f5';
-                    drawingContext.beginPath();
-                    drawingContext.ellipse(size * 0.42, size * 0.06, size * 0.06, size * 0.11, 0.2, 0, Math.PI * 2);
-                    drawingContext.fill();
-                }
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Decarabia');
         }
     }
 
@@ -17788,75 +17645,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round';
-            drawingContext.fillStyle = '#372446';
-            drawingContext.strokeStyle = '#1d1629';
-            drawingContext.lineWidth = 4 * scale;
-            drawingContext.beginPath();
-            drawingContext.moveTo(-size * 0.7, size * 0.8);
-            drawingContext.lineTo(-size * 0.52, -size * 0.05);
-            drawingContext.lineTo(0, size * 0.26);
-            drawingContext.lineTo(size * 0.52, -size * 0.05);
-            drawingContext.lineTo(size * 0.7, size * 0.8);
-            drawingContext.closePath();
-            drawingContext.fill();
-            drawingContext.stroke();
-            drawingContext.fillStyle = '#d79a73';
-            drawingContext.beginPath();
-            drawingContext.ellipse(0, -size * 0.08, size * 0.42, size * 0.52, 0, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.stroke();
-            drawingContext.fillStyle = '#e7b846';
-            drawingContext.beginPath();
-            drawingContext.moveTo(-size * 0.34, -size * 0.5);
-            drawingContext.lineTo(-size * 0.24, -size * 0.91);
-            drawingContext.lineTo(0, -size * 0.62);
-            drawingContext.lineTo(size * 0.24, -size * 0.91);
-            drawingContext.lineTo(size * 0.34, -size * 0.5);
-            drawingContext.closePath();
-            drawingContext.fill();
-            drawingContext.stroke();
-            drawingContext.strokeStyle = '#f0d88a'; drawingContext.lineWidth = 3 * scale; drawingContext.beginPath(); drawingContext.arc(0, -size * 0.78, size * 0.28, Math.PI * 0.12, Math.PI * 0.88); drawingContext.stroke();
-
-            if (expression === 'defeated') {
-                drawingContext.strokeStyle = '#413047';
-                drawingContext.lineWidth = 3 * scale;
-                [-size * 0.16, size * 0.16].forEach((eyeX) => {
-                    drawingContext.beginPath();
-                    drawingContext.moveTo(eyeX - size * 0.08, -size * 0.13);
-                    drawingContext.lineTo(eyeX + size * 0.08, size * 0.03);
-                    drawingContext.moveTo(eyeX + size * 0.08, -size * 0.13);
-                    drawingContext.lineTo(eyeX - size * 0.08, size * 0.03);
-                    drawingContext.stroke();
-                });
-                drawingContext.fillStyle = '#75c9f0';
-                drawingContext.beginPath();
-                drawingContext.ellipse(0, size * 0.3, size * 0.15, size * 0.09, 0, 0, Math.PI * 2);
-                drawingContext.fill();
-            } else {
-                drawingContext.fillStyle = '#2a1a32';
-                [-size * 0.16, size * 0.16].forEach((eyeX) => {
-                    drawingContext.beginPath();
-                    drawingContext.ellipse(eyeX, -size * 0.13, size * 0.07, expression === 'crisis' ? size * 0.12 : size * 0.07, 0, 0, Math.PI * 2);
-                    drawingContext.fill();
-                });
-                drawingContext.strokeStyle = '#5a2438';
-                drawingContext.lineWidth = 3 * scale;
-                drawingContext.beginPath();
-                if (expression === 'crisis') drawingContext.arc(0, size * 0.31, size * 0.12, Math.PI, Math.PI * 2);
-                else drawingContext.arc(0, size * 0.15, size * 0.12, 0, Math.PI);
-                drawingContext.stroke();
-                if (expression === 'crisis') {
-                    drawingContext.fillStyle = '#82d9f5';
-                    drawingContext.beginPath();
-                    drawingContext.ellipse(size * 0.42, size * 0.08, size * 0.06, size * 0.11, 0.2, 0, Math.PI * 2);
-                    drawingContext.fill();
-                }
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Belial');
         }
     }
 
@@ -17927,35 +17716,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round';
-            // 뿔과 음표 리본으로 유니콘 작곡가를 귀엽게 각색한다.
-            drawingContext.fillStyle = '#405270'; drawingContext.strokeStyle = '#1a263b'; drawingContext.lineWidth = 4 * scale;
-            drawingContext.beginPath();
-            drawingContext.moveTo(-size * 0.56, size * 0.72); drawingContext.lineTo(-size * 0.78, -size * 0.12); drawingContext.lineTo(-size * 0.34, size * 0.06);
-            drawingContext.lineTo(0, -size * 0.48); drawingContext.lineTo(size * 0.34, size * 0.06); drawingContext.lineTo(size * 0.78, -size * 0.12); drawingContext.lineTo(size * 0.56, size * 0.72);
-            drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#c7d7ed'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.06, size * 0.43, size * 0.5, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#f1d77a'; drawingContext.beginPath(); drawingContext.moveTo(0, -size * 0.52); drawingContext.lineTo(size * 0.12, -size * 0.98); drawingContext.lineTo(size * 0.24, -size * 0.46); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.strokeStyle = '#f1d77a'; drawingContext.lineWidth = 3 * scale; drawingContext.beginPath(); drawingContext.arc(-size * 0.62, size * 0.23, size * 0.18, -Math.PI * 0.7, Math.PI * 0.35); drawingContext.stroke();
-            drawingContext.fillStyle = '#f1d77a'; drawingContext.beginPath(); drawingContext.arc(-size * 0.51, size * 0.17, size * 0.05, 0, Math.PI * 2); drawingContext.fill();
-            const eyeY = -size * 0.11;
-            if (expression === 'defeated') {
-                // 우는 표정
-                drawingContext.fillStyle = '#577aa3'; [-size * 0.17, size * 0.17].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.08, size * 0.05, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.fillStyle = '#77d8f5'; [-size * 0.17, size * 0.17].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY + size * 0.2, size * 0.07, size * 0.15, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.strokeStyle = '#30415f'; drawingContext.beginPath(); drawingContext.arc(0, size * 0.28, size * 0.12, Math.PI, Math.PI * 2); drawingContext.stroke();
-            } else {
-                drawingContext.fillStyle = expression === 'crisis' ? '#ef5350' : '#293c5b';
-                [-size * 0.17, size * 0.17].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.075, expression === 'crisis' ? size * 0.13 : size * 0.09, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.strokeStyle = '#30415f'; drawingContext.lineWidth = 3 * scale; drawingContext.beginPath();
-                if (expression === 'crisis') drawingContext.arc(0, size * 0.28, size * 0.11, Math.PI, Math.PI * 2);
-                else drawingContext.arc(0, size * 0.18, size * 0.12, 0, Math.PI);
-                drawingContext.stroke();
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Amdusias');
         }
     }
 
@@ -18074,28 +17835,12 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save(); drawingContext.translate(centerX, centerY); drawingContext.lineJoin = 'round';
-            drawingContext.fillStyle = '#252332'; drawingContext.strokeStyle = '#10101b'; drawingContext.lineWidth = 4 * scale;
-            drawingContext.beginPath(); drawingContext.ellipse(0, size * 0.18, size * 0.61, size * 0.57, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            [-1, 1].forEach((direction) => { drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.28, -size * 0.2); drawingContext.lineTo(direction * size * 0.53, -size * 0.74); drawingContext.lineTo(direction * size * 0.05, -size * 0.45); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke(); });
-            drawingContext.fillStyle = '#5b473d'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.04, size * 0.43, size * 0.46, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#c89043'; drawingContext.fillRect(size * 0.23, size * 0.27, size * 0.29, size * 0.22); drawingContext.strokeRect(size * 0.23, size * 0.27, size * 0.29, size * 0.22);
-            const eyeY = -size * 0.1;
-            if (expression === 'defeated') {
-                drawingContext.fillStyle = '#72cdeb'; [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY + size * 0.16, size * 0.075, size * 0.19, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.strokeStyle = '#231c28'; drawingContext.beginPath(); drawingContext.arc(0, size * 0.26, size * 0.12, Math.PI, Math.PI * 2); drawingContext.stroke();
-            } else {
-                drawingContext.fillStyle = expression === 'crisis' ? '#f3dc75' : '#f5f0dc'; [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.09, expression === 'crisis' ? size * 0.14 : size * 0.1, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.fillStyle = '#161522'; [-size * 0.16, size * 0.16].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.04, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.strokeStyle = '#231c28'; drawingContext.beginPath(); if (expression === 'crisis') drawingContext.arc(0, size * 0.25, size * 0.12, Math.PI, Math.PI * 2); else drawingContext.arc(0, size * 0.14, size * 0.12, 0, Math.PI); drawingContext.stroke();
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Kimaris');
         }
     }
 
     /**
-     * 안드레알푸스는 수학·기하학·천문학에 능통한 미모후작을 거대한 공작으로 각색한 기본 제공 적이다.
+     * 안드레알푸스는 수학·기하학·천문학에 능통한 미모후작을 공작 깃털을 두른 인간형 학자로 각색한 기본 제공 적이다.
      * 키마리스와 같은 생존·상쇄 평가를 사용하되, 일반 상황에서는 Worker로 3수 앞까지 읽는다.
      */
     class Andrealphus extends BundledEnemy {
@@ -18243,69 +17988,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round';
-            drawingContext.lineCap = 'round';
-            drawingContext.strokeStyle = '#123a4b';
-            drawingContext.lineWidth = 3 * scale;
-
-            // 부채처럼 펼친 꼬리와 눈 모양 깃털로 거대한 공작의 실루엣을 만든다.
-            [-0.72, -0.36, 0, 0.36, 0.72].forEach((angle) => {
-                drawingContext.save();
-                drawingContext.rotate(angle);
-                drawingContext.fillStyle = '#237f73';
-                drawingContext.beginPath();
-                drawingContext.ellipse(0, -size * 0.48, size * 0.19, size * 0.54, 0, 0, Math.PI * 2);
-                drawingContext.fill(); drawingContext.stroke();
-                drawingContext.fillStyle = '#e6bd47';
-                drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.69, size * 0.11, size * 0.16, 0, 0, Math.PI * 2); drawingContext.fill();
-                drawingContext.fillStyle = '#3553a4';
-                drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.7, size * 0.06, size * 0.09, 0, 0, Math.PI * 2); drawingContext.fill();
-                drawingContext.restore();
-            });
-
-            drawingContext.fillStyle = '#174f67';
-            drawingContext.beginPath(); drawingContext.ellipse(0, size * 0.27, size * 0.46, size * 0.58, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#55b79d';
-            drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.08, size * 0.34, size * 0.43, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#e6bd47';
-            drawingContext.beginPath(); drawingContext.moveTo(0, size * 0.08); drawingContext.lineTo(size * 0.13, size * 0.2); drawingContext.lineTo(0, size * 0.27); drawingContext.lineTo(-size * 0.13, size * 0.2); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-
-            // 후작의 우아함과 학식을 암시하는 볏, 단안경, 기하 문양을 더한다.
-            drawingContext.strokeStyle = '#e6bd47';
-            drawingContext.fillStyle = '#e6bd47';
-            [-0.16, 0, 0.16].forEach((offset) => {
-                drawingContext.beginPath(); drawingContext.moveTo(offset * size, -size * 0.48); drawingContext.lineTo(offset * size * 1.5, -size * 0.75); drawingContext.stroke();
-                drawingContext.beginPath(); drawingContext.arc(offset * size * 1.5, -size * 0.78, size * 0.045, 0, Math.PI * 2); drawingContext.fill();
-            });
-            drawingContext.beginPath(); drawingContext.arc(size * 0.16, -size * 0.12, size * 0.13, 0, Math.PI * 2); drawingContext.stroke();
-            drawingContext.beginPath(); drawingContext.moveTo(size * 0.27, -size * 0.03); drawingContext.lineTo(size * 0.39, size * 0.15); drawingContext.stroke();
-            drawingContext.beginPath(); drawingContext.moveTo(-size * 0.19, size * 0.43); drawingContext.lineTo(0, size * 0.17); drawingContext.lineTo(size * 0.19, size * 0.43); drawingContext.closePath(); drawingContext.stroke();
-
-            const eyeY = -size * 0.13;
-            if (expression === 'defeated') {
-                drawingContext.strokeStyle = '#18384b';
-                [-size * 0.15, size * 0.15].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.07, 0.1, Math.PI - 0.1); drawingContext.stroke(); });
-                drawingContext.fillStyle = '#7adcf4';
-                [-size * 0.15, size * 0.15].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY + size * 0.18, size * 0.055, size * 0.14, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.beginPath(); drawingContext.arc(0, size * 0.12, size * 0.11, Math.PI, Math.PI * 2); drawingContext.stroke();
-            } else {
-                drawingContext.fillStyle = '#f8f1d7';
-                [-size * 0.15, size * 0.15].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.08, expression === 'crisis' ? size * 0.13 : size * 0.09, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.fillStyle = '#182e52';
-                [-size * 0.15, size * 0.15].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.035, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.strokeStyle = '#18384b';
-                drawingContext.beginPath();
-                if (expression === 'crisis') drawingContext.arc(0, size * 0.13, size * 0.1, Math.PI, Math.PI * 2);
-                else drawingContext.arc(0, size * 0.04, size * 0.11, 0, Math.PI);
-                drawingContext.stroke();
-                if (expression === 'crisis') {
-                    drawingContext.fillStyle = '#7adcf4'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.32, -size * 0.01, size * 0.05, size * 0.11, 0.2, 0, Math.PI * 2); drawingContext.fill();
-                }
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Andrealphus');
         }
     }
 
@@ -18667,7 +18350,7 @@
         }
 
         /**
-         * 검은 점무늬, 날카로운 눈, 삼각형 마법진으로 표현한 표범의 일반·위기·우는 초상화를 그린다.
+         * 표범 귀와 점무늬 의상을 갖춘 인간형 플라우로스의 일반·위기·우는 초상화를 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -18676,96 +18359,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round';
-            drawingContext.lineCap = 'round';
-            drawingContext.fillStyle = '#34262c';
-            drawingContext.strokeStyle = '#160f14';
-            drawingContext.lineWidth = 4 * scale;
-
-            // 삼각형 마법진과 긴 꼬리로 전승 속 사나운 표범의 실루엣을 만든다.
-            drawingContext.strokeStyle = '#d98539';
-            drawingContext.lineWidth = 2.5 * scale;
-            drawingContext.beginPath();
-            drawingContext.moveTo(0, -size * 0.9);
-            drawingContext.lineTo(-size * 0.78, size * 0.52);
-            drawingContext.lineTo(size * 0.78, size * 0.52);
-            drawingContext.closePath();
-            drawingContext.stroke();
-            drawingContext.strokeStyle = '#160f14';
-            drawingContext.lineWidth = 4 * scale;
-            drawingContext.beginPath();
-            drawingContext.moveTo(size * 0.43, size * 0.43);
-            drawingContext.quadraticCurveTo(size * 0.92, size * 0.68, size * 0.72, size * 0.04);
-            drawingContext.stroke();
-
-            drawingContext.fillStyle = '#b56b32';
-            drawingContext.beginPath();
-            drawingContext.ellipse(0, size * 0.26, size * 0.52, size * 0.52, 0, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.stroke();
-            [-1, 1].forEach((direction) => {
-                drawingContext.beginPath();
-                drawingContext.moveTo(direction * size * 0.28, -size * 0.38);
-                drawingContext.lineTo(direction * size * 0.58, -size * 0.78);
-                drawingContext.lineTo(direction * size * 0.52, -size * 0.19);
-                drawingContext.closePath();
-                drawingContext.fill();
-                drawingContext.stroke();
-            });
-            drawingContext.fillStyle = '#d99145';
-            drawingContext.beginPath();
-            drawingContext.ellipse(0, -size * 0.08, size * 0.48, size * 0.46, 0, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.stroke();
-            drawingContext.fillStyle = '#3a2020';
-            [-0.28, -0.1, 0.1, 0.28].forEach((offset, index) => {
-                drawingContext.beginPath();
-                drawingContext.ellipse(offset * size, index % 2 ? size * 0.14 : -size * 0.28, size * 0.07, size * 0.1, offset * 1.6, 0, Math.PI * 2);
-                drawingContext.fill();
-            });
-            drawingContext.fillStyle = '#f0c982';
-            drawingContext.beginPath();
-            drawingContext.ellipse(0, size * 0.23, size * 0.28, size * 0.2, 0, 0, Math.PI * 2);
-            drawingContext.fill();
-            drawingContext.stroke();
-
-            const eyeY = -size * 0.08;
-            if (expression === 'defeated') {
-                drawingContext.strokeStyle = '#26151a';
-                drawingContext.lineWidth = 3 * scale;
-                [-size * 0.17, size * 0.17].forEach((eyeX) => {
-                    drawingContext.beginPath();
-                    drawingContext.moveTo(eyeX - size * 0.08, eyeY - size * 0.07);
-                    drawingContext.lineTo(eyeX + size * 0.08, eyeY + size * 0.07);
-                    drawingContext.moveTo(eyeX + size * 0.08, eyeY - size * 0.07);
-                    drawingContext.lineTo(eyeX - size * 0.08, eyeY + size * 0.07);
-                    drawingContext.stroke();
-                });
-                drawingContext.fillStyle = '#72cdeb';
-                [-size * 0.17, size * 0.17].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY + size * 0.2, size * 0.06, size * 0.14, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.strokeStyle = '#26151a';
-                drawingContext.beginPath(); drawingContext.arc(0, size * 0.34, size * 0.11, Math.PI, Math.PI * 2); drawingContext.stroke();
-            } else {
-                drawingContext.fillStyle = expression === 'crisis' ? '#fff0a6' : '#f6e6ac';
-                [-size * 0.17, size * 0.17].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.1, expression === 'crisis' ? size * 0.13 : size * 0.09, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.fillStyle = expression === 'crisis' ? '#e53935' : '#2c1720';
-                [-size * 0.17, size * 0.17].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.035, size * 0.075, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.fillStyle = '#26151a';
-                drawingContext.beginPath(); drawingContext.moveTo(0, size * 0.13); drawingContext.lineTo(size * 0.07, size * 0.21); drawingContext.lineTo(0, size * 0.25); drawingContext.lineTo(-size * 0.07, size * 0.21); drawingContext.closePath(); drawingContext.fill();
-                drawingContext.strokeStyle = '#26151a';
-                drawingContext.beginPath();
-                if (expression === 'crisis') drawingContext.arc(0, size * 0.38, size * 0.12, Math.PI, Math.PI * 2);
-                else drawingContext.arc(0, size * 0.28, size * 0.12, 0, Math.PI);
-                drawingContext.stroke();
-                if (expression === 'crisis') {
-                    drawingContext.fillStyle = '#72cdeb';
-                    drawingContext.beginPath(); drawingContext.ellipse(size * 0.36, size * 0.03, size * 0.06, size * 0.12, 0.2, 0, Math.PI * 2); drawingContext.fill();
-                }
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Flauros');
         }
     }
 
@@ -18793,7 +18387,7 @@
         }
 
         /**
-         * 검은 늑대에 탄 날개 달린 새 머리 천사와 불타는 검을 그린다.
+         * 새 깃털 두건과 늑대 문장, 불꽃 장식 검을 가진 인간형 안드라스를 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -18802,46 +18396,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round'; drawingContext.lineCap = 'round';
-            // 검은 늑대의 몸과 꼬리다.
-            drawingContext.fillStyle = '#202633'; drawingContext.strokeStyle = '#090c14'; drawingContext.lineWidth = 4 * scale;
-            drawingContext.beginPath(); drawingContext.ellipse(-size * 0.08, size * 0.33, size * 0.67, size * 0.31, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.beginPath(); drawingContext.moveTo(size * 0.48, size * 0.25); drawingContext.lineTo(size * 0.85, size * 0.08); drawingContext.lineTo(size * 0.66, size * 0.45); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#3c4555'; drawingContext.beginPath(); drawingContext.ellipse(-size * 0.45, size * 0.27, size * 0.29, size * 0.21, -0.18, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            // 청회색 천사 날개다.
-            drawingContext.fillStyle = '#aabbd1'; drawingContext.strokeStyle = '#53657d'; drawingContext.lineWidth = 2.5 * scale;
-            [-1, 1].forEach((direction) => {
-                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.13, size * 0.06);
-                drawingContext.quadraticCurveTo(direction * size * 0.92, -size * 0.02, direction * size * 0.74, -size * 0.74);
-                drawingContext.quadraticCurveTo(direction * size * 0.42, -size * 0.48, direction * size * 0.16, -size * 0.2);
-                drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-                drawingContext.strokeStyle = '#71849c'; drawingContext.lineWidth = 1.4 * scale;
-                for (let feather = 0; feather < 3; feather += 1) {
-                    drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.22, -size * (0.14 + feather * 0.1)); drawingContext.lineTo(direction * size * (0.64 + feather * 0.06), -size * (0.45 + feather * 0.08)); drawingContext.stroke();
-                }
-                drawingContext.strokeStyle = '#53657d'; drawingContext.lineWidth = 2.5 * scale;
-            });
-            // 천사 갑옷과 까마귀 머리다.
-            drawingContext.fillStyle = '#d2d9e7'; drawingContext.beginPath(); drawingContext.moveTo(-size * 0.28, size * 0.17); drawingContext.lineTo(0, -size * 0.35); drawingContext.lineTo(size * 0.29, size * 0.17); drawingContext.lineTo(0, size * 0.44); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#232937'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.45, size * 0.24, size * 0.25, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#c5a35c'; drawingContext.beginPath(); drawingContext.moveTo(size * 0.12, -size * 0.45); drawingContext.lineTo(size * 0.45, -size * 0.36); drawingContext.lineTo(size * 0.13, -size * 0.27); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            // 불타는 검을 든 오른팔이다.
-            drawingContext.strokeStyle = '#d6ddea'; drawingContext.lineWidth = 5 * scale; drawingContext.beginPath(); drawingContext.moveTo(size * 0.16, -size * 0.03); drawingContext.lineTo(size * 0.54, size * 0.05); drawingContext.stroke();
-            drawingContext.strokeStyle = '#ffb300'; drawingContext.lineWidth = 4 * scale; drawingContext.beginPath(); drawingContext.moveTo(size * 0.51, size * 0.06); drawingContext.lineTo(size * 0.98, -size * 0.55); drawingContext.stroke();
-            drawingContext.strokeStyle = '#ff7043'; drawingContext.lineWidth = 2 * scale; drawingContext.beginPath(); drawingContext.moveTo(size * 0.56, size * 0.01); drawingContext.lineTo(size * 0.88, -size * 0.73); drawingContext.stroke();
-            const eyeX = size * 0.03; const eyeY = -size * 0.47;
-            if (expression === 'defeated') {
-                drawingContext.strokeStyle = '#e1e6f0'; drawingContext.lineWidth = 2.5 * scale;
-                drawingContext.beginPath(); drawingContext.moveTo(eyeX - size * 0.09, eyeY - size * 0.06); drawingContext.lineTo(eyeX + size * 0.09, eyeY + size * 0.06); drawingContext.moveTo(eyeX + size * 0.09, eyeY - size * 0.06); drawingContext.lineTo(eyeX - size * 0.09, eyeY + size * 0.06); drawingContext.stroke();
-                drawingContext.fillStyle = '#6ec6e8'; drawingContext.beginPath(); drawingContext.arc(size * 0.17, -size * 0.23, size * 0.06, 0, Math.PI * 2); drawingContext.fill();
-            } else {
-                drawingContext.fillStyle = expression === 'crisis' ? '#ff5252' : '#ffe082'; drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.06, 0, Math.PI * 2); drawingContext.fill();
-                if (expression === 'crisis') { drawingContext.fillStyle = '#6ec6e8'; drawingContext.beginPath(); drawingContext.arc(size * 0.19, -size * 0.26, size * 0.055, 0, Math.PI * 2); drawingContext.fill(); }
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Andras');
         }
     }
 
@@ -18868,7 +18423,7 @@
         }
 
         /**
-         * 두 머리의 붉은 드래곤과 그 위에 탄 작은 날개 달린 소년을 그린다.
+         * 드래곤 뿔과 비늘 튜닉을 입은 머리 하나의 날개 달린 소년을 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -18877,58 +18432,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save();
-            drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round'; drawingContext.lineCap = 'round';
-            drawingContext.strokeStyle = '#2a0a10'; drawingContext.lineWidth = 4 * scale;
-
-            // 불길처럼 뻗은 날개와 드래곤 몸통이다.
-            drawingContext.fillStyle = '#7d1f2d';
-            [-1, 1].forEach((direction) => {
-                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.2, size * 0.22);
-                drawingContext.lineTo(direction * size * 0.92, -size * 0.26); drawingContext.lineTo(direction * size * 0.67, size * 0.15);
-                drawingContext.lineTo(direction * size * 0.96, size * 0.38); drawingContext.lineTo(direction * size * 0.28, size * 0.46);
-                drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            });
-            drawingContext.fillStyle = '#a52b37';
-            drawingContext.beginPath(); drawingContext.ellipse(0, size * 0.43, size * 0.65, size * 0.31, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-
-            // 서로 갈라진 두 붉은 목과 뿔 달린 머리다.
-            [-1, 1].forEach((direction) => {
-                drawingContext.strokeStyle = '#a52b37'; drawingContext.lineWidth = 16 * scale;
-                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.18, size * 0.38); drawingContext.quadraticCurveTo(direction * size * 0.28, 0, direction * size * 0.5, -size * 0.28); drawingContext.stroke();
-                drawingContext.fillStyle = '#bb3440'; drawingContext.strokeStyle = '#2a0a10'; drawingContext.lineWidth = 3 * scale;
-                drawingContext.beginPath(); drawingContext.ellipse(direction * size * 0.55, -size * 0.34, size * 0.25, size * 0.18, direction * 0.18, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-                drawingContext.fillStyle = '#e0b75c';
-                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.48, -size * 0.48); drawingContext.lineTo(direction * size * 0.52, -size * 0.72); drawingContext.lineTo(direction * size * 0.66, -size * 0.49); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-                const eyeX = direction * size * 0.59; const eyeY = -size * 0.38;
-                if (expression === 'defeated') {
-                    drawingContext.strokeStyle = '#f4d7ad'; drawingContext.lineWidth = 2.5 * scale;
-                    drawingContext.beginPath(); drawingContext.moveTo(eyeX - size * 0.055, eyeY - size * 0.045); drawingContext.lineTo(eyeX + size * 0.055, eyeY + size * 0.045); drawingContext.moveTo(eyeX + size * 0.055, eyeY - size * 0.045); drawingContext.lineTo(eyeX - size * 0.055, eyeY + size * 0.045); drawingContext.stroke();
-                } else {
-                    drawingContext.fillStyle = expression === 'crisis' ? '#fff176' : '#ffca55'; drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.045, 0, Math.PI * 2); drawingContext.fill();
-                }
-            });
-
-            // 드래곤 위의 아기 천사 모습이다.
-            drawingContext.fillStyle = '#f0d2b2'; drawingContext.strokeStyle = '#5a3441'; drawingContext.lineWidth = 3 * scale;
-            drawingContext.beginPath(); drawingContext.arc(0, -size * 0.28, size * 0.18, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#f2eadf';
-            [-1, 1].forEach((direction) => {
-                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.08, -size * 0.1); drawingContext.quadraticCurveTo(direction * size * 0.48, -size * 0.2, direction * size * 0.38, size * 0.13); drawingContext.quadraticCurveTo(direction * size * 0.18, size * 0.04, direction * size * 0.04, 0); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            });
-            drawingContext.fillStyle = '#ead8c6'; drawingContext.beginPath(); drawingContext.moveTo(-size * 0.17, -size * 0.13); drawingContext.lineTo(size * 0.17, -size * 0.13); drawingContext.lineTo(size * 0.25, size * 0.31); drawingContext.lineTo(-size * 0.25, size * 0.31); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            if (expression === 'defeated') {
-                drawingContext.strokeStyle = '#5a3441'; drawingContext.beginPath(); drawingContext.arc(0, -size * 0.21, size * 0.08, Math.PI, Math.PI * 2); drawingContext.stroke();
-                drawingContext.fillStyle = '#78d5ee'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.2, -size * 0.2, size * 0.045, size * 0.09, 0.2, 0, Math.PI * 2); drawingContext.fill();
-            } else {
-                drawingContext.fillStyle = expression === 'crisis' ? '#d32f2f' : '#4d3541';
-                [-size * 0.06, size * 0.06].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX, -size * 0.31, size * 0.025, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.strokeStyle = '#5a3441'; drawingContext.beginPath(); drawingContext.arc(0, -size * 0.24, size * 0.055, expression === 'crisis' ? Math.PI : 0, expression === 'crisis' ? Math.PI * 2 : Math.PI); drawingContext.stroke();
-                if (expression === 'crisis') { drawingContext.fillStyle = '#78d5ee'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.2, -size * 0.2, size * 0.04, size * 0.08, 0.2, 0, Math.PI * 2); drawingContext.fill(); }
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Valak');
         }
     }
 
@@ -18957,7 +18461,7 @@
         }
 
         /**
-         * 황금빛 그리폰 날개와 굽은 뿔을 지닌 숫소의 일반·위기·패배 초상화를 그린다.
+         * 황금빛 날개와 숫소 뿔 장식을 지닌 인간형 자간의 일반·위기·패배 초상화를 그린다.
          * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
          * @param {number} centerX 캐릭터 중심 X 좌표
          * @param {number} centerY 캐릭터 중심 Y 좌표
@@ -18966,39 +18470,7 @@
          * @returns {void}
          */
         drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            const size = 72 * scale;
-            drawingContext.save(); drawingContext.translate(centerX, centerY);
-            drawingContext.lineJoin = 'round'; drawingContext.lineCap = 'round';
-            drawingContext.strokeStyle = '#24180c'; drawingContext.lineWidth = 4 * scale;
-            // 그리폰처럼 층이 진 황금 날개다.
-            drawingContext.fillStyle = '#b88a3b';
-            [-1, 1].forEach((direction) => {
-                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.16, size * 0.14);
-                drawingContext.lineTo(direction * size * 0.62, -size * 0.7); drawingContext.lineTo(direction * size * 0.58, -size * 0.15);
-                drawingContext.lineTo(direction * size * 0.96, -size * 0.48); drawingContext.lineTo(direction * size * 0.7, size * 0.08);
-                drawingContext.lineTo(direction * size, -size * 0.06); drawingContext.lineTo(direction * size * 0.48, size * 0.43);
-                drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            });
-            // 숫소의 몸과 머리다.
-            drawingContext.fillStyle = '#5a3b25'; drawingContext.beginPath(); drawingContext.ellipse(0, size * 0.34, size * 0.58, size * 0.43, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#795238'; drawingContext.beginPath(); drawingContext.ellipse(0, -size * 0.09, size * 0.43, size * 0.4, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#d7b56a';
-            [-1, 1].forEach((direction) => {
-                drawingContext.beginPath(); drawingContext.moveTo(direction * size * 0.27, -size * 0.34); drawingContext.quadraticCurveTo(direction * size * 0.75, -size * 0.72, direction * size * 0.64, -size * 0.18); drawingContext.quadraticCurveTo(direction * size * 0.48, -size * 0.39, direction * size * 0.23, -size * 0.21); drawingContext.closePath(); drawingContext.fill(); drawingContext.stroke();
-            });
-            drawingContext.fillStyle = '#b98262'; drawingContext.beginPath(); drawingContext.ellipse(0, size * 0.13, size * 0.3, size * 0.2, 0, 0, Math.PI * 2); drawingContext.fill(); drawingContext.stroke();
-            drawingContext.fillStyle = '#2b170f'; [-size * 0.11, size * 0.11].forEach((nostrilX) => { drawingContext.beginPath(); drawingContext.arc(nostrilX, size * 0.14, size * 0.035, 0, Math.PI * 2); drawingContext.fill(); });
-            const eyeY = -size * 0.11;
-            if (expression === 'defeated') {
-                drawingContext.strokeStyle = '#f0dfba'; drawingContext.lineWidth = 3 * scale;
-                [-size * 0.18, size * 0.18].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.moveTo(eyeX - size * 0.06, eyeY - size * 0.055); drawingContext.lineTo(eyeX + size * 0.06, eyeY + size * 0.055); drawingContext.moveTo(eyeX + size * 0.06, eyeY - size * 0.055); drawingContext.lineTo(eyeX - size * 0.06, eyeY + size * 0.055); drawingContext.stroke(); });
-                drawingContext.fillStyle = '#75cce7'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.34, size * 0.04, size * 0.05, size * 0.11, 0.15, 0, Math.PI * 2); drawingContext.fill();
-            } else {
-                drawingContext.fillStyle = '#f5e8bd'; [-size * 0.18, size * 0.18].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.ellipse(eyeX, eyeY, size * 0.09, expression === 'crisis' ? size * 0.12 : size * 0.08, 0, 0, Math.PI * 2); drawingContext.fill(); });
-                drawingContext.fillStyle = expression === 'crisis' ? '#d32f2f' : '#21140d'; [-size * 0.18, size * 0.18].forEach((eyeX) => { drawingContext.beginPath(); drawingContext.arc(eyeX, eyeY, size * 0.035, 0, Math.PI * 2); drawingContext.fill(); });
-                if (expression === 'crisis') { drawingContext.fillStyle = '#75cce7'; drawingContext.beginPath(); drawingContext.ellipse(size * 0.35, size * 0.02, size * 0.045, size * 0.1, 0.15, 0, Math.PI * 2); drawingContext.fill(); }
-            }
-            drawingContext.restore();
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Zagan');
         }
     }
 

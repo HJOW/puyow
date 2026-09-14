@@ -214,11 +214,11 @@
 - Worker 탐색 상태(`attackPlacement`, `pendingWorkerSearch`, `workerSearchPlayer`, `workerSearchActive`, `workerSearchDepth`, `workerSearchState`)는 최상위 `Enemy`에 있다. 외부 적은 `BundledEnemy`가 아니라 `PuyoW.Enemy`를 상속하고, `PuyoW.beginWorkerSearchTurn(enemy)`, `startWorkerLookaheadSearch(enemy, player)`, `getWorkerSearchTarget(enemy, player)`, `getWorkerSearchRotation(enemy, player)`, `isWorkerSearchPending(enemy, player)` 공용 함수로 수명주기·선택·대기 처리를 연결한다. 착지 시 엔진은 `cancelPendingWorkerSearch(enemy, player, 'contact')`로 해당 요청만 취소한다. 완료된 탐색 Worker는 최대 2개까지 전역 풀에 보관해 다음 턴 또는 구경 모드의 다른 Worker 적이 재사용한다. 취소·오류·시간 초과 중인 Worker는 즉시 종료하고 풀에 넣지 않는다.
 - `Andrealphus`는 `PuyoW.Andrealphus`로도 공개된 `BundledEnemy` 하위의 출시된 8번째 적이다. 키마리스와 독립된 동일 판단 흐름(일반·위기 빠른 하강 지연 비율, 화면 예고 위협량 반영 포함)을 사용하되 평상시 목표는 7연쇄·3수 Worker 반복 심화 탐색이다. `lookaheadTimeLimitMs` 기본값은 50ms이며 인스턴스별로 조정할 수 있다. Worker는 1수·2수·3수 완료 때마다 현재 1수의 X·회전을 갱신하고, 시간 초과·오류로 1수 결과가 없으면 기존 동기 1수 탐색으로 대체한다. 피버·패배 위치 보호 후보가 있으면 Worker를 시작하지 않고 기존 `Enemy.prepareTurn()` 경로를 그대로 우선한다. 이 조정 때문에 키마리스의 목표 6연쇄·2수 계약을 바꾸지 않는다.
 - `Seere`의 피버 비활성 일반 쌓기만 오른쪽 두 열 전체 → X=3의 화면 절반(6칸) → X=0 전체 → X=1 전체 순서다. 피버 비활성 피버 룰의 별도 빌드, 피버 중 공통 연쇄 최적화, 패배 위치 보호, 빈 필드 무작위 착수는 이 규칙보다 우선한다. 일반 착수는 오른쪽 하단 세 칸의 점유 여부와 관계없이 `turnCount`에 포함한다. 공격 시뮬레이션 차례가 되면 우측 하단 세 칸이 덜 차 있어도 최적 공격 위치를 우선하며, 그 외에만 해당 세 칸이 찰 때까지 비폭발 착수를 사용한다. 공격 최적 시뮬레이션 뒤 다음 호출 간격은 매번 20~25회로 무작위 선정한다.
-- `Seere`의 초상화는 전승의 "날개 달린 말을 탄 미남 왕자"를 따른다. 하늘빛 날개와 푸른 갈기의 은빛 말이 오른쪽으로 달려 나가고, 푸른 머리칼·작은 왕관·망토의 왕자가 그 위에 탄다. 일반·위기·패배 표정은 왕자의 얼굴(눈·입·땀방울·눈물)과 말의 눈을 함께 바꾼다. 예전 초상화는 연쇄 축적형 공통 그림(가면·수정구)을 거의 그대로 써서 다른 적과 이질적이었으므로, 다른 기본 제공 적과 같은 굵고 어두운 외곽선·흰자와 눈동자·표정별 입 모양 규칙으로 다시 그렸다. 필드 테마(청)는 바꾸지 않았다.
-- `Flauros`는 9번째 출시 적이며, 처음으로 `OnnxEnemy`를 상속받아 브라우저에서 ONNX 가치망(`onnx/model01.onnx`)을 추론해 판단한다. 자세한 계약은 아래 「브라우저 ONNX 추론 적」 절을 보면 된다. 일반·위기·우는 표정의 표범 초상화와 다국어 이름도 등록되어 있다.
-- `Andras`는 10번째 출시 적인 `OnnxEnemy`다. 날개 달린 새 머리 천사가 검은 늑대를 타고 불타는 검을 든 일반·위기·패배 초상화와 남청 테마를 가지며 `onnx/model02.onnx`를 사용한다. 적 선택 진행도·갤러리·가중치 1 카드 풀에 포함된다.
-- `Valak`은 11번째 출시 적인 `OnnxEnemy`다. 두 개의 붉은 목을 지닌 지옥의 드래곤과 그 위에 탄 작은 날개 달린 소년의 일반·위기·패배 초상화, 적갈 테마를 가지며 `onnx/model03.onnx`를 사용한다. 적 선택 진행도·갤러리·가중치 1 카드 풀에 포함된다.
-- `Zagan`은 12번째로 미리 등록한 출시 예정(`notAvail`) `OnnxEnemy`다. 황금빛 그리폰 날개와 굽은 뿔을 지닌 숫소의 일반·위기·패배 초상화와 황갈 테마를 가진다. 전용 모델이 준비되기 전까지 `onnx/model01.onnx`를 임시 사용하며, 갤러리에는 표시되지만 적 진행도·카드 풀에서는 제외된다.
+- `Seere`의 전승은 "날개 달린 말을 탄 미남 왕자"이며, BUILDNO 56 초상화에서는 하늘빛 머리칼·작은 왕관·날개 망토·은빛 방패를 가진 머리 하나의 인간형 왕자로 재해석한다. 필드 테마(청)는 유지한다.
+- `Flauros`는 9번째 출시 적이며, 처음으로 `OnnxEnemy`를 상속받아 브라우저에서 ONNX 가치망(`onnx/model01.onnx`)을 추론해 판단한다. 자세한 계약은 아래 「브라우저 ONNX 추론 적」 절을 보면 된다. 표범 전승은 둥근 귀·점무늬 의상·꼬리·불꽃 장식을 가진 인간형 캐릭터로 재해석한다.
+- `Andras`는 10번째 출시 적인 `OnnxEnemy`다. 새 머리 천사·검은 늑대·불타는 검의 전승을 새 깃털 두건·날개·늑대 문장·불꽃 장식 검을 가진 인간형 캐릭터로 재해석한다. 남청 테마와 `onnx/model02.onnx`를 사용하며 적 선택 진행도·갤러리·가중치 1 카드 풀에 포함된다.
+- `Valak`은 11번째 출시 적인 `OnnxEnemy`다. 두 목의 붉은 드래곤을 타는 날개 달린 소년 전승은 드래곤 뿔·비늘 튜닉·꼬리·날개를 가진 머리 하나의 소년으로 재해석한다. 적갈 테마와 `onnx/model03.onnx`를 사용하며 적 선택 진행도·갤러리·가중치 1 카드 풀에 포함된다.
+- `Zagan`은 12번째로 미리 등록한 출시 예정(`notAvail`) `OnnxEnemy`다. 그리폰 날개의 숫소 전승은 굽은 뿔 장식·황금 날개·잔을 가진 인간형 캐릭터로 재해석하며 황갈 테마를 유지한다. 전용 모델이 준비되기 전까지 `onnx/model01.onnx`를 임시 사용하며, 갤러리에는 표시되지만 적 진행도·카드 풀에서는 제외된다.
 - `BigBangWarningPuyo`는 단위 500000, type `big-bang`인 한 칸 크기의 빅뱅 예고뿌요다. 큰 단위부터 정렬된 `WARNING_PUYO_CLASSES`의 첫 항목으로 공격량 분해·갤러리·카드 그림에 함께 쓰인다.
 - `WarningPuyo` 확장은 양의 정수 `unitCount`, 비어 있지 않은 `type`, `draw(context, x, y, cellSize)`를 갖춰야 한다.
 - 사운드는 `SoundPool`/`CommonSoundPool`/`EnemySoundPool`과 `setEnemySoundPool()`을 사용한다. 배경음은 중복 재생하지 않고 일시정지·음소거·볼륨 상태와 동기화해야 한다. 설정 화면의 배경음악·효과음 슬라이더 값은 축소된 슬라이더 오른쪽(논리 X=920)에 표시한다.
@@ -747,6 +747,31 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 **대전 진행** — `startOnlineGame()`이 `game.online = {rule, youAreHost, opponent, defeatSent}`을 만든다. 뿌요 지급 덱은 서버가 준 것을 `game.pairQueue`에 그대로 넣고, `ensurePairQueue()`는 온라인일 때 무작위 생성 대신 덱을 앞에서부터 다시 써서 양쪽이 언제나 같은 뿌요를 받게 한다. 내 조작은 `moveActive()`·`rotateActive()`와 아래 방향키 누름·뗌에서 `sendOnlineInput()`으로 보내고, 받은 상대 조작은 `applyPlayerControlAction()`과 방향 홀드로 우측 플레이어에 적용한다(그래서 `getPlayerInputIndex()`가 `game.online`에서도 1번 자리를 허용한다). 연쇄 결과(`opponent_chain`)는 **다시 적용하지 않는다** — 내 쪽 시뮬레이션이 이미 같은 값을 만들어 두 번 적용하면 공격이 두 배가 된다. 패배는 `updateDefeatSequence()`에서 `reportOnlineDefeat()`으로 한 번만 보고하고, 승패와 WIN POINT는 서버가 확정해 `game_result`로 돌려준다.
 
 **제외와 차이** — 진행도(`recordEnemyClear`), GOLD(`calculateCurrentGameGoldReward`), 역방향 학습(`shouldSendLearningEvent`), 가상 컨트롤러(`shouldShowVirtualController`)는 "너랑 나랑"과 같게 `game.online`도 제외한다. 리플레이는 기록하지 않으며 ESC 일시정지도 막는다. 결과 화면에서는 적 컨트롤러가 없으므로 `drawResultCenter()`가 초상화 대신 `drawOnlineResultPanel()`로 WIN POINT 변화를 그린다(이 분기를 빼면 이겼을 때 널 참조로 터진다). `closeResultScreen()`의 "종료"는 메인 메뉴가 아니라 방 화면으로 돌아가며, 재대전은 방장이 방에서 "시작"을 다시 누른다.
+
+### 모든 적 초상화 재구현 (2026-09-14, BUILDNO 56)
+
+- 등록된 적 13명(솔로몬, 출시 예정 자간 포함)의 일반·위기·패배 총 39종을 머리 하나의 귀여운 인간형 캐릭터로 다시 그렸다. 동물이나 여러 얼굴을 별도 머리로 그리지 않고 의상·머리 장식·소품으로 재해석한다. 이미지 파일·이미지 로딩 없이 Canvas 2D와 `Path2D`만 사용한다.
+- 각 클래스의 `drawPortrait(context, x, y, scale, expression)`는 `drawCuteEnemyPortrait()`를 호출한다. 적별 색과 상징은 `ENEMY_PORTRAIT_STYLES`에 있고, 고정 윤곽의 `Path2D`는 `enemyPortraitPaths`에 보관해 매 프레임 다시 만들지 않는다. 외부 적의 공개 API와 재정의 방식은 그대로다. 직접 등록되지 않는 `ChainBuildingEnemy`의 기본 초상화도 인간형 예지자로 갱신했으며, 원래 그림이 없는 내부 `PracticeEnemy`와 기본 `Enemy`는 빈 초상화를 유지한다.
+- 일반은 웃는 눈·입과 열린 팔, 위기는 커진 눈·벌어진 입·땀과 움츠린 팔, 패배는 감긴 눈·눈물과 기울고 처진 자세다. 얼굴에 이전 표정을 덧칠하지 않고 상태에 해당하는 표정을 한 번만 그린다. 카드·적 선택·대전·구경·결과·갤러리는 기존 `drawPortrait()` 경로를 사용하므로 모두 같은 그림으로 표시된다.
+
+| 적 | 새 초상화의 특징 |
+| --- | --- |
+| 솔로몬 | 갈색 머리칼, 금빛 왕관, 보라 망토와 보석 |
+| 안드로말리우스 | 초록 제복과 모자, 별 배지, 뱀의 곡선을 담은 목도리 |
+| 단탈리온 | 보라색 긴 머리칼과 베레모, 펼친 비밀의 책 |
+| 세레 | 하늘빛 머리칼, 작은 왕관, 날개 망토와 방패 |
+| 데카라비아 | 분홍 머리칼, 별 모자와 지팡이, 새 날개 모양 장식 |
+| 벨리알 | 연분홍 머리칼, 끊긴 후광, 날개와 리본 |
+| 암두시아스 | 연보라 갈기, 유니콘 뿔 장식, 하프와 음표 |
+| 키마리스 | 짙은 머리칼과 말 귀 장식, 갑옷 머리띠, 보물 지도 |
+| 안드레알푸스 | 청록 머리칼, 공작 깃털 부채, 단안경과 천문 궤도 |
+| 플라우로스 | 주황 머리칼, 둥근 표범 귀·점무늬·꼬리, 불꽃 장식 |
+| 안드라스 | 은청색 새 깃털 두건, 날개, 늑대 문장과 불꽃 장식 검 |
+| 발라크 | 금발, 드래곤 뿔과 비늘 튜닉·꼬리, 작은 날개 |
+| 자간 | 갈색 머리칼, 굽은 숫소 뿔 장식, 황금 날개와 잔 |
+
+- 회귀 검증은 `tests/test01_portrait.spec.js`에서 실제 브라우저의 13명 × 3표정 × 5배율(카드 0.14, 선택 0.62, 구경 0.72, 대전 0.86, 갤러리 2.8)을 그린다. 빈 그림·가장자리 잘림·표정 중복·적 그림 중복·컨텍스트 상태 누수를 검사하고, 테스트 산출물 `enemy-portraits.png`에 전체 39종 비교 그림을 남긴다. 버전값 자체는 테스트하지 않는다.
+- 검증 결과: Chromium·Firefox·WebKit의 초상화 검사 3개와 기존 적 선택·갤러리·카드·구경 화면 검사 12개가 모두 통과했다. 전체 초상화 비교 그림을 직접 확인했고, JS 문법 검사·ESLint·webpack 빌드도 통과해 `src/bundle/puyow.bundle.js`를 갱신했다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
