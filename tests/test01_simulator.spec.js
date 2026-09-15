@@ -1,9 +1,16 @@
 // 시뮬레이터와 점수·연결 보너스 계산의 회귀 테스트다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu, expectDefeatCellMarkers } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, expectDefeatCellMarkers, submitTextDialog } from './common/gamepage.js';
 
 setupGamePage();
+
+/** 시뮬레이터의 JSON 넣기 대화상자에 배치를 붙여 넣는다. */
+async function pasteSimulatorJson(page, puyos) {
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
+  await canvas.click({ position: { x: 960, y: 440 } });
+  await submitTextDialog(page, JSON.stringify({ puyos }));
+}
 
 test('시뮬레이터는 양쪽 기본 패배 칸을 표시하고 해당 칸의 뿌요를 앞에 그린다', async ({ page }) => {
   await enterMainMenu(page);
@@ -133,10 +140,8 @@ test('숨김 13번째 줄 뿌요는 폭발 연결 수에 포함되지 않는다'
   // 13번째 줄의 빨강 하나가 내려오지 않도록 아래쪽을 채운다.
   for (let x = 0; x < 3; x += 1) for (let y = 0; y <= 10; y += 1) puyos.push({ x, y, color: (x + y) % 2 === 0 ? 'blue' : 'green' });
   puyos.push({ x: 0, y: 11, color: 'red' }, { x: 1, y: 11, color: 'red' }, { x: 2, y: 11, color: 'red' }, { x: 0, y: 12, color: 'red' });
-  await page.evaluate((pastedPuyos) => { window.prompt = () => JSON.stringify({ puyos: pastedPuyos }); }, puyos);
-
+  await pasteSimulatorJson(page, puyos);
   const canvas = page.locator('[data-puyow-canvas="2d"]');
-  await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.filter((puyo) => puyo.color === 'red').length)).toBe(4);
@@ -150,11 +155,10 @@ test('숨김 13번째 줄 뿌요는 중력으로 내려온 뒤 다음 폭발 판
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
   // y=12의 빨강은 중력 후 y=3으로 내려와 y=0~2의 세 뿌요와 함께 폭발한다.
-  await page.evaluate(() => { window.prompt = () => JSON.stringify({ puyos: [
+  await pasteSimulatorJson(page, [
     { x: 0, y: 0, color: 'red' }, { x: 0, y: 1, color: 'red' }, { x: 0, y: 2, color: 'red' }, { x: 0, y: 12, color: 'red' },
-  ] }); });
+  ]);
   const canvas = page.locator('[data-puyow-canvas="2d"]');
-  await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('simulator_complete');
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.color === 'red'))).toBe(false);
@@ -186,16 +190,13 @@ test('시뮬레이터 점수는 동시 4·5색 폭발에서 5개 색의 연결 �
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  await page.evaluate(() => {
-    window.prompt = () => JSON.stringify({ puyos: [
-      { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 3, y: 0, color: 'red' },
-      { x: 4, y: 0, color: 'garbage' },
-      { x: 0, y: 1, color: 'blue' }, { x: 1, y: 1, color: 'blue' }, { x: 2, y: 1, color: 'blue' }, { x: 3, y: 1, color: 'blue' }, { x: 4, y: 1, color: 'blue' },
-    ] });
-  });
+  await pasteSimulatorJson(page, [
+    { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 3, y: 0, color: 'red' },
+    { x: 4, y: 0, color: 'garbage' },
+    { x: 0, y: 1, color: 'blue' }, { x: 1, y: 1, color: 'blue' }, { x: 2, y: 1, color: 'blue' }, { x: 3, y: 1, color: 'blue' }, { x: 4, y: 1, color: 'blue' },
+  ]);
 
   const canvas = page.locator('[data-puyow-canvas="2d"]');
-  await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('000000450'))).toBe(true);
 });
@@ -226,16 +227,15 @@ test('시뮬레이터에서 딱딱뿌요 하나의 파괴는 점수에 세 배�
     { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 1, y: 1, color: 'red' },
     { x: 2, y: 1, color: 'hardGarbage' },
   ];
-  await page.evaluate((pastedPuyos) => {
-    window.prompt = () => JSON.stringify({ puyos: pastedPuyos });
+  await page.evaluate(() => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: (text) => { window.testClipboardText = text; return Promise.resolve(); } },
     });
-  }, puyos);
+  });
 
   const canvas = page.locator('[data-puyow-canvas="2d"]');
-  await canvas.click({ position: { x: 960, y: 440 } });
+  await pasteSimulatorJson(page, puyos);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getSimulatorState()?.board.puyos.some((puyo) => puyo.color === 'hardGarbage'))).toBe(true);
   await canvas.click({ position: { x: 960, y: 395 } });
   await expect.poll(() => page.evaluate(() => window.testClipboardText)).toContain('hardGarbage');
@@ -254,15 +254,12 @@ test('시뮬레이터에서 동시에 파괴한 두 딱딱뿌요는 점수에 �
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  await page.evaluate(() => {
-    window.prompt = () => JSON.stringify({ puyos: [
-      { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 1, y: 1, color: 'red' },
-      { x: 0, y: 1, color: 'hardGarbage' }, { x: 2, y: 1, color: 'hardGarbage' },
-    ] });
-  });
+  await pasteSimulatorJson(page, [
+    { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 1, y: 1, color: 'red' },
+    { x: 0, y: 1, color: 'hardGarbage' }, { x: 2, y: 1, color: 'hardGarbage' },
+  ]);
 
   const canvas = page.locator('[data-puyow-canvas="2d"]');
-  await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState().board.puyos.some((puyo) => puyo.color === 'hardGarbage'))).toBe(false);
@@ -276,15 +273,12 @@ test('시뮬레이터 딱딱뿌요는 한 방향 폭발에 일반 방해뿌요�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  await page.evaluate(() => {
-    window.prompt = () => JSON.stringify({ puyos: [
-      { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 3, y: 0, color: 'red' },
-      { x: 4, y: 0, color: 'hardGarbage' },
-    ] });
-  });
+  await pasteSimulatorJson(page, [
+    { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 2, y: 0, color: 'red' }, { x: 3, y: 0, color: 'red' },
+    { x: 4, y: 0, color: 'hardGarbage' },
+  ]);
 
   const canvas = page.locator('[data-puyow-canvas="2d"]');
-  await canvas.click({ position: { x: 960, y: 440 } });
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState().board.puyos)).toEqual([{ x: 4, y: 0, color: 'garbage' }]);

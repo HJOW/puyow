@@ -3,7 +3,7 @@
 // AI 제공자·학습 설정은 test03_ai.spec.js에 있다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu, openSettings, startPracticeWithVirtualController } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, openSettings, startPracticeWithVirtualController, submitTextDialog, cancelTextDialog } from './common/gamepage.js';
 
 setupGamePage();
 
@@ -339,23 +339,18 @@ test('설정 오른쪽 아래 코드 버튼은 마우스로만 코드를 입력�
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
-  await page.evaluate(() => {
-    window.codePromptTitles = [];
-    window.prompt = (title) => { window.codePromptTitles.push(title); return '  observation  '; };
-  });
   for (let index = 0; index < 14; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  expect(await page.evaluate(() => window.codePromptTitles)).toEqual([]);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1232, y: 692 } });
+  await submitTextDialog(page, '  observation  ', false);
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['observation']);
-  expect(await page.evaluate(() => window.codePromptTitles)).toEqual(['코드를 입력하세요']);
 
-  await page.evaluate(() => { window.prompt = () => '   '; });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1232, y: 692 } });
+  await submitTextDialog(page, '   ', false);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['observation']);
 
-  await page.evaluate(() => { window.prompt = () => null; });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1232, y: 692 } });
+  await cancelTextDialog(page);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['observation']);
 });
 
@@ -367,16 +362,16 @@ test('초기화 시 저장된 코드 배열을 불러오고 잘못된 값은 빈
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
-  await page.evaluate(() => { window.prompt = () => 'observation'; });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1232, y: 692 } });
+  await submitTextDialog(page, 'observation', false);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['saved-code', 'observation']);
 
   await page.evaluate(() => localStorage.setItem('puyow_code', '{invalid-json'));
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
-  await page.evaluate(() => { window.prompt = () => 'observation'; });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 1232, y: 692 } });
+  await submitTextDialog(page, 'observation', false);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_code')))).toEqual(['observation']);
 });
 
@@ -1042,13 +1037,11 @@ test('공통 사운드 풀은 시뮬레이터의 뿌요 착지·폭발·주문 �
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
 
-  await page.evaluate(() => {
-    window.prompt = () => JSON.stringify({ puyos: [
-      { x: 0, y: 0, color: 'red' }, { x: 0, y: 1, color: 'red' }, { x: 0, y: 2, color: 'red' }, { x: 0, y: 12, color: 'red' },
-    ] });
-  });
   const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 960, y: 440 } });
+  await submitTextDialog(page, JSON.stringify({ puyos: [
+    { x: 0, y: 0, color: 'red' }, { x: 0, y: 1, color: 'red' }, { x: 0, y: 2, color: 'red' }, { x: 0, y: 12, color: 'red' },
+  ] }));
   await canvas.click({ position: { x: 960, y: 350 } });
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
     'sounds/test-puyo-fall.ogg', 'sounds/test-puyo-burst.ogg', 'sounds/test-player-spell.ogg',

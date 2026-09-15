@@ -1,7 +1,7 @@
 // "너랑 나랑"(한 컴퓨터 2인 대전) 모드의 회귀 테스트다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu, translated, enableReplayFeature, clickReplayPlaybackButton } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, translated, enableReplayFeature, clickReplayPlaybackButton, submitTextDialog } from './common/gamepage.js';
 
 setupGamePage();
 
@@ -362,8 +362,8 @@ test('너랑 나랑 대전도 새 형식으로 기록하고 재생하면 승패 
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
-  await page.evaluate((data) => { window.prompt = () => JSON.stringify(data); }, replay);
   await clickReplayPlaybackButton(page);
+  await submitTextDialog(page, JSON.stringify(replay));
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
   const recordLabel = await translated(page, '전적');
   await page.evaluate(() => { window.testCanvasTexts = []; });

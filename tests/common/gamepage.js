@@ -159,6 +159,35 @@ async function clickReplayPlaybackButton(page) {
   await page.mouse.click(bounds.x + 74 * scale, bounds.y + 645 * scale);
 }
 
+/** askText 대화상자에 클립보드 문자열을 붙여 넣고 확인한다. @param {import('@playwright/test').Page} page 대상 페이지 @param {string} value 입력 문자열 @param {boolean} [multiline=true] 여러 줄 입력 대화상자 여부 */
+export async function submitTextDialog(page, value, multiline = true) {
+  await page.evaluate((clipboardText) => {
+    const previousClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        readText: async () => clipboardText,
+        writeText: previousClipboard?.writeText ? (text) => previousClipboard.writeText(text) : async () => {},
+      },
+    });
+  }, value);
+  await page.waitForTimeout(50);
+  if (multiline) await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 350, y: 270 } });
+  await page.keyboard.press('Control+V');
+  await page.waitForTimeout(50);
+  if (multiline) {
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('ArrowDown');
+  }
+  await page.keyboard.press('Enter');
+}
+
+/** askText 대화상자를 취소한다. @param {import('@playwright/test').Page} page 대상 페이지 */
+export async function cancelTextDialog(page) {
+  await page.waitForTimeout(50);
+  await page.keyboard.press('Escape');
+}
+
 /**
  * 공통 준비 과정이 걸어 둔 네트워크 가로채기를 모두 걷고 페이지를 다시 연다.
  * Playwright의 WebKit은 `page.route()`가 하나라도 걸려 있으면 `blob:` 주소의 Worker 스크립트를

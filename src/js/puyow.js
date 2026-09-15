@@ -20,7 +20,11 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 61;
+    const BUILDNO = 62;
+    /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
+    const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
+    /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
+    const TEXT_DIALOG_IMPORT_MAX_LENGTH = 1000000;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -668,9 +672,9 @@
     let screenMessage = null;
     /** 현재 표시 중인 공용 확인 대화상자다. @type {{message:string,choice:number,resolve:(value:boolean)=>void}|null} */
     let confirmDialog = null;
-    /** 현재 표시 중인 텍스트 입력 대화상자다. focus는 0=입력창, 1=확인, 2=취소이며 editing은 실제 문자 입력 모드 여부다. @type {{message:string,multiline:boolean,value:string,cursor:number,selectionAnchor:number|null,focus:number,editing:boolean,resolve:(value:string|null)=>void}|null} */
+    /** 현재 표시 중인 텍스트 입력 대화상자다. focus는 0=입력창, 1=확인, 2=취소이며 editing은 실제 문자 입력 모드 여부다. @type {{message:string,multiline:boolean,maxLength:number,value:string,cursor:number,selectionAnchor:number|null,focus:number,editing:boolean,resolve:(value:string|null)=>void}|null} */
     let textDialog = null;
-    /** 확인·텍스트 대화상자를 요청된 순서대로 표시하기 위한 대기열이다. @type {{type:'confirm'|'text',message:string,confirmLabel?:string,multiline?:boolean,choice?:number,value?:string,cursor?:number,selectionAnchor?:number|null,resolve:(value:boolean|string|null)=>void}[]} */
+    /** 확인·텍스트 대화상자를 요청된 순서대로 표시하기 위한 대기열이다. @type {{type:'confirm'|'text',message:string,confirmLabel?:string,multiline?:boolean,maxLength?:number,choice?:number,value?:string,cursor?:number,selectionAnchor?:number|null,resolve:(value:boolean|string|null)=>void}[]} */
     let dialogQueue = [];
     /** 대화상자 연속 표시 중 자동 일시정지한 게임과 복원 여부다. @type {{game:object|null,resume:boolean}|null} */
     let confirmDialogPauseContext = null;
@@ -9499,14 +9503,15 @@
 
     /** 메인 메뉴에서 리플레이 JSON을 입력받아 재생을 시작한다. @returns {void} */
     function openReplayPlaybackPrompt() {
-        const serialized = window.prompt(translate('리플레이 JSON코드를 붙여넣어 주세요.'));
-        if (serialized === null || serialized.trim() === '') return;
-        const replay = normalizeReplayData(parseJSON(serialized));
-        if (!replay) {
-            showMessage(translate('리플레이 데이터가 올바르지 않습니다.'), '#ef5350', 3500);
-            return;
-        }
-        startReplayPlayback(replay);
+        askText(translate('리플레이 JSON코드를 붙여넣어 주세요.'), true, TEXT_DIALOG_IMPORT_MAX_LENGTH).then((serialized) => {
+            if (serialized === null || serialized.trim() === '') return;
+            const replay = normalizeReplayData(parseJSON(serialized));
+            if (!replay) {
+                showMessage(translate('리플레이 데이터가 올바르지 않습니다.'), '#ef5350', 3500);
+                return;
+            }
+            startReplayPlayback(replay);
+        });
     }
 
     /**
@@ -10123,15 +10128,10 @@
 
     /** 설정 화면에서 마우스로 테스트 기능 코드를 입력받아 등록한다. @returns {void} */
     function enterSettingsCode() {
-        let input;
-        try {
-            input = typeof window.prompt === 'function' ? window.prompt('코드를 입력하세요') : null;
-        } catch (error) {
-            console.error('Puyo W 코드 입력 창을 표시하지 못했습니다.', error);
-            return;
-        }
-        if (typeof input !== 'string' || !input.trim()) return;
-        addCode(input.trim());
+        askText('코드를 입력하세요').then((input) => {
+            if (typeof input !== 'string' || !input.trim()) return;
+            addCode(input.trim());
+        });
     }
 
     /** 모든 저장 데이터를 지우고 2초 뒤 첫 화면으로 돌아간다. @returns {void} */
@@ -11017,23 +11017,26 @@
 
     /** 입력받은 JSON 문자열로 시뮬레이터 배치를 교체한다. @returns {void} */
     function pasteSimulatorJson() {
-        const serialized = window.prompt(translate('배치 JSON을 입력하세요.'));
-        if (serialized === null || serialized.trim() === '') return;
-        try {
-            const parsed = parseJSON(serialized);
-            if (!parsed || !Array.isArray(parsed.puyos)) throw new TypeError('puyos 배열이 필요합니다.');
-            const board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
-            parsed.puyos.forEach((puyo) => {
-                if (!puyo || !Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= SIMULATOR_EDITABLE_ROWS || ![...COLORS, 'garbage', HARD_GARBAGE, IRON_PUYO].includes(puyo.color)) {
-                    throw new TypeError('유효하지 않은 뿌요 좌표 또는 색상입니다.');
-                }
-                if (board[puyo.y][puyo.x]) throw new TypeError('같은 칸에 뿌요가 중복됩니다.');
-                board[puyo.y][puyo.x] = puyo.color;
-            });
-            simulator.player.board = board;
-        } catch (error) {
-            showSimulatorMessage(translate('JSON 파싱 실패'));
-        }
+        const targetSimulator = simulator;
+        askText(translate('배치 JSON을 입력하세요.'), true, TEXT_DIALOG_IMPORT_MAX_LENGTH).then((serialized) => {
+            // 비동기 입력을 기다리는 동안 시뮬레이터가 닫히거나 재생 단계로 바뀌면 이전 보드를 건드리지 않는다.
+            if (serialized === null || serialized.trim() === '' || simulator !== targetSimulator || !simulator || simulator.mode !== 'draw') return;
+            try {
+                const parsed = parseJSON(serialized);
+                if (!parsed || !Array.isArray(parsed.puyos)) throw new TypeError('puyos 배열이 필요합니다.');
+                const board = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+                parsed.puyos.forEach((puyo) => {
+                    if (!puyo || !Number.isInteger(puyo.x) || !Number.isInteger(puyo.y) || puyo.x < 0 || puyo.x >= COLUMNS || puyo.y < 0 || puyo.y >= SIMULATOR_EDITABLE_ROWS || ![...COLORS, 'garbage', HARD_GARBAGE, IRON_PUYO].includes(puyo.color)) {
+                        throw new TypeError('유효하지 않은 뿌요 좌표 또는 색상입니다.');
+                    }
+                    if (board[puyo.y][puyo.x]) throw new TypeError('같은 칸에 뿌요가 중복됩니다.');
+                    board[puyo.y][puyo.x] = puyo.color;
+                });
+                simulator.player.board = board;
+            } catch (error) {
+                showSimulatorMessage(translate('JSON 파싱 실패'));
+            }
+        });
     }
 
     /** 시뮬레이터 그리기 모드의 좌측 플레이 영역을 비운다. @returns {void} */
@@ -14635,8 +14638,8 @@
         const inserted = Array.from(String(text).replace(/\r\n?/g, '\n'))
             .filter((character) => textDialog.multiline || character !== '\n');
         const next = characters.slice(0, selectionStart).concat(inserted, characters.slice(selectionEnd));
-        textDialog.value = next.slice(0, 2000).join('');
-        textDialog.cursor = Math.min(next.length, 2000, selectionStart + inserted.length);
+        textDialog.value = next.slice(0, textDialog.maxLength).join('');
+        textDialog.cursor = Math.min(next.length, textDialog.maxLength, selectionStart + inserted.length);
         textDialog.selectionAnchor = null;
     }
 
@@ -14727,17 +14730,20 @@
      * 현재 화면을 음영 처리한 뒤, 그 위에 텍스트 입력 대화상자를 표시한다. 메시지는 원문 그대로 표시하고 버튼만 현재 언어로 번역한다.
      * @param {string} message 대화 상자 내 보여줄 메시지
      * @param {boolean|null} multiline 여러줄 입력 사용여부 (기본값 false)
+     * @param {number} [maxLength=2000] 최대 입력 문자 수. JSON 가져오기처럼 내부에서만 큰 값을 사용한다.
      * @returns {Promise<string|null>} 텍스트 입력 시 그 내용, 취소 시 null
      */
-    function askText(message, multiline) {
+    function askText(message, multiline, maxLength = TEXT_DIALOG_DEFAULT_MAX_LENGTH) {
         if (!initialized || !context) throw new Error('텍스트 입력 대화상자를 표시하려면 먼저 WebPuyo.initialize()를 호출해야 합니다.');
         if (typeof message !== 'string') throw new TypeError('message는 문자열이어야 합니다.');
         if (multiline !== undefined && multiline !== null && typeof multiline !== 'boolean') throw new TypeError('multiline은 boolean 또는 null이어야 합니다.');
+        if (!Number.isInteger(maxLength) || maxLength < 1 || maxLength > TEXT_DIALOG_IMPORT_MAX_LENGTH) throw new TypeError(`maxLength는 1~${TEXT_DIALOG_IMPORT_MAX_LENGTH} 사이의 정수여야 합니다.`);
         return new Promise((resolve) => {
             dialogQueue.push({
                 type: 'text',
                 message,
                 multiline: multiline === true,
+                maxLength,
                 value: '',
                 cursor: 0,
                 selectionAnchor: null,
