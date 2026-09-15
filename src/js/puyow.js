@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 58;
+    const BUILDNO = 60;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -13815,6 +13815,10 @@
             const bounds = getTextDialogBounds(textDialog.multiline);
             if (x >= bounds.input.x && x <= bounds.input.x + bounds.input.width && y >= bounds.input.y && y <= bounds.input.y + bounds.input.height) {
                 textDialog.focus = 0;
+                if (textDialog.multiline) {
+                    textDialog.editing = true;
+                    textDialog.selectionAnchor = null;
+                }
             } else if (x >= bounds.confirm.x && x <= bounds.confirm.x + bounds.confirm.width && y >= bounds.confirm.y && y <= bounds.confirm.y + bounds.confirm.height) {
                 textDialog.focus = 1;
                 playMenuSelectSound();
@@ -14571,7 +14575,15 @@
 
         context.fillStyle = '#071621'; context.fillRect(bounds.input.x, bounds.input.y, bounds.input.width, bounds.input.height);
         const inputFocused = textDialog.focus === 0;
-        context.strokeStyle = inputFocused ? '#f7c843' : '#6ea2b8'; context.lineWidth = inputFocused ? 3 : 2; context.strokeRect(bounds.input.x, bounds.input.y, bounds.input.width, bounds.input.height);
+        const inputStateColor = !inputFocused ? '#6ea2b8' : textDialog.editing ? '#4cc9b0' : '#f7c843';
+        context.strokeStyle = inputStateColor; context.lineWidth = textDialog.editing ? 4 : inputFocused ? 3 : 2; context.strokeRect(bounds.input.x, bounds.input.y, bounds.input.width, bounds.input.height);
+        if (textDialog.multiline) {
+            // 노란색 빈 표시는 포커스만 있는 상태, 초록색 채운 표시는 실제 입력 모드임을 나타낸다.
+            context.beginPath(); context.arc(bounds.input.x + bounds.input.width - 18, bounds.input.y + 18, 6, 0, Math.PI * 2);
+            context.fillStyle = textDialog.editing ? '#f7c843' : 'transparent';
+            if (textDialog.editing) context.fill();
+            context.strokeStyle = inputStateColor; context.lineWidth = 2; context.stroke();
+        }
         const lines = getTextDialogLines(textDialog.value);
         const cursorPosition = getTextDialogCursorPosition(textDialog);
         const lineHeight = 27;

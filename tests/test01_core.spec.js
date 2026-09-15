@@ -26,7 +26,8 @@ test('askText는 한 줄·여러 줄 입력과 취소를 처리한다', async ({
 
   const multiline = page.evaluate(() => window.WebPuyo.askText('여러 줄 입력', true));
   await page.waitForTimeout(50);
-  await page.keyboard.press('Enter');
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 350, y: 270 } });
+  await page.waitForTimeout(50);
   await page.keyboard.type('first line');
   await page.keyboard.press('Enter');
   await page.keyboard.type('second line');
