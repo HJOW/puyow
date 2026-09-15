@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 60;
+    const BUILDNO = 61;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -13200,9 +13200,14 @@
         event.preventDefault();
         const characters = Array.from(textDialog.value);
         const selecting = event.shiftKey;
-        const moveCursor = (nextCursor) => {
+        const moveCursor = (nextCursor, collapseDirection = 0) => {
             if (selecting && textDialog.selectionAnchor === null) textDialog.selectionAnchor = textDialog.cursor;
-            if (!selecting) textDialog.selectionAnchor = null;
+            if (!selecting && textDialog.selectionAnchor !== null) {
+                // 일반 방향키는 선택 끝에서 한 칸 더 이동하지 않고 해당 방향의 끝으로 선택을 해제한다.
+                if (collapseDirection < 0) nextCursor = Math.min(textDialog.cursor, textDialog.selectionAnchor);
+                else if (collapseDirection > 0) nextCursor = Math.max(textDialog.cursor, textDialog.selectionAnchor);
+                textDialog.selectionAnchor = null;
+            }
             textDialog.cursor = Math.max(0, Math.min(characters.length, nextCursor));
         };
 
@@ -13246,6 +13251,14 @@
             textDialog.cursor = characters.length;
             return;
         }
+        if (event.ctrlKey && key === 'c') {
+            copyTextDialogSelection();
+            return;
+        }
+        if (event.ctrlKey && key === 'v') {
+            pasteTextDialogClipboard();
+            return;
+        }
         if (key === 'enter') {
             if (textDialog.multiline) insertTextDialogText('\n');
             else {
@@ -13254,8 +13267,16 @@
             }
             return;
         }
-        if (key === 'arrowleft') { moveCursor(textDialog.cursor - 1); return; }
-        if (key === 'arrowright') { moveCursor(textDialog.cursor + 1); return; }
+        if (key === 'arrowleft') { moveCursor(textDialog.cursor - 1, -1); return; }
+        if (key === 'arrowright') { moveCursor(textDialog.cursor + 1, 1); return; }
+        if (key === 'arrowup') {
+            moveCursor(getTextDialogVerticalCursor(textDialog, -1), -1);
+            return;
+        }
+        if (key === 'arrowdown') {
+            moveCursor(getTextDialogVerticalCursor(textDialog, 1), 1);
+            return;
+        }
         if (key === 'home') { moveCursor(0); return; }
         if (key === 'end') { moveCursor(characters.length); return; }
         if (key === 'backspace') {
@@ -13815,9 +13836,11 @@
             const bounds = getTextDialogBounds(textDialog.multiline);
             if (x >= bounds.input.x && x <= bounds.input.x + bounds.input.width && y >= bounds.input.y && y <= bounds.input.y + bounds.input.height) {
                 textDialog.focus = 0;
+                textDialog.cursor = getTextDialogCursorFromPoint(textDialog, bounds, x, y);
+                // 클릭은 기존 선택을 해제하고 새 커서 위치에서 다음 입력을 시작한다.
+                textDialog.selectionAnchor = null;
                 if (textDialog.multiline) {
                     textDialog.editing = true;
-                    textDialog.selectionAnchor = null;
                 }
             } else if (x >= bounds.confirm.x && x <= bounds.confirm.x + bounds.confirm.width && y >= bounds.confirm.y && y <= bounds.confirm.y + bounds.confirm.height) {
                 textDialog.focus = 1;
@@ -14536,6 +14559,73 @@
         return { line: lines.length - 1, offset: Array.from(lines[lines.length - 1]).length };
     }
 
+    /** 지정한 줄과 줄 안 순번을 전체 문자열의 커서 순번으로 바꾼다. @param {{value:string}} dialog 텍스트 대화상자 @param {number} line 줄 번호 @param {number} offset 줄 안 문자 순번 @returns {number} 전체 커서 순번 */
+    function getTextDialogCursorAtLineOffset(dialog, line, offset) {
+        const lines = getTextDialogLines(dialog.value);
+        const targetLine = Math.max(0, Math.min(lines.length - 1, line));
+        let cursor = 0;
+        for (let index = 0; index < targetLine; index += 1) cursor += Array.from(lines[index]).length + 1;
+        return cursor + Math.max(0, Math.min(Array.from(lines[targetLine]).length, offset));
+    }
+
+    /** 위·아래 방향키에 대응하는 커서 순번을 반환한다. 한 줄 입력에서는 각각 처음·끝으로 이동한다. @param {{value:string,cursor:number,multiline:boolean}} dialog 텍스트 대화상자 @param {number} direction -1은 위, 1은 아래 @returns {number} 다음 커서 순번 */
+    function getTextDialogVerticalCursor(dialog, direction) {
+        const characters = Array.from(dialog.value);
+        if (!dialog.multiline) return direction < 0 ? 0 : characters.length;
+        const position = getTextDialogCursorPosition(dialog);
+        const lines = getTextDialogLines(dialog.value);
+        const targetLine = Math.max(0, Math.min(lines.length - 1, position.line + direction));
+        return getTextDialogCursorAtLineOffset(dialog, targetLine, position.offset);
+    }
+
+    /** 입력창 안 클릭 좌표에 가장 가까운 문자 사이의 커서 순번을 반환한다. @param {{value:string,multiline:boolean}} dialog 텍스트 대화상자 @param {{input:{x:number,y:number,width:number,height:number}}} bounds 대화상자 영역 @param {number} x 클릭 x 좌표 @param {number} y 클릭 y 좌표 @returns {number} 커서 순번 */
+    function getTextDialogCursorFromPoint(dialog, bounds, x, y) {
+        const lines = getTextDialogLines(dialog.value);
+        const inputPadding = 14;
+        const lineHeight = 27;
+        const line = dialog.multiline ? Math.max(0, Math.min(lines.length - 1, Math.floor((y - bounds.input.y - inputPadding + lineHeight / 2) / lineHeight))) : 0;
+        const characters = Array.from(lines[line]);
+        const relativeX = Math.max(0, x - bounds.input.x - inputPadding);
+        let width = 0;
+        context.save();
+        context.font = `20px ${MESSAGE_FONT}`;
+        for (let index = 0; index < characters.length; index += 1) {
+            const characterWidth = context.measureText(characters[index]).width;
+            if (relativeX < width + characterWidth / 2) {
+                context.restore();
+                return getTextDialogCursorAtLineOffset(dialog, line, index);
+            }
+            width += characterWidth;
+        }
+        context.restore();
+        return getTextDialogCursorAtLineOffset(dialog, line, characters.length);
+    }
+
+    /** 현재 선택 영역의 문자열을 반환한다. @returns {string} 선택 문자열. 선택이 없으면 빈 문자열 */
+    function getTextDialogSelectedText() {
+        if (!textDialog || textDialog.selectionAnchor === null || textDialog.selectionAnchor === textDialog.cursor) return '';
+        const characters = Array.from(textDialog.value);
+        return characters.slice(Math.min(textDialog.cursor, textDialog.selectionAnchor), Math.max(textDialog.cursor, textDialog.selectionAnchor)).join('');
+    }
+
+    /** 현재 선택 영역을 시스템 클립보드에 복사한다. 클립보드를 쓸 수 없는 환경에서는 입력 상태를 유지한다. @returns {void} */
+    function copyTextDialogSelection() {
+        const selectedText = getTextDialogSelectedText();
+        if (!selectedText || !navigator.clipboard?.writeText) return;
+        navigator.clipboard.writeText(selectedText).catch(() => {});
+    }
+
+    /** 시스템 클립보드 문자열을 현재 커서·선택 영역에 붙여 넣는다. @returns {void} */
+    function pasteTextDialogClipboard() {
+        const dialog = textDialog;
+        if (!dialog || !navigator.clipboard?.readText) return;
+        navigator.clipboard.readText().then((clipboardText) => {
+            // 비동기 읽기 중 대화상자가 닫히거나 입력 모드가 끝났으면 내용을 넣지 않는다.
+            if (textDialog !== dialog || !dialog.editing) return;
+            insertTextDialogText(clipboardText);
+        }).catch(() => {});
+    }
+
     /** 텍스트 입력 대화상자의 문자를 커서 위치에 삽입한다. @param {string} text 삽입할 문자열 @returns {void} */
     function insertTextDialogText(text) {
         if (!textDialog) return;
@@ -14591,12 +14681,34 @@
         context.save();
         context.beginPath(); context.rect(bounds.input.x + 4, bounds.input.y + 4, bounds.input.width - 8, bounds.input.height - 8); context.clip();
         context.textAlign = 'left'; context.textBaseline = 'top'; context.fillStyle = '#f5fbfc'; context.font = `20px ${MESSAGE_FONT}`;
+        const selectionStart = textDialog.selectionAnchor === null ? textDialog.cursor : Math.min(textDialog.cursor, textDialog.selectionAnchor);
+        const selectionEnd = textDialog.selectionAnchor === null ? textDialog.cursor : Math.max(textDialog.cursor, textDialog.selectionAnchor);
+        if (selectionStart !== selectionEnd) {
+            let lineStart = 0;
+            lines.forEach((line, index) => {
+                const lineCharacters = Array.from(line);
+                const lineEnd = lineStart + lineCharacters.length;
+                const selectedStart = Math.max(selectionStart, lineStart);
+                const selectedEnd = Math.min(selectionEnd, lineEnd);
+                if (selectedStart < selectedEnd) {
+                    const startOffset = selectedStart - lineStart;
+                    const endOffset = selectedEnd - lineStart;
+                    const prefix = lineCharacters.slice(0, startOffset).join('');
+                    const selected = lineCharacters.slice(startOffset, endOffset).join('');
+                    const selectionX = bounds.input.x + inputPadding + context.measureText(prefix).width;
+                    const selectionY = bounds.input.y + (textDialog.multiline ? inputPadding + index * lineHeight : 17);
+                    context.fillStyle = '#326f9b'; context.fillRect(selectionX, selectionY, Math.max(2, context.measureText(selected).width), 24);
+                }
+                lineStart = lineEnd + 1;
+            });
+            context.fillStyle = '#f5fbfc';
+        }
         if (textDialog.multiline) {
             lines.forEach((line, index) => context.fillText(line, bounds.input.x + inputPadding, bounds.input.y + inputPadding + index * lineHeight));
         } else context.fillText(lines[0], bounds.input.x + inputPadding, bounds.input.y + 17);
         const cursorLineY = bounds.input.y + (textDialog.multiline ? inputPadding + cursorPosition.line * lineHeight : 17);
         const cursorLineText = textDialog.multiline ? lines[cursorPosition.line] || '' : lines[0] || '';
-        const cursorX = bounds.input.x + inputPadding + context.measureText(cursorLineText.slice(0, cursorPosition.offset)).width;
+        const cursorX = bounds.input.x + inputPadding + context.measureText(Array.from(cursorLineText).slice(0, cursorPosition.offset).join('')).width;
         if (textDialog.editing) {
             context.strokeStyle = '#f7c843'; context.lineWidth = 2; context.beginPath(); context.moveTo(cursorX, cursorLineY); context.lineTo(cursorX, cursorLineY + 24); context.stroke();
         }

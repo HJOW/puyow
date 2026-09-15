@@ -44,6 +44,50 @@ test('askText는 한 줄·여러 줄 입력과 취소를 처리한다', async ({
   await expect(cancelled).resolves.toBeNull();
 });
 
+test('askText 입력 모드는 선택·클립보드·클릭 커서 이동을 처리한다', async ({ page }) => {
+  await page.evaluate(() => {
+    let clipboardText = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value) => { clipboardText = String(value); },
+        readText: async () => clipboardText,
+      },
+    });
+  });
+
+  const singleLine = page.evaluate(() => window.WebPuyo.askText('선택 입력', false));
+  await page.waitForTimeout(50);
+  await page.keyboard.type('abc');
+  await page.keyboard.press('Shift+ArrowLeft');
+  await page.keyboard.type('Z');
+  await page.keyboard.press('Control+A');
+  await page.keyboard.press('Control+C');
+  await page.keyboard.press('End');
+  await page.keyboard.press('Control+V');
+  await page.waitForTimeout(50);
+  await page.keyboard.press('Control+A');
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 355, y: 315 } });
+  await page.keyboard.type('X');
+  await page.keyboard.press('End');
+  await page.keyboard.type('Y');
+  await page.keyboard.press('Enter');
+  await expect(singleLine).resolves.toBe('XabZabZY');
+
+  const multiline = page.evaluate(() => window.WebPuyo.askText('여러 줄 선택 입력', true));
+  await page.waitForTimeout(50);
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 350, y: 270 } });
+  await page.keyboard.type('ab');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('cd');
+  await page.keyboard.press('Shift+ArrowUp');
+  await page.keyboard.type('X');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(multiline).resolves.toBe('abX');
+});
+
 test('새 src 하위 디렉토리의 게임 리소스를 로드한다', async ({ page }) => {
   const resources = await page.evaluate(() => ({
     stylesheet: new URL(document.querySelector('link[rel="stylesheet"]').href).pathname,
