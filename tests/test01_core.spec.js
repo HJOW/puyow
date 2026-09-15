@@ -626,9 +626,10 @@ test('일반·방해뿌요 클래스는 이름을 제공하고 캔버스에 직�
   ]);
 });
 
-test('빅뱅 예고뿌요와 ONNX 적 3종은 출시 상태·모델·테마 설정을 가진다', async ({ page }) => {
+test('테서렉트·빅뱅 예고뿌요와 ONNX 적 3종은 출시 상태·모델·테마 설정을 가진다', async ({ page }) => {
   const result = await page.evaluate(() => {
     const bigBang = new window.WebPuyo.BigBangWarningPuyo();
+    const tesseract = new window.WebPuyo.TesseractWarningPuyo();
     const andras = new window.WebPuyo.Andras();
     const valak = new window.WebPuyo.Valak();
     const zagan = new window.WebPuyo.Zagan();
@@ -638,13 +639,18 @@ test('빅뱅 예고뿌요와 ONNX 적 3종은 출시 상태·모델·테마 설�
     });
     return {
       bigBang: { unitCount: bigBang.unitCount, type: bigBang.type, name: bigBang.getName() },
+      tesseract: { unitCount: tesseract.unitCount, type: tesseract.type, name: tesseract.getName() },
       warningTypes: window.WebPuyo.common.warningUnits(500000).map((unit) => unit.type),
+      tesseractWarningTypes: window.WebPuyo.common.warningUnits(3500000).map((unit) => unit.type),
       andras: describeEnemy(andras), valak: describeEnemy(valak), zagan: describeEnemy(zagan)
     };
   });
 
   expect(result.bigBang).toEqual({ unitCount: 500000, type: 'big-bang', name: '빅뱅' });
+  expect(result.tesseract).toEqual({ unitCount: 3000000, type: 'tesseract', name: '테서렉트' });
   expect(result.warningTypes).toEqual(['big-bang']);
+  // 테서렉트가 가장 큰 단위이므로 공격량을 먼저 가져가고 남은 500,000개만 빅뱅이 채운다.
+  expect(result.tesseractWarningTypes).toEqual(['tesseract', 'big-bang']);
   expect(result.andras).toEqual({
     classType: 'Andras', name: '안드라스', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model02.onnx',
     theme: { bezel: '#1b2137', field: '#2d3857', center: '#0a0e1c' }
