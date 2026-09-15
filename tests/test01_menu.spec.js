@@ -76,18 +76,19 @@ test('출시된 안드라스·발라크 카드는 유효하고 출시 예정 자
   expect(await page.evaluate(() => window.newEnemyCardDraws.Zagan)).toBe(0);
 });
 
-test('테서렉트·펜터렉트 예고뿌요는 갤러리와 카드에 각자 단위로 나타난다', async ({ page }) => {
+test('테서렉트·펜터렉트·헥사액트 예고뿌요는 갤러리와 카드에 각자 단위로 나타난다', async ({ page }) => {
   await page.evaluate(() => {
-    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: ['tesseract', 'penteract'], enemies: [] }));
+    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: ['tesseract', 'penteract', 'hexaact'], enemies: [] }));
     localStorage.setItem('puyow_cards', JSON.stringify([
       { id: 'tesseract-card', type: 'warning:3000000' },
-      { id: 'penteract-card', type: 'warning:20000000' }
+      { id: 'penteract-card', type: 'warning:20000000' },
+      { id: 'hexaact-card', type: 'warning:140000000' }
     ]));
   });
   await page.reload();
   await page.evaluate(() => {
-    window.hypercubeDraws = { tesseract: 0, penteract: 0 };
-    [['TesseractWarningPuyo', 'tesseract'], ['PenteractWarningPuyo', 'penteract']].forEach(([className, key]) => {
+    window.hypercubeDraws = { tesseract: 0, penteract: 0, hexaact: 0 };
+    [['TesseractWarningPuyo', 'tesseract'], ['PenteractWarningPuyo', 'penteract'], ['HexaactWarningPuyo', 'hexaact']].forEach(([className, key]) => {
       const prototype = window.WebPuyo[className].prototype;
       const original = prototype.draw;
       prototype.draw = function (...args) {
@@ -96,8 +97,8 @@ test('테서렉트·펜터렉트 예고뿌요는 갤러리와 카드에 각자 �
       };
     });
   });
-  // 큰 단위부터 공격량을 가져가므로 펜터렉트 → 테서렉트 → 빅뱅 순으로 남은 만큼을 채운다.
-  expect(await page.evaluate(() => window.WebPuyo.common.warningUnits(23500000).map((unit) => unit.type))).toEqual(['penteract', 'tesseract', 'big-bang']);
+  // 큰 단위부터 공격량을 가져가므로 헥사액트 → 펜터렉트 → 테서렉트 → 빅뱅 순으로 남은 만큼을 채운다.
+  expect(await page.evaluate(() => window.WebPuyo.common.warningUnits(163500000).map((unit) => unit.type))).toEqual(['hexaact', 'penteract', 'tesseract', 'big-bang']);
 
   await enterMainMenu(page);
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
@@ -116,10 +117,15 @@ test('테서렉트·펜터렉트 예고뿌요는 갤러리와 카드에 각자 �
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('펜터렉트')))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.hypercubeDraws.penteract)).toBeGreaterThan(0);
 
+  await page.evaluate(() => { window.hypercubeDraws.hexaact = 0; });
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('헥사액트')))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.hypercubeDraws.hexaact)).toBeGreaterThan(0);
+
   // 카드 목록에서도 같은 그림을 쓴다.
   for (let index = 0; index < 2; index += 1) await page.keyboard.press('ArrowRight');
-  await page.evaluate(() => { window.hypercubeDraws = { tesseract: 0, penteract: 0 }; });
-  await expect.poll(() => page.evaluate(() => window.hypercubeDraws.tesseract > 0 && window.hypercubeDraws.penteract > 0)).toBe(true);
+  await page.evaluate(() => { window.hypercubeDraws = { tesseract: 0, penteract: 0, hexaact: 0 }; });
+  await expect.poll(() => page.evaluate(() => Object.values(window.hypercubeDraws).every((count) => count > 0))).toBe(true);
 });
 
 test('카드 뽑기는 확인 전에는 자원을 쓰지 않고 취소하거나 확인할 수 있으며 등급 문구를 표시하지 않는다', async ({ page }) => {

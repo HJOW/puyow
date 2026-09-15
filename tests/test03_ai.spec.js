@@ -880,12 +880,15 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
 
   // 기본 낙하 속도로는 뿌요가 바닥까지 24초쯤 걸려 6초짜리 API 타임아웃이 먼저 터진다. 경과 시간을
-  // 75분으로 옮겨 낙하 속도를 최대(16배)로 만들어야 응답 대기 중 착지가 실제로 일어난다.
-  const maxFallSpeedElapsed = await page.evaluate(() => {
+  // 75분으로 옮겨 낙하 속도를 16배로 올려야 응답 대기 중 착지가 실제로 일어난다. 상한
+  // MAX_PLAYER_FALL_SPEED_MULTIPLIER까지 올리지 않는 이유는, 이 테스트에 필요한 것이 상한이 아니라
+  // "6초 안에 착지할 만큼 빠른 속도"이기 때문이다. 더 올리면 요청을 보내기도 전에 착지해 의도한
+  // 착지 취소 경로를 지나지 않을 수 있다.
+  const fastFallSpeed = await page.evaluate(() => {
     window.WebPuyo.setGameElapsed(75 * 60000);
     return window.WebPuyo.common.getPlayerFallSpeedMultiplier(window.WebPuyo.getGameState().elapsed);
   });
-  expect(maxFallSpeedElapsed).toBe(16);
+  expect(fastFallSpeed).toBe(16);
 
   await expect.poll(() => page.evaluate(() => window.testSolomonAbortCount), { timeout: 15000 }).toBeGreaterThanOrEqual(1);
   // 타임아웃이 아니라 뿌요 착지(contact)로 취소되어야 이 테스트가 의도한 경로를 지난 것이다.

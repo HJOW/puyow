@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 68;
+    const BUILDNO = 69;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -173,7 +173,7 @@
     /** 모든 게임 모드에서 새로 지급한 뿌요 쌍의 회전축 생성 Y 좌표다.  @type {number} */
     const ACTIVE_PUYO_SPAWN_Y = 11.9;
     /** 게임 경과 시간에 따른 사용자 낙하 속도의 최대 배율이다. @type {number} */
-    const MAX_PLAYER_FALL_SPEED_MULTIPLIER = 128;
+    const MAX_PLAYER_FALL_SPEED_MULTIPLIER = 256;
     /** 좌우 방향키를 홀드 입력으로 판정하기 전 대기 시간(ms)이다. @type {number} */
     const HORIZONTAL_HOLD_DELAY = 100;
     /** 좌우 방향키 홀드 중 반복 이동 간격(ms)이다. @type {number} */
@@ -381,7 +381,7 @@
             '설정': 'Settings', '이름': 'Name', '이름 또는 닉네임을 입력하세요': 'Enter your name or nickname', '이름은 게임에서 표시됩니다.': 'Your name is shown in the game.', '이름 또는 닉네임을 입력해 주세요.': 'Enter a name or nickname.', '이름에 사용할 수 없는 문자가 있습니다.': 'The name contains characters that cannot be used.', '코드': 'Code', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '없음': 'None', '크게': 'Large', '그래픽 설정': 'Graphics quality', '사운드 데이터 URL': 'Sound data URL', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
             '플레이 방법': 'How to Play', '갤러리': 'Gallery', '대상 유형': 'Category', '대상': 'Item', '일반뿌요': 'Puyos', '예고뿌요': 'Warning Puyos', '적': 'Enemies', '빨강뿌요': 'Red Puyo', '초록뿌요': 'Green Puyo', '노랑뿌요': 'Yellow Puyo', '파랑뿌요': 'Blue Puyo', '보라뿌요': 'Purple Puyo', '방해뿌요': 'Garbage Puyo', '딱딱뿌요': 'Hard Puyo', '작은 예고뿌요': 'Small Warning Puyo', '큰 예고뿌요': 'Large Warning Puyo', '빨간 돌': 'Red Rock', '별': 'Star', '태양': 'Sun', '중성자별': 'Neutron Star', '블랙홀': 'Black Hole', '위기': 'Crisis', '다시보기': 'Replay',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Use Left, Right, and Down to move puyos. Rotate them with Z and X.', '좌우 방향키로 뿌요 이동': 'Move puyos with Left and Right.', '아래 방향키로 빨리 떨어뜨리기': 'Use Down to drop faster.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Press Z to rotate left.', 'X 키를 눌러 우측으로 뿌요 회전': 'Press X to rotate right.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Connect four or more puyos of the same color to pop them and attack.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Four puyos of the same color connect to attack the opponent.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Garbage puyos next to popping puyos disappear too.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Chain popping puyos for a stronger attack.', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': 'An all clear makes your next attack much stronger.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'You lose when puyos stay at the end of the third row.',
-            '은하': 'Galaxy', '빅뱅': 'Big Bang', '테서렉트': 'Tesseract', '펜터렉트': 'Penteract',
+            '은하': 'Galaxy', '빅뱅': 'Big Bang', '테서렉트': 'Tesseract', '펜터렉트': 'Penteract', '헥사액트': 'Hexaact',
             '음소거(꺼짐)' : 'Mute (Off)', '음소거(활성)' : 'Mute (On)',
             '화면 가로방향 고정': 'Lock landscape orientation', '리플레이 사용': 'Use replay feature', '역으로 모델 학습': 'Reverse model learning',
             '피버 (완화)': 'FEVER (Relaxed)',
@@ -413,7 +413,7 @@
             '설정': '設定', '코드': 'コード', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '없음': 'なし', '크게': '大きく', '그래픽 설정': 'グラフィック設定', '사운드 데이터 URL': 'サウンドデータURL', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', 'AI API 테스트': 'AI APIテスト', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 관련 기능은 추후 제공 예정': 'サウンド機能は今後のアップデートで提供予定です。', '설정 저장 후 다시 시도해 주세요': '設定を保存してから、もう一度お試しください。', 'AI API 테스트 요청 중...': 'AI APIをテスト中…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI APIテスト成功（JSONスキーマ検証: 合格）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI APIテスト失敗（JSONスキーマ検証: 失敗）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI APIテスト失敗（JSONスキーマ検証: 未実施）',
             '플레이 방법': '遊び方', '갤러리': 'ギャラリー', '대상 유형': '種類', '대상': '対象', '일반뿌요': 'ぷよ', '예고뿌요': '予告ぷよ', '적': '敵', '빨강뿌요': '赤ぷよ', '초록뿌요': '緑ぷよ', '노랑뿌요': '黄ぷよ', '파랑뿌요': '青ぷよ', '보라뿌요': '紫ぷよ', '방해뿌요': 'おじゃまぷよ', '딱딱뿌요': 'かたぷよ', '작은 예고뿌요': '小さい予告ぷよ', '큰 예고뿌요': '大きい予告ぷよ', '빨간 돌': '赤い岩', '별': '星', '태양': '太陽', '중성자별': '中性子星', '블랙홀': 'ブラックホール', '위기': 'ピンチ', '다시보기': 'もう一度見る',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '左右・下キーでぷよを動かし、Z・Xキーで回転できます。', '좌우 방향키로 뿌요 이동': '左右キーでぷよを移動', '아래 방향키로 빨리 떨어뜨리기': '下キーで速く落下', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Zキーで左回転', 'X 키를 눌러 우측으로 뿌요 회전': 'Xキーで右回転', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '同じ色のぷよを4個以上つなげると消して攻撃できます。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '同じ色のぷよ4個がつながり、相手を攻撃できます。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'ぷよが消えると、隣接するおじゃまぷよも消えます。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '連鎖でぷよを消すと、より強く攻撃できます。', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': '全消しをすると、次の攻撃が大幅に強化されます。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '3段目の端にぷよが残ると負けです。',
-            '은하': '銀河', '빅뱅': 'ビッグバン', '테서렉트': 'テッセラクト', '펜터렉트': 'ペンテラクト',
+            '은하': '銀河', '빅뱅': 'ビッグバン', '테서렉트': 'テッセラクト', '펜터렉트': 'ペンテラクト', '헥사액트': 'ヘキサアクト',
             '음소거(꺼짐)' : 'ミュート（オフ）', '음소거(활성)' : 'ミュート（オン）',
             '화면 가로방향 고정': '画面を横向きに固定',
             '피버 (완화)': 'FEVER（緩和）',
@@ -446,7 +446,7 @@
             '설정': '设置', '코드': '代码', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '없음': '无', '크게': '大', '그래픽 설정': '图形设置', '사운드 데이터 URL': '声音数据 URL', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', 'AI API 테스트': 'AI API 测试', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 관련 기능은 추후 제공 예정': '声音功能将在未来更新中提供。', '설정 저장 후 다시 시도해 주세요': '请先保存设置后再试。', 'AI API 테스트 요청 중...': '正在测试 AI API…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API 测试成功（JSON 架构检查：通过）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API 测试失败（JSON 架构检查：失败）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API 测试失败（JSON 架构检查：未执行）',
             '플레이 방법': '玩法说明', '갤러리': '图鉴', '대상 유형': '类别', '대상': '对象', '일반뿌요': '普通噗哟', '예고뿌요': '预告噗哟', '적': '敌人', '빨강뿌요': '红噗哟', '초록뿌요': '绿噗哟', '노랑뿌요': '黄噗哟', '파랑뿌요': '蓝噗哟', '보라뿌요': '紫噗哟', '방해뿌요': '垃圾噗哟', '딱딱뿌요': '硬噗哟', '작은 예고뿌요': '小型预告噗哟', '큰 예고뿌요': '大型预告噗哟', '빨간 돌': '红色岩石', '별': '星星', '태양': '太阳', '중성자별': '中子星', '블랙홀': '黑洞', '위기': '危机', '다시보기': '再次观看',
             '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': '使用左右和下方向键移动噗哟，使用 Z、X 键旋转。', '좌우 방향키로 뿌요 이동': '用左右方向键移动噗哟', '아래 방향키로 빨리 떨어뜨리기': '用下方向键快速落下', 'Z 키를 눌러 좌측으로 뿌요 회전': '按 Z 键向左旋转', 'X 키를 눌러 우측으로 뿌요 회전': '按 X 键向右旋转', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': '连接四个或更多相同颜色的噗哟即可消除并攻击对手。', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': '四个相同颜色的噗哟连接后可以攻击对手。', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': '消除噗哟时，相邻的垃圾噗哟也会一起消失。', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': '连续消除噗哟可以发动更强的攻击。', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': '全消后，下一次攻击会大幅增强。', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': '噗哟停留在第 3 行末端时会失败。',
-            '은하': '银河', '빅뱅': '大爆炸', '테서렉트': '超立方体', '펜터렉트': '五维超立方体',
+            '은하': '银河', '빅뱅': '大爆炸', '테서렉트': '超立方体', '펜터렉트': '五维超立方体', '헥사액트': '六维超立方体',
             '음소거(꺼짐)' : '静音（关）', '음소거(활성)' : '静音（开）',
             '화면 가로방향 고정': '锁定横屏',
             '피버 (완화)': 'FEVER（缓和）',
@@ -469,7 +469,7 @@
         '설정': 'Einstellungen', '이름': 'Name', '배경음악 볼륨': 'Musiklautstärke', '효과음 볼륨': 'Effektlautstärke', '가상 컨트롤러 사용': 'Virtuellen Controller verwenden', '없음': 'Keine', '크게': 'Groß', '그래픽 설정': 'Grafikeinstellungen', '사운드 데이터 URL': 'Audiodaten-URL', '낮음': 'Niedrig', '중간': 'Mittel', '높음': 'Hoch', 'AI 서비스 제공자': 'KI-Anbieter', 'AI API 키': 'KI-API-Schlüssel', '사용 모델명': 'Modellname', 'AI API 테스트': 'KI-API testen', '저장': 'Speichern', '취소': 'Abbrechen', '사운드 관련 기능은 추후 제공 예정': 'Audiofunktionen folgen später.', '설정 저장 후 다시 시도해 주세요': 'Speichere die Einstellungen und versuche es erneut.', 'AI API 테스트 요청 중...': 'KI-API wird getestet…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'KI-API-Test erfolgreich (JSON-Schema: bestanden)', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'KI-API-Test fehlgeschlagen (JSON-Schema: fehlgeschlagen)', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'KI-API-Test fehlgeschlagen (JSON-Schema: nicht geprüft)',
         '플레이 방법': 'Spielanleitung', '갤러리': 'Galerie', '대상 유형': 'Kategorie', '대상': 'Objekt', '일반뿌요': 'Puyos', '예고뿌요': 'Warn-Puyos', '적': 'Gegner', '빨강뿌요': 'Roter Puyo', '초록뿌요': 'Grüner Puyo', '노랑뿌요': 'Gelber Puyo', '파랑뿌요': 'Blauer Puyo', '보라뿌요': 'Violetter Puyo', '방해뿌요': 'Müll-Puyo', '딱딱뿌요': 'Harter Puyo', '작은 예고뿌요': 'Kleine Warn-Puyo', '큰 예고뿌요': 'Große Warn-Puyo', '빨간 돌': 'Roter Stein', '별': 'Stern', '태양': 'Sonne', '중성자별': 'Neutronenstern', '블랙홀': 'Schwarzes Loch', '위기': 'Krise', '다시보기': 'Wiederholung',
         '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Bewege Puyos mit Links, Rechts und Unten. Drehe sie mit Z und X.', '좌우 방향키로 뿌요 이동': 'Mit Links und Rechts bewegen.', '아래 방향키로 빨리 떨어뜨리기': 'Mit Unten schneller fallen.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Mit Z nach links drehen.', 'X 키를 눌러 우측으로 뿌요 회전': 'Mit X nach rechts drehen.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Verbinde mindestens vier Puyos derselben Farbe, um sie platzen zu lassen und anzugreifen.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Vier Puyos derselben Farbe greifen den Gegner an.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Angrenzende Müll-Puyos platzen ebenfalls.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Kettenexplosionen verursachen stärkere Angriffe.', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': 'Ein All Clear verstärkt deinen nächsten Angriff deutlich.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'Du verlierst, wenn Puyos am Ende der dritten Reihe bleiben.',
-        '은하': 'Galaxie', '테서렉트': 'Tesserakt', '펜터렉트': 'Penterakt', '음소거(꺼짐)': 'Stumm (Aus)', '음소거(활성)': 'Stumm (Ein)', '화면 가로방향 고정': 'Querformat sperren', '피버 (완화)': 'FEVER (Entspannt)'
+        '은하': 'Galaxie', '테서렉트': 'Tesserakt', '펜터렉트': 'Penterakt', '헥사액트': 'Hexaakt', '음소거(꺼짐)': 'Stumm (Aus)', '음소거(활성)': 'Stumm (Ein)', '화면 가로방향 고정': 'Querformat sperren', '피버 (완화)': 'FEVER (Entspannt)'
     });
 
     Object.assign(stringTable.fr, stringTable.en, {
@@ -8089,6 +8089,55 @@
         };
     }
 
+    /** 초입방체 모서리를 묶어 그릴 때 나눌 깊이 구간 수다. 늘리면 음영이 부드러워지고 stroke 호출이 는다. */
+    const HYPERCUBE_DEPTH_STEPS = 8;
+
+    /**
+     * 투영 결과의 모서리를 깊이 구간별로 한 번만 묶어 두고 재사용한다.
+     * @param {{points: number[][], edges: [number, number][], depthGroups?: object[]}} projection 투영 결과
+     * @returns {{depth: number, edges: [number, number][]}[]} 구간 대표 깊이와 그 구간의 모서리 목록
+     */
+    function getHypercubeDepthGroups(projection) {
+        if (!projection.depthGroups) {
+            const groups = Array.from({ length: HYPERCUBE_DEPTH_STEPS }, (unusedGroup, step) => ({ depth: (step + 0.5) / HYPERCUBE_DEPTH_STEPS, edges: [] }));
+            projection.edges.forEach((edge) => {
+                const depth = (projection.points[edge[0]][2] + projection.points[edge[1]][2]) / 2;
+                groups[Math.min(HYPERCUBE_DEPTH_STEPS - 1, Math.floor(depth * HYPERCUBE_DEPTH_STEPS))].edges.push(edge);
+            });
+            projection.depthGroups = groups;
+        }
+        return projection.depthGroups;
+    }
+
+    /**
+     * 초입방체 모서리를 여러 겹으로 덧그린다. 같은 깊이 구간은 한 번의 stroke로 묶으므로
+     * 모서리가 수백 개인 5·6차원 예고뿌요를 메인 메뉴처럼 여러 개 동시에 그려도 부담이 작다.
+     * 현재 좌표계는 셀 한가운데가 원점이어야 하며, 호출한 쪽에서 `globalAlpha`를 되돌린다.
+     * @param {CanvasRenderingContext2D} drawingContext 캔버스 2D 컨텍스트
+     * @param {{points: number[][], edges: [number, number][]}} projection 투영 결과
+     * @param {number} radius 셀 반지름
+     * @param {[number, number, string, number][]} passes 덧그릴 겹 목록. 각 항목은 선 굵기, 최대 불투명도, 색, 이 겹을 그릴 최소 깊이다.
+     * @returns {void}
+     */
+    function strokeHypercubeEdges(drawingContext, projection, radius, passes) {
+        const { points } = projection;
+        const groups = getHypercubeDepthGroups(projection);
+        passes.forEach(([lineWidth, alpha, color, minimumDepth]) => {
+            drawingContext.lineWidth = lineWidth;
+            drawingContext.strokeStyle = color;
+            groups.forEach((group) => {
+                if (!group.edges.length || group.depth < minimumDepth) return;
+                drawingContext.globalAlpha = alpha * (0.25 + group.depth * 0.75);
+                drawingContext.beginPath();
+                group.edges.forEach(([from, to]) => {
+                    drawingContext.moveTo(points[from][0] * radius, -points[from][1] * radius);
+                    drawingContext.lineTo(points[to][0] * radius, -points[to][1] * radius);
+                });
+                drawingContext.stroke();
+            });
+        });
+    }
+
     /**
      * 4차원 정팔포체(테서렉트)의 꼭짓점 16개를 4D→3D→2D로 두 번 원근 투영한 결과를 만든다.
      * 4D 쪽 원근 때문에 w가 작은 여덟 꼭짓점은 안쪽 작은 정육면체로, 큰 여덟 꼭짓점은 바깥 정육면체로 보인다.
@@ -8198,7 +8247,6 @@
         /** 참고 영상처럼 푸른 유리 구슬 속에 5차원 격자가 촘촘히 겹친 모습을 한 칸 크기로 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 2D 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
         draw(drawingContext, x, y, cellSize) {
             const radius = cellSize * 0.44;
-            const { points, edges } = PENTERACT_PROJECTION;
             drawingContext.save();
             drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
             // 왼쪽 위에서 빛을 받는 푸른 유리 몸체다. 모서리 80개가 이 위에서 읽히도록 안쪽을 밝게 둔다.
@@ -8210,21 +8258,84 @@
             drawingContext.lineCap = 'round'; drawingContext.lineJoin = 'round';
             // 어두운 그림자선 → 푸른 유리기둥 → 흰 하이라이트 순으로 덧그려 유리 골조처럼 보이게 한다.
             // 흰 하이라이트는 앞쪽 모서리에만 얹어야 뒤쪽 푸른 몸체가 덮이지 않고 유리 속이 비쳐 보인다.
-            [[cellSize * 0.052, 0.6, '#07203f', 0], [cellSize * 0.024, 0.95, '#63b4f0', 0], [cellSize * 0.01, 0.95, '#ffffff', 0.62]].forEach(([lineWidth, alpha, color, minimumDepth]) => {
-                drawingContext.lineWidth = lineWidth; drawingContext.strokeStyle = color;
-                edges.forEach(([from, to]) => {
-                    const depth = (points[from][2] + points[to][2]) / 2;
-                    if (depth < minimumDepth) return;
-                    drawingContext.globalAlpha = alpha * (0.3 + depth * 0.7);
-                    drawingContext.beginPath();
-                    drawingContext.moveTo(points[from][0] * radius, -points[from][1] * radius);
-                    drawingContext.lineTo(points[to][0] * radius, -points[to][1] * radius);
-                    drawingContext.stroke();
-                });
-            });
+            strokeHypercubeEdges(drawingContext, PENTERACT_PROJECTION, radius, [
+                [cellSize * 0.052, 0.6, '#07203f', 0], [cellSize * 0.024, 0.95, '#63b4f0', 0], [cellSize * 0.01, 0.95, '#ffffff', 0.62]
+            ]);
             drawingContext.globalAlpha = 1;
             // 모서리 80개가 겹친 자리라 눈이 묻히기 쉬우므로 살짝 어두운 바닥을 깔고 그린다.
             drawingContext.fillStyle = 'rgba(9, 32, 68, 0.55)';
+            drawingContext.beginPath(); drawingContext.ellipse(0, -radius * 0.04, radius * 0.44, radius * 0.28, 0, 0, Math.PI * 2); drawingContext.fill();
+            drawPuyoEyes(drawingContext, radius * 0.52);
+            drawingContext.restore();
+        }
+    }
+
+    /**
+     * 6차원 초입방체(헥사액트)의 꼭짓점 64개를 6D→3D→2D로 투영한 결과를 만든다.
+     * 펜터렉트와 같은 선형 투영이되 생성벡터를 정이십면체의 5중 대칭축 여섯 개로 놓았다.
+     * 이 여섯 축의 zonohedron이 마름모 삼십면체라, 펜터렉트의 마름모 이십면체보다 한 단계 더
+     * 촘촘하고 대칭적인 실루엣 안에 모서리 192개가 겹친 모습이 된다.
+     * 기울이지 않고 대칭축을 정면으로 두어 만다라 같은 규칙적인 무늬가 그대로 드러나게 한다.
+     * 매 프레임 다시 계산할 필요가 없으므로 모듈 적재 때 한 번만 만들어 둔다.
+     * @returns {{points: [number, number, number][], edges: [number, number][]}} 셀 반지름 기준으로 정규화한 `[x, y, 깊이]` 꼭짓점과 모서리 쌍. 깊이는 0에 가까울수록 멀다.
+     */
+    function createHexaactProjection() {
+        const { vertices, edges } = createHypercubeGraph(6);
+        // (0, ±1, ±φ)의 순환 치환에서 대척점이 겹치지 않게 고른 정이십면체의 5중 대칭축 여섯 개다.
+        const golden = (1 + Math.sqrt(5)) / 2;
+        const axisLength = Math.hypot(0, 1, golden);
+        const generators = [[0, 1, golden], [0, -1, golden], [1, golden, 0], [-1, golden, 0], [golden, 0, 1], [golden, 0, -1]]
+            .map((axis) => axis.map((value) => value / axisLength));
+        const spatial = vertices.map((vertex) => vertex.reduce(
+            (point, sign, axis) => [point[0] + sign * generators[axis][0], point[1] + sign * generators[axis][1], point[2] + sign * generators[axis][2]],
+            [0, 0, 0]
+        ));
+        const maxDistance = Math.max(...spatial.map((point) => Math.hypot(point[0], point[1], point[2])));
+        const projected = spatial.map((point) => {
+            const scaled = point.map((value) => value / maxDistance);
+            const depthScale = HEXAACT_Z_DISTANCE / (HEXAACT_Z_DISTANCE - scaled[2]);
+            return [scaled[0] * depthScale, scaled[1] * depthScale, scaled[2]];
+        });
+        return normalizeProjectedShape(projected, edges);
+    }
+
+    /** 헥사액트를 3차원에서 2차원으로 투영할 때 쓰는 시점 거리다. 클수록 원근 왜곡이 약해진다. */
+    const HEXAACT_Z_DISTANCE = 4.4;
+    /** 헥사액트 예고뿌요가 그릴 때마다 재사용하는 투영 결과다. */
+    const HEXAACT_PROJECTION = createHexaactProjection();
+
+    /** 140,000,000개 단위의 6차원 초입방체(헥사액트) 예고뿌요다. */
+    class HexaactWarningPuyo extends WarningPuyo {
+        /** 이 종류가 나타내는 방해뿌요 수다. @type {number} */
+        static unitCount = 140000000;
+        /** 140,000,000개 단위 헥사액트 예고뿌요를 만든다. */
+        constructor() { super(HexaactWarningPuyo.unitCount, 'hexaact'); }
+        /** 예고뿌요 이름을 반환 @return {string} */
+        getName() { return '헥사액트'; }
+        /** 자수정 구슬 속에 6차원 격자가 겹치고 바깥으로 후광이 번지는 모습을 한 칸 크기로 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 2D 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
+        draw(drawingContext, x, y, cellSize) {
+            const radius = cellSize * 0.42;
+            drawingContext.save();
+            drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
+            // 펜터렉트보다 한 단계 위라는 것이 한눈에 보이도록 몸체 바깥으로 보랏빛 후광을 두른다.
+            const halo = drawingContext.createRadialGradient(0, 0, radius * 0.7, 0, 0, radius * 1.3);
+            halo.addColorStop(0, 'rgba(180, 120, 255, 0.5)'); halo.addColorStop(0.55, 'rgba(120, 70, 220, 0.28)'); halo.addColorStop(1, 'rgba(60, 20, 140, 0)');
+            drawingContext.fillStyle = halo; drawingContext.beginPath(); drawingContext.arc(0, 0, radius * 1.3, 0, Math.PI * 2); drawingContext.fill();
+            // 금빛 속심에서 자수정으로, 다시 깊은 남보라로 넘어가는 유리 몸체다.
+            const body = drawingContext.createRadialGradient(-radius * 0.26, -radius * 0.32, radius * 0.04, 0, 0, radius);
+            body.addColorStop(0, 'rgba(255, 236, 190, 0.96)'); body.addColorStop(0.3, 'rgba(206, 128, 255, 0.92)');
+            body.addColorStop(0.68, 'rgba(108, 58, 200, 0.94)'); body.addColorStop(1, 'rgba(26, 10, 70, 0.96)');
+            drawingContext.fillStyle = body; drawingContext.beginPath(); drawingContext.arc(0, 0, radius, 0, Math.PI * 2); drawingContext.fill();
+            drawingContext.strokeStyle = 'rgba(236, 206, 255, 0.65)'; drawingContext.lineWidth = cellSize * 0.028; drawingContext.stroke();
+            drawingContext.lineCap = 'round'; drawingContext.lineJoin = 'round';
+            // 그림자선 → 연보라 골조 → 금빛 하이라이트 순으로 덧그린다. 모서리가 192개나 되므로
+            // 금빛은 펜터렉트보다도 더 앞쪽 모서리에만 얹어야 무늬가 뭉개지지 않는다.
+            strokeHypercubeEdges(drawingContext, HEXAACT_PROJECTION, radius, [
+                [cellSize * 0.042, 0.5, '#1a0940', 0], [cellSize * 0.02, 0.85, '#d9b6ff', 0], [cellSize * 0.009, 0.95, '#fff3c8', 0.74]
+            ]);
+            drawingContext.globalAlpha = 1;
+            // 모서리 192개가 겹친 자리라 눈이 묻히기 쉬우므로 살짝 어두운 바닥을 깔고 그린다.
+            drawingContext.fillStyle = 'rgba(30, 10, 66, 0.6)';
             drawingContext.beginPath(); drawingContext.ellipse(0, -radius * 0.04, radius * 0.44, radius * 0.28, 0, 0, Math.PI * 2); drawingContext.fill();
             drawPuyoEyes(drawingContext, radius * 0.52);
             drawingContext.restore();
@@ -8262,7 +8373,7 @@
      * 새 예고뿌요는 이 배열에 클래스를 추가해 등록한다.
      * @type {Array<new () => WarningPuyo>}
      */
-    const WARNING_PUYO_CLASSES = [PenteractWarningPuyo, TesseractWarningPuyo, BigBangWarningPuyo, GalaxyWarningPuyo, BlackHoleWarningPuyo, NeutronStarWarningPuyo, SunWarningPuyo, StarWarningPuyo, RockWarningPuyo, DropWarningPuyo, TinyWarningPuyo];
+    const WARNING_PUYO_CLASSES = [HexaactWarningPuyo, PenteractWarningPuyo, TesseractWarningPuyo, BigBangWarningPuyo, GalaxyWarningPuyo, BlackHoleWarningPuyo, NeutronStarWarningPuyo, SunWarningPuyo, StarWarningPuyo, RockWarningPuyo, DropWarningPuyo, TinyWarningPuyo];
 
     /**
      * 현재 변환 좌표를 기준으로 뿌요의 귀여운 두 눈을 그린다.
@@ -19335,6 +19446,7 @@
         BigBangWarningPuyo,
         TesseractWarningPuyo,
         PenteractWarningPuyo,
+        HexaactWarningPuyo,
         SoundPool,
         CommonSoundPool,
         EnemySoundPool,

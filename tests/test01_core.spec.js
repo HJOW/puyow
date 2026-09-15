@@ -626,11 +626,12 @@ test('일반·방해뿌요 클래스는 이름을 제공하고 캔버스에 직�
   ]);
 });
 
-test('펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 3종은 출시 상태·모델·테마 설정을 가진다', async ({ page }) => {
+test('헥사액트·펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 3종은 출시 상태·모델·테마 설정을 가진다', async ({ page }) => {
   const result = await page.evaluate(() => {
     const bigBang = new window.WebPuyo.BigBangWarningPuyo();
     const tesseract = new window.WebPuyo.TesseractWarningPuyo();
     const penteract = new window.WebPuyo.PenteractWarningPuyo();
+    const hexaact = new window.WebPuyo.HexaactWarningPuyo();
     const andras = new window.WebPuyo.Andras();
     const valak = new window.WebPuyo.Valak();
     const zagan = new window.WebPuyo.Zagan();
@@ -642,9 +643,11 @@ test('펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 3종은 출시
       bigBang: { unitCount: bigBang.unitCount, type: bigBang.type, name: bigBang.getName() },
       tesseract: { unitCount: tesseract.unitCount, type: tesseract.type, name: tesseract.getName() },
       penteract: { unitCount: penteract.unitCount, type: penteract.type, name: penteract.getName() },
+      hexaact: { unitCount: hexaact.unitCount, type: hexaact.type, name: hexaact.getName() },
       warningTypes: window.WebPuyo.common.warningUnits(500000).map((unit) => unit.type),
       tesseractWarningTypes: window.WebPuyo.common.warningUnits(3500000).map((unit) => unit.type),
       penteractWarningTypes: window.WebPuyo.common.warningUnits(23500000).map((unit) => unit.type),
+      hexaactWarningTypes: window.WebPuyo.common.warningUnits(163500000).map((unit) => unit.type),
       andras: describeEnemy(andras), valak: describeEnemy(valak), zagan: describeEnemy(zagan)
     };
   });
@@ -652,10 +655,12 @@ test('펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 3종은 출시
   expect(result.bigBang).toEqual({ unitCount: 500000, type: 'big-bang', name: '빅뱅' });
   expect(result.tesseract).toEqual({ unitCount: 3000000, type: 'tesseract', name: '테서렉트' });
   expect(result.penteract).toEqual({ unitCount: 20000000, type: 'penteract', name: '펜터렉트' });
+  expect(result.hexaact).toEqual({ unitCount: 140000000, type: 'hexaact', name: '헥사액트' });
   expect(result.warningTypes).toEqual(['big-bang']);
   // 큰 단위부터 공격량을 가져가고 남은 만큼을 아래 단위가 차례로 채운다.
   expect(result.tesseractWarningTypes).toEqual(['tesseract', 'big-bang']);
   expect(result.penteractWarningTypes).toEqual(['penteract', 'tesseract', 'big-bang']);
+  expect(result.hexaactWarningTypes).toEqual(['hexaact', 'penteract', 'tesseract', 'big-bang']);
   expect(result.andras).toEqual({
     classType: 'Andras', name: '안드라스', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model02.onnx',
     theme: { bezel: '#1b2137', field: '#2d3857', center: '#0a0e1c' }
@@ -791,15 +796,18 @@ test('setEnemySoundPool은 getClassType에 해당하는 새 적의 사운드 풀
   )))).toBe(true);
 });
 
-test('조작 뿌요 자연 낙하 속도는 최대 16배까지 증가한다', async ({ page }) => {
+test('조작 뿌요 자연 낙하 속도는 최대 256배까지 증가한다', async ({ page }) => {
+  // 배율은 1분마다 0.2씩 늘어 MAX_PLAYER_FALL_SPEED_MULTIPLIER에서 멈춘다. 상한이 256이면
+  // 1 + 1275 * 0.2 = 256이므로 1275분(76,500,000ms)에 정확히 도달한다. 상한 상수를 바꾸면
+  // 아래 마지막 세 시각과 기대값을 그 경계로 다시 계산한다.
   const multipliers = await page.evaluate(() => {
-    const elapsedTimes = [0, 59999, 60000, 4440000, 4500000, 9000000];
+    const elapsedTimes = [0, 59999, 60000, 4440000, 76440000, 76500000, 150000000];
     return {
       direct: elapsedTimes.map((elapsed) => window.WebPuyo.getPlayerFallSpeedMultiplier(elapsed)),
       common: elapsedTimes.map((elapsed) => window.WebPuyo.common.getPlayerFallSpeedMultiplier(elapsed)),
     };
   });
-  expect(multipliers.direct).toEqual([1, 1, 1.2, 15.8, 16, 16]);
+  expect(multipliers.direct).toEqual([1, 1, 1.2, 15.8, 255.8, 256, 256]);
   expect(multipliers.common).toEqual(multipliers.direct);
 });
 
