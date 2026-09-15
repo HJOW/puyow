@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 56;
+    const BUILDNO = 58;
     /** 게임 캔버스의 논리 너비다. @type {number} */
     const WIDTH = 1280;
     /** 게임 캔버스의 논리 높이다. @type {number} */
@@ -668,9 +668,11 @@
     let screenMessage = null;
     /** 현재 표시 중인 공용 확인 대화상자다. @type {{message:string,choice:number,resolve:(value:boolean)=>void}|null} */
     let confirmDialog = null;
-    /** 동시에 요청된 확인 대화상자를 순서대로 표시하기 위한 대기열이다. @type {{message:string,choice:number,resolve:(value:boolean)=>void}[]} */
-    let confirmDialogQueue = [];
-    /** 확인 대화상자 연속 표시 중 자동 일시정지한 게임과 복원 여부다. @type {{game:object|null,resume:boolean}|null} */
+    /** 현재 표시 중인 텍스트 입력 대화상자다. focus는 0=입력창, 1=확인, 2=취소이며 editing은 실제 문자 입력 모드 여부다. @type {{message:string,multiline:boolean,value:string,cursor:number,selectionAnchor:number|null,focus:number,editing:boolean,resolve:(value:string|null)=>void}|null} */
+    let textDialog = null;
+    /** 확인·텍스트 대화상자를 요청된 순서대로 표시하기 위한 대기열이다. @type {{type:'confirm'|'text',message:string,confirmLabel?:string,multiline?:boolean,choice?:number,value?:string,cursor?:number,selectionAnchor?:number|null,resolve:(value:boolean|string|null)=>void}[]} */
+    let dialogQueue = [];
+    /** 대화상자 연속 표시 중 자동 일시정지한 게임과 복원 여부다. @type {{game:object|null,resume:boolean}|null} */
     let confirmDialogPauseContext = null;
     /** Game start firework animation state. @type {{elapsed:number,particles:{angle:number,speed:number,delay:number,size:number,color:string}[]}|null} */
     let gameStartFirework = null;
@@ -3603,6 +3605,7 @@
     /** 현재 입력 가능한 메뉴 포커스를 비교하기 위한 식별자를 만든다. @returns {string|null} */
     function getMenuFocusToken() {
         if (confirmDialog) return `confirmation:${confirmDialog.choice}`;
+        if (textDialog) return `text:${textDialog.focus}:${textDialog.editing}`;
         if (game?.tutorial?.mode === 'complete') return `tutorial:${game.tutorial.finalFocus}`;
         if (game?.paused) return `pause:${pauseMenuFocus}`;
         if (game) return null;
@@ -12552,6 +12555,7 @@
         drawScreenMessage();
         drawGameStartFirework();
         drawConfirmDialog();
+        drawTextDialog();
     }
 
     /** 화면 최상단에 표시 중인 외부 메시지를 그린다. @returns {void} */
@@ -13011,7 +13015,7 @@
 
     /** 실제 텍스트 입력 중에는 Z 키를 메뉴 확인 키로 바꾸지 않아야 하는지 확인한다. @param {KeyboardEvent|{target?:EventTarget|null}} event 입력 이벤트 @returns {boolean} */
     function isTextInputInProgress(event) {
-        if (settingsEditing || playerNamePrompt) return true;
+        if (settingsEditing || playerNamePrompt || textDialog) return true;
         const target = event.target;
         if (!target || typeof target !== 'object') return false;
         if (target.isContentEditable) return true;
@@ -13183,6 +13187,95 @@
         }
     }
 
+    /** 여러 줄 텍스트 입력 대화상자의 입력창·버튼 포커스를 방향키로 옮긴다. @param {string} key 소문자 키 이름 @returns {void} */
+    function moveTextDialogFocus(key) {
+        if (!textDialog || !textDialog.multiline || textDialog.editing) return;
+        const direction = key === 'arrowleft' || key === 'arrowup' ? -1 : 1;
+        textDialog.focus = (textDialog.focus + direction + 3) % 3;
+    }
+
+    /** 텍스트 입력 대화상자의 키보드·게임패드 입력을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @param {string} key 소문자 키 이름 @returns {void} */
+    function handleTextDialogKeydown(event, key) {
+        if (!textDialog) return;
+        event.preventDefault();
+        const characters = Array.from(textDialog.value);
+        const selecting = event.shiftKey;
+        const moveCursor = (nextCursor) => {
+            if (selecting && textDialog.selectionAnchor === null) textDialog.selectionAnchor = textDialog.cursor;
+            if (!selecting) textDialog.selectionAnchor = null;
+            textDialog.cursor = Math.max(0, Math.min(characters.length, nextCursor));
+        };
+
+        // 여러 줄 입력은 먼저 포커스를 입력 모드로 바꿔야 Enter가 줄바꿈으로 동작한다.
+        if (textDialog.multiline && !textDialog.editing) {
+            if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
+                moveTextDialogFocus(key);
+                return;
+            }
+            if (key === 'enter' || key === ' ') {
+                if (textDialog.focus === 0) textDialog.editing = true;
+                else if (textDialog.focus === 1) {
+                    playMenuSelectSound();
+                    resolveTextDialog(textDialog.value);
+                } else {
+                    playMenuCancelSound();
+                    resolveTextDialog(null);
+                }
+                return;
+            }
+            if (key === 'escape') {
+                playMenuCancelSound();
+                resolveTextDialog(null);
+            }
+            return;
+        }
+
+        // 입력 모드의 ESC는 대화상자를 취소하지 않고 포커스 선택 상태로 돌아간다.
+        if (key === 'escape') {
+            if (textDialog.multiline) {
+                textDialog.editing = false;
+                textDialog.selectionAnchor = null;
+            } else {
+                playMenuCancelSound();
+                resolveTextDialog(null);
+            }
+            return;
+        }
+        if (event.ctrlKey && key === 'a') {
+            textDialog.selectionAnchor = 0;
+            textDialog.cursor = characters.length;
+            return;
+        }
+        if (key === 'enter') {
+            if (textDialog.multiline) insertTextDialogText('\n');
+            else {
+                playMenuSelectSound();
+                resolveTextDialog(textDialog.value);
+            }
+            return;
+        }
+        if (key === 'arrowleft') { moveCursor(textDialog.cursor - 1); return; }
+        if (key === 'arrowright') { moveCursor(textDialog.cursor + 1); return; }
+        if (key === 'home') { moveCursor(0); return; }
+        if (key === 'end') { moveCursor(characters.length); return; }
+        if (key === 'backspace') {
+            if (deleteTextDialogSelection(-1)) return;
+            if (textDialog.cursor > 0) {
+                characters.splice(textDialog.cursor - 1, 1);
+                textDialog.value = characters.join('');
+                textDialog.cursor -= 1;
+            }
+            return;
+        }
+        if (key === 'delete') {
+            if (deleteTextDialogSelection(1)) return;
+            characters.splice(textDialog.cursor, 1);
+            textDialog.value = characters.join('');
+            return;
+        }
+        if (!event.ctrlKey && !event.metaKey && !event.altKey && event.key.length === 1) insertTextDialogText(event.key);
+    }
+
     /** 이름 입력 대화상자의 값을 현재 커서 위치에 넣는다. @param {string} text 삽입할 문자열 @returns {void} */
     function insertPlayerNamePromptText(text) {
         if (!playerNamePrompt) return;
@@ -13249,6 +13342,7 @@
         else if (!textInputInProgress && (rawKey === 'x' || event.code === 'KeyX')) key = 'x';
         if (key === 'z' && shouldTreatZAsEnter(event)) key = 'enter';
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'z', 'x', 'escape', 'enter', ' '].includes(key)) event.preventDefault();
+        if (textDialog) { handleTextDialogKeydown(event, key); return; }
         if (confirmDialog) { handleConfirmDialogKeydown(key); return; }
         if (settingsResetting) return;
         if (!game && menuScreen === 'initialTitle') {
@@ -13716,6 +13810,22 @@
     /** 캔버스 클릭의 실제 화면 동작을 처리한다. @param {MouseEvent} event 마우스 이벤트 @returns {void} */
     function handleCanvasClickCore(event) {
         if (threeEffectManager?.active) { threeEffectManager.cancelReveal(); return; }
+        if (textDialog) {
+            const { x, y } = getCanvasEventCoordinates(event);
+            const bounds = getTextDialogBounds(textDialog.multiline);
+            if (x >= bounds.input.x && x <= bounds.input.x + bounds.input.width && y >= bounds.input.y && y <= bounds.input.y + bounds.input.height) {
+                textDialog.focus = 0;
+            } else if (x >= bounds.confirm.x && x <= bounds.confirm.x + bounds.confirm.width && y >= bounds.confirm.y && y <= bounds.confirm.y + bounds.confirm.height) {
+                textDialog.focus = 1;
+                playMenuSelectSound();
+                resolveTextDialog(textDialog.value);
+            } else if (x >= bounds.cancel.x && x <= bounds.cancel.x + bounds.cancel.width && y >= bounds.cancel.y && y <= bounds.cancel.y + bounds.cancel.height) {
+                textDialog.focus = 2;
+                playMenuCancelSound();
+                resolveTextDialog(null);
+            }
+            return;
+        }
         if (confirmDialog) {
             const { x, y } = getCanvasEventCoordinates(event);
             const choice = [0, 1].find((index) => {
@@ -14317,9 +14427,9 @@
         screenMessage = { message, color, backgroundColor, elapsed: 0, duration };
     }
 
-    /** 대기 중인 다음 확인 요청을 표시하고, 진행 중인 게임은 대화상자들이 모두 끝날 때까지 일시정지한다. @returns {void} */
-    function openNextConfirmDialog() {
-        if (confirmDialog || !confirmDialogQueue.length) return;
+    /** 대기 중인 다음 대화상자를 표시하고, 진행 중인 게임은 대화상자들이 모두 끝날 때까지 일시정지한다. @returns {void} */
+    function openNextDialog() {
+        if (confirmDialog || textDialog || !dialogQueue.length) return;
         if (!confirmDialogPauseContext) {
             confirmDialogPauseContext = { game, resume: Boolean(game?.running && !game.paused) };
             if (confirmDialogPauseContext.resume) {
@@ -14329,16 +14439,18 @@
                 pauseBackgroundMusic();
             }
         }
-        confirmDialog = confirmDialogQueue.shift();
+        const request = dialogQueue.shift();
+        if (request.type === 'text') textDialog = request;
+        else confirmDialog = request;
     }
 
-    /** 현재 확인 요청을 완료하고 다음 요청 또는 자동 일시정지 상태를 정리한다. @param {boolean} value 선택 결과 @returns {void} */
+    /** 현재 대화상자를 완료하고 다음 요청 또는 자동 일시정지 상태를 정리한다. @param {boolean|string|null} value 선택 결과 @returns {void} */
     function resolveConfirmDialog(value) {
         if (!confirmDialog) return;
         const resolver = confirmDialog.resolve;
         confirmDialog = null;
-        if (confirmDialogQueue.length) {
-            openNextConfirmDialog();
+        if (dialogQueue.length) {
+            openNextDialog();
         } else {
             const pauseContext = confirmDialogPauseContext;
             confirmDialogPauseContext = null;
@@ -14348,6 +14460,24 @@
             }
         }
         resolver(value === true);
+    }
+
+    /** 현재 텍스트 입력을 완료하고 다음 요청 또는 자동 일시정지 상태를 정리한다. @param {string|null} value 입력값 또는 취소 시 null @returns {void} */
+    function resolveTextDialog(value) {
+        if (!textDialog) return;
+        const resolver = textDialog.resolve;
+        textDialog = null;
+        if (dialogQueue.length) {
+            openNextDialog();
+        } else {
+            const pauseContext = confirmDialogPauseContext;
+            confirmDialogPauseContext = null;
+            if (pauseContext?.resume && game === pauseContext.game && game?.running && game.paused) {
+                game.paused = false;
+                resumeBackgroundMusic();
+            }
+        }
+        resolver(value === null ? null : String(value));
     }
 
     /**
@@ -14369,8 +14499,129 @@
      */
     function requestConfirmDialog(message, confirmLabel = '확인') {
         return new Promise((resolve) => {
-            confirmDialogQueue.push({ message, confirmLabel, choice: 0, resolve });
-            openNextConfirmDialog();
+            dialogQueue.push({ type: 'confirm', message, confirmLabel, choice: 0, resolve });
+            openNextDialog();
+        });
+    }
+
+    /** 텍스트 입력 대화상자의 영역을 반환한다. @param {boolean} multiline 여러 줄 입력 여부 @returns {{panel:{x:number,y:number,width:number,height:number},input:{x:number,y:number,width:number,height:number},confirm:{x:number,y:number,width:number,height:number},cancel:{x:number,y:number,width:number,height:number}}} */
+    function getTextDialogBounds(multiline) {
+        const inputHeight = multiline ? 148 : 58;
+        const panelHeight = multiline ? 430 : 340;
+        const panelY = multiline ? 145 : 190;
+        const inputY = panelY + (multiline ? 112 : 106);
+        const buttonY = panelY + panelHeight - 82;
+        return {
+            panel: { x: 300, y: panelY, width: 680, height: panelHeight },
+            input: { x: 340, y: inputY, width: 600, height: inputHeight },
+            confirm: { x: 405, y: buttonY, width: 190, height: 58 },
+            cancel: { x: 685, y: buttonY, width: 190, height: 58 }
+        };
+    }
+
+    /** 텍스트 입력 대화상자의 입력 문자열을 줄 목록으로 나눈다. @param {string} value 입력 문자열 @returns {string[]} 줄 목록 */
+    function getTextDialogLines(value) {
+        return String(value).split('\n');
+    }
+
+    /** 텍스트 입력 대화상자의 커서가 위치한 줄과 그 줄 안의 순번을 반환한다. @param {{value:string,cursor:number}} dialog 텍스트 대화상자 @returns {{line:number,offset:number}} 커서 위치 */
+    function getTextDialogCursorPosition(dialog) {
+        const characters = Array.from(dialog.value);
+        const beforeCursor = characters.slice(0, dialog.cursor).join('');
+        const lines = beforeCursor.split('\n');
+        return { line: lines.length - 1, offset: Array.from(lines[lines.length - 1]).length };
+    }
+
+    /** 텍스트 입력 대화상자의 문자를 커서 위치에 삽입한다. @param {string} text 삽입할 문자열 @returns {void} */
+    function insertTextDialogText(text) {
+        if (!textDialog) return;
+        const characters = Array.from(textDialog.value);
+        const selectionStart = textDialog.selectionAnchor === null ? textDialog.cursor : Math.min(textDialog.cursor, textDialog.selectionAnchor);
+        const selectionEnd = textDialog.selectionAnchor === null ? textDialog.cursor : Math.max(textDialog.cursor, textDialog.selectionAnchor);
+        const inserted = Array.from(String(text).replace(/\r\n?/g, '\n'))
+            .filter((character) => textDialog.multiline || character !== '\n');
+        const next = characters.slice(0, selectionStart).concat(inserted, characters.slice(selectionEnd));
+        textDialog.value = next.slice(0, 2000).join('');
+        textDialog.cursor = Math.min(next.length, 2000, selectionStart + inserted.length);
+        textDialog.selectionAnchor = null;
+    }
+
+    /** 텍스트 입력 대화상자의 선택 영역을 지우고 커서를 이동한다. @param {number} direction -1이면 앞, 1이면 뒤 @returns {boolean} 선택 영역을 지웠는지 여부 */
+    function deleteTextDialogSelection(direction) {
+        if (!textDialog || textDialog.selectionAnchor === null || textDialog.selectionAnchor === textDialog.cursor) return false;
+        const characters = Array.from(textDialog.value);
+        const start = Math.min(textDialog.cursor, textDialog.selectionAnchor);
+        const end = Math.max(textDialog.cursor, textDialog.selectionAnchor);
+        textDialog.value = characters.slice(0, start).concat(characters.slice(end)).join('');
+        textDialog.cursor = direction < 0 ? start : start;
+        textDialog.selectionAnchor = null;
+        return true;
+    }
+
+    /** 텍스트 입력 대화상자의 입력 내용을 그린다. @returns {void} */
+    function drawTextDialog() {
+        if (!textDialog) return;
+        const bounds = getTextDialogBounds(textDialog.multiline);
+        context.fillStyle = 'rgba(2, 8, 13, 0.82)'; context.fillRect(0, 0, WIDTH, HEIGHT);
+        context.fillStyle = '#102c3b'; context.fillRect(bounds.panel.x, bounds.panel.y, bounds.panel.width, bounds.panel.height);
+        context.strokeStyle = '#6ea2b8'; context.lineWidth = 3; context.strokeRect(bounds.panel.x, bounds.panel.y, bounds.panel.width, bounds.panel.height);
+        context.textAlign = 'center'; context.fillStyle = '#f5fbfc'; context.font = `24px ${MESSAGE_FONT}`;
+        const messageLines = wrapCanvasText(textDialog.message, 600);
+        messageLines.forEach((line, index) => context.fillText(line, WIDTH / 2, bounds.panel.y + 48 + index * 30));
+
+        context.fillStyle = '#071621'; context.fillRect(bounds.input.x, bounds.input.y, bounds.input.width, bounds.input.height);
+        const inputFocused = textDialog.focus === 0;
+        context.strokeStyle = inputFocused ? '#f7c843' : '#6ea2b8'; context.lineWidth = inputFocused ? 3 : 2; context.strokeRect(bounds.input.x, bounds.input.y, bounds.input.width, bounds.input.height);
+        const lines = getTextDialogLines(textDialog.value);
+        const cursorPosition = getTextDialogCursorPosition(textDialog);
+        const lineHeight = 27;
+        const inputPadding = 14;
+        context.save();
+        context.beginPath(); context.rect(bounds.input.x + 4, bounds.input.y + 4, bounds.input.width - 8, bounds.input.height - 8); context.clip();
+        context.textAlign = 'left'; context.textBaseline = 'top'; context.fillStyle = '#f5fbfc'; context.font = `20px ${MESSAGE_FONT}`;
+        if (textDialog.multiline) {
+            lines.forEach((line, index) => context.fillText(line, bounds.input.x + inputPadding, bounds.input.y + inputPadding + index * lineHeight));
+        } else context.fillText(lines[0], bounds.input.x + inputPadding, bounds.input.y + 17);
+        const cursorLineY = bounds.input.y + (textDialog.multiline ? inputPadding + cursorPosition.line * lineHeight : 17);
+        const cursorLineText = textDialog.multiline ? lines[cursorPosition.line] || '' : lines[0] || '';
+        const cursorX = bounds.input.x + inputPadding + context.measureText(cursorLineText.slice(0, cursorPosition.offset)).width;
+        if (textDialog.editing) {
+            context.strokeStyle = '#f7c843'; context.lineWidth = 2; context.beginPath(); context.moveTo(cursorX, cursorLineY); context.lineTo(cursorX, cursorLineY + 24); context.stroke();
+        }
+        context.restore();
+
+        [['확인', bounds.confirm, '#4cc9b0'], ['취소', bounds.cancel, '#563068']].forEach(([label, button, color], index) => {
+            const focused = textDialog.multiline && textDialog.focus === index + 1;
+            context.fillStyle = focused ? (index === 0 ? '#397d70' : '#563068') : color; context.fillRect(button.x, button.y, button.width, button.height);
+            context.strokeStyle = focused ? '#f7c843' : (index === 0 ? '#7ae3cb' : '#e5c7f5'); context.lineWidth = focused ? 4 : 2; context.strokeRect(button.x, button.y, button.width, button.height);
+            context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.textAlign = 'center'; context.textBaseline = 'alphabetic';
+            context.fillText(translate(label), button.x + button.width / 2, button.y + 37);
+        });
+    }
+
+    /**
+     * 현재 화면을 음영 처리한 뒤, 그 위에 텍스트 입력 대화상자를 표시한다. 메시지는 원문 그대로 표시하고 버튼만 현재 언어로 번역한다.
+     * @param {string} message 대화 상자 내 보여줄 메시지
+     * @param {boolean|null} multiline 여러줄 입력 사용여부 (기본값 false)
+     * @returns {Promise<string|null>} 텍스트 입력 시 그 내용, 취소 시 null
+     */
+    function askText(message, multiline) {
+        if (!initialized || !context) throw new Error('텍스트 입력 대화상자를 표시하려면 먼저 WebPuyo.initialize()를 호출해야 합니다.');
+        if (typeof message !== 'string') throw new TypeError('message는 문자열이어야 합니다.');
+        if (multiline !== undefined && multiline !== null && typeof multiline !== 'boolean') throw new TypeError('multiline은 boolean 또는 null이어야 합니다.');
+        return new Promise((resolve) => {
+            dialogQueue.push({
+                type: 'text',
+                message,
+                multiline: multiline === true,
+                value: '',
+                cursor: 0,
+                selectionAnchor: null,
+                focus: 0,
+                editing: multiline !== true,
+                resolve
+            });
+            openNextDialog();
         });
     }
 
@@ -14742,9 +14993,12 @@
         feverStageValidationTimer = null;
         settingsResetting = false;
         screenMessage = null;
-        [confirmDialog, ...confirmDialogQueue].filter(Boolean).forEach((request) => request.resolve(false));
+        if (confirmDialog) confirmDialog.resolve(false);
+        if (textDialog) textDialog.resolve(null);
+        dialogQueue.forEach((request) => request.resolve(request.type === 'text' ? null : false));
         confirmDialog = null;
-        confirmDialogQueue = [];
+        textDialog = null;
+        dialogQueue = [];
         confirmDialogPauseContext = null;
         gameStartFirework = null;
         window.removeEventListener('keydown', handleKeydown);
@@ -18709,6 +18963,7 @@
         playSound,
         showMessage,
         askConfirm,
+        askText,
         addCode,
         initialize,
         destroy,

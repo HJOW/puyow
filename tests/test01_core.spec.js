@@ -17,6 +17,32 @@ test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
+test('askText는 한 줄·여러 줄 입력과 취소를 처리한다', async ({ page }) => {
+  const singleLine = page.evaluate(() => window.WebPuyo.askText('한 줄 입력', false));
+  await page.waitForTimeout(50);
+  await page.keyboard.type('first line');
+  await page.keyboard.press('Enter');
+  await expect(singleLine).resolves.toBe('first line');
+
+  const multiline = page.evaluate(() => window.WebPuyo.askText('여러 줄 입력', true));
+  await page.waitForTimeout(50);
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('first line');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('second line');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(multiline).resolves.toBe('first line\nsecond line');
+
+  const cancelled = page.evaluate(() => window.WebPuyo.askText('취소 확인', true));
+  await page.waitForTimeout(50);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(cancelled).resolves.toBeNull();
+});
+
 test('새 src 하위 디렉토리의 게임 리소스를 로드한다', async ({ page }) => {
   const resources = await page.evaluate(() => ({
     stylesheet: new URL(document.querySelector('link[rel="stylesheet"]').href).pathname,
@@ -596,6 +622,27 @@ test('게임 중 askConfirm은 응답 전까지 게임을 일시정지하고 응
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Pause the match'))).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.gameConfirmResult)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+});
+
+test('게임 중 askText는 응답 전까지 게임을 일시정지하고 응답 후 재개한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await page.evaluate(() => {
+    window.gameTextResult = null;
+    window.WebPuyo.askText('Pause the match', false).then((value) => { window.gameTextResult = value; });
+  });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Pause the match'))).toBe(true);
+  await page.waitForTimeout(50);
+  await page.keyboard.type('typed text');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.gameTextResult)).toBe('typed text');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
 });
 
