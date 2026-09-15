@@ -1,0 +1,4 @@
+{
+  "account": {"id":"Alice_1","nickname":"Alice","password":"stored-bcrypt-hash","winPoint":7,"createdAt":"2026-09-15T00:00:00.000Z"},
+  "room": {"id":"Alice_1","rule":"standard","colorCount":4,"host":{"id":"Alice_1","nickname":"Alice","winPoint":7},"guest":null,"state":"waiting","createdAt":1750000000000}
+}

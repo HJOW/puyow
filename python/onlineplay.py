@@ -4,7 +4,7 @@
 # python/pythonserver.py 는 OnlinePlayService 객체를 만들어
 #     - HTTP  : /apis/onlineplay/...   → handle_api()
 #     - 소켓  : /apis/onlineplay/socket → handle_upgrade()
-# 두 진입점만 연결하며, 그 밖의 온라인 플레이 처리는 모두 이 파일 안에 있다.
+# 두 진입점만 연결한다. 계정·방 파일 입출력은 onlineplay_storage.py에 분리되어 있다.
 #
 # 프로토콜과 규칙은 저장소 루트의 MAY_BE_LATER.md "세부 결정 사항" 절을 따른다.
 # nodeserver/onlineplay.js 도 같은 계약을 구현하므로, 메시지 이름이나 오류 코드를 바꾸면 두 파일을 함께 고쳐야 한다.
@@ -30,15 +30,8 @@ import threading
 import time
 import traceback
 from http import HTTPStatus
-from pathlib import Path
+from onlineplay_storage import FileOnlinePlayStorage
 from typing import Any
-
-# 서버가 계정과 방 정보를 저장하는 최상위 디렉터리다.
-STORAGE_ROOT = Path.home() / ".puyowserver"
-# 계정 디렉터리. 이 아래에 "ID(소문자)/account.json" 형태로 저장한다.
-ACCOUNT_ROOT = STORAGE_ROOT / "account"
-# 방 디렉터리. 이 아래에 "방ID.json" 형태로 저장하며 서버 시작 시 비운다.
-ROOM_ROOT = STORAGE_ROOT / "rooms"
 
 # 계정 ID 규칙: 알파벳·숫자·언더바 4~20자.
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_]{4,20}$")
@@ -99,25 +92,6 @@ def _to_win_point(value: Any) -> int:
 		return max(0, int(value))
 	except (TypeError, ValueError):
 		return 0
-
-
-# JSON 파일을 읽어 dict로 돌려준다. 읽지 못하면 None이다.
-def _read_json_file(file_path: Path) -> dict[str, Any] | None:
-	"""계정·방 파일을 읽는다. 파일이 없거나 형식이 깨졌으면 None을 돌려준다."""
-	try:
-		with file_path.open("r", encoding="utf-8") as stream:
-			value = json.load(stream)
-		return value if isinstance(value, dict) else None
-	except (OSError, json.JSONDecodeError):
-		return None
-
-
-# dict를 JSON 파일로 저장한다.
-def _write_json_file(file_path: Path, value: dict[str, Any]) -> None:
-	"""부모 디렉터리를 만든 뒤 UTF-8 JSON으로 저장한다."""
-	file_path.parent.mkdir(parents=True, exist_ok=True)
-	with file_path.open("w", encoding="utf-8") as stream:
-		json.dump(value, stream, ensure_ascii=False, indent=2)
 
 
 class WebSocketConnection:
@@ -217,8 +191,10 @@ class WebSocketConnection:
 class OnlinePlayService:
 	"""계정·세션·방·대전 중계를 모두 담당하는 온라인 플레이 서비스다."""
 
-	def __init__(self, enabled: bool) -> None:
+	def __init__(self, enabled: bool, storage: Any = None) -> None:
 		self.enabled = bool(enabled)
+		# 다른 저장소도 같은 동기식 메서드를 구현하면 서비스 변경 없이 주입할 수 있다.
+		self.storage = storage if storage is not None else FileOnlinePlayStorage()
 		# 모든 공유 상태는 이 잠금 아래에서만 바꾼다. HTTP 스레드와 소켓 스레드가 함께 접근한다.
 		self.lock = threading.RLock()
 		# 토큰 → 세션. 세션은 메모리에만 둔다.
@@ -233,10 +209,9 @@ class OnlinePlayService:
 		self.login_failures: dict[str, list[float]] = {}
 
 		if self.enabled:
-			ACCOUNT_ROOT.mkdir(parents=True, exist_ok=True)
-			ROOM_ROOT.mkdir(parents=True, exist_ok=True)
-			self._build_nickname_index()
-			self._clear_room_directory()
+			self.storage.initialize()
+			self.nickname_index = self.storage.load_nickname_index()
+			self.storage.clear_rooms()
 			# 게임 시작 준비와 세션 만료를 살피는 관리 스레드다.
 			thread = threading.Thread(target=self._maintenance_loop, name="onlineplay-maintenance", daemon=True)
 			thread.start()
@@ -246,54 +221,19 @@ class OnlinePlayService:
 		"""SERVER_CONFIG['online_play_enabled'] 값을 그대로 반영한다."""
 		return self.enabled
 
-	############################### 준비 ###############################
-
-	# 계정 디렉터리를 한 번 읽어 닉네임 색인을 만든다.
-	def _build_nickname_index(self) -> None:
-		"""닉네임 중복 검사를 위해 서버 시작 시 한 번 계정 목록을 읽어 둔다."""
-		self.nickname_index.clear()
-		try:
-			entries = list(ACCOUNT_ROOT.iterdir())
-		except OSError:
-			return
-		for entry in entries:
-			if not entry.is_dir():
-				continue
-			account = _read_json_file(entry / "account.json")
-			if account and isinstance(account.get("nickname"), str):
-				self.nickname_index[account["nickname"]] = entry.name
-
-	# 이전 실행에서 남은 방 파일을 모두 지운다.
-	def _clear_room_directory(self) -> None:
-		"""접속자가 없는 방은 존재할 수 없으므로 서버 시작 시 방 디렉터리를 비운다."""
-		try:
-			entries = list(ROOM_ROOT.glob("*.json"))
-		except OSError:
-			return
-		for entry in entries:
-			try:
-				entry.unlink()
-			except OSError:
-				pass
-
 	############################### 계정 ###############################
-
-	# 계정 파일 경로를 만든다. 디렉터리 이름은 항상 ID의 소문자다.
-	def _account_file(self, account_id: str) -> Path:
-		"""ID 대소문자를 가리지 않는 규칙이 파일시스템 종류와 무관하게 같게 동작하도록 소문자로 맞춘다."""
-		return ACCOUNT_ROOT / account_id.lower() / "account.json"
 
 	# 계정을 읽는다. 없으면 None이다.
 	def _load_account(self, account_id: str) -> dict[str, Any] | None:
 		"""형식이 맞는 ID에 대해서만 계정 파일을 읽는다."""
 		if not ID_PATTERN.match(account_id or ""):
 			return None
-		return _read_json_file(self._account_file(account_id))
+		return self.storage.load_account(account_id)
 
 	# 계정을 저장한다.
 	def _save_account(self, account: dict[str, Any]) -> None:
 		"""가입과 WIN POINT 갱신이 함께 쓰는 저장 경로다."""
-		_write_json_file(self._account_file(str(account["id"])), account)
+		self.storage.save_account(account)
 
 	# 최근 5분 안의 비밀번호 실패 횟수를 센다.
 	def _count_recent_failures(self, account_key: str) -> int:
@@ -446,16 +386,11 @@ class OnlinePlayService:
 
 	############################### 방 ###############################
 
-	# 방 파일 경로를 만든다.
-	def _room_file(self, room_id: str) -> Path:
-		"""방 고유 ID(방장 계정 ID)를 파일 이름으로 쓴다."""
-		return ROOM_ROOT / f"{room_id.lower()}.json"
-
 	# 방 상태를 파일로 저장한다. 파일은 스냅샷이며 정본은 메모리다.
 	def _save_room_file(self, room: dict[str, Any]) -> None:
 		"""저장에 실패해도 메모리 상태로 서비스는 계속한다."""
 		try:
-			_write_json_file(self._room_file(room["id"]), self._room_json(room))
+			self.storage.save_room(self._room_json(room))
 		except OSError:
 			print("방 정보를 저장하지 못했습니다.")
 
@@ -463,7 +398,7 @@ class OnlinePlayService:
 	def _remove_room_file(self, room_id: str) -> None:
 		"""방이 사라지거나 고유 ID가 바뀔 때 이전 파일을 지운다."""
 		try:
-			self._room_file(room_id).unlink()
+			self.storage.remove_room(room_id)
 		except OSError:
 			pass
 

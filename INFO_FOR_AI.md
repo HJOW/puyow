@@ -789,6 +789,17 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 - `puyow_win`은 사람이 CPU 적을 이긴 뒤 모든 정산·종료 연출을 마치고 결과 상태가 된 시점에 한 번 발생한다. `detail`은 `{ difficulty, colorCount, rule, enemy, elapsedMs }`이고 난이도는 AI 난이도 key, 규칙은 `standard`·`fever`·`fever_start`, 시간은 `game.elapsed` 밀리초다. 구경, 연습·연속 피버·퍼즐뿌요·튜토리얼, 너랑 나랑, 온라인, 리플레이 재생은 제외한다.
 - 개발자 사용법과 정확한 식별자·payload는 `HOWTO.md`와 `HOWTO.en.md`에 같은 의미로 기록했다. `tests/common/gamepage.js`는 스크립트 초기화 전에 이벤트를 기록하고, `tests/test01_core.spec.js`가 초기화 한 번·초기 화면 이벤트 부재·`initial_title`에서 `main_menu`로의 화면 이벤트 payload를 확인한다.
 
+### 온라인 플레이 저장소 분리와 서버 안내 (2026-09-15)
+
+- 파일 입출력은 `nodeserver/onlineplay_storage.js`와 `python/onlineplay_storage.py`의 `FileOnlinePlayStorage`로 분리했다. Node는 `createService({enabled, storage})`, Python은 `OnlinePlayService(enabled, storage=...)`로 다른 저장소를 주입할 수 있다. 생략하면 기존 홈 디렉터리의 파일 저장소를 사용한다. 생성자는 I/O를 하지 않으며 비활성 서비스에서는 저장소 메서드를 호출하지 않는다.
+- 계약은 동기식 `initialize`, `loadNicknameIndex`/`load_nickname_index`, `loadAccount`/`load_account`, `saveAccount`/`save_account`, `saveRoom`/`save_room`, `removeRoom`/`remove_room`, `clearRooms`/`clear_rooms`이다. Node에 Promise 반환 저장소를 그대로 연결하지 않는다. 닉네임 색인 로딩은 저장소에서 하고 가입 이후 색인 갱신·입력 검증·bcrypt·점수 계산·메모리 방과 세션·잠금은 서비스에 남긴다.
+- 기존 경로·JSON·예외 정책·처리 순서를 유지했다. 서버 시작 시 방 스냅샷만 지우고 계정은 보존한다. 방장 이양 시 옛 ID 스냅샷을 삭제하고 새 ID로 저장한다. 계정 저장 오류는 전파하고 방 저장 오류는 서비스에서 처리한다(Python은 OSError). 동시 가입·복수 계정 점수 저장의 원자성은 이번 리팩터링에서 변경하지 않았다.
+- `docs/Server.md`와 `docs/Server.en.md`에 실행·종료·포트, 온라인 설정, 저장소 계약, SQLite/MariaDB 교체, HTTP/WebSocket API를 설명했다. HOWTO 양쪽에서 연결한다. `docs/examples/onlineplay_sql.js`·`onlineplay_sql.py`는 실제 교체 가능한 학습용 예제이며 기본 서버에는 연결하지 않았다. Node MariaDB는 동기 계약을 맞추기 위해 별도 프로세스 도우미를 쓰므로 운영 성능용 설계가 아니다. SQLite는 로컬 파일이며 IP·포트가 없고, MariaDB 설명의 192.168.0.15:3306은 예시일 뿐이다.
+- `tests/onlineplay_storage.node.cjs`는 임시 파일/SQLite 저장소와 실제 HTTP/WebSocket으로 가입·로그인·결과·방장 이양·재시작을 확인한다. `python/test_onlineplay_storage.py`는 관리 스레드 시작을 막고 서비스 흐름을 직접 실행한다. 두 테스트는 `tests/onlineplay.fixture.json`으로 기존 JSON 계약을 확인하며 실제 홈 저장소를 건드리지 않는다. Node 22.12 SQLite 검사는 `node --experimental-sqlite --test tests/onlineplay_storage.node.cjs`, Python 검사는 `python -B -m unittest discover -s python -p test_onlineplay_storage.py`로 실행한다. 실제 MariaDB와 브라우저 두 클라이언트의 온라인 대전 검증은 별도다.
+- 기존 Node/Python 차이를 문서에 명시했다. 방 createdAt·게임 startedAt은 Node 밀리초/Python 초, 계정 createdAt은 UTC 문자열이다. Node `/apis/learning`에는 `Bearer localhost` 전용 우회가 없고 Python에는 있다. Node `/apis/solomonlearning`은 인증·메서드·본문 검증 없이 수신만 한다. 이 차이들은 이번 작업에서 바꾸지 않았다. `puyow.js`는 수정하지 않아 BUILDNO와 패키지 버전은 그대로다.
+
+- 검증 결과: Node 저장소/HTTP/WebSocket 회귀 4개, Python 저장소 회귀 3개(파일·SQLite 시나리오 포함), 기존 Python 서버 인증 회귀 8개, Chromium의 모델 없는 Node 서버 회귀 1개를 통과했다. 기존 임시 서버 테스트가 새 저장소 모듈까지 함께 복사하도록 수정했다. ESLint와 JS/Python 문법, 서버 문서의 JSON·JavaScript 예제 및 상대 링크를 확인했다. Node 전용 테스트는 Playwright가 수집하지 않도록 `.node.cjs` 확장자를 사용한다.
+
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.

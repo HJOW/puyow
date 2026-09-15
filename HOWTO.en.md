@@ -9,6 +9,7 @@ This document is the common developer guide for Puyo W page structure, library i
 - [Enemy.en.md](docs/Enemy.en.md): Registering opponents, portrait/theme rendering, CPU algorithms, and state-query APIs.
 - [Simulator.en.md](docs/Simulator.en.md): Using the simulator, checking scores, and registering Fever patterns.
 - [Sound.en.md](docs/Sound.en.md): Common/opponent sound pools and changing audio URLs.
+- [Server.en.md](docs/Server.en.md): Running Node.js/Python servers, online-play configuration, database storage examples, and HTTP/WebSocket APIs.
 
 ## Player guide
 
@@ -255,4 +256,4 @@ Some functions assume the 2D game's board format (6 columns and 17 rows) and col
 
 ---
 
-[Graphics coordinates](docs/Graphics.en.md) · [Puyo API](docs/Puyo.en.md) · [Opponents and AI](docs/Enemy.en.md) · [Simulator and Fever](docs/Simulator.en.md) · [Sound](docs/Sound.en.md)
+[Graphics coordinates](docs/Graphics.en.md) · [Puyo API](docs/Puyo.en.md) · [Opponents and AI](docs/Enemy.en.md) · [Simulator and Fever](docs/Simulator.en.md) · [Sound](docs/Sound.en.md) · [Server](docs/Server.en.md)

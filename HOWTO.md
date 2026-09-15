@@ -9,6 +9,7 @@
 - [Enemy.md](docs/Enemy.md): 새 적 등록, 초상화·테마 렌더링, CPU 알고리즘과 상태 조회 API
 - [Simulator.md](docs/Simulator.md): 시뮬레이터 사용법, 점수 확인, 피버 패턴 등록 방법
 - [Sound.md](docs/Sound.md): 공통·적 사운드 풀과 음원 URL 변경 방법
+- [Server.md](docs/Server.md): Node.js·Python 서버 실행, 온라인 플레이 설정, 저장소 DB 교체 예제와 HTTP/WebSocket API
 
 ## 플레이어 안내
 
@@ -255,4 +256,4 @@ const combo = common.estimateCombo(board, colors, positions);
 
 ---
 
-[그래픽 좌표](docs/Graphics.md) · [뿌요 API](docs/Puyo.md) · [적·AI](docs/Enemy.md) · [시뮬레이터·피버](docs/Simulator.md) · [사운드](docs/Sound.md)
+[그래픽 좌표](docs/Graphics.md) · [뿌요 API](docs/Puyo.md) · [적·AI](docs/Enemy.md) · [시뮬레이터·피버](docs/Simulator.md) · [사운드](docs/Sound.md) · [서버](docs/Server.md)

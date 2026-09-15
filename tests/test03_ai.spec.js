@@ -349,10 +349,12 @@ test('Node 서버는 default.onnx로 Local AI 확인·API 테스트·솔로몬 �
 });
 
 test('Node 서버는 Local AI 모델 파일이 없으면 사용 불가로 응답하고 모델 서비스 외 API는 그대로 동작한다', async ({ request }) => {
-  // 모델 파일이 없는 설치를 흉내 내려고 nodeserver/server.js만 임시 폴더에 복사해 따로 띄운다.
+  // 모델 없는 설치를 재현하되 서버가 불러오는 온라인 모듈과 저장소도 함께 복사한다.
   const serverRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'puyow-nodeserver-'));
   fs.mkdirSync(path.join(serverRoot, 'nodeserver'));
-  fs.copyFileSync(path.join(process.cwd(), 'nodeserver', 'server.js'), path.join(serverRoot, 'nodeserver', 'server.js'));
+  for (const filename of ['server.js', 'onlineplay.js', 'onlineplay_storage.js']) {
+    fs.copyFileSync(path.join(process.cwd(), 'nodeserver', filename), path.join(serverRoot, 'nodeserver', filename));
+  }
   fs.mkdirSync(path.join(serverRoot, 'src'));
   fs.writeFileSync(path.join(serverRoot, 'src', 'index.html'), '<p>puyow</p>');
   const port = 9950 + test.info().workerIndex;

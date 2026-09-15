@@ -8,7 +8,7 @@
  * nodeserver/server.js 는 이 모듈의 createService() 로 서비스 객체를 만들어
  *   - HTTP  : /apis/onlineplay/...   → handleApi()
  *   - 소켓  : Upgrade 요청           → handleUpgrade()
- * 두 진입점만 연결하며, 그 밖의 온라인 플레이 처리는 모두 이 파일 안에 있다.
+ * 두 진입점만 연결한다. 계정·방의 파일 입출력은 onlineplay_storage.js에 분리되어 있다.
  *
  * 프로토콜과 규칙은 저장소 루트의 MAY_BE_LATER.md "세부 결정 사항" 절을 따른다.
  * python/onlineplay.py 도 같은 계약을 구현하므로, 메시지 이름이나 오류 코드를 바꾸면 두 파일을 함께 고쳐야 한다.
@@ -18,18 +18,9 @@
  */
 
 const crypto = require('crypto');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+const { FileOnlinePlayStorage } = require('./onlineplay_storage');
 
 /**************************************** 상수 ***************************************/
-
-/** 서버가 계정과 방 정보를 저장하는 최상위 디렉터리다. */
-const STORAGE_ROOT = path.join(os.homedir(), '.puyowserver');
-/** 계정 디렉터리. 이 아래에 "ID(소문자)/account.json" 형태로 저장한다. */
-const ACCOUNT_ROOT = path.join(STORAGE_ROOT, 'account');
-/** 방 디렉터리. 이 아래에 "방ID.json" 형태로 저장하며 서버 시작 시 비운다. */
-const ROOM_ROOT = path.join(STORAGE_ROOT, 'rooms');
 
 /** 계정 ID 규칙: 알파벳·숫자·언더바 4~20자. */
 const ID_PATTERN = /^[A-Za-z0-9_]{4,20}$/;
@@ -92,39 +83,6 @@ function getBcrypt() {
 }
 
 /**
- * 디렉터리가 없으면 만든다.
- * @param {string} dirPath 디렉터리 경로
- * @returns {void}
- */
-function ensureDirectory(dirPath) {
-    fs.mkdirSync(dirPath, { recursive: true });
-}
-
-/**
- * JSON 파일을 읽어 객체로 돌려준다. 읽지 못하면 null 이다.
- * @param {string} filePath 파일 경로
- * @returns {object|null} 파싱한 객체
- */
-function readJsonFile(filePath) {
-    try {
-        return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    } catch {
-        return null;
-    }
-}
-
-/**
- * 객체를 JSON 파일로 저장한다.
- * @param {string} filePath 파일 경로
- * @param {object} value 저장할 객체
- * @returns {void}
- */
-function writeJsonFile(filePath, value) {
-    ensureDirectory(path.dirname(filePath));
-    fs.writeFileSync(filePath, JSON.stringify(value, null, 2), 'utf-8');
-}
-
-/**
  * 0 이상 정수로 보정한다. 잘못된 값은 0 이 된다.
  * @param {*} value 검사할 값
  * @returns {number} 0 이상 정수
@@ -148,11 +106,13 @@ function createToken() {
 /**
  * 온라인 플레이 서비스를 만든다.
  * 기능을 끈 경우에는 저장 디렉터리도 만들지 않고 모든 요청을 거절한다.
- * @param {{enabled:boolean}} options 서비스 설정
+ * @param {{enabled:boolean, storage?:object}} options 서비스 설정
  * @returns {{isEnabled:()=>boolean, handleApi:Function, handleUpgrade:Function, close:Function}} 서비스 객체
  */
 function createService(options) {
     const enabled = options?.enabled === true;
+    // 저장소는 교체 가능하며 비활성 상태에서는 초기화하지 않는다.
+    const storage = options?.storage || new FileOnlinePlayStorage();
 
     /** 로그인한 세션이다. 토큰을 열쇠로 쓰며 메모리에만 둔다. @type {Map<string, object>} */
     const sessions = new Map();
@@ -161,7 +121,7 @@ function createService(options) {
     /** 방 ID → 방 상태. 파일보다 이 메모리 값이 정본이다. @type {Map<string, object>} */
     const rooms = new Map();
     /** 닉네임 → 계정 ID(소문자). 닉네임 중복 검사에 쓴다. @type {Map<string, string>} */
-    const nicknameIndex = new Map();
+    let nicknameIndex = new Map();
     /** 계정 ID(소문자) → 최근 비밀번호 실패 기록. 메모리에만 두므로 서버를 다시 켜면 사라진다. @type {Map<string, number[]>} */
     const loginFailures = new Map();
 
@@ -169,67 +129,15 @@ function createService(options) {
 
     // 기능을 켠 경우에만 저장 디렉터리를 준비한다.
     if (enabled) {
-        ensureDirectory(ACCOUNT_ROOT);
-        ensureDirectory(ROOM_ROOT);
-        buildNicknameIndex();
-        clearRoomDirectory();
+        storage.initialize();
+        nicknameIndex = storage.loadNicknameIndex();
+        storage.clearRooms();
         timer = setInterval(onTimerTick, 1000);
         // 서버 종료를 막지 않도록 타이머를 참조에서 제외한다.
         if (typeof timer.unref === 'function') timer.unref();
     }
 
-    /**
-     * 계정 디렉터리를 한 번 읽어 닉네임 색인을 만든다.
-     * 닉네임은 대소문자를 구분하므로 디렉터리 이름으로 쓸 수 없어 메모리 색인이 필요하다.
-     * @returns {void}
-     */
-    function buildNicknameIndex() {
-        nicknameIndex.clear();
-        let entries = [];
-        try {
-            entries = fs.readdirSync(ACCOUNT_ROOT, { withFileTypes: true });
-        } catch {
-            return;
-        }
-        entries.forEach((entry) => {
-            if (!entry.isDirectory()) return;
-            const account = readJsonFile(path.join(ACCOUNT_ROOT, entry.name, 'account.json'));
-            if (account && typeof account.nickname === 'string') nicknameIndex.set(account.nickname, entry.name);
-        });
-    }
-
-    /**
-     * 이전 실행에서 남은 방 파일을 모두 지운다.
-     * 접속자가 없는 방은 존재할 수 없으므로 서버 시작 시 항상 비운다.
-     * @returns {void}
-     */
-    function clearRoomDirectory() {
-        let entries = [];
-        try {
-            entries = fs.readdirSync(ROOM_ROOT);
-        } catch {
-            return;
-        }
-        entries.forEach((name) => {
-            if (!name.endsWith('.json')) return;
-            try {
-                fs.unlinkSync(path.join(ROOM_ROOT, name));
-            } catch {
-                // 지우지 못한 파일은 메모리 상태와 무관하므로 무시한다.
-            }
-        });
-    }
-
     /**************************************** 계정 ***************************************/
-
-    /**
-     * 계정 파일 경로를 만든다. 디렉터리 이름은 항상 ID 의 소문자다.
-     * @param {string} accountId 계정 ID
-     * @returns {string} account.json 경로
-     */
-    function getAccountFilePath(accountId) {
-        return path.join(ACCOUNT_ROOT, accountId.toLowerCase(), 'account.json');
-    }
 
     /**
      * 계정을 읽는다. 없으면 null 이다.
@@ -238,7 +146,7 @@ function createService(options) {
      */
     function loadAccount(accountId) {
         if (!ID_PATTERN.test(accountId)) return null;
-        return readJsonFile(getAccountFilePath(accountId));
+        return storage.loadAccount(accountId);
     }
 
     /**
@@ -247,7 +155,7 @@ function createService(options) {
      * @returns {void}
      */
     function saveAccount(account) {
-        writeJsonFile(getAccountFilePath(account.id), account);
+        storage.saveAccount(account);
     }
 
     /**
@@ -415,22 +323,13 @@ function createService(options) {
     /**************************************** 방 ***************************************/
 
     /**
-     * 방 파일 경로를 만든다.
-     * @param {string} roomId 방 ID
-     * @returns {string} 방 JSON 경로
-     */
-    function getRoomFilePath(roomId) {
-        return path.join(ROOM_ROOT, `${roomId.toLowerCase()}.json`);
-    }
-
-    /**
      * 방 상태를 파일로 저장한다. 파일은 스냅샷이며 정본은 메모리다.
      * @param {object} room 방 상태
      * @returns {void}
      */
     function saveRoomFile(room) {
         try {
-            writeJsonFile(getRoomFilePath(room.id), toRoomJson(room));
+            storage.saveRoom(toRoomJson(room));
         } catch (error) {
             console.error('방 정보를 저장하지 못했습니다.', error);
         }
@@ -443,7 +342,7 @@ function createService(options) {
      */
     function removeRoomFile(roomId) {
         try {
-            fs.unlinkSync(getRoomFilePath(roomId));
+            storage.removeRoom(roomId);
         } catch {
             // 이미 없는 파일이면 그대로 둔다.
         }
