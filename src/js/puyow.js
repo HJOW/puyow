@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 62;
+    const BUILDNO = 63;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -14279,7 +14279,7 @@
 
     /**
      * 현재 화면을 AI가 구분할 수 있는 간결한 상태 객체로 만든다.
-     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_mode_select'|'together_guide'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
+     * @returns {{screen:'initial_title'|'main_menu'|'rule_select'|'watch_select'|'together_mode_select'|'together_guide'|'online_login'|'online_signup'|'online_lobby'|'online_room'|'practice_difficulty'|'puzzle_stage_select'|'opponent_select'|'fever_opponent_select'|'simulator_draw'|'simulator_simulation'|'simulator_complete'|'settings'|'settings_resetting'|'gallery'|'tutorial_intro'|'tutorial_demo'|'tutorial_result'|'tutorial_complete'|'countdown'|'playing'|'paused'|'ending'|'game_over', playerCanControl:boolean}}
      */
     function getNowScreen() {
         if (settingsResetting) return { screen: 'settings_resetting', playerCanControl: false };
@@ -14415,8 +14415,8 @@
     }
 
     /**
-     * WebMCP now_screen 도구가 돌려줄 화면 상태다. 공개 getScreenState()의 값에 모드·리플레이·모델 로딩·확인창 여부를 더한다.
-     * @returns {{screen:string, playerCanControl:boolean, mode:string|null, rule:string|null, replayPlayback:boolean, modelLoading:boolean, confirmDialogOpen:boolean}}
+     * WebMCP now_screen 도구가 돌려줄 화면 상태다. 공개 getScreenState()의 값에 모드·리플레이·모델 로딩·대화상자 여부를 더한다.
+     * @returns {{screen:string, playerCanControl:boolean, mode:string|null, rule:string|null, replayPlayback:boolean, modelLoading:boolean, confirmDialogOpen:boolean, textDialogOpen:boolean}}
      */
     function getWebMcpScreen() {
         const inMatch = Boolean(game && !game.tutorial);
@@ -14427,7 +14427,8 @@
             rule,
             replayPlayback: Boolean(game?.replayPlayback),
             modelLoading: Boolean(game?.onnxLoading),
-            confirmDialogOpen: Boolean(confirmDialog)
+            confirmDialogOpen: Boolean(confirmDialog),
+            textDialogOpen: Boolean(textDialog)
         };
     }
 
@@ -14900,15 +14901,16 @@
         const screenSchema = {
             type: 'object',
             properties: {
-                screen: { type: 'string', enum: screenNames, description: 'The exact visible title, menu, together-mode selection or guide, puzzle-stage selection, gallery, simulator, tutorial, or match screen. game_over is the match result screen.' },
+                screen: { type: 'string', enum: screenNames, description: 'The exact visible title, menu, together-mode selection or guide, online login, signup, lobby, or room, puzzle-stage selection, gallery, simulator, tutorial, or match screen. game_over is the match result screen.' },
                 playerCanControl: playerCanControlSchema,
                 mode: { type: ['string', 'null'], enum: [...modeNames, null], description: 'Match mode, or null outside a match (menus, simulator, gallery, settings, tutorial).' },
                 rule: { type: ['string', 'null'], enum: [...ruleNames, null], description: 'Match rule, or null outside a match.' },
                 replayPlayback: replayPlaybackSchema,
                 modelLoading: { type: 'boolean', description: 'True while ONNX models of a deep-learning opponent are loading. The countdown waits until loading ends.' },
-                confirmDialogOpen: { type: 'boolean', description: 'True while a confirmation dialog covers the screen and captures all input. A match under the dialog is paused.' }
+                confirmDialogOpen: { type: 'boolean', description: 'True while a confirmation dialog covers the screen and captures all input. A match under the dialog is paused.' },
+                textDialogOpen: { type: 'boolean', description: 'True while a text input dialog covers the screen and captures all input. A match under the dialog is paused.' }
             },
-            required: ['screen', 'playerCanControl', 'mode', 'rule', 'replayPlayback', 'modelLoading', 'confirmDialogOpen']
+            required: ['screen', 'playerCanControl', 'mode', 'rule', 'replayPlayback', 'modelLoading', 'confirmDialogOpen', 'textDialogOpen']
         };
         const boardColors = [...COLORS, 'garbage', HARD_GARBAGE, IRON_PUYO];
         // 외부에서 등록한 예고뿌요도 설명에 들어가도록 등록 시점의 목록에서 만든다.
@@ -15041,30 +15043,33 @@
                 name: 'manual',
                 description: 'Return English instructions for playing Puyo W and using the other available game tools.',
                 inputSchema: emptyInput,
+                annotations: { readOnlyHint: true },
                 execute: () => [
                     `Puyo W is a falling-pair puzzle battle on a ${COLUMNS}-column field. x counts columns from the left (0-${COLUMNS - 1}) and y counts rows from the bottom; ${VISIBLE_ROWS} rows are visible and more hidden rows sit above them.`,
                     'Connect four or more same-color puyos vertically or horizontally to clear them. Garbage puyos next to a clear are removed too; a hard garbage puyo becomes normal garbage when hit once and breaks when hit twice in the same step. Chains create ATTACK, which first offsets your own DAMAGE and then reaches the opponent as warning puyos and falling garbage. ATTACK is the score divided by the current margin rate, which drops over time, multiplied by a time multiplier that doubles every 20 seconds from 320 seconds.',
                     'A player loses when cell (2, 11) is filled. FEVER rules and continuous fever also use cell (3, 11).',
                     'Keyboard: Left and Right move, Z rotates one way while X and Up rotate the other way, holding Down drops faster, and Escape pauses. Gamepads and an on-screen virtual joystick with Z, X, and ESC buttons also work.',
-                    'Modes: the standard rule, FEVER rule, and FEVER rule (start) are matches against a CPU opponent. In the standard rule an all-clear grants a ticket that adds 2100 points and 30 ATTACK to your next colored-puyo explosion. In FEVER rules each player has a FEVER gauge; when it fills, the player plays preset chain patterns on a separate FEVER field under a time limit, and FEVER rule (start) begins both players inside FEVER with 60 seconds. Practice is solo play. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result.',
-                    'Choosing Together mode in the main menu first opens a selection of Offline Play, Online Play, and Cancel (together_mode_select). Online Play is not available yet and cannot be focused or chosen. Offline Play opens the offline together guide (together_guide), where the rule and color count are chosen.',
+                    'Modes: the standard rule, FEVER rule, and FEVER rule (start) are matches against a CPU opponent. In the standard rule an all-clear grants a ticket that adds 2100 points and 30 ATTACK to your next colored-puyo explosion. In FEVER rules each player has a FEVER gauge; when it fills, the player plays preset chain patterns on a separate FEVER field under a time limit, and FEVER rule (start) begins both players inside FEVER with 60 seconds. Practice is solo play. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result. Online play is a two-human match on separate computers through the configured game server; it is available only when that server reports online play enabled.',
+                    'Choosing Together mode in the main menu first opens a selection of Offline Play, Online Play, and Cancel (together_mode_select). Offline Play opens the offline together guide (together_guide), where the rule and color count are chosen. Online Play opens login and signup, then the lobby and room screens; it is hidden when the configured server does not provide online play.',
                     'Offline together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',
-                    'Replays of recorded matches can be played back from the main menu; during playback no input is accepted except Escape, which skips to the result screen. The tutorial, simulator, gallery, and settings are separate menu screens. Some menus open a confirmation dialog that captures all input until it is answered.',
-                    'Tools: now_screen returns the exact screen, the match mode and rule, and whether a replay, ONNX model loading, or confirmation dialog is in progress. now_game_status works only while a match is playing or paused, in every mode including watch, together, and replay playback. point_recommend works only while now_screen reports playerCanControl, and marks one cell on the left field until the active pair locks. show_message displays already-localized text at the top of the current screen.'
+                    'Replays of recorded matches can be played back from the main menu; during playback no input is accepted except Escape, which skips to the result screen. Online matches cannot be paused or recorded. The tutorial, simulator, gallery, and settings are separate menu screens. Confirmation and text input dialogs capture all input until they are answered.',
+                    'Tools: now_screen returns the exact screen, the match mode and rule, and whether a replay, ONNX model loading, confirmation dialog, or text input dialog is in progress. now_game_status works only while a match is playing or paused, in every mode including online, watch, together, and replay playback, and includes online connection state when applicable. point_recommend works only while now_screen reports playerCanControl, and marks one cell on the left field until the active pair locks. show_message displays already-localized text at the top of the current screen.'
                 ].join('\n\n')
             },
             {
                 name: 'now_screen',
-                description: 'Get the exact visible Puyo W screen: initial title, main menu, rule or watch selection, together-mode selection or offline together guide, standard or FEVER opponent selection, practice or continuous-fever color selection, Puzzle Puyo stage selection, simulator modes, settings, gallery, tutorial phases, match countdown, playing, pause, ending animation, or the result screen (game_over). Also reports the match mode and rule, replay playback, ONNX model loading, and whether a confirmation dialog is open. playerCanControl is true only while the left human player (1P) controls an active pair.',
+                description: 'Get the exact visible Puyo W screen: initial title, main menu, rule or watch selection, together-mode selection or offline together guide, online login, signup, lobby or room, standard or FEVER opponent selection, practice or continuous-fever color selection, Puzzle Puyo stage selection, simulator modes, settings, gallery, tutorial phases, match countdown, playing, pause, ending animation, or the result screen (game_over). Also reports the match mode and rule, replay playback, ONNX model loading, confirmation-dialog state, and text-input-dialog state. playerCanControl is true only while the left human player (1P) controls an active pair.',
                 inputSchema: emptyInput,
                 outputSchema: screenSchema,
+                annotations: { readOnlyHint: true },
                 execute: getWebMcpScreen
             },
             {
                 name: 'now_game_status',
-                description: 'Get complete JSON match state while a match is playing or paused, in any mode (CPU match, together, practice, continuous fever, Puzzle Puyo, watch, or replay playback): mode and rule, elapsed time, margin rate and time multiplier, colors, AI difficulty, both current, normal, and FEVER fields, scores, ATTACK and DAMAGE, all-clear tickets, the next two pairs, warning puyos, per-player and continuous FEVER state, Puzzle Puyo objective, together-mode win counts, and both active pairs with coordinates.',
+                description: 'Get complete JSON match state while a match is playing or paused, in any mode (CPU match, online, together, practice, continuous fever, Puzzle Puyo, watch, or replay playback): mode and rule, elapsed time, margin rate and time multiplier, colors, AI difficulty, both current, normal, and FEVER fields, scores, ATTACK and DAMAGE, all-clear tickets, the next two pairs, warning puyos, per-player and continuous FEVER state, Puzzle Puyo objective, together-mode win counts, online connection state, and both active pairs with coordinates.',
                 inputSchema: emptyInput,
                 outputSchema: statusSchema,
+                annotations: { readOnlyHint: true, untrustedContentHint: true },
                 execute: getNowGameStatus
             },
             {
@@ -15076,11 +15081,13 @@
                         y: { type: 'integer', minimum: 0, maximum: VISIBLE_ROWS - 1, description: 'Board row from the bottom.' }
                     }, required: ['x', 'y'], additionalProperties: false
                 },
+                annotations: { readOnlyHint: false },
                 execute: ({ x, y }) => {
                     const screen = getNowScreen();
                     if (screen.screen !== 'playing' || !screen.playerCanControl) throw new Error('point_recommend is available only during the player control phase.');
                     if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= COLUMNS || y < 0 || y >= VISIBLE_ROWS) throw new RangeError('x and y must identify a visible board cell.');
                     recommendedPoint = { x, y };
+                    return `Recommendation recorded for cell (${x}, ${y}).`;
                 }
             },
             {
@@ -15097,7 +15104,11 @@
                     required: ['message'],
                     additionalProperties: false
                 },
-                execute: ({ message, color = 'white', duration = 2000, backgroundColor = null }) => showMessage(message, color, duration, backgroundColor)
+                annotations: { readOnlyHint: false },
+                execute: ({ message, color = 'white', duration = 2000, backgroundColor = null }) => {
+                    showMessage(message, color, duration, backgroundColor);
+                    return 'Message displayed.';
+                }
             }
         ];
         tools.forEach((tool) => {

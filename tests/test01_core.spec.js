@@ -224,12 +224,17 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
       puzzleStageIndexMinimum: tools.now_game_status.outputSchema.properties.puzzle.properties.stageIndex.minimum,
       togetherRules: tools.now_game_status.outputSchema.properties.together.properties.rule.enum,
       warningDescription: tools.now_game_status.outputSchema.properties.player.properties.warningPuyos.description,
+      screenAnnotations: tools.now_screen.annotations,
+      statusAnnotations: tools.now_game_status.annotations,
+      pointAnnotations: tools.point_recommend.annotations,
+      messageAnnotations: tools.show_message.annotations,
       manual: tools.manual.execute(),
+      nowScreenDescription: tools.now_screen.description,
       titleScreen: tools.now_screen.execute()
     };
   });
-  expect(schema.screenEnum).toEqual(expect.arrayContaining(['puzzle_stage_select', 'watch_select', 'together_mode_select', 'together_guide']));
-  expect(schema.screenRequired).toEqual(['screen', 'playerCanControl', 'mode', 'rule', 'replayPlayback', 'modelLoading', 'confirmDialogOpen']);
+  expect(schema.screenEnum).toEqual(expect.arrayContaining(['puzzle_stage_select', 'watch_select', 'together_mode_select', 'together_guide', 'online_login', 'online_signup', 'online_lobby', 'online_room']));
+  expect(schema.screenRequired).toEqual(['screen', 'playerCanControl', 'mode', 'rule', 'replayPlayback', 'modelLoading', 'confirmDialogOpen', 'textDialogOpen']);
   expect(schema.statusRequired).toEqual(expect.arrayContaining(['puzzle', 'watch', 'feverStart', 'mode', 'rule', 'elapsed', 'marginRate', 'timeProgressMultiplier', 'allClearTicketEnabled', 'replayPlayback', 'together']));
   expect(schema.playerRequired).toEqual(expect.arrayContaining(['point', 'attack', 'damage', 'normalDamage', 'combo', 'placedPairCount', 'allClearTicket']));
   expect(schema.feverTargetMinimum).toBe(4);
@@ -242,7 +247,22 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
   expect(schema.activeYType).toBe('number');
   expect(schema.puzzleConditionTypes).toContain('color');
   expect(schema.manual).toContain('Together mode');
-  expect(schema.titleScreen).toEqual({ screen: 'initial_title', playerCanControl: false, mode: null, rule: null, replayPlayback: false, modelLoading: false, confirmDialogOpen: false });
+  expect(schema.manual).toContain('Online play');
+  expect(schema.manual).not.toContain('Online Play is not available yet');
+  expect(schema.nowScreenDescription).toContain('online login');
+  expect(schema.screenAnnotations).toEqual({ readOnlyHint: true });
+  expect(schema.statusAnnotations).toEqual({ readOnlyHint: true, untrustedContentHint: true });
+  expect(schema.pointAnnotations).toEqual({ readOnlyHint: false });
+  expect(schema.messageAnnotations).toEqual({ readOnlyHint: false });
+  expect(schema.titleScreen).toEqual({ screen: 'initial_title', playerCanControl: false, mode: null, rule: null, replayPlayback: false, modelLoading: false, confirmDialogOpen: false, textDialogOpen: false });
+
+  const textDialogPromise = page.evaluate(() => window.WebPuyo.askText('WebMCP text dialog'));
+  await expect.poll(() => page.evaluate(() => {
+    const tool = window.registeredWebMcpTools.find((candidate) => candidate.name === 'now_screen');
+    return tool.execute().textDialogOpen;
+  })).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(textDialogPromise).resolves.toBeNull();
 
   // 실제 반환값의 키가 스키마의 required와 정확히 같아야 게임 상태 필드 추가가 도구에서 빠지지 않는다.
   await enterMainMenu(page);
@@ -252,10 +272,16 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('playing');
+  await expect.poll(() => page.evaluate(() => {
+    const tool = window.registeredWebMcpTools.find((candidate) => candidate.name === 'now_screen');
+    return tool.execute().playerCanControl;
+  })).toBe(true);
   const status = await page.evaluate(() => {
     const tools = Object.fromEntries(window.registeredWebMcpTools.map((tool) => [tool.name, tool]));
     const result = tools.now_game_status.execute();
     const outputSchema = tools.now_game_status.outputSchema;
+    const recommendationResult = tools.point_recommend.execute({ x: 0, y: 0 });
+    const messageResult = tools.show_message.execute({ message: 'WebMCP test message' });
     return {
       keys: Object.keys(result).sort(),
       required: [...outputSchema.required].sort(),
@@ -266,6 +292,8 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
       rule: result.rule,
       replayPlayback: result.replayPlayback,
       together: result.together,
+      recommendationResult,
+      messageResult,
       screen: tools.now_screen.execute()
     };
   });
@@ -273,7 +301,9 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
   expect(status.propertyKeys).toEqual(status.required);
   expect(status.playerKeys).toEqual(status.playerRequired);
   expect(status).toMatchObject({ mode: 'practice', rule: 'standard', replayPlayback: false, together: null });
-  expect(status.screen).toMatchObject({ screen: 'playing', mode: 'practice', rule: 'standard', replayPlayback: false, modelLoading: false, confirmDialogOpen: false });
+  expect(status.recommendationResult).toBe('Recommendation recorded for cell (0, 0).');
+  expect(status.messageResult).toBe('Message displayed.');
+  expect(status.screen).toMatchObject({ screen: 'playing', mode: 'practice', rule: 'standard', replayPlayback: false, modelLoading: false, confirmDialogOpen: false, textDialogOpen: false });
 });
 
 test('기본 룰·연습·플레이 방법의 양쪽 필드는 기본 패배 칸에 빨간 X를 표시한다', async ({ page }) => {

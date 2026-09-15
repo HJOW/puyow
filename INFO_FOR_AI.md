@@ -88,12 +88,12 @@
 | 연속 피버 | 단독 플레이 피버 스테이지. 목표 5연쇄·60초로 시작하며 두 패배 칸을 쓴다. |
 | 퍼즐뿌요 | 항상 5색, `PuzzlePuyoStage` 기반 단독 스테이지다. 오른쪽 영역은 적 필드가 아니라 목표/턴 상태 표시다. |
 | 구경 | 선택 가능한 두 CPU가 자동 대전한다. 플레이 조작은 막고 ESC 일시정지만 허용한다. 결과 뒤 5초면 다음 대전을 자동 시작한다. |
-| 너랑 나랑 | 메인 메뉴에서 오프라인 플레이·온라인 플레이(비활성, 추후 구현 예정)를 고른다. 오프라인 플레이는 한 컴퓨터에서 두 사람이 대전한다. 규칙은 기본 룰·피버 룰·피버 룰 (시작)과 같고 양쪽 모두 사람이 조작한다. 진행도·GOLD·AI 학습은 모두 대상이 아니다. |
+| 너랑 나랑 | 메인 메뉴에서 오프라인 플레이·온라인 플레이를 고른다. 온라인 플레이는 설정된 게임 서버가 사용 가능하다고 응답할 때만 표시된다. 오프라인은 한 컴퓨터에서, 온라인은 서로 다른 컴퓨터에서 두 사람이 대전한다. 규칙은 기본 룰·피버 룰·피버 룰 (시작)과 같고 진행도·GOLD·AI 학습은 모두 대상이 아니다. |
 
 ### 너랑 나랑 (한 컴퓨터 2인 대전)
 
-- 메인 메뉴 두 번째 항목이다. BUILDNO 50부터 "너랑 나랑"은 **오프라인 플레이**(기존 한 컴퓨터 2인 대전)와 **온라인 플레이**(추후 구현 예정) 두 방식으로 나뉜다. 항목을 고르면 `openTogetherModeSelection()`이 메인 메뉴를 음영 처리한 방식 선택 오버레이(`togetherModeSelectionOpen`, `getNowScreen()` 화면 이름 `together_mode_select`)를 연다.
-- 방식 선택지는 `TOGETHER_MODE_OPTIONS`의 `오프라인 플레이`·`온라인 플레이`·`취소`를 한 줄로 놓는다. 버튼 영역은 그리기와 클릭 판정이 함께 쓰는 `getTogetherModeButtonBounds()`다. 온라인 플레이는 `disabled: true`와 `준비 중` 표시를 가지며, `getSelectableTogetherModeIndices()`에서 빠지므로 방향키 포커스 이동에서 건너뛰고(왼쪽·위는 이전, 오른쪽·아래는 다음, 순환하지 않는다) 클릭해도 포커스·실행이 바뀌지 않는다. 첫 포커스는 오프라인 플레이다. 오프라인 플레이는 `openTogetherGuide()`로 기존 안내 화면(`menuScreen`이 `togetherGuide`)을 열고, `취소`·ESC·버튼 밖 클릭은 오버레이만 닫고 메인 메뉴에 머문다. 온라인 플레이를 구현할 때는 이 선택지의 `disabled`를 풀고 `activateTogetherModeSelection()`의 분기를 더한다.
+- 메인 메뉴 두 번째 항목이다. BUILDNO 50부터 "너랑 나랑"은 **오프라인 플레이**(한 컴퓨터 2인 대전)와 **온라인 플레이**(서로 다른 컴퓨터 2인 대전) 두 방식으로 나뉜다. 항목을 고르면 `openTogetherModeSelection()`이 메인 메뉴를 음영 처리한 방식 선택 오버레이(`togetherModeSelectionOpen`, `getNowScreen()` 화면 이름 `together_mode_select`)를 연다.
+- 방식 선택지는 `TOGETHER_MODE_OPTIONS`의 `오프라인 플레이`·`온라인 플레이`·`취소`를 한 줄로 놓는다. 서버가 온라인 플레이를 지원한다고 응답하면 로그인·가입(`online_login`·`online_signup`), 대기실(`online_lobby`), 방(`online_room`)으로 이어진다. 지원하지 않으면 온라인 선택지는 비활성화되어 포커스에서 빠지고 `준비 중`으로 표시된다. 오프라인 플레이는 `openTogetherGuide()`로 안내 화면(`menuScreen`이 `togetherGuide`)을 열고, `취소`·ESC·버튼 밖 클릭은 오버레이만 닫고 메인 메뉴에 머문다.
 - 안내 화면의 제목은 `오프라인 너랑 나랑 플레이`(영어 `Offline-Based Play Together`)다. 메인 메뉴 항목 이름과 방식 선택 오버레이 제목은 여전히 `너랑 나랑`이다.
 - 안내 화면은 조작키 안내와 규칙·색상 수·동작 세 행으로 구성하며 타이틀 화면 대신 전체를 그린다. 포커스(`togetherGuideFocus`)는 0이 규칙, 1이 색상 수, 2가 시작·취소다. 위아래 방향키로 행을 옮기고 좌우 방향키로 값을 고르며, 규칙·색상 수 행에서 Enter를 누르면 다음 행으로 내려간다. 취소와 ESC는 메인 메뉴로 돌아간다.
 - 규칙 선택지는 `TOGETHER_RULE_OPTIONS`의 기본 룰·피버 룰·피버 룰 (시작)이고, 피버 룰 (시작)의 잠금 조건은 기존 규칙 선택과 같은 `isFeverStartRuleUnlocked()`다. 잠긴 선택지는 `잠김` 표시와 함께 좌우 이동에서 건너뛴다.
@@ -173,10 +173,11 @@
 
 ### 게임 페이지의 WebMCP
 
-- `initialize()`의 `registerWebMcpTools()`가 `document.modelContext`에 `manual`·`now_screen`·`now_game_status`·`point_recommend`·`show_message` 다섯 도구를 등록하고, `destroy()`가 `webMcpAbortController`로 해제한다. 도구 설명·스키마·`manual` 문구는 AI가 읽도록 영어로 쓴다.
-- **게임 기능을 바꾸면 이 도구도 함께 고친다.** 너랑 나랑·피버 룰 (시작)·리플레이·ONNX 모델 로딩·확인창을 넣을 때 반영이 빠져 BUILDNO 44에서 몰아서 고쳤다. `getNowScreen()`에 화면 이름을 더하면 `screenNames`를, `getGameState()`에 필드를 더하면 `statusProperties`를, 조작 키·규칙·모드가 바뀌면 `manual` 문구를 함께 본다.
-- `now_screen`은 `getWebMcpScreen()`을 쓴다. 공개 `getScreenState()`의 `{screen, playerCanControl}`은 그대로 두고 `mode`·`rule`(대전 밖에서는 null, 계산은 `getGameState()`와 같은 `getGameModeInfo()`), `replayPlayback`, `modelLoading`(`game.onnxLoading`), `confirmDialogOpen`만 더한다.
-- `now_game_status`는 `getNowGameStatus()`가 공개 `getGameState()` 결과에 `replayPlayback`과 `together`(`{rule, wins}` 또는 null)를 더해 돌려준다. 같은 상태를 따로 조립하지 않아 두 API가 어긋나지 않는다. `statusSchema.required`는 `statusProperties`의 키 전체이며, 회귀 테스트가 연습 대전에서 실제 반환 키·`properties`·`required`가 정확히 같은지 확인한다.
+- `initialize()`의 `registerWebMcpTools()`가 `document.modelContext`에 `manual`·`now_screen`·`now_game_status`·`point_recommend`·`show_message` 다섯 도구를 등록하고, `destroy()`가 `webMcpAbortController`로 해제한다. 도구 설명·스키마·`manual` 문구는 AI가 읽도록 영어로 쓴다. `manual`·`now_screen`·`now_game_status`에는 읽기 전용임을 나타내는 `annotations.readOnlyHint`를 두며, 온라인 상대 닉네임이 포함된 `now_game_status`에는 `untrustedContentHint`도 둔다.
+- **게임 기능을 바꾸면 이 도구도 함께 고친다.** BUILDNO 63에서는 온라인 플레이와 텍스트 입력 대화상자를 반영했다. `getNowScreen()`에 화면 이름을 더하면 `screenNames`를, `getGameState()`·`getNowGameStatus()`에 필드를 더하면 `statusProperties`를, 조작 키·규칙·모드가 바뀌면 `manual` 문구를 함께 본다.
+- `now_screen`은 `getWebMcpScreen()`을 쓴다. 공개 `getScreenState()`의 `{screen, playerCanControl}`은 그대로 두고 `mode`·`rule`(대전 밖에서는 null, 계산은 `getGameState()`와 같은 `getGameModeInfo()`), `replayPlayback`, `modelLoading`(`game.onnxLoading`), `confirmDialogOpen`, `textDialogOpen`을 더한다. 온라인 로그인·가입·대기실·방 화면도 `screenNames`와 설명에 포함한다.
+- `now_game_status`는 `getNowGameStatus()`가 공개 `getGameState()` 결과에 `replayPlayback`·`together`(`{rule, wins}` 또는 null)·`online`(`{rule, youAreHost, opponentNickname}` 또는 null)을 더해 돌려준다. 같은 상태를 따로 조립하지 않아 두 API가 어긋나지 않는다. `statusSchema.required`는 `statusProperties`의 키 전체이며, 회귀 테스트가 연습 대전에서 실제 반환 키·`properties`·`required`가 정확히 같은지 확인한다.
+- `point_recommend`와 `show_message`는 상태 변경이 끝난 뒤 AI가 성공 여부를 알 수 있도록 짧은 문자열을 반환한다. WebMCP의 `outputSchema`는 미래 호환과 테스트용으로 함께 기록하지만 현재 표준 초안의 확정 필드는 아니므로, 실제 브라우저가 이를 노출한다고 전제하지 않는다.
 - `playerCanControl`은 왼쪽 1P가 사람이고 조작 중일 때만 true다. 구경과 리플레이 재생(`game.replayPlayback`)은 false이고, 너랑 나랑에서는 1P 기준이다. 리플레이는 기록된 `phase`·조작 뿌요를 되살리므로 예전에는 재생 중에도 true가 되던 버그가 있었다. `point_recommend`도 이 값으로 막으며 추천 칸은 1P 필드에만 그린다.
 - 스키마 경계값은 상수로 만든다. 피버 `nextTime`(초)의 최대값은 피버 룰 (시작)이 60초로 시작하므로 `Math.max(FEVER_MAX_TIME, FEVER_START_INITIAL_TIME / 1000)`이고, 퍼즐 `stageIndex`는 개발용 도구가 등록되지 않은 스테이지를 -1로 실행하므로 최소값이 -1이다. `warningPuyos` 설명은 도구 등록 시점의 `WARNING_PUYO_CLASSES`에서 종류와 단위를 읽어 외부 등록 예고뿌요도 포함한다.
 
