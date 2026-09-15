@@ -46,6 +46,13 @@ async function installMockGamepad(page) {
     };
     window.testCanvasTexts = [];
     window.testCanvasTextCalls = [];
+    // 게임 스크립트가 초기화되기 전에 공개 커스텀 이벤트를 기록한다.
+    window.puyowCustomEvents = [];
+    ['puyow_init', 'puyow_changescreen', 'puyow_unlocked', 'puyow_win'].forEach((type) => {
+      window.addEventListener(type, (event) => {
+        window.puyowCustomEvents.push({ type, detail: event.detail });
+      });
+    });
     const originalFillText = CanvasRenderingContext2D.prototype.fillText;
     CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
       window.testCanvasTexts.push(String(text));

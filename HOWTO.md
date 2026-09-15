@@ -68,6 +68,32 @@ document.addEventListener("DOMContentLoaded", function() {
 </script>
 ```
 
+### 브라우저 커스텀 이벤트
+
+브라우저 스크립트 방식에서는 `window.addEventListener()`로 게임의 초기화·화면 이동·새 콘텐츠 해금·CPU 대전 승리를 구독할 수 있습니다. 리스너는 반드시 `PuyoW.initialize()` 전에 등록해야 하며, 각 이벤트 정보는 `CustomEvent.detail`에 들어 있습니다. 초기 화면 표시는 화면 이동으로 취급하지 않으므로 `puyow_init`만 발생합니다.
+
+```js
+window.addEventListener('puyow_init', () => {
+    console.log('Puyo W 초기화 완료');
+});
+window.addEventListener('puyow_changescreen', (event) => {
+    console.log(event.detail.previousScreen, '->', event.detail.screen);
+});
+window.addEventListener('puyow_unlocked', (event) => {
+    console.log('새 해금:', event.detail.content);
+});
+window.addEventListener('puyow_win', (event) => {
+    console.log('CPU 대전 승리:', event.detail.enemy, event.detail.elapsedMs);
+});
+
+PuyoW.initialize('puyow_target');
+```
+
+- `puyow_init`: 초기화가 성공한 직후 한 번 발생하며 `detail`은 빈 객체입니다.
+- `puyow_changescreen`: 실제 표시 화면이 바뀔 때 한 번 발생합니다. `detail.screen`은 목적지의 표준 화면 문자열이고, `detail.previousScreen`은 직전 화면 문자열입니다. 값은 `getScreenState().screen`과 같습니다.
+- `puyow_unlocked`: 아직 열리지 않았던 콘텐츠가 새로 열릴 때만 발생합니다. `detail.content`은 `gallery_warning:<종류>`, `gallery_enemy:<적종류>`, `puzzle_stage:<0부터 시작하는 순번>`, `enemy:<적종류>`, `rule:fever_start`, `mode:watch` 중 하나입니다. 일반 적 진행도 해금인 `enemy:<적종류>`만 `detail.rule`(`standard`·`fever`·`fever_start`)과 `detail.difficulty`(`easy`·`normal`·`hard`·`extreme`)가 문자열이며, 나머지는 둘 다 `null`입니다. 세션 한정 솔로몬 해금은 `enemy:Solomon`으로 알립니다.
+- `puyow_win`: 사람이 CPU 적을 이기고 모든 정산·종료 연출이 끝난 뒤 한 번 발생합니다. `detail`은 AI 난이도 `difficulty`, 색상 수 `colorCount`, 규칙 `rule`(`standard`·`fever`·`fever_start`), 적 종류 `enemy`, 게임 진행 시간(밀리초) `elapsedMs`를 가집니다. 구경, 연습·연속 피버·퍼즐뿌요·튜토리얼, 너랑 나랑, 온라인 대전, 리플레이 재생에는 발생하지 않습니다.
+
 ### URL 컨텍스트 경로와 예약어 URL
 
 ROOT가 아닌 웹 애플리케이션 경로에 게임을 배포할 때는 초기화 전에 `PuyoW.setURLContextPath()`로 URL 컨텍스트 경로를 지정할 수 있습니다. 기본값은 `'/'`이며, 설정값은 URL의 `[CTX]` 문자열로 그대로 치환되므로 필요한 앞뒤 슬래시를 함께 지정해야 합니다.

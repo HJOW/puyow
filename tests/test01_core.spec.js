@@ -8,6 +8,20 @@ setupGamePage();
 
 const THREE_SCRIPT = '**/js/three.min.js';
 
+test('초기화와 화면 이동은 window 커스텀 이벤트로 알린다', async ({ page }) => {
+  const initializedEvents = await page.evaluate(() => window.puyowCustomEvents.filter((event) => event.type === 'puyow_init'));
+  expect(initializedEvents).toEqual([{ type: 'puyow_init', detail: {} }]);
+  expect(await page.evaluate(() => window.puyowCustomEvents.some((event) => event.type === 'puyow_changescreen'))).toBe(false);
+
+  await enterMainMenu(page);
+  await expect.poll(() => page.evaluate(() => window.puyowCustomEvents.find((event) => (
+    event.type === 'puyow_changescreen' && event.detail.screen === 'main_menu'
+  )))).toEqual({
+    type: 'puyow_changescreen',
+    detail: { screen: 'main_menu', previousScreen: 'initial_title' },
+  });
+});
+
 test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한다', async ({ page }) => {
   await enterMainMenu(page);
 

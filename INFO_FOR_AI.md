@@ -781,6 +781,14 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 - 텍스트 입력은 커서 이동·Home/End·Backspace/Delete·Ctrl+A/C/V·Shift+방향키 선택·유니코드 문자 입력을 지원한다. Ctrl+C는 선택 문자열만 복사하며 Ctrl+V는 현재 선택 영역을 클립보드 문자열로 바꾼다. Shift 없이 누른 방향키와 입력창 클릭은 선택을 해제해 해당 방향 끝 또는 클릭한 문자 사이에 커서를 둔다. 선택 영역은 파란색 배경으로 표시되고, 새 문자를 입력하거나 붙여 넣으면 선택 문자열을 먼저 제거한다. 기본 입력값은 최대 2,000자이며, 리플레이·시뮬레이터 JSON 가져오기는 세 번째 인자로 최대 1,000,000자를 허용한다. 마우스로 입력창·확인·취소를 선택할 수 있고 게임패드 확인 입력은 키보드 Enter 경로를 사용한다. 여러 줄 값은 줄바꿈을 보존해 반환한다.
 - 리플레이 재생 JSON·설정의 테스트 코드·시뮬레이터 배치 JSON은 네이티브 `window.prompt` 대신 `askText()`를 사용한다. 앞뒤 처리는 Promise 완료 뒤 실행하며, 시뮬레이터 가져오기는 대기 중 해당 시뮬레이터가 닫히거나 재생으로 바뀌면 입력 결과를 버린다.
 
+### 브라우저 커스텀 이벤트 (2026-09-15, BUILDNO 64)
+
+- `window`에 `CustomEvent` 네 종류를 발생시킨다. 외부 코드는 반드시 `PuyoW.initialize()` 전에 `window.addEventListener()`로 리스너를 등록하고, 전달값은 모두 `event.detail`에서 읽는다. `puyow_init`은 성공한 초기화 끝에 한 번 발생하며 초기 화면은 `puyow_changescreen`으로 알리지 않는다. `destroy()` 뒤 재초기화하면 새 초기화 이벤트를 다시 한 번 발생시키며, 화면 비교 기준도 초기화한다.
+- `puyow_changescreen`은 렌더링 직후 `getNowScreen().screen`이 직전 값과 달라질 때 한 번 발생한다. `detail`은 `{ screen, previousScreen }`이고 두 값은 `getScreenState().screen`의 표준 화면 식별자를 쓴다. 메뉴의 직접 대입과 대전 상태 전환이 섞여 있으므로 개별 대입 지점에 이벤트를 넣지 말고 이 공통 감지 경로를 유지한다.
+- `puyow_unlocked`의 `detail`은 항상 `{ content, rule, difficulty }`다. 새 갤러리 예고·적, 새 퍼즐뿌요 스테이지, 일반 적 진행도, 피버 룰 (시작), 구경 모드, 세션 한정 솔로몬을 실제로 처음 열 때만 발생한다. `content`는 `gallery_warning:<type>`, `gallery_enemy:<classType>`, `puzzle_stage:<zero-based index>`, `enemy:<classType>`, `rule:fever_start`, `mode:watch` 중 하나다. 일반 적 진행도 `enemy:`만 해당 대전의 `rule`(`standard`·`fever`·`fever_start`)과 AI `difficulty`(`easy`·`normal`·`hard`·`extreme`)를 넣고, 나머지는 `null`이다. 저장값 로드와 테스트 코드 적용은 알리지 않는다.
+- `puyow_win`은 사람이 CPU 적을 이긴 뒤 모든 정산·종료 연출을 마치고 결과 상태가 된 시점에 한 번 발생한다. `detail`은 `{ difficulty, colorCount, rule, enemy, elapsedMs }`이고 난이도는 AI 난이도 key, 규칙은 `standard`·`fever`·`fever_start`, 시간은 `game.elapsed` 밀리초다. 구경, 연습·연속 피버·퍼즐뿌요·튜토리얼, 너랑 나랑, 온라인, 리플레이 재생은 제외한다.
+- 개발자 사용법과 정확한 식별자·payload는 `HOWTO.md`와 `HOWTO.en.md`에 같은 의미로 기록했다. `tests/common/gamepage.js`는 스크립트 초기화 전에 이벤트를 기록하고, `tests/test01_core.spec.js`가 초기화 한 번·초기 화면 이벤트 부재·`initial_title`에서 `main_menu`로의 화면 이벤트 payload를 확인한다.
+
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.

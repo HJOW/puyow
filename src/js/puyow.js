@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 63;
+    const BUILDNO = 64;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -608,6 +608,8 @@
     let context = null;
     /** 라이브러리가 초기화되어 이벤트와 게임 루프가 연결됐는지 여부다. @type {boolean} */
     let initialized = false;
+    /** 마지막으로 외부에 알린 표준 화면 식별자다. 초기화와 destroy 사이에서만 사용한다. */
+    let lastDispatchedScreen = null;
     /** 초기 타이틀에서 탑재된 피버 스테이지 검증을 마쳤는지 여부다. @type {boolean} */
     let feverStageValidationComplete = false;
     /** 피버 스테이지 검증 전에 받은 초기 타이틀 진입 입력을 보관한다. @type {boolean} */
@@ -2792,6 +2794,7 @@
         if (galleryUnlocks.warning.includes(type)) return;
         galleryUnlocks.warning.push(type);
         saveGalleryUnlocks();
+        dispatchPuyoUnlocked(`gallery_warning:${type}`);
     }
 
     /** 기본·피버 룰 대전에서 이긴 적을 갤러리에 공개한다. @param {string} classType 적 종류 식별자 @returns {void} */
@@ -2800,6 +2803,7 @@
         galleryUnlocks.enemies.push(classType);
         // saveGalleryUnlocks는 setTimeout(1)과 try-catch로 저장 실패가 게임 흐름을 막지 않게 한다.
         saveGalleryUnlocks();
+        dispatchPuyoUnlocked(`gallery_enemy:${classType}`);
     }
 
     /** 현재 실제 플레이가 갤러리 예고뿌요 해금을 허용하는 모드인지 판별한다. 피버 룰 (시작)은 예외적으로 허용한다. @returns {boolean} 해금 가능 여부 */
@@ -4050,9 +4054,11 @@
 
     /** 성공한 AI API 테스트 뒤 현재 접속에 한해 솔로몬을 적 목록에 표시한다. @returns {void} */
     function unlockSolomonForSession() {
+        if (solomonSessionUnlocked) return;
         solomonSessionUnlocked = true;
         const solomon = OPPONENTS.find((opponent) => opponent.classType === 'Solomon');
         if (solomon) solomon.hidden = false;
+        dispatchPuyoUnlocked('enemy:Solomon');
     }
 
     /** 적 선택 규칙에 맞는 난이도별 적 진행도 저장소를 반환한다. @param {'standard'|'fever'|'feverStart'} [rule=opponentMenuRule] 대전 규칙 @returns {Record<'easy'|'normal'|'hard'|'extreme', string[]>} 진행도 저장소 */
@@ -7121,21 +7127,35 @@
         if (game.practice || game.watch || game.together || game.online || winner !== game.players[0]) return;
         const enemyController = game.players[1].controller;
         const enemyClassName = enemyController.constructor.name;
-        unlockGalleryEnemy(enemyController.getClassType());
         const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key || AI_DIFFICULTIES[1].key;
+        const rule = game.feverStart ? 'fever_start' : game.feverRule ? 'fever' : 'standard';
+        const feverStartWasUnlocked = isFeverStartRuleUnlocked();
+        const watchModeWasUnlocked = isWatchModeUnlocked();
+        unlockGalleryEnemy(enemyController.getClassType());
         const progressStore = game.feverStart
             ? store.feverStartClearListByDifficulty
             : game.feverRule ? store.feverClearListByDifficulty : store.clearListByDifficulty;
         let changed = false;
+        let progressionAdded = false;
         if (!progressStore[difficultyKey].includes(enemyClassName)) {
             progressStore[difficultyKey].push(enemyClassName);
             changed = true;
+            progressionAdded = true;
         }
         if (!game.feverRule && !store.clearList.includes(enemyClassName)) {
             store.clearList.push(enemyClassName);
             changed = true;
         }
         if (changed) saveStore();
+        if (progressionAdded) {
+            // 선택 가능 적의 순서는 이긴 적 바로 다음 적을 새로 여는 진행도 계약과 같다.
+            const progressionOpponents = OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail && entry.classType !== 'Solomon');
+            const clearedIndex = progressionOpponents.findIndex((entry) => entry.className === enemyClassName);
+            const unlockedOpponent = clearedIndex >= 0 ? progressionOpponents[clearedIndex + 1] : null;
+            if (unlockedOpponent && !isObservationCodeApplied()) dispatchPuyoUnlocked(`enemy:${unlockedOpponent.classType}`, rule, difficultyKey);
+        }
+        if (!feverStartWasUnlocked && isFeverStartRuleUnlocked()) dispatchPuyoUnlocked('rule:fever_start');
+        if (!watchModeWasUnlocked && isWatchModeUnlocked()) dispatchPuyoUnlocked('mode:watch');
     }
 
     /** AI 난이도별 GOLD 배율이다. */
@@ -7343,6 +7363,7 @@
         let goldReward = 0;
         // 개발용 도구의 테스트는 등록되지 않은 스테이지를 실행하므로 클리어 기록과 골드를 남기지 않는다.
         const recordsProgress = !game.toolsTest && stageIndex >= 0;
+        const openedStageCountBefore = recordsProgress ? getOpenedPuzzleStageCount() : 0;
         if (recordsProgress && !store.puzzleClearStages.includes(stageIndex)) {
             store.puzzleClearStages.push(stageIndex);
             progressChanged = true;
@@ -7363,6 +7384,12 @@
         }
         if (goldReward > 0) store.gold = normalizeGold(store.gold + goldReward);
         if (progressChanged) saveStore();
+        if (recordsProgress) {
+            const openedStageCountAfter = getOpenedPuzzleStageCount();
+            for (let index = openedStageCountBefore; index < openedStageCountAfter; index += 1) {
+                dispatchPuyoUnlocked(`puzzle_stage:${index}`);
+            }
+        }
         game.winner = player;
         game.running = false;
         game.ending = null;
@@ -7422,6 +7449,7 @@
             game.running = false;
             game.ending = null;
             resultScreenFocus = 0;
+            dispatchPuyoWin(game.winner);
             // 승패가 확정된 마지막 상태까지 담아 리플레이 기록을 닫는다.
             finishReplayRecording();
             finishLearningEpisode(true);
@@ -12559,6 +12587,8 @@
         drawGameStartFirework();
         drawConfirmDialog();
         drawTextDialog();
+        // 모든 화면 전환 경로가 여기로 모이므로, 실제로 보인 표준 화면이 바뀐 경우에만 외부에 알린다.
+        dispatchScreenChangeIfNeeded();
     }
 
     /** 화면 최상단에 표시 중인 외부 메시지를 그린다. @returns {void} */
@@ -14318,6 +14348,65 @@
     }
 
     /**
+     * 브라우저 외부 확장에 Puyo W의 상태 변화를 알린다.
+     * 모든 공개 이벤트 정보는 CustomEvent.detail에만 넣어 기존 DOM 이벤트 필드와 충돌하지 않게 한다.
+     * @param {'puyow_init'|'puyow_changescreen'|'puyow_unlocked'|'puyow_win'} type 발생시킬 이벤트 이름
+     * @param {object} [detail={}] 외부에 전달할 읽기 전용 정보
+     * @returns {void}
+     */
+    function dispatchPuyoCustomEvent(type, detail = {}) {
+        if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function' || typeof window.CustomEvent !== 'function') return;
+        window.dispatchEvent(new window.CustomEvent(type, { detail }));
+    }
+
+    /**
+     * 새 콘텐츠 해금 정보를 외부 확장에 알린다.
+     * rule과 difficulty는 적 진행도 해금이 아닐 때 null이며, 적 해금일 때는 어느 진행도 칸인지 함께 보낸다.
+     * @param {string} content 새로 해금된 콘텐츠의 안정적인 식별 문자열
+     * @param {'standard'|'fever'|'fever_start'|null} [rule=null] 적 해금에 적용한 규칙
+     * @param {'easy'|'normal'|'hard'|'extreme'|null} [difficulty=null] 적 해금에 적용한 AI 난이도
+     * @returns {void}
+     */
+    function dispatchPuyoUnlocked(content, rule = null, difficulty = null) {
+        // 초기 저장 데이터 로드와 테스트 코드 적용은 실제 플레이 중 새로 열린 콘텐츠가 아니므로 알리지 않는다.
+        if (!initialized) return;
+        dispatchPuyoCustomEvent('puyow_unlocked', { content, rule, difficulty });
+    }
+
+    /** 현재 표시 화면이 바뀐 경우 한 번만 화면 이동 이벤트를 발생시킨다. @returns {void} */
+    function dispatchScreenChangeIfNeeded() {
+        if (!initialized) return;
+        const screen = getNowScreen().screen;
+        if (screen === lastDispatchedScreen) return;
+        const previousScreen = lastDispatchedScreen;
+        lastDispatchedScreen = screen;
+        // 초기화 직후 화면은 이동 결과가 아니므로 puyow_init만 발생시킨다.
+        if (previousScreen !== null) dispatchPuyoCustomEvent('puyow_changescreen', { screen, previousScreen });
+    }
+
+    /**
+     * 실제 CPU 대전에서 플레이어 승리가 정산까지 끝난 시점의 정보를 외부 확장에 알린다.
+     * @param {PlayerState} winner 이번 대전의 확정 승자
+     * @returns {void}
+     */
+    function dispatchPuyoWin(winner) {
+        const enemyController = game?.players?.[1]?.controller;
+        if (!game || winner !== game.players[0] || !enemyController
+            || game.tutorial || game.watch || game.practice || game.continuousFever
+            || game.puzzle || game.together || game.online || game.replayPlayback) return;
+        const difficulty = AI_DIFFICULTIES[game.aiDifficulty]?.key || 'normal';
+        const colorCount = DIFFICULTIES[game.difficulty]?.colors.length || 0;
+        const rule = game.feverStart ? 'fever_start' : game.feverRule ? 'fever' : 'standard';
+        dispatchPuyoCustomEvent('puyow_win', {
+            difficulty,
+            colorCount,
+            rule,
+            enemy: enemyController.getClassType(),
+            elapsedMs: game.elapsed
+        });
+    }
+
+    /**
      * 진행 중인 게임의 모드와 규칙 식별자를 반환한다. 튜토리얼이나 메뉴에서는 호출하지 않는다.
      * @returns {{mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'continuous_fever'}}
      */
@@ -15184,6 +15273,7 @@
         playerNameSetupRequired = false;
         recommendedPoint = null;
         menuScreen = 'initialTitle';
+        lastDispatchedScreen = null;
         hasUserStarted = false;
         feverStageValidationComplete = false;
         pendingInitialTitleEntry = false;
@@ -15405,6 +15495,9 @@
         animationFrameId = requestAnimationFrame(frame);
         // 초기화 완료 표시
         initialized = true;
+        // 초기 화면은 화면 이동으로 보지 않고, 초기화 완료만 한 번 알린다.
+        lastDispatchedScreen = getNowScreen().screen;
+        dispatchPuyoCustomEvent('puyow_init');
     }
 
     /**

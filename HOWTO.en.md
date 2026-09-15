@@ -68,6 +68,32 @@ document.addEventListener("DOMContentLoaded", function() {
 </script>
 ```
 
+### Browser custom events
+
+When using the browser-script build, subscribe to initialization, visible-screen changes, new content unlocks, and CPU-match wins with `window.addEventListener()`. Register listeners before calling `PuyoW.initialize()`. Event information is carried in `CustomEvent.detail`. Rendering the initial screen is not a screen transition, so it emits only `puyow_init`.
+
+```js
+window.addEventListener('puyow_init', () => {
+    console.log('Puyo W initialized');
+});
+window.addEventListener('puyow_changescreen', (event) => {
+    console.log(event.detail.previousScreen, '->', event.detail.screen);
+});
+window.addEventListener('puyow_unlocked', (event) => {
+    console.log('New unlock:', event.detail.content);
+});
+window.addEventListener('puyow_win', (event) => {
+    console.log('CPU match won:', event.detail.enemy, event.detail.elapsedMs);
+});
+
+PuyoW.initialize('puyow_target');
+```
+
+- `puyow_init`: Fires once immediately after successful initialization. Its `detail` is an empty object.
+- `puyow_changescreen`: Fires once whenever the visible screen changes. `detail.screen` is the destination's standard screen string and `detail.previousScreen` is the preceding screen string. They use the same values as `getScreenState().screen`.
+- `puyow_unlocked`: Fires only when previously locked content becomes newly available. `detail.content` is one of `gallery_warning:<type>`, `gallery_enemy:<enemy type>`, `puzzle_stage:<zero-based index>`, `enemy:<enemy type>`, `rule:fever_start`, or `mode:watch`. Only regular enemy-progress unlocks, `enemy:<enemy type>`, have string `detail.rule` (`standard`, `fever`, or `fever_start`) and `detail.difficulty` (`easy`, `normal`, `hard`, or `extreme`); both are `null` for other content. The session-only Solomon unlock uses `enemy:Solomon`.
+- `puyow_win`: Fires once after a human player wins a CPU match and all settlement and ending animation have finished. Its `detail` has AI `difficulty`, `colorCount`, `rule` (`standard`, `fever`, or `fever_start`), enemy type `enemy`, and elapsed gameplay milliseconds `elapsedMs`. It does not fire for watch, practice, continuous Fever, Puzzle Puyo, tutorial, Together, online, or replay-playback matches.
+
 ### URL context paths and reserved URL tokens
 
 When deploying the game below a web-application path other than ROOT, call `PuyoW.setURLContextPath()` before initialization to set the URL context path. The default is `'/'`. The value directly replaces `[CTX]` in a URL, so include any required leading and trailing slashes.
