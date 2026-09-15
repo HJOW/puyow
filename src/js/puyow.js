@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 65;
+    const BUILDNO = 67;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -97,11 +97,11 @@
         { startSecond: 208, rate: 4 }, { startSecond: 224, rate: 3 }, { startSecond: 240, rate: 2 }, { startSecond: 256, rate: 1 }
     ];
     /** 시간 진행 배율이 증가하기 시작하는 게임 경과 시간(초)이다. @type {number} */
-    const TIME_PROGRESS_MULTIPLIER_START_SECOND = 300;
+    const TIME_PROGRESS_MULTIPLIER_START_SECOND = 360;
     /** 시간 진행 배율이 두 배가 되는 간격(초)이다. @type {number} */
-    const TIME_PROGRESS_MULTIPLIER_INTERVAL_SECOND = 20;
+    const TIME_PROGRESS_MULTIPLIER_INTERVAL_SECOND = 60;
     /** 시간 진행 배율의 최대값이다. @type {number} */
-    const MAX_TIME_PROGRESS_MULTIPLIER = 1024;
+    const MAX_TIME_PROGRESS_MULTIPLIER = 4096;
     /** 뿌요 폭발로 계산된 ATTACK에 적용할 배율이다. 밸런스 조절 및 임시 테스트에 사용한다. @type {number} */
     const EXPLOSION_REWARD_MULTIPLIER = 1;
     /** 화면에 표시할 점수의 최소 자릿수다. @type {number} */
@@ -4399,7 +4399,7 @@
             Number(state.allClearTicket === true),
             clampRatio(state.elapsedMs, 600000),
             clampRatio(state.marginRate ?? MARGIN_RATE_SCHEDULE[0].rate, 70),
-            clampRatio(Math.log2(Math.max(1, state.timeProgressMultiplier || 1)), 10),
+            clampRatio(Math.log2(Math.max(1, state.timeProgressMultiplier || 1)), 12),
             Number(fever.active === true),
             clampRatio(fever.gauge, FEVER_GAUGE_MAX),
             clampRatio(fever.nextTime ?? FEVER_INITIAL_TIME, FEVER_MAX_TIME),
@@ -5797,13 +5797,15 @@
 
     /**
      * 게임 경과 시간에 해당하는 시간 진행 배율을 구한다.
-     * 300초까지는 1이고, 320초부터 20초 간격으로 두 배씩 증가해 최대 1024가 된다.
+     * 360초 직전까지는 1이고, 360초부터 60초 간격으로 두 배씩 증가해 최대 4096이 된다.
      * @param {number} elapsed 게임 경과 시간(ms)
      * @returns {number} ATTACK에 곱할 시간 진행 배율
      */
     function getTimeProgressMultiplier(elapsed) {
         const elapsedSecond = Math.max(0, Math.floor(elapsed / 1000));
-        const increaseCount = Math.max(0, Math.floor((elapsedSecond - TIME_PROGRESS_MULTIPLIER_START_SECOND) / TIME_PROGRESS_MULTIPLIER_INTERVAL_SECOND));
+        const increaseCount = elapsedSecond < TIME_PROGRESS_MULTIPLIER_START_SECOND
+            ? 0
+            : 1 + Math.floor((elapsedSecond - TIME_PROGRESS_MULTIPLIER_START_SECOND) / TIME_PROGRESS_MULTIPLIER_INTERVAL_SECOND);
         return Math.min(MAX_TIME_PROGRESS_MULTIPLIER, 2 ** increaseCount);
     }
 
@@ -6826,9 +6828,14 @@
         }
     }
 
-    /** 현재 플레이가 피버 계열이 아닌 싹쓸이 티켓 적용 대상인지 확인한다. @returns {boolean} 티켓을 사용·획득하는 모드인지 여부 */
+    /** 현재 플레이가 연습 모드의 싹쓸이 즉시 점수 대상인지 확인한다. @returns {boolean} 연습 싹쓸이에 2100점을 즉시 더할지 여부 */
+    function usesPracticeAllClearPointBonus() {
+        return game?.practice === true && game?.continuousFever !== true && !game?.puzzle && !game?.tutorial;
+    }
+
+    /** 현재 플레이가 기본 룰의 싹쓸이 티켓 적용 대상인지 확인한다. @returns {boolean} 티켓을 사용·획득하는 모드인지 여부 */
     function usesAllClearTicket() {
-        return !game?.feverRule && !game?.continuousFever;
+        return !game?.feverRule && !game?.continuousFever && !usesPracticeAllClearPointBonus();
     }
 
     /** 보유 중인 싹쓸이 티켓을 이번 색 뿌요 폭발에 적용하고 소진한다. @param {PlayerState} player 티켓 보유 여부를 확인할 플레이어 @returns {{point:number,attack:number}} 이번 폭발에 더할 점수와 ATTACK */
@@ -7627,9 +7634,11 @@
                 const triggeredAllClear = player.allClearEnabled && isAllClear && player.hasPlacedPuyoSinceAllClear;
                 if (triggeredAllClear) {
                     playSound(commonSoundPool?.clears, 'effects', '싹쓸이 효과음');
+                    // 연습은 싹쓸이 순간에 고정 점수 2100점을 직접 더한다.
+                    // 기본 룰은 다음 색 뿌요 폭발에만 적용할 티켓을 받으며, 별도 ATTACK은 만들지 않는다.
                     // 피버 계열은 기존처럼 목표 연쇄 보너스와 황금 연출만 제공한다.
-                    // 그 밖의 모드는 다음 색 뿌요 폭발에만 적용할 티켓을 받으며, 별도 ATTACK은 만들지 않는다.
-                    if (usesAllClearTicket()) player.allClearTicket = true;
+                    if (usesPracticeAllClearPointBonus()) player.point += ALL_CLEAR_TICKET_POINT;
+                    else if (usesAllClearTicket()) player.allClearTicket = true;
                     else player.point += FEVER_ALL_CLEAR_POINT;
                     player.allClearEffectElapsed = ALL_CLEAR_EFFECT_DURATION;
                     player.hasPlacedPuyoSinceAllClear = false;
@@ -15174,7 +15183,7 @@
             countdown: { type: 'number', minimum: 0, description: 'Remaining start countdown in milliseconds.' },
             elapsed: { type: 'number', minimum: 0, description: 'Match time in milliseconds.' },
             marginRate: { type: 'number', exclusiveMinimum: 0, description: 'Current margin rate. ATTACK is the score divided by this rate, and the rate drops as the match goes on.' },
-            timeProgressMultiplier: { type: 'number', minimum: 1, description: 'ATTACK multiplier from match time: 1 until 300 seconds, then doubling every 20 seconds from 320 seconds up to 1024.' },
+            timeProgressMultiplier: { type: 'number', minimum: 1, description: 'ATTACK multiplier from match time: 1 until 360 seconds, then doubling every 60 seconds from 360 seconds up to 4096.' },
             practice: { type: 'boolean' },
             watch: { type: 'boolean', description: 'True when two CPUs play each other, including watch replays.' },
             continuousFever: { type: 'boolean' },
@@ -15224,7 +15233,7 @@
                 annotations: { readOnlyHint: true },
                 execute: () => [
                     `Puyo W is a falling-pair puzzle battle on a ${COLUMNS}-column field. x counts columns from the left (0-${COLUMNS - 1}) and y counts rows from the bottom; ${VISIBLE_ROWS} rows are visible and more hidden rows sit above them.`,
-                    'Connect four or more same-color puyos vertically or horizontally to clear them. Garbage puyos next to a clear are removed too; a hard garbage puyo becomes normal garbage when hit once and breaks when hit twice in the same step. Chains create ATTACK, which first offsets your own DAMAGE and then reaches the opponent as warning puyos and falling garbage. ATTACK is the score divided by the current margin rate, which drops over time, multiplied by a time multiplier that doubles every 20 seconds from 320 seconds.',
+                    'Connect four or more same-color puyos vertically or horizontally to clear them. Garbage puyos next to a clear are removed too; a hard garbage puyo becomes normal garbage when hit once and breaks when hit twice in the same step. Chains create ATTACK, which first offsets your own DAMAGE and then reaches the opponent as warning puyos and falling garbage. ATTACK is the score divided by the current margin rate, which drops over time, multiplied by a time multiplier that doubles every 60 seconds from 360 seconds up to 4096.',
                     'A player loses when cell (2, 11) is filled. FEVER rules and continuous fever also use cell (3, 11).',
                     'Keyboard: Left and Right move, Z rotates one way while X and Up rotate the other way, holding Down drops faster, and Escape pauses. Gamepads and an on-screen virtual joystick with Z, X, and ESC buttons also work.',
                     'Modes: the standard rule, FEVER rule, and FEVER rule (start) are matches against a CPU opponent. In the standard rule an all-clear grants a ticket that adds 2100 points and 30 ATTACK to your next colored-puyo explosion. In FEVER rules each player has a FEVER gauge; when it fills, the player plays preset chain patterns on a separate FEVER field under a time limit, and FEVER rule (start) begins both players inside FEVER with 60 seconds. Practice is solo play. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result. Online play is a two-human match on separate computers through the configured game server; it is available only when that server reports online play enabled.',

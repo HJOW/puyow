@@ -208,10 +208,10 @@ def get_margin_rate(elapsed_ms: float) -> float:
 
 
 def get_time_progress_multiplier(elapsed_ms: float) -> float:
-	"""300초 이후 20초마다 두 배, 최대 1024인 시간 진행 배율을 반환한다."""
+	"""360초부터 60초마다 두 배, 최대 4096인 시간 진행 배율을 반환한다."""
 	elapsed_second = max(0, int(elapsed_ms // 1000))
-	increase_count = max(0, (elapsed_second - 300) // 20)
-	return float(min(1024, 2 ** increase_count))
+	increase_count = 0 if elapsed_second < 360 else 1 + (elapsed_second - 360) // 60
+	return float(min(4096, 2 ** increase_count))
 
 
 def calculate_fever_target(combo: int, all_clear: bool, previous_target: int) -> int:

@@ -113,9 +113,9 @@ class RuleStateTest(unittest.TestCase):
 		self.assertEqual(70, training.get_margin_rate(95_999))
 		self.assertEqual(52, training.get_margin_rate(96_000))
 		self.assertEqual(1, training.get_margin_rate(256_000))
-		self.assertEqual(1, training.get_time_progress_multiplier(319_999))
-		self.assertEqual(2, training.get_time_progress_multiplier(320_000))
-		self.assertEqual(1024, training.get_time_progress_multiplier(600_000))
+		self.assertEqual(1, training.get_time_progress_multiplier(359_999))
+		self.assertEqual(2, training.get_time_progress_multiplier(360_000))
+		self.assertEqual(4096, training.get_time_progress_multiplier(1_020_000))
 
 	def test_fever_uses_game_stage_and_separate_field(self) -> None:
 		environment = training.PuyoDuelEnvironment("self", seed=7, fever_rule=True, color_count=3)
