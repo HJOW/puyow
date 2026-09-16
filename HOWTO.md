@@ -9,7 +9,7 @@
 - [Enemy.md](docs/Enemy.md): 새 적 등록, 초상화·테마 렌더링, CPU 알고리즘과 상태 조회 API
 - [Simulator.md](docs/Simulator.md): 시뮬레이터 사용법, 점수 확인, 피버 패턴 등록 방법
 - [Sound.md](docs/Sound.md): 공통·적 사운드 풀과 음원 URL 변경 방법
-- [Server.md](docs/Server.md): Node.js·Python 서버 실행, 온라인 플레이 설정, 서버 모니터링·관리 페이지(`admin.html`), 저장소 DB 교체 예제와 HTTP/WebSocket API
+- [Server.md](docs/Server.md): Node.js·Python 서버 실행, 온라인 플레이 설정, 서버 모니터링·관리 페이지(`admin.html`)와 그 WebMCP 도구, 저장소 DB 교체 예제와 HTTP/WebSocket API
 
 ## 플레이어 안내
 

@@ -94,7 +94,7 @@ const ADMIN_ID = "root";
  * 이 비밀번호는 운영자가 언제든 고칠 수 있어야 하므로 단방향 암호화하지 않고 원문 그대로 둔다.
  * 다만 로그인 시에는 관리 페이지와 서버가 각각 sha256 으로 해시한 값만 비교하므로 원문은 네트워크에 나가지 않는다.
  */
-const ADMIN_PASSWORD = "djict1!";
+const ADMIN_PASSWORD = "";
 
 /*
 SSL(HTTPS) 설정이다. 아래 세 상수에 인증서 파일의 전체 경로를 적는다. (모두 PEM 형식)

@@ -125,6 +125,22 @@ The “Online accounts” menu lists registered accounts. Clicking one opens a l
 - **Change password**: the new password is entered twice and only its SHA-256 hash is sent. The server hashes it again with bcrypt and stores it, and that account's session is closed. The plain-text rule is the same as the game's signup screen: letters, digits, underscore, and `!@#$%^&*?`, 4-30 characters.
 - **Deactivate / Activate**: a toggle that flips the `active` field of the account document. A deactivated account **cannot log in**, and a session that logged in earlier is not force-closed but **cannot create or join rooms**. The game receives this as the `account_disabled` error.
 
+### WebMCP tools
+
+In browsers that support WebMCP, the administration page registers five tools on `document.modelContext` so an AI can read status and change account state on a person's behalf. Browsers without support register nothing and the page behaves as usual.
+
+| Tool | What it does | Sign-in required |
+| --- | --- | --- |
+| `admin_manual` | English instructions for the page and the other tools | No |
+| `admin_login_status` | Whether the administrator account exists, whether someone is signed in, remaining block time, and the visible screen | No |
+| `admin_server_status` | Server kind, uptime, CPU, RAM, memory figures, and online-play counters | Yes |
+| `admin_online_accounts` | The online-play account list | Yes |
+| `admin_set_account_state` | Activate or deactivate one online-play account | Yes |
+
+**Signing in and out are deliberately not tools.** This keeps the administrator password out of the tool path, and a person has to sign in on the page. **Changing an online-play account password is also outside the tool scope.** Calling a tool that needs sign-in while nobody is signed in returns an English error saying a person must sign in first.
+
+Tool descriptions and schemas are written in English because an AI reads them. Read-only tools carry `annotations.readOnlyHint`, and `admin_online_accounts` and `admin_set_account_state` also carry `annotations.untrustedContentHint` because they contain nicknames chosen by the players. When a tool reads or changes server state, the page the person is looking at is refreshed with the same values.
+
 ## 4. Storage and replacing files with a database
 
 ### Default file storage

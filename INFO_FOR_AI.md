@@ -28,7 +28,7 @@
 - 이미지: `src/img/`
 - 언어별 공지사항: `src/notice/`
 - Webpack 번들 출력: `src/bundle/puyow.bundle.js`
-- E2E 회귀 테스트: `tests/test01_*.spec.js` (게임 페이지), `tests/test02_tools.spec.js` (개발용 도구 페이지), `tests/test03_ai.spec.js` (AI 모델 사용·학습)
+- E2E 회귀 테스트: `tests/test01_*.spec.js` (게임 페이지), `tests/test02_tools.spec.js` (개발용 도구 페이지), `tests/test03_ai.spec.js` (AI 모델 사용·학습), `tests/test04_admin.spec.js` (서버 모니터링·관리 페이지)
 - 개발자 문서: `HOWTO.md`, `docs/`
 - 공개 안내 문서: `README.md`, `README.en.md` (`README.en.md`는 `README.md`의 영어 번역본이므로 플레이 주소·실행 방법 같은 원문 갱신을 함께 반영한다.)
 - 모든 텍스트 파일은 UTF-8, 기본 UI 언어는 한국어다.
@@ -833,6 +833,16 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 **화면** — 로그인 화면 → 사이드바가 있는 대시보드·온라인 계정 화면이다. 사이드바 상단은 (왼쪽)화면 모드 토글 + (오른쪽)로그아웃이고 메뉴는 `MENU_ITEMS` 배열에 있어 여기에만 추가하면 늘어난다. 화면 모드는 저장하지 않고 `prefers-color-scheme`을 따르되 알 수 없으면 다크다. CSS 변수는 `admin.html`의 `:root`와 `:root[data-theme="light"]`에만 있다. 계정 목록에서 계정을 누르면 상세 레이어 팝업(닉네임·ID·현재 상태 + "비밀번호 변경"·"비활성화/활성화"·"닫기")이 열리고, "비밀번호 변경"은 그 위에 마스킹 입력 팝업을 하나 더 겹친다.
 
 - 검증 결과: Node 임시 서버로 관리 API 16가지(세션 발급·미로그인 차단·5회 실패 차단·차단 중 정상 비밀번호 거절·정상 로그인·현황·계정 목록·접속 표시·비활성화·재활성화·비밀번호 변경·잘못된 요청·로그아웃·계정 파일·공란 비활성)를 확인했고, Python도 실제 `PuyoRequestHandler` 라우터로 같은 16가지를 확인했다. Chromium으로 관리 페이지 전체 흐름(다크/밝은 모드, 로그인 실패 문구, 대시보드 4초 자동 새로고침, 계정 목록·상세 팝업·토글·비밀번호 변경 팝업, 좁은 화면 400px, 로그아웃)을 확인했다. 기존 회귀는 Node 저장소 4개, Python 저장소 3개, `python/test_learning.py` 134개가 모두 통과했다. ESLint와 JS/Python 문법 검사를 거쳤고 webpack 번들을 다시 만들었다.
+
+### 관리 페이지의 WebMCP (2026-09-16)
+
+- `PuyoWAdmin.initialize()`가 `registerMcpTools()`로 `document.modelContext`에 `admin_manual`·`admin_login_status`·`admin_server_status`·`admin_online_accounts`·`admin_set_account_state` 다섯 도구를 등록하고, `destroy()`가 `mcpAbortController`로 한 번에 해제한다. 미지원 브라우저에서는 아무 일도 하지 않는다. **로그인 화면에서도 등록한다** — `admin_login_status`가 로그인 전에 쓰여야 하기 때문이다.
+- 이름은 모두 `admin_` 접두어를 쓴다. 관리 페이지는 `puyow.js`를 읽지 않아 지금은 이름이 겹칠 일이 없지만, 같은 문서에 다른 도구가 등록되어도 구분되도록 둔다. **이 작업은 관리 페이지에만 한정하며 `puyow.js`와 BUILDNO는 건드리지 않았다.**
+- **관리자 로그인·로그아웃은 일부러 도구로 만들지 않는다.** 관리자 비밀번호가 도구 경로를 지나가지 않게 하려는 것이며, 로그인은 사람이 화면에서 해야 한다. **온라인 계정 비밀번호 변경도 도구 범위에서 제외**한다. 이 두 가지는 요구사항이므로 도구를 늘릴 때도 유지한다.
+- 도구 설명·스키마·`admin_manual` 문구는 AI가 읽도록 영어로 쓴다. 화면 문구(`ERROR_TEXTS`)는 사람이 읽는 한국어라 오류 표를 `MCP_ERROR_TEXTS`로 따로 둔다. 조회 전용에는 `annotations.readOnlyHint`, 플레이어가 정한 닉네임이 들어가는 `admin_online_accounts`·`admin_set_account_state`에는 `annotations.untrustedContentHint`를 둔다.
+- 도구는 모두 `requestAdminApiForMcp()`를 거쳐 관리 API를 부르고 실패하면 예외를 던진다. 로그인 전 호출은 `unauthorized`를 "사람이 먼저 로그인해야 한다"는 영어 문구로 바꿔 돌려주므로, AI가 스스로 해결하려 하지 않는다. 예외는 `admin_login_status`가 쓰는 `session`으로, 로그인 전에도 성공하는 API라 통신 실패만 예외로 본다.
+- 도구가 서버 상태를 읽거나 바꾸면 **사람이 보고 있는 화면도 같은 값으로 갱신한다.** 대시보드를 보고 있으면 `admin_server_status`가 `state.status`를, 계정 화면을 보고 있으면 `admin_online_accounts`가 목록을 갱신하고, `admin_set_account_state`는 `state.accounts`·`state.detailAccount`를 고친 뒤 계정 화면이면 목록을 다시 읽는다.
+- 회귀 검증은 `tests/test04_admin.spec.js`다. **기본 설정 서버(관리자 비밀번호 공란)로 돌아가므로 로그인 없이 확인할 수 있는 계약만 검사한다** — 로그인 화면 표시, 화면 모드 토글이 저장되지 않음, 도구 5개의 이름·순서·`annotations`·스키마 유무, `admin_manual`·`admin_login_status`가 로그인 전에도 동작함, 나머지 3개가 영어 안내와 함께 거절함. 로그인 이후 동작은 서버 상수를 바꿔야 해서 이 파일에서 다루지 않는다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
