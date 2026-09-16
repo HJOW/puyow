@@ -79,7 +79,7 @@
 - 연쇄 중에는 에너지/ATTACK 전달과 DAMAGE 상쇄 순서가 중요하다. `resolveExplosions()`와 전송·정산 함수의 대기 조건을 우회하지 말고, 연쇄 완료 뒤 상대 DAMAGE로 넘어가는 계약을 보존한다.
 - 대전 피버 룰의 최종 DAMAGE 목적지는 **연쇄 첫 폭발 당시 상대의 피버 상태**로 결정한다. `resolveExplosions()`가 정수 ATTACK 생성 여부와 관계없이 `chainTargetFeverId`를 기록한다. 상대가 일반 상태였다면 도중에 피버로 진입해도 연쇄 전체의 잔여 공격은 `normalDamage`로 들어가며 피버 종료까지 낙하를 유예한다. 처음부터 피버였다면 해당 피버의 `damage`에 넣는다. `activationId`로 피버 회차를 구별하므로 그 피버가 이미 끝났다면 일반 피해에 합산하며, 새로 진입한 피버에 이전 공격을 넣지 않는다.
 - `applyAttackDamage()`는 즉시 정산과 에너지 연출 완료 후 지연 정산에 공통으로 쓰인다. 지연 에너지는 목적지를 자체 보관하고, 연쇄 종료 시 플레이어의 목적지는 전달량이 0이어도 초기화한다. 상쇄 순서·정수 처리·연출 대기·비피버 룰은 유지한다. `tests/test01_fever_damage.spec.js`는 실제 게임 루프에서 첫 폭발의 ATTACK이 1 미만인 연쇄, 피버 진입 전후, 즉시/지연 정산, 피버 중 낙하 유예와 종료 후 실제 낙하, 전량 상쇄 후 새 연쇄, 피버 종료·재진입, 일반/피버 예고의 앞뒤 표시와 리플레이 보존을 검사한다.
-- BUILDNO 73부터 `normalWarningPreview()`가 현재 예고를 만든 `announcedAttackEnergy.targetFeverId`로 일반 필드행 미정산 예고를 분리한다. 피버 중에는 이 값을 일반 DAMAGE에 더해 뒤쪽에 흐리게 그리고, `currentFieldWarningAmount()`로 앞쪽 예고에서 제외한다. 상쇄·AI용 `warningAmount()`와 실제 피해량은 변경하지 않았다. `getGameState()`의 `warningPuyos`는 앞쪽에 그리는 목록과 일치한다. 새 리플레이는 수신 플레이어의 선택적 델타 필드 `nw`에 분리된 미정산 예고량을 기록한다. 기존 형식 3과 호환되며, `nw`가 없는 과거 기록은 구분을 추측하지 않고 기존 표시를 유지한다.
+- BUILDNO 73부터 `normalWarningPreview()`가 현재 예고를 만든 `announcedAttackEnergy.targetFeverId`로 일반 필드행 미정산 예고를 분리한다. 피버 중에는 이 값을 일반 DAMAGE에 더해 뒤쪽에 흐리게 그리고, `currentFieldWarningAmount()`로 앞쪽 예고에서 제외한다. 상쇄·AI용 `warningAmount()`와 실제 피해량은 변경하지 않았다. `getGameState()`의 `warningPuyos`는 앞쪽에 그리는 목록과 일치한다. 뒤쪽 예고는 `FEVER_NORMAL_WARNING_ALPHA`를 `globalAlpha`에 걸어 통째로 흐리게 그리므로, 예고뿌요의 `draw()`는 `globalAlpha`를 덮어쓰지 말고 호출 시점의 값을 곱해서 쓴다. 슬라임 계열(1·6개 단위)과 초입방체 세 종이 이 규칙을 따르며, 새 예고뿌요를 더할 때도 같은 규칙을 지킨다. 새 리플레이는 수신 플레이어의 선택적 델타 필드 `nw`에 분리된 미정산 예고량을 기록한다. 기존 형식 3과 호환되며, `nw`가 없는 과거 기록은 구분을 추측하지 않고 기존 표시를 유지한다.
 
 ## 게임 모드
 

@@ -7783,7 +7783,8 @@
             drawingContext.save();
             drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
             drawingContext.fillStyle = PALETTE[this.paletteKey];
-            drawingContext.globalAlpha = this.garbageStyle ? 0.75 : 1;
+            // 바깥에서 지정한 불투명도(피버 중 유예된 예고뿌요 등)를 덮어쓰지 않고 그 위에 곱한다.
+            drawingContext.globalAlpha *= this.garbageStyle ? 0.75 : 1;
             drawingContext.beginPath();
             drawingContext.arc(0, 0, radius, 0, Math.PI * 2);
             drawingContext.fill();
@@ -8176,12 +8177,13 @@
     function strokeHypercubeEdges(drawingContext, projection, radius, passes) {
         const { points } = projection;
         const groups = getHypercubeDepthGroups(projection);
+        const ambientAlpha = drawingContext.globalAlpha;
         passes.forEach(([lineWidth, alpha, color, minimumDepth]) => {
             drawingContext.lineWidth = lineWidth;
             drawingContext.strokeStyle = color;
             groups.forEach((group) => {
                 if (!group.edges.length || group.depth < minimumDepth) return;
-                drawingContext.globalAlpha = alpha * (0.25 + group.depth * 0.75);
+                drawingContext.globalAlpha = ambientAlpha * alpha * (0.25 + group.depth * 0.75);
                 drawingContext.beginPath();
                 group.edges.forEach(([from, to]) => {
                     drawingContext.moveTo(points[from][0] * radius, -points[from][1] * radius);
@@ -8229,6 +8231,7 @@
         draw(drawingContext, x, y, cellSize) {
             const radius = cellSize * 0.42;
             const { points, edges } = TESSERACT_PROJECTION;
+            const ambientAlpha = drawingContext.globalAlpha;
             drawingContext.save();
             drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
             // 어느 필드 색 위에서도 네온선이 읽히도록 어두운 우주색 바탕을 먼저 깐다.
@@ -8240,14 +8243,14 @@
             [[cellSize * 0.1, 0.16, '#26e2ff'], [cellSize * 0.05, 0.42, '#7ef0ff'], [cellSize * 0.022, 0.95, '#ecfeff']].forEach(([lineWidth, alpha, color]) => {
                 drawingContext.lineWidth = lineWidth; drawingContext.strokeStyle = color;
                 edges.forEach(([from, to]) => {
-                    drawingContext.globalAlpha = alpha * (0.52 + (points[from][2] + points[to][2]) / 2 * 0.48);
+                    drawingContext.globalAlpha = ambientAlpha * alpha * (0.52 + (points[from][2] + points[to][2]) / 2 * 0.48);
                     drawingContext.beginPath();
                     drawingContext.moveTo(points[from][0] * radius, -points[from][1] * radius);
                     drawingContext.lineTo(points[to][0] * radius, -points[to][1] * radius);
                     drawingContext.stroke();
                 });
             });
-            drawingContext.globalAlpha = 1;
+            drawingContext.globalAlpha = ambientAlpha;
             // 눈은 안쪽 정육면체 한가운데에 둬 다른 예고뿌요와 같은 캐릭터성을 유지한다.
             drawingContext.translate(radius * 0.11, -radius * 0.22);
             drawPuyoEyes(drawingContext, radius * 0.44);
@@ -8301,6 +8304,7 @@
         /** 참고 영상처럼 푸른 유리 구슬 속에 5차원 격자가 촘촘히 겹친 모습을 한 칸 크기로 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 2D 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
         draw(drawingContext, x, y, cellSize) {
             const radius = cellSize * 0.44;
+            const ambientAlpha = drawingContext.globalAlpha;
             drawingContext.save();
             drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
             // 왼쪽 위에서 빛을 받는 푸른 유리 몸체다. 모서리 80개가 이 위에서 읽히도록 안쪽을 밝게 둔다.
@@ -8315,7 +8319,7 @@
             strokeHypercubeEdges(drawingContext, PENTERACT_PROJECTION, radius, [
                 [cellSize * 0.052, 0.6, '#07203f', 0], [cellSize * 0.024, 0.95, '#63b4f0', 0], [cellSize * 0.01, 0.95, '#ffffff', 0.62]
             ]);
-            drawingContext.globalAlpha = 1;
+            drawingContext.globalAlpha = ambientAlpha;
             // 모서리 80개가 겹친 자리라 눈이 묻히기 쉬우므로 살짝 어두운 바닥을 깔고 그린다.
             drawingContext.fillStyle = 'rgba(9, 32, 68, 0.55)';
             drawingContext.beginPath(); drawingContext.ellipse(0, -radius * 0.04, radius * 0.44, radius * 0.28, 0, 0, Math.PI * 2); drawingContext.fill();
@@ -8369,6 +8373,7 @@
         /** 자수정 구슬 속에 6차원 격자가 겹치고 바깥으로 후광이 번지는 모습을 한 칸 크기로 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 2D 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @returns {void} */
         draw(drawingContext, x, y, cellSize) {
             const radius = cellSize * 0.42;
+            const ambientAlpha = drawingContext.globalAlpha;
             drawingContext.save();
             drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
             // 펜터렉트보다 한 단계 위라는 것이 한눈에 보이도록 몸체 바깥으로 보랏빛 후광을 두른다.
@@ -8387,7 +8392,7 @@
             strokeHypercubeEdges(drawingContext, HEXAACT_PROJECTION, radius, [
                 [cellSize * 0.042, 0.5, '#1a0940', 0], [cellSize * 0.02, 0.85, '#d9b6ff', 0], [cellSize * 0.009, 0.95, '#fff3c8', 0.74]
             ]);
-            drawingContext.globalAlpha = 1;
+            drawingContext.globalAlpha = ambientAlpha;
             // 모서리 192개가 겹친 자리라 눈이 묻히기 쉬우므로 살짝 어두운 바닥을 깔고 그린다.
             drawingContext.fillStyle = 'rgba(30, 10, 66, 0.6)';
             drawingContext.beginPath(); drawingContext.ellipse(0, -radius * 0.04, radius * 0.44, radius * 0.28, 0, 0, Math.PI * 2); drawingContext.fill();
