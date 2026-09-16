@@ -26,7 +26,9 @@
 # 의존성
 #     common.py
 #     onlineplay.py
+#     admin.py
 #     bcrypt  (온라인 플레이를 켠 경우에만 필요합니다. 설치: pip install bcrypt)
+#     psutil  (서버 관리 페이지 /admin.html 의 CPU·램 점유율 표시에만 필요합니다. 설치: pip install psutil)
 
 # Puyo W 웹 서버 역할 뿐 아니라 학습 API 서버 역할도 수행한다.
 
@@ -53,6 +55,8 @@ from common import (
 )
 # 온라인 플레이(계정·대기실·방·대전 중계) 구현은 이 파일에 두지 않고 onlineplay.py에 분리해 두었다.
 from onlineplay import OnlinePlayService
+# 서버 모니터링·관리 페이지(src/admin.html) 백엔드도 이 파일에 두지 않고 admin.py에 분리해 두었다.
+from admin import AdminService
 
 
 # 서버 운영자가 이 컬렉션의 값을 수정해 포트와 인증 토큰을 설정한다.
@@ -67,6 +71,12 @@ SERVER_CONFIG = {
 	#           WebSocket 대전 중계를 모두 제공한다. 계정과 방 정보는 [홈디렉토리]/.puyowserver/ 아래에 저장된다.
 	#   False : 온라인 플레이 관련 요청을 일절 받지 않는다. 게임은 "너랑 나랑" 방식 선택에서 온라인 플레이 항목을 숨긴다.
 	"online_play_enabled": False,
+    # 관리자 계정 ID, 온라인 플레이 시 이용할 수 있는 계정은 아니고, admin.html 전용 계정.
+    "admin_id": "root",
+	# 관리자 계정 비밀번호, 온라인 플레이 시 이용할 수 있는 계정은 아니고, admin.html 전용 계정. 값이 비어있으면 관리자 계정 로그인 불가.
+	# 이 비밀번호는 운영자가 언제든 고칠 수 있어야 하므로 단방향 암호화하지 않고 원문 그대로 둔다.
+	# 다만 로그인 시에는 관리 페이지와 서버가 각각 sha256으로 해시한 값만 비교하므로 원문은 네트워크에 나가지 않는다.
+    "admin_password": "",
 	# SSL(HTTPS) 인증서 파일의 전체 경로다. (모두 PEM 형식)
 	#   ssl_cert_file : 서버 인증서 파일      (필수)
 	#   ssl_key_file  : 개인 키 파일          (필수)
@@ -859,20 +869,40 @@ def online_play_info_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 online_play_service = OnlinePlayService(SERVER_CONFIG.get("online_play_enabled") is True)
 
 
+# 대시보드에 함께 보여 줄 이 서버만의 정보다.
+def admin_server_info() -> dict[str, Any]:
+	"""관리 페이지가 서버 종류를 구분하지 않고 그대로 표시한다."""
+	return {
+		"port": SERVER_CONFIG["port"],
+		"https": bool(SERVER_CONFIG.get("ssl_cert_file")) and bool(SERVER_CONFIG.get("ssl_key_file")),
+		"onlinePlayEnabled": SERVER_CONFIG.get("online_play_enabled") is True,
+		"localAiAvailable": get_configured_model_path() is not None,
+	}
+
+
+# 서버 모니터링·관리 페이지(src/admin.html) 백엔드다. admin_password가 공란이면 로그인 자체가 막힌다.
+# 관리자 세션은 온라인 플레이 세션과 완전히 분리되어 있으며, 계정 관리는 위 온라인 플레이 서비스를 거친다.
+admin_service = AdminService(SERVER_CONFIG.get("admin_id"), SERVER_CONFIG.get("admin_password"), online_play_service, admin_server_info)
+
+
 # nodeserver/server.js의 apis 객체와 같은 역할을 하는 동적 API 등록 컬렉션이다.
-apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple[int, dict[str, Any]]]] = {"learning": learning_api, "localmodelinfo": local_model_info_api, "onlineplayinfo": online_play_info_api, "onlineplay": online_play_service.handle_api, "solomonlearning": solomon_learning_api}
+# 관리 API만 세션 쿠키를 함께 내려야 해서 (상태, 본문, 추가 헤더) 세 값을 돌려준다. 라우터가 두 형태를 모두 받는다.
+apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple]] = {"learning": learning_api, "localmodelinfo": local_model_info_api, "onlineplayinfo": online_play_info_api, "onlineplay": online_play_service.handle_api, "admin": admin_service.handle_api, "solomonlearning": solomon_learning_api}
 
 
 class PuyoRequestHandler(BaseHTTPRequestHandler):
 	"""CORS, 동적 API, 정적 파일 응답을 담당하는 HTTP 핸들러."""
 
 	# 상태 코드와 JSON 객체를 공통 CORS 헤더와 함께 브라우저로 전송한다.
-	def _send_json(self, status: int, payload: dict[str, Any]) -> None:
+	def _send_json(self, status: int, payload: dict[str, Any], extra_headers: dict[str, str] | None = None) -> None:
 		data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
 		self.send_response(status)
 		self._send_cors_headers()
 		self.send_header("Content-Type", "application/json; charset=utf-8")
 		self.send_header("Content-Length", str(len(data)))
+		# 관리 API의 세션 쿠키처럼 특정 API만 필요한 헤더를 여기에서 덧붙인다.
+		for name, value in (extra_headers or {}).items():
+			self.send_header(name, value)
 		self.end_headers()
 		# HEAD 응답은 헤더까지만 보낸다. 본문을 붙이면 HTTP 규약을 어긴다.
 		if not self._is_head_request():
@@ -938,14 +968,19 @@ class PuyoRequestHandler(BaseHTTPRequestHandler):
 			if api_handler is None:
 				self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "404 Not Found"})
 				return
+			extra_headers: dict[str, str] = {}
 			try:
-				status, payload = api_handler(self)
+				result = api_handler(self)
+				status, payload = result[0], result[1]
+				# 관리 API처럼 추가 헤더가 필요한 API는 세 번째 값으로 헤더를 함께 돌려준다.
+				if len(result) > 2 and isinstance(result[2], dict):
+					extra_headers = result[2]
 			except ApiError as error:
 				status, payload = error.status, {"ok": False, "error": str(error)}
 			except Exception:
 				self.log_error("API 처리 오류\\n%s", traceback.format_exc())
 				status, payload = HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "error": "API 처리 중 오류가 발생했습니다."}
-			self._send_json(status, payload)
+			self._send_json(status, payload, extra_headers)
 			return
 		self._serve_static(path)
 

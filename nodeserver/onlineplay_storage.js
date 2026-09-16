@@ -5,7 +5,7 @@ const path = require('path');
 
 /**
  * 기본 JSON 저장소. 생성만으로는 파일을 만들거나 지우지 않는다.
- * 다른 저장소도 initialize/loadNicknameIndex/loadAccount/saveAccount/saveRoom/removeRoom/clearRooms를 구현한다.
+ * 다른 저장소도 initialize/loadNicknameIndex/listAccounts/loadAccount/saveAccount/saveRoom/removeRoom/clearRooms를 구현한다.
  * 계정 ID 검증, 닉네임 중복 정책, 스냅샷 변환과 저장 오류 처리는 서비스가 담당한다.
  */
 class FileOnlinePlayStorage {
@@ -36,6 +36,23 @@ class FileOnlinePlayStorage {
             if (account && typeof account.nickname === 'string') nicknameIndex.set(account.nickname, entry.name);
         });
         return nicknameIndex;
+    }
+
+    /** 관리 화면의 계정 목록용으로 저장된 계정을 모두 읽는다. 손상된 계정은 건너뛴다. */
+    listAccounts() {
+        let entries = [];
+        try {
+            entries = fs.readdirSync(this.accountRoot, { withFileTypes: true });
+        } catch {
+            return [];
+        }
+        const accounts = [];
+        entries.forEach((entry) => {
+            if (!entry.isDirectory()) return;
+            const account = this.readJsonFile(path.join(this.accountRoot, entry.name, 'account.json'));
+            if (account && typeof account.id === 'string') accounts.push(account);
+        });
+        return accounts;
     }
 
     /** 이전 실행의 방 스냅샷만 지운다. 계정과 JSON 이외 파일은 보존한다. */

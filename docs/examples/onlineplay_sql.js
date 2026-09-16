@@ -25,6 +25,20 @@ class SqlOnlinePlayStorage {
         return index;
     }
 
+    /** 관리 화면의 계정 목록용이다. 손상된 행은 닉네임 색인과 같이 건너뛴다. */
+    listAccounts() {
+        const accounts = [];
+        try {
+            for (const row of this.query('SELECT payload FROM puyow_accounts')) {
+                try {
+                    const account = JSON.parse(row.payload);
+                    if (typeof account?.id === 'string') accounts.push(account);
+                } catch { /* 손상된 행은 건너뛴다. */ }
+            }
+        } catch { /* 기존 파일 조회 실패 정책을 유지하는 학습용 예제다. */ }
+        return accounts;
+    }
+
     loadAccount(id) {
         try {
             const rows = this.query('SELECT payload FROM puyow_accounts WHERE id = ?', [id.toLowerCase()]);

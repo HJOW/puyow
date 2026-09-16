@@ -40,6 +40,21 @@ class SqlOnlinePlayStorage:
             pass
         return index
 
+    def list_accounts(self):
+        # 관리 화면의 계정 목록용이다. 손상된 행은 닉네임 색인과 같이 건너뛴다.
+        accounts = []
+        try:
+            for (payload,) in self.query("SELECT payload FROM puyow_accounts"):
+                try:
+                    account = json.loads(payload)
+                    if isinstance(account, dict) and isinstance(account.get("id"), str):
+                        accounts.append(account)
+                except (TypeError, ValueError):
+                    pass
+        except OSError:
+            pass
+        return accounts
+
     def load_account(self, account_id):
         try:
             rows = self.query("SELECT payload FROM puyow_accounts WHERE id = ?", (account_id.lower(),))

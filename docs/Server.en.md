@@ -68,6 +68,8 @@ The server does not recalculate all board physics or validate every move. It cur
 
 There are at most 200 rooms. The lobby lists up to 50 waiting rooms with a vacant guest slot, ordered by creation time. When the host leaves, the remaining guest becomes host and **the room ID changes to that account ID**. Empty rooms are deleted. Leaving during a match does not update results or WIN POINT.
 
+An account deactivated from the administration page is refused at login, and an already logged-in session cannot create or join rooms. See the administration section below.
+
 The server sends ping frames every five seconds and considers a connection unresponsive after 15 seconds. Disconnecting leaves the room, but the session can be used to authenticate again within a 60-second grace period. Reconnecting a session does not restore the match. Idle sessions expire after 30 minutes. Three password failures within five minutes cause login to reject even the correct password until the lock condition clears.
 
 WIN POINT is a nonnegative integer. Changes use both players' scores before updating:
@@ -86,7 +88,44 @@ Node uses `SSL_KEY_FILE` (private key), `SSL_CERT_FILE` (certificate), and optio
 
 If required paths are empty or a specified file is missing, the server runs HTTP. Check the logs and actual `https://` URL. HTTPS also uses `wss://` on the same port. Because the password hash itself is an authentication credential, use HTTPS for remote login.
 
-## 3. Storage and replacing files with a database
+## 3. Server monitoring and administration page
+
+### Setting up the administrator account
+
+The administration page is [admin.html](http://localhost:9891/admin.html). Opening it shows an administrator login screen first.
+
+- Node: `ADMIN_ID` and `ADMIN_PASSWORD` in `nodeserver/server.js`.
+- Python: `SERVER_CONFIG["admin_id"]` and `SERVER_CONFIG["admin_password"]` in `python/pythonserver.py`.
+
+This account is completely separate from online-play accounts, and **only one exists; you cannot add more**. The password defaults to an empty string, and **an empty password disables the administrator account entirely**, so no value can log in. Restart the server after changing either value.
+
+The administrator password is stored **in plain text with no one-way hashing** because the operator must be able to edit it in the server source at any time. During login, however, the page and the server each hash it with SHA-256 and compare only those digests, so the plain text never travels over the network. Restrict file permissions on the server source and use HTTPS for remote access.
+
+### Login-failure blocking
+
+The administrator session is separate from online-play sessions and is kept in a `puyow_admin_session` cookie. Failed attempts accumulate in that session, and **five or more failures block administrator login for that session for 10 minutes from the last failure**. While blocked, even the correct password is rejected. After 10 minutes the failure count resets to zero. An administrator session with no requests disappears after 30 minutes.
+
+Because the count lives in the session, clearing cookies resets it. On a publicly reachable server, restrict the administration page itself with a firewall or reverse proxy.
+
+### Dashboard
+
+Logging in opens the dashboard. The left sidebar holds a theme toggle (dark/light) and a logout button, plus the “Home” and “Online accounts” menu items. The theme is not persisted; it defaults to the system setting, falling back to dark mode when that is unavailable.
+
+The dashboard **re-reads server status every four seconds**. The values shown depend on the server.
+
+- Node: `rss`, `heapTotal`, `heapUsed`, `external`, and `arrayBuffers` from `process.memoryUsage()`. System-wide usage is not available.
+- Python: system CPU and RAM usage read through `psutil`, plus the server process RSS. Without `psutil` (`pip install psutil`) only those cards are hidden; everything else keeps working.
+
+When online play is enabled, the dashboard also shows the number of accounts, connected sessions, and open rooms.
+
+### Managing online accounts
+
+The “Online accounts” menu lists registered accounts. Clicking one opens a layer popup with the nickname, ID, and current state, plus “Change password”, “Deactivate” (or “Activate”), and “Close” buttons. The list is empty on a server with online play disabled.
+
+- **Change password**: the new password is entered twice and only its SHA-256 hash is sent. The server hashes it again with bcrypt and stores it, and that account's session is closed. The plain-text rule is the same as the game's signup screen: letters, digits, underscore, and `!@#$%^&*?`, 4-30 characters.
+- **Deactivate / Activate**: a toggle that flips the `active` field of the account document. A deactivated account **cannot log in**, and a session that logged in earlier is not force-closed but **cannot create or join rooms**. The game receives this as the `account_disabled` error.
+
+## 4. Storage and replacing files with a database
 
 ### Default file storage
 
@@ -98,7 +137,7 @@ File I/O is isolated in `FileOnlinePlayStorage` in the [Node module](../nodeserv
   rooms/<lowercase room ID>.json
 ```
 
-An account document is `{id, nickname, password, winPoint, createdAt}`. IDs are case-insensitive; nicknames are case-sensitive. Preserve the account data and bcrypt hashes when replacing storage. Room documents have the room shape described below and are **snapshots of in-memory state**. Service startup deletes room snapshots but preserves accounts. Sessions, sockets, and running matches are outside the database replacement.
+An account document is `{id, nickname, password, winPoint, createdAt}`, plus a boolean `active` once the administration page deactivates the account. An account without `active` counts as active. IDs are case-insensitive; nicknames are case-sensitive. Preserve the account data and bcrypt hashes when replacing storage. Room documents have the room shape described below and are **snapshots of in-memory state**. Service startup deletes room snapshots but preserves accounts. Sessions, sockets, and running matches are outside the database replacement.
 
 The service requires the following contract. One class handles both accounts and room snapshots, keeping file-specific details behind this boundary.
 
@@ -106,6 +145,7 @@ The service requires the following contract. One class handles both accounts and
 | --- | --- | --- |
 | `initialize()` | `initialize()` | Prepare directories/schema; never delete accounts; propagate failures |
 | `loadNicknameIndex()` | `load_nickname_index()` | Nickname → lowercase ID; Node `Map` / Python `dict` |
+| `listAccounts()` | `list_accounts()` | Every stored account, for the administration list. Skips damaged accounts |
 | `loadAccount(id)` | `load_account(id)` | Fresh account object or `null` / `None` |
 | `saveAccount(account)` | `save_account(account)` | Save the whole account; propagate failures |
 | `saveRoom(snapshot)` | `save_room(snapshot)` | Save a serializable room document; propagate failures |
@@ -227,11 +267,11 @@ The example uses synchronous connections, calls `commit()` after writes and `rol
 
 These examples replace storage for one online-service process. Sharing a DB does not share Node/Python rooms or sessions. Another server startup clears the shared snapshot table, so do not treat the examples as storage for concurrent server instances. Primary keys alone do not guarantee concurrent nickname uniqueness or atomic winner/loser updates. Those require a separate change to the service contract.
 
-## 4. HTTP API reference
+## 5. HTTP API reference
 
 URLs below are relative to the server root. Send JSON with `Content-Type: application/json`. No query parameters are needed. In particular, the current Node `/apis/` router does not strip query strings from the API name on some paths, so use the documented URLs directly.
 
-`OPTIONS` returns 204 and CORS headers. Allowed Origin is `*`, methods are `GET, HEAD, POST, OPTIONS`, and headers are `Content-Type, Authorization`. Cookie authentication is not used.
+`OPTIONS` returns 204 and CORS headers. Allowed Origin is `*`, methods are `GET, HEAD, POST, OPTIONS`, and headers are `Content-Type, Authorization`. The game and online-play APIs do not use cookie authentication. Only the administration API is an exception and uses a same-origin session cookie.
 
 | URL | Node | Python | Authentication |
 | --- | --- | --- | --- |
@@ -243,6 +283,13 @@ URLs below are relative to the server root. Send JSON with `Content-Type: applic
 | `POST /v1/chat/completions` | Local AI placement/test | Same, plus optional reverse-training recording | AI Bearer token |
 | `POST /apis/learning` | Accumulate learning events | Same, stricter validation | AI Bearer token |
 | `POST /apis/solomonlearning` | Acknowledge only | Collect/apply reverse training | See differences below |
+| `POST /apis/admin/session` | Administrator login state | Same | None (issues a session cookie) |
+| `POST /apis/admin/login` | Administrator login | Same | ID and password hash |
+| `POST /apis/admin/logout` | Administrator logout | Same | Administrator session cookie |
+| `POST /apis/admin/status` | Server status (V8 memory) | Server status (psutil CPU/RAM) | Administrator session cookie |
+| `POST /apis/admin/accounts` | Online account list | Same | Administrator session cookie |
+| `POST /apis/admin/accountpassword` | Change an online account password | Same | Administrator session cookie |
+| `POST /apis/admin/accountstate` | Activate or deactivate an online account | Same | Administrator session cookie |
 
 Information endpoints take no parameters and return 200 `{"available":boolean}`. Online information reflects configuration, not a live two-player match test. Model information checks actual model loading as well as file existence. These two handlers currently do not enforce GET themselves, but clients use GET.
 
@@ -280,12 +327,60 @@ Online HTTP errors use `{"ok":false,"code":"..."}`.
 | 400 | `invalid_body` | Invalid JSON body |
 | 401 | `login_failed` | Missing account or wrong password |
 | 409 | `duplicate_id`, `duplicate_nickname` | Duplicate signup |
+| 403 | `account_disabled` | The account was deactivated from the administration page |
 | 423 | `account_locked` | Password-failure lock |
 | 404 | `online_play_disabled`, `not_found` | Disabled feature or unknown action |
 | 405 | `method_not_allowed` | Non-POST request |
 | 500 | `server_error` | Failure such as account persistence |
 
 Online bodies are limited to 64KiB. Python returns 413 `invalid_body` when exceeded. Node destroys the request connection, so receipt of an error JSON is not guaranteed. Python also rejects non-object JSON as `invalid_body`. The implementations do not produce identical responses for every invalid input.
+
+### Administration API
+
+Every administration API is a `POST` with a JSON body. The first request issues a `puyow_admin_session` cookie (HttpOnly, SameSite=Strict), and every later request finds the same session through it. Call them from a browser with `fetch(..., { credentials: 'same-origin' })`. Bodies are limited to 64KiB.
+
+| Request | JSON parameters | 200 response |
+| --- | --- | --- |
+| session | None | `{"ok":true,"adminEnabled":true,"authenticated":false,"blockedSeconds":0}` |
+| login | `id`, `password` (SHA-256 hash) | `{"ok":true,"adminId":"root"}` |
+| logout | None | `{"ok":true}` |
+| status | None | The server-status object below |
+| accounts | None | `{"ok":true,"onlinePlayEnabled":true,"accounts":[...]}` |
+| accountpassword | `id`, `password` (SHA-256 hash) | `{"ok":true}` |
+| accountstate | `id`, `active` (boolean) | `{"ok":true,"account":{...}}` |
+
+Each entry in `accounts` is `{id, nickname, active, winPoint, createdAt, online}`. **No response ever contains the password hash.** `online` reports whether a session is currently logged in.
+
+`status` has the same shape on both servers, but each fills only what it can measure. Node always returns `null` for `cpuPercent` and `memoryPercent`; Python returns `null` for both and `psutilAvailable: false` when `psutil` is missing.
+
+```json
+{
+  "ok": true,
+  "server": "node",
+  "runtime": "Node.js v22.12.0",
+  "uptimeSec": 128,
+  "time": "2026-09-16T04:54:34.603Z",
+  "cpuPercent": null,
+  "memoryPercent": null,
+  "memoryBytes": [{ "key": "rss", "bytes": 54231040 }],
+  "onlinePlay": { "enabled": true, "accounts": 2, "sessions": 0, "rooms": 0, "playing": 0 },
+  "serverInfo": { "port": 9891, "https": false, "onlinePlayEnabled": true, "localAiAvailable": false }
+}
+```
+
+Administration errors also use `{"ok":false,"code":"..."}`.
+
+| Status | code | Meaning |
+| --- | --- | --- |
+| 400 | `invalid_body`, `invalid_request`, `invalid_password` | Invalid body or field |
+| 400 | `account_not_found` | The target online account does not exist |
+| 401 | `login_failed` | Wrong administrator ID or password. `remain` holds the attempts left |
+| 401 | `unauthorized` | A session that is not logged in called an administration action |
+| 403 | `admin_disabled` | The server's administrator password is empty |
+| 404 | `online_play_disabled`, `not_found` | Online play disabled or unknown action |
+| 405 | `method_not_allowed` | Non-POST request |
+| 423 | `login_blocked` | Blocked after five failures. `blockedSeconds` holds the remaining seconds |
+| 500 | `server_error` | An exception during processing |
 
 ### Local AI authentication and Chat Completions
 
@@ -358,7 +453,7 @@ Python `POST /apis/solomonlearning` requests:
 
 Node discards the body and returns `{ok:true,trained:false,transitions:0,reason:"Node 서버는 솔로몬 역학습을 지원하지 않습니다."}`. Its current handler does not validate method or authentication. The client uses POST.
 
-## 5. Online WebSocket API
+## 6. Online WebSocket API
 
 Connect to `ws://<game-server>:<port>/apis/onlineplay/socket`, or `wss://` with HTTPS. Send `auth` as the first message within five seconds. Messages are JSON text; individual frames are limited to 256KiB.
 
@@ -411,9 +506,9 @@ Room object: `{id,rule,colorCount,host,guest,state,createdAt}`. host/guest have 
 
 Existing implementation difference: Node room `createdAt` and game `startedAt` use Unix **milliseconds**; Python uses Unix **seconds**. Account createdAt is a UTC string in both, with milliseconds included by Node. `input.time`, `defeat.time`, and preparation delay use game milliseconds in both. Storage replacement preserves existing units and strings.
 
-Socket error codes: `invalid_token`, `already_in_room`, `room_limit`, `room_not_found`, `room_full`, `not_host`, `no_guest`, `already_playing`. An invalid token sends an error and closes the connection.
+Socket error codes: `invalid_token`, `already_in_room`, `account_disabled`, `room_limit`, `room_not_found`, `room_full`, `not_host`, `no_guest`, `already_playing`. An invalid token sends an error and closes the connection. `account_disabled` means an account deactivated from the administration page tried to create or join a room.
 
-## 6. Validating storage changes
+## 7. Validating storage changes
 
 From the repository root, run the temporary-file/SQLite regressions, which do not touch the actual home storage:
 

@@ -50,6 +50,8 @@ const fs   = require('fs');
 const path = require('path');
 // 온라인 플레이(계정·대기실·방·대전 중계) 구현은 이 파일에 두지 않고 onlineplay.js 에 분리해 두었다.
 const onlinePlay = require('./onlineplay.js');
+// 서버 모니터링·관리 페이지(src/admin.html) 백엔드도 이 파일에 두지 않고 admin.js 에 분리해 두었다.
+const admin = require('./admin.js');
 
 /*
 로컬 게임 테스트를 위한 CORS 응답 헤더. 
@@ -82,6 +84,17 @@ true  : /apis/onlineplayinfo 가 { "available": true } 를 응답하고, 온라�
 false : 온라인 플레이 관련 요청을 일절 받지 않는다. 게임은 "너랑 나랑" 방식 선택에서 온라인 플레이 항목을 숨긴다.
 */
 const ONLINE_PLAY_ENABLED = false;
+
+/*
+ * 관리자 계정 ID, 온라인 플레이 시 이용할 수 있는 계정은 아니고, admin.html 전용 계정.
+ */
+const ADMIN_ID = "root";
+/*
+ * 관리자 계정 비밀번호, 온라인 플레이 시 이용할 수 있는 계정은 아니고, admin.html 전용 계정. 값이 비어있으면 관리자 계정 로그인 불가.
+ * 이 비밀번호는 운영자가 언제든 고칠 수 있어야 하므로 단방향 암호화하지 않고 원문 그대로 둔다.
+ * 다만 로그인 시에는 관리 페이지와 서버가 각각 sha256 으로 해시한 값만 비교하므로 원문은 네트워크에 나가지 않는다.
+ */
+const ADMIN_PASSWORD = "djict1!";
 
 /*
 SSL(HTTPS) 설정이다. 아래 세 상수에 인증서 파일의 전체 경로를 적는다. (모두 PEM 형식)
@@ -867,13 +880,24 @@ function sendJson(res, status, payload) {
 // 온라인 플레이 서비스다. ONLINE_PLAY_ENABLED 가 false 면 저장 디렉터리도 만들지 않고 모든 요청을 거절한다.
 const onlinePlayService = onlinePlay.createService({ enabled: ONLINE_PLAY_ENABLED });
 
+// 서버 모니터링·관리 페이지(src/admin.html) 백엔드다. ADMIN_PASSWORD 가 공란이면 로그인 자체가 막힌다.
+// 관리자 세션은 온라인 플레이 세션과 완전히 분리되어 있으며, 계정 관리는 위 온라인 플레이 서비스를 거친다.
+const adminService = admin.createService({
+    adminId: ADMIN_ID,
+    adminPassword: ADMIN_PASSWORD,
+    onlinePlayService,
+    // 대시보드에 함께 보여 줄 이 서버만의 정보다.
+    getServerInfo: () => ({ port: PORT, https: sslOptions !== null, onlinePlayEnabled: ONLINE_PLAY_ENABLED === true, localAiAvailable: isLocalAiModelConfigured() })
+});
+
 // 학습 이벤트 API, 로컬 모델·온라인 플레이 사용 가능 여부 확인 API, 솔로몬 역학습 API(요청만 받음),
-// 온라인 플레이 로그인·가입·로그아웃 API다.
+// 온라인 플레이 로그인·가입·로그아웃 API, 관리 페이지 API다.
 const apis = {
     learning: learningApi,
     localmodelinfo: localModelInfoApi,
     onlineplayinfo: onlinePlayInfoApi,
     onlineplay: (req, res) => onlinePlayService.handleApi(req, res),
+    admin: (req, res) => adminService.handleApi(req, res),
     solomonlearning: solomonLearningApi
 };
 

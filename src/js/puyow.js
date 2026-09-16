@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 69;
+    const BUILDNO = 70;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -1269,6 +1269,7 @@
         duplicate_nickname: '이미 사용 중인 닉네임입니다.',
         login_failed: '아이디 또는 비밀번호가 올바르지 않습니다.',
         account_locked: '비밀번호를 여러 번 틀려 5분 동안 로그인할 수 없습니다.',
+        account_disabled: '이 계정은 서버 관리자가 비활성화했습니다.',
         invalid_token: '로그인 정보가 만료되었습니다. 다시 로그인해 주세요.',
         already_in_room: '이미 다른 방에 들어가 있습니다.',
         room_not_found: '방을 찾을 수 없습니다.',

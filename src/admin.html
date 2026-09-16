@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <link rel="icon" type="image/png" sizes="45x45" href="./img/icon45.png"/>
+        <title>Puyo W</title>
+
+        <!--ㄴ
+        뿌요 W 서버 모니터링 및 관리 도구
+
+            Copyright 2026 HJOW
+
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+
+            http://www.apache.org/licenses/LICENSE-2.0
+
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+        -->
+
+        <!--
+        화면 모드(다크 / 밝은)에 따라 이 변수들만 바뀌고 나머지 규칙은 그대로 쓴다.
+        화면 모드는 저장하지 않으며, 기본값은 시스템 설정을 따르고 알 수 없으면 다크 모드다.
+        -->
+        <style>
+            :root {
+                color-scheme: dark;
+                --admin-bg: #171a21;
+                --admin-panel: #1f2430;
+                --admin-panel-2: #262c3a;
+                --admin-border: #333b4d;
+                --admin-text: #e6ebf2;
+                --admin-text-weak: #97a3b6;
+                --admin-accent: #57b7d8;
+                --admin-accent-text: #0d1117;
+                --admin-danger: #e06c75;
+                --admin-good: #7fc98a;
+                --admin-shadow: rgba(0, 0, 0, 0.55);
+            }
+            :root[data-theme="light"] {
+                color-scheme: light;
+                --admin-bg: #eef1f6;
+                --admin-panel: #ffffff;
+                --admin-panel-2: #f3f5f9;
+                --admin-border: #cdd4e0;
+                --admin-text: #1d2430;
+                --admin-text-weak: #5d6879;
+                --admin-accent: #1f7fa3;
+                --admin-accent-text: #ffffff;
+                --admin-danger: #c0392b;
+                --admin-good: #2f8b46;
+                --admin-shadow: rgba(29, 36, 48, 0.22);
+            }
+
+            * { box-sizing: border-box; }
+
+            html, body {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+            }
+            body {
+                background: var(--admin-bg);
+                color: var(--admin-text);
+                font-family: "Pretendard", "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", sans-serif;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+
+            button, input, select {
+                font-family: inherit;
+                font-size: inherit;
+                color: inherit;
+            }
+            button { cursor: pointer; }
+            button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+            /* 공통 부품 */
+            .admin-button {
+                border: 1px solid var(--admin-border);
+                background: var(--admin-panel-2);
+                color: var(--admin-text);
+                border-radius: 6px;
+                padding: 8px 14px;
+                transition: background 0.15s ease, border-color 0.15s ease;
+            }
+            .admin-button:hover:not(:disabled) { border-color: var(--admin-accent); }
+            .admin-button.primary {
+                background: var(--admin-accent);
+                border-color: var(--admin-accent);
+                color: var(--admin-accent-text);
+                font-weight: 700;
+            }
+            .admin-button.danger { color: var(--admin-danger); }
+            .admin-input {
+                width: 100%;
+                border: 1px solid var(--admin-border);
+                background: var(--admin-bg);
+                border-radius: 6px;
+                padding: 9px 11px;
+            }
+            .admin-input:focus { outline: 2px solid var(--admin-accent); outline-offset: -1px; }
+            .admin-field { margin-bottom: 14px; }
+            .admin-field label {
+                display: block;
+                margin-bottom: 5px;
+                color: var(--admin-text-weak);
+                font-size: 13px;
+            }
+            .admin-message {
+                min-height: 20px;
+                margin: 4px 0 10px 0;
+                color: var(--admin-danger);
+                font-size: 13px;
+                white-space: pre-line;
+            }
+            .admin-message.good { color: var(--admin-good); }
+
+            /* 로그인 화면 */
+            .admin-login-wrap {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                padding: 20px;
+            }
+            .admin-login-box {
+                width: 100%;
+                max-width: 360px;
+                background: var(--admin-panel);
+                border: 1px solid var(--admin-border);
+                border-radius: 12px;
+                padding: 28px 26px;
+                box-shadow: 0 10px 30px var(--admin-shadow);
+            }
+            .admin-login-box h1 {
+                margin: 0 0 4px 0;
+                font-size: 20px;
+            }
+            .admin-login-box .admin-subtitle {
+                margin: 0 0 22px 0;
+                color: var(--admin-text-weak);
+                font-size: 13px;
+            }
+            .admin-login-top {
+                display: flex;
+                justify-content: flex-end;
+                margin-bottom: 8px;
+            }
+
+            /* 로그인 이후 공통 레이아웃 */
+            .admin-layout {
+                display: flex;
+                min-height: 100vh;
+            }
+            .admin-side {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                width: 220px;
+                flex: 0 0 220px;
+                padding: 16px 14px;
+                background: var(--admin-panel);
+                border-right: 1px solid var(--admin-border);
+            }
+            .admin-side-top {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+            .admin-side-top .admin-button { padding: 8px 10px; }
+            .admin-side-top .admin-logout { flex: 1 1 auto; }
+            .admin-side-title {
+                font-weight: 700;
+                letter-spacing: 0.04em;
+                color: var(--admin-text-weak);
+                font-size: 12px;
+            }
+            .admin-menu {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .admin-menu button {
+                border: 1px solid transparent;
+                background: transparent;
+                border-radius: 6px;
+                padding: 9px 11px;
+                text-align: left;
+            }
+            .admin-menu button:hover { background: var(--admin-panel-2); }
+            .admin-menu button.selected {
+                background: var(--admin-panel-2);
+                border-color: var(--admin-accent);
+                font-weight: 700;
+            }
+            .admin-main {
+                flex: 1 1 auto;
+                min-width: 0;
+                padding: 22px 24px 40px 24px;
+            }
+            .admin-main h2 {
+                margin: 0 0 4px 0;
+                font-size: 20px;
+            }
+            .admin-main .admin-subtitle {
+                margin: 0 0 20px 0;
+                color: var(--admin-text-weak);
+                font-size: 13px;
+            }
+
+            /* 대시보드 */
+            .admin-card-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+            .admin-card {
+                background: var(--admin-panel);
+                border: 1px solid var(--admin-border);
+                border-radius: 10px;
+                padding: 14px 16px;
+            }
+            .admin-card .admin-card-label {
+                color: var(--admin-text-weak);
+                font-size: 12px;
+                margin-bottom: 6px;
+            }
+            .admin-card .admin-card-value {
+                font-size: 22px;
+                font-weight: 700;
+                word-break: break-all;
+            }
+            .admin-card .admin-card-sub {
+                color: var(--admin-text-weak);
+                font-size: 12px;
+                margin-top: 4px;
+            }
+            .admin-gauge {
+                height: 8px;
+                margin-top: 10px;
+                border-radius: 4px;
+                background: var(--admin-panel-2);
+                overflow: hidden;
+            }
+            .admin-gauge > div {
+                height: 100%;
+                background: var(--admin-accent);
+                transition: width 0.4s ease;
+            }
+            .admin-section-title {
+                margin: 24px 0 10px 0;
+                font-size: 14px;
+                font-weight: 700;
+                color: var(--admin-text-weak);
+            }
+
+            /* 계정 목록 */
+            .admin-table-wrap {
+                overflow-x: auto;
+                border: 1px solid var(--admin-border);
+                border-radius: 10px;
+                background: var(--admin-panel);
+            }
+            table.admin-table {
+                width: 100%;
+                border-collapse: collapse;
+                min-width: 520px;
+            }
+            table.admin-table th, table.admin-table td {
+                text-align: left;
+                padding: 10px 14px;
+                border-bottom: 1px solid var(--admin-border);
+                white-space: nowrap;
+            }
+            table.admin-table th {
+                color: var(--admin-text-weak);
+                font-size: 12px;
+                font-weight: 700;
+            }
+            table.admin-table tbody tr { cursor: pointer; }
+            table.admin-table tbody tr:hover { background: var(--admin-panel-2); }
+            table.admin-table tbody tr:last-child td { border-bottom: none; }
+            .admin-state {
+                display: inline-block;
+                border-radius: 20px;
+                padding: 1px 10px;
+                font-size: 12px;
+                border: 1px solid currentColor;
+            }
+            .admin-state.on { color: var(--admin-good); }
+            .admin-state.off { color: var(--admin-danger); }
+            .admin-empty {
+                padding: 26px 16px;
+                text-align: center;
+                color: var(--admin-text-weak);
+            }
+
+            /* 레이어 팝업 */
+            .admin-popup-back {
+                position: fixed;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                background: rgba(0, 0, 0, 0.5);
+            }
+            .admin-popup {
+                width: 100%;
+                max-width: 380px;
+                background: var(--admin-panel);
+                border: 1px solid var(--admin-border);
+                border-radius: 12px;
+                padding: 22px;
+                box-shadow: 0 12px 34px var(--admin-shadow);
+            }
+            .admin-popup h3 {
+                margin: 0 0 16px 0;
+                font-size: 17px;
+            }
+            .admin-popup dl {
+                margin: 0 0 18px 0;
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 8px 14px;
+            }
+            .admin-popup dt { color: var(--admin-text-weak); }
+            .admin-popup dd { margin: 0; word-break: break-all; }
+            .admin-popup-buttons {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                justify-content: flex-end;
+            }
+
+            /* 좁은 화면에서는 사이드바를 위로 접는다. */
+            @media (max-width: 720px) {
+                .admin-layout { flex-direction: column; }
+                .admin-side {
+                    width: auto;
+                    flex: 0 0 auto;
+                    border-right: none;
+                    border-bottom: 1px solid var(--admin-border);
+                }
+                .admin-menu { flex-direction: row; flex-wrap: wrap; }
+                .admin-main { padding: 18px 16px 32px 16px; }
+            }
+        </style>
+
+        <!-- 비밀번호를 서버로 보내기 전에 sha256 으로 해시하는 데 쓴다. (평문 http 에서는 crypto.subtle 을 쓸 수 없다) -->
+        <script defer src="./js/crypto-js.min.js"></script>
+        <script defer src="./js/puyow_admin.js"></script>
+
+        <!-- 관리 도구 로딩 스크립트 -->
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                window.PuyoWAdmin.initialize(document.getElementById("puyow_admin_target"));
+            });
+        </script>
+    </head>
+    <body>
+        <div id="puyow_admin_target"></div>
+    </body>
+</html>

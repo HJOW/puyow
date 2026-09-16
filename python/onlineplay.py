@@ -94,6 +94,14 @@ def _to_win_point(value: Any) -> int:
 		return 0
 
 
+# 계정이 활성 상태인지 확인한다.
+def _is_account_active(account: dict[str, Any] | None) -> bool:
+	"""active 필드가 없는 예전 계정 파일은 활성으로 본다. 관리 화면에서 한 번이라도 바꾸면 값이 생긴다."""
+	if account is None:
+		return False
+	return account.get("active") is not False
+
+
 class WebSocketConnection:
 	"""한 WebSocket 연결의 소켓·수신 버퍼·상태를 담는다. 실제 프레임 처리는 이 클래스가 맡는다."""
 
@@ -314,6 +322,9 @@ class OnlinePlayService:
 				if account is not None:
 					self._record_failure(account_key)
 				return HTTPStatus.UNAUTHORIZED, {"ok": False, "code": "login_failed"}
+			# 관리 화면에서 비활성으로 바꾼 계정은 비밀번호가 맞아도 로그인할 수 없다.
+			if not _is_account_active(account):
+				return HTTPStatus.FORBIDDEN, {"ok": False, "code": "account_disabled"}
 			self.login_failures.pop(account_key, None)
 			# 이미 로그인된 세션이 있으면 무효화한다.
 			previous_token = self.session_by_account.get(account_key)
@@ -458,6 +469,10 @@ class OnlinePlayService:
 		if session.get("roomId") is not None:
 			self._send_error(session, "already_in_room")
 			return
+		# 로그인한 뒤에 비활성으로 바뀐 계정도 더 이상 방을 만들 수 없다. 그래서 세션이 아니라 계정 파일을 다시 본다.
+		if not _is_account_active(self._load_account(session["accountId"])):
+			self._send_error(session, "account_disabled")
+			return
 		if len(self.rooms) >= ROOM_LIMIT:
 			self._send_error(session, "room_limit")
 			return
@@ -485,6 +500,10 @@ class OnlinePlayService:
 		"""한 계정은 동시에 한 방에만 들어갈 수 있다."""
 		if session.get("roomId") is not None:
 			self._send_error(session, "already_in_room")
+			return
+		# 방 생성과 마찬가지로 비활성 계정은 입장할 수 없다.
+		if not _is_account_active(self._load_account(session["accountId"])):
+			self._send_error(session, "account_disabled")
 			return
 		room_id = payload.get("roomId") if isinstance(payload.get("roomId"), str) else ""
 		room = self.rooms.get(room_id)
@@ -934,3 +953,79 @@ class OnlinePlayService:
 			print("온라인 플레이 API 처리 중 오류가 발생했습니다.")
 			print(traceback.format_exc())
 			return HTTPStatus.INTERNAL_SERVER_ERROR, {"ok": False, "code": "server_error"}
+	############################### 관리 화면용 ###############################
+
+	# 관리 화면에 보낼 계정 요약을 만든다.
+	def _admin_account_json(self, account: dict[str, Any]) -> dict[str, Any]:
+		"""비밀번호 해시는 절대 내보내지 않는다."""
+		account_id = str(account.get("id", ""))
+		return {
+			"id": account_id,
+			"nickname": account.get("nickname") if isinstance(account.get("nickname"), str) else "",
+			"active": _is_account_active(account),
+			"winPoint": _to_win_point(account.get("winPoint")),
+			"createdAt": account.get("createdAt") if isinstance(account.get("createdAt"), str) else "",
+			# 지금 로그인한 세션이 있는지다. 화면에서 "접속 중" 표시에 쓴다.
+			"online": account_id.lower() in self.session_by_account,
+		}
+
+	# 관리 화면용 계정 목록을 돌려준다.
+	def list_accounts(self) -> list[dict[str, Any]]:
+		"""기능을 끈 서버에서는 빈 목록이다."""
+		if not self.enabled:
+			return []
+		lister = getattr(self.storage, "list_accounts", None)
+		accounts = lister() if callable(lister) else []
+		with self.lock:
+			summaries = [self._admin_account_json(account) for account in accounts]
+		summaries.sort(key=lambda item: item["id"])
+		return summaries
+
+	# 관리 화면에서 계정 비밀번호를 바꾼다.
+	def change_account_password(self, account_id: Any, password: Any) -> dict[str, Any]:
+		"""게임과 같게 sha256 해시를 받아 bcrypt로 한 번 더 해시해 저장한다."""
+		if not self.enabled:
+			return {"ok": False, "code": "online_play_disabled"}
+		if not isinstance(password, str) or not SHA256_PATTERN.match(password):
+			return {"ok": False, "code": "invalid_password"}
+		with self.lock:
+			account = self._load_account(account_id if isinstance(account_id, str) else "")
+		if account is None:
+			return {"ok": False, "code": "account_not_found"}
+		bcrypt = _get_bcrypt()
+		hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+		with self.lock:
+			account["password"] = hashed
+			self._save_account(account)
+			# 비밀번호를 바꾼 계정의 세션은 더 유지할 이유가 없으므로 끊는다.
+			token = self.session_by_account.get(str(account.get("id", "")).lower())
+			if token:
+				self._close_session(token, "session_closed")
+		return {"ok": True}
+
+	# 관리 화면에서 계정을 활성·비활성으로 바꾼다.
+	def set_account_active(self, account_id: Any, active: bool) -> dict[str, Any]:
+		"""비활성으로 바꿔도 이미 로그인한 세션을 강제로 끊지는 않으며, 방 생성·입장만 막는다."""
+		if not self.enabled:
+			return {"ok": False, "code": "online_play_disabled"}
+		with self.lock:
+			account = self._load_account(account_id if isinstance(account_id, str) else "")
+			if account is None:
+				return {"ok": False, "code": "account_not_found"}
+			account["active"] = active is True
+			self._save_account(account)
+			return {"ok": True, "account": self._admin_account_json(account)}
+
+	# 관리 화면 대시보드에 보낼 온라인 플레이 현황을 만든다.
+	def get_stats(self) -> dict[str, Any]:
+		"""계정 수·세션 수·방 수와 대전 중인 방 수를 센다."""
+		lister = getattr(self.storage, "list_accounts", None)
+		account_count = len(lister()) if self.enabled and callable(lister) else 0
+		with self.lock:
+			return {
+				"enabled": self.enabled,
+				"accounts": account_count,
+				"sessions": len(self.sessions),
+				"rooms": len(self.rooms),
+				"playing": sum(1 for room in self.rooms.values() if room.get("state") == "playing"),
+			}

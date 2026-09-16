@@ -37,6 +37,23 @@ class FileOnlinePlayStorage:
 
 		return nickname_index
 
+	# 관리 화면의 계정 목록을 위해 저장된 계정을 모두 읽는다.
+	def list_accounts(self) -> list[dict[str, Any]]:
+		"""손상되었거나 읽을 수 없는 계정은 건너뛴다."""
+		try:
+			entries = list(self.account_root.iterdir())
+		except OSError:
+			return []
+		accounts: list[dict[str, Any]] = []
+		for entry in entries:
+			if not entry.is_dir():
+				continue
+			account = self._read_json_file(entry / "account.json")
+			if account and isinstance(account.get("id"), str):
+				accounts.append(account)
+
+		return accounts
+
 	# 이전 실행에서 남은 방 파일을 모두 지운다.
 	def clear_rooms(self) -> None:
 		"""접속자가 없는 방은 존재할 수 없으므로 서버 시작 시 방 디렉터리를 비운다."""

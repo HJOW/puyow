@@ -101,13 +101,23 @@ function createToken() {
     return crypto.randomBytes(16).toString('hex');
 }
 
+/**
+ * 계정이 활성 상태인지 확인한다.
+ * active 필드가 없는 예전 계정 파일은 활성으로 본다. (관리 화면에서 한 번이라도 바꾸면 값이 생긴다.)
+ * @param {object|null} account 계정 객체
+ * @returns {boolean} 활성이면 true
+ */
+function isAccountActive(account) {
+    return account?.active !== false;
+}
+
 /**************************************** 서비스 본체 ***************************************/
 
 /**
  * 온라인 플레이 서비스를 만든다.
  * 기능을 끈 경우에는 저장 디렉터리도 만들지 않고 모든 요청을 거절한다.
  * @param {{enabled:boolean, storage?:object}} options 서비스 설정
- * @returns {{isEnabled:()=>boolean, handleApi:Function, handleUpgrade:Function, close:Function}} 서비스 객체
+ * @returns {{isEnabled:()=>boolean, handleApi:Function, handleUpgrade:Function, close:Function, listAccounts:Function, changeAccountPassword:Function, setAccountActive:Function, getStats:Function}} 서비스 객체
  */
 function createService(options) {
     const enabled = options?.enabled === true;
@@ -235,6 +245,8 @@ function createService(options) {
             return { status: 401, body: { ok: false, code: 'login_failed' } };
         }
         loginFailures.delete(accountKey);
+        // 관리 화면에서 비활성으로 바꾼 계정은 비밀번호가 맞아도 로그인할 수 없다.
+        if (!isAccountActive(account)) return { status: 403, body: { ok: false, code: 'account_disabled' } };
 
         // 이미 로그인된 세션이 있으면 무효화한다.
         const previousToken = sessionByAccount.get(accountKey);
@@ -419,6 +431,8 @@ function createService(options) {
      */
     function createRoom(session, payload) {
         if (session.roomId) { sendError(session, 'already_in_room'); return; }
+        // 로그인한 뒤에 비활성으로 바뀐 계정도 더 이상 방을 만들 수 없다. 그래서 세션이 아니라 계정 파일을 다시 본다.
+        if (!isAccountActive(loadAccount(session.accountId))) { sendError(session, 'account_disabled'); return; }
         if (rooms.size >= ROOM_LIMIT) { sendError(session, 'room_limit'); return; }
         const rule = ROOM_RULES.includes(payload?.rule) ? payload.rule : 'standard';
         const colorCount = [3, 4, 5].includes(payload?.colorCount) ? payload.colorCount : 4;
@@ -449,6 +463,8 @@ function createService(options) {
      */
     function joinRoom(session, payload) {
         if (session.roomId) { sendError(session, 'already_in_room'); return; }
+        // 방 생성과 마찬가지로 비활성 계정은 입장할 수 없다.
+        if (!isAccountActive(loadAccount(session.accountId))) { sendError(session, 'account_disabled'); return; }
         const room = rooms.get(typeof payload?.roomId === 'string' ? payload.roomId : '');
         if (!room) { sendError(session, 'room_not_found'); return; }
         if (room.guest || room.state !== 'waiting') { sendError(session, 'room_full'); return; }
@@ -1046,6 +1062,86 @@ function createService(options) {
         }
     }
 
+    /**************************************** 관리 화면용 ***************************************/
+
+    /**
+     * 관리 화면에 보낼 계정 요약을 만든다. 비밀번호 해시는 절대 내보내지 않는다.
+     * @param {object} account 계정 객체
+     * @returns {{id:string, nickname:string, active:boolean, winPoint:number, createdAt:string, online:boolean}} 계정 요약
+     */
+    function toAdminAccountJson(account) {
+        return {
+            id: String(account.id),
+            nickname: typeof account.nickname === 'string' ? account.nickname : '',
+            active: isAccountActive(account),
+            winPoint: toWinPoint(account.winPoint),
+            createdAt: typeof account.createdAt === 'string' ? account.createdAt : '',
+            // 지금 로그인한 세션이 있는지다. 화면에서 "접속 중" 표시에 쓴다.
+            online: sessionByAccount.has(String(account.id).toLowerCase())
+        };
+    }
+
+    /**
+     * 관리 화면용 계정 목록을 돌려준다.
+     * @returns {Array<object>} 계정 요약 배열. 기능을 끈 서버에서는 빈 배열
+     */
+    function listAccounts() {
+        if (!enabled) return [];
+        const accounts = typeof storage.listAccounts === 'function' ? storage.listAccounts() : [];
+        return accounts.map(toAdminAccountJson).sort((left, right) => left.id.localeCompare(right.id));
+    }
+
+    /**
+     * 관리 화면에서 계정 비밀번호를 바꾼다. 게임과 같게 sha256 해시를 받아 bcrypt 로 한 번 더 해시해 저장한다.
+     * @param {string} accountId 계정 ID
+     * @param {string} password sha256 해시 문자열
+     * @returns {Promise<{ok:boolean, code?:string}>} 처리 결과
+     */
+    async function changeAccountPassword(accountId, password) {
+        if (!enabled) return { ok: false, code: 'online_play_disabled' };
+        if (!SHA256_PATTERN.test(password)) return { ok: false, code: 'invalid_password' };
+        const account = loadAccount(typeof accountId === 'string' ? accountId : '');
+        if (!account) return { ok: false, code: 'account_not_found' };
+        account.password = await getBcrypt().hash(password, 10);
+        saveAccount(account);
+        // 비밀번호를 바꾼 계정의 세션은 더 유지할 이유가 없으므로 끊는다.
+        const token = sessionByAccount.get(String(account.id).toLowerCase());
+        if (token) closeSession(token, 'session_closed');
+        return { ok: true };
+    }
+
+    /**
+     * 관리 화면에서 계정을 활성·비활성으로 바꾼다.
+     * 비활성으로 바꿔도 이미 로그인한 세션을 강제로 끊지는 않으며, 방 생성·입장만 막는다.
+     * @param {string} accountId 계정 ID
+     * @param {boolean} active 활성으로 둘지 여부
+     * @returns {{ok:boolean, code?:string, account?:object}} 처리 결과와 바뀐 계정 요약
+     */
+    function setAccountActive(accountId, active) {
+        if (!enabled) return { ok: false, code: 'online_play_disabled' };
+        const account = loadAccount(typeof accountId === 'string' ? accountId : '');
+        if (!account) return { ok: false, code: 'account_not_found' };
+        account.active = active === true;
+        saveAccount(account);
+        return { ok: true, account: toAdminAccountJson(account) };
+    }
+
+    /**
+     * 관리 화면 대시보드에 보낼 온라인 플레이 현황을 만든다.
+     * @returns {{enabled:boolean, accounts:number, sessions:number, rooms:number, playing:number}} 현황
+     */
+    function getStats() {
+        let playing = 0;
+        rooms.forEach((room) => { if (room.state === 'playing') playing += 1; });
+        return {
+            enabled,
+            accounts: enabled && typeof storage.listAccounts === 'function' ? storage.listAccounts().length : 0,
+            sessions: sessions.size,
+            rooms: rooms.size,
+            playing
+        };
+    }
+
     /**
      * 서비스가 쓰던 타이머를 정리한다.
      * @returns {void}
@@ -1055,7 +1151,7 @@ function createService(options) {
         timer = null;
     }
 
-    return { isEnabled: () => enabled, handleApi, handleUpgrade, close };
+    return { isEnabled: () => enabled, handleApi, handleUpgrade, close, listAccounts, changeAccountPassword, setAccountActive, getStats };
 }
 
 module.exports = { createService };

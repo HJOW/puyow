@@ -22,6 +22,7 @@
 - 핵심 엔진·캔버스 UI: `src/js/puyow.js`
 - 선택적 3D 효과 구현: `src/js/puyow_3d.js` (`puyow.js`와 분리된 확장 모듈)
 - 개발용 도구 페이지: `src/tools.html`, `src/js/puyow_tools.js` (피버 패턴·퍼즐뿌요 제작용, 게임 페이지는 이 스크립트를 읽지 않는다)
+- 서버 모니터링·관리 페이지: `src/admin.html`, `src/js/puyow_admin.js` (서버 백엔드는 `nodeserver/admin.js`·`python/admin.py`, 게임 페이지는 이 스크립트를 읽지 않는다)
 - 스타일: `src/css/puyow.css`
 - 선택적 라이브러리: `src/js/three.min.js`, `src/js/json5.min.js`
 - 이미지: `src/img/`
@@ -758,6 +759,8 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 
 **대전 진행** — `startOnlineGame()`이 `game.online = {rule, youAreHost, opponent, defeatSent}`을 만든다. 뿌요 지급 덱은 서버가 준 것을 `game.pairQueue`에 그대로 넣고, `ensurePairQueue()`는 온라인일 때 무작위 생성 대신 덱을 앞에서부터 다시 써서 양쪽이 언제나 같은 뿌요를 받게 한다. 내 조작은 `moveActive()`·`rotateActive()`와 아래 방향키 누름·뗌에서 `sendOnlineInput()`으로 보내고, 받은 상대 조작은 `applyPlayerControlAction()`과 방향 홀드로 우측 플레이어에 적용한다(그래서 `getPlayerInputIndex()`가 `game.online`에서도 1번 자리를 허용한다). 연쇄 결과(`opponent_chain`)는 **다시 적용하지 않는다** — 내 쪽 시뮬레이션이 이미 같은 값을 만들어 두 번 적용하면 공격이 두 배가 된다. 패배는 `updateDefeatSequence()`에서 `reportOnlineDefeat()`으로 한 번만 보고하고, 승패와 WIN POINT는 서버가 확정해 `game_result`로 돌려준다.
 
+**계정 활성 상태(2026-09-16 추가)** — 계정 문서의 `active`가 `false`면 로그인과 방 생성·입장이 막힌다. 아래 관리 페이지 기록을 함께 본다.
+
 **제외와 차이** — 진행도(`recordEnemyClear`), GOLD(`calculateCurrentGameGoldReward`), 역방향 학습(`shouldSendLearningEvent`), 가상 컨트롤러(`shouldShowVirtualController`)는 "너랑 나랑"과 같게 `game.online`도 제외한다. 리플레이는 기록하지 않으며 ESC 일시정지도 막는다. 결과 화면에서는 적 컨트롤러가 없으므로 `drawResultCenter()`가 초상화 대신 `drawOnlineResultPanel()`로 WIN POINT 변화를 그린다(이 분기를 빼면 이겼을 때 널 참조로 터진다). `closeResultScreen()`의 "종료"는 메인 메뉴가 아니라 방 화면으로 돌아가며, 재대전은 방장이 방에서 "시작"을 다시 누른다.
 
 ### 모든 적 초상화 재구현 (2026-09-14, BUILDNO 56)
@@ -803,13 +806,33 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 ### 온라인 플레이 저장소 분리와 서버 안내 (2026-09-15)
 
 - 파일 입출력은 `nodeserver/onlineplay_storage.js`와 `python/onlineplay_storage.py`의 `FileOnlinePlayStorage`로 분리했다. Node는 `createService({enabled, storage})`, Python은 `OnlinePlayService(enabled, storage=...)`로 다른 저장소를 주입할 수 있다. 생략하면 기존 홈 디렉터리의 파일 저장소를 사용한다. 생성자는 I/O를 하지 않으며 비활성 서비스에서는 저장소 메서드를 호출하지 않는다.
-- 계약은 동기식 `initialize`, `loadNicknameIndex`/`load_nickname_index`, `loadAccount`/`load_account`, `saveAccount`/`save_account`, `saveRoom`/`save_room`, `removeRoom`/`remove_room`, `clearRooms`/`clear_rooms`이다. Node에 Promise 반환 저장소를 그대로 연결하지 않는다. 닉네임 색인 로딩은 저장소에서 하고 가입 이후 색인 갱신·입력 검증·bcrypt·점수 계산·메모리 방과 세션·잠금은 서비스에 남긴다.
+- 계약은 동기식 `initialize`, `loadNicknameIndex`/`load_nickname_index`, `listAccounts`/`list_accounts`(2026-09-16 추가, 관리 화면 목록용), `loadAccount`/`load_account`, `saveAccount`/`save_account`, `saveRoom`/`save_room`, `removeRoom`/`remove_room`, `clearRooms`/`clear_rooms`이다. Node에 Promise 반환 저장소를 그대로 연결하지 않는다. 닉네임 색인 로딩은 저장소에서 하고 가입 이후 색인 갱신·입력 검증·bcrypt·점수 계산·메모리 방과 세션·잠금은 서비스에 남긴다.
 - 기존 경로·JSON·예외 정책·처리 순서를 유지했다. 서버 시작 시 방 스냅샷만 지우고 계정은 보존한다. 방장 이양 시 옛 ID 스냅샷을 삭제하고 새 ID로 저장한다. 계정 저장 오류는 전파하고 방 저장 오류는 서비스에서 처리한다(Python은 OSError). 동시 가입·복수 계정 점수 저장의 원자성은 이번 리팩터링에서 변경하지 않았다.
 - `docs/Server.md`와 `docs/Server.en.md`에 실행·종료·포트, 온라인 설정, 저장소 계약, SQLite/MariaDB 교체, HTTP/WebSocket API를 설명했다. HOWTO 양쪽에서 연결한다. `docs/examples/onlineplay_sql.js`·`onlineplay_sql.py`는 실제 교체 가능한 학습용 예제이며 기본 서버에는 연결하지 않았다. Node MariaDB는 동기 계약을 맞추기 위해 별도 프로세스 도우미를 쓰므로 운영 성능용 설계가 아니다. SQLite는 로컬 파일이며 IP·포트가 없고, MariaDB 설명의 192.168.0.15:3306은 예시일 뿐이다.
 - `tests/onlineplay_storage.node.cjs`는 임시 파일/SQLite 저장소와 실제 HTTP/WebSocket으로 가입·로그인·결과·방장 이양·재시작을 확인한다. `python/test_onlineplay_storage.py`는 관리 스레드 시작을 막고 서비스 흐름을 직접 실행한다. 두 테스트는 `tests/onlineplay.fixture.json`으로 기존 JSON 계약을 확인하며 실제 홈 저장소를 건드리지 않는다. Node 22.12 SQLite 검사는 `node --experimental-sqlite --test tests/onlineplay_storage.node.cjs`, Python 검사는 `python -B -m unittest discover -s python -p test_onlineplay_storage.py`로 실행한다. 실제 MariaDB와 브라우저 두 클라이언트의 온라인 대전 검증은 별도다.
 - 기존 Node/Python 차이를 문서에 명시했다. 방 createdAt·게임 startedAt은 Node 밀리초/Python 초, 계정 createdAt은 UTC 문자열이다. Node `/apis/learning`에는 `Bearer localhost` 전용 우회가 없고 Python에는 있다. Node `/apis/solomonlearning`은 인증·메서드·본문 검증 없이 수신만 한다. 이 차이들은 이번 작업에서 바꾸지 않았다. `puyow.js`는 수정하지 않아 BUILDNO와 패키지 버전은 그대로다.
 
 - 검증 결과: Node 저장소/HTTP/WebSocket 회귀 4개, Python 저장소 회귀 3개(파일·SQLite 시나리오 포함), 기존 Python 서버 인증 회귀 8개, Chromium의 모델 없는 Node 서버 회귀 1개를 통과했다. 기존 임시 서버 테스트가 새 저장소 모듈까지 함께 복사하도록 수정했다. ESLint와 JS/Python 문법, 서버 문서의 JSON·JavaScript 예제 및 상대 링크를 확인했다. Node 전용 테스트는 Playwright가 수집하지 않도록 `.node.cjs` 확장자를 사용한다.
+
+### 서버 모니터링·관리 페이지 (2026-09-16, BUILDNO 70)
+
+`TODO.md`의 관리 페이지 요구를 구현했다. 프런트는 `src/admin.html`(스타일 전부)과 `src/js/puyow_admin.js`(화면 전체)에만 있고, `puyow.js`는 오류 코드 문구 한 줄만 늘렸다. 관리 페이지는 게임 코드를 전혀 읽지 않으며 `puyow.html`도 관리 코드를 읽지 않는다. 공유하는 것은 sha256용 `crypto-js.min.js` 하나뿐이다.
+
+**관리자 계정** — Node는 `nodeserver/server.js`의 `ADMIN_ID`·`ADMIN_PASSWORD`, Python은 `SERVER_CONFIG["admin_id"]`·`["admin_password"]`다. 하나뿐이고 추가할 수 없다. **비밀번호가 공란이면 관리자 계정 자체가 비활성**이라 어떤 값으로도 로그인할 수 없다(`admin_disabled`). 비밀번호는 운영자가 서버 코드에서 고칠 수 있어야 하므로 **단방향 암호화하지 않고 원문 그대로 두고**, 로그인 때만 양쪽이 sha256 해시를 비교한다(Node `crypto.timingSafeEqual`, Python `hmac.compare_digest`).
+
+**관리자 세션** — 온라인 플레이 세션(`onlineplay.js`·`onlineplay.py`)과 저장소도 수명도 완전히 분리되어 있다. `puyow_admin_session` 쿠키(HttpOnly, SameSite=Strict)로 유지하며, 로그인 전에도 세션을 발급해야 **로그인 실패 횟수를 세션에 담을 수 있다**. 5회 이상 실패하면 마지막 실패로부터 **10분** 동안 그 세션의 관리자 로그인을 막고(`login_blocked`, 남은 초는 `blockedSeconds`), 10분이 지나면 횟수를 0으로 되돌린다. 30분간 요청이 없는 세션은 다음 요청에서 정리한다(타이머를 두지 않는다). 쿠키를 지우면 횟수도 초기화되는 한계는 "세션에 담는다"는 요구를 그대로 따른 결과이므로, 공개 서버에서는 경로 자체를 막으라고 문서에 적어 두었다.
+
+**백엔드 분리** — `nodeserver/admin.js`의 `createService({adminId, adminPassword, onlinePlayService, getServerInfo})`와 `python/admin.py`의 `AdminService(admin_id, admin_password, online_play_service, server_info)`다. 기존 서버 파일은 서비스 생성과 `apis` 등록만 고쳤다. **Python 쪽은 관리 API만 `Set-Cookie`가 필요해서**, `_send_json(status, payload, extra_headers=None)`을 늘리고 `/apis/` 라우터가 `(상태, 본문)`과 `(상태, 본문, 헤더)` 두 형태를 모두 받도록 했다. 다른 API는 그대로 두 값만 돌려준다.
+
+**API** — 모두 POST다. `session`·`login`·`logout`은 로그인 전에도 쓸 수 있고, `status`·`accounts`·`accountpassword`·`accountstate`는 로그인한 관리자만 쓸 수 있다(`unauthorized`). **세 구현(두 서버와 `puyow_admin.js`)이 같은 경로와 오류 코드를 쓰므로 하나를 바꾸면 셋 다 고쳐야 한다.** 계정 응답에는 어떤 경우에도 비밀번호 해시를 넣지 않는다.
+
+**대시보드** — 4초에 한 번 `status`를 다시 읽는다. Node는 `process.memoryUsage()`의 rss·heapTotal·heapUsed·external·arrayBuffers만 보내고 `cpuPercent`·`memoryPercent`는 항상 `null`이다(시스템 전체 점유율을 알 수 없다). Python은 `psutil`로 CPU·램 점유율과 프로세스 RSS를 읽으며, `psutil`이 없으면 두 값이 `null`이고 `psutilAvailable`이 `false`다. **`psutil`은 지연 import라 설치하지 않아도 서버와 관리 페이지가 돈다.** `psutil.cpu_percent(interval=None)`은 첫 호출이 항상 0.0이라 `AdminService` 생성 때 한 번 호출해 기준 시각을 잡아 둔다.
+
+**온라인 계정 활성 상태** — 계정 문서에 boolean `active`를 더했다. **필드가 없는 예전 계정은 활성으로 본다**(`isAccountActive`·`_is_account_active`). 비활성 계정은 로그인이 거부되고(`account_disabled`, 403), **이미 로그인한 세션은 끊지 않되 방 생성·입장이 막힌다**. 그래서 `createRoom`·`joinRoom`은 세션이 아니라 계정을 다시 읽어 확인한다. 저장소 계약에 `listAccounts()`/`list_accounts()`를 더했고 `docs/examples/onlineplay_sql.*` 예제에도 같이 구현했다. 비밀번호를 바꾸면 그 계정의 세션을 끊는다.
+
+**화면** — 로그인 화면 → 사이드바가 있는 대시보드·온라인 계정 화면이다. 사이드바 상단은 (왼쪽)화면 모드 토글 + (오른쪽)로그아웃이고 메뉴는 `MENU_ITEMS` 배열에 있어 여기에만 추가하면 늘어난다. 화면 모드는 저장하지 않고 `prefers-color-scheme`을 따르되 알 수 없으면 다크다. CSS 변수는 `admin.html`의 `:root`와 `:root[data-theme="light"]`에만 있다. 계정 목록에서 계정을 누르면 상세 레이어 팝업(닉네임·ID·현재 상태 + "비밀번호 변경"·"비활성화/활성화"·"닫기")이 열리고, "비밀번호 변경"은 그 위에 마스킹 입력 팝업을 하나 더 겹친다.
+
+- 검증 결과: Node 임시 서버로 관리 API 16가지(세션 발급·미로그인 차단·5회 실패 차단·차단 중 정상 비밀번호 거절·정상 로그인·현황·계정 목록·접속 표시·비활성화·재활성화·비밀번호 변경·잘못된 요청·로그아웃·계정 파일·공란 비활성)를 확인했고, Python도 실제 `PuyoRequestHandler` 라우터로 같은 16가지를 확인했다. Chromium으로 관리 페이지 전체 흐름(다크/밝은 모드, 로그인 실패 문구, 대시보드 4초 자동 새로고침, 계정 목록·상세 팝업·토글·비밀번호 변경 팝업, 좁은 화면 400px, 로그아웃)을 확인했다. 기존 회귀는 Node 저장소 4개, Python 저장소 3개, `python/test_learning.py` 134개가 모두 통과했다. ESLint와 JS/Python 문법 검사를 거쳤고 webpack 번들을 다시 만들었다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 

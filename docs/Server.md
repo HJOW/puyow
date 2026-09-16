@@ -68,6 +68,8 @@ Local AI의 PyTorch 설치, 모델 생성과 학습은 [MachineLearning.md](Mach
 
 방은 최대 200개, 목록에는 참여자가 없는 대기 중 방을 생성 순으로 최대 50개 표시합니다. 방장이 나가면 남은 참여자가 방장이 되고 **방 ID도 새 방장의 계정 ID로 변경**됩니다. 접속자가 없으면 방을 삭제합니다. 대전 중 이탈은 승패와 WIN POINT를 바꾸지 않습니다.
 
+관리 페이지에서 비활성으로 바꾼 계정은 로그인이 거부되고, 이미 로그인한 세션이라도 방 생성과 입장이 차단됩니다. 자세한 내용은 아래 관리 페이지 절을 참고하세요.
+
 서버는 5초 간격 ping과 15초 무응답 기준으로 연결을 확인합니다. 연결이 끊기면 방에서는 나가지만 세션은 60초 유예 동안 재인증에 쓸 수 있습니다. 세션 재연결이 진행 중인 대전 복원을 뜻하지는 않습니다. 장시간 무조작 세션은 30분 후 만료됩니다. 로그인 실패가 5분 내 3회 누적되면 유효한 비밀번호도 잠금 조건이 풀릴 때까지 거부됩니다.
 
 WIN POINT는 0 이상 정수입니다. 승자·패자의 변경량은 각각 다음 식이며, 양쪽의 갱신 전 점수를 사용합니다.
@@ -86,7 +88,44 @@ Node는 `SSL_KEY_FILE`(개인 키), `SSL_CERT_FILE`(인증서), 선택적 `SSL_C
 
 필수 경로가 비어 있거나 지정한 파일이 없으면 HTTP로 실행됩니다. 로그와 실제 주소의 `https://`를 확인하세요. HTTPS를 사용하면 WebSocket도 같은 포트의 `wss://`를 사용합니다. 비밀번호 해시는 인증에 그대로 쓰이므로 원격 로그인에는 HTTPS가 필요합니다.
 
-## 3. 저장소 구조와 DB 교체
+## 3. 서버 모니터링·관리 페이지
+
+### 관리자 계정 설정
+
+관리 페이지는 [admin.html](http://localhost:9891/admin.html)입니다. 접속하면 먼저 관리자 로그인 화면이 나옵니다.
+
+- Node: `nodeserver/server.js`의 `ADMIN_ID`, `ADMIN_PASSWORD`.
+- Python: `python/pythonserver.py`의 `SERVER_CONFIG["admin_id"]`, `SERVER_CONFIG["admin_password"]`.
+
+이 계정은 온라인 플레이 계정과 완전히 별개이며 **하나만 존재하고 추가할 수 없습니다**. 비밀번호 기본값은 빈 문자열이며, **비어 있으면 관리자 계정 자체가 비활성화되어** 어떤 값으로도 로그인할 수 없습니다. 값을 바꾼 뒤에는 서버를 다시 실행합니다.
+
+관리자 비밀번호는 운영자가 서버 코드에서 언제든 고칠 수 있어야 하므로 **단방향 암호화 없이 원문 그대로** 둡니다. 다만 로그인할 때는 관리 페이지와 서버가 각각 SHA-256으로 해시한 값만 비교하므로 원문이 네트워크로 나가지는 않습니다. 원문을 보호하려면 서버 파일의 접근 권한을 제한하고, 원격 접속에는 HTTPS를 사용하세요.
+
+### 로그인 실패 차단
+
+관리자 로그인 세션은 온라인 플레이 세션과 별개이며 `puyow_admin_session` 쿠키로 유지됩니다. 로그인 실패 횟수는 그 세션에 쌓이고, **5회 이상 실패하면 마지막 실패 시각으로부터 10분 동안** 그 세션의 관리자 로그인이 차단됩니다. 차단 중에는 올바른 비밀번호도 거부합니다. 10분이 지나면 실패 횟수를 0으로 되돌립니다. 아무 요청도 없는 관리자 세션은 30분 뒤 사라집니다.
+
+세션에 기록하는 방식이므로 쿠키를 지우면 횟수도 초기화됩니다. 공개된 주소에서 운영한다면 관리 페이지 경로 자체를 방화벽이나 리버스 프록시로 제한하세요.
+
+### 대시보드
+
+로그인하면 대시보드로 이동합니다. 화면 왼쪽 사이드바에는 화면 모드(다크/밝은) 토글과 로그아웃 버튼, 그리고 “홈”·“온라인 계정” 메뉴가 있습니다. 화면 모드는 저장하지 않으며 기본값은 시스템 설정을 따르고, 알 수 없으면 다크 모드입니다.
+
+대시보드는 서버 현황을 **4초마다 자동으로 새로 읽습니다**. 표시 항목은 서버 종류에 따라 다릅니다.
+
+- Node: `process.memoryUsage()`의 `rss`·`heapTotal`·`heapUsed`·`external`·`arrayBuffers`. 시스템 전체 점유율은 알 수 없습니다.
+- Python: `psutil`로 읽은 시스템 CPU·램 점유율과 서버 프로세스의 RSS. `psutil`을 설치하지 않으면(`pip install psutil`) 이 칸만 표시되지 않고 나머지는 그대로 동작합니다.
+
+온라인 플레이를 켰다면 가입 계정 수, 접속 세션 수, 개설된 방 수도 함께 보여 줍니다.
+
+### 온라인 계정 관리
+
+“온라인 계정” 메뉴에서 가입된 계정 목록을 봅니다. 계정을 클릭하면 닉네임·ID·현재 상태를 보여 주는 레이어 팝업이 열리고 “비밀번호 변경”·“비활성화”(또는 “활성화”)·“닫기” 버튼이 있습니다. 온라인 플레이를 끈 서버에서는 목록이 비어 있습니다.
+
+- **비밀번호 변경**: 새 비밀번호를 두 번 입력받아 SHA-256 해시만 보냅니다. 서버가 bcrypt로 다시 해시해 저장하며, 해당 계정의 세션은 끊깁니다. 원문 규칙은 게임 가입 화면과 같은 영문·숫자·밑줄·`!@#$%^&*?` 4~30자입니다.
+- **비활성화 / 활성화**: 계정 문서의 `active` 필드를 바꾸는 토글입니다. 비활성 계정은 **로그인이 거부**되고, 이미 로그인한 세션이라면 강제로 끊지는 않되 **방 생성과 방 입장이 차단**됩니다. 게임에는 `account_disabled` 오류로 전달됩니다.
+
+## 4. 저장소 구조와 DB 교체
 
 ### 기본 파일 저장소
 
@@ -98,7 +137,7 @@ Node는 `SSL_KEY_FILE`(개인 키), `SSL_CERT_FILE`(인증서), 선택적 `SSL_C
   rooms/<소문자 방 ID>.json
 ```
 
-계정 문서는 `{id, nickname, password, winPoint, createdAt}`입니다. ID는 대소문자를 구분하지 않고, 닉네임은 구분합니다. 계정 파일과 bcrypt 해시는 교체 시 보존해야 합니다. 방 문서는 아래 API의 방 객체와 같으며 **메모리 상태의 스냅샷**입니다. 서비스 시작 시 방 스냅샷만 삭제하고 계정은 유지합니다. 세션·소켓·진행 중 게임은 DB 교체 대상이 아닙니다.
+계정 문서는 `{id, nickname, password, winPoint, createdAt}`이며, 관리 페이지에서 계정을 비활성화하면 boolean `active`가 추가됩니다. `active`가 없는 계정은 활성으로 봅니다. ID는 대소문자를 구분하지 않고, 닉네임은 구분합니다. 계정 파일과 bcrypt 해시는 교체 시 보존해야 합니다. 방 문서는 아래 API의 방 객체와 같으며 **메모리 상태의 스냅샷**입니다. 서비스 시작 시 방 스냅샷만 삭제하고 계정은 유지합니다. 세션·소켓·진행 중 게임은 DB 교체 대상이 아닙니다.
 
 서비스에 필요한 저장소 계약은 다음과 같습니다. 계정과 방을 한 클래스에서 다루므로 파일 기반 세부 사항을 이 경계 안에서 교체할 수 있습니다.
 
@@ -106,6 +145,7 @@ Node는 `SSL_KEY_FILE`(개인 키), `SSL_CERT_FILE`(인증서), 선택적 `SSL_C
 | --- | --- | --- |
 | `initialize()` | `initialize()` | 저장 경로/스키마 준비. 계정 삭제 금지. 실패 전파 |
 | `loadNicknameIndex()` | `load_nickname_index()` | 닉네임 → 소문자 ID, Node `Map` / Python `dict` |
+| `listAccounts()` | `list_accounts()` | 저장된 계정 전체 배열/리스트, 관리 화면 목록용. 손상된 계정은 건너뜀 |
 | `loadAccount(id)` | `load_account(id)` | 새 계정 객체 또는 `null` / `None` |
 | `saveAccount(account)` | `save_account(account)` | 계정 전체 저장, 실패 전파 |
 | `saveRoom(snapshot)` | `save_room(snapshot)` | 직렬화 가능한 방 문서 저장, 실패 전파 |
@@ -227,11 +267,11 @@ online_play_service = OnlinePlayService(
 
 DB 예제는 한 온라인 서비스 프로세스의 저장 형식 교체를 보여 줍니다. 같은 DB를 쓴다고 Node와 Python의 방·세션이 공유되지는 않습니다. 다른 서버가 시작하면 공통 방 스냅샷 테이블을 비우므로 동시 운영용 저장소로 사용하지 마세요. DB 테이블의 기본 키만으로 닉네임의 동시 중복 가입이나 승자·패자 점수의 일괄 원자성이 보장되지는 않습니다. 그런 기능은 별도의 서비스 계약 변경 작업입니다.
 
-## 4. HTTP API 명세
+## 5. HTTP API 명세
 
 이하 URL은 서버 루트 기준입니다. 요청 JSON에는 `Content-Type: application/json`을 사용합니다. 쿼리 매개변수는 필요 없습니다. 특히 현재 Node의 `/apis/` 라우터는 API명 뒤 쿼리 문자열을 일부 경로에서 분리하지 않으므로 문서의 URL을 그대로 사용하세요.
 
-공통적으로 `OPTIONS`는 204와 CORS 헤더를 반환합니다. 허용 Origin은 `*`, 허용 메서드는 `GET, HEAD, POST, OPTIONS`, 허용 헤더는 `Content-Type, Authorization`입니다. 쿠키 인증은 사용하지 않습니다.
+공통적으로 `OPTIONS`는 204와 CORS 헤더를 반환합니다. 허용 Origin은 `*`, 허용 메서드는 `GET, HEAD, POST, OPTIONS`, 허용 헤더는 `Content-Type, Authorization`입니다. 게임과 온라인 플레이 API는 쿠키 인증을 사용하지 않습니다. 관리 페이지 API만 예외로 같은 출처 세션 쿠키를 사용합니다.
 
 | URL | Node | Python | 인증 |
 | --- | --- | --- | --- |
@@ -243,6 +283,13 @@ DB 예제는 한 온라인 서비스 프로세스의 저장 형식 교체를 보
 | `POST /v1/chat/completions` | Local AI 배치·연결 검사 | 동일 + 선택적 역학습 기록 | AI Bearer 토큰 |
 | `POST /apis/learning` | 학습 이벤트 누적 | 동일, 입력 검증은 더 엄격 | AI Bearer 토큰 |
 | `POST /apis/solomonlearning` | 수신만 함 | 역학습 수집·반영 | 아래 차이 참고 |
+| `POST /apis/admin/session` | 관리자 로그인 상태 확인 | 동일 | 없음(세션 쿠키 발급) |
+| `POST /apis/admin/login` | 관리자 로그인 | 동일 | ID·비밀번호 해시 |
+| `POST /apis/admin/logout` | 관리자 로그아웃 | 동일 | 관리자 세션 쿠키 |
+| `POST /apis/admin/status` | 서버 현황(V8 메모리) | 서버 현황(psutil CPU·램) | 관리자 세션 쿠키 |
+| `POST /apis/admin/accounts` | 온라인 계정 목록 | 동일 | 관리자 세션 쿠키 |
+| `POST /apis/admin/accountpassword` | 온라인 계정 비밀번호 변경 | 동일 | 관리자 세션 쿠키 |
+| `POST /apis/admin/accountstate` | 온라인 계정 활성·비활성 | 동일 | 관리자 세션 쿠키 |
 
 정보 조회 API는 매개변수 없이 200 `{"available":boolean}`을 반환합니다. 온라인 정보는 기능 설정값이며 실제 두 사람의 대전 성공을 검사하지 않습니다. 모델 정보는 파일 존재뿐 아니라 실제 모델 로드도 확인합니다. 두 정보 핸들러 자체는 현재 GET 전용 검사를 하지 않지만 클라이언트는 GET을 사용합니다.
 
@@ -280,12 +327,60 @@ async function signup(id, nickname, password) {
 | 400 | `invalid_body` | JSON 본문 오류 |
 | 401 | `login_failed` | 없는 계정 또는 비밀번호 불일치 |
 | 409 | `duplicate_id`, `duplicate_nickname` | 가입 중복 |
+| 403 | `account_disabled` | 관리 페이지에서 비활성으로 바꾼 계정 |
 | 423 | `account_locked` | 로그인 실패 횟수 잠금 |
 | 404 | `online_play_disabled`, `not_found` | 기능 비활성 또는 알 수 없는 동작 |
 | 405 | `method_not_allowed` | POST가 아닌 요청 |
 | 500 | `server_error` | 계정 저장 등을 처리하지 못함 |
 
 온라인 본문 제한은 64KiB입니다. Python은 초과 시 413 `invalid_body`를 반환합니다. Node는 초과한 요청 연결을 끊으므로 JSON 오류 응답 수신을 보장하지 않습니다. Python은 객체가 아닌 JSON도 `invalid_body`로 거부합니다. 잘못된 입력에 대한 두 구현의 모든 응답이 완전히 같지는 않습니다.
+
+### 관리 페이지 API
+
+모든 관리 API는 `POST`이며 본문은 JSON입니다. 첫 요청에 `puyow_admin_session` 쿠키(HttpOnly, SameSite=Strict)를 발급하고, 이후 모든 요청이 그 쿠키로 같은 세션을 찾습니다. 브라우저에서는 `fetch(..., { credentials: 'same-origin' })`으로 호출합니다. 본문 제한은 64KiB입니다.
+
+| 요청 | JSON 매개변수 | 200 응답 |
+| --- | --- | --- |
+| session | 없음 | `{"ok":true,"adminEnabled":true,"authenticated":false,"blockedSeconds":0}` |
+| login | `id`, `password`(SHA-256 해시) | `{"ok":true,"adminId":"root"}` |
+| logout | 없음 | `{"ok":true}` |
+| status | 없음 | 아래 서버 현황 객체 |
+| accounts | 없음 | `{"ok":true,"onlinePlayEnabled":true,"accounts":[...]}` |
+| accountpassword | `id`, `password`(SHA-256 해시) | `{"ok":true}` |
+| accountstate | `id`, `active`(boolean) | `{"ok":true,"account":{...}}` |
+
+`accounts`의 각 항목은 `{id, nickname, active, winPoint, createdAt, online}`입니다. **비밀번호 해시는 어떤 응답에도 들어가지 않습니다.** `online`은 지금 로그인한 세션이 있는지입니다.
+
+`status`는 두 서버가 같은 형태로 응답하되 서버가 알 수 있는 값만 채웁니다. Node는 `cpuPercent`·`memoryPercent`가 항상 `null`이고, Python은 `psutil`이 없으면 두 값이 `null`이며 `psutilAvailable`이 `false`입니다.
+
+```json
+{
+  "ok": true,
+  "server": "node",
+  "runtime": "Node.js v22.12.0",
+  "uptimeSec": 128,
+  "time": "2026-09-16T04:54:34.603Z",
+  "cpuPercent": null,
+  "memoryPercent": null,
+  "memoryBytes": [{ "key": "rss", "bytes": 54231040 }],
+  "onlinePlay": { "enabled": true, "accounts": 2, "sessions": 0, "rooms": 0, "playing": 0 },
+  "serverInfo": { "port": 9891, "https": false, "onlinePlayEnabled": true, "localAiAvailable": false }
+}
+```
+
+관리 API의 오류 본문도 `{"ok":false,"code":"..."}`입니다.
+
+| 상태 | code | 의미 |
+| --- | --- | --- |
+| 400 | `invalid_body`, `invalid_request`, `invalid_password` | 본문·필드 형식 오류 |
+| 400 | `account_not_found` | 대상 온라인 계정 없음 |
+| 401 | `login_failed` | 관리자 ID 또는 비밀번호 불일치. `remain`에 남은 시도 횟수 |
+| 401 | `unauthorized` | 로그인하지 않은 세션이 관리 기능을 호출함 |
+| 403 | `admin_disabled` | 서버의 관리자 비밀번호가 공란 |
+| 404 | `online_play_disabled`, `not_found` | 온라인 플레이 비활성 또는 알 수 없는 동작 |
+| 405 | `method_not_allowed` | POST가 아닌 요청 |
+| 423 | `login_blocked` | 5회 실패 차단. `blockedSeconds`에 남은 차단 시간(초) |
+| 500 | `server_error` | 처리 중 예외 |
 
 ### Local AI 인증과 Chat Completions
 
@@ -358,7 +453,7 @@ Python 관측은 정확히 528개, action은 0~23입니다. Node의 이벤트 �
 
 Node는 본문을 버리고 `{ok:true,trained:false,transitions:0,reason:"Node 서버는 솔로몬 역학습을 지원하지 않습니다."}`를 반환합니다. 이 핸들러는 현재 메서드와 인증도 검사하지 않습니다. 클라이언트는 POST를 사용합니다.
 
-## 5. 온라인 WebSocket API
+## 6. 온라인 WebSocket API
 
 주소는 `ws://<게임 서버>:<포트>/apis/onlineplay/socket`이며 HTTPS에서는 `wss://`입니다. 첫 메시지는 연결 후 5초 내 `auth`여야 합니다. JSON 텍스트 메시지를 사용하고 개별 프레임 크기 제한은 256KiB입니다.
 
@@ -411,9 +506,9 @@ input·chain_result의 값은 서버가 그대로 중계합니다. 위 형식이
 
 기존 구현 차이: Node의 방 `createdAt`·게임 `startedAt`은 Unix **밀리초**, Python은 Unix **초**입니다. 계정 createdAt은 양쪽 모두 UTC 문자열(Node는 밀리초 포함)입니다. `input.time`·`defeat.time`과 prepare delay는 양쪽 모두 게임 밀리초입니다. 저장소 교체는 기존 단위나 문자열을 변환하지 않습니다.
 
-소켓 오류 code: `invalid_token`, `already_in_room`, `room_limit`, `room_not_found`, `room_full`, `not_host`, `no_guest`, `already_playing`. 잘못된 토큰은 오류 전송 후 연결을 닫습니다.
+소켓 오류 code: `invalid_token`, `already_in_room`, `account_disabled`, `room_limit`, `room_not_found`, `room_full`, `not_host`, `no_guest`, `already_playing`. 잘못된 토큰은 오류 전송 후 연결을 닫습니다. `account_disabled`는 관리 페이지에서 비활성으로 바꾼 계정이 방을 만들거나 입장하려 할 때입니다.
 
-## 6. 저장소 변경 검증
+## 7. 저장소 변경 검증
 
 프로젝트 루트에서 다음 명령으로 실제 홈 저장소를 건드리지 않는 임시 파일·SQLite 회귀를 실행합니다.
 
