@@ -796,18 +796,18 @@ test('setEnemySoundPool은 getClassType에 해당하는 새 적의 사운드 풀
   )))).toBe(true);
 });
 
-test('조작 뿌요 자연 낙하 속도는 최대 256배까지 증가한다', async ({ page }) => {
-  // 배율은 1분마다 0.2씩 늘어 MAX_PLAYER_FALL_SPEED_MULTIPLIER에서 멈춘다. 상한이 256이면
-  // 1 + 1275 * 0.2 = 256이므로 1275분(76,500,000ms)에 정확히 도달한다. 상한 상수를 바꾸면
-  // 아래 마지막 세 시각과 기대값을 그 경계로 다시 계산한다.
+test('조작 뿌요 자연 낙하 속도는 최대 128배까지 증가한다', async ({ page }) => {
+  // 배율은 1분마다 1.0씩 늘어 MAX_PLAYER_FALL_SPEED_MULTIPLIER에서 멈춘다. 상한이 128이면
+  // 1 + 127 * 1.0 = 128이므로 127분(7,620,000ms)에 정확히 도달한다. 상한·증가량 상수를
+  // 바꾸면 아래 마지막 세 시각과 기대값을 그 경계에 맞춰 다시 계산한다.
   const multipliers = await page.evaluate(() => {
-    const elapsedTimes = [0, 59999, 60000, 4440000, 76440000, 76500000, 150000000];
+    const elapsedTimes = [0, 59999, 60000, 4440000, 7560000, 7620000, 150000000];
     return {
       direct: elapsedTimes.map((elapsed) => window.WebPuyo.getPlayerFallSpeedMultiplier(elapsed)),
       common: elapsedTimes.map((elapsed) => window.WebPuyo.common.getPlayerFallSpeedMultiplier(elapsed)),
     };
   });
-  expect(multipliers.direct).toEqual([1, 1, 1.2, 15.8, 255.8, 256, 256]);
+  expect(multipliers.direct).toEqual([1, 1, 2, 75, 127, 128, 128]);
   expect(multipliers.common).toEqual(multipliers.direct);
 });
 

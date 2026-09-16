@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 73;
+    const BUILDNO = 74;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -173,7 +173,9 @@
     /** 모든 게임 모드에서 새로 지급한 뿌요 쌍의 회전축 생성 Y 좌표다.  @type {number} */
     const ACTIVE_PUYO_SPAWN_Y = 11.9;
     /** 게임 경과 시간에 따른 사용자 낙하 속도의 최대 배율이다. @type {number} */
-    const MAX_PLAYER_FALL_SPEED_MULTIPLIER = 256;
+    const MAX_PLAYER_FALL_SPEED_MULTIPLIER = 128;
+    /** 게임 경과 1분마다 더할 사용자 낙하 속도 배율이다. (여기에 1이 더하여 적용. 예를 들어 1 입력 시 매 1분마다 2배씩 증가) @type {number} */
+    const PLAYER_FALL_SPEED_INCREASE_PER_MINUTE = 1.0;
     /** 좌우 방향키를 홀드 입력으로 판정하기 전 대기 시간(ms)이다. @type {number} */
     const HORIZONTAL_HOLD_DELAY = 100;
     /** 좌우 방향키 홀드 중 반복 이동 간격(ms)이다. @type {number} */
@@ -5624,7 +5626,7 @@
     /** 게임 경과 시간에 따른 조작 뿌요 자연 낙하 속도 배율을 반환한다. @param {number} elapsed 게임 경과 시간(ms) @returns {number} 자연 낙하 속도 배율 */
     function getPlayerFallSpeedMultiplier(elapsed) {
         const elapsedMinutes = Math.max(0, Math.floor(elapsed / 60000));
-        return Math.min(MAX_PLAYER_FALL_SPEED_MULTIPLIER, 1 + elapsedMinutes * 0.2);
+        return Math.min(MAX_PLAYER_FALL_SPEED_MULTIPLIER, 1 + elapsedMinutes * PLAYER_FALL_SPEED_INCREASE_PER_MINUTE);
     }
 
     /** 조작 중인 뿌요 쌍의 한 칸 낙하 간격을 반환한다. 피버의 1.5배는 보드 중력 애니메이션에만 적용하며, 새로 지급된 뿌요의 자연 낙하에는 적용하지 않는다. 빠른 하강 전의 AI 자연 낙하는 플레이어와 같은 속도를 쓴다. @param {PlayerState} player 대상 플레이어 @param {boolean} fastDown 빠른 하강 여부 @returns {number} 한 칸 낙하 간격(ms) */
