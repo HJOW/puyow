@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 70;
+    const BUILDNO = 71;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -1235,7 +1235,7 @@
     /*
      * 온라인 플레이 통신 계층이다.
      * 가입·로그인·로그아웃만 HTTP POST로 처리하고, 대기실·방·대전은 WebSocket 하나로 주고받는다.
-     * 서버 구현은 nodeserver/onlineplay.js 와 python/onlineplay.py 이며 메시지 이름과 오류 코드가 셋 다 같아야 한다.
+     * 서버 구현은 node/onlineplay.js 와 python/onlineplay.py 이며 메시지 이름과 오류 코드가 셋 다 같아야 한다.
      */
 
     /** 대기실에서 방 목록보다 앞에 오는 버튼(나가기·방 생성)의 개수다. 방 목록 포커스는 이 값부터 시작한다. @type {number} */

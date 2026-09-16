@@ -15,14 +15,14 @@ npm.cmd install
 npm.cmd start
 ```
 
-`npm start`는 ESLint 검사 → webpack 빌드 → `nodeserver/server.js` 실행 순서입니다. 이미 의존성을 설치했다면 서버만 직접 실행할 수도 있습니다.
+`npm start`는 ESLint 검사 → webpack 빌드 → `node/server.js` 실행 순서입니다. 이미 의존성을 설치했다면 서버만 직접 실행할 수도 있습니다.
 
 ```powershell
-node nodeserver/server.js
-node nodeserver/server.js 9892
+node node/server.js
+node node/server.js 9892
 ```
 
-기본 포트는 `9891`이며 첫 번째 위치 인자가 포트를 덮어씁니다. 기본값 자체를 바꾸려면 `nodeserver/server.js`의 `PORT`를 수정합니다. 포트를 전달할 때는 위 직접 실행 명령을 쓰세요. `npm start`는 여러 명령을 묶은 스크립트입니다.
+기본 포트는 `9891`이며 첫 번째 위치 인자가 포트를 덮어씁니다. 기본값 자체를 바꾸려면 `node/server.js`의 `PORT`를 수정합니다. 포트를 전달할 때는 위 직접 실행 명령을 쓰세요. `npm start`는 여러 명령을 묶은 스크립트입니다.
 
 ### Python
 
@@ -51,7 +51,7 @@ Local AI의 PyTorch 설치, 모델 생성과 학습은 [MachineLearning.md](Mach
 
 ### 활성화
 
-- Node: `nodeserver/server.js`의 `ONLINE_PLAY_ENABLED = true`.
+- Node: `node/server.js`의 `ONLINE_PLAY_ENABLED = true`.
 - Python: `python/pythonserver.py`의 `SERVER_CONFIG["online_play_enabled"] = True`.
 
 기본값은 둘 다 꺼짐입니다. 재실행 후 `GET /apis/onlineplayinfo`가 `{"available":true}`인지 확인하고 게임 페이지를 새로 고칩니다. 메인 메뉴의 “너랑 나랑”에서 온라인 플레이를 선택합니다. 비활성화 상태에서는 계정·방 저장 디렉터리도 만들지 않습니다.
@@ -94,7 +94,7 @@ Node는 `SSL_KEY_FILE`(개인 키), `SSL_CERT_FILE`(인증서), 선택적 `SSL_C
 
 관리 페이지는 [admin.html](http://localhost:9891/admin.html)입니다. 접속하면 먼저 관리자 로그인 화면이 나옵니다.
 
-- Node: `nodeserver/server.js`의 `ADMIN_ID`, `ADMIN_PASSWORD`.
+- Node: `node/server.js`의 `ADMIN_ID`, `ADMIN_PASSWORD`.
 - Python: `python/pythonserver.py`의 `SERVER_CONFIG["admin_id"]`, `SERVER_CONFIG["admin_password"]`.
 
 이 계정은 온라인 플레이 계정과 완전히 별개이며 **하나만 존재하고 추가할 수 없습니다**. 비밀번호 기본값은 빈 문자열이며, **비어 있으면 관리자 계정 자체가 비활성화되어** 어떤 값으로도 로그인할 수 없습니다. 값을 바꾼 뒤에는 서버를 다시 실행합니다.
@@ -145,7 +145,7 @@ WebMCP를 지원하는 브라우저에서는 관리 페이지가 `document.model
 
 ### 기본 파일 저장소
 
-파일 입출력은 [Node 클래스](../nodeserver/onlineplay_storage.js)와 [Python 클래스](../python/onlineplay_storage.py)의 `FileOnlinePlayStorage`로 분리되어 있습니다. 로그인·방·대전 서비스가 저장소를 주입받습니다.
+파일 입출력은 [Node 클래스](../node/onlineplay_storage.js)와 [Python 클래스](../python/onlineplay_storage.py)의 `FileOnlinePlayStorage`로 분리되어 있습니다. 로그인·방·대전 서비스가 저장소를 주입받습니다.
 
 ```text
 <서버 실행 계정의 홈>/.puyowserver/
@@ -182,7 +182,7 @@ SQLite는 **프로세스가 로컬 파일을 여는 DB**로 IP와 서버 포트�
 
 ### SQLite: Node.js
 
-`nodeserver/server.js`의 서비스 생성 코드를 다음처럼 교체합니다. 저장소 객체가 클래스 인터페이스를 구현하므로 서비스 내부는 수정하지 않습니다.
+`node/server.js`의 서비스 생성 코드를 다음처럼 교체합니다. 저장소 객체가 클래스 인터페이스를 구현하므로 서비스 내부는 수정하지 않습니다.
 
 ```js
 const { SqliteOnlinePlayStorage } = require('../docs/examples/onlineplay_sql');
@@ -195,7 +195,7 @@ const onlinePlayService = onlinePlay.createService({
 `node:sqlite`의 `DatabaseSync`를 사용합니다. Node 22.12에서는 다음과 같이 실행합니다. 파일 저장소에는 SQLite 기능이 필요하지 않습니다. [Node 22.12 SQLite 문서](https://nodejs.org/download/release/v22.12.0/docs/api/sqlite.html)
 
 ```powershell
-node --experimental-sqlite nodeserver/server.js
+node --experimental-sqlite node/server.js
 ```
 
 DB 파일은 공개 웹 루트인 `src/` 밖에 두세요. 상위 디렉터리는 미리 있어야 합니다. 테스트 등에서 직접 저장소를 만들었다면 사용 후 `storage.close()`로 연결을 닫습니다.

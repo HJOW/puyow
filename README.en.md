@@ -98,7 +98,7 @@ Open `localhost:9891` in a web browser to play. Press `CTRL + C` in Command Prom
 
 ## Playing Against Solomon (Local AI)
 
-Both the Node server started with `npm start` and the Python server provide Local AI. Choose "Local AI" as the AI service provider in the settings screen, then pick Solomon on the opponent selection screen. The Node server source is `nodeserver/server.js` and it uses the `src/onnx/default.onnx` model file; the Python server uses `python/puyow/default.pt`. The "Reverse model training" feature on the extreme difficulty works only with the Python server.
+Both the Node server started with `npm start` and the Python server provide Local AI. Choose "Local AI" as the AI service provider in the settings screen, then pick Solomon on the opponent selection screen. The Node server source is `node/server.js` and it uses the `src/onnx/default.onnx` model file; the Python server uses `python/puyow/default.pt`. The "Reverse model training" feature on the extreme difficulty works only with the Python server.
 
 ## Development Guide
 
@@ -108,7 +108,7 @@ See [HOWTO.en.md](HOWTO.en.md) for information about game settings, library usag
 
 - The repository-root `index.html` redirects to `src/index.html`.
 - `src/puyow.html` is the 2D game page, and the core library is `src/js/puyow.js`.
-- The Node.js backend server is `nodeserver/server.js`.
+- The Node.js backend server is `node/server.js`.
 - The stylesheet is in `src/css/puyow.css`; optional libraries are in `src/js/`; icons are in `src/img/`.
 - Localized notices are in `src/notice/`, and the Webpack distribution bundle is in `src/bundle/`.
 

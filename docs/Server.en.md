@@ -15,14 +15,14 @@ npm.cmd install
 npm.cmd start
 ```
 
-`npm start` runs ESLint, builds the webpack bundle, then starts `nodeserver/server.js`. After installing dependencies, you can also start just the server:
+`npm start` runs ESLint, builds the webpack bundle, then starts `node/server.js`. After installing dependencies, you can also start just the server:
 
 ```powershell
-node nodeserver/server.js
-node nodeserver/server.js 9892
+node node/server.js
+node node/server.js 9892
 ```
 
-The default port is `9891`; the first positional argument overrides it. To change the default, edit `PORT` in `nodeserver/server.js`. Use the direct command above when supplying a port; `npm start` combines several commands.
+The default port is `9891`; the first positional argument overrides it. To change the default, edit `PORT` in `node/server.js`. Use the direct command above when supplying a port; `npm start` combines several commands.
 
 ### Python
 
@@ -51,7 +51,7 @@ From another computer, replace `localhost` with the **actual game server IP**, f
 
 ### Enabling it
 
-- Node: set `ONLINE_PLAY_ENABLED = true` in `nodeserver/server.js`.
+- Node: set `ONLINE_PLAY_ENABLED = true` in `node/server.js`.
 - Python: set `SERVER_CONFIG["online_play_enabled"] = True` in `python/pythonserver.py`.
 
 Both default to disabled. Restart, check that `GET /apis/onlineplayinfo` returns `{"available":true}`, and refresh the game page. Select online play under “Play Together.” When disabled, the server does not even create account or room directories.
@@ -94,7 +94,7 @@ If required paths are empty or a specified file is missing, the server runs HTTP
 
 The administration page is [admin.html](http://localhost:9891/admin.html). Opening it shows an administrator login screen first.
 
-- Node: `ADMIN_ID` and `ADMIN_PASSWORD` in `nodeserver/server.js`.
+- Node: `ADMIN_ID` and `ADMIN_PASSWORD` in `node/server.js`.
 - Python: `SERVER_CONFIG["admin_id"]` and `SERVER_CONFIG["admin_password"]` in `python/pythonserver.py`.
 
 This account is completely separate from online-play accounts, and **only one exists; you cannot add more**. The password defaults to an empty string, and **an empty password disables the administrator account entirely**, so no value can log in. Restart the server after changing either value.
@@ -145,7 +145,7 @@ Tool descriptions and schemas are written in English because an AI reads them. R
 
 ### Default file storage
 
-File I/O is isolated in `FileOnlinePlayStorage` in the [Node module](../nodeserver/onlineplay_storage.js) and [Python module](../python/onlineplay_storage.py). The account, room, and match service accepts a storage object.
+File I/O is isolated in `FileOnlinePlayStorage` in the [Node module](../node/onlineplay_storage.js) and [Python module](../python/onlineplay_storage.py). The account, room, and match service accepts a storage object.
 
 ```text
 <home of the server's operating-system account>/.puyowserver/
@@ -182,7 +182,7 @@ SQLite is a database accessed by **opening a local file**, so it has no server I
 
 ### SQLite: Node.js
 
-Replace the service-construction code in `nodeserver/server.js` with the following. The adapter implements the storage interface, so the service internals need no changes.
+Replace the service-construction code in `node/server.js` with the following. The adapter implements the storage interface, so the service internals need no changes.
 
 ```js
 const { SqliteOnlinePlayStorage } = require('../docs/examples/onlineplay_sql');
@@ -195,7 +195,7 @@ const onlinePlayService = onlinePlay.createService({
 The example uses `DatabaseSync` from `node:sqlite`. On Node 22.12, start it as follows. The default file adapter does not require SQLite. [Node 22.12 SQLite documentation](https://nodejs.org/download/release/v22.12.0/docs/api/sqlite.html)
 
 ```powershell
-node --experimental-sqlite nodeserver/server.js
+node --experimental-sqlite node/server.js
 ```
 
 Keep the database outside the public `src/` directory. Its parent directory must already exist. If you construct storage directly in tests or tools, close its connection with `storage.close()` afterward.

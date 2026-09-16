@@ -7,7 +7,7 @@
 # 두 진입점만 연결한다. 계정·방 파일 입출력은 onlineplay_storage.py에 분리되어 있다.
 #
 # 프로토콜과 규칙은 저장소 루트의 MAY_BE_LATER.md "세부 결정 사항" 절을 따른다.
-# nodeserver/onlineplay.js 도 같은 계약을 구현하므로, 메시지 이름이나 오류 코드를 바꾸면 두 파일을 함께 고쳐야 한다.
+# node/onlineplay.js 도 같은 계약을 구현하므로, 메시지 이름이나 오류 코드를 바꾸면 두 파일을 함께 고쳐야 한다.
 #
 # Copyright 2026 HJOW
 #

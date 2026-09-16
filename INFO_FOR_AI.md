@@ -22,7 +22,7 @@
 - 핵심 엔진·캔버스 UI: `src/js/puyow.js`
 - 선택적 3D 효과 구현: `src/js/puyow_3d.js` (`puyow.js`와 분리된 확장 모듈)
 - 개발용 도구 페이지: `src/tools.html`, `src/js/puyow_tools.js` (피버 패턴·퍼즐뿌요 제작용, 게임 페이지는 이 스크립트를 읽지 않는다)
-- 서버 모니터링·관리 페이지: `src/admin.html`, `src/js/puyow_admin.js` (서버 백엔드는 `nodeserver/admin.js`·`python/admin.py`, 게임 페이지는 이 스크립트를 읽지 않는다)
+- 서버 모니터링·관리 페이지: `src/admin.html`, `src/js/puyow_admin.js` (서버 백엔드는 `node/admin.js`·`python/admin.py`, 게임 페이지는 이 스크립트를 읽지 않는다)
 - 스타일: `src/css/puyow.css`
 - 선택적 라이브러리: `src/js/three.min.js`, `src/js/json5.min.js`
 - 이미지: `src/img/`
@@ -572,7 +572,7 @@ Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 �
 
 `SOLOMON_PLACEMENT_JSON_SCHEMA`(응답 형식)는 바꾸지 않았다. 이 항목은 요청 프롬프트에만 추가된다.
 
-### Node 서버의 Local AI (`nodeserver/server.js`)
+### Node 서버의 Local AI (`node/server.js`)
 
 `npm start`로 띄우는 `nodeserver.js`도 파이썬 서버와 같은 `/apis/localmodelinfo`·`/v1/chat/completions` 계약을 제공한다. 게임 소스는 바꾸지 않았고 서버만 구현했으므로, 게임 쪽 Local AI 동작(고정 URL·키·모델명, 솔로몬 해금, `usablePlacements`)은 서버 종류와 무관하게 같다.
 
@@ -727,11 +727,11 @@ GUI(`lngui.py`)는 `TRAINING_STRATEGIES` 등록표를 그대로 나열하므로 
 
 ### Node 서버 소스 경로 (2026-09-13)
 
-Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에서 `nodeserver/server.js`로 이동했다. `npm start`는 이 새 경로를 실행하며, 서버 안에서는 `__dirname`의 상위 디렉터리를 프로젝트 루트로 계산해 `src/`의 정적 파일·ONNX 모델·게임 핵심 코드를 찾는다. 이 문서에서 이 변경 전 기록을 설명하며 쓰는 `nodeserver.js` 표기는 현재의 `nodeserver/server.js`를 뜻한다. 서버 파일 경로를 참조하거나 서버만 임시 복사해 실행하는 테스트를 수정할 때도 이 디렉터리 구조를 유지한다. 이 작업에서 `src/js/puyow.js`의 JSDoc 주석도 함께 정리했으므로 BUILDNO는 52이고 패키지 버전은 `0.0.52`다.
+Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에서 `nodeserver/server.js`로 옮겼다(이 디렉터리는 2026-09-16에 `node/`로 이름을 바꿨다. 아래 「Node 서버 디렉터리 이름 변경」 절 참고). `npm start`는 이 새 경로를 실행하며, 서버 안에서는 `__dirname`의 상위 디렉터리를 프로젝트 루트로 계산해 `src/`의 정적 파일·ONNX 모델·게임 핵심 코드를 찾는다. 이 문서에서 이 변경 전 기록을 설명하며 쓰는 `nodeserver.js`·`nodeserver/server.js` 표기는 모두 현재의 `node/server.js`를 뜻한다. 서버 파일 경로를 참조하거나 서버만 임시 복사해 실행하는 테스트를 수정할 때도 이 디렉터리 구조를 유지한다. 이 작업에서 `src/js/puyow.js`의 JSDoc 주석도 함께 정리했으므로 BUILDNO는 52이고 패키지 버전은 `0.0.52`다.
 
 ### 온라인 플레이 사용 가능 여부 API (2026-09-13, BUILDNO 53)
 
-온라인 플레이 자체는 아직 구현하지 않았다. Node 서버 `nodeserver/server.js`와 Python 서버 `python/pythonserver.py`는 인증 없이 `GET /apis/onlineplayinfo`에 `{ "available": false }`를 응답한다. `puyow.js`는 초기화할 때 이 API를 조회하며, `false`이거나 API 호출에 실패하면 "너랑 나랑" 방식 선택지에서 온라인 플레이를 숨긴다. 나중에 서버가 `true`를 반환하면 선택지는 보이고 포커스를 받을 수 있지만, 온라인 로그인·대기실 구현 전까지 선택해도 화면 전환 없이 끝난다.
+온라인 플레이 자체는 아직 구현하지 않았다. Node 서버 `node/server.js`와 Python 서버 `python/pythonserver.py`는 인증 없이 `GET /apis/onlineplayinfo`에 `{ "available": false }`를 응답한다. `puyow.js`는 초기화할 때 이 API를 조회하며, `false`이거나 API 호출에 실패하면 "너랑 나랑" 방식 선택지에서 온라인 플레이를 숨긴다. 나중에 서버가 `true`를 반환하면 선택지는 보이고 포커스를 받을 수 있지만, 온라인 로그인·대기실 구현 전까지 선택해도 화면 전환 없이 끝난다.
 
 ### 온라인 플레이 세부 사양 결정 (2026-09-14, 문서 작업)
 
@@ -747,9 +747,9 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 
 `MAY_BE_LATER.md`의 온라인 플레이를 실제로 구현했다. 계약은 그 문서의 "세부 결정 사항" 절을 그대로 따른다.
 
-**서버 상수** — Node는 `nodeserver/server.js` 상단의 `ONLINE_PLAY_ENABLED`, Python은 `SERVER_CONFIG["online_play_enabled"]` 하나로 기능 전체를 켜고 끈다. 기본값은 둘 다 꺼짐이며, 꺼져 있으면 `/apis/onlineplayinfo`가 `{"available": false}`를 응답하고 저장 디렉터리도 만들지 않는다. SSL은 Node가 `SSL_KEY_FILE`·`SSL_CERT_FILE`·`SSL_CA_FILE`, Python이 `SERVER_CONFIG`의 `ssl_cert_file`·`ssl_key_file`·`ssl_ca_file`을 쓰며, **필수 파일이 모두 실제로 존재할 때만** 그 포트를 HTTPS로 서비스하고 하나라도 없으면 조용히 HTTP로 내려간다. Node는 `https.createServer`, Python은 `ssl.SSLContext.wrap_socket`이라 인증서 파일 구성 방식이 서로 다르다. HTTPS로 서비스하면 WebSocket도 같은 포트라 자동으로 WSS가 된다.
+**서버 상수** — Node는 `node/server.js` 상단의 `ONLINE_PLAY_ENABLED`, Python은 `SERVER_CONFIG["online_play_enabled"]` 하나로 기능 전체를 켜고 끈다. 기본값은 둘 다 꺼짐이며, 꺼져 있으면 `/apis/onlineplayinfo`가 `{"available": false}`를 응답하고 저장 디렉터리도 만들지 않는다. SSL은 Node가 `SSL_KEY_FILE`·`SSL_CERT_FILE`·`SSL_CA_FILE`, Python이 `SERVER_CONFIG`의 `ssl_cert_file`·`ssl_key_file`·`ssl_ca_file`을 쓰며, **필수 파일이 모두 실제로 존재할 때만** 그 포트를 HTTPS로 서비스하고 하나라도 없으면 조용히 HTTP로 내려간다. Node는 `https.createServer`, Python은 `ssl.SSLContext.wrap_socket`이라 인증서 파일 구성 방식이 서로 다르다. HTTPS로 서비스하면 WebSocket도 같은 포트라 자동으로 WSS가 된다.
 
-**백엔드 분리** — 구현은 `nodeserver/onlineplay.js`와 `python/onlineplay.py`에 있고, 기존 서버 파일은 모듈 연결(API 등록과 Upgrade 라우팅)만 최소로 고쳤다. WebSocket은 추가 의존성 없이 RFC 6455 최소 구현(핸드셰이크와 텍스트·핑·퐁·클로즈 프레임)을 두 파일에 직접 넣었다. Python은 `bcrypt`만 추가로 필요하며 `pythonserver.py` 상단 주석에 적어 두었다(지연 import라 기능을 끄면 설치하지 않아도 서버가 돈다).
+**백엔드 분리** — 구현은 `node/onlineplay.js`와 `python/onlineplay.py`에 있고, 기존 서버 파일은 모듈 연결(API 등록과 Upgrade 라우팅)만 최소로 고쳤다. WebSocket은 추가 의존성 없이 RFC 6455 최소 구현(핸드셰이크와 텍스트·핑·퐁·클로즈 프레임)을 두 파일에 직접 넣었다. Python은 `bcrypt`만 추가로 필요하며 `pythonserver.py` 상단 주석에 적어 두었다(지연 import라 기능을 끄면 설치하지 않아도 서버가 돈다).
 
 **프로토콜** — 가입·로그인·로그아웃만 HTTP POST(`/apis/onlineplay/signup`·`login`·`logout`)이고, 대기실부터 대전까지는 WebSocket 하나(`/apis/onlineplay/socket`)를 유지한다. 클라이언트→서버는 `auth`·`room_list`·`room_create`·`room_join`·`room_leave`·`game_start_request`·`input`·`chain_result`·`defeat`, 서버→클라이언트는 `auth_ok`·`room_list`·`room_state`·`room_closed`·`opponent_left`·`game_prepare`·`game_cancel`·`game_start`·`game_result`·`session_closed`·`error`·`opponent_input`·`opponent_chain`이다. **세 구현(두 서버와 `puyow.js`)이 같은 이름과 오류 코드를 쓰므로 하나를 바꾸면 셋 다 고쳐야 한다.**
 
@@ -805,7 +805,7 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 
 ### 온라인 플레이 저장소 분리와 서버 안내 (2026-09-15)
 
-- 파일 입출력은 `nodeserver/onlineplay_storage.js`와 `python/onlineplay_storage.py`의 `FileOnlinePlayStorage`로 분리했다. Node는 `createService({enabled, storage})`, Python은 `OnlinePlayService(enabled, storage=...)`로 다른 저장소를 주입할 수 있다. 생략하면 기존 홈 디렉터리의 파일 저장소를 사용한다. 생성자는 I/O를 하지 않으며 비활성 서비스에서는 저장소 메서드를 호출하지 않는다.
+- 파일 입출력은 `node/onlineplay_storage.js`와 `python/onlineplay_storage.py`의 `FileOnlinePlayStorage`로 분리했다. Node는 `createService({enabled, storage})`, Python은 `OnlinePlayService(enabled, storage=...)`로 다른 저장소를 주입할 수 있다. 생략하면 기존 홈 디렉터리의 파일 저장소를 사용한다. 생성자는 I/O를 하지 않으며 비활성 서비스에서는 저장소 메서드를 호출하지 않는다.
 - 계약은 동기식 `initialize`, `loadNicknameIndex`/`load_nickname_index`, `listAccounts`/`list_accounts`(2026-09-16 추가, 관리 화면 목록용), `loadAccount`/`load_account`, `saveAccount`/`save_account`, `saveRoom`/`save_room`, `removeRoom`/`remove_room`, `clearRooms`/`clear_rooms`이다. Node에 Promise 반환 저장소를 그대로 연결하지 않는다. 닉네임 색인 로딩은 저장소에서 하고 가입 이후 색인 갱신·입력 검증·bcrypt·점수 계산·메모리 방과 세션·잠금은 서비스에 남긴다.
 - 기존 경로·JSON·예외 정책·처리 순서를 유지했다. 서버 시작 시 방 스냅샷만 지우고 계정은 보존한다. 방장 이양 시 옛 ID 스냅샷을 삭제하고 새 ID로 저장한다. 계정 저장 오류는 전파하고 방 저장 오류는 서비스에서 처리한다(Python은 OSError). 동시 가입·복수 계정 점수 저장의 원자성은 이번 리팩터링에서 변경하지 않았다.
 - `docs/Server.md`와 `docs/Server.en.md`에 실행·종료·포트, 온라인 설정, 저장소 계약, SQLite/MariaDB 교체, HTTP/WebSocket API를 설명했다. HOWTO 양쪽에서 연결한다. `docs/examples/onlineplay_sql.js`·`onlineplay_sql.py`는 실제 교체 가능한 학습용 예제이며 기본 서버에는 연결하지 않았다. Node MariaDB는 동기 계약을 맞추기 위해 별도 프로세스 도우미를 쓰므로 운영 성능용 설계가 아니다. SQLite는 로컬 파일이며 IP·포트가 없고, MariaDB 설명의 192.168.0.15:3306은 예시일 뿐이다.
@@ -818,11 +818,11 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 
 `TODO.md`의 관리 페이지 요구를 구현했다. 프런트는 `src/admin.html`(스타일 전부)과 `src/js/puyow_admin.js`(화면 전체)에만 있고, `puyow.js`는 오류 코드 문구 한 줄만 늘렸다. 관리 페이지는 게임 코드를 전혀 읽지 않으며 `puyow.html`도 관리 코드를 읽지 않는다. 공유하는 것은 sha256용 `crypto-js.min.js` 하나뿐이다.
 
-**관리자 계정** — Node는 `nodeserver/server.js`의 `ADMIN_ID`·`ADMIN_PASSWORD`, Python은 `SERVER_CONFIG["admin_id"]`·`["admin_password"]`다. 하나뿐이고 추가할 수 없다. **비밀번호가 공란이면 관리자 계정 자체가 비활성**이라 어떤 값으로도 로그인할 수 없다(`admin_disabled`). 비밀번호는 운영자가 서버 코드에서 고칠 수 있어야 하므로 **단방향 암호화하지 않고 원문 그대로 두고**, 로그인 때만 양쪽이 sha256 해시를 비교한다(Node `crypto.timingSafeEqual`, Python `hmac.compare_digest`).
+**관리자 계정** — Node는 `node/server.js`의 `ADMIN_ID`·`ADMIN_PASSWORD`, Python은 `SERVER_CONFIG["admin_id"]`·`["admin_password"]`다. 하나뿐이고 추가할 수 없다. **비밀번호가 공란이면 관리자 계정 자체가 비활성**이라 어떤 값으로도 로그인할 수 없다(`admin_disabled`). 비밀번호는 운영자가 서버 코드에서 고칠 수 있어야 하므로 **단방향 암호화하지 않고 원문 그대로 두고**, 로그인 때만 양쪽이 sha256 해시를 비교한다(Node `crypto.timingSafeEqual`, Python `hmac.compare_digest`).
 
 **관리자 세션** — 온라인 플레이 세션(`onlineplay.js`·`onlineplay.py`)과 저장소도 수명도 완전히 분리되어 있다. `puyow_admin_session` 쿠키(HttpOnly, SameSite=Strict)로 유지하며, 로그인 전에도 세션을 발급해야 **로그인 실패 횟수를 세션에 담을 수 있다**. 5회 이상 실패하면 마지막 실패로부터 **10분** 동안 그 세션의 관리자 로그인을 막고(`login_blocked`, 남은 초는 `blockedSeconds`), 10분이 지나면 횟수를 0으로 되돌린다. 30분간 요청이 없는 세션은 다음 요청에서 정리한다(타이머를 두지 않는다). 쿠키를 지우면 횟수도 초기화되는 한계는 "세션에 담는다"는 요구를 그대로 따른 결과이므로, 공개 서버에서는 경로 자체를 막으라고 문서에 적어 두었다.
 
-**백엔드 분리** — `nodeserver/admin.js`의 `createService({adminId, adminPassword, onlinePlayService, getServerInfo})`와 `python/admin.py`의 `AdminService(admin_id, admin_password, online_play_service, server_info)`다. 기존 서버 파일은 서비스 생성과 `apis` 등록만 고쳤다. **Python 쪽은 관리 API만 `Set-Cookie`가 필요해서**, `_send_json(status, payload, extra_headers=None)`을 늘리고 `/apis/` 라우터가 `(상태, 본문)`과 `(상태, 본문, 헤더)` 두 형태를 모두 받도록 했다. 다른 API는 그대로 두 값만 돌려준다.
+**백엔드 분리** — `node/admin.js`의 `createService({adminId, adminPassword, onlinePlayService, getServerInfo})`와 `python/admin.py`의 `AdminService(admin_id, admin_password, online_play_service, server_info)`다. 기존 서버 파일은 서비스 생성과 `apis` 등록만 고쳤다. **Python 쪽은 관리 API만 `Set-Cookie`가 필요해서**, `_send_json(status, payload, extra_headers=None)`을 늘리고 `/apis/` 라우터가 `(상태, 본문)`과 `(상태, 본문, 헤더)` 두 형태를 모두 받도록 했다. 다른 API는 그대로 두 값만 돌려준다.
 
 **API** — 모두 POST다. `session`·`login`·`logout`은 로그인 전에도 쓸 수 있고, `status`·`accounts`·`accountpassword`·`accountstate`는 로그인한 관리자만 쓸 수 있다(`unauthorized`). **세 구현(두 서버와 `puyow_admin.js`)이 같은 경로와 오류 코드를 쓰므로 하나를 바꾸면 셋 다 고쳐야 한다.** 계정 응답에는 어떤 경우에도 비밀번호 해시를 넣지 않는다.
 
@@ -843,6 +843,15 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 - 도구는 모두 `requestAdminApiForMcp()`를 거쳐 관리 API를 부르고 실패하면 예외를 던진다. 로그인 전 호출은 `unauthorized`를 "사람이 먼저 로그인해야 한다"는 영어 문구로 바꿔 돌려주므로, AI가 스스로 해결하려 하지 않는다. 예외는 `admin_login_status`가 쓰는 `session`으로, 로그인 전에도 성공하는 API라 통신 실패만 예외로 본다.
 - 도구가 서버 상태를 읽거나 바꾸면 **사람이 보고 있는 화면도 같은 값으로 갱신한다.** 대시보드를 보고 있으면 `admin_server_status`가 `state.status`를, 계정 화면을 보고 있으면 `admin_online_accounts`가 목록을 갱신하고, `admin_set_account_state`는 `state.accounts`·`state.detailAccount`를 고친 뒤 계정 화면이면 목록을 다시 읽는다.
 - 회귀 검증은 `tests/test04_admin.spec.js`다. **기본 설정 서버(관리자 비밀번호 공란)로 돌아가므로 로그인 없이 확인할 수 있는 계약만 검사한다** — 로그인 화면 표시, 화면 모드 토글이 저장되지 않음, 도구 5개의 이름·순서·`annotations`·스키마 유무, `admin_manual`·`admin_login_status`가 로그인 전에도 동작함, 나머지 3개가 영어 안내와 함께 거절함. 로그인 이후 동작은 서버 상수를 바꿔야 해서 이 파일에서 다루지 않는다.
+
+### Node 서버 디렉터리 이름 변경 (2026-09-16, BUILDNO 71)
+
+Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 바꿨다. 파일 구성(`server.js`·`onlineplay.js`·`onlineplay_storage.js`·`admin.js`)과 내부 코드는 그대로이며, 서버 파일끼리는 상대 경로로 `require()` 하고 프로젝트 루트는 여전히 `__dirname`의 상위 디렉터리로 계산하므로 동작은 바뀌지 않는다.
+
+- 함께 고친 곳: `package.json`의 `start` 스크립트(`node node/server.js`), `tests/onlineplay_storage.node.cjs`의 `require()` 두 줄, `tests/test03_ai.spec.js`가 서버만 임시 폴더에 복사할 때 쓰는 디렉터리 이름과 실행 인자, `tests/test04_admin.spec.js`의 주석, `README.md`·`README.en.md`·`docs/Server.md`·`docs/Server.en.md`·`docs/MachineLearning.md`·`docs/MachineLearning.en.md`의 경로와 링크, `python/pythonserver.py`·`python/onlineplay.py`·`python/admin.py`가 같은 계약을 가리키며 쓰는 주석, `src/js/puyow.js`·`src/js/puyow_admin.js`의 주석이다.
+- `OLD_PROMPTS.md`는 과거 요청을 그대로 남긴 기록이라 바꾸지 않았다. 이 문서 안에서도 옛 경로를 설명하는 기록성 문장은 그대로 두고, 위 「Node 서버 소스 경로」 절에 현재 경로와의 대응을 적어 두었다.
+- `tests/test03_ai.spec.js`가 서버를 임시 폴더에 복사할 때 `admin.js`가 빠져 있어 `server.js`의 `require('./admin.js')`가 실패하던 문제도 함께 고쳤다. 서버 파일을 늘리면 이 복사 목록도 함께 늘린다.
+- `src/js/puyow.js`는 경로를 가리키는 주석 한 줄만 바뀌었지만 파일을 고쳤으므로 BUILDNO는 71이고 패키지 버전은 `0.0.71`이다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 

@@ -17,7 +17,7 @@
 
     이 파일은 admin.html 전용이다. 게임 페이지(puyow.html)는 이 파일을 읽지 않는다.
 
-    서버 쪽 구현은 nodeserver/admin.js 와 python/admin.py 에 있으며, 두 서버가 같은 경로와
+    서버 쪽 구현은 node/admin.js 와 python/admin.py 에 있으며, 두 서버가 같은 경로와
     같은 오류 코드를 쓴다. 여기서 쓰는 API 이름이나 오류 코드를 바꾸면 세 파일을 함께 고쳐야 한다.
 */
 (function () {

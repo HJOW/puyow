@@ -91,10 +91,10 @@ SERVER_CONFIG = {
 	"ssl_ca_file": "",
 }
 
-# nodeserver/server.js와 동일하게 학습 API에서 접근을 차단할 경로 조각이다.
+# node/server.js와 동일하게 학습 API에서 접근을 차단할 경로 조각이다.
 BLACKLIST_FILE_PATTERNS = ("/WEB-INF/", "/META-INF/")
 
-# 확장자별 Content-Type이다. nodeserver/server.js의 표와 같은 값을 쓰며, mimetypes보다 먼저 적용한다.
+# 확장자별 Content-Type이다. node/server.js의 표와 같은 값을 쓰며, mimetypes보다 먼저 적용한다.
 # mimetypes.guess_type()은 Windows에서 레지스트리(HKEY_CLASSES_ROOT)를 함께 읽기 때문에 같은
 # 확장자라도 PC마다 다른 값이 나온다. 실제로 .mjs가 text/plain으로 잡혀 ONNX 런타임의 wasm 글루
 # 모듈을 브라우저가 거부하는 일이 있었고, .wasm도 환경에 따라 빠질 수 있다. 게임 구동에 필요한
@@ -885,7 +885,7 @@ def admin_server_info() -> dict[str, Any]:
 admin_service = AdminService(SERVER_CONFIG.get("admin_id"), SERVER_CONFIG.get("admin_password"), online_play_service, admin_server_info)
 
 
-# nodeserver/server.js의 apis 객체와 같은 역할을 하는 동적 API 등록 컬렉션이다.
+# node/server.js의 apis 객체와 같은 역할을 하는 동적 API 등록 컬렉션이다.
 # 관리 API만 세션 쿠키를 함께 내려야 해서 (상태, 본문, 추가 헤더) 세 값을 돌려준다. 라우터가 두 형태를 모두 받는다.
 apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple]] = {"learning": learning_api, "localmodelinfo": local_model_info_api, "onlineplayinfo": online_play_info_api, "onlineplay": online_play_service.handle_api, "admin": admin_service.handle_api, "solomonlearning": solomon_learning_api}
 

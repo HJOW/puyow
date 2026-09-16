@@ -5,7 +5,7 @@
  * GitHub : https://github.com/HJOW/puyow
  *
  * 이 파일은 온라인 플레이(계정·로그인·대기실·방·대전 중계)만 담당한다.
- * nodeserver/server.js 는 이 모듈의 createService() 로 서비스 객체를 만들어
+ * node/server.js 는 이 모듈의 createService() 로 서비스 객체를 만들어
  *   - HTTP  : /apis/onlineplay/...   → handleApi()
  *   - 소켓  : Upgrade 요청           → handleUpgrade()
  * 두 진입점만 연결한다. 계정·방의 파일 입출력은 onlineplay_storage.js에 분리되어 있다.

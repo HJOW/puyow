@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // 서버 모니터링·관리 페이지(admin.html, puyow_admin.js)의 회귀 테스트다.
 // 게임 페이지(puyow.html)는 test01_*.spec.js, 개발용 도구 페이지는 test02_tools.spec.js가 맡는다.
 //
-// 이 테스트는 저장소 기본 설정 그대로의 서버를 쓴다. nodeserver/server.js 의 ADMIN_PASSWORD 가
+// 이 테스트는 저장소 기본 설정 그대로의 서버를 쓴다. node/server.js 의 ADMIN_PASSWORD 가
 // 공란이라 관리자 계정이 비활성인 상태이며, 그래서 로그인 없이 확인할 수 있는 계약만 검사한다.
 // 로그인 이후 동작(대시보드·계정 관리)은 서버 상수를 바꿔야 하므로 여기서 다루지 않는다.
 

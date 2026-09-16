@@ -5,9 +5,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const http = require('node:http');
-const { FileOnlinePlayStorage } = require('../nodeserver/onlineplay_storage');
+const { FileOnlinePlayStorage } = require('../node/onlineplay_storage');
 const { SqliteOnlinePlayStorage } = require('../docs/examples/onlineplay_sql');
-const { createService } = require('../nodeserver/onlineplay');
+const { createService } = require('../node/onlineplay');
 const fixture = require('./onlineplay.fixture.json');
 
 function temporaryDirectory(t, beforeCleanup = () => {}) {

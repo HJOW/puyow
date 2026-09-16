@@ -302,7 +302,7 @@ test('Local AI는 현재 서버의 Chat Completions로 AI API 테스트를 보�
   });
 });
 
-// 아래 두 테스트는 흉내 낸 응답이 아니라 Playwright가 띄운 nodeserver/server.js의 실제 Local AI를 사용한다.
+// 아래 두 테스트는 흉내 낸 응답이 아니라 Playwright가 띄운 node/server.js의 실제 Local AI를 사용한다.
 test('Node 서버는 default.onnx로 Local AI 확인·API 테스트·솔로몬 배치에 응답하고 역학습 요청은 받기만 한다', async ({ request }) => {
   const info = await request.get('/apis/localmodelinfo');
   expect(await info.json()).toEqual({ available: true });
@@ -349,17 +349,17 @@ test('Node 서버는 default.onnx로 Local AI 확인·API 테스트·솔로몬 �
 });
 
 test('Node 서버는 Local AI 모델 파일이 없으면 사용 불가로 응답하고 모델 서비스 외 API는 그대로 동작한다', async ({ request }) => {
-  // 모델 없는 설치를 재현하되 서버가 불러오는 온라인 모듈과 저장소도 함께 복사한다.
+  // 모델 없는 설치를 재현하되 서버가 불러오는 온라인·관리 모듈과 저장소도 함께 복사한다.
   const serverRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'puyow-nodeserver-'));
-  fs.mkdirSync(path.join(serverRoot, 'nodeserver'));
-  for (const filename of ['server.js', 'onlineplay.js', 'onlineplay_storage.js']) {
-    fs.copyFileSync(path.join(process.cwd(), 'nodeserver', filename), path.join(serverRoot, 'nodeserver', filename));
+  fs.mkdirSync(path.join(serverRoot, 'node'));
+  for (const filename of ['server.js', 'onlineplay.js', 'onlineplay_storage.js', 'admin.js']) {
+    fs.copyFileSync(path.join(process.cwd(), 'node', filename), path.join(serverRoot, 'node', filename));
   }
   fs.mkdirSync(path.join(serverRoot, 'src'));
   fs.writeFileSync(path.join(serverRoot, 'src', 'index.html'), '<p>puyow</p>');
   const port = 9950 + test.info().workerIndex;
   const baseURL = `http://127.0.0.1:${port}`;
-  const server = spawn(process.execPath, ['nodeserver/server.js', String(port)], {
+  const server = spawn(process.execPath, ['node/server.js', String(port)], {
     cwd: serverRoot,
     env: { ...process.env, PUYOW_AI_TOKEN: 'node-test-token' },
     stdio: 'ignore',

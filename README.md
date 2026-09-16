@@ -125,7 +125,7 @@ Bun (https://bun.com/) 을 사용하여 서버 구동을 더 빠르게 진행할
 
 `npm start` 로 구동한 Node 서버와 Python 서버 모두 Local AI 를 제공합니다.
 설정 화면의 AI 서비스 제공자에서 "Local AI" 를 선택하면 적 선택 화면에서 솔로몬과 대전할 수 있습니다.
-Node 서버 소스는 `nodeserver/server.js`에 있으며 `src/onnx/default.onnx` 모델 파일을 사용합니다. Python 서버는 `python/puyow/default.pt` 모델 파일을 사용합니다.
+Node 서버 소스는 `node/server.js`에 있으며 `src/onnx/default.onnx` 모델 파일을 사용합니다. Python 서버는 `python/puyow/default.pt` 모델 파일을 사용합니다.
 극한 난이도의 "역으로 모델 학습" 기능은 Python 서버에서만 동작합니다.
 
 ## 개발 안내
@@ -136,7 +136,7 @@ Node 서버 소스는 `nodeserver/server.js`에 있으며 `src/onnx/default.onnx
 
 - 저장소 루트의 `index.html`은 `src/index.html`로 이동시키는 진입점입니다.
 - `src/puyow.html`은 실제 2D 게임 페이지이며, 핵심 코드는 `src/js/puyow.js`에 있습니다.
-- Node.js 기반 백엔드 서버는 `nodeserver/server.js`에 있습니다.
+- Node.js 기반 백엔드 서버는 `node/server.js`에 있습니다.
 - 스타일은 `src/css/puyow.css`, 선택적 라이브러리는 `src/js/`에, 아이콘은 `src/img/`에 있습니다.
 - 언어별 공지사항은 `src/notice/`, Webpack 배포 번들은 `src/bundle/`에 있습니다.
 

@@ -68,7 +68,7 @@ const CORS_HEADERS = {
 // 포트
 let PORT = 9891;
 // 웹 경로
-// 서버 소스는 nodeserver 디렉터리에 있으므로, 정적 파일과 모델은 프로젝트 루트를 기준으로 찾는다.
+// 서버 소스는 node 디렉터리에 있으므로, 정적 파일과 모델은 프로젝트 루트를 기준으로 찾는다.
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const WEB_ROOT = path.join(PROJECT_ROOT, 'src');
 
