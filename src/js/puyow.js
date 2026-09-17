@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 74;
+    const BUILDNO = 75;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -628,6 +628,8 @@
     let threeAvailable = false;
     /** 다음 게임 프레임 취소에 사용할 요청 식별자다. @type {number|null} */
     let animationFrameId = null;
+    /** 초기화 이후 requestAnimationFrame 콜백이 실행된 누적 횟수다. 4294967295를 넘으면 0으로 돌아간다. @type {number} */
+    let frameCounts = 0;
     /** 등록된 WebMCP 도구를 한 번에 해제하는 컨트롤러다. @type {AbortController|null} */
     let webMcpAbortController = null;
     /** 현재 실행 중인 게임 상태다. @type {object|null} */
@@ -871,6 +873,8 @@
      * @type {number}
      */
     const MAX_CATCH_UP_MS = 250;
+    /** puyow_render 이벤트의 누적 프레임 수 최댓값이다. 이 값을 넘으면 0으로 돌아간다. @type {number} */
+    const MAX_FRAME_COUNTS = 4294967295;
     /**
      * 사람이 조작하는 플레이어별 키보드·게임패드 방향 입력 상태다.
      * 0번은 1P, 1번은 "너랑 나랑"의 2P가 사용한다.
@@ -12974,6 +12978,8 @@
         drawTextDialog();
         // 모든 화면 전환 경로가 여기로 모이므로, 실제로 보인 표준 화면이 바뀐 경우에만 외부에 알린다.
         dispatchScreenChangeIfNeeded();
+        // 게임 그리기가 모두 끝난 뒤 외부 리스너가 최상단에 덧그릴 수 있게 알린다.
+        dispatchPuyoRender();
     }
 
     /** 화면 최상단에 표시 중인 외부 메시지를 그린다. @returns {void} */
@@ -13172,6 +13178,8 @@
      * @returns {void}
      */
     function frame(time) {
+        // render 호출 횟수가 아니라 실제로 실행된 애니메이션 프레임 수를 센다.
+        frameCounts = frameCounts >= MAX_FRAME_COUNTS ? 0 : frameCounts + 1;
         const realDelta = lastTime ? Math.min(MAX_CATCH_UP_MS, Math.max(0, time - lastTime)) : 0;
         lastTime = time;
         updateGamepadInput();
@@ -14735,13 +14743,33 @@
     /**
      * 브라우저 외부 확장에 Puyo W의 상태 변화를 알린다.
      * 모든 공개 이벤트 정보는 CustomEvent.detail에만 넣어 기존 DOM 이벤트 필드와 충돌하지 않게 한다.
-     * @param {'puyow_init'|'puyow_changescreen'|'puyow_unlocked'|'puyow_win'} type 발생시킬 이벤트 이름
+     * 외부 리스너에서 오류가 나더라도 게임 루프가 멈추지 않도록 발생 과정의 예외는 기록만 하고 삼킨다.
+     * @param {'puyow_init'|'puyow_changescreen'|'puyow_unlocked'|'puyow_win'|'puyow_render'} type 발생시킬 이벤트 이름
      * @param {object} [detail={}] 외부에 전달할 읽기 전용 정보
      * @returns {void}
      */
     function dispatchPuyoCustomEvent(type, detail = {}) {
         if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function' || typeof window.CustomEvent !== 'function') return;
-        window.dispatchEvent(new window.CustomEvent(type, { detail }));
+        try {
+            window.dispatchEvent(new window.CustomEvent(type, { detail }));
+        } catch (error) {
+            console.error(`${type} 이벤트 처리 중 오류가 발생했습니다.`, error);
+        }
+    }
+
+    /**
+     * 매 render 끝에 외부 확장이 캔버스 위에 덧그릴 수 있도록 알린다.
+     * 리스너가 바꾼 그리기 상태(변환·투명도·색 등)가 다음 게임 그리기에 새지 않도록 앞뒤로 컨텍스트 상태를 보존한다.
+     * @returns {void}
+     */
+    function dispatchPuyoRender() {
+        if (!canvas || !context) return;
+        context.save();
+        try {
+            dispatchPuyoCustomEvent('puyow_render', { canvas, ctx: context, frameCounts });
+        } finally {
+            context.restore();
+        }
     }
 
     /**
@@ -15679,6 +15707,7 @@
         runtimeLayoutStyle = null;
         threeAvailable = false;
         animationFrameId = null;
+        frameCounts = 0;
         webMcpAbortController = null;
         initialized = false;
     }

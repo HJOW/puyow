@@ -71,7 +71,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 ### Browser custom events
 
-When using the browser-script build, subscribe to initialization, visible-screen changes, new content unlocks, and CPU-match wins with `window.addEventListener()`. Register listeners before calling `PuyoW.initialize()`. Event information is carried in `CustomEvent.detail`. Rendering the initial screen is not a screen transition, so it emits only `puyow_init`.
+When using the browser-script build, subscribe to initialization, visible-screen changes, new content unlocks, CPU-match wins, and screen rendering with `window.addEventListener()`. Register listeners before calling `PuyoW.initialize()` (`puyow_render` fires every frame, so a listener added later still receives it from the next frame). Event information is carried in `CustomEvent.detail`. Rendering the initial screen is not a screen transition, so it emits only `puyow_init`.
 
 ```js
 window.addEventListener('puyow_init', () => {
@@ -86,6 +86,14 @@ window.addEventListener('puyow_unlocked', (event) => {
 window.addEventListener('puyow_win', (event) => {
     console.log('CPU match won:', event.detail.enemy, event.detail.elapsedMs);
 });
+window.addEventListener('puyow_render', (event) => {
+    const { canvas, ctx, frameCounts } = event.detail;
+    // Called after the game has drawn the whole screen, so this draws on top of it.
+    ctx.beginPath();
+    ctx.arc(100, 75, 50, 0, 2 * Math.PI);
+    ctx.fill();
+    if (frameCounts % 600 === 0) console.log(canvas.width + ', ' + canvas.height);
+});
 
 PuyoW.initialize('puyow_target');
 ```
@@ -94,6 +102,9 @@ PuyoW.initialize('puyow_target');
 - `puyow_changescreen`: Fires once whenever the visible screen changes. `detail.screen` is the destination's standard screen string and `detail.previousScreen` is the preceding screen string. They use the same values as `getScreenState().screen`.
 - `puyow_unlocked`: Fires only when previously locked content becomes newly available. `detail.content` is one of `gallery_warning:<type>`, `gallery_enemy:<enemy type>`, `puzzle_stage:<zero-based index>`, `enemy:<enemy type>`, `rule:fever_start`, or `mode:watch`. Only regular enemy-progress unlocks, `enemy:<enemy type>`, have string `detail.rule` (`standard`, `fever`, or `fever_start`) and `detail.difficulty` (`easy`, `normal`, `hard`, or `extreme`); both are `null` for other content. The session-only Solomon unlock uses `enemy:Solomon`.
 - `puyow_win`: Fires once after a human player wins a CPU match and all settlement and ending animation have finished. Its `detail` has AI `difficulty`, `colorCount`, `rule` (`standard`, `fever`, or `fever_start`), enemy type `enemy`, and elapsed gameplay milliseconds `elapsedMs`. It does not fire for watch, practice, continuous Fever, Puzzle Puyo, tutorial, Together, online, or replay-playback matches.
+- `puyow_render`: Fires every time the game finishes drawing a screen. `detail.canvas` is the game's 2D canvas element, `detail.ctx` is its 2D context, and `detail.frameCounts` is the cumulative number of animation frames (`requestAnimationFrame` callbacks) run since the game was initialized. It is not the number of `render` calls, and it wraps back to 0 after exceeding 4294967295. `ctx` uses the same logical coordinate system as the game (1280×720), while `canvas.width` and `canvas.height` are the actual rendering resolution chosen by the graphics setting. Drawing state that a listener changes on `ctx` (transform, alpha, colors, and so on) is restored after the event. Because it fires every frame, avoid heavy work in the listener.
+
+For every custom event, an error thrown by a listener does not stop the game; play continues and the error is reported in the browser console.
 
 ### URL context paths and reserved URL tokens
 

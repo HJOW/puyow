@@ -71,7 +71,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 ### 브라우저 커스텀 이벤트
 
-브라우저 스크립트 방식에서는 `window.addEventListener()`로 게임의 초기화·화면 이동·새 콘텐츠 해금·CPU 대전 승리를 구독할 수 있습니다. 리스너는 반드시 `PuyoW.initialize()` 전에 등록해야 하며, 각 이벤트 정보는 `CustomEvent.detail`에 들어 있습니다. 초기 화면 표시는 화면 이동으로 취급하지 않으므로 `puyow_init`만 발생합니다.
+브라우저 스크립트 방식에서는 `window.addEventListener()`로 게임의 초기화·화면 이동·새 콘텐츠 해금·CPU 대전 승리·화면 렌더링을 구독할 수 있습니다. 리스너는 반드시 `PuyoW.initialize()` 전에 등록해야 하며(매 프레임 발생하는 `puyow_render`는 나중에 등록해도 다음 프레임부터 받습니다), 각 이벤트 정보는 `CustomEvent.detail`에 들어 있습니다. 초기 화면 표시는 화면 이동으로 취급하지 않으므로 `puyow_init`만 발생합니다.
 
 ```js
 window.addEventListener('puyow_init', () => {
@@ -86,6 +86,14 @@ window.addEventListener('puyow_unlocked', (event) => {
 window.addEventListener('puyow_win', (event) => {
     console.log('CPU 대전 승리:', event.detail.enemy, event.detail.elapsedMs);
 });
+window.addEventListener('puyow_render', (event) => {
+    const { canvas, ctx, frameCounts } = event.detail;
+    // 게임 화면을 모두 그린 뒤 호출되므로 게임 화면 위에 덧그려집니다.
+    ctx.beginPath();
+    ctx.arc(100, 75, 50, 0, 2 * Math.PI);
+    ctx.fill();
+    if (frameCounts % 600 === 0) console.log(canvas.width + ', ' + canvas.height);
+});
 
 PuyoW.initialize('puyow_target');
 ```
@@ -94,6 +102,9 @@ PuyoW.initialize('puyow_target');
 - `puyow_changescreen`: 실제 표시 화면이 바뀔 때 한 번 발생합니다. `detail.screen`은 목적지의 표준 화면 문자열이고, `detail.previousScreen`은 직전 화면 문자열입니다. 값은 `getScreenState().screen`과 같습니다.
 - `puyow_unlocked`: 아직 열리지 않았던 콘텐츠가 새로 열릴 때만 발생합니다. `detail.content`은 `gallery_warning:<종류>`, `gallery_enemy:<적종류>`, `puzzle_stage:<0부터 시작하는 순번>`, `enemy:<적종류>`, `rule:fever_start`, `mode:watch` 중 하나입니다. 일반 적 진행도 해금인 `enemy:<적종류>`만 `detail.rule`(`standard`·`fever`·`fever_start`)과 `detail.difficulty`(`easy`·`normal`·`hard`·`extreme`)가 문자열이며, 나머지는 둘 다 `null`입니다. 세션 한정 솔로몬 해금은 `enemy:Solomon`으로 알립니다.
 - `puyow_win`: 사람이 CPU 적을 이기고 모든 정산·종료 연출이 끝난 뒤 한 번 발생합니다. `detail`은 AI 난이도 `difficulty`, 색상 수 `colorCount`, 규칙 `rule`(`standard`·`fever`·`fever_start`), 적 종류 `enemy`, 게임 진행 시간(밀리초) `elapsedMs`를 가집니다. 구경, 연습·연속 피버·퍼즐뿌요·튜토리얼, 너랑 나랑, 온라인 대전, 리플레이 재생에는 발생하지 않습니다.
+- `puyow_render`: 게임이 한 화면을 모두 그린 직후 매번 발생합니다. `detail.canvas`는 게임의 2D 캔버스 요소, `detail.ctx`는 그 2D 컨텍스트, `detail.frameCounts`는 게임 초기화 이후 실행된 애니메이션 프레임(`requestAnimationFrame`) 누적 수입니다. `render` 호출 횟수가 아니며, 4294967295를 넘으면 0부터 다시 셉니다. `ctx`에는 게임과 같은 논리 좌표계(1280×720)가 적용되어 있고, `canvas.width`·`canvas.height`는 그래픽 설정에 따른 실제 렌더링 해상도입니다. 리스너가 바꾼 `ctx` 그리기 상태(변환·투명도·색 등)는 이벤트가 끝나면 원래대로 되돌립니다. 매 프레임 호출되므로 리스너에서는 무거운 작업을 피하세요.
+
+모든 커스텀 이벤트는 리스너에서 오류가 발생해도 게임이 멈추지 않고 계속 진행됩니다. 오류는 브라우저 콘솔에 기록됩니다.
 
 ### URL 컨텍스트 경로와 예약어 URL
 

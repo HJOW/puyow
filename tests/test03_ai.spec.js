@@ -167,8 +167,9 @@ for (const runtime of ['원본', '번들']) {
 }
 
 test('설정의 AI 서비스 제공자는 LM Studio를 라디오로 표시하고 지원하지 않는 저장값은 미선택으로 되돌린다', async ({ page }) => {
+  // 이름이 없는 저장값은 이름 입력 전까지 localStorage에 다시 기록되지 않으므로, 보정 결과를 저장소에서 확인하려고 이름을 함께 넣는다.
   await page.evaluate(() => {
-    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { aiProvider: 'OpenAI' } }));
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: 'PLAYER 1', aiProvider: 'OpenAI' } }));
   });
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
@@ -229,8 +230,9 @@ test('Local AI를 사용할 수 있으면 기본값으로 선택되고 서버 �
   await page.route('**/apis/localmodelinfo', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ available: true }) });
   });
+  // 이름이 없는 저장값은 이름 입력 전까지 localStorage에 다시 기록되지 않으므로, 보정 결과를 저장소에서 확인하려고 이름을 함께 넣는다.
   await page.evaluate(() => {
-    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { aiProvider: 'OpenAI', aiApiKey: 'openai-key', aiModel: 'gpt-5.6-luna' } }));
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: 'PLAYER 1', aiProvider: 'OpenAI', aiApiKey: 'openai-key', aiModel: 'gpt-5.6-luna' } }));
   });
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
@@ -880,12 +882,14 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
 
   // 기본 낙하 속도로는 뿌요가 바닥까지 24초쯤 걸려 6초짜리 API 타임아웃이 먼저 터진다. 경과 시간을
-  // 75분으로 옮겨 낙하 속도를 16배로 올려야 응답 대기 중 착지가 실제로 일어난다. 상한
+  // 15분으로 옮겨 낙하 속도를 16배로 올려야 응답 대기 중 착지가 실제로 일어난다. 배율은
+  // 1 + 경과분 × PLAYER_FALL_SPEED_INCREASE_PER_MINUTE(현재 1.0)이므로 1 + 15 × 1.0 = 16이다.
+  // 증가량 상수를 바꾸면 16배가 되는 경과 분을 다시 계산한다. 상한
   // MAX_PLAYER_FALL_SPEED_MULTIPLIER까지 올리지 않는 이유는, 이 테스트에 필요한 것이 상한이 아니라
   // "6초 안에 착지할 만큼 빠른 속도"이기 때문이다. 더 올리면 요청을 보내기도 전에 착지해 의도한
   // 착지 취소 경로를 지나지 않을 수 있다.
   const fastFallSpeed = await page.evaluate(() => {
-    window.WebPuyo.setGameElapsed(75 * 60000);
+    window.WebPuyo.setGameElapsed(15 * 60000);
     return window.WebPuyo.common.getPlayerFallSpeedMultiplier(window.WebPuyo.getGameState().elapsed);
   });
   expect(fastFallSpeed).toBe(16);

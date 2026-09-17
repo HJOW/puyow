@@ -1,6 +1,38 @@
 
 
 
+아래 내용은 138차 수정요청한 내용이야. 참고만 해줘.
+----------------------------------------------------------
+
+
+1. puyow_render 커스텀 이벤트 구현
+
+```javascript
+window.addEventListener('puyow_render', (e) => {
+    // Canvas 객체 접근
+    const canvas = e.detail.canvas;
+    // 2D Context 객체 접근
+    const ctx = e.detail.ctx;
+    // 2D 그리기 (게임 내 render 작업이 다 끝난 후 그리는 것, 즉 우선순위가 높음.)
+    ctx.beginPath();
+    ctx.arc(100, 75, 50, 0, 2 * Math.PI);
+    ctx.fill();
+    console.log(canvas.width + ', ' + canvas.height); // canvas 의 렌더링 해상도 확인
+    console.log(e.detail.frameCounts); // 게임 누적 프레임 수 확인 (게임 초기화 이후로부터 누적된 화면 프레임 전체 수)
+})
+```
+
+위 처럼 이벤트를 등록할 수 있도록 puyow_render 커스텀 이벤트 구현
+이 이벤트는 매 render 시마다 발생되어야 해.
+
+e.detail.frameCounts 의 경우 게임 초기화 이후로부터 누적된 화면 프레임 전체 수를 넣는데
+이 때는 render 호출 횟수가 아닌, requestAnimationFrame 횟수를 세어줘.
+이 프레임 수는 무한정 누적시키되 예외 조건 하나를 둘게. 4294967295 를 초과하면 0으로 초기화시켜 줘.
+
+2. 커스텀 이벤트 발생 시, 이벤트 리스너에서 오류가 발생하더라도 게임 동작은 중단없이 계속 진행될 수 있도록 처리해줘.
+
+
+
 아래 내용은 137차 수정요청한 내용이야. 참고만 해줘.
 ----------------------------------------------------------
 

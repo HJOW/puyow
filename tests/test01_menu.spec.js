@@ -918,6 +918,11 @@ test('플레이 방법 1단계는 지정된 뿌요 순서와 조작 시연 메�
 });
 
 test('게임패드 A와 X, Y 버튼은 메뉴 확인과 취소 입력으로 동작한다', async ({ page }) => {
+  // 이름이 없는 새 저장은 메인 메뉴에서 필수 이름 입력 대화상자를 띄워 다음 A 입력을 가져간다.
+  // 이름을 미리 저장해 이 테스트가 확인하려는 게임패드 메뉴 입력만 검사한다.
+  await page.evaluate(() => localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: 'PLAYER 1' } })));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await page.evaluate(() => window.setTestGamepad([0, 0], [0]));
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 

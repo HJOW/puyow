@@ -22,6 +22,54 @@ test('초기화와 화면 이동은 window 커스텀 이벤트로 알린다', as
   });
 });
 
+test('puyow_render는 매 프레임 캔버스와 누적 프레임 수를 전달하고 리스너 오류에도 게임이 계속된다', async ({ page }) => {
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.evaluate(() => {
+    const canvas = document.querySelector('[data-puyow-canvas="2d"]');
+    window.puyowRenderEvents = [];
+    window.addEventListener('puyow_render', (event) => {
+      const { detail } = event;
+      window.puyowRenderEvents.push({
+        sameCanvas: detail.canvas === canvas,
+        sameContext: detail.ctx === canvas.getContext('2d'),
+        width: detail.canvas.width,
+        height: detail.canvas.height,
+        frameCounts: detail.frameCounts,
+        globalAlpha: detail.ctx.globalAlpha,
+      });
+      // 리스너가 바꾼 그리기 상태는 다음 게임 그리기에 남지 않아야 한다.
+      detail.ctx.globalAlpha = 0.25;
+      detail.ctx.beginPath();
+      detail.ctx.arc(100, 75, 50, 0, 2 * Math.PI);
+      detail.ctx.fill();
+      throw new Error('puyow_render 리스너 테스트 오류');
+    });
+  });
+
+  await expect.poll(() => page.evaluate(() => window.puyowRenderEvents.length)).toBeGreaterThanOrEqual(5);
+  const events = await page.evaluate(() => window.puyowRenderEvents.slice());
+  const size = await page.evaluate(() => {
+    const canvas = document.querySelector('[data-puyow-canvas="2d"]');
+    return { width: canvas.width, height: canvas.height };
+  });
+  for (const event of events) {
+    expect(event).toMatchObject({ sameCanvas: true, sameContext: true, ...size, globalAlpha: 1 });
+    expect(Number.isInteger(event.frameCounts)).toBe(true);
+  }
+  // 한 프레임에 render가 한 번이므로 연속된 이벤트의 프레임 수는 1씩 늘어난다.
+  for (let index = 1; index < events.length; index += 1) {
+    expect(events[index].frameCounts).toBe(events[index - 1].frameCounts + 1);
+  }
+  expect(pageErrors.some((message) => message.includes('puyow_render 리스너 테스트 오류'))).toBe(true);
+
+  // 리스너가 매 프레임 예외를 던져도 게임 루프와 입력 처리는 그대로 동작해야 한다.
+  await enterMainMenu(page);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  const lastFrameCounts = await page.evaluate(() => window.puyowRenderEvents.at(-1).frameCounts);
+  expect(lastFrameCounts).toBeGreaterThan(events.at(-1).frameCounts);
+});
+
 test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한다', async ({ page }) => {
   await enterMainMenu(page);
 
@@ -1023,6 +1071,11 @@ test('다색 동시 폭발 연결 보너스는 가장 많이 터진 한 색만 �
 });
 
 test('common sound pool plays menu and game-start sounds', async ({ page }) => {
+  // 이름이 없는 새 저장은 메인 메뉴에서 필수 이름 입력 대화상자를 띄워 확인할 때 선택 효과음이 한 번 더 난다.
+  // 이름을 미리 저장해 이 테스트가 확인하려는 메뉴 조작 효과음 순서만 검사한다.
+  await page.evaluate(() => localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: 'PLAYER 1' } })));
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await page.evaluate(() => {
     window.WebPuyo.commonSoundPool.selects = 'sounds/test-menu-select.ogg';
     window.WebPuyo.commonSoundPool.cancels = 'sounds/test-menu-cancel.ogg';
