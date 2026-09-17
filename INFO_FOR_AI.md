@@ -222,7 +222,7 @@
 - `Andrealphus`는 `PuyoW.Andrealphus`로도 공개된 `BundledEnemy` 하위의 출시된 8번째 적이다. 키마리스와 독립된 동일 판단 흐름(일반·위기 빠른 하강 지연 비율, 화면 예고 위협량 반영 포함)을 사용하되 평상시 목표는 7연쇄·3수 Worker 반복 심화 탐색이다. `lookaheadTimeLimitMs` 기본값은 50ms이며 인스턴스별로 조정할 수 있다. Worker는 1수·2수·3수 완료 때마다 현재 1수의 X·회전을 갱신하고, 시간 초과·오류로 1수 결과가 없으면 기존 동기 1수 탐색으로 대체한다. 피버·패배 위치 보호 후보가 있으면 Worker를 시작하지 않고 기존 `Enemy.prepareTurn()` 경로를 그대로 우선한다. 이 조정 때문에 키마리스의 목표 6연쇄·2수 계약을 바꾸지 않는다. BUILDNO 76부터는 `lookaheadSearchMode = 'advanced'`로 Worker의 advanced 탐색과 기본 룰 실시간 재판단을 쓴다(아래 「안드레알푸스 advanced 탐색과 실시간 반응」 절).
 - `Seere`의 피버 비활성 일반 쌓기만 오른쪽 두 열 전체 → X=3의 화면 절반(6칸) → X=0 전체 → X=1 전체 순서다. 피버 비활성 피버 룰의 별도 빌드, 피버 중 공통 연쇄 최적화, 패배 위치 보호, 빈 필드 무작위 착수는 이 규칙보다 우선한다. 일반 착수는 오른쪽 하단 세 칸의 점유 여부와 관계없이 `turnCount`에 포함한다. 공격 시뮬레이션 차례가 되면 우측 하단 세 칸이 덜 차 있어도 최적 공격 위치를 우선하며, 그 외에만 해당 세 칸이 찰 때까지 비폭발 착수를 사용한다. 공격 최적 시뮬레이션 뒤 다음 호출 간격은 매번 20~25회로 무작위 선정한다.
 - `Seere`의 전승은 "날개 달린 말을 탄 미남 왕자"이며, BUILDNO 56 초상화에서는 하늘빛 머리칼·작은 왕관·날개 망토·은빛 방패를 가진 머리 하나의 인간형 왕자로 재해석한다. 필드 테마(청)는 유지한다.
-- `Flauros`는 9번째 출시 적이다. BUILDNO 79부터 `RealtimeLookaheadEnemy`를 상속해 안드레알푸스와 완전히 같은 판단(목표 7연쇄·작은 연쇄 점등 켜짐, `RANDOM_EMPTY_FIELD_ENEMY_TYPES` 포함)을 쓰며 모델을 쓰지 않는다. 그래서 ONNX 경고 표시·첫 선택 경고 대상이 아니고, ONNX 런타임이 없어도 적 선택 화면에 나오며 구경 모드 후보에도 들어간다. BUILDNO 78까지는 처음으로 `OnnxEnemy`를 상속해 `onnx/model01.onnx`로 판단했다(아래 「적 AI 한 칸씩 밀기」 절). 표범 전승은 둥근 귀·점무늬 의상·꼬리·불꽃 장식을 가진 인간형 캐릭터로 재해석한다.
+- `Flauros`는 9번째 출시 적이다. BUILDNO 79부터 `RealtimeLookaheadEnemy`를 상속해 안드레알푸스와 완전히 같은 판단(목표 7연쇄·작은 연쇄 점등 켜짐, `RANDOM_EMPTY_FIELD_ENEMY_TYPES` 포함)을 쓰며 모델을 쓰지 않는다. 그래서 ONNX 경고 표시·첫 선택 경고 대상이 아니고, ONNX 런타임이 없어도 적 선택 화면에 나오며 구경 모드 후보에도 들어간다. BUILDNO 78까지는 처음으로 `OnnxEnemy`를 상속해 `onnx/model01.onnx`로 판단했다(아래 「적 AI 한 칸씩 밀기」 절). 같은 작업을 다음 적(안드라스)에 반복할 때는 「[반복 작업 절차] 적 AI 한 칸씩 밀기」 절을 따른다. 표범 전승은 둥근 귀·점무늬 의상·꼬리·불꽃 장식을 가진 인간형 캐릭터로 재해석한다.
 - `Andras`는 10번째 출시 적인 `OnnxEnemy`다. 새 머리 천사·검은 늑대·불타는 검의 전승을 새 깃털 두건·날개·늑대 문장·불꽃 장식 검을 가진 인간형 캐릭터로 재해석한다. 남청 테마와 `onnx/model01.onnx`(BUILDNO 78까지 플라우로스의 모델)를 사용하며 적 선택 진행도·갤러리·가중치 1 카드 풀에 포함된다. 모델을 쓰는 첫 적이라 적 선택 화면 느낌표·첫 선택 불안정 안내가 여기서부터 적용된다.
 - `Valak`은 11번째 출시 적인 `OnnxEnemy`다. 두 목의 붉은 드래곤을 타는 날개 달린 소년 전승은 드래곤 뿔·비늘 튜닉·꼬리·날개를 가진 머리 하나의 소년으로 재해석한다. 적갈 테마와 `onnx/model02.onnx`(BUILDNO 78까지 안드라스의 모델)를 사용하며 적 선택 진행도·갤러리·가중치 1 카드 풀에 포함된다.
 - `Zagan`은 12번째 `OnnxEnemy`로 BUILDNO 79에 출시했다(`notAvail = false`). 그리폰 날개의 숫소 전승은 굽은 뿔 장식·황금 날개·잔을 가진 인간형 캐릭터로 재해석하며 황갈 테마를 유지한다. `onnx/model03.onnx`(BUILDNO 78까지 발라크의 모델)를 사용하며, 출시로 적 선택 진행도(발라크를 이기면 해금)와 가중치 1 카드 풀에 들어간다.
@@ -886,6 +886,43 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 - `Andrealphus extends RealtimeLookaheadEnemy`는 `super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true })`, `sortPriority = 8`, `notAvail = false`, `getClassType()`·`getName()`·`getFieldThemeColors()`·`drawPortrait()`만 가진다. 공통 클래스의 `getClassType()`은 `'RealtimeLookaheadEnemy'`를 돌려주며 하위 클래스가 반드시 재정의해야 하고, 공통 클래스 자체는 적 목록에 등록하지 않는다.
 - **새 적을 이 클래스로 만들 때 함께 할 일**: 적 종류 문자열로 동작이 갈리는 `RANDOM_EMPTY_FIELD_ENEMY_TYPES`(빈 필드 무작위 첫 배치)와 `ENEMY_GOLD_BONUSES`(GOLD 배율)에 새 종류를 넣는다. 적 목록 등록(`createOpponentEntry`), 번역 문자열, 초상화 팔레트, `python/bundledenemy.py` 이식 여부도 기존 적 추가 절차대로 확인한다. `python/bundledenemy.py`의 안드레알푸스는 이번에도 바꾸지 않았다.
 - 회귀 테스트: `tests/test01_enemy.spec.js`의 "실시간 N수 탐색 공통 클래스는…"이 상속 관계, 안드레알푸스가 직접 가진 메서드 목록(constructor·drawPortrait·getClassType·getFieldThemeColors·getName), 기본값·사용자 지정값, 공통값이 같음, 잘못된 옵션의 예외를 확인한다.
+
+### [반복 작업 절차] 적 AI 한 칸씩 밀기
+
+사용자는 출시 예정 적을 새로 추가한 뒤, BUILDNO 79 때처럼 **ONNX 모델을 한 칸씩 뒤로 밀고 "모델을 쓰는 첫 적"을 모델 미사용 AI로 바꾸는 작업**을 반복할 수 있다. 다음 차례는 안드라스(`Andras`)다. 아래 절차는 BUILDNO 79 작업(바로 아래 기록 절)과 그 뒤 점검 요청(구경 모드·학습 상대 선정)을 일반화한 것이다. 예시는 "안드라스를 모델 미사용으로 바꾸고, 발라크·자간·새 적이 한 칸씩 이어받는" 경우다.
+
+**0. 먼저 사용자에게 확인할 것**
+- 각 적이 이어받을 모델과, 출시 예정을 해제할 적(`notAvail = false`)이 무엇인지. 요청에 없으면 "이전 적의 `modelPath`를 그대로 이어받는다"로 해석한다.
+- 새로 모델 미사용이 되는 적의 `targetCombo`와 `lightFeverGaugeWithSmallChains`. 적마다 사용자가 정하는 값이다. BUILDNO 79의 플라우로스는 "안드레알푸스와 완전히 동일"이라 7과 `true`였다. 명시가 없으면 이전 모델 미사용 적과 같은 값으로 하되 답변에 적는다.
+- GOLD 배율(`ENEMY_GOLD_BONUSES`)을 바꿀지. 보상 설정이라 AI 작업만으로는 바꾸지 않는다.
+
+**1. `src/js/puyow.js`**
+- 새로 모델 미사용이 되는 적: `extends OnnxEnemy` → `extends RealtimeLookaheadEnemy`, 생성자는 `super({ targetCombo, lightFeverGaugeWithSmallChains })`, `this.sortPriority`·`this.notAvail = false`만 남기고 `modelPath` 줄을 지운다. 클래스 설명 주석을 고친다. `getClassType()`·`getName()`·`getFieldThemeColors()`·`drawPortrait()`는 그대로 둔다(캐릭터·진행도 순서는 바뀌지 않는다).
+- 그 뒤 ONNX 적들: `this.modelPath`를 앞 적이 쓰던 파일로 한 칸씩 바꾼다(예: 발라크 `model02` → `model01`, 자간 `model03` → `model02`, 새 적 → `model03`). 새 적을 출시하면 `notAvail = false`로 바꾼다.
+- `RANDOM_EMPTY_FIELD_ENEMY_TYPES`에 새 모델 미사용 적의 종류 문자열을 넣는다(빈 필드 첫 배치 무작위 — 안드레알푸스와 같은 판단의 일부). 모델 미사용 적인지는 이 목록과 무관하므로 ONNX 적은 넣지 않는다.
+- BUILDNO +1, `package.json`·`package-lock.json` 버전, `npm run build`로 번들 재생성.
+
+**2. 코드 변경 없이 `requiresOnnx` 기준으로 자동으로 바뀌는 것 — 확인만 한다**
+- 적 선택 화면 이름 옆 느낌표(`drawOpponentNameWithMark`)와 첫 선택 불안정 안내(`startOpponentMenuGame`, `store.onnxWarningAcknowledged`)가 다음 ONNX 적부터 적용된다.
+- ONNX 런타임이 없을 때 적 선택 화면에서 숨기는 적(`getVisibleOpponents`)과 구경 모드 후보에서 빼는 적(`getWatchOpponentCandidates`)이 다음 ONNX 적부터가 된다. **구경 후보는 `requiresOnnx`와 `WATCH_EXCLUDED_OPPONENT_TYPES`(솔로몬·안드로말리우스·단탈리온)로만 거르므로 새 모델 미사용 적은 자동으로 후보가 된다.** 이름으로 막는 코드가 새로 생기지 않았는지 `grep`으로 확인한다. 후보가 되려면 다른 적처럼 보통 이상 승리 기록이 필요하다(observation 코드 적용 시 무조건).
+- 출시한 적은 카드 풀(`getCardDefinitions`, 비고정 적 가중치 1)과 적 진행도에 자동으로 들어간다.
+
+**3. `python/bundledenemy.py` (학습 상대)**
+- 새 모델 미사용 적 클래스를 `class 적이름(Andrealphus)`로 바꾸고 `get_class_type()`만 남긴다. 파이썬 이식은 게임의 advanced 탐색·실시간 재판단을 옮기지 않은 안드레알푸스 수준이다. 목표 연쇄가 7이 아니면 생성자에서 `self.target_combo`를 바꾼다. 파이썬에 클래스가 아예 없던 적이면 `Andrealphus` 뒤에 새로 만든다(정의 순서상 `Andrealphus`보다 뒤여야 한다).
+- **`ENEMY_FACTORIES`에 추가한다.** 학습의 `--opponent random` 풀(`TRAINABLE_ENEMY_TYPES`)과 `--opponent` 선택지가 모두 이 목록에서 만들어지므로 여기 한 곳이면 된다(`lngui.py`에는 따로 목록이 없다). ONNX 적은 넣지 않는다.
+- 모듈 docstring, 클래스 docstring, `ENEMY_FACTORIES` 위 주석의 "ONNX 적 목록" 문구를 고친다.
+
+**4. 테스트**
+- `tests/test03_ai.spec.js`: ONNX 추론 적 테스트(모델 로딩·실패, 느낌표·첫 선택 안내, 추론 마감 시한, 프록시 Worker 실패, CDN/로컬 wasm, 런타임 없음·갤러리, 순환 배치 필드의 `Object.create(...prototype)`)의 대상을 다음 ONNX 적으로 옮긴다. 적 선택 화면에서 `ArrowRight` 횟수를 하나 늘리고, 이름·번역 이름 배열을 바꾼다. 첫 ONNX 적은 계속 `model01.onnx`를 쓰므로 `page.route('**/onnx/model01.onnx')`는 그대로 둔다. `seedAllOpponentsCleared()`의 승리 목록과 갤러리 해금 적도 한 칸 늘린다. 느낌표 테스트의 "마크 있음/없음" 이름 목록과, 런타임 없음 테스트의 "보이는 모델 미사용 적/숨는 ONNX 적"을 바꾼다.
+- `tests/test01_core.spec.js`의 "…ONNX 적 3종은 출시 상태·모델·테마 설정을 가진다": `modelPath`·`notAvail` 기대값과, 대상 적 자체(모델 미사용이 된 적은 빼고 새 ONNX 적을 넣음)를 바꾼다.
+- `tests/test01_menu.spec.js`의 적 카드 테스트: 출시한 적의 카드가 이제 유효하게 그려지도록 기대값을 바꾼다.
+- `tests/test01_enemy.spec.js`: "플라우로스는 모델 없이 안드레알푸스와 같은…"과 같은 형태로 새 모델 미사용 적을 확인한다(`RealtimeLookaheadEnemy` 상속, `OnnxEnemy` 아님, `requiresOnnx` false, `modelPath` 없음, 설정값, 직접 가진 메서드 목록). "구경 모드 무작위 적 선정은…" 테스트는 데카라비아와 새 모델 미사용 적, 다음 ONNX 적만 이긴 기록으로 앞의 둘이 맞붙는지 확인하도록 바꾸거나 새로 추가한다.
+- `python/test_learning.py`의 `TrainableOpponentPoolTest`: 새 모델 미사용 적이 목록에 있고 `Andrealphus` 인스턴스인지, ONNX 적은 없는지, 무작위 선택으로 뽑혀 `step()`이 되는지로 바꾼다.
+- 실행: `npm.cmd test`, `npm.cmd run build`, `npx.cmd playwright test --project=chromium`, `python -B -m unittest test_learning`(python 폴더에서). 사용자 서버가 9891 포트에 떠 있으면 Playwright가 재사용하므로 끄고 돌린다. 부하로 흔들리는 시간 초과 테스트는 단독 재실행으로 확인한다.
+
+**5. 문서**
+- 이 파일: 적 설명 항목(`Flauros`·`Andras`·`Valak`·`Zagan` 등 각 적의 사용 모델·출시 상태), 「브라우저 ONNX 추론 적」 절의 "○○부터 ONNX" 문장과 적별 모델 목록, 「머신러닝 작업 참고」의 "대전 가능한 적은 …" 목록과 무작위 풀 개수, 그리고 작업 기록 절(변경 전후 표)을 고친다.
+- `docs/MachineLearning.md`·`docs/MachineLearning.en.md`: 이식한 적 목록과 `--opponent` 값 표에 새 적을 넣는다.
 
 ### 적 AI 한 칸씩 밀기 (2026-09-17, BUILDNO 79)
 
