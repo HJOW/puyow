@@ -339,6 +339,24 @@ When a pair contacts the floor or another puyo, the engine cancels only that opp
 
 `PuyoW.startWorkerLookaheadSearch()` reads `targetCombo`, `lookaheadTurnCount`, `lookaheadTimeLimitMs`, and `ignorableIncomingGarbage`, then calls `PuyoW.common.simulateNMovePlacementsInWorker()`. It applies the best current-pair position and rotation as depths 1, 2, and 3 complete. If no first-move result is available or the Worker fails, it falls back to the existing synchronous one-move search. Normally completed Workers are kept in a global pool of up to two Workers for reuse by the next turn or another Worker opponent in watch mode; cancelled, failed, or timed-out Workers are not reused.
 
+### Advanced search mode and real-time re-planning
+
+Set `lookaheadSearchMode = 'advanced'` on an opponent to make `PuyoW.startWorkerLookaheadSearch()` use the advanced search inside the Worker. Without it, the existing search above is used unchanged. Among the built-in opponents, Andrealphus uses this mode.
+
+- **Fast board computation**: The board is converted to cell-code arrays and column heights. For each placement, the landing position, chain count, ATTACK, and resulting board are the same as the existing rules.
+- **Beam search**: Every candidate for the current pair is read, but from the next pair on only the `lookaheadBeamWidth` best candidates by one-move evaluation (default 5) are searched deeper. Candidates that produce the same board, such as a 180-degree rotation of a same-color pair, are skipped.
+- **Trigger-point evaluation**: The board score adds the largest chain that would fire if one or two puyos were dropped on top of each column, so unfired chain structures are valued.
+- **Garbage arrival forecast**: If the opponent is chaining, the rest of that chain is computed to find how much garbage will arrive and when, and that time is converted to the placement after which it lands. Only attacks sent up to that placement count as offsets, and later moves are read with the remaining garbage placed on the board. Under the Fever rule, garbage deferral works differently, so garbage is still assumed to land right after the current placement.
+
+To search again when the situation changes mid-control, call `PuyoW.startWorkerLookaheadSearch(this, player, { allowedPlacements, keepDecisionElapsed: true })`. `allowedPlacements` is the list of `{ x, rotation }` reachable from the current position, and the current move is chosen only from it. When `keepDecisionElapsed` is `true`, applying the result does not restart the fast-drop delay. If the new search produces no result, the previous target is kept.
+
+Andrealphus uses this for real-time reactions under the standard rule. During control it checks every frame how much garbage is incoming and whether the opponent is chaining, and searches again when either changes. It does not search again once fast drop has started this turn, or when the incoming amount is below `ignorableIncomingGarbage` both before and after the change. Set `realtimeReaction = false` to disable it.
+
+The forecast functions are also available as common functions.
+
+- `PuyoW.common.predictPlayerChain(player)`: Returns `{ active, currentCombo, remainingCombo, finalCombo, finalAttack, endInMs }` for a chaining player. Chain resolution has no randomness, so the chain count and ATTACK are exact; `endInMs` adds the explosion wait, explosion effect, and gravity animation times.
+- `PuyoW.common.getRealtimeGarbageForecast(player, opponent)`: Returns the garbage count `incoming` that `player` will receive and `garbageMoveIndex`, the index of the placement right before it lands (0 is the pair currently under control, -1 when nothing is incoming).
+
 Tools or experimental opponents that do not use the base class can call the common function directly. Call `cancel()` when its result should no longer be applied; `promise` completes with the final-depth result or fallback result.
 
 ```js

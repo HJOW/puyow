@@ -393,6 +393,24 @@ class WorkerPlannerEnemy extends PuyoW.Enemy {
 
 `PuyoW.startWorkerLookaheadSearch()`는 `targetCombo`, `lookaheadTurnCount`, `lookaheadTimeLimitMs`, `ignorableIncomingGarbage`를 읽어 `PuyoW.common.simulateNMovePlacementsInWorker()`를 호출합니다. 깊이 1·2·3이 완료될 때마다 현재 수의 최선 위치와 회전이 반영됩니다. 첫 수 결과가 없거나 Worker 오류가 나면 기존 동기 1수 탐색으로 대체됩니다. 정상 완료 Worker는 전역 풀에 최대 두 개까지 보관되어 다음 턴 또는 구경 모드의 다른 Worker 적이 재사용되고, 취소·오류·시간 초과 Worker는 재사용하지 않습니다.
 
+### advanced 탐색 모드와 실시간 재판단
+
+적에 `lookaheadSearchMode = 'advanced'`를 지정하면 `PuyoW.startWorkerLookaheadSearch()`가 Worker 안의 advanced 탐색을 사용합니다. 지정하지 않으면 위의 기존 탐색을 그대로 사용합니다. 기본 제공 적 중에는 안드레알푸스가 이 모드를 사용합니다.
+
+- **빠른 보드 계산**: 보드를 셀 코드 배열과 열 높이로 바꿔 계산합니다. 한 배치의 착지 위치·연쇄 수·ATTACK·결과 보드는 기존 규칙과 같습니다.
+- **빔 탐색**: 현재 수의 후보는 모두 읽고, 그 아래 수부터는 한 수 평가가 좋은 `lookaheadBeamWidth`개(기본 5)만 더 깊이 읽습니다. 같은 색 쌍의 180도 회전처럼 같은 보드를 만드는 후보는 건너뜁니다.
+- **발화점 평가**: 각 열 맨 위에 뿌요를 한두 개 떨어뜨렸을 때 터지는 최대 연쇄를 보드 점수에 더해, 아직 터뜨리지 않은 연쇄 기반을 평가합니다.
+- **방해뿌요 도착 예측**: 상대가 연쇄 중이면 남은 연쇄를 끝까지 계산해 받을 방해뿌요 양과 도착 시각을 구하고, 그 시각이 자신의 몇 번째 배치 직후인지 어림합니다. 그 배치까지 보낸 공격만 상쇄로 인정하고, 이후 수는 남은 방해뿌요를 보드에 올린 채로 읽습니다. 피버 룰은 방해뿌요 유예 규칙이 달라 기존처럼 이번 배치 직후에 온다고 봅니다.
+
+조작 도중 상황이 바뀌어 다시 탐색하려면 `PuyoW.startWorkerLookaheadSearch(this, player, { allowedPlacements, keepDecisionElapsed: true })`를 호출합니다. `allowedPlacements`는 지금 위치에서 도달할 수 있는 `{ x, rotation }` 목록이며, 현재 수를 이 안에서만 고릅니다. `keepDecisionElapsed`가 `true`이면 결과를 적용할 때 빠른 하강 대기 시간을 처음부터 다시 세지 않습니다. 재탐색이 결과를 내지 못하면 직전 목표를 유지합니다.
+
+안드레알푸스는 기본 룰에서 이 기능으로 실시간 반응합니다. 조작 중 매 프레임 받을 방해뿌요 양과 상대 연쇄 진행 여부를 확인하고, 둘 중 하나가 바뀌면 다시 탐색합니다. 이번 턴에 빠른 하강을 이미 시작했거나, 받을 양이 바뀌기 전후 모두 `ignorableIncomingGarbage`보다 작으면 다시 탐색하지 않습니다. `realtimeReaction = false`로 끌 수 있습니다.
+
+예측에 쓰는 함수는 공통 함수로도 공개됩니다.
+
+- `PuyoW.common.predictPlayerChain(player)`: 연쇄 중인 플레이어의 `{ active, currentCombo, remainingCombo, finalCombo, finalAttack, endInMs }`를 반환합니다. 연쇄 진행에는 무작위 요소가 없어 연쇄 수와 ATTACK은 정확하고, `endInMs`는 폭발 대기·폭발 연출·중력 연출 시간을 더한 값입니다.
+- `PuyoW.common.getRealtimeGarbageForecast(player, opponent)`: `player`가 받을 방해뿌요 수 `incoming`과, 그것이 떨어지기 직전 배치의 순번 `garbageMoveIndex`(0이 지금 조작 중인 배치, 받을 것이 없으면 -1)를 반환합니다.
+
 기반 클래스를 사용하지 않는 도구나 실험용 적은 공통 함수를 직접 호출할 수 있습니다. 반환된 작업의 `cancel()`은 결과를 더 이상 적용하지 않을 때 호출하고, `promise`는 최종 깊이의 결과 또는 fallback 결과로 완료됩니다.
 
 ```js

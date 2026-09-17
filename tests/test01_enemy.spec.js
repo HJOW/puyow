@@ -867,6 +867,276 @@ test('3수 Worker 메인 콜백 오류는 기존 1수 탐색 결과로 즉시 �
   expect(result.placement).toMatchObject({ x: expect.any(Number), rotation: expect.any(Number) });
 });
 
+test('advanced Worker 탐색의 빠른 배치 계산은 기본 규칙과 같은 착지·연쇄·ATTACK·결과 보드를 낸다', async ({ page }) => {
+  // Blob Worker를 직접 확인하는 테스트라서 기준선 라우트를 걷고 시작한다.
+  await releaseNetworkInterception(page);
+  const result = await page.evaluate(async (WORKER_SEARCH_TIME_LIMIT) => {
+    // 게임이 만든 Worker를 붙잡아, 탐색이 끝나 풀에 돌아간 뒤 검증 메시지를 직접 보낸다.
+    const OriginalWorker = window.Worker;
+    let capturedWorker = null;
+    window.Worker = class extends OriginalWorker {
+      constructor(...args) {
+        super(...args);
+        capturedWorker = this;
+      }
+    };
+    const common = window.WebPuyo.common;
+    try {
+      const emptyBoard = () => Array.from({ length: 25 }, () => Array(6).fill(null));
+      const warmup = { board: emptyBoard(), active: { x: 2, y: 11.9, rotation: 0, colors: ['red', 'blue'] }, nextPairs: [['green', 'yellow'], ['blue', 'red']], aiSimulations: [], attack: 0, damage: 0, warningReductionDelay: 0 };
+      await common.simulateNMovePlacementsInWorker(warmup, 6, 3, WORKER_SEARCH_TIME_LIMIT, { searchMode: 'advanced' }).promise;
+    } finally {
+      window.Worker = OriginalWorker;
+    }
+    if (!capturedWorker) return { captured: false };
+
+    // 방해뿌요·딱딱뿌요가 섞인 무작위 보드를 고정 시드로 만든다.
+    let seed = 20260917;
+    const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const colors = ['red', 'green', 'yellow', 'blue', 'purple'];
+    const cases = Array.from({ length: 600 }, () => {
+      const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+      const colorCount = 3 + Math.floor(random() * 3);
+      for (let x = 0; x < 6; x += 1) {
+        const height = Math.floor(random() * 13);
+        for (let y = 0; y < height; y += 1) {
+          const roll = random();
+          board[y][x] = roll < 0.08 ? 'garbage' : roll < 0.11 ? 'hardGarbage' : colors[Math.floor(random() * colorCount)];
+        }
+      }
+      return {
+        board,
+        colors: [colors[Math.floor(random() * colorCount)], colors[Math.floor(random() * colorCount)]],
+        x: Math.floor(random() * 6),
+        rotation: Math.floor(random() * 4),
+      };
+    });
+    const rules = { marginRate: common.getMarginRate(0), timeProgressMultiplier: common.getTimeProgressMultiplier(0) };
+    const fastResults = await new Promise((resolve) => {
+      const onMessage = ({ data }) => {
+        if (data?.requestId !== 'verify-fast-engine') return;
+        capturedWorker.removeEventListener('message', onMessage);
+        resolve(data.results);
+      };
+      capturedWorker.addEventListener('message', onMessage);
+      capturedWorker.postMessage({ type: 'resolvePlacements', requestId: 'verify-fast-engine', cases, rules });
+    });
+
+    let landed = 0;
+    let chained = 0;
+    const mismatches = [];
+    cases.forEach((testCase, index) => {
+      const placement = common.findLandingPlacement({ board: testCase.board, active: { x: 2, y: 11.9, rotation: 0, colors: testCase.colors } }, testCase.x, testCase.rotation);
+      const fast = fastResults[index];
+      if (!placement) {
+        if (fast !== null) mismatches.push({ index, reason: 'landing' });
+        return;
+      }
+      landed += 1;
+      const positions = common.activeCells(placement).map(({ x, y }) => ({ x, y }));
+      const expected = common.simulatePlacementResult(testCase.board, testCase.colors, positions);
+      if (expected.combo > 0) chained += 1;
+      if (!fast
+        || JSON.stringify(fast.positions) !== JSON.stringify(positions)
+        || fast.combo !== expected.combo
+        || Math.abs(fast.attack - expected.attack) > 1e-9 * Math.max(1, expected.attack)
+        || JSON.stringify(fast.board) !== JSON.stringify(expected.board)) mismatches.push({ index, reason: 'result' });
+    });
+    return { captured: true, landed, chained, mismatches: mismatches.slice(0, 5) };
+  }, WORKER_SEARCH_TIME_LIMIT);
+
+  expect(result.captured).toBe(true);
+  // 표본이 착지 가능한 배치와 연쇄를 충분히 포함해야 비교가 의미 있다.
+  expect(result.landed).toBeGreaterThan(300);
+  expect(result.chained).toBeGreaterThan(50);
+  expect(result.mismatches).toEqual([]);
+});
+
+test('advanced Worker 탐색은 깊이별 결과를 전달하고 허용한 위치·회전 안에서만 현재 수를 고른다', async ({ page }) => {
+  // Blob Worker를 직접 확인하는 테스트라서 기준선 라우트를 걷고 시작한다.
+  await releaseNetworkInterception(page);
+  const result = await page.evaluate(async (WORKER_SEARCH_TIME_LIMIT) => {
+    const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    board[0][0] = 'red';
+    board[0][1] = 'red';
+    const createPlayer = () => {
+      const player = {
+        board: board.map((row) => [...row]),
+        active: { x: 2, y: 11.9, rotation: 0, colors: ['red', 'blue'] },
+        nextPairs: [['green', 'yellow'], ['blue', 'red'], ['yellow', 'green']],
+        aiSimulations: [],
+        attack: 0,
+        damage: 0,
+        warningReductionDelay: 0,
+      };
+      new window.WebPuyo.Enemy().prepareTurn(player);
+      return player;
+    };
+    const depths = [];
+    const player = createPlayer();
+    const completed = await window.WebPuyo.common.simulateNMovePlacementsInWorker(player, 7, 3, WORKER_SEARCH_TIME_LIMIT, {
+      searchMode: 'advanced',
+      onProgress: (progress) => depths.push(progress.depth),
+    }).promise;
+    const restrictedPlayer = createPlayer();
+    const allowedPlacements = [{ x: 5, rotation: 0 }, { x: 4, rotation: 1 }];
+    const restricted = await window.WebPuyo.common.simulateNMovePlacementsInWorker(restrictedPlayer, 7, 3, WORKER_SEARCH_TIME_LIMIT, {
+      searchMode: 'advanced',
+      allowedPlacements,
+    }).promise;
+    return {
+      depths,
+      depth: completed.depth,
+      fallback: completed.fallback,
+      validPlacement: player.aiSimulations.some((candidate) => candidate.x === completed.placement?.x && candidate.rotation === completed.placement?.rotation),
+      restrictedDepth: restricted.depth,
+      restrictedAllowed: allowedPlacements.some((placement) => placement.x === restricted.placement?.x && placement.rotation === restricted.placement?.rotation),
+    };
+  }, WORKER_SEARCH_TIME_LIMIT);
+
+  expect(result).toEqual({ depths: [1, 2, 3], depth: 3, fallback: false, validPlacement: true, restrictedDepth: 3, restrictedAllowed: true });
+});
+
+test('advanced Worker 탐색은 방해뿌요가 이번 배치 직후 떨어지면 지금 쏠 수 있는 연쇄로 상쇄한다', async ({ page }) => {
+  // Blob Worker를 직접 확인하는 테스트라서 기준선 라우트를 걷고 시작한다.
+  await releaseNetworkInterception(page);
+  const result = await page.evaluate(async (WORKER_SEARCH_TIME_LIMIT) => {
+    // 0열에 빨강 아래·초록 위로 세워 놓으면 빨강 4개가 터지고, 떨어진 초록이 1열 초록 3개와 이어져 터지는 2연쇄 보드다.
+    const createPlayer = (damage) => {
+      const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+      ['red', 'red', 'red'].forEach((color, y) => { board[y][0] = color; });
+      ['green', 'green', 'green'].forEach((color, y) => { board[y][1] = color; });
+      // 2연쇄 뒤 필드가 비면 싹쓸이 점수 때문에 공격이 없어도 터뜨리므로, 연쇄와 무관한 뿌요를 남겨 둔다.
+      board[0][5] = 'yellow';
+      board[1][5] = 'purple';
+      const player = {
+        board,
+        active: { x: 2, y: 11.9, rotation: 0, colors: ['red', 'green'] },
+        nextPairs: [['yellow', 'purple'], ['purple', 'yellow'], ['yellow', 'blue']],
+        aiSimulations: [],
+        attack: 0,
+        damage,
+        warningReductionDelay: 0,
+      };
+      new window.WebPuyo.Enemy().prepareTurn(player);
+      return player;
+    };
+    const opponent = { board: Array.from({ length: 25 }, () => Array(6).fill(null)), active: null, nextPairs: [], phase: 'control', combo: 0, attack: 0, damage: 0, announcedAttack: 0, warningReductionDelay: 0 };
+    const search = async (damage) => {
+      const player = createPlayer(damage);
+      const completed = await window.WebPuyo.common.simulateNMovePlacementsInWorker(player, 7, 3, WORKER_SEARCH_TIME_LIMIT, {
+        searchMode: 'advanced',
+        opponent,
+        urgentGarbageThreshold: 4,
+      }).promise;
+      return { depth: completed.depth, combo: completed.placement?.combo };
+    };
+    return { calm: await search(0), threatened: await search(12) };
+  }, WORKER_SEARCH_TIME_LIMIT);
+
+  // 공격이 없으면 목표(7연쇄)보다 작은 2연쇄를 아껴 두고, 곧 12개가 떨어지면 지금 터뜨려 상쇄한다.
+  expect(result.calm).toEqual({ depth: 3, combo: 0 });
+  expect(result.threatened).toEqual({ depth: 3, combo: 2 });
+});
+
+test('상대 연쇄 예측은 남은 연쇄 수·최종 ATTACK·끝나는 시간을 게임 규칙대로 계산한다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const common = window.WebPuyo.common;
+    // 빨강 4개가 먼저 터지고, 그 위 초록이 떨어져 1열 초록 3개와 이어 터지는 2연쇄가 남은 보드다.
+    const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    ['red', 'red', 'red', 'red', 'green'].forEach((color, y) => { board[y][0] = color; });
+    ['green', 'green', 'green'].forEach((color, y) => { board[y][1] = color; });
+    const explodePhase = { board, phase: 'explode', phaseTimer: 50, combo: 0, attack: 0 };
+    const prediction = common.predictPlayerChain(explodePhase);
+
+    // 같은 연쇄를 규칙 함수로 직접 풀어 기대값을 만든다.
+    let expectedBoard = board.map((row) => [...row]);
+    let expectedAttack = 0;
+    let combo = 0;
+    while (true) {
+      const groups = common.findExplosionGroupsOnBoard(expectedBoard);
+      if (!groups.length) break;
+      combo += 1;
+      expectedAttack += common.calculateExplosionAttack(common.calculateExplosionPoint(groups, combo));
+      groups.flatMap((group) => group.cells).forEach(([x, y]) => { expectedBoard[y][x] = null; });
+      expectedBoard = common.collapseBoard(expectedBoard);
+    }
+
+    const continued = common.predictPlayerChain({ board, phase: 'explode', phaseTimer: 0, combo: 3, attack: 20 });
+    return {
+      prediction,
+      expectedCombo: combo,
+      expectedAttack,
+      continued: { remainingCombo: continued.remainingCombo, finalCombo: continued.finalCombo, attackIncreased: continued.finalAttack - 20 > expectedAttack },
+      idle: common.predictPlayerChain({ board, phase: 'control', combo: 0, attack: 0 }).active,
+      lockedWithoutChain: common.predictPlayerChain({ board: Array.from({ length: 25 }, () => Array(6).fill(null)), phase: 'gravity', gravityNextPhase: 'explode', gravityAnimation: null, combo: 0, attack: 0 }).active,
+    };
+  });
+
+  expect(result.prediction).toMatchObject({ active: true, currentCombo: 0, remainingCombo: 2, finalCombo: 2 });
+  expect(result.expectedCombo).toBe(2);
+  expect(result.prediction.finalAttack).toBeCloseTo(result.expectedAttack, 9);
+  // 남은 폭발 대기 100ms와 두 단계의 폭발 연출(430ms)·대기(150ms)는 최소한 들어가야 한다.
+  expect(result.prediction.endInMs).toBeGreaterThanOrEqual(100 + 2 * (430 + 150));
+  // 연쇄 보너스는 이미 진행한 연쇄 번호부터 이어서 세므로, 같은 보드라도 4·5연쇄째의 ATTACK이 더 크다.
+  expect(result.continued).toEqual({ remainingCombo: 2, finalCombo: 5, attackIncreased: true });
+  expect(result.idle).toBe(false);
+  expect(result.lockedWithoutChain).toBe(false);
+});
+
+test('안드레알푸스는 빠른 하강 전에 받을 방해뿌요가 바뀌면 재판단하고, 빠른 하강을 시작한 턴에는 재판단하지 않는다', async ({ page }) => {
+  // 실제 대전에서 Blob Worker를 쓰므로 기준선 라우트를 걷고 시작한다.
+  await releaseNetworkInterception(page);
+  await page.evaluate(() => {
+    class RealtimeAndrealphus extends window.WebPuyo.Andrealphus {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'RealtimeAndrealphus'; }
+      getName() { return '실시간 재판단 테스트 안드레알푸스'; }
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        this.player = player;
+        window.realtimeAndrealphus = this;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new RealtimeAndrealphus() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  // Worker 탐색을 쓰는 턴(빈 필드 무작위 배치가 아닌 턴)의 결과가 준비되고, 아직 빠른 하강 전인 순간에 방해뿌요를 늘린다.
+  await expect.poll(() => page.evaluate(() => {
+    const controller = window.realtimeAndrealphus;
+    const state = controller?.realtimeReactionState;
+    if (!state || state.fastDownStarted || controller.workerSearchState !== 'ready' || !controller.player.active) return false;
+    if (controller.player.placedPairCount !== state.turn || controller.player.aiDecisionElapsed > 500) return false;
+    const before = state.replanCount;
+    controller.player.damage = 12;
+    const started = controller.updateRealtimeReaction(controller.player);
+    window.realtimeReplanResult = { started, replanDelta: state.replanCount - before, pending: controller.workerSearchState === 'pending', incoming: state.incoming };
+    return true;
+  }), { timeout: 30000 }).toBe(true);
+  const replanned = await page.evaluate(() => window.realtimeReplanResult);
+  expect(replanned).toMatchObject({ started: true, replanDelta: 1, pending: true });
+  expect(replanned.incoming).toBeGreaterThanOrEqual(12);
+
+  // 보통 난이도는 목표 결정 뒤 빠른 하강을 시작한다. 그렇게 빠른 하강을 시작한 턴에서는 받을 양이 다시 바뀌어도 재판단하지 않는다.
+  await expect.poll(() => page.evaluate(() => {
+    const controller = window.realtimeAndrealphus;
+    const state = controller?.realtimeReactionState;
+    if (!state?.fastDownStarted || !controller.player.active || controller.player.placedPairCount !== state.turn) return false;
+    const before = state.replanCount;
+    controller.player.damage += 20;
+    window.realtimeGateResult = { started: controller.updateRealtimeReaction(controller.player), replanDelta: state.replanCount - before };
+    return true;
+  }), { timeout: 30000 }).toBe(true);
+  expect(await page.evaluate(() => window.realtimeGateResult)).toEqual({ started: false, replanDelta: 0 });
+});
+
 test('키마리스 2턴 시뮬레이션 처리 시간을 측정한다', async ({ page }) => {
   await page.evaluate(() => {
     class KimarisTimingEnemy extends window.WebPuyo.Kimaris {

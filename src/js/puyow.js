@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 75;
+    const BUILDNO = 76;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -6237,8 +6237,9 @@
             }
             return score;
         };
-        const getPlacementScore = (combo, attack, allClear, targetCombo, board, rules) => {
-            const boardScore = getBoardScore(board, rules);
+        // precomputedBoardScore는 advanced 탐색이 발화점 점수를 더한 값을 넘길 때만 쓴다. 기본 탐색은 생략한다.
+        const getPlacementScore = (combo, attack, allClear, targetCombo, board, rules, precomputedBoardScore = null) => {
+            const boardScore = precomputedBoardScore === null ? getBoardScore(board, rules) : precomputedBoardScore;
             if (allClear) return 2000000 + combo * 10000 + attack * 1000 + boardScore;
             if (combo >= targetCombo) return 1000000 + combo * 10000 + attack * 1000 + boardScore;
             return attack * 200 + boardScore - (combo > 0 ? (targetCombo - combo + 1) * 25000 : 0);
@@ -6326,16 +6327,500 @@
             return best;
         };
 
+        /*
+         * ------------------------------------------------------------------------------------------
+         * advanced 탐색 모드 (BUILDNO 76)
+         * 위의 기본 탐색은 외부 적 API 계약을 위해 그대로 두고, `snapshot.searchMode === 'advanced'`일 때만 아래를 쓴다.
+         * 1) 문자열 2차원 배열 대신 셀 코드 1차원 Int8Array와 열 높이 배열을 쓰고, 좌표 문자열 Set·콜백·
+         *    단계마다 보드를 새로 만드는 비용을 없앤다. 한 배치의 연쇄 수·ATTACK·최종 보드는 기본 탐색의
+         *    resolvePlacement와 같아야 하며, 'resolvePlacements' 메시지로 두 결과를 비교할 수 있다.
+         * 2) 현재 수의 후보는 모두 읽고, 그 아래 수부터는 한 수 평가가 좋은 beamWidth개만 더 깊이 읽는다.
+         *    같은 색 쌍의 180도 회전은 같은 보드를 만들므로 첫 수 아래에서는 건너뛴다.
+         * 3) 인접 점수에 "지금 한두 개를 떨어뜨리면 몇 연쇄가 터지는가"(발화점 탐색)를 더해 연쇄 기반을 평가한다.
+         * 4) 메인 스코프가 예측한 방해뿌요 도착 수(realtime.garbageMoveIndex)까지의 공격만 상쇄로 보고,
+         *    그 수 뒤에는 남은 방해뿌요를 보드에 올린 채로 이어서 읽는다.
+         * ------------------------------------------------------------------------------------------
+         */
+        const EMPTY_CODE = 0;
+        const GARBAGE_CODE = colors.length + 1;
+        const HARD_GARBAGE_CODE = colors.length + 2;
+        /** 색·방해뿌요가 아닌 알 수 없는 칸이다. 폭발로 지워지지 않는 벽으로 취급한다. */
+        const BLOCK_CODE = colors.length + 3;
+        const cellCount = columns * rows;
+        const rotationOffsets = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+        const spawnFloor = Math.floor(spawnY);
+        /** 발화점 연쇄 수의 제곱에 곱하는 가중치다. 7연쇄 기반이 인접 점수보다 충분히 크게 평가되도록 정했다. */
+        const POTENTIAL_CHAIN_WEIGHT = 400;
+        /** 발화에 뿌요 두 개가 필요한 기반을 한 개로 되는 기반보다 낮게 보는 감점이다. */
+        const POTENTIAL_EXTRA_PUYO_PENALTY = 300;
+        /** 다음 수를 어디에 두어도 패배하는 경로의 감점이다. */
+        const DEAD_END_PENALTY = 500000;
+        const floodStamp = new Int32Array(cellCount);
+        const removeStamp = new Int32Array(cellCount);
+        const hardHitStamp = new Int32Array(cellCount);
+        const hardHitCount = new Int8Array(cellCount);
+        const hardHitCells = new Int16Array(cellCount);
+        const floodStack = new Int16Array(cellCount);
+        const explodingCells = new Int16Array(cellCount);
+        const colorExplodeCounts = new Int16Array(colors.length + 1);
+        const potentialCells = new Int8Array(cellCount);
+        const potentialHeights = new Int8Array(columns);
+        let stampValue = 0;
+        const nextStamp = () => {
+            stampValue += 1;
+            if (stampValue > 2000000000) {
+                floodStamp.fill(0);
+                removeStamp.fill(0);
+                hardHitStamp.fill(0);
+                stampValue = 1;
+            }
+            return stampValue;
+        };
+        const encodeCell = (cell) => {
+            if (cell === null || cell === undefined) return EMPTY_CODE;
+            const colorIndex = colors.indexOf(cell);
+            if (colorIndex >= 0) return colorIndex + 1;
+            if (cell === 'garbage') return GARBAGE_CODE;
+            if (cell === hardGarbage) return HARD_GARBAGE_CODE;
+            return BLOCK_CODE;
+        };
+        const decodeCell = (code) => {
+            if (code === EMPTY_CODE) return null;
+            if (code <= colors.length) return colors[code - 1];
+            if (code === GARBAGE_CODE) return 'garbage';
+            if (code === HARD_GARBAGE_CODE) return hardGarbage;
+            return 'block';
+        };
+        /** 문자열 보드를 셀 코드와 열 높이로 바꾼다. 게임 보드는 조작 단계에서 항상 중력이 끝난 상태이므로 열을 아래로 모아 담는다. */
+        const encodeFastBoard = (board) => {
+            const cells = new Int8Array(cellCount);
+            const heights = new Int8Array(columns);
+            for (let x = 0; x < columns; x += 1) {
+                let height = 0;
+                for (let y = 0; y < rows; y += 1) {
+                    const code = encodeCell(board[y][x]);
+                    if (code === EMPTY_CODE) continue;
+                    cells[height * columns + x] = code;
+                    height += 1;
+                }
+                heights[x] = height;
+            }
+            return { cells, heights };
+        };
+        const decodeFastBoard = (cells) => Array.from({ length: rows }, (_, y) => Array.from({ length: columns }, (__, x) => decodeCell(cells[y * columns + x])));
+        /** 기본 탐색 findLandingPlacement와 같은 조건으로 착지 시 회전축 뿌요의 Y를 구한다. 놓을 수 없으면 -1이다. */
+        const findFastLanding = (heights, x, rotation) => {
+            const offset = rotationOffsets[rotation];
+            const otherX = x + offset[0];
+            const otherSpawnY = spawnFloor + offset[1];
+            if (x < 0 || x >= columns || otherX < 0 || otherX >= columns || spawnFloor >= rows || otherSpawnY < 0 || otherSpawnY >= rows) return -1;
+            // 중력이 끝난 열은 높이 위가 모두 비어 있으므로, 생성 위치 두 칸이 비었는지는 높이 비교로 충분하다.
+            if (heights[x] > spawnFloor || heights[otherX] > otherSpawnY) return -1;
+            return Math.max(heights[x], heights[otherX] - offset[1]);
+        };
+        /** 착지한 쌍을 중력까지 적용한 위치에 놓는다. 가로 쌍은 각 열 높이에, 세로 쌍은 한 열에 차례로 쌓는다. */
+        const placeFastPair = (cells, heights, code0, code1, x, rotation) => {
+            const offset = rotationOffsets[rotation];
+            if (offset[0] === 0) {
+                const height = heights[x];
+                cells[height * columns + x] = offset[1] > 0 ? code0 : code1;
+                cells[(height + 1) * columns + x] = offset[1] > 0 ? code1 : code0;
+                heights[x] = height + 2;
+                return;
+            }
+            const otherX = x + offset[0];
+            cells[heights[x] * columns + x] = code0;
+            heights[x] += 1;
+            cells[heights[otherX] * columns + otherX] = code1;
+            heights[otherX] += 1;
+        };
+        /** 폭발·방해뿌요 제거·중력을 끝까지 반복한다. cells와 heights를 직접 바꾸고 연쇄 수와 ATTACK을 반환한다. */
+        const resolveFastChain = (cells, heights, rules) => {
+            let combo = 0;
+            let attack = 0;
+            while (true) {
+                let scanRows = 0;
+                for (let x = 0; x < columns; x += 1) if (heights[x] > scanRows) scanRows = heights[x];
+                if (scanRows > visibleRows) scanRows = visibleRows;
+                const visit = nextStamp();
+                let explodingCount = 0;
+                colorExplodeCounts.fill(0);
+                for (let y = 0; y < scanRows; y += 1) {
+                    for (let x = 0; x < columns; x += 1) {
+                        const start = y * columns + x;
+                        const color = cells[start];
+                        if (color < 1 || color > colors.length || floodStamp[start] === visit) continue;
+                        floodStamp[start] = visit;
+                        floodStack[0] = start;
+                        let stackSize = 1;
+                        let size = 0;
+                        while (stackSize) {
+                            stackSize -= 1;
+                            const current = floodStack[stackSize];
+                            explodingCells[explodingCount + size] = current;
+                            size += 1;
+                            const currentX = current % columns;
+                            const currentY = (current - currentX) / columns;
+                            if (currentX > 0 && floodStamp[current - 1] !== visit && cells[current - 1] === color) { floodStamp[current - 1] = visit; floodStack[stackSize] = current - 1; stackSize += 1; }
+                            if (currentX < columns - 1 && floodStamp[current + 1] !== visit && cells[current + 1] === color) { floodStamp[current + 1] = visit; floodStack[stackSize] = current + 1; stackSize += 1; }
+                            if (currentY > 0 && floodStamp[current - columns] !== visit && cells[current - columns] === color) { floodStamp[current - columns] = visit; floodStack[stackSize] = current - columns; stackSize += 1; }
+                            if (currentY < visibleRows - 1 && floodStamp[current + columns] !== visit && cells[current + columns] === color) { floodStamp[current + columns] = visit; floodStack[stackSize] = current + columns; stackSize += 1; }
+                        }
+                        // 네 개 미만 그룹은 방문 표시만 남기고, 모은 칸은 다음 그룹이 덮어쓴다.
+                        if (size >= 4) {
+                            explodingCount += size;
+                            colorExplodeCounts[color] += size;
+                        }
+                    }
+                }
+                if (!explodingCount) return { combo, attack };
+                const removal = nextStamp();
+                let hardCount = 0;
+                for (let index = 0; index < explodingCount; index += 1) removeStamp[explodingCells[index]] = removal;
+                for (let index = 0; index < explodingCount; index += 1) {
+                    const cell = explodingCells[index];
+                    const cellX = cell % columns;
+                    const cellY = (cell - cellX) / columns;
+                    for (let direction = 0; direction < 4; direction += 1) {
+                        const neighborX = cellX + (direction === 0 ? 1 : direction === 1 ? -1 : 0);
+                        const neighborY = cellY + (direction === 2 ? 1 : direction === 3 ? -1 : 0);
+                        if (neighborX < 0 || neighborX >= columns || neighborY < 0 || neighborY >= rows) continue;
+                        const neighbor = neighborY * columns + neighborX;
+                        const code = cells[neighbor];
+                        if (code === GARBAGE_CODE) removeStamp[neighbor] = removal;
+                        else if (code === HARD_GARBAGE_CODE) {
+                            if (hardHitStamp[neighbor] !== removal) {
+                                hardHitStamp[neighbor] = removal;
+                                hardHitCount[neighbor] = 0;
+                                hardHitCells[hardCount] = neighbor;
+                                hardCount += 1;
+                            }
+                            hardHitCount[neighbor] += 1;
+                        }
+                    }
+                }
+                // 딱딱뿌요는 인접 폭발이 두 번 이상이면 파괴되고, 한 번이면 일반 방해뿌요로 약해진다.
+                let brokenHardGarbageCount = 0;
+                for (let index = 0; index < hardCount; index += 1) {
+                    const cell = hardHitCells[index];
+                    if (hardHitCount[cell] >= 2) {
+                        removeStamp[cell] = removal;
+                        brokenHardGarbageCount += 1;
+                    } else cells[cell] = GARBAGE_CODE;
+                }
+                combo += 1;
+                let largestColorCount = 0;
+                let colorCount = 0;
+                for (let color = 1; color <= colors.length; color += 1) {
+                    const count = colorExplodeCounts[color];
+                    if (!count) continue;
+                    colorCount += 1;
+                    if (count > largestColorCount) largestColorCount = count;
+                }
+                // 기본 탐색 calculateAttack과 같은 순서로 계산해 부동소수점 결과까지 맞춘다.
+                const bonus = Math.max(1, getChainBonus(combo) + getConnectionBonus(largestColorCount) + getColorBonus(colorCount));
+                const point = explodingCount * (brokenHardGarbageCount * hardGarbageScoreMultiplier + 1) * bonus * 10;
+                attack += point / rules.marginRate * rules.timeProgressMultiplier;
+                for (let x = 0; x < columns; x += 1) {
+                    const height = heights[x];
+                    let write = 0;
+                    for (let y = 0; y < height; y += 1) {
+                        const index = y * columns + x;
+                        if (removeStamp[index] === removal) continue;
+                        if (write !== y) cells[write * columns + x] = cells[index];
+                        write += 1;
+                    }
+                    for (let y = write; y < height; y += 1) cells[y * columns + x] = EMPTY_CODE;
+                    heights[x] = write;
+                }
+            }
+        };
+        /** 한 칸에서 시작한 같은 색 연결 수를 네 개까지만 센다. 발화점 후보를 빠르게 거르는 데 쓴다. */
+        const measureConnectedAtLeastFour = (cells, start, color) => {
+            const visit = nextStamp();
+            floodStamp[start] = visit;
+            floodStack[0] = start;
+            let stackSize = 1;
+            let size = 0;
+            while (stackSize) {
+                stackSize -= 1;
+                const current = floodStack[stackSize];
+                size += 1;
+                if (size >= 4) return true;
+                const currentX = current % columns;
+                const currentY = (current - currentX) / columns;
+                if (currentX > 0 && floodStamp[current - 1] !== visit && cells[current - 1] === color) { floodStamp[current - 1] = visit; floodStack[stackSize] = current - 1; stackSize += 1; }
+                if (currentX < columns - 1 && floodStamp[current + 1] !== visit && cells[current + 1] === color) { floodStamp[current + 1] = visit; floodStack[stackSize] = current + 1; stackSize += 1; }
+                if (currentY > 0 && floodStamp[current - columns] !== visit && cells[current - columns] === color) { floodStamp[current - columns] = visit; floodStack[stackSize] = current - columns; stackSize += 1; }
+                if (currentY < visibleRows - 1 && floodStamp[current + columns] !== visit && cells[current + columns] === color) { floodStamp[current + columns] = visit; floodStack[stackSize] = current + columns; stackSize += 1; }
+            }
+            return false;
+        };
+        /**
+         * 발화점 탐색: 각 열 맨 위에 옆·아래와 같은 색 뿌요를 한 개(안 되면 두 개) 떨어뜨렸을 때 터지는 최대 연쇄를 구한다.
+         * 이웃에 같은 색이 없으면 새 그룹이 네 개가 될 수 없으므로 그 색은 시도하지 않는다.
+         */
+        const findChainPotential = (cells, heights, rules) => {
+            let bestCombo = 0;
+            let bestAttack = 0;
+            let bestNeeded = 0;
+            for (let x = 0; x < columns; x += 1) {
+                const y = heights[x];
+                if (y >= visibleRows) continue;
+                const index = y * columns + x;
+                let colorMask = 0;
+                if (x > 0 && heights[x - 1] > y) colorMask |= 1 << cells[index - 1];
+                if (x < columns - 1 && heights[x + 1] > y) colorMask |= 1 << cells[index + 1];
+                if (y > 0) colorMask |= 1 << cells[index - columns];
+                for (let color = 1; color <= colors.length; color += 1) {
+                    if (!(colorMask & (1 << color))) continue;
+                    for (let needed = 1; needed <= 2; needed += 1) {
+                        if (y + needed > visibleRows) break;
+                        cells[index] = color;
+                        if (needed === 2) cells[index + columns] = color;
+                        let result = null;
+                        if (measureConnectedAtLeastFour(cells, index, color)) {
+                            potentialCells.set(cells);
+                            potentialHeights.set(heights);
+                            potentialHeights[x] = y + needed;
+                            result = resolveFastChain(potentialCells, potentialHeights, rules);
+                        }
+                        cells[index] = EMPTY_CODE;
+                        if (needed === 2) cells[index + columns] = EMPTY_CODE;
+                        if (!result) continue;
+                        if (result.combo > bestCombo
+                            || (result.combo === bestCombo && needed < bestNeeded)
+                            || (result.combo === bestCombo && needed === bestNeeded && result.attack > bestAttack)) {
+                            bestCombo = result.combo;
+                            bestAttack = result.attack;
+                            bestNeeded = needed;
+                        }
+                        break;
+                    }
+                }
+            }
+            return { combo: bestCombo, attack: bestAttack, needed: bestNeeded };
+        };
+        /** 기본 탐색 getBoardScore와 같은 인접·높이 점수다. */
+        const getFastBoardScore = (cells, heights, rules) => {
+            let score = 0;
+            for (let x = 0; x < columns; x += 1) {
+                for (let y = 0; y < heights[x]; y += 1) {
+                    const index = y * columns + x;
+                    const code = cells[index];
+                    if (code < 1 || code > colors.length) continue;
+                    score -= y * 4;
+                    if (x < columns - 1 && cells[index + 1] === code) score += 80;
+                    if (y < rows - 1 && cells[index + columns] === code) score += 55;
+                    if (y >= 8 && (x === 2 || (rules.usesSecondDefeatCell && x === 3))) score -= 180;
+                }
+            }
+            return score;
+        };
+        const isFastDefeat = (heights, rules) => heights[2] > 11 || (rules.usesSecondDefeatCell && heights[3] > 11);
+        /** 도착한 방해뿌요 중 한 줄을 채우는 몫만 각 열 위에 올린다. 나머지 몇 개의 무작위 열은 알 수 없으므로 올리지 않는다. */
+        const addFastGarbageRows = (cells, heights, amount) => {
+            const rowCount = Math.floor(Math.min(30, amount) / columns);
+            for (let x = 0; x < columns; x += 1) {
+                for (let row = 0; row < rowCount && heights[x] < rows; row += 1) {
+                    cells[heights[x] * columns + x] = GARBAGE_CODE;
+                    heights[x] += 1;
+                }
+            }
+        };
+        const isBetterAdvancedCandidate = (candidate, best, urgent) => {
+            if (!best) return true;
+            if (urgent && candidate.unresolvedDanger !== best.unresolvedDanger) return !candidate.unresolvedDanger;
+            if (urgent && candidate.unresolvedDanger && candidate.remainingIncoming !== best.remainingIncoming) return candidate.remainingIncoming < best.remainingIncoming;
+            if (candidate.score !== best.score) return candidate.score > best.score;
+            if (candidate.maxCombo !== best.maxCombo) return candidate.maxCombo > best.maxCombo;
+            return candidate.x > best.x;
+        };
+        /** 요청 하나에서 깊이마다 다시 쓰는 advanced 탐색 입력을 만든다. 사용할 수 없는 입력이면 null이다. */
+        const createAdvancedContext = (snapshot) => {
+            const selfState = snapshot.self;
+            const active = selfState?.active;
+            if (!isUsableBoard(selfState.board) || !active || !Array.isArray(active.colors) || active.colors.length !== 2) return null;
+            const encodePair = (pair) => (Array.isArray(pair) && pair.length === 2 && colors.includes(pair[0]) && colors.includes(pair[1])
+                ? [encodeCell(pair[0]), encodeCell(pair[1])]
+                : null);
+            const activeCodes = encodePair(active.colors);
+            if (!activeCodes) return null;
+            const root = encodeFastBoard(selfState.board);
+            const realtime = snapshot.realtime && typeof snapshot.realtime === 'object' ? snapshot.realtime : null;
+            const incoming = Math.max(0, Math.floor(Number(realtime ? realtime.incoming : snapshot.incomingGarbage) || 0));
+            const realtimeMoveIndex = Math.floor(Number(realtime?.garbageMoveIndex));
+            const threshold = Math.max(1, Math.floor(Number(snapshot.urgentGarbageThreshold) || 1));
+            const allowedPlacements = Array.isArray(snapshot.allowedPlacements)
+                ? new Set(snapshot.allowedPlacements.map((placement) => Math.floor(Number(placement?.x)) * 4 + Math.floor(Number(placement?.rotation))))
+                : null;
+            return {
+                rules: snapshot.rules,
+                targetCombo: snapshot.targetCombo,
+                rootCells: root.cells,
+                rootHeights: root.heights,
+                activeCodes,
+                nextPairCodes: Array.isArray(selfState.nextPairs) ? selfState.nextPairs.map(encodePair) : [],
+                beamWidth: Math.max(1, Math.floor(Number(snapshot.beamWidth) || 5)),
+                incoming,
+                threshold,
+                urgent: incoming >= threshold,
+                selfAttack: Math.max(0, Number(selfState.attack) || 0),
+                // 실시간 예측이 없으면 기본 탐색처럼 이번 수 직후에 방해뿌요가 온다고 본다.
+                garbageMoveIndex: incoming < 1 ? Infinity : (realtimeMoveIndex >= 0 ? realtimeMoveIndex : 0),
+                dangerColumns: snapshot.rules.usesSecondDefeatCell ? [2, 3] : [2],
+                allowedPlacements
+            };
+        };
+        /** 현재 수(moveIndex 0)는 모든 후보를, 그 아래 수는 beamWidth개 후보만 재귀적으로 읽어 최선 경로를 반환한다. */
+        const searchAdvanced = (context, cells, heights, moveIndex, remainingTurns, cumulativeAttack, settledRemaining, state) => {
+            if (expired(state)) return null;
+            const pair = moveIndex === 0 ? context.activeCodes : context.nextPairCodes[moveIndex - 1];
+            if (!pair) return null;
+            const code0 = pair[0];
+            const code1 = pair[1];
+            const skipMirroredRotation = moveIndex > 0 && code0 === code1;
+            const children = [];
+            for (let rotation = 0; rotation < 4; rotation += 1) {
+                if (skipMirroredRotation && rotation >= 2) continue;
+                for (let x = 0; x < columns; x += 1) {
+                    if (moveIndex === 0 && context.allowedPlacements && !context.allowedPlacements.has(x * 4 + rotation)) continue;
+                    const baseY = findFastLanding(heights, x, rotation);
+                    if (baseY < 0) continue;
+                    const childCells = cells.slice();
+                    const childHeights = heights.slice();
+                    placeFastPair(childCells, childHeights, code0, code1, x, rotation);
+                    const resolved = resolveFastChain(childCells, childHeights, context.rules);
+                    if (isFastDefeat(childHeights, context.rules)) continue;
+                    let allClear = true;
+                    for (let column = 0; column < columns; column += 1) if (childHeights[column]) { allClear = false; break; }
+                    let childCumulative = cumulativeAttack;
+                    let childSettled = settledRemaining;
+                    if (moveIndex <= context.garbageMoveIndex) childCumulative += resolved.attack;
+                    if (moveIndex === context.garbageMoveIndex) {
+                        // 이 수를 두고 나면 방해뿌요가 떨어진다. 여기까지 보낸 공격만 상쇄로 인정한다.
+                        childSettled = Math.max(0, context.incoming - Math.floor(context.selfAttack + childCumulative));
+                        if (childSettled > 0) {
+                            const extraPerColumn = Math.ceil(Math.min(30, childSettled) / columns);
+                            if (resolved.combo === 0 && context.dangerColumns.some((column) => childHeights[column] + extraPerColumn > 11)) continue;
+                            addFastGarbageRows(childCells, childHeights, childSettled);
+                            if (isFastDefeat(childHeights, context.rules)) continue;
+                        }
+                    }
+                    if (expired(state)) return null;
+                    const potential = findChainPotential(childCells, childHeights, context.rules);
+                    const boardScore = getFastBoardScore(childCells, childHeights, context.rules)
+                        + (potential.combo >= 2 ? potential.combo * potential.combo * POTENTIAL_CHAIN_WEIGHT - (potential.needed - 1) * POTENTIAL_EXTRA_PUYO_PENALTY : 0);
+                    // 방해뿌요가 이 경로 안에서 아직 도착하지 않았다면, 지금 발화점으로 낼 수 있는 공격까지 상쇄 가능량으로 본다.
+                    const remainingIncoming = childSettled !== null
+                        ? childSettled
+                        : (context.incoming < 1 ? 0 : Math.max(0, context.incoming - Math.floor(context.selfAttack + childCumulative + potential.attack)));
+                    children.push({
+                        x, rotation, baseY,
+                        cells: childCells,
+                        heights: childHeights,
+                        combo: resolved.combo,
+                        attack: resolved.attack,
+                        allClear,
+                        cumulativeAttack: childCumulative,
+                        settledRemaining: childSettled,
+                        score: getPlacementScore(resolved.combo, resolved.attack, allClear, context.targetCombo, null, context.rules, boardScore),
+                        maxCombo: resolved.combo,
+                        totalAttack: resolved.attack,
+                        remainingIncoming,
+                        unresolvedDanger: context.urgent && remainingIncoming >= context.threshold
+                    });
+                }
+            }
+            if (!children.length) return null;
+            if (remainingTurns <= 1) {
+                let best = null;
+                children.forEach((child) => { if (isBetterAdvancedCandidate(child, best, context.urgent)) best = child; });
+                return best;
+            }
+            children.sort((left, right) => (isBetterAdvancedCandidate(left, right, context.urgent) ? -1 : isBetterAdvancedCandidate(right, left, context.urgent) ? 1 : 0));
+            const expandCount = moveIndex === 0 ? children.length : Math.min(children.length, context.beamWidth);
+            const nextPairAvailable = !!context.nextPairCodes[moveIndex];
+            let best = null;
+            for (let index = 0; index < expandCount; index += 1) {
+                const child = children[index];
+                const future = nextPairAvailable
+                    ? searchAdvanced(context, child.cells, child.heights, moveIndex + 1, remainingTurns - 1, child.cumulativeAttack, child.settledRemaining, state)
+                    : null;
+                if (state.timedOut) return null;
+                const remainingIncoming = future ? future.remainingIncoming : child.remainingIncoming;
+                const candidate = {
+                    x: child.x,
+                    rotation: child.rotation,
+                    baseY: child.baseY,
+                    combo: child.combo,
+                    attack: child.attack,
+                    allClear: child.allClear,
+                    score: child.score + (future ? future.score * 0.92 : (nextPairAvailable ? -DEAD_END_PENALTY : 0)),
+                    maxCombo: Math.max(child.combo, future?.maxCombo || 0),
+                    totalAttack: child.attack + (future?.totalAttack || 0),
+                    remainingIncoming,
+                    unresolvedDanger: context.urgent && remainingIncoming >= context.threshold
+                };
+                if (isBetterAdvancedCandidate(candidate, best, context.urgent)) best = candidate;
+            }
+            return best;
+        };
+        const findBestCurrentPlacementAdvanced = (context, depth, state) => {
+            const best = searchAdvanced(context, context.rootCells, context.rootHeights, 0, depth, 0, null, state);
+            if (!best) return null;
+            const offset = rotationOffsets[best.rotation];
+            return {
+                simulation: {
+                    x: best.x,
+                    rotation: best.rotation,
+                    positions: [{ x: best.x, y: best.baseY }, { x: best.x + offset[0], y: best.baseY + offset[1] }],
+                    combo: best.combo,
+                    attack: best.attack
+                },
+                score: best.score,
+                maxCombo: best.maxCombo,
+                totalAttack: best.totalAttack
+            };
+        };
+
         self.onmessage = ({ data }) => {
+            if (data?.type === 'resolvePlacements') {
+                // advanced 엔진의 배치 결과를 기본 규칙과 비교하는 검증용 요청이다.
+                try {
+                    const results = (Array.isArray(data.cases) ? data.cases : []).map((testCase) => {
+                        const { cells, heights } = encodeFastBoard(testCase.board);
+                        const baseY = findFastLanding(heights, testCase.x, testCase.rotation);
+                        if (baseY < 0) return null;
+                        placeFastPair(cells, heights, encodeCell(testCase.colors[0]), encodeCell(testCase.colors[1]), testCase.x, testCase.rotation);
+                        const resolved = resolveFastChain(cells, heights, data.rules);
+                        const offset = rotationOffsets[testCase.rotation];
+                        return {
+                            positions: [{ x: testCase.x, y: baseY }, { x: testCase.x + offset[0], y: baseY + offset[1] }],
+                            combo: resolved.combo,
+                            attack: resolved.attack,
+                            board: decodeFastBoard(cells),
+                            potential: findChainPotential(cells, heights, data.rules)
+                        };
+                    });
+                    self.postMessage({ type: 'resolved', requestId: data.requestId, results });
+                } catch (error) {
+                    self.postMessage({ type: 'error', requestId: data.requestId, message: error instanceof Error ? error.message : String(error) });
+                }
+                return;
+            }
             if (!data || data.type !== 'simulate') return;
             try {
                 const snapshot = data.snapshot;
                 const maxDepth = Math.max(3, Math.min(Math.floor(Number(snapshot?.turnCount) || 3), Array.isArray(snapshot?.self?.nextPairs) ? snapshot.self.nextPairs.length + 1 : 3));
                 const state = { deadline: performance.now() + Math.max(1, Number(data.timeLimitMs) || 1), timedOut: false };
+                const advancedContext = snapshot?.searchMode === 'advanced' ? createAdvancedContext(snapshot) : null;
                 let latest = null;
                 for (let depth = 1; depth <= maxDepth; depth += 1) {
                     if (expired(state)) break;
-                    const plan = findBestCurrentPlacement(snapshot, depth, state);
+                    const plan = snapshot?.searchMode === 'advanced'
+                        ? (advancedContext ? findBestCurrentPlacementAdvanced(advancedContext, depth, state) : null)
+                        : findBestCurrentPlacement(snapshot, depth, state);
                     if (state.timedOut) break;
                     if (!plan) break;
                     latest = { depth, placement: plan.simulation, score: plan.score, maxCombo: plan.maxCombo, totalAttack: plan.totalAttack };
@@ -6393,13 +6878,30 @@
         };
     }
 
-    /** @param {PlayerState|object} player 현재 CPU 플레이어 @param {PlayerState|object|null} opponent 상대 플레이어 @param {number} targetCombo 목표 연쇄 @param {number} turnCount 탐색 수 @param {number} urgentGarbageThreshold 긴급 상쇄 기준 @returns {object} Worker 탐색용 JSON snapshot */
-    function createNMoveWorkerSnapshot(player, opponent, targetCombo, turnCount, urgentGarbageThreshold) {
+    /**
+     * @param {PlayerState|object} player 현재 CPU 플레이어
+     * @param {PlayerState|object|null} opponent 상대 플레이어
+     * @param {number} targetCombo 목표 연쇄
+     * @param {number} turnCount 탐색 수
+     * @param {number} urgentGarbageThreshold 긴급 상쇄 기준
+     * @param {{searchMode?:'legacy'|'advanced',beamWidth?:number,allowedPlacements?:{x:number,rotation:number}[]|null}} [searchOptions={}] advanced 탐색 설정. 생략하면 기존 탐색 snapshot과 같다.
+     * @returns {object} Worker 탐색용 JSON snapshot
+     */
+    function createNMoveWorkerSnapshot(player, opponent, targetCombo, turnCount, urgentGarbageThreshold, searchOptions = {}) {
         const selfSnapshot = createNMoveWorkerPlayerSnapshot(player, opponent);
         const opponentSnapshot = createNMoveWorkerPlayerSnapshot(opponent, player);
         const displayedWarning = selfSnapshot.warningPuyoAmount;
         const pendingAttack = selfSnapshot.damage + opponentSnapshot.attack;
+        const advanced = searchOptions.searchMode === 'advanced';
         return {
+            ...(advanced ? {
+                searchMode: 'advanced',
+                beamWidth: Math.max(1, Math.floor(Number(searchOptions.beamWidth) || N_MOVE_ADVANCED_DEFAULT_BEAM_WIDTH)),
+                allowedPlacements: Array.isArray(searchOptions.allowedPlacements)
+                    ? searchOptions.allowedPlacements.map((placement) => ({ x: placement.x, rotation: placement.rotation }))
+                    : null,
+                realtime: player?.board && opponent?.board ? getRealtimeGarbageForecast(player, opponent) : null
+            } : {}),
             self: selfSnapshot,
             opponent: opponentSnapshot,
             incomingGarbage: Math.max(displayedWarning, pendingAttack),
@@ -6460,7 +6962,7 @@
      * @param {number} [targetCombo=6] 목표 연쇄 수
      * @param {number} [turnCount=3] 현재 수를 포함한 탐색 수
      * @param {number} [timeLimitMs=50] 메인 스코프에서 측정할 최대 처리 시간(ms)
-     * @param {{opponent?:PlayerState|object|null,urgentGarbageThreshold?:number,onProgress?:(result:object)=>void,onComplete?:(result:object)=>void,onError?:(error:Error)=>void}} [options] Worker 결과 콜백
+     * @param {{opponent?:PlayerState|object|null,urgentGarbageThreshold?:number,searchMode?:'legacy'|'advanced',beamWidth?:number,allowedPlacements?:{x:number,rotation:number}[]|null,onProgress?:(result:object)=>void,onComplete?:(result:object)=>void,onError?:(error:Error)=>void}} [options] Worker 결과 콜백과 탐색 설정. searchMode가 'advanced'이면 빠른 보드·빔 탐색·발화점 평가·방해뿌요 도착 예측을 쓰고, allowedPlacements가 있으면 현재 수를 그 위치·회전으로만 제한한다.
      * @returns {{cancel:(reason?:string)=>void,promise:Promise<object>}} 취소 가능한 비동기 탐색 작업
      */
     function simulateNMovePlacementsInWorker(player, targetCombo = 6, turnCount = 3, timeLimitMs = 50, options = {}) {
@@ -6506,7 +7008,11 @@
                 console.error(`N수 AI Worker ${reason}: ${error.message}`, error);
                 try { options.onError?.(error); } catch (callbackError) { console.error('N수 AI Worker 오류 콜백에 실패했습니다.', callbackError); }
             }
-            const fallbackPlan = findBestNMovePlacement(player, targetCombo, 1);
+            const fallbackPlan = Array.isArray(options.allowedPlacements)
+                ? simulateNMovePlacements(player, targetCombo, 1)
+                    .filter((plan) => options.allowedPlacements.some((placement) => placement.x === plan.simulation.x && placement.rotation === plan.simulation.rotation))
+                    .reduce((best, plan) => (!best || plan.score > best.score || (plan.score === best.score && plan.simulation.x > best.simulation.x) ? plan : best), null)
+                : findBestNMovePlacement(player, targetCombo, 1);
             notifyComplete({
                 depth: 0,
                 placement: fallbackPlan?.simulation || null,
@@ -6533,7 +7039,11 @@
         };
         try {
             worker = acquireNMoveSimulationWorker();
-            const snapshot = createNMoveWorkerSnapshot(player, opponent, targetCombo, normalizedTurns, options.urgentGarbageThreshold ?? 1);
+            const snapshot = createNMoveWorkerSnapshot(player, opponent, targetCombo, normalizedTurns, options.urgentGarbageThreshold ?? 1, {
+                searchMode: options.searchMode,
+                beamWidth: options.beamWidth,
+                allowedPlacements: options.allowedPlacements
+            });
             const requestId = `${Date.now()}-${Math.floor(randomFloat() * 1000000)}`;
             const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
             const remainingTimeMs = Math.max(0, normalizedLimit - (now - startedAt));
@@ -6597,6 +7107,7 @@
         enemy.attackPlacement = null;
         enemy.workerSearchDepth = 0;
         enemy.workerSearchState = 'idle';
+        enemy.workerSearchKeepsDecisionElapsed = false;
     }
 
     /** @param {Enemy|object} enemy 적 @param {PlayerState|object} player CPU 플레이어 @param {number} rotation 요청 회전값 @returns {number} 즉시 패배 보호를 반영한 회전값 */
@@ -6616,7 +7127,8 @@
         enemy.workerSearchDepth = result.depth;
         player.aiTarget = placement.x;
         player.aiRotation = selectWorkerSearchRotation(enemy, player, placement.rotation);
-        player.aiDecisionElapsed = 0;
+        // 실시간 재판단은 빠른 하강 대기 시간을 처음부터 다시 세지 않는다.
+        if (!enemy.workerSearchKeepsDecisionElapsed) player.aiDecisionElapsed = 0;
         enemy.workerSearchState = 'ready';
     }
 
@@ -6626,13 +7138,22 @@
             || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
     }
 
-    /** @param {Enemy|object} enemy Worker 탐색을 시작할 적 @param {PlayerState|object} player CPU 플레이어 @returns {void} */
-    function startWorkerLookaheadSearch(enemy, player) {
+    /**
+     * @param {Enemy|object} enemy Worker 탐색을 시작할 적. `lookaheadSearchMode`·`lookaheadBeamWidth`가 있으면 탐색 방식에 반영한다.
+     * @param {PlayerState|object} player CPU 플레이어
+     * @param {{allowedPlacements?:{x:number,rotation:number}[]|null,keepDecisionElapsed?:boolean}} [searchOptions={}] 조작 도중 재판단 설정. allowedPlacements는 지금 위치에서 도달할 수 있는 후보, keepDecisionElapsed는 빠른 하강 대기 시간을 유지할지 여부다.
+     * @returns {void}
+     */
+    function startWorkerLookaheadSearch(enemy, player, searchOptions = {}) {
         cancelPendingWorkerSearch(enemy, null, 'replaced');
         enemy.workerSearchPlayer = player;
         enemy.workerSearchActive = player.active;
         enemy.workerSearchDepth = 0;
         enemy.workerSearchState = 'pending';
+        enemy.workerSearchKeepsDecisionElapsed = searchOptions.keepDecisionElapsed === true;
+        const allowedPlacements = Array.isArray(searchOptions.allowedPlacements) ? searchOptions.allowedPlacements : null;
+        // 재판단이 실패하면 새 후보를 억지로 고르지 않고 직전에 정한 목표를 그대로 유지한다.
+        const previousPlacement = allowedPlacements ? enemy.attackPlacement : null;
         const opponent = game?.players.find((candidate) => candidate !== player) ?? null;
         enemy.pendingWorkerSearch = simulateNMovePlacementsInWorker(
             player,
@@ -6642,17 +7163,20 @@
             {
                 opponent,
                 urgentGarbageThreshold: enemy.ignorableIncomingGarbage,
+                searchMode: enemy.lookaheadSearchMode === 'advanced' ? 'advanced' : 'legacy',
+                beamWidth: enemy.lookaheadBeamWidth,
+                allowedPlacements,
                 onProgress: (result) => applyWorkerSearchResult(enemy, player, result),
                 onComplete: (result) => {
                     if (!isCurrentWorkerSearch(enemy, player)) return;
                     enemy.pendingWorkerSearch = null;
                     if (result.placement) applyWorkerSearchResult(enemy, player, result);
                     else {
-                        enemy.attackPlacement = getWorkerSearchFallbackPlacement(enemy, player);
+                        enemy.attackPlacement = previousPlacement || getWorkerSearchFallbackPlacement(enemy, player);
                         player.aiTarget = enemy.attackPlacement?.x ?? (player.active ? player.active.x : 2);
                         player.aiRotation = selectWorkerSearchRotation(enemy, player, enemy.attackPlacement?.rotation ?? 0);
                         enemy.workerSearchDepth = 0;
-                        player.aiDecisionElapsed = 0;
+                        if (!enemy.workerSearchKeepsDecisionElapsed) player.aiDecisionElapsed = 0;
                     }
                     enemy.workerSearchState = 'ready';
                 },
@@ -6677,6 +7201,166 @@
     function getWorkerSearchRotation(enemy, player) {
         const preparedPlacement = enemy.getPreparedPlacement?.();
         return selectWorkerSearchRotation(enemy, player, preparedPlacement?.rotation ?? enemy.attackPlacement?.rotation ?? 0);
+    }
+
+    /** advanced N수 탐색에서 현재 수 아래 수마다 더 깊이 읽을 후보 수의 기본값이다. @type {number} */
+    const N_MOVE_ADVANCED_DEFAULT_BEAM_WIDTH = 5;
+    /** 연쇄 단계 사이 대기 시간(ms)이다. updatePlayer()의 phaseTimer 150ms와 같은 값이어야 한다. @type {number} */
+    const CHAIN_PHASE_WAIT_MS = 150;
+    /** 폭발 연출 시간(ms)이다. resolveExplosions()의 effects.duration 430ms와 같은 값이어야 한다. @type {number} */
+    const EXPLOSION_EFFECT_DURATION_MS = 430;
+    /** 조작 뿌요가 고정된 뒤 방해뿌요가 떨어지기까지의 대기 시간(ms)이다. explode 150ms + garbage 150ms 단계다. @type {number} */
+    const LOCK_TO_GARBAGE_DROP_MS = CHAIN_PHASE_WAIT_MS * 2;
+    /** 조작 뿌요가 고정된 뒤 다음 조작 뿌요가 나오기까지의 대기 시간(ms)이다. explode·garbage·check 단계다. @type {number} */
+    const LOCK_TO_NEXT_CONTROL_MS = CHAIN_PHASE_WAIT_MS * 3;
+
+    /**
+     * 중력을 적용한 보드와, startGravity()가 쓰는 것과 같은 식의 낙하 연출 시간을 구한다.
+     * @param {(string|null)[][]} board 중력을 적용할 보드
+     * @param {number} [gravitySpeedMultiplier=1] 중력 연출 속도 배율
+     * @returns {{board:(string|null)[][], duration:number}} 중력 적용 보드와 연출 시간(ms). 떨어지는 뿌요가 없으면 0이다.
+     */
+    function measureGravityOnBoard(board, gravitySpeedMultiplier = 1) {
+        const nextBoard = Array.from({ length: ROWS }, () => Array(COLUMNS).fill(null));
+        let duration = 0;
+        for (let x = 0; x < COLUMNS; x += 1) {
+            let targetY = 0;
+            for (let y = 0; y < ROWS; y += 1) {
+                if (!board[y]?.[x]) continue;
+                nextBoard[targetY][x] = board[y][x];
+                if (y !== targetY) duration = Math.max(duration, (210 + 790 * Math.sqrt((y - targetY) / VISIBLE_ROWS)) / gravitySpeedMultiplier);
+                targetY += 1;
+            }
+        }
+        return { board: nextBoard, duration };
+    }
+
+    /**
+     * 연쇄 중인 플레이어의 남은 연쇄를 끝까지 계산한다. 연쇄 진행에는 무작위 요소가 없어 결과가 정확하다.
+     * 연쇄 보너스가 연쇄 번호에 따라 달라지므로 현재 `player.combo`부터 이어서 센다. 시간은 폭발 대기·폭발 연출·
+     * 중력 연출을 실제 게임 루프와 같은 값으로 더한 것이며, 싹쓸이 티켓과 피버 최소 공격 보정은 넣지 않는다.
+     * @param {PlayerState|object} player 예측할 플레이어(보통 CPU의 상대)
+     * @returns {{active:boolean, currentCombo:number, remainingCombo:number, finalCombo:number, finalAttack:number, endInMs:number}}
+     *     active는 연쇄가 진행 중이거나 곧 시작되는지, finalAttack은 연쇄가 끝났을 때의 ATTACK(상쇄 전), endInMs는 연쇄가 끝나 피해가 확정될 때까지 남은 시간(ms)이다.
+     */
+    function predictPlayerChain(player) {
+        const currentCombo = Math.max(0, Math.floor(Number(player?.combo) || 0));
+        const currentAttack = Math.max(0, Number(player?.attack) || 0);
+        const idle = { active: false, currentCombo, remainingCombo: 0, finalCombo: currentCombo, finalAttack: currentAttack, endInMs: 0 };
+        if (!Array.isArray(player?.board) || !isResolutionPhase(player.phase)) return idle;
+        const gravitySpeedMultiplier = getGravitySpeedMultiplier(player);
+        let board = player.board.map((row) => [...row]);
+        let elapsedMs = 0;
+        if (player.phase === 'burst') {
+            // 폭발한 뿌요는 이미 보드에서 지워졌고, 연출이 끝나면 중력과 다음 폭발 판정이 이어진다.
+            elapsedMs += Math.max(0, (player.effects?.duration ?? EXPLOSION_EFFECT_DURATION_MS) - (player.effects?.elapsed ?? 0));
+            const gravity = measureGravityOnBoard(board, gravitySpeedMultiplier);
+            board = gravity.board;
+            elapsedMs += gravity.duration + CHAIN_PHASE_WAIT_MS;
+        } else if (player.phase === 'gravity') {
+            // startGravity()는 보드를 먼저 정리한 뒤 연출만 재생하므로 보드는 이미 중력이 끝난 상태다.
+            if (player.gravityNextPhase !== 'explode') return idle;
+            elapsedMs += player.gravityAnimation ? Math.max(0, player.gravityAnimation.duration - player.gravityAnimation.elapsed) : 0;
+            elapsedMs += CHAIN_PHASE_WAIT_MS;
+        } else if (player.phase === 'explode') {
+            elapsedMs += Math.max(0, CHAIN_PHASE_WAIT_MS - (Number(player.phaseTimer) || 0));
+        } else {
+            // garbage·check 단계는 연쇄 정산이 이미 끝난 뒤다.
+            return idle;
+        }
+        let combo = currentCombo;
+        let attack = currentAttack;
+        while (true) {
+            const explosionGroups = findExplosionGroupsOnBoard(board);
+            if (!explosionGroups.length) break;
+            const resolution = getExplosionResolution(board, explosionGroups.flatMap((group) => group.cells));
+            combo += 1;
+            attack += calculateExplosionAttack(calculateExplosionPoint(explosionGroups, combo, resolution.brokenHardGarbageCount));
+            applyExplosionResolution(board, resolution);
+            const gravity = measureGravityOnBoard(board, gravitySpeedMultiplier);
+            board = gravity.board;
+            elapsedMs += EXPLOSION_EFFECT_DURATION_MS + gravity.duration + CHAIN_PHASE_WAIT_MS;
+        }
+        const remainingCombo = combo - currentCombo;
+        // 착지 직후 중력 단계에서 아무것도 터지지 않는 경우는 연쇄가 아니다.
+        if (currentCombo === 0 && remainingCombo === 0) return idle;
+        return { active: true, currentCombo, remainingCombo, finalCombo: combo, finalAttack: attack, endInMs: elapsedMs };
+    }
+
+    /**
+     * CPU가 받을 방해뿌요 양과, 그 방해뿌요가 몇 번째 배치 직후에 떨어질지를 예측한다.
+     * 방해뿌요는 상대 연쇄가 끝나 DAMAGE가 확정된 뒤 CPU가 다음으로 뿌요를 고정하고 garbage 단계에 들어갈 때 떨어진다.
+     * 배치 시간은 현재 자연 낙하 속도와 난이도별 빠른 하강 대기 시간으로 어림한다.
+     * 기본 룰에서만 연쇄 종료 시각을 쓰고, 피버 룰은 방해뿌요 유예 규칙이 달라 기존 탐색처럼 이번 배치 직후로 본다.
+     * @param {PlayerState|object} player CPU 플레이어
+     * @param {PlayerState|object|null} opponent 상대 플레이어
+     * @returns {{incoming:number, garbageMoveIndex:number, opponentChainActive:boolean, opponentChainEndInMs:number}}
+     *     incoming은 받을 방해뿌요 수(정수), garbageMoveIndex는 0부터 센 "이 배치를 두고 나면 떨어지는" 배치 순번이며 받을 것이 없으면 -1이다.
+     */
+    function getRealtimeGarbageForecast(player, opponent) {
+        const damage = Math.max(0, Number(player?.damage) || 0);
+        const displayedWarning = opponent ? warningAmount(player, opponent) : damage + (Number(player?.warningReductionDelay) || 0);
+        const legacyIncoming = Math.max(displayedWarning, damage + Math.max(0, Number(opponent?.attack) || 0));
+        const prediction = opponent ? predictPlayerChain(opponent) : null;
+        const incoming = Math.max(0, Math.floor(Math.max(legacyIncoming, damage + (prediction?.active ? prediction.finalAttack : 0))));
+        const opponentChainActive = prediction?.active === true;
+        const opponentChainEndInMs = opponentChainActive ? prediction.endInMs : 0;
+        if (incoming < 1) return { incoming: 0, garbageMoveIndex: -1, opponentChainActive, opponentChainEndInMs };
+        const standard = !game?.feverRule && !game?.continuousFever;
+        // 이미 확정된 DAMAGE가 연쇄 공격보다 크거나 피버 규칙이면 이번 배치 직후에 떨어진다고 본다.
+        if (!standard || !opponentChainActive || Math.floor(damage) >= Math.floor(prediction.finalAttack)) {
+            return { incoming, garbageMoveIndex: 0, opponentChainActive, opponentChainEndInMs };
+        }
+        const normalInterval = game ? getActivePuyoFallInterval(player, false) : PLAYER_FALL_INTERVAL;
+        const difficulty = getSelectedDifficulty();
+        const controller = player?.controller;
+        const delayRate = isEnemyInCrisis(player, opponent) ? (controller?.dangerFastDownDelayRate ?? 1) : (controller?.normalFastDownDelayRate ?? 1);
+        const fastDownDelay = difficulty.fastDownDelay === null ? Infinity : difficulty.fastDownDelay * delayRate;
+        let heightTotal = 0;
+        for (let x = 0; x < COLUMNS; x += 1) {
+            let height = 0;
+            while (height < VISIBLE_ROWS && player.board[height][x] !== null) height += 1;
+            heightTotal += height;
+        }
+        const averageHeight = heightTotal / COLUMNS;
+        // 낙하 거리 rows를 decisionElapsed 시점부터 내려가는 데 걸리는 시간이다. 빠른 하강 대기 시간이 지나면 빠른 하강 간격으로 내려간다.
+        const fallTime = (rows, decisionElapsed) => {
+            const normalMs = Math.max(0, fastDownDelay - decisionElapsed);
+            const normalRows = normalMs / normalInterval;
+            return rows <= normalRows ? rows * normalInterval : normalMs + (rows - normalRows) * getActivePuyoFallInterval(player, true);
+        };
+        const currentLandingMs = player?.active ? fallTime(Math.max(0, player.active.y - averageHeight), Number(player.aiDecisionElapsed) || 0) : 0;
+        const nextPlacementMs = LOCK_TO_NEXT_CONTROL_MS + fallTime(Math.max(0, ACTIVE_PUYO_SPAWN_Y - averageHeight), 0);
+        const firstDropMs = currentLandingMs + LOCK_TO_GARBAGE_DROP_MS;
+        const garbageMoveIndex = opponentChainEndInMs <= firstDropMs ? 0 : Math.ceil((opponentChainEndInMs - firstDropMs) / Math.max(1, nextPlacementMs));
+        return { incoming, garbageMoveIndex, opponentChainActive, opponentChainEndInMs };
+    }
+
+    /**
+     * 조작 중인 뿌요가 지금 위치에서 도달할 수 있는 배치 후보만 고른다.
+     * 게임 루프는 회전을 먼저 시도하고 막히면 가로 이동을 섞으므로, "회전 후 이동"과 기존
+     * canUseAiPlacement()의 "이동 후 회전(킥 포함)" 중 하나라도 되는 후보를 도달 가능으로 본다.
+     * @param {PlayerState} player CPU 플레이어
+     * @returns {{x:number, rotation:number}[]} 도달 가능한 위치·회전 목록
+     */
+    function getReachableAiPlacements(player) {
+        if (!player?.active || !Array.isArray(player.aiSimulations)) return [];
+        return player.aiSimulations.filter((simulation) => {
+            let probe = { ...player.active };
+            let reachable = true;
+            const rotationDelta = (simulation.rotation - probe.rotation + 4) % 4;
+            const direction = rotationDelta === 3 ? -1 : 1;
+            const rotationSteps = rotationDelta === 3 ? 1 : rotationDelta;
+            for (let step = 0; step < rotationSteps && reachable; step += 1) {
+                probe = { ...probe, rotation: (probe.rotation + direction + 4) % 4 };
+                reachable = canPlace(player, probe);
+            }
+            while (reachable && probe.x !== simulation.x) {
+                probe = { ...probe, x: probe.x + (probe.x < simulation.x ? 1 : -1) };
+                reachable = canPlace(player, probe);
+            }
+            return reachable || canUseAiPlacement(player, simulation);
+        }).map((simulation) => ({ x: simulation.x, rotation: simulation.rotation }));
     }
 
     /** @param {(string|null)[][]} board 검사할 보드 @returns {boolean} 빈 보드 여부 */
@@ -18758,6 +19442,14 @@
             this.lookaheadTurnCount = 3;
             /** Worker 반복 심화 탐색의 최대 대기 시간(ms)이다. 호출자가 인스턴스별로 조정할 수 있다. @type {number} */
             this.lookaheadTimeLimitMs = 50;
+            /** Worker 탐색 방식이다. 'advanced'는 빠른 보드·빔 탐색·발화점 평가·방해뿌요 도착 예측을 쓴다. @type {'legacy'|'advanced'} */
+            this.lookaheadSearchMode = 'advanced';
+            /** advanced 탐색에서 현재 수 아래 수마다 더 깊이 읽을 후보 수다. @type {number} */
+            this.lookaheadBeamWidth = N_MOVE_ADVANCED_DEFAULT_BEAM_WIDTH;
+            /** 조작 중 상대 연쇄·방해뿌요 변화에 맞춰 다시 판단할지 여부다. 기본 룰에서만 동작한다. @type {boolean} */
+            this.realtimeReaction = true;
+            /** 이번 조작 턴의 실시간 재판단 상태다. Worker 탐색을 시작한 턴에만 만든다. @type {{turn:number, incoming:number, opponentChainActive:boolean, fastDownStarted:boolean, replanCount:number}|null} */
+            this.realtimeReactionState = null;
             // 키마리스가 암두시아스에서 물려받는 일반·위기 빠른 하강 속도와 같게 유지한다.
             this.normalFastDownDelayRate = 1.0;
             this.dangerFastDownDelayRate = 0.5;
@@ -18842,6 +19534,7 @@
          */
         prepareTurn(player) {
             beginWorkerSearchTurn(this);
+            this.realtimeReactionState = null;
             Enemy.prototype.prepareTurn.call(this, player);
             if (this.getPreparedPlacement()) return;
             if (!this.isInFever(player) && this.isFieldAtLeastEightyPercentFilled(player)) {
@@ -18849,6 +19542,44 @@
                 if (this.getPreparedPlacement()) return;
             }
             startWorkerLookaheadSearch(this, player);
+            const forecast = this.getRealtimeGarbageForecast(player);
+            this.realtimeReactionState = {
+                turn: player.placedPairCount,
+                incoming: forecast.incoming,
+                opponentChainActive: forecast.opponentChainActive,
+                fastDownStarted: false,
+                replanCount: 0
+            };
+        }
+
+        /** @param {PlayerState} player CPU 플레이어 @returns {{incoming:number, garbageMoveIndex:number, opponentChainActive:boolean, opponentChainEndInMs:number}} 상대 연쇄를 반영한 방해뿌요 예측 */
+        getRealtimeGarbageForecast(player) {
+            const opponent = game?.players.find((candidate) => candidate !== player) ?? null;
+            return getRealtimeGarbageForecast(player, opponent);
+        }
+
+        /**
+         * 조작 중 상대 연쇄가 시작·종료되거나 받을 방해뿌요 양이 바뀌면 지금 도달할 수 있는 위치만으로 다시 탐색한다.
+         * 이번 턴에 빠른 하강을 이미 시작했다면 재판단하지 않는다. 받을 양이 바뀌기 전후 모두 무시 기준보다 작으면
+         * 판단이 달라지지 않으므로 기준 상태만 갱신한다.
+         * @param {PlayerState} player CPU 플레이어
+         * @returns {boolean} 재판단 탐색을 시작했는지 여부
+         */
+        updateRealtimeReaction(player) {
+            const state = this.realtimeReactionState;
+            if (!this.realtimeReaction || !state || state.fastDownStarted || !player.active || state.turn !== player.placedPairCount) return false;
+            if (this.getPreparedPlacement() || !game || game.feverRule || game.continuousFever) return false;
+            const forecast = this.getRealtimeGarbageForecast(player);
+            if (forecast.incoming === state.incoming && forecast.opponentChainActive === state.opponentChainActive) return false;
+            const previousIncoming = state.incoming;
+            state.incoming = forecast.incoming;
+            state.opponentChainActive = forecast.opponentChainActive;
+            if (forecast.incoming < this.ignorableIncomingGarbage && previousIncoming < this.ignorableIncomingGarbage) return false;
+            const allowedPlacements = getReachableAiPlacements(player);
+            if (!allowedPlacements.length) return false;
+            state.replanCount += 1;
+            startWorkerLookaheadSearch(this, player, { allowedPlacements, keepDecisionElapsed: true });
+            return true;
         }
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} Worker 탐색 결과의 목표 X 좌표 */
@@ -18863,13 +19594,17 @@
 
         /** @param {PlayerState} player CPU 플레이어 @returns {boolean} Worker 결과가 준비될 때까지 기본 이동을 대체했는지 */
         updateControl(player) {
+            this.updateRealtimeReaction(player);
             return isWorkerSearchPending(this, player);
         }
 
         /** @param {PlayerState} player CPU 플레이어 @returns {boolean} Worker 결과를 기다리는 동안에는 빠른 하강을 하지 않는다. */
         useFastDown(player) {
             if (isWorkerSearchPending(this, player)) return false;
-            return super.useFastDown(player);
+            const fastDown = super.useFastDown(player);
+            // 빠른 하강을 한 번 시작한 턴은 더 이상 실시간 재판단을 하지 않는다.
+            if (fastDown && this.realtimeReactionState?.turn === player.placedPairCount) this.realtimeReactionState.fastDownStarted = true;
+            return fastDown;
         }
 
         /**
@@ -19490,6 +20225,8 @@
         simulateNMovePlacements,
         findBestNMovePlacement,
         simulateNMovePlacementsInWorker,
+        predictPlayerChain,
+        getRealtimeGarbageForecast,
         findExplosionsOnBoard,
         findExplosionGroupsOnBoard,
         getChainBonus,
@@ -19578,6 +20315,8 @@
         simulateNMovePlacements,
         findBestNMovePlacement,
         simulateNMovePlacementsInWorker,
+        predictPlayerChain,
+        getRealtimeGarbageForecast,
         findExplosionsOnBoard,
         findExplosionGroupsOnBoard,
         getChainBonus,
