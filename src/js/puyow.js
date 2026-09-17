@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 78;
+    const BUILDNO = 79;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -1017,7 +1017,7 @@
     /** 구경 해금 및 대전 출전 승리를 확인할 난이도 키다. @type {('normal'|'hard'|'extreme')[]} */
     const WATCH_ELIGIBLE_DIFFICULTY_KEYS = ['normal', 'hard', 'extreme'];
     /** 빈 필드에서 첫 배치를 무작위로 정할 기본 제공 적 종류다. @type {Set<string>} */
-    const RANDOM_EMPTY_FIELD_ENEMY_TYPES = new Set(['Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus']);
+    const RANDOM_EMPTY_FIELD_ENEMY_TYPES = new Set(['Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus', 'Flauros']);
     /** getClassType()별로 외부에서 지정한 적 사운드 풀이다. @type {Map<string, SoundPool>} */
     const enemySoundPools = new Map();
     /** 메인 메뉴 게임 규칙 선택지의 버튼 배경색이다. */
@@ -20335,14 +20335,14 @@
     /**
      * 플라우로스는 강하고 무서운 표범 모습으로 나타나며, 삼각형 밖에서는 거짓말로 소환자를 속인다는
      * 전승을 귀엽지만 위엄 있는 모습으로 각색한 적이다.
-     * 판단은 `src/onnx/model01.onnx` 가치망 추론으로 하며, 추론에 실패한 턴만 앞 1수 시뮬레이션으로 넘어간다.
+     * BUILDNO 79부터 판단은 안드레알푸스와 완전히 같은 공통 클래스 RealtimeLookaheadEnemy(목표 7연쇄·작은 연쇄 점등 켜짐)를 쓴다.
+     * 모델을 쓰지 않으므로 ONNX 경고 표시·첫 선택 경고 대상이 아니다. 이전에 쓰던 `model01.onnx` 가치망은 안드라스가 이어받았다.
      */
-    class Flauros extends OnnxEnemy {
+    class Flauros extends RealtimeLookaheadEnemy {
         constructor() {
-            super();
+            super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true });
             this.sortPriority = 9;
-            // 첫 ONNX 적이라 model01.onnx와 1:1로 대응한다. 이후 적은 model02.onnx처럼 각자 모델을 갖는다.
-            this.modelPath = 'onnx/model01.onnx';
+            this.notAvail = false;
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -20375,14 +20375,15 @@
 
     /**
      * 안드라스는 날개 달린 천사 몸·새 머리·검은 늑대·불타는 검의 전승을 바탕으로 한 적이다.
-     * 판단은 플라우로스와 같은 ONNX 공통 로직으로 하며 전용 `model02.onnx` 가치망을 사용한다.
+     * 판단은 ONNX 공통 로직(OnnxEnemy)으로 하며, BUILDNO 79부터 이전 플라우로스의 `model01.onnx` 가치망을 사용한다.
+     * 모델을 쓰는 첫 적이므로 적 선택 화면의 경고 표시와 첫 선택 경고가 여기서부터 적용된다.
      */
     class Andras extends OnnxEnemy {
         constructor() {
             super();
             this.sortPriority = 10;
             this.notAvail = false;
-            this.modelPath = 'onnx/model02.onnx';
+            this.modelPath = 'onnx/model01.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -20412,13 +20413,13 @@
 
     /**
      * 발라크는 두 개의 붉은 목을 가진 지옥의 드래곤 위에 탄 날개 달린 소년의 모습으로 나타나는 적이다.
-     * 판단은 플라우로스와 같은 ONNX 공통 로직으로 하며 전용 `model03.onnx` 가치망을 사용한다.
+     * 판단은 ONNX 공통 로직(OnnxEnemy)으로 하며, BUILDNO 79부터 이전 안드라스의 `model02.onnx` 가치망을 사용한다.
      */
     class Valak extends OnnxEnemy {
         constructor() {
             super();
             this.sortPriority = 11;
-            this.modelPath = 'onnx/model03.onnx';
+            this.modelPath = 'onnx/model02.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -20447,16 +20448,15 @@
     }
 
     /**
-     * 자간은 그리폰의 날개를 가진 숫소의 모습으로 나타나는 출시 예정 적이다.
-     * TODO: 출시 전에 자간 전용 ONNX 가치망으로 modelPath를 교체하고 판단 특성을 검증한다.
+     * 자간은 그리폰의 날개를 가진 숫소의 모습으로 나타나는 적이다. BUILDNO 79에 출시했다.
+     * 판단은 ONNX 공통 로직(OnnxEnemy)으로 하며, 이전 발라크의 `model03.onnx` 가치망을 사용한다.
      */
     class Zagan extends OnnxEnemy {
         constructor() {
             super();
             this.sortPriority = 12;
-            this.notAvail = true;
-            // 전용 모델이 준비되기 전까지 플라우로스의 가치망으로 동작 구조만 미리 연결한다.
-            this.modelPath = 'onnx/model01.onnx';
+            this.notAvail = false;
+            this.modelPath = 'onnx/model03.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */

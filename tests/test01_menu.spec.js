@@ -48,7 +48,7 @@ test('갤러리 적 목록에는 안드라스·발라크·출시 예정 자간�
   await expect.poll(() => page.evaluate(() => Object.fromEntries(Object.entries(window.newEnemyGalleryDraws).map(([name, count]) => [name, count > 0])))).toEqual({ Andras: true, Valak: true, Zagan: true });
 });
 
-test('출시된 안드라스·발라크 카드는 유효하고 출시 예정 자간 카드는 풀에서 제외된다', async ({ page }) => {
+test('출시된 안드라스·발라크·자간 카드는 모두 유효한 카드로 그려진다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_cards', JSON.stringify([
       { id: 'andras-card', type: 'enemy:Andras' },
@@ -72,8 +72,8 @@ test('출시된 안드라스·발라크 카드는 유효하고 출시 예정 자
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowRight');
-  await expect.poll(() => page.evaluate(() => window.newEnemyCardDraws.Andras > 0 && window.newEnemyCardDraws.Valak > 0)).toBe(true);
-  expect(await page.evaluate(() => window.newEnemyCardDraws.Zagan)).toBe(0);
+  // 자간은 BUILDNO 79에 출시되어 더 이상 카드 풀에서 빠지지 않는다.
+  await expect.poll(() => page.evaluate(() => window.newEnemyCardDraws.Andras > 0 && window.newEnemyCardDraws.Valak > 0 && window.newEnemyCardDraws.Zagan > 0)).toBe(true);
 });
 
 test('테서렉트·펜터렉트·헥사액트 예고뿌요는 갤러리와 카드에 각자 단위로 나타난다', async ({ page }) => {

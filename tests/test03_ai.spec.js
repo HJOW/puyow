@@ -154,8 +154,8 @@ for (const runtime of ['원본', '번들']) {
       };
       for (let y = 0; y <= 10; y += 1) player.board[y][1] = 'red';
       for (let y = 0; y <= 11; y += 1) player.board[y][3] = 'blue';
-      // puyow.html이 실제로 읽은 코드와 플라우로스의 상속 경로를 검사한다.
-      const controller = Object.create(window.WebPuyo.Flauros.prototype);
+      // puyow.html이 실제로 읽은 코드와 ONNX 추론 적(안드라스)의 상속 경로를 검사한다.
+      const controller = Object.create(window.WebPuyo.Andras.prototype);
       const result = controller.getUsablePlacements(player);
       await new Promise((resolve) => requestAnimationFrame(resolve));
       return result;
@@ -975,20 +975,20 @@ test('역으로 모델 학습 문구는 지원 언어별로 번역된다', async
   }
 });
 
-/** 모든 기본 제공 적을 이긴 진행도와 플라우로스 갤러리 해금 기록을 저장한다. */
+/** 모델을 쓰는 첫 적(안드라스)까지 이긴 진행도와 안드라스 갤러리 해금 기록을 저장한다. */
 async function seedAllOpponentsCleared(page) {
   await page.evaluate(() => {
-    const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus', 'Flauros'];
+    const cleared = ['Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus', 'Flauros', 'Andras'];
     localStorage.setItem('puyow_store', JSON.stringify({
       clearList: [],
       clearListByDifficulty: { easy: cleared, normal: cleared, hard: cleared, extreme: cleared },
       feverClearListByDifficulty: { easy: cleared, normal: cleared, hard: cleared, extreme: cleared },
     }));
-    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: [], enemies: ['Flauros'] }));
+    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: [], enemies: ['Andras'] }));
   });
 }
 
-test('ONNX 런타임이 없으면 플라우로스는 적 선택 화면에서 빠진다', async ({ page }) => {
+test('ONNX 런타임이 없으면 안드라스는 적 선택 화면에서 빠지고 모델을 쓰지 않는 플라우로스는 남는다', async ({ page }) => {
   await seedAllOpponentsCleared(page);
   // ort.all.min.js를 빈 응답으로 바꿔 ONNX 런타임이 없는 페이지와 같은 상태를 만든다.
   await page.route('**/js/ort.all.min.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
@@ -1001,12 +1001,12 @@ test('ONNX 런타임이 없으면 플라우로스는 적 선택 화면에서 빠
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
-  // 이전 적과 플라우로스를 모두 이긴 기록이 있어도 목록에 나오지 않는다.
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드레알푸스', 'Andrealphus', 'アンドレアルフス', '安德雷阿尔弗斯'].includes(text)))).toBe(true);
-  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(false);
+  // 이전 적과 안드라스를 모두 이긴 기록이 있어도 안드라스는 목록에 나오지 않는다. 플라우로스는 모델을 쓰지 않으므로 그대로 나온다.
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['안드라스', 'Andras', 'アンドラス', '安德拉斯'].includes(text)))).toBe(false);
 });
 
-test('ONNX 런타임이 없어도 이긴 전적이 있는 플라우로스는 갤러리에서 잠금 해제된다', async ({ page }) => {
+test('ONNX 런타임이 없어도 이긴 전적이 있는 안드라스는 갤러리에서 잠금 해제된다', async ({ page }) => {
   await seedAllOpponentsCleared(page);
   await page.route('**/js/ort.all.min.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
   await page.reload();
@@ -1024,7 +1024,7 @@ test('ONNX 런타임이 없어도 이긴 전적이 있는 플라우로스는 갤
   // 첫 번째 ArrowDown 은 목록으로 포커스를 옮기고, 두 번째부터 잠김 해제된 다음 대상으로 이동한다.
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드라스', 'Andras', 'アンドラス', '安德拉斯'].includes(text)))).toBe(true);
 });
 
 test('구경 모드는 ONNX 추론 적을 선정 대상에서 아예 제외한다', async ({ page }) => {
@@ -1064,7 +1064,7 @@ test('구경 모드는 ONNX 추론 적을 선정 대상에서 아예 제외한�
   expect(names).not.toContain('ONNX 구경 적 B');
 });
 
-test('플라우로스는 ONNX 모델을 불러온 뒤 대전하고, 모델을 못 불러오면 적 선택 화면으로 돌아간다', async ({ page }) => {
+test('안드라스는 ONNX 모델을 불러온 뒤 대전하고, 모델을 못 불러오면 적 선택 화면으로 돌아간다', async ({ page }) => {
   // 모델 실패 경로(최대 20초)와 실제 추론 대전(최대 60초)을 한 테스트에서 이어 보므로
   // 기본 제한 시간 30초로는 항상 모자란다. ONNX 추론은 CPU를 많이 써서 다른 테스트와 함께 돌면 더 느려진다.
   test.setTimeout(180000);
@@ -1089,24 +1089,24 @@ test('플라우로스는 ONNX 모델을 불러온 뒤 대전하고, 모델을 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('플라우로스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('안드라스');
   // 모델을 다 불러오기 전에는 카운트다운이 줄지 않고 로딩 안내만 보여 준다.
   expect(await page.evaluate(() => window.WebPuyo.getGameState()?.countdown)).toBe(3000);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => text.includes('...') || text.includes('…')))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('opponent_select');
   expect(await page.evaluate(() => window.WebPuyo.getGameState())).toBe(null);
 
-  // 모델 요청을 되살리면 로딩이 끝난 뒤 카운트다운이 진행되고 플라우로스가 실제로 뿌요를 놓는다.
+  // 모델 요청을 되살리면 로딩이 끝난 뒤 카운트다운이 진행되고 안드라스가 실제로 뿌요를 놓는다.
   await page.unroute('**/onnx/model01.onnx');
-  // 돌아온 적 선택 화면은 첫 줄에 포커스가 있으므로 다시 적 줄로 내려 시작한다. 선택된 적은 그대로 플라우로스다.
+  // 돌아온 적 선택 화면은 첫 줄에 포커스가 있으므로 다시 적 줄로 내려 시작한다. 선택된 적은 그대로 안드라스다.
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('플라우로스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('안드라스');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThan(2);
 });
 
@@ -1145,15 +1145,19 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
-  // 하단 카드 목록(기준선 513)에서 ONNX 적만 이름 옆에 마크가 붙는다.
-  for (const name of ['플라우로스', '안드라스', '발라크']) await expect.poll(() => hasMarkBesideName(name, 513)).toBe(true);
-  for (const name of ['안드로말리우스', '안드레알푸스']) await expect.poll(() => hasMarkBesideName(name, 513)).toBe(false);
+  // 하단 카드 목록(기준선 513)에서 ONNX 적만 이름 옆에 마크가 붙는다. 플라우로스는 모델을 쓰지 않으므로 붙지 않는다.
+  for (const name of ['안드라스', '발라크']) await expect.poll(() => hasMarkBesideName(name, 513)).toBe(true);
+  for (const name of ['안드로말리우스', '안드레알푸스', '플라우로스']) await expect.poll(() => hasMarkBesideName(name, 513)).toBe(false);
 
-  // 적 줄로 내려 플라우로스를 고르면 가운데 선택 영역 이름(기준선 450)에도 마크가 붙는다.
+  // 적 줄로 내려 안드라스를 고르면 가운데 선택 영역 이름(기준선 450)에도 마크가 붙는다.
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
-  await expect.poll(() => hasMarkBesideName('플라우로스', 450)).toBe(true);
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowRight');
+  await expect.poll(() => hasMarkBesideName('안드라스', 450)).toBe(true);
+  // 모델을 쓰지 않는 플라우로스는 선택해도 마크가 없다.
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(() => hasMarkBesideName('플라우로스', 450)).toBe(false);
+  await page.keyboard.press('ArrowRight');
 
   // 처음 시작하면 대전 대신 계속/취소 안내가 뜬다.
   await clearCanvasTexts();
@@ -1178,7 +1182,7 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
   await expect.poll(isWarningDrawn).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(isWarningAcknowledged).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('플라우로스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('안드라스');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('opponent_select');
 
   // 새로 접속해도 기록이 남아 있어 안내 없이 곧바로 대전한다.
@@ -1191,11 +1195,11 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowRight');
   await clearCanvasTexts();
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('플라우로스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('안드라스');
   expect(await isWarningDrawn()).toBe(false);
 });
 
@@ -1258,10 +1262,10 @@ test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('플라우로스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('안드라스');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
 
   // 폴백이 없으면 회전·이동·빠른 하강 없이 자연 낙하만 하므로 한 수에 20초가 넘게 걸린다.
@@ -1301,10 +1305,10 @@ test('ONNX 프록시 워커를 만들지 못하면 메인 스레드 재시도 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('플라우로스');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('안드라스');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThanOrEqual(1);
   // proxy 플래그를 끄지 않았으므로 이후 대전도 메인 스레드 ONNX 실행으로 바뀌지 않는다.
@@ -1346,7 +1350,7 @@ test('ONNX wasm 바이너리는 CDN을 먼저 시도한다', async ({ page }) =>
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => wasmRequests.some((url) => url.startsWith('https://cdn.jsdelivr.net/')), { timeout: 30000 }).toBe(true);
@@ -1356,7 +1360,7 @@ test('ONNX wasm 바이너리는 CDN을 먼저 시도한다', async ({ page }) =>
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 60000 }).toBe('opponent_select');
 });
 
-test('CDN에 닿지 않으면 로컬 wasm으로 플라우로스 대전을 진행한다', async ({ page }) => {
+test('CDN에 닿지 않으면 로컬 wasm으로 안드라스 대전을 진행한다', async ({ page }) => {
   test.setTimeout(180000);
   const wasmRequests = [];
   page.on('request', (request) => {
@@ -1381,19 +1385,19 @@ test('CDN에 닿지 않으면 로컬 wasm으로 플라우로스 대전을 진행
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowRight');
+  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 120000 }).toBeGreaterThanOrEqual(2);
   expect(wasmRequests.every((url) => !url.startsWith('https://cdn.jsdelivr.net/'))).toBe(true);
 });
 
-test('CDN과 로컬 모두 wasm을 못 받으면 적 선택 화면에서만 플라우로스를 숨긴다', async ({ page }) => {
+test('CDN과 로컬 모두 wasm을 못 받으면 적 선택 화면에서만 안드라스를 숨긴다', async ({ page }) => {
   // CDN은 beforeEach가 막아 두었고, 여기서는 로컬 파일까지 없는 상황을 만든다.
   await page.route('**/js/ort-wasm-simd-threaded.jsep.wasm', (route) => route.fulfill({ status: 404, body: '' }));
   await page.evaluate(() => {
     localStorage.setItem('puyow_code', JSON.stringify(['observation']));
-    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: [], enemies: ['Flauros'] }));
+    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: [], enemies: ['Andras'] }));
   });
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
@@ -1406,7 +1410,7 @@ test('CDN과 로컬 모두 wasm을 못 받으면 적 선택 화면에서만 플�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드로말리우스', 'Andromalius', 'アンドロマリウス', '安杜马利乌斯'].includes(text)))).toBe(true);
-  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(false);
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['안드라스', 'Andras', 'アンドラス', '安德拉斯'].includes(text)))).toBe(false);
 
   // 갤러리는 이 제한과 무관하게 이긴 전적대로 잠금이 풀려 있어야 한다.
   await page.reload();
@@ -1419,5 +1423,5 @@ test('CDN과 로컬 모두 wasm을 못 받으면 적 선택 화면에서만 플�
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드라스', 'Andras', 'アンドラス', '安德拉斯'].includes(text)))).toBe(true);
 });

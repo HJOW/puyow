@@ -724,6 +724,35 @@ test('실시간 N수 탐색 공통 클래스는 목표 연쇄와 작은 연쇄 �
   });
 });
 
+test('플라우로스는 모델 없이 안드레알푸스와 같은 실시간 N수 탐색 판단을 쓰고 ONNX 추론 적 표시에서 빠진다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const { RealtimeLookaheadEnemy, OnnxEnemy, Andrealphus, Flauros } = window.WebPuyo;
+    const flauros = new Flauros();
+    const andrealphus = new Andrealphus();
+    const settings = ['targetCombo', 'lightFeverGaugeWithSmallChains', 'lookaheadTurnCount', 'lookaheadTimeLimitMs', 'lookaheadSearchMode', 'lookaheadBeamWidth', 'realtimeReaction', 'ignorableIncomingGarbage', 'normalFastDownDelayRate', 'dangerFastDownDelayRate'];
+    return {
+      realtime: flauros instanceof RealtimeLookaheadEnemy,
+      onnx: flauros instanceof OnnxEnemy,
+      requiresOnnx: flauros.requiresOnnx === true,
+      modelPath: flauros.modelPath ?? null,
+      sameSettings: settings.every((key) => flauros[key] === andrealphus[key]),
+      // 판단 메서드는 모두 공통 클래스의 것이고, 플라우로스는 이름·종류·테마·초상화만 재정의한다.
+      ownMethods: Object.getOwnPropertyNames(Flauros.prototype).sort(),
+      identity: { type: flauros.getClassType(), name: flauros.getName(), sortPriority: flauros.sortPriority, notAvail: flauros.notAvail },
+    };
+  });
+
+  expect(result).toEqual({
+    realtime: true,
+    onnx: false,
+    requiresOnnx: false,
+    modelPath: null,
+    sameSettings: true,
+    ownMethods: ['constructor', 'drawPortrait', 'getClassType', 'getFieldThemeColors', 'getName'],
+    identity: { type: 'Flauros', name: '플라우로스', sortPriority: 9, notAvail: false },
+  });
+});
+
 test('외부 Enemy 하위 클래스도 Worker 탐색 보조 함수로 결과를 적용한다', async ({ page }) => {
   // Blob Worker를 직접 확인하는 테스트라서 기준선 라우트를 걷고 시작한다.
   await releaseNetworkInterception(page);

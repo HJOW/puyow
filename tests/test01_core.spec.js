@@ -710,15 +710,15 @@ test('헥사액트·펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 
   expect(result.penteractWarningTypes).toEqual(['penteract', 'tesseract', 'big-bang']);
   expect(result.hexaactWarningTypes).toEqual(['hexaact', 'penteract', 'tesseract', 'big-bang']);
   expect(result.andras).toEqual({
-    classType: 'Andras', name: '안드라스', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model02.onnx',
+    classType: 'Andras', name: '안드라스', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model01.onnx',
     theme: { bezel: '#1b2137', field: '#2d3857', center: '#0a0e1c' }
   });
   expect(result.valak).toEqual({
-    classType: 'Valak', name: '발라크', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model03.onnx',
+    classType: 'Valak', name: '발라크', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model02.onnx',
     theme: { bezel: '#431c24', field: '#622936', center: '#210b12' }
   });
   expect(result.zagan).toEqual({
-    classType: 'Zagan', name: '자간', notAvail: true, requiresOnnx: true, modelPath: 'onnx/model01.onnx',
+    classType: 'Zagan', name: '자간', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model03.onnx',
     theme: { bezel: '#3d3220', field: '#594a2d', center: '#1c160c' }
   });
 });
