@@ -15,11 +15,11 @@ Create new opponents by extending `PuyoW.Enemy`. `getName()` must return a non-e
 
 The `Enemy` constructor establishes shared defaults: `sortPriority` is `1`; `hidden` and `notAvail` are `false`; and `attackSimulationTriggerPosition` is `{ x: 2, y: 8 }`. When puyos reach that coordinate, the default AI prioritizes attack simulation over its usual directional stacking. Change that coordinate in the constructor to suit the opponent's strategy.
 
-## Upcoming ONNX opponents
+## Vapula and upcoming ONNX opponents
 
-The built-in `PuyoW.Vapula` and `PuyoW.Oriax` are upcoming opponents ordered after Zagan. Both extend `OnnxEnemy` and temporarily use Zagan's decision logic and `onnx/model03.onnx` model. Once dedicated models are ready, replace each constructor's `modelPath` independently.
+The built-in `PuyoW.Vapula` and `PuyoW.Oriax` are opponents ordered after Zagan. Both extend `OnnxEnemy` and use the `onnx/model03.onnx` model. Once dedicated models are ready, replace each constructor's `modelPath` independently. Portraits use the existing human-style Canvas design with normal, crisis, and defeated expressions.
 
-With `notAvail = true`, they appear as gray coming-soon cards in opponent selection and are excluded from selection, Watch mode, and card acquisition. Pages without the ONNX runtime hide them from opponent selection, like other ONNX opponents. They are registered in the gallery under its existing unlock rules. Portraits use the existing human-style Canvas design with normal, crisis, and defeated expressions.
+Vapula was released in BUILDNO 81: it can be selected after beating Zagan, is excluded from Watch mode candidates like other ONNX opponents, and is included in card acquisition. Oriax is still upcoming with `notAvail = true`, so it appears as a gray coming-soon card in opponent selection and is excluded from selection, Watch mode, and card acquisition. Pages without the ONNX runtime hide both from opponent selection, like other ONNX opponents, and both are registered in the gallery under its existing unlock rules.
 
 ## Opponent-type identifier: `getClassType()`
 

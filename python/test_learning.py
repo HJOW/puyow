@@ -854,24 +854,33 @@ class RewardWeightTest(unittest.TestCase):
 class TrainableOpponentPoolTest(unittest.TestCase):
 	"""학습 대전 상대 목록에 모델 미사용 적만 들어가는지 확인한다."""
 
-	def test_flauros_joins_the_pool_and_onnx_enemies_stay_out(self) -> None:
+	# 원작에서 모델을 쓰지 않고 안드레알푸스와 같은 판단을 쓰게 된 적이다(플라우로스 BUILDNO 79, 안드라스 BUILDNO 81).
+	NON_MODEL_REALTIME_ENEMIES = ("Flauros", "Andras")
+	# 원작에서 ONNX 모델로 판단하는 적이다. 적 AI를 한 칸씩 밀면 앞쪽 적이 위 목록으로 옮겨 간다.
+	ONNX_ENEMIES = ("Valak", "Zagan", "Vapula", "Oriax")
+
+	def test_non_model_enemies_join_the_pool_and_onnx_enemies_stay_out(self) -> None:
 		pool = training.bundledenemy.TRAINABLE_ENEMY_TYPES
-		# 플라우로스는 BUILDNO 79부터 원작에서 모델을 쓰지 않고 안드레알푸스와 같은 판단을 쓴다.
-		self.assertIn("Flauros", pool)
-		self.assertIsInstance(training.bundledenemy.create_enemy("Flauros", random.Random(1)), training.bundledenemy.Andrealphus)
-		for onnx_enemy in ("Andras", "Valak", "Zagan"):
+		for enemy_type in self.NON_MODEL_REALTIME_ENEMIES:
+			self.assertIn(enemy_type, pool)
+			enemy = training.bundledenemy.create_enemy(enemy_type, random.Random(1))
+			self.assertIsInstance(enemy, training.bundledenemy.Andrealphus)
+			self.assertEqual(enemy_type, enemy.get_class_type())
+		for onnx_enemy in self.ONNX_ENEMIES:
 			self.assertNotIn(onnx_enemy, pool)
 
-	def test_random_opponent_selection_can_pick_flauros_and_play_against_it(self) -> None:
-		picked = None
-		for seed in range(200):
-			environment = training.PuyoDuelEnvironment(None, seed=seed)
-			if not environment.is_self_play and environment.opponent.get_class_type() == "Flauros":
-				picked = environment
-				break
-		self.assertIsNotNone(picked, "무작위 상대 선택에서 플라우로스가 한 번도 뽑히지 않았다.")
-		_observation, _reward, _done, info = picked.step(8)
-		self.assertEqual("Flauros", info.get("opponent"))
+	def test_random_opponent_selection_can_pick_each_non_model_enemy_and_play_against_it(self) -> None:
+		for enemy_type in self.NON_MODEL_REALTIME_ENEMIES:
+			with self.subTest(enemy_type=enemy_type):
+				picked = None
+				for seed in range(300):
+					environment = training.PuyoDuelEnvironment(None, seed=seed)
+					if not environment.is_self_play and environment.opponent.get_class_type() == enemy_type:
+						picked = environment
+						break
+				self.assertIsNotNone(picked, f"무작위 상대 선택에서 {enemy_type}이(가) 한 번도 뽑히지 않았다.")
+				_observation, _reward, _done, info = picked.step(8)
+				self.assertEqual(enemy_type, info.get("opponent"))
 
 
 class QuietEdgeEnemyTest(unittest.TestCase):

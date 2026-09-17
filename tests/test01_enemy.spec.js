@@ -724,34 +724,41 @@ test('실시간 N수 탐색 공통 클래스는 목표 연쇄와 작은 연쇄 �
   });
 });
 
-test('플라우로스는 모델 없이 안드레알푸스와 같은 실시간 N수 탐색 판단을 쓰고 ONNX 추론 적 표시에서 빠진다', async ({ page }) => {
-  const result = await page.evaluate(() => {
-    const { RealtimeLookaheadEnemy, OnnxEnemy, Andrealphus, Flauros } = window.WebPuyo;
-    const flauros = new Flauros();
-    const andrealphus = new Andrealphus();
-    const settings = ['targetCombo', 'lightFeverGaugeWithSmallChains', 'lookaheadTurnCount', 'lookaheadTimeLimitMs', 'lookaheadSearchMode', 'lookaheadBeamWidth', 'realtimeReaction', 'ignorableIncomingGarbage', 'normalFastDownDelayRate', 'dangerFastDownDelayRate'];
-    return {
-      realtime: flauros instanceof RealtimeLookaheadEnemy,
-      onnx: flauros instanceof OnnxEnemy,
-      requiresOnnx: flauros.requiresOnnx === true,
-      modelPath: flauros.modelPath ?? null,
-      sameSettings: settings.every((key) => flauros[key] === andrealphus[key]),
-      // 판단 메서드는 모두 공통 클래스의 것이고, 플라우로스는 이름·종류·테마·초상화만 재정의한다.
-      ownMethods: Object.getOwnPropertyNames(Flauros.prototype).sort(),
-      identity: { type: flauros.getClassType(), name: flauros.getName(), sortPriority: flauros.sortPriority, notAvail: flauros.notAvail },
-    };
-  });
+// 적 AI를 한 칸씩 밀어 모델을 쓰지 않게 된 적이다(플라우로스 BUILDNO 79, 안드라스 BUILDNO 81). 다음에 밀면 여기에 추가한다.
+for (const { type, name, sortPriority } of [
+  { type: 'Flauros', name: '플라우로스', sortPriority: 9 },
+  { type: 'Andras', name: '안드라스', sortPriority: 10 },
+]) {
+  test(`${name}는 모델 없이 안드레알푸스와 같은 실시간 N수 탐색 판단을 쓰고 ONNX 추론 적 표시에서 빠진다`, async ({ page }) => {
+    const result = await page.evaluate((enemyType) => {
+      const { RealtimeLookaheadEnemy, OnnxEnemy, Andrealphus } = window.WebPuyo;
+      const EnemyType = window.WebPuyo[enemyType];
+      const enemy = new EnemyType();
+      const andrealphus = new Andrealphus();
+      const settings = ['targetCombo', 'lightFeverGaugeWithSmallChains', 'lookaheadTurnCount', 'lookaheadTimeLimitMs', 'lookaheadSearchMode', 'lookaheadBeamWidth', 'realtimeReaction', 'ignorableIncomingGarbage', 'normalFastDownDelayRate', 'dangerFastDownDelayRate'];
+      return {
+        realtime: enemy instanceof RealtimeLookaheadEnemy,
+        onnx: enemy instanceof OnnxEnemy,
+        requiresOnnx: enemy.requiresOnnx === true,
+        modelPath: enemy.modelPath ?? null,
+        sameSettings: settings.every((key) => enemy[key] === andrealphus[key]),
+        // 판단 메서드는 모두 공통 클래스의 것이고, 이 적은 이름·종류·테마·초상화만 재정의한다.
+        ownMethods: Object.getOwnPropertyNames(EnemyType.prototype).sort(),
+        identity: { type: enemy.getClassType(), name: enemy.getName(), sortPriority: enemy.sortPriority, notAvail: enemy.notAvail },
+      };
+    }, type);
 
-  expect(result).toEqual({
-    realtime: true,
-    onnx: false,
-    requiresOnnx: false,
-    modelPath: null,
-    sameSettings: true,
-    ownMethods: ['constructor', 'drawPortrait', 'getClassType', 'getFieldThemeColors', 'getName'],
-    identity: { type: 'Flauros', name: '플라우로스', sortPriority: 9, notAvail: false },
+    expect(result).toEqual({
+      realtime: true,
+      onnx: false,
+      requiresOnnx: false,
+      modelPath: null,
+      sameSettings: true,
+      ownMethods: ['constructor', 'drawPortrait', 'getClassType', 'getFieldThemeColors', 'getName'],
+      identity: { type, name, sortPriority, notAvail: false },
+    });
   });
-});
+}
 
 test('외부 Enemy 하위 클래스도 Worker 탐색 보조 함수로 결과를 적용한다', async ({ page }) => {
   // Blob Worker를 직접 확인하는 테스트라서 기준선 라우트를 걷고 시작한다.
@@ -1760,33 +1767,39 @@ test('구경 메뉴는 데카라비아를 보통 이상에서 이기기 전에�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
 });
 
-test('구경 모드 무작위 적 선정은 모델을 쓰지 않는 플라우로스를 포함하고 ONNX 추론 적 안드라스는 뺀다', async ({ page }) => {
-  // 보통 이상에서 이긴 적만 후보가 되므로, 데카라비아(구경 해금)·플라우로스·안드라스만 이긴 기록을 둔다.
-  await page.evaluate(() => {
-    localStorage.setItem('puyow_store', JSON.stringify({
-      clearList: ['Decarabia'],
-      clearListByDifficulty: { easy: [], normal: ['Decarabia', 'Flauros', 'Andras'], hard: [], extreme: [] },
-      feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
-    }));
-  });
-  await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
-  await enterMainMenu(page);
-  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.watch), { timeout: 20000 }).toBe(true);
+// 모델을 쓰지 않게 된 적은 구경 모드 무작위 선정 후보가 되고, ONNX 추론 적(현재 첫 ONNX 적은 발라크)은 빠진다.
+for (const { type, name } of [
+  { type: 'Flauros', name: '플라우로스' },
+  { type: 'Andras', name: '안드라스' },
+]) {
+  test(`구경 모드 무작위 적 선정은 모델을 쓰지 않는 ${name}를 포함하고 ONNX 추론 적 발라크는 뺀다`, async ({ page }) => {
+    // 보통 이상에서 이긴 적만 후보가 되므로, 데카라비아(구경 해금)·이 적·발라크만 이긴 기록을 둔다.
+    await page.evaluate((enemyType) => {
+      localStorage.setItem('puyow_store', JSON.stringify({
+        clearList: ['Decarabia'],
+        clearListByDifficulty: { easy: [], normal: ['Decarabia', enemyType, 'Valak'], hard: [], extreme: [] },
+        feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
+      }));
+    }, type);
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+    await enterMainMenu(page);
+    for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.watch), { timeout: 20000 }).toBe(true);
 
-  // 안드라스는 이긴 기록이 있어도 빠지므로, 남은 후보 두 명(데카라비아·플라우로스)이 무작위와 관계없이 맞붙는다.
-  const names = await page.evaluate(() => {
-    const state = window.WebPuyo.getGameState();
-    return [state.player.name, state.opponent.name].sort();
+    // 발라크는 이긴 기록이 있어도 빠지므로, 남은 후보 두 명(데카라비아·이 적)이 무작위와 관계없이 맞붙는다.
+    const names = await page.evaluate(() => {
+      const state = window.WebPuyo.getGameState();
+      return [state.player.name, state.opponent.name].sort();
+    });
+    expect(names).toEqual(['데카라비아', name].sort());
   });
-  expect(names).toEqual(['데카라비아', '플라우로스'].sort());
-});
+}
 
 test('구경 설정은 키보드와 마우스로 색상 수·규칙·취소를 고르고 두 CPU의 대전을 시작한다', async ({ page }) => {
   await page.evaluate(() => {

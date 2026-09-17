@@ -48,7 +48,7 @@ test('갤러리 적 목록에는 출시 적과 출시 예정 바퓰라·오리�
   await expect.poll(() => page.evaluate(() => Object.fromEntries(Object.entries(window.newEnemyGalleryDraws).map(([name, count]) => [name, count > 0])))).toEqual({ Andras: true, Valak: true, Zagan: true, Vapula: true, Oriax: true });
 });
 
-test('출시된 적 카드는 유효하지만 출시 예정 바퓰라·오리아스 카드는 제외한다', async ({ page }) => {
+test('출시된 적 카드는 유효하지만 출시 예정 오리아스 카드는 제외한다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_cards', JSON.stringify([
       { id: 'andras-card', type: 'enemy:Andras' },
@@ -74,12 +74,12 @@ test('출시된 적 카드는 유효하지만 출시 예정 바퓰라·오리아
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowRight');
-  // 자간은 BUILDNO 79에 출시되어 더 이상 카드 풀에서 빠지지 않는다.
-  await expect.poll(() => page.evaluate(() => window.newEnemyCardDraws.Andras > 0 && window.newEnemyCardDraws.Valak > 0 && window.newEnemyCardDraws.Zagan > 0)).toBe(true);
-  expect(await page.evaluate(() => [window.newEnemyCardDraws.Vapula, window.newEnemyCardDraws.Oriax])).toEqual([0, 0]);
+  // 자간은 BUILDNO 79, 바퓰라는 BUILDNO 81에 출시되어 더 이상 카드 풀에서 빠지지 않는다.
+  await expect.poll(() => page.evaluate(() => ['Andras', 'Valak', 'Zagan', 'Vapula'].every((type) => window.newEnemyCardDraws[type] > 0))).toBe(true);
+  expect(await page.evaluate(() => window.newEnemyCardDraws.Oriax)).toBe(0);
 });
 
-test('바퓰라·오리아스는 출시 예정으로 표시되고 코드·키보드·마우스로도 선택되지 않는다', async ({ page }) => {
+test('출시 예정 오리아스는 회색 카드로 표시되고 코드·키보드·마우스로도 선택되지 않는다', async ({ page }) => {
   await page.evaluate(() => localStorage.setItem('puyow_code', JSON.stringify(['observation'])));
   await page.reload();
   await enterMainMenu(page);
@@ -88,21 +88,20 @@ test('바퓰라·오리아스는 출시 예정으로 표시되고 코드·키보
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  for (let index = 0; index < 11; index += 1) await page.keyboard.press('ArrowRight');
+  // BUILDNO 81에 바퓰라가 출시되어 마지막 출시 적이 되었다.
+  for (let index = 0; index < 12; index += 1) await page.keyboard.press('ArrowRight');
   const selectedName = () => page.evaluate(() => window.testCanvasTextCalls.filter((call) => call.y === 450).at(-1)?.text);
-  const zaganName = await page.evaluate(() => window.WebPuyo.translate('자간'));
-  await expect.poll(selectedName).toBe(zaganName);
-  await expect.poll(() => page.evaluate(() => ['바퓰라', '오리아스'].every((name) => window.testCanvasTexts.includes(window.WebPuyo.translate(name))))).toBe(true);
-  // 마지막 출시 적 다음의 두 회색 카드 모두 클릭해도 선택이 바뀌지 않는다.
-  for (const x of [820, 1000]) {
-    await page.evaluate(() => { window.testCanvasTextCalls = []; });
-    await page.locator('[data-puyow-canvas="2d"]').click({ position: { x, y: 505 } });
-    await expect.poll(selectedName).toBe(zaganName);
-  }
+  const vapulaName = await page.evaluate(() => window.WebPuyo.translate('바퓰라'));
+  await expect.poll(selectedName).toBe(vapulaName);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('오리아스')))).toBe(true);
+  // 마지막 출시 적 다음의 회색 카드(오리아스)를 클릭해도 선택이 바뀌지 않는다.
+  await page.evaluate(() => { window.testCanvasTextCalls = []; });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 820, y: 505 } });
+  await expect.poll(selectedName).toBe(vapulaName);
   await page.evaluate(() => { window.testCanvasTextCalls = []; });
   await page.keyboard.press('ArrowRight');
-  // 출시 예정 둘은 이동 대상이 아니므로 마지막 출시 적에서 더 이동하지 않는다.
-  await expect.poll(selectedName).toBe(zaganName);
+  // 출시 예정 오리아스는 이동 대상이 아니므로 마지막 출시 적에서 더 이동하지 않는다.
+  await expect.poll(selectedName).toBe(vapulaName);
   expect(await page.evaluate(() => window.WebPuyo.getGameState())).toBe(null);
 });
 

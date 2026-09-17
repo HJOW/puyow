@@ -11,13 +11,13 @@
 learning.py의 self-play 학습에서 "빈 상대" 대신 실제 게임에 탑재된 적들과 대전하며
 학습할 수 있도록, 각 적의 판단 알고리즘(chooseTarget/chooseRotate/prepareTurn)을
 puyow.js와 최대한 같은 결과가 나오도록 옮겼다. 사용자 요청에 따라 솔로몬(외부 AI
-API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다. 안드라스·발라크·자간처럼
+API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다. 발라크·자간·바퓰라·오리아스처럼
 브라우저에서 ONNX 가치망을 추론해 판단하는 적(puyow.js의 `OnnxEnemy` 계열)은, 그 판단을
 여기서 재현하려면 학습 중인 모델과는 다른 모델을 파이썬에서 또 돌려야 하므로 사용자 요청에
 따라 모두 학습 상대 역할에서 제외하고, 앞으로 추가되는 ONNX 적도 같은 이유로 넣지 않는다.
-플라우로스(Flauros)는 BUILDNO 79부터 원작에서 모델을 쓰지 않고 안드레알푸스와 같은 판단
-(RealtimeLookaheadEnemy)을 쓰므로 이 모듈에서도 Andrealphus를 상속하며, 다른 모델 미사용 적과
-같이 학습 대전 상대(ENEMY_FACTORIES/TRAINABLE_ENEMY_TYPES)에 포함한다.
+플라우로스(Flauros, BUILDNO 79부터)와 안드라스(Andras, BUILDNO 81부터)는 원작에서 모델을 쓰지 않고
+안드레알푸스와 같은 판단(RealtimeLookaheadEnemy)을 쓰므로 이 모듈에서도 Andrealphus를 상속하며,
+다른 모델 미사용 적과 같이 학습 대전 상대(ENEMY_FACTORIES/TRAINABLE_ENEMY_TYPES)에 포함한다.
 
 ## 이식 범위와 단순화한 부분
 
@@ -1220,6 +1220,18 @@ class Flauros(Andrealphus):
         return 'Flauros'
 
 
+class Andras(Andrealphus):
+    """원작 BUILDNO 81부터 안드라스는 플라우로스·안드레알푸스와 같은 판단(목표 7연쇄)을 쓰므로 그대로 상속한다.
+
+    이 모듈의 안드레알푸스와 마찬가지로 원작의 advanced 탐색·실시간 재판단은 옮기지 않았다.
+    모델을 쓰지 않는 적이므로 학습 대전 상대(TRAINABLE_ENEMY_TYPES)에 포함한다.
+    """
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Andras'
+
+
 class PracticeEnemy(BundledEnemy):
     """연습 모드 전용 상대다. 뿌요를 받지 않는 쪽은 학습 환경에서 별도로 처리하므로 여기서는 등록만 한다."""
 
@@ -1292,8 +1304,8 @@ class QuietEdgeEnemy(BundledEnemy):
 
 # 학습에서 대전 상대로 고를 수 있는 적 목록이다. puyow.js OPPONENTS 등록 순서에서
 # 솔로몬·안드로말리우스(사용자 요청으로 제외)와 연습 상대(PracticeEnemy, 비경쟁 상대)를 뺐다.
-# 안드라스·발라크·자간 등 ONNX 추론으로 판단하는 적은 사용자 요청에 따라 모두 학습 상대에서 뺐다.
-# 플라우로스는 BUILDNO 79부터 모델을 쓰지 않으므로(판단은 안드레알푸스와 같다) 학습 상대에 포함한다.
+# 발라크·자간·바퓰라·오리아스 등 ONNX 추론으로 판단하는 적은 사용자 요청에 따라 모두 학습 상대에서 뺐다.
+# 플라우로스(BUILDNO 79부터)와 안드라스(BUILDNO 81부터)는 모델을 쓰지 않으므로(판단은 안드레알푸스와 같다) 학습 상대에 포함한다.
 # QuietEdgeEnemy는 원작에 없는 학습 전용 연습 상대라 만들 수는 있지만 무작위 선택에서는 뺀다.
 QUIET_EDGE_ENEMY_TYPE = 'QuietEdgeEnemy'
 
@@ -1306,6 +1318,7 @@ ENEMY_FACTORIES = {
     'Kimaris': Kimaris,
     'Andrealphus': Andrealphus,
     'Flauros': Flauros,
+    'Andras': Andras,
     QUIET_EDGE_ENEMY_TYPE: QuietEdgeEnemy,
 }
 

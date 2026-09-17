@@ -142,14 +142,14 @@ python python/learning.py --help
 
 ## 6. 학습 상세: 적 AI와 대전하며 학습
 
-`python/bundledenemy.py`는 `src/js/puyow.js`에 탑재된 기본 제공 적들(단탈리온, 세레, 데카라비아, 벨리알, 암두시아스, 키마리스, 안드레알푸스, 플라우로스)의 판단 알고리즘을 Python으로 옮긴 모듈이다. 솔로몬(외부 AI API 전용)·안드로말리우스는 이식 대상에서 제외했다. 플라우로스는 원작에서 안드레알푸스와 같은 판단을 쓰므로 이식 모듈에서도 안드레알푸스를 상속한다. 안드라스·발라크·자간처럼 브라우저에서 ONNX 모델로 판단하는 적은 대전 상대 목록에 넣지 않는다. `--opponent` 옵션으로 학습 중 대전할 상대를 고른다.
+`python/bundledenemy.py`는 `src/js/puyow.js`에 탑재된 기본 제공 적들(단탈리온, 세레, 데카라비아, 벨리알, 암두시아스, 키마리스, 안드레알푸스, 플라우로스, 안드라스)의 판단 알고리즘을 Python으로 옮긴 모듈이다. 솔로몬(외부 AI API 전용)·안드로말리우스는 이식 대상에서 제외했다. 플라우로스·안드라스는 원작에서 안드레알푸스와 같은 판단을 쓰므로 이식 모듈에서도 안드레알푸스를 상속한다. 발라크·자간·바퓰라·오리아스처럼 브라우저에서 ONNX 모델로 판단하는 적은 대전 상대 목록에 넣지 않는다. `--opponent` 옵션으로 학습 중 대전할 상대를 고른다.
 
 | 값 | 동작 |
 | --- | --- |
 | `random` (기본값) | 매 에피소드마다 self-play(자기 자신과 대전) 또는 이식된 적 중 하나를 무작위로 골라 대전한다. |
 | `self` | 항상 self-play로 대전한다. 상대측도 학습 중인 정책으로 행동을 고르므로(같은 epsilon-greedy 탐험을 그대로 적용), 상대가 이기면 곧 이번 정책이 스스로에게 진 것과 같다. |
 | `solo` | 상대 없이 죽지 않고 버티는 것만 학습하는 옛 방식(`PuyoEnvironment`)을 쓴다. |
-| `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus`, `Flauros` | 지정한 적 하나로 고정해 계속 대전한다. |
+| `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus`, `Flauros`, `Andras` | 지정한 적 하나로 고정해 계속 대전한다. |
 | `QuietEdgeEnemy` | 뿌요를 터뜨리지 않으려 하고 중앙(X=2,3)에서 먼 열부터 채우는 학습 전용 연습 상대와 계속 대전한다. 원작 게임에는 없는 적이라 `random`에서는 뽑히지 않는다. `--training-strategy solo-play`가 이 상대를 자동으로 고른다. |
 
 ```powershell

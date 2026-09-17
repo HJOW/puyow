@@ -136,7 +136,7 @@
 
 - GOLD는 `puyow_store.gold`의 0 이상 정수이며 잘못된 값은 로드 시 0으로 보정한다. 메인 메뉴와 갤러리 좌측 상단에는 번역하지 않는 `GOLD` 단위와 천 단위 콤마로 표시한다.
 - 기본/피버/피버 룰 (시작) 대전 승리와 연습/연속 피버 정상 결과 진입 때 종료 점수를 바탕으로 GOLD를 한 번 지급한다. 점수 패널티는 기본 300, 피버 1,000, 피버 룰 (시작)·연습 10,000, 연속 피버 100,000이다. 난이도 배율은 쉬움 3, 보통 4, 어려움 5, 극한 7이고 단독 모드는 1이다. 기본 적 배율은 안드로말리우스부터 안드레알푸스까지 1~8, 솔로몬·외부 적·단독 모드는 1이다. 구경, 퍼즐의 일반 종료 계산, 일시정지 종료에는 지급하지 않는다.
-- 보유 카드는 `puyow_cards`의 개별 `{id,type}` 인스턴스 배열이다. 기본 카드 풀은 일반뿌요 5종, 방해뿌요 3종, 예고뿌요 11종(단위 1·6·30·210·500·2000·80000·500000·3000000·20000000·140000000), 출시 적 12종(안드로말리우스~자간)이며 `getCardDefinitions()`의 가중치를 쓴다. 안드라스·발라크·자간을 포함해 플라우로스 뒤에 추가된 출시 적은 자동으로 가중치 1 카드가 되며, 솔로몬과 `notAvail` 출시 예정 적(바퓰라·오리아스)은 제외한다. 단위 500000보다 큰 예고뿌요도 자동으로 가중치 1 카드가 된다. 카드 배경색은 가중치 경계에 따른 EPIC/RARE/UNCOMMON/COMMON 색을 사용하며 등급 문구는 카드에 표시하지 않는다.
+- 보유 카드는 `puyow_cards`의 개별 `{id,type}` 인스턴스 배열이다. 기본 카드 풀은 일반뿌요 5종, 방해뿌요 3종, 예고뿌요 11종(단위 1·6·30·210·500·2000·80000·500000·3000000·20000000·140000000), 출시 적 13종(안드로말리우스~바퓰라)이며 `getCardDefinitions()`의 가중치를 쓴다. 안드라스·발라크·자간·바퓰라를 포함해 플라우로스 뒤에 추가된 출시 적은 자동으로 가중치 1 카드가 되며, 솔로몬과 `notAvail` 출시 예정 적(오리아스)은 제외한다. 단위 500000보다 큰 예고뿌요도 자동으로 가중치 1 카드가 된다. 카드 배경색은 가중치 경계에 따른 EPIC/RARE/UNCOMMON/COMMON 색을 사용하며 등급 문구는 카드에 표시하지 않는다.
 - 갤러리의 카드 유형은 8열·약 4행 카드 목록, 세로 스크롤, 키보드·마우스 포커스/선택을 지원한다. 1장/10장 뽑기는 각각 1,000/9,000 GOLD, 합성은 카드 5장당 새 카드 1장을 지급한다. 자원이 충분하면 먼저 전체 화면 확인창을 열고 사용자가 확인했을 때만 GOLD 차감 또는 선택 카드 소비와 결과 지급을 수행한다.
 - 카드 뽑기·합성으로 지급한 카드는 저장을 끝낸 뒤 `revealGrantedCards()`를 통해 선택적 3D 등장 연출을 요청한다. `puyow_3d.js`의 `PuyoW3DEffectManager.playCardReveal()`이 기존 카드 그림 콜백을 텍스처로 만들고, 카드의 회전·광채·광륜·입자를 그린다. 카드별 COMMON → UNCOMMON → RARE → EPIC 순서로 광륜·입자 수와 회전량·광채를 강화하며 등급 문구는 표시하지 않는다. 여러 장도 한 번에 격자로 등장하므로 전체 시간은 가장 높은 등급에 따라 2,200/2,650/3,100/3,550ms다. `frame(time)`의 절대 시각과 종료 타이머를 함께 사용하므로 게임의 delta 상한 때문에 4초를 넘도록 늘어나지 않는다.
 - 연출 중 Enter·Space·ESC·게임패드 확인/취소·캔버스 클릭은 연출만 끝내고 뒤쪽 카드 선택·추가 구매·갤러리 종료로 전달하지 않는다. 방향키와 휠은 연출 중 목록을 바꾸지 않는다. 종료 후 이미 지급된 새 카드에 포커스가 남는다. THREE·효과 모듈이 없거나 WebGL 생성·렌더링이 실패하면 기존 2D 카드 목록으로 바로 진행하며, 카드 재추첨·재지급·추가 차감은 하지 않는다.
@@ -222,11 +222,11 @@
 - `Andrealphus`는 `PuyoW.Andrealphus`로도 공개된 `BundledEnemy` 하위의 출시된 8번째 적이다. 키마리스와 독립된 동일 판단 흐름(일반·위기 빠른 하강 지연 비율, 화면 예고 위협량 반영 포함)을 사용하되 평상시 목표는 7연쇄·3수 Worker 반복 심화 탐색이다. `lookaheadTimeLimitMs` 기본값은 50ms이며 인스턴스별로 조정할 수 있다. Worker는 1수·2수·3수 완료 때마다 현재 1수의 X·회전을 갱신하고, 시간 초과·오류로 1수 결과가 없으면 기존 동기 1수 탐색으로 대체한다. 피버·패배 위치 보호 후보가 있으면 Worker를 시작하지 않고 기존 `Enemy.prepareTurn()` 경로를 그대로 우선한다. 이 조정 때문에 키마리스의 목표 6연쇄·2수 계약을 바꾸지 않는다. BUILDNO 76부터는 `lookaheadSearchMode = 'advanced'`로 Worker의 advanced 탐색과 기본 룰 실시간 재판단을 쓴다(아래 「안드레알푸스 advanced 탐색과 실시간 반응」 절).
 - `Seere`의 피버 비활성 일반 쌓기만 오른쪽 두 열 전체 → X=3의 화면 절반(6칸) → X=0 전체 → X=1 전체 순서다. 피버 비활성 피버 룰의 별도 빌드, 피버 중 공통 연쇄 최적화, 패배 위치 보호, 빈 필드 무작위 착수는 이 규칙보다 우선한다. 일반 착수는 오른쪽 하단 세 칸의 점유 여부와 관계없이 `turnCount`에 포함한다. 공격 시뮬레이션 차례가 되면 우측 하단 세 칸이 덜 차 있어도 최적 공격 위치를 우선하며, 그 외에만 해당 세 칸이 찰 때까지 비폭발 착수를 사용한다. 공격 최적 시뮬레이션 뒤 다음 호출 간격은 매번 20~25회로 무작위 선정한다.
 - `Seere`의 전승은 "날개 달린 말을 탄 미남 왕자"이며, BUILDNO 56 초상화에서는 하늘빛 머리칼·작은 왕관·날개 망토·은빛 방패를 가진 머리 하나의 인간형 왕자로 재해석한다. 필드 테마(청)는 유지한다.
-- `Flauros`는 9번째 출시 적이다. BUILDNO 79부터 `RealtimeLookaheadEnemy`를 상속해 안드레알푸스와 완전히 같은 판단(목표 7연쇄·작은 연쇄 점등 켜짐, `RANDOM_EMPTY_FIELD_ENEMY_TYPES` 포함)을 쓰며 모델을 쓰지 않는다. 그래서 ONNX 경고 표시·첫 선택 경고 대상이 아니고, ONNX 런타임이 없어도 적 선택 화면에 나오며 구경 모드 후보에도 들어간다. BUILDNO 78까지는 처음으로 `OnnxEnemy`를 상속해 `onnx/model01.onnx`로 판단했다(아래 「적 AI 한 칸씩 밀기」 절). 같은 작업을 다음 적(안드라스)에 반복할 때는 「[반복 작업 절차] 적 AI 한 칸씩 밀기」 절을 따른다. 표범 전승은 둥근 귀·점무늬 의상·꼬리·불꽃 장식을 가진 인간형 캐릭터로 재해석한다.
-- `Andras`는 10번째 출시 적인 `OnnxEnemy`다. 새 머리 천사·검은 늑대·불타는 검의 전승을 새 깃털 두건·날개·늑대 문장·불꽃 장식 검을 가진 인간형 캐릭터로 재해석한다. 남청 테마와 `onnx/model01.onnx`(BUILDNO 78까지 플라우로스의 모델)를 사용하며 적 선택 진행도·갤러리·가중치 1 카드 풀에 포함된다. 모델을 쓰는 첫 적이라 적 선택 화면 느낌표·첫 선택 불안정 안내가 여기서부터 적용된다.
-- `Valak`은 11번째 출시 적인 `OnnxEnemy`다. 두 목의 붉은 드래곤을 타는 날개 달린 소년 전승은 드래곤 뿔·비늘 튜닉·꼬리·날개를 가진 머리 하나의 소년으로 재해석한다. 적갈 테마와 `onnx/model02.onnx`(BUILDNO 78까지 안드라스의 모델)를 사용하며 적 선택 진행도·갤러리·가중치 1 카드 풀에 포함된다.
-- `Zagan`은 12번째 `OnnxEnemy`로 BUILDNO 79에 출시했다(`notAvail = false`). 그리폰 날개의 숫소 전승은 굽은 뿔 장식·황금 날개·잔을 가진 인간형 캐릭터로 재해석하며 황갈 테마를 유지한다. `onnx/model03.onnx`(BUILDNO 78까지 발라크의 모델)를 사용하며, 출시로 적 선택 진행도(발라크를 이기면 해금)와 가중치 1 카드 풀에 들어간다.
-- `Vapula`(바퓰라)·`Oriax`(오리아스)는 자간 다음의 13·14번째 적으로, BUILDNO 80에 출시 예정(`notAvail = true`)으로 추가했다. 둘 다 `OnnxEnemy`를 직접 상속하고 자간과 동일한 초기 AI 설정·판단 메서드·`onnx/model03.onnx`를 쓴다. 각 생성자의 `modelPath`만 바꾸면 전용 모델로 독립 교체할 수 있다. 선택 화면에서는 ONNX 런타임이 있을 때 회색 출시 예정 카드로 보이며 키보드·마우스·`observation` 코드로 선택할 수 없다. 갤러리에는 기존 잠금 규칙으로 등록되지만 카드 풀·구경 후보·Python 학습 상대에는 들어가지 않는다. 공개 클래스는 `PuyoW.Vapula`·`PuyoW.Oriax`다.
+- `Flauros`는 9번째 출시 적이다. BUILDNO 79부터 `RealtimeLookaheadEnemy`를 상속해 안드레알푸스와 완전히 같은 판단(목표 7연쇄·작은 연쇄 점등 켜짐, `RANDOM_EMPTY_FIELD_ENEMY_TYPES` 포함)을 쓰며 모델을 쓰지 않는다. 그래서 ONNX 경고 표시·첫 선택 경고 대상이 아니고, ONNX 런타임이 없어도 적 선택 화면에 나오며 구경 모드 후보에도 들어간다. BUILDNO 78까지는 처음으로 `OnnxEnemy`를 상속해 `onnx/model01.onnx`로 판단했다(아래 「적 AI 한 칸씩 밀기」 절). 같은 작업은 BUILDNO 81에 안드라스로 반복했고, 다음 적(발라크)에 반복할 때도 「[반복 작업 절차] 적 AI 한 칸씩 밀기」 절을 따른다. 표범 전승은 둥근 귀·점무늬 의상·꼬리·불꽃 장식을 가진 인간형 캐릭터로 재해석한다.
+- `Andras`는 10번째 출시 적이다. 새 머리 천사·검은 늑대·불타는 검의 전승을 새 깃털 두건·날개·늑대 문장·불꽃 장식 검을 가진 인간형 캐릭터로 재해석하며 남청 테마를 쓴다. BUILDNO 81부터 `RealtimeLookaheadEnemy`를 상속해 플라우로스·안드레알푸스와 같은 판단(목표 7연쇄·작은 연쇄 점등 켜짐, `RANDOM_EMPTY_FIELD_ENEMY_TYPES` 포함)을 쓰며 모델을 쓰지 않는다. 그래서 ONNX 경고 표시·첫 선택 경고 대상이 아니고, ONNX 런타임이 없어도 적 선택 화면에 나오며 구경 모드 후보와 Python 학습 상대에도 들어간다. BUILDNO 79~80에는 `OnnxEnemy`로 `onnx/model01.onnx`, 그 전에는 `model02.onnx`를 썼다. 적 선택 진행도·갤러리·가중치 1 카드 풀에 포함된다.
+- `Valak`은 11번째 출시 적인 `OnnxEnemy`다. 두 목의 붉은 드래곤을 타는 날개 달린 소년 전승은 드래곤 뿔·비늘 튜닉·꼬리·날개를 가진 머리 하나의 소년으로 재해석한다. 적갈 테마와 `onnx/model01.onnx`(BUILDNO 80까지 안드라스의 모델)를 사용하며 적 선택 진행도·갤러리·가중치 1 카드 풀에 포함된다. BUILDNO 81부터 모델을 쓰는 첫 적이라 적 선택 화면 느낌표·첫 선택 불안정 안내가 여기서부터 적용된다.
+- `Zagan`은 12번째 `OnnxEnemy`로 BUILDNO 79에 출시했다(`notAvail = false`). 그리폰 날개의 숫소 전승은 굽은 뿔 장식·황금 날개·잔을 가진 인간형 캐릭터로 재해석하며 황갈 테마를 유지한다. BUILDNO 81부터 `onnx/model02.onnx`(BUILDNO 80까지 발라크의 모델)를 사용하며(BUILDNO 79~80은 `model03.onnx`), 출시로 적 선택 진행도(발라크를 이기면 해금)와 가중치 1 카드 풀에 들어간다.
+- `Vapula`(바퓰라)·`Oriax`(오리아스)는 자간 다음의 13·14번째 적으로, BUILDNO 80에 출시 예정(`notAvail = true`)으로 추가했다. 둘 다 `OnnxEnemy`를 직접 상속하고 자간과 동일한 초기 AI 설정·판단 메서드를 쓰며 `onnx/model03.onnx`를 쓴다. 각 생성자의 `modelPath`만 바꾸면 전용 모델로 독립 교체할 수 있다. **바퓰라는 BUILDNO 81에 출시했다**(`notAvail = false`, 자간이 쓰던 `model03.onnx`를 이어받음). 적 선택 진행도(자간을 이기면 해금)·가중치 1 카드 풀에 들어가고, ONNX 적이라 구경 후보·Python 학습 상대에는 들어가지 않는다. **오리아스는 계속 출시 예정**이라 선택 화면에서는 ONNX 런타임이 있을 때 회색 출시 예정 카드로 보이며 키보드·마우스·`observation` 코드로 선택할 수 없고, 갤러리에는 기존 잠금 규칙으로 등록되지만 카드 풀·구경 후보·Python 학습 상대에는 들어가지 않는다. 공개 클래스는 `PuyoW.Vapula`·`PuyoW.Oriax`다.
 - 바퓰라는 그리폰 날개를 가진 사자와 기술·학문 전승을 갈기 후드·옥색 깃털 날개·보안경·설계책·공구로, 오리아스는 사자·뱀·기마·점성술 전승을 연보라 갈기 후드·별 망토·쌍뱀 문양 지팡이·말발굽 문장으로 표현한다. 둘 다 기존 Canvas 인간형 스타일과 일반·위기·패배 세 표정을 공유하며, 필드 테마는 각각 옥색·회보라색이다.
 - `BigBangWarningPuyo`는 단위 500000, type `big-bang`인 한 칸 크기의 빅뱅 예고뿌요다. 큰 단위부터 정렬된 `WARNING_PUYO_CLASSES`에서 헥사액트·펜터렉트·테서렉트 다음 네 번째 항목으로 공격량 분해·갤러리·카드 그림에 함께 쓰인다.
 - `TesseractWarningPuyo`는 단위 3000000, type `tesseract`인 한 칸 크기의 테서렉트(4차원 정팔포체) 예고뿌요다. 단위가 빅뱅보다 크므로 `getCardDefinitions()`의 자동 규칙에 따라 가중치 1 카드로 들어가고, 갤러리 예고뿌요 목록과 메인 메뉴 떠다니는 연출에도 다른 예고뿌요와 같은 경로로 나타난다.
@@ -520,7 +520,7 @@ Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 �
 
 ## 머신러닝 작업 참고
 
-머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. 승·패 보상(`WIN_REWARD`, `LOSS_REWARD`), 연쇄 가중치 `chain_reward()`, 한 수의 즉시 보상 계약 `move_reward()`(= `ATTACK + 연쇄 가중치`), 게임 시간 보정 `game_time_reward()`, 승패와 시간을 합친 종료 가치 `terminal_reward()`, 감가율 `DISCOUNT_GAMMA`(0.70)와 스칼라 관측값의 정규화 기준(`ATTACK_SCALE` 등), 관측 벡터를 보드·쌍·상태로 되돌리는 `decode_observation_board()`·`decode_observation_pair()`·`decode_observation_scalars()`는 `python/common.py`에 있다. 오프라인 학습과 서버의 온라인 학습이 같은 보상 크기를 써야 하므로 `PuyoDuelEnvironment.WIN_REWARD`도 이 공통 상수를 그대로 참조한다. `pythonserver.py`와 `nodeserver.js`는 모두 `/apis/localmodelinfo`를 제공하며 `{ "available": boolean }`만 응답한다. `pythonserver.py`는 `SERVER_CONFIG['model_path']`가 실제 파일이고 `get_value_model()` 로드까지 성공할 때만, `nodeserver.js`는 `LOCAL_AI_MODEL_PATH`(`src/onnx/default.onnx`)가 실제 파일이고 ONNX 세션 생성까지 성공할 때만 `true`다(아래 「Node 서버의 Local AI」 절). `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스·플라우로스(BUILDNO 79부터, 안드레알푸스 상속)이며, 솔로몬·안드로말리우스와 브라우저 ONNX 추론 적(안드라스·발라크·자간)은 제외한다. 여기에 더해 원작에 없는 학습 전용 연습 상대 `QuietEdgeEnemy`가 `ENEMY_FACTORIES`에만 들어 있고 `TRAINABLE_ENEMY_TYPES`에는 없다(아래 「TODO 학습 방식·가중치 변경 결과」 절 참고). `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 여덟 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. 피버 룰은 일반/피버 필드, 게이지, 제한 시간, 목표 연쇄 및 JS의 실제 피버 패턴을 사용한다. 브라우저 관측은 `game.elapsed`의 실제 시간을 쓰고, 벽시계와 무관하게 고속 실행되는 오프라인 학습은 양측 한 턴을 3초로 진행한다. `src/js/puyow.js`의 적 AI 판단 로직이나 피버 패턴을 바꾸면 `bundledenemy.py`와 학습 회귀 테스트를 함께 확인한다. 숨김 행 없는 12행 보드, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등 의도적인 제한은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
+머신러닝 관련 작업 시 학습 코드와 학습 API 구현을 함께 확인해야 한다. 학습 모델·환경·학습 실행 방법은 `python/learning.py`를, 관측값·행동·보상·에피소드 종료 이벤트를 전달하는 서버 API는 `python/pythonserver.py`를 참고한다. 승·패 보상(`WIN_REWARD`, `LOSS_REWARD`), 연쇄 가중치 `chain_reward()`, 한 수의 즉시 보상 계약 `move_reward()`(= `ATTACK + 연쇄 가중치`), 게임 시간 보정 `game_time_reward()`, 승패와 시간을 합친 종료 가치 `terminal_reward()`, 감가율 `DISCOUNT_GAMMA`(0.70)와 스칼라 관측값의 정규화 기준(`ATTACK_SCALE` 등), 관측 벡터를 보드·쌍·상태로 되돌리는 `decode_observation_board()`·`decode_observation_pair()`·`decode_observation_scalars()`는 `python/common.py`에 있다. 오프라인 학습과 서버의 온라인 학습이 같은 보상 크기를 써야 하므로 `PuyoDuelEnvironment.WIN_REWARD`도 이 공통 상수를 그대로 참조한다. `pythonserver.py`와 `nodeserver.js`는 모두 `/apis/localmodelinfo`를 제공하며 `{ "available": boolean }`만 응답한다. `pythonserver.py`는 `SERVER_CONFIG['model_path']`가 실제 파일이고 `get_value_model()` 로드까지 성공할 때만, `nodeserver.js`는 `LOCAL_AI_MODEL_PATH`(`src/onnx/default.onnx`)가 실제 파일이고 ONNX 세션 생성까지 성공할 때만 `true`다(아래 「Node 서버의 Local AI」 절). `python/bundledenemy.py`는 `src/js/puyow.js`의 기본 제공 적 AI를 Python으로 옮긴 모듈이다. 대전 가능한 적은 단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스·플라우로스(BUILDNO 79부터)·안드라스(BUILDNO 81부터, 둘 다 안드레알푸스 상속)이며, 솔로몬·안드로말리우스와 브라우저 ONNX 추론 적(발라크·자간·바퓰라·오리아스)은 제외한다. 여기에 더해 원작에 없는 학습 전용 연습 상대 `QuietEdgeEnemy`가 `ENEMY_FACTORIES`에만 들어 있고 `TRAINABLE_ENEMY_TYPES`에는 없다(아래 「TODO 학습 방식·가중치 변경 결과」 절 참고). `PuyoDuelEnvironment`의 `--opponent random`은 self-play와 이 아홉 적 중 하나를 매 에피소드마다 고르고, `self`는 현재 학습 중인 정책을 상대에도 적용한다. `solo`를 제외한 대전에서는 기본/피버 룰 및 3~5색도 에피소드마다 무작위로 선택한다. 피버 룰은 일반/피버 필드, 게이지, 제한 시간, 목표 연쇄 및 JS의 실제 피버 패턴을 사용한다. 브라우저 관측은 `game.elapsed`의 실제 시간을 쓰고, 벽시계와 무관하게 고속 실행되는 오프라인 학습은 양측 한 턴을 3초로 진행한다. `src/js/puyow.js`의 적 AI 판단 로직이나 피버 패턴을 바꾸면 `bundledenemy.py`와 학습 회귀 테스트를 함께 확인한다. 숨김 행 없는 12행 보드, 딱딱뿌요 제외, 안드레알푸스의 동기 시간 제한 탐색 등 의도적인 제한은 `bundledenemy.py` 모듈 docstring에 정리되어 있다.
 
 모델 버전 3의 관측값은 528개다. 빈 칸·방해뿌요·5색 보드 채널 504개, 현재 쌍 10개, ATTACK/턴/DAMAGE/룰/티켓/경과시간/마진/시간 배율/피버 상태 14개 순서이며 JS 학습 전이, Python 환경, Solomon 서버가 `python/common.py`의 같은 계약을 사용한다. `learning.py`의 `--output` 경로가 실제 체크포인트 파일이면 `MODEL_VERSION`·`OBSERVATION_SIZE`·`ACTION_COUNT`를 검증한 후 가중치를 복원한다. 관측 계약은 버전 2와 같지만 신경망 종류가 달라 버전 2 이하 체크포인트는 호환하지 않으며 다시 학습해야 한다. `--evaluate-episodes`는 탐험 없이 승률을 집계하고, `--infer-observation`은 LM Studio/HTTP 없이 관측 JSON을 직접 추론한다(숫자 배열 또는 `{observation, nextPair}` 객체). 체크포인트에는 optimizer·replay buffer·epsilon 상태를 저장하지 않는다.
 
@@ -545,7 +545,7 @@ Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 �
 
 ### 브라우저 ONNX 추론 적 (`OnnxEnemy` 계열)
 
-안드라스(`Andras`)부터는 파이썬 백엔드 없이 브라우저에서 ONNX Runtime for Web으로 직접 가치망을 추론해 판단한다(BUILDNO 78까지는 플라우로스부터였다). 공통 구현은 `OnnxEnemy`(→ `BundledEnemy` → `Enemy`)에 있고, 하위 클래스는 멤버변수 `modelPath`(`src/` 기준 상대 경로)와 `getClassType()`·`getName()`·`drawPortrait()`를 재정의한다. 안드라스·발라크·자간은 각각 `onnx/model01.onnx`·`onnx/model02.onnx`·`onnx/model03.onnx`를 쓴다. 출시 예정 바퓰라·오리아스는 임시로 자간과 같은 `onnx/model03.onnx`를 쓰며, 전용 모델 경로는 적별로 독립 교체한다. `OnnxEnemy`는 외부 확장 적도 상속할 수 있도록 `WebPuyo.OnnxEnemy`로 공개한다.
+발라크(`Valak`)부터는 파이썬 백엔드 없이 브라우저에서 ONNX Runtime for Web으로 직접 가치망을 추론해 판단한다(BUILDNO 78까지는 플라우로스부터, BUILDNO 79~80은 안드라스부터였다). 공통 구현은 `OnnxEnemy`(→ `BundledEnemy` → `Enemy`)에 있고, 하위 클래스는 멤버변수 `modelPath`(`src/` 기준 상대 경로)와 `getClassType()`·`getName()`·`drawPortrait()`를 재정의한다. 발라크·자간·바퓰라는 각각 `onnx/model01.onnx`·`onnx/model02.onnx`·`onnx/model03.onnx`를 쓴다. 출시 예정 오리아스는 임시로 바퓰라와 같은 `onnx/model03.onnx`를 쓰며, 전용 모델 경로는 적별로 독립 교체한다. `OnnxEnemy`는 외부 확장 적도 상속할 수 있도록 `WebPuyo.OnnxEnemy`로 공개한다.
 
 - **선택 규칙은 파이썬과 같다**: `learning.select_afterstate()`를 그대로 옮겼다. `getUsablePlacements()`로 실제 도달 가능한 배치만 추리고, 후보마다 `buildAfterstate()`가 연쇄까지 끝난 결과 보드를 `common.py`와 같은 528개 관측 벡터로 만든 뒤, 한 번의 추론(`[후보 수, 528]`)으로 받은 가치로 `move_reward + ONNX_DISCOUNT_GAMMA(0.70) * V`가 가장 큰 배치를 고른다. 모델은 행동이 아니라 **스칼라 가치 하나**를 내므로 후보 열거와 보상 계산은 JS가 한다.
 - **관측 인코딩은 한 함수만 쓴다**: `buildObservationValues()`가 학습 API용 `getLearningObservation()`과 애프터스테이트 인코딩 양쪽을 담당한다. ATTACK·싹쓸이 티켓·피버 보정 순서는 `learning.py`의 `_build_afterstate()`와 같아야 하며, 애프터스테이트의 조작 쌍 자리에는 **이번 수 다음에 내려올 쌍**을 넣는다. 이 계약은 기본 룰과 피버 룰 모두 파이썬 `enumerate_afterstates()`와 후보·보상·528개 값이 완전히 일치함을 확인했다. `python/common.py`의 스케일 상수를 바꾸면 이 함수도 함께 고쳐야 한다.
@@ -891,7 +891,7 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 
 ### [반복 작업 절차] 적 AI 한 칸씩 밀기
 
-사용자는 출시 예정 적을 새로 추가한 뒤, BUILDNO 79 때처럼 **ONNX 모델을 한 칸씩 뒤로 밀고 "모델을 쓰는 첫 적"을 모델 미사용 AI로 바꾸는 작업**을 반복할 수 있다. 다음 차례는 안드라스(`Andras`)다. 아래 절차는 BUILDNO 79 작업(바로 아래 기록 절)과 그 뒤 점검 요청(구경 모드·학습 상대 선정)을 일반화한 것이다. 예시는 "안드라스를 모델 미사용으로 바꾸고, 발라크·자간·새 적이 한 칸씩 이어받는" 경우다.
+사용자는 출시 예정 적을 새로 추가한 뒤, BUILDNO 79 때처럼 **ONNX 모델을 한 칸씩 뒤로 밀고 "모델을 쓰는 첫 적"을 모델 미사용 AI로 바꾸는 작업**을 반복할 수 있다. BUILDNO 79(플라우로스)와 BUILDNO 81(안드라스)에 이 절차로 작업했고, **다음 차례는 발라크(`Valak`)다.** 아래 절차는 BUILDNO 79 작업(아래 기록 절)과 그 뒤 점검 요청(구경 모드·학습 상대 선정)을 일반화한 것이다. 예시는 BUILDNO 81 기준 "안드라스를 모델 미사용으로 바꾸고, 발라크·자간·새로 출시한 적이 한 칸씩 이어받는" 경우이며, 다음 작업에서는 적 이름을 한 칸씩 옮겨 읽는다.
 
 **0. 먼저 사용자에게 확인할 것**
 - 각 적이 이어받을 모델과, 출시 예정을 해제할 적(`notAvail = false`)이 무엇인지. 요청에 없으면 "이전 적의 `modelPath`를 그대로 이어받는다"로 해석한다.
@@ -902,7 +902,7 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 - 새로 모델 미사용이 되는 적: `extends OnnxEnemy` → `extends RealtimeLookaheadEnemy`, 생성자는 `super({ targetCombo, lightFeverGaugeWithSmallChains })`, `this.sortPriority`·`this.notAvail = false`만 남기고 `modelPath` 줄을 지운다. 클래스 설명 주석을 고친다. `getClassType()`·`getName()`·`getFieldThemeColors()`·`drawPortrait()`는 그대로 둔다(캐릭터·진행도 순서는 바뀌지 않는다).
 - 그 뒤 ONNX 적들: `this.modelPath`를 앞 적이 쓰던 파일로 한 칸씩 바꾼다(예: 발라크 `model02` → `model01`, 자간 `model03` → `model02`, 새 적 → `model03`). 새 적을 출시하면 `notAvail = false`로 바꾼다.
 - `RANDOM_EMPTY_FIELD_ENEMY_TYPES`에 새 모델 미사용 적의 종류 문자열을 넣는다(빈 필드 첫 배치 무작위 — 안드레알푸스와 같은 판단의 일부). 모델 미사용 적인지는 이 목록과 무관하므로 ONNX 적은 넣지 않는다.
-- BUILDNO +1, `package.json`·`package-lock.json` 버전, `npm run build`로 번들 재생성.
+- BUILDNO +1, `package.json`·`package-lock.json` 버전(다른 작업에서 `package-lock.json`이 뒤처져 있을 수 있으니 둘 다 확인), `npm run build`로 번들 재생성.
 
 **2. 코드 변경 없이 `requiresOnnx` 기준으로 자동으로 바뀌는 것 — 확인만 한다**
 - 적 선택 화면 이름 옆 느낌표(`drawOpponentNameWithMark`)와 첫 선택 불안정 안내(`startOpponentMenuGame`, `store.onnxWarningAcknowledged`)가 다음 ONNX 적부터 적용된다.
@@ -917,14 +917,34 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 **4. 테스트**
 - `tests/test03_ai.spec.js`: ONNX 추론 적 테스트(모델 로딩·실패, 느낌표·첫 선택 안내, 추론 마감 시한, 프록시 Worker 실패, CDN/로컬 wasm, 런타임 없음·갤러리, 순환 배치 필드의 `Object.create(...prototype)`)의 대상을 다음 ONNX 적으로 옮긴다. 적 선택 화면에서 `ArrowRight` 횟수를 하나 늘리고, 이름·번역 이름 배열을 바꾼다. 첫 ONNX 적은 계속 `model01.onnx`를 쓰므로 `page.route('**/onnx/model01.onnx')`는 그대로 둔다. `seedAllOpponentsCleared()`의 승리 목록과 갤러리 해금 적도 한 칸 늘린다. 느낌표 테스트의 "마크 있음/없음" 이름 목록과, 런타임 없음 테스트의 "보이는 모델 미사용 적/숨는 ONNX 적"을 바꾼다.
 - `tests/test01_core.spec.js`의 "…ONNX 적 3종은 출시 상태·모델·테마 설정을 가진다": `modelPath`·`notAvail` 기대값과, 대상 적 자체(모델 미사용이 된 적은 빼고 새 ONNX 적을 넣음)를 바꾼다.
-- `tests/test01_menu.spec.js`의 적 카드 테스트: 출시한 적의 카드가 이제 유효하게 그려지도록 기대값을 바꾼다.
-- `tests/test01_enemy.spec.js`: "플라우로스는 모델 없이 안드레알푸스와 같은…"과 같은 형태로 새 모델 미사용 적을 확인한다(`RealtimeLookaheadEnemy` 상속, `OnnxEnemy` 아님, `requiresOnnx` false, `modelPath` 없음, 설정값, 직접 가진 메서드 목록). "구경 모드 무작위 적 선정은…" 테스트는 데카라비아와 새 모델 미사용 적, 다음 ONNX 적만 이긴 기록으로 앞의 둘이 맞붙는지 확인하도록 바꾸거나 새로 추가한다.
-- `python/test_learning.py`의 `TrainableOpponentPoolTest`: 새 모델 미사용 적이 목록에 있고 `Andrealphus` 인스턴스인지, ONNX 적은 없는지, 무작위 선택으로 뽑혀 `step()`이 되는지로 바꾼다.
+- `tests/test01_core.spec.js`의 출시 예정 적 테스트(BUILDNO 81 기준 "출시된 바퓰라와 출시 예정 오리아스는 자간과 같은 ONNX AI를 쓰고…"): 출시한 적의 `notAvail`·`modelPath` 기대값과, 비교 기준 적의 모델 경로를 바꾼다.
+- `tests/test01_menu.spec.js`의 적 카드 테스트: 출시한 적의 카드가 이제 유효하게 그려지도록 기대값을 바꾼다. 출시 예정 선택 차단 테스트는 마지막 출시 적까지 `ArrowRight` 횟수를 하나 늘리고, 회색 카드 클릭 위치(선택 카드 오른쪽 180px 간격)를 남은 출시 예정 적 수에 맞춘다.
+- `tests/test01_enemy.spec.js`: "○○는 모델 없이 안드레알푸스와 같은 실시간 N수 탐색 판단을 쓰고…"(`RealtimeLookaheadEnemy` 상속, `OnnxEnemy` 아님, `requiresOnnx` false, `modelPath` 없음, 설정값, 직접 가진 메서드 목록)와 "구경 모드 무작위 적 선정은 모델을 쓰지 않는 ○○를 포함하고 ONNX 추론 적 ○○는 뺀다"(데카라비아·이 적·첫 ONNX 적만 이긴 기록으로 앞의 둘이 맞붙음)는 BUILDNO 81부터 적 목록 배열을 도는 반복 테스트다. 두 반복 배열에 새 모델 미사용 적(`type`·`name`·`sortPriority`)을 추가하고, 구경 테스트의 ONNX 적(`'Valak'`·제목의 이름)을 다음 첫 ONNX 적으로 바꾼다.
+- `python/test_learning.py`의 `TrainableOpponentPoolTest`: `NON_MODEL_REALTIME_ENEMIES`에 새 모델 미사용 적을 더하고 `ONNX_ENEMIES`에서 뺀다(새로 등록한 ONNX 적은 `ONNX_ENEMIES`에 더한다). 목록 포함·`Andrealphus` 인스턴스·ONNX 적 제외·무작위 선택 후 `step()`을 이 두 튜플로 확인한다.
 - 실행: `npm.cmd test`, `npm.cmd run build`, `npx.cmd playwright test --project=chromium`, `python -B -m unittest test_learning`(python 폴더에서). 사용자 서버가 9891 포트에 떠 있으면 Playwright가 재사용하므로 끄고 돌린다. 부하로 흔들리는 시간 초과 테스트는 단독 재실행으로 확인한다.
 
 **5. 문서**
-- 이 파일: 적 설명 항목(`Flauros`·`Andras`·`Valak`·`Zagan` 등 각 적의 사용 모델·출시 상태), 「브라우저 ONNX 추론 적」 절의 "○○부터 ONNX" 문장과 적별 모델 목록, 「머신러닝 작업 참고」의 "대전 가능한 적은 …" 목록과 무작위 풀 개수, 그리고 작업 기록 절(변경 전후 표)을 고친다.
-- `docs/MachineLearning.md`·`docs/MachineLearning.en.md`: 이식한 적 목록과 `--opponent` 값 표에 새 적을 넣는다.
+- 이 파일: 적 설명 항목(`Flauros`·`Andras`·`Valak`·`Zagan`·`Vapula`/`Oriax` 등 각 적의 사용 모델·출시 상태), 「GOLD와 카드」의 카드 풀 출시 적 수·출시 예정 적 목록, 「브라우저 ONNX 추론 적」 절의 "○○부터 ONNX" 문장과 적별 모델 목록, 「머신러닝 작업 참고」의 "대전 가능한 적은 …" 목록과 무작위 풀 개수, 그리고 작업 기록 절(변경 전후 표)을 고친다.
+- `docs/MachineLearning.md`·`docs/MachineLearning.en.md`: 이식한 적 목록과 `--opponent` 값 표에 새 적을 넣고 ONNX 적 목록 문장을 고친다.
+- `docs/Enemy.md`·`docs/Enemy.en.md`: 출시 예정 적을 설명하는 절(BUILDNO 81 기준 "바퓰라와 출시 예정 ONNX 적")의 출시 상태를 고친다.
+
+### 적 AI 한 칸씩 밀기 2차 (2026-09-17, BUILDNO 81)
+
+`TODO.md` 요구: 다른 AI가 출시 예정 적 바퓰라·오리아스를 추가(BUILDNO 80)한 뒤, 바퓰라를 출시하고 오리아스는 출시 예정으로 두며, 안드라스~자간의 AI를 한 칸씩 밀고 안드라스를 플라우로스와 같은 방식으로 모델 미사용 적으로 만든다. 위 「[반복 작업 절차]」를 그대로 따랐다.
+
+| 적 | BUILDNO 80까지 | BUILDNO 81부터 |
+|---|---|---|
+| 안드라스 `Andras` | `OnnxEnemy` · `model01.onnx` | `RealtimeLookaheadEnemy` (플라우로스·안드레알푸스와 동일: 목표 7연쇄·작은 연쇄 점등 켜짐) |
+| 발라크 `Valak` | `model02.onnx` | `model01.onnx` (모델을 쓰는 첫 적) |
+| 자간 `Zagan` | `model03.onnx` | `model02.onnx` |
+| 바퓰라 `Vapula` | 출시 예정 · `model03.onnx`(임시) | 출시 · `model03.onnx` |
+| 오리아스 `Oriax` | 출시 예정 · `model03.onnx`(임시) | 그대로 |
+
+- 목표 연쇄·점등 설정은 TODO의 "플라우로스가 그랬던 것처럼 마찬가지로"에 따라 7·켜짐으로 했다. `RANDOM_EMPTY_FIELD_ENEMY_TYPES`에 `Andras`를 넣었고 GOLD 배율은 바꾸지 않았다.
+- 느낌표·첫 선택 안내·런타임 없음 숨김·구경 후보 제외는 `requiresOnnx` 기준이라 코드 변경 없이 발라크부터 적용된다. 이름으로 막는 코드가 없음을 확인했다. 바퓰라 출시로 카드 풀(`enemy:Vapula`, 가중치 1)과 진행도(자간을 이기면 해금)에 자동으로 들어간다.
+- `python/bundledenemy.py`에 `class Andras(Andrealphus)`를 추가하고 `ENEMY_FACTORIES`에 넣어 학습 대전 상대(무작위 풀·`--opponent Andras`)가 되게 했다.
+- `package-lock.json`의 버전이 0.0.79로 뒤처져 있어 `package.json`과 함께 0.0.81로 맞췄다.
+- 테스트: `test03_ai.spec.js`의 ONNX 추론 적 테스트를 발라크 기준(`ArrowRight` 10번)으로 옮기고, 느낌표 테스트는 발라크·자간에 마크가 있고 플라우로스·안드라스에는 없음을 확인한다. `test01_core.spec.js`의 ONNX 적 3종을 발라크·자간·바퓰라로 바꾸고, 바퓰라·오리아스 테스트를 "출시된 바퓰라와 출시 예정 오리아스…"로 고쳤다. `test01_menu.spec.js`의 카드 테스트(바퓰라 유효·오리아스 제외)와 출시 예정 선택 차단 테스트(바퓰라까지 `ArrowRight` 12번, 오리아스 회색 카드 클릭)를 고쳤다. `test01_enemy.spec.js`의 모델 미사용 적 판단·구경 모드 선정 테스트는 플라우로스·안드라스를 도는 반복 테스트로 바꿨다. `python/test_learning.py`의 `TrainableOpponentPoolTest`는 모델 미사용 적·ONNX 적 튜플로 확인하도록 바꿨다.
 
 ### 적 AI 한 칸씩 밀기 (2026-09-17, BUILDNO 79)
 
