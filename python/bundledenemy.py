@@ -1002,10 +1002,14 @@ class Andrealphus(BundledEnemy):
     uses_random_empty_field = True
 
     def __init__(self, rng: Optional[random.Random] = None):
-        """긴급 상쇄 기준(4개 미만은 무시), 목표 연쇄(7), 최대 탐색 수(3수), 시간 제한(50ms)을 기본값으로 정한다."""
+        """긴급 상쇄 기준(4개 미만은 무시), 목표 연쇄(5), 최대 탐색 수(3수), 시간 제한(50ms)을 기본값으로 정한다.
+
+        원작 BUILDNO 82부터 안드레알푸스의 목표 연쇄는 5다(그 전에는 7). 같은 판단을 상속하는
+        플라우로스(6)·안드라스(7)는 각자 생성자에서 목표 연쇄만 바꾼다.
+        """
         super().__init__(rng)
         self.ignorable_incoming_garbage = 4
-        self.target_combo = 7
+        self.target_combo = 5
         self.lookahead_turn_count = 3
         # Worker 반복 심화 탐색의 최대 대기 시간(ms)이다. 호출자가 인스턴스별로 조정할 수 있다.
         self.lookahead_time_limit_ms = 50.0
@@ -1209,11 +1213,16 @@ class Seere(BundledEnemy):
 
 
 class Flauros(Andrealphus):
-    """원작 BUILDNO 79부터 플라우로스는 안드레알푸스와 같은 판단(목표 7연쇄)을 쓰므로 그대로 상속한다.
+    """원작 BUILDNO 79부터 플라우로스는 안드레알푸스와 같은 판단을 쓰므로 그대로 상속하고, 목표 연쇄만 6으로 둔다(BUILDNO 82).
 
     이 모듈의 안드레알푸스와 마찬가지로 원작의 advanced 탐색·실시간 재판단은 옮기지 않았다.
     모델을 쓰지 않는 적이므로 학습 대전 상대(TRAINABLE_ENEMY_TYPES)에 포함한다.
     """
+
+    def __init__(self, rng: Optional[random.Random] = None):
+        """안드레알푸스의 기본값에서 목표 연쇄만 6으로 바꾼다."""
+        super().__init__(rng)
+        self.target_combo = 6
 
     def get_class_type(self) -> str:
         """진행 상황 저장에 쓰는 클래스 이름이다."""
@@ -1221,11 +1230,16 @@ class Flauros(Andrealphus):
 
 
 class Andras(Andrealphus):
-    """원작 BUILDNO 81부터 안드라스는 플라우로스·안드레알푸스와 같은 판단(목표 7연쇄)을 쓰므로 그대로 상속한다.
+    """원작 BUILDNO 81부터 안드라스는 플라우로스·안드레알푸스와 같은 판단을 쓰므로 그대로 상속하고, 목표 연쇄만 7로 둔다(BUILDNO 82).
 
     이 모듈의 안드레알푸스와 마찬가지로 원작의 advanced 탐색·실시간 재판단은 옮기지 않았다.
     모델을 쓰지 않는 적이므로 학습 대전 상대(TRAINABLE_ENEMY_TYPES)에 포함한다.
     """
+
+    def __init__(self, rng: Optional[random.Random] = None):
+        """안드레알푸스의 기본값에서 목표 연쇄만 7로 바꾼다."""
+        super().__init__(rng)
+        self.target_combo = 7
 
     def get_class_type(self) -> str:
         """진행 상황 저장에 쓰는 클래스 이름이다."""

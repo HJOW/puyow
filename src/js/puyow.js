@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 81;
+    const BUILDNO = 82;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -20009,11 +20009,12 @@
 
     /**
      * 안드레알푸스는 수학·기하학·천문학에 능통한 미모후작을 공작 깃털을 두른 인간형 학자로 각색한 기본 제공 적이다.
-     * 판단은 공통 클래스 RealtimeLookaheadEnemy를 그대로 쓰며, 목표 7연쇄와 작은 연쇄 점등 켜짐을 사용한다.
+     * 판단은 공통 클래스 RealtimeLookaheadEnemy를 그대로 쓰며, 목표 5연쇄와 작은 연쇄 점등 켜짐을 사용한다.
+     * BUILDNO 82부터 같은 판단을 쓰는 플라우로스(6)·안드라스(7)와 목표 연쇄 수로 난이도를 나눈다(그 전에는 7).
      */
     class Andrealphus extends RealtimeLookaheadEnemy {
         constructor() {
-            super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true });
+            super({ targetCombo: 5, lightFeverGaugeWithSmallChains: true });
             this.sortPriority = 8;
             this.notAvail = false;
         }
@@ -20379,12 +20380,13 @@
     /**
      * 플라우로스는 강하고 무서운 표범 모습으로 나타나며, 삼각형 밖에서는 거짓말로 소환자를 속인다는
      * 전승을 귀엽지만 위엄 있는 모습으로 각색한 적이다.
-     * BUILDNO 79부터 판단은 안드레알푸스와 완전히 같은 공통 클래스 RealtimeLookaheadEnemy(목표 7연쇄·작은 연쇄 점등 켜짐)를 쓴다.
+     * BUILDNO 79부터 판단은 안드레알푸스와 같은 공통 클래스 RealtimeLookaheadEnemy(작은 연쇄 점등 켜짐)를 쓰며,
+     * BUILDNO 82부터 목표 연쇄는 6이다(안드레알푸스 5·안드라스 7과 차별화, 그 전에는 7).
      * 모델을 쓰지 않으므로 ONNX 경고 표시·첫 선택 경고 대상이 아니다. 이전에 쓰던 `model01.onnx` 가치망은 안드라스가 이어받았다.
      */
     class Flauros extends RealtimeLookaheadEnemy {
         constructor() {
-            super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true });
+            super({ targetCombo: 6, lightFeverGaugeWithSmallChains: true });
             this.sortPriority = 9;
             this.notAvail = false;
         }
@@ -20420,6 +20422,7 @@
     /**
      * 안드라스는 날개 달린 천사 몸·새 머리·검은 늑대·불타는 검의 전승을 바탕으로 한 적이다.
      * BUILDNO 81부터 판단은 플라우로스·안드레알푸스와 같은 공통 클래스 RealtimeLookaheadEnemy(목표 7연쇄·작은 연쇄 점등 켜짐)를 쓴다.
+     * BUILDNO 82부터 세 적은 목표 연쇄 수로 차별화한다(안드레알푸스 5·플라우로스 6·안드라스 7).
      * 모델을 쓰지 않으므로 ONNX 경고 표시·첫 선택 경고 대상이 아니다. 이전에 쓰던 `model01.onnx` 가치망은 발라크가 이어받았다.
      */
     class Andras extends RealtimeLookaheadEnemy {

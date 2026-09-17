@@ -401,7 +401,7 @@ class WorkerPlannerEnemy extends PuyoW.Enemy {
 
 ### advanced 탐색 모드와 실시간 재판단
 
-적에 `lookaheadSearchMode = 'advanced'`를 지정하면 `PuyoW.startWorkerLookaheadSearch()`가 Worker 안의 advanced 탐색을 사용합니다. 지정하지 않으면 위의 기존 탐색을 그대로 사용합니다. 기본 제공 적 중에는 안드레알푸스가 이 모드를 사용합니다. 아래 advanced 탐색·실시간 재판단 판단 전체는 기본 제공 적용 공통 클래스 `PuyoW.RealtimeLookaheadEnemy`에 들어 있고, 안드레알푸스는 이를 상속해 목표 연쇄(`targetCombo`)와 작은 연쇄 점등 여부(`lightFeverGaugeWithSmallChains`)만 `super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true })`로 정합니다. 이 클래스는 기본 제공 적 전용 `BundledEnemy`를 상속하므로, 외부 적은 위 예시처럼 `PuyoW.Enemy`와 Worker 탐색 보조 함수를 사용하세요.
+적에 `lookaheadSearchMode = 'advanced'`를 지정하면 `PuyoW.startWorkerLookaheadSearch()`가 Worker 안의 advanced 탐색을 사용합니다. 지정하지 않으면 위의 기존 탐색을 그대로 사용합니다. 기본 제공 적 중에는 안드레알푸스가 이 모드를 사용합니다. 아래 advanced 탐색·실시간 재판단 판단 전체는 기본 제공 적용 공통 클래스 `PuyoW.RealtimeLookaheadEnemy`에 들어 있고, 안드레알푸스는 이를 상속해 목표 연쇄(`targetCombo`)와 작은 연쇄 점등 여부(`lightFeverGaugeWithSmallChains`)만 `super({ targetCombo: 5, lightFeverGaugeWithSmallChains: true })`로 정합니다. 같은 클래스를 상속하는 플라우로스와 안드라스는 목표 연쇄만 각각 6과 7로 다르게 정합니다. 이 클래스는 기본 제공 적 전용 `BundledEnemy`를 상속하므로, 외부 적은 위 예시처럼 `PuyoW.Enemy`와 Worker 탐색 보조 함수를 사용하세요.
 
 - **빠른 보드 계산**: 보드를 셀 코드 배열과 열 높이로 바꿔 계산합니다. 한 배치의 착지 위치·연쇄 수·ATTACK·결과 보드는 기존 규칙과 같습니다.
 - **빔 탐색**: 현재 수의 후보는 모두 읽고, 그 아래 수부터는 한 수 평가가 좋은 `lookaheadBeamWidth`개(기본 5)만 더 깊이 읽습니다. 같은 색 쌍의 180도 회전처럼 같은 보드를 만드는 후보는 건너뜁니다.

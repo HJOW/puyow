@@ -869,6 +869,12 @@ class TrainableOpponentPoolTest(unittest.TestCase):
 		for onnx_enemy in self.ONNX_ENEMIES:
 			self.assertNotIn(onnx_enemy, pool)
 
+	def test_realtime_family_differs_only_by_target_combo(self) -> None:
+		# 원작 BUILDNO 82부터 같은 판단을 쓰는 세 적은 목표 연쇄 수로만 차별화한다.
+		expected = {"Andrealphus": 5, "Flauros": 6, "Andras": 7}
+		for enemy_type, target_combo in expected.items():
+			self.assertEqual(target_combo, training.bundledenemy.create_enemy(enemy_type, random.Random(1)).target_combo, enemy_type)
+
 	def test_random_opponent_selection_can_pick_each_non_model_enemy_and_play_against_it(self) -> None:
 		for enemy_type in self.NON_MODEL_REALTIME_ENEMIES:
 			with self.subTest(enemy_type=enemy_type):

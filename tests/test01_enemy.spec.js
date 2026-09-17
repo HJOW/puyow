@@ -676,7 +676,7 @@ test('안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 
     target: 4,
     rotation: 3,
     allClear: true,
-    targetCombo: 7,
+    targetCombo: 5,
     lookaheadTurnCount: 3,
     lookaheadTimeLimitMs: 15000,
     workerSearchDepth: 3,
@@ -716,7 +716,7 @@ test('실시간 N수 탐색 공통 클래스는 목표 연쇄와 작은 연쇄 �
   expect(result).toEqual({
     inherits: true,
     andrealphusOwnMethods: ['constructor', 'drawPortrait', 'getClassType', 'getFieldThemeColors', 'getName'],
-    andrealphus: { targetCombo: 7, light: true, sortPriority: 8, type: 'Andrealphus' },
+    andrealphus: { targetCombo: 5, light: true, sortPriority: 8, type: 'Andrealphus' },
     defaults: { targetCombo: 7, light: true, type: 'RealtimeLookaheadEnemy' },
     custom: { targetCombo: 5, light: false },
     sharedSame: true,
@@ -725,9 +725,10 @@ test('실시간 N수 탐색 공통 클래스는 목표 연쇄와 작은 연쇄 �
 });
 
 // 적 AI를 한 칸씩 밀어 모델을 쓰지 않게 된 적이다(플라우로스 BUILDNO 79, 안드라스 BUILDNO 81). 다음에 밀면 여기에 추가한다.
-for (const { type, name, sortPriority } of [
-  { type: 'Flauros', name: '플라우로스', sortPriority: 9 },
-  { type: 'Andras', name: '안드라스', sortPriority: 10 },
+// BUILDNO 82부터 같은 판단을 쓰는 적끼리 목표 연쇄 수로 차별화한다(안드레알푸스 5·플라우로스 6·안드라스 7).
+for (const { type, name, sortPriority, targetCombo } of [
+  { type: 'Flauros', name: '플라우로스', sortPriority: 9, targetCombo: 6 },
+  { type: 'Andras', name: '안드라스', sortPriority: 10, targetCombo: 7 },
 ]) {
   test(`${name}는 모델 없이 안드레알푸스와 같은 실시간 N수 탐색 판단을 쓰고 ONNX 추론 적 표시에서 빠진다`, async ({ page }) => {
     const result = await page.evaluate((enemyType) => {
@@ -735,7 +736,8 @@ for (const { type, name, sortPriority } of [
       const EnemyType = window.WebPuyo[enemyType];
       const enemy = new EnemyType();
       const andrealphus = new Andrealphus();
-      const settings = ['targetCombo', 'lightFeverGaugeWithSmallChains', 'lookaheadTurnCount', 'lookaheadTimeLimitMs', 'lookaheadSearchMode', 'lookaheadBeamWidth', 'realtimeReaction', 'ignorableIncomingGarbage', 'normalFastDownDelayRate', 'dangerFastDownDelayRate'];
+      // 목표 연쇄는 적마다 다르게 정하므로 비교에서 빼고 아래 identity에서 따로 확인한다.
+      const settings = ['lightFeverGaugeWithSmallChains', 'lookaheadTurnCount', 'lookaheadTimeLimitMs', 'lookaheadSearchMode', 'lookaheadBeamWidth', 'realtimeReaction', 'ignorableIncomingGarbage', 'normalFastDownDelayRate', 'dangerFastDownDelayRate'];
       return {
         realtime: enemy instanceof RealtimeLookaheadEnemy,
         onnx: enemy instanceof OnnxEnemy,
@@ -744,7 +746,7 @@ for (const { type, name, sortPriority } of [
         sameSettings: settings.every((key) => enemy[key] === andrealphus[key]),
         // 판단 메서드는 모두 공통 클래스의 것이고, 이 적은 이름·종류·테마·초상화만 재정의한다.
         ownMethods: Object.getOwnPropertyNames(EnemyType.prototype).sort(),
-        identity: { type: enemy.getClassType(), name: enemy.getName(), sortPriority: enemy.sortPriority, notAvail: enemy.notAvail },
+        identity: { type: enemy.getClassType(), name: enemy.getName(), sortPriority: enemy.sortPriority, notAvail: enemy.notAvail, targetCombo: enemy.targetCombo },
       };
     }, type);
 
@@ -755,7 +757,7 @@ for (const { type, name, sortPriority } of [
       modelPath: null,
       sameSettings: true,
       ownMethods: ['constructor', 'drawPortrait', 'getClassType', 'getFieldThemeColors', 'getName'],
-      identity: { type, name, sortPriority, notAvail: false },
+      identity: { type, name, sortPriority, notAvail: false, targetCombo },
     });
   });
 }
