@@ -851,6 +851,29 @@ class RewardWeightTest(unittest.TestCase):
 		self.assertAlmostEqual(common.LOSS_REWARD, immediate, places=6)
 
 
+class TrainableOpponentPoolTest(unittest.TestCase):
+	"""학습 대전 상대 목록에 모델 미사용 적만 들어가는지 확인한다."""
+
+	def test_flauros_joins_the_pool_and_onnx_enemies_stay_out(self) -> None:
+		pool = training.bundledenemy.TRAINABLE_ENEMY_TYPES
+		# 플라우로스는 BUILDNO 79부터 원작에서 모델을 쓰지 않고 안드레알푸스와 같은 판단을 쓴다.
+		self.assertIn("Flauros", pool)
+		self.assertIsInstance(training.bundledenemy.create_enemy("Flauros", random.Random(1)), training.bundledenemy.Andrealphus)
+		for onnx_enemy in ("Andras", "Valak", "Zagan"):
+			self.assertNotIn(onnx_enemy, pool)
+
+	def test_random_opponent_selection_can_pick_flauros_and_play_against_it(self) -> None:
+		picked = None
+		for seed in range(200):
+			environment = training.PuyoDuelEnvironment(None, seed=seed)
+			if not environment.is_self_play and environment.opponent.get_class_type() == "Flauros":
+				picked = environment
+				break
+		self.assertIsNotNone(picked, "무작위 상대 선택에서 플라우로스가 한 번도 뽑히지 않았다.")
+		_observation, _reward, _done, info = picked.step(8)
+		self.assertEqual("Flauros", info.get("opponent"))
+
+
 class QuietEdgeEnemyTest(unittest.TestCase):
 	"""솔로 플레이 학습 방식이 쓰는 연습 상대의 판단을 확인한다."""
 

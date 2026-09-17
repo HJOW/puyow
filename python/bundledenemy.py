@@ -16,8 +16,8 @@ API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다.
 여기서 재현하려면 학습 중인 모델과는 다른 모델을 파이썬에서 또 돌려야 하므로 사용자 요청에
 따라 모두 학습 상대 역할에서 제외하고, 앞으로 추가되는 ONNX 적도 같은 이유로 넣지 않는다.
 플라우로스(Flauros)는 BUILDNO 79부터 원작에서 모델을 쓰지 않고 안드레알푸스와 같은 판단
-(RealtimeLookaheadEnemy)을 쓰므로 이 모듈에서도 Andrealphus를 상속한다. 다만 학습 상대 분포가
-바뀌지 않도록 ENEMY_FACTORIES/TRAINABLE_ENEMY_TYPES에는 아직 넣지 않았다.
+(RealtimeLookaheadEnemy)을 쓰므로 이 모듈에서도 Andrealphus를 상속하며, 다른 모델 미사용 적과
+같이 학습 대전 상대(ENEMY_FACTORIES/TRAINABLE_ENEMY_TYPES)에 포함한다.
 
 ## 이식 범위와 단순화한 부분
 
@@ -1212,7 +1212,7 @@ class Flauros(Andrealphus):
     """원작 BUILDNO 79부터 플라우로스는 안드레알푸스와 같은 판단(목표 7연쇄)을 쓰므로 그대로 상속한다.
 
     이 모듈의 안드레알푸스와 마찬가지로 원작의 advanced 탐색·실시간 재판단은 옮기지 않았다.
-    학습 상대 분포가 바뀌지 않도록 ENEMY_FACTORIES/TRAINABLE_ENEMY_TYPES에는 넣지 않았다.
+    모델을 쓰지 않는 적이므로 학습 대전 상대(TRAINABLE_ENEMY_TYPES)에 포함한다.
     """
 
     def get_class_type(self) -> str:
@@ -1293,7 +1293,7 @@ class QuietEdgeEnemy(BundledEnemy):
 # 학습에서 대전 상대로 고를 수 있는 적 목록이다. puyow.js OPPONENTS 등록 순서에서
 # 솔로몬·안드로말리우스(사용자 요청으로 제외)와 연습 상대(PracticeEnemy, 비경쟁 상대)를 뺐다.
 # 안드라스·발라크·자간 등 ONNX 추론으로 판단하는 적은 사용자 요청에 따라 모두 학습 상대에서 뺐다.
-# 플라우로스는 판단이 안드레알푸스와 같아졌지만, 학습 상대 분포가 바뀌지 않도록 아직 넣지 않았다.
+# 플라우로스는 BUILDNO 79부터 모델을 쓰지 않으므로(판단은 안드레알푸스와 같다) 학습 상대에 포함한다.
 # QuietEdgeEnemy는 원작에 없는 학습 전용 연습 상대라 만들 수는 있지만 무작위 선택에서는 뺀다.
 QUIET_EDGE_ENEMY_TYPE = 'QuietEdgeEnemy'
 
@@ -1305,6 +1305,7 @@ ENEMY_FACTORIES = {
     'Amdusias': Amdusias,
     'Kimaris': Kimaris,
     'Andrealphus': Andrealphus,
+    'Flauros': Flauros,
     QUIET_EDGE_ENEMY_TYPE: QuietEdgeEnemy,
 }
 

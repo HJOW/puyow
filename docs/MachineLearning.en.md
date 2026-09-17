@@ -142,14 +142,14 @@ python python/learning.py --help
 
 ## 6. Training details: training by dueling the enemy AIs
 
-`python/bundledenemy.py` is a module that ports the decision-making algorithms of the built-in enemies from `src/js/puyow.js` (Dantalion, Seere, Decarabia, Belial, Amdusias, Kimaris, and Andrealphus) to Python. Solomon (which only works through an external AI API) and Andromalius were excluded from the port, and while a class for Flauros was carried over, it's left out of the opponent list because — just like in the original — it doesn't have decision logic yet and is still marked as upcoming. Use the `--opponent` option to choose who to duel during training.
+`python/bundledenemy.py` is a module that ports the decision-making algorithms of the built-in enemies from `src/js/puyow.js` (Dantalion, Seere, Decarabia, Belial, Amdusias, Kimaris, Andrealphus, and Flauros) to Python. Solomon (which only works through an external AI API) and Andromalius were excluded from the port. Flauros uses the same decision logic as Andrealphus in the original, so the ported module also inherits Andrealphus for it. Enemies that decide with an ONNX model in the browser, such as Andras, Valak, and Zagan, are not added to the opponent list. Use the `--opponent` option to choose who to duel during training.
 
 | Value | Behavior |
 | --- | --- |
 | `random` (default) | Each episode randomly chooses either self-play (against itself) or one of the ported enemies to duel. |
 | `self` | Always duels via self-play. Since the opposing side also picks actions using the policy being trained (applying the same epsilon-greedy exploration), the opponent winning is effectively the same policy losing to itself. |
 | `solo` | Uses the old mode (`PuyoEnvironment`), which trains only to survive without an opponent. |
-| `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus` | Fixes the opponent to the specified enemy for the whole run. |
+| `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus`, `Flauros` | Fixes the opponent to the specified enemy for the whole run. |
 | `QuietEdgeEnemy` | Duels a training-only sparring opponent that avoids popping puyos and fills the columns farthest from the centre (X=2,3) first. It does not exist in the game itself, so `random` never picks it. `--training-strategy solo-play` selects it automatically. |
 
 ```powershell

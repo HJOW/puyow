@@ -1760,6 +1760,34 @@ test('구경 메뉴는 데카라비아를 보통 이상에서 이기기 전에�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
 });
 
+test('구경 모드 무작위 적 선정은 모델을 쓰지 않는 플라우로스를 포함하고 ONNX 추론 적 안드라스는 뺀다', async ({ page }) => {
+  // 보통 이상에서 이긴 적만 후보가 되므로, 데카라비아(구경 해금)·플라우로스·안드라스만 이긴 기록을 둔다.
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: ['Decarabia'],
+      clearListByDifficulty: { easy: [], normal: ['Decarabia', 'Flauros', 'Andras'], hard: [], extreme: [] },
+      feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.watch), { timeout: 20000 }).toBe(true);
+
+  // 안드라스는 이긴 기록이 있어도 빠지므로, 남은 후보 두 명(데카라비아·플라우로스)이 무작위와 관계없이 맞붙는다.
+  const names = await page.evaluate(() => {
+    const state = window.WebPuyo.getGameState();
+    return [state.player.name, state.opponent.name].sort();
+  });
+  expect(names).toEqual(['데카라비아', '플라우로스'].sort());
+});
+
 test('구경 설정은 키보드와 마우스로 색상 수·규칙·취소를 고르고 두 CPU의 대전을 시작한다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({
