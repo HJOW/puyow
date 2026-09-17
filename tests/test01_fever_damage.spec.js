@@ -178,6 +178,163 @@ for (const delayed of [false, true]) {
   });
 }
 
+test('피버 시간이 끝난 뒤 터지지 않은 배치는 조작 전에 누적 예고 전체를 일반 필드에 떨어뜨린다', async ({ page }) => {
+  await prepareDamageMatch(page);
+  await activateReceiver(page);
+  await page.evaluate(() => {
+    const { b } = window.damagePlayers;
+    // 피버 진입 전부터 보존된 일반 예고 7개와 피버 중 받은 예고 5개가 남은 채 시간이 끝났다.
+    b.normalDamage = 7;
+    b.fever.damage = 5;
+    b.fever.leftTime = 0;
+    b.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    b.board[0][0] = 'blue';
+    b.garbageDropCount = 0;
+    b.phase = 'explode'; b.phaseTimer = 0; b.tutorialHold = false;
+  });
+  await advanceUntil(page, () => window.damagePlayers.b.phase === 'control');
+  expect(await page.evaluate(() => {
+    const { b } = window.damagePlayers;
+    return {
+      active: b.fever.active,
+      dropCount: b.garbageDropCount,
+      normalDamage: b.normalDamage,
+      feverDamage: b.fever.damage,
+      normalGarbage: b.normalBoard.flat().filter((cell) => cell === 'garbage').length,
+    };
+  })).toEqual({ active: false, dropCount: 1, normalDamage: 0, feverDamage: 0, normalGarbage: 12 });
+});
+
+test('피버 시간이 끝난 뒤 터진 배치는 누적 예고를 보류하고, 이후 터지지 않은 배치에서만 일반 필드에 떨어뜨린다', async ({ page }) => {
+  await prepareDamageMatch(page);
+  await activateReceiver(page);
+  await page.evaluate(() => {
+    const { b } = window.damagePlayers;
+    b.normalDamage = 7;
+    b.fever.damage = 5;
+    b.garbageDropCount = 0;
+    // 피버 필드에서 1연쇄가 터지는 동안 남은 시간이 끝난다.
+    window.beginDamageChain(b, false);
+    b.fever.leftTime = 0;
+  });
+  await advanceUntil(page, () => window.damagePlayers.b.phase === 'control' && !window.damagePlayers.b.fever.active);
+  const afterExit = await page.evaluate(() => {
+    const { b } = window.damagePlayers;
+    return { dropCount: b.garbageDropCount, damage: Math.floor(b.normalDamage), normalGarbage: b.normalBoard.flat().filter((cell) => cell === 'garbage').length };
+  });
+  // 1연쇄의 최소 공격 1로 한 개를 상쇄하므로 남은 예고는 11개다.
+  expect(afterExit).toEqual({ dropCount: 0, damage: 11, normalGarbage: 0 });
+
+  // 피버가 끝난 뒤 첫 배치도 터지면 여전히 보류한다.
+  await page.evaluate(() => { window.beginDamageChain(window.damagePlayers.b, false); });
+  await advanceUntil(page, () => window.damagePlayers.b.phase === 'control' && window.damagePlayers.b.combo === 0 && window.damagePlayers.b.board[0][0] === null);
+  const afterChain = await page.evaluate(() => {
+    const { b } = window.damagePlayers;
+    return { dropCount: b.garbageDropCount, damage: Math.floor(b.normalDamage) };
+  });
+  expect(afterChain.dropCount).toBe(0);
+  expect(afterChain.damage).toBeGreaterThan(0);
+
+  // 터지지 않은 배치 뒤에야 남은 예고가 일반 필드에 떨어진다.
+  await page.evaluate(() => {
+    const { b } = window.damagePlayers;
+    b.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    b.board[0][0] = 'blue';
+    b.phase = 'explode'; b.phaseTimer = 0; b.tutorialHold = false;
+  });
+  await advanceUntil(page, () => window.damagePlayers.b.phase === 'control' && window.damagePlayers.b.garbageDropCount === 1);
+  expect(await page.evaluate(() => {
+    const { b } = window.damagePlayers;
+    return { damage: b.normalDamage, garbage: b.normalBoard.flat().filter((cell) => cell === 'garbage').length };
+  })).toEqual({ damage: 0, garbage: afterChain.damage });
+});
+
+test('피버 룰 실시간 예측은 상대 피버 패턴 연쇄를 예고 묶음에 넣고, 실제 연쇄가 시작되면 실제 연쇄로 다시 예측한다', async ({ page }) => {
+  await prepareDamageMatch(page);
+  await activateReceiver(page);
+  // 피버 패턴이 올라온 뒤 조작 턴이 시작될 때까지 진행한다. 테스트 적은 조작 턴이 시작되면 다시 멈춘다.
+  await page.evaluate(() => { window.damagePlayers.b.tutorialHold = false; });
+  await advanceUntil(page, () => window.damagePlayers.b.phase === 'control' && !!window.damagePlayers.b.active);
+  const predicted = await page.evaluate(() => {
+    const { a, b } = window.damagePlayers;
+    const common = window.WebPuyo.common;
+    const prediction = common.predictFeverStageChain(b);
+    // 같은 조작 턴 안에서는 배치 탐색 결과를 재사용하고, 시간만 현재 위치로 다시 계산한다.
+    const again = common.predictFeverStageChain(b);
+    const forecast = common.getRealtimeGarbageForecast(a, b);
+    return {
+      prediction,
+      stable: JSON.stringify(prediction) === JSON.stringify(again),
+      predictedEvent: forecast.fever?.events.find((event) => event.amount === Math.floor(prediction?.attack ?? -1)) ?? null,
+      predictedInForecast: forecast.fever?.predictedOpponentFeverChain?.combo === prediction?.combo,
+      gauge: forecast.fever?.gauge,
+      opponentChainActive: forecast.opponentChainActive,
+    };
+  });
+  expect(predicted.prediction).not.toBeNull();
+  expect(predicted.prediction.combo).toBeGreaterThanOrEqual(1);
+  expect(predicted.prediction.attack).toBeGreaterThan(0);
+  expect(predicted.prediction.endInMs).toBeGreaterThan(predicted.prediction.startInMs);
+  expect(predicted).toMatchObject({ stable: true, predictedInForecast: true, gauge: 0, opponentChainActive: false });
+  expect(predicted.predictedEvent).toMatchObject({ availableMove: expect.any(Number), landMove: expect.any(Number) });
+  expect(predicted.predictedEvent.landMove).toBeGreaterThanOrEqual(predicted.predictedEvent.availableMove);
+
+  // 상대가 실제로 다른 연쇄를 시작하면 패턴 예측 대신 실제 연쇄 계산을 쓴다.
+  const started = await page.evaluate(() => {
+    const { a, b } = window.damagePlayers;
+    window.beginDamageChain(b, true);
+    b.tutorialHold = true;
+    const forecast = window.WebPuyo.common.getRealtimeGarbageForecast(a, b);
+    return { opponentChainActive: forecast.opponentChainActive, predicted: forecast.fever.predictedOpponentFeverChain, fromPattern: window.WebPuyo.common.predictFeverStageChain(b) };
+  });
+  expect(started).toEqual({ opponentChainActive: true, predicted: null, fromPattern: null });
+});
+
+test('안드레알푸스는 피버 룰 일반 상태에서 무시 기준 없이 방해뿌요 하나에도 재판단하고, 빠른 하강을 시작하면 재판단하지 않는다', async ({ page }) => {
+  await prepareDamageMatch(page);
+  const result = await page.evaluate(() => {
+    const { a } = window.damagePlayers;
+    const controller = new window.WebPuyo.Andrealphus();
+    // 빈 필드 무작위 배치·패배 위치 보호가 끼어들지 않는 낮은 필드에서 조작 턴을 시작한다.
+    a.board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    a.board[0][0] = 'red';
+    a.board[0][5] = 'blue';
+    a.normalDamage = 0;
+    a.active = { x: 2, y: 11.9, rotation: 0, colors: ['yellow', 'green'] };
+    a.phase = 'control';
+    controller.prepareTurn(a);
+    const state = controller.realtimeReactionState;
+    const threshold = controller.getLookaheadIgnorableIncomingGarbage(a);
+    const unchanged = controller.updateRealtimeReaction(a);
+    a.normalDamage = 1;
+    const oneGarbage = controller.updateRealtimeReaction(a);
+    const replanCount = state.replanCount;
+    state.fastDownStarted = true;
+    a.normalDamage = 6;
+    const afterFastDown = controller.updateRealtimeReaction(a);
+    return {
+      prepared: !!controller.getPreparedPlacement(),
+      threshold,
+      lightFeverGaugeWithSmallChains: controller.lightFeverGaugeWithSmallChains,
+      unchanged,
+      oneGarbage,
+      replanCount,
+      afterFastDown,
+      finalReplanCount: state.replanCount,
+    };
+  });
+  expect(result).toEqual({
+    prepared: false,
+    threshold: 1,
+    lightFeverGaugeWithSmallChains: true,
+    unchanged: false,
+    oneGarbage: true,
+    replanCount: 1,
+    afterFastDown: false,
+    finalReplanCount: 1,
+  });
+});
+
 test('연쇄 시작 전에 상대가 피버에 진입했다면 피버 DAMAGE로 전달한다', async ({ page }) => {
   await prepareDamageMatch(page);
   await activateReceiver(page);

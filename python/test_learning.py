@@ -588,6 +588,50 @@ class DuelRuleTest(unittest.TestCase):
 		self.assertFalse(environment.agent_fever.active)
 		self.assertEqual(training.RELAXED_FEVER_LIGHT_STARTS, environment.agent_fever.gauge)
 
+	def _prepare_expired_agent_fever(self, environment: object) -> None:
+		"""에이전트가 보존된 일반 피해 7과 피버 피해 5를 가진 채, 남은 시간이 끝난 빈 피버 필드에 두게 한다."""
+		environment._activate_fever("agent")
+		environment.agent_fever.field = training.bundledenemy.new_empty_board()
+		environment.agent_fever.left_time_ms = 0.0
+		environment.agent_fever.damage = 5.0
+		environment.agent_damage = 7.0
+
+	def test_expired_fever_placement_without_chain_drops_all_damage_on_the_normal_field_before_control(self) -> None:
+		environment = self._environment(training.RULE_FEVER)
+		self._prepare_expired_agent_fever(environment)
+		environment.agent_pair = (0, 1)
+
+		_observation, _reward, done, _info = environment.step(0)
+
+		self.assertFalse(done)
+		self.assertFalse(environment.agent_fever.active)
+		# 곧 사라질 피버 필드에 떨어뜨리지 않고, 일반 필드로 돌아가 피버 피해 5 + 일반 피해 7을 한꺼번에 떨어뜨린다.
+		garbage = sum(1 for row in environment.agent_board for cell in row if cell == training.bundledenemy.GARBAGE)
+		self.assertEqual(12, garbage)
+		self.assertEqual(0.0, environment.agent_damage)
+
+	def test_expired_fever_placement_with_chain_defers_merged_damage_until_a_non_chain_placement(self) -> None:
+		environment = self._environment(training.RULE_FEVER)
+		self._prepare_expired_agent_fever(environment)
+		for y in range(3):
+			environment.agent_fever.field[y][0] = 0
+		environment.agent_pair = (0, 0)
+
+		_observation, _reward, done, _info = environment.step(0)
+
+		self.assertFalse(done)
+		self.assertFalse(environment.agent_fever.active)
+		# 터진 배치로 끝난 피버는 합쳐진 피해를 바로 떨어뜨리지 않는다(일부는 연쇄 공격으로 상쇄된다).
+		self.assertFalse(any(cell == training.bundledenemy.GARBAGE for row in environment.agent_board for cell in row))
+		remaining = environment.agent_damage
+		self.assertGreater(remaining, 0.0)
+
+		# 피버가 끝난 뒤 터지지 않은 배치에서 일반 필드로 떨어진다.
+		environment.agent_pair = (1, 2)
+		environment.step(20)
+		garbage = sum(1 for row in environment.agent_board for cell in row if cell == training.bundledenemy.GARBAGE)
+		self.assertEqual(min(30, int(remaining)), garbage)
+
 	def test_fever_start_begins_both_sides_inside_a_sixty_second_fever_stage(self) -> None:
 		environment = self._environment(training.RULE_FEVER_START)
 

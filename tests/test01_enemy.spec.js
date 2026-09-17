@@ -685,6 +685,45 @@ test('안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 
   });
 });
 
+test('실시간 N수 탐색 공통 클래스는 목표 연쇄와 작은 연쇄 점등 여부만 적마다 정하고 안드레알푸스가 이를 상속한다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const { RealtimeLookaheadEnemy, Andrealphus, Enemy } = window.WebPuyo;
+    class CustomRealtimeEnemy extends RealtimeLookaheadEnemy {
+      constructor() { super({ targetCombo: 5, lightFeverGaugeWithSmallChains: false }); }
+      getClassType() { return 'CustomRealtimeEnemy'; }
+    }
+    const custom = new CustomRealtimeEnemy();
+    const andrealphus = new Andrealphus();
+    const defaults = new RealtimeLookaheadEnemy();
+    const shared = ['lookaheadTurnCount', 'lookaheadTimeLimitMs', 'lookaheadSearchMode', 'lookaheadBeamWidth', 'realtimeReaction', 'ignorableIncomingGarbage', 'normalFastDownDelayRate', 'dangerFastDownDelayRate'];
+    const errors = [
+      () => new RealtimeLookaheadEnemy({ targetCombo: 0 }),
+      () => new RealtimeLookaheadEnemy({ targetCombo: 6.5 }),
+      () => new RealtimeLookaheadEnemy({ lightFeverGaugeWithSmallChains: 'yes' }),
+    ].map((create) => { try { create(); return null; } catch (error) { return error.constructor.name; } });
+    return {
+      inherits: andrealphus instanceof RealtimeLookaheadEnemy && custom instanceof RealtimeLookaheadEnemy && custom instanceof Enemy,
+      // 판단 메서드는 모두 공통 클래스에 있고, 안드레알푸스는 이름·종류·테마·초상화만 재정의한다.
+      andrealphusOwnMethods: Object.getOwnPropertyNames(Andrealphus.prototype).sort(),
+      andrealphus: { targetCombo: andrealphus.targetCombo, light: andrealphus.lightFeverGaugeWithSmallChains, sortPriority: andrealphus.sortPriority, type: andrealphus.getClassType() },
+      defaults: { targetCombo: defaults.targetCombo, light: defaults.lightFeverGaugeWithSmallChains, type: defaults.getClassType() },
+      custom: { targetCombo: custom.targetCombo, light: custom.lightFeverGaugeWithSmallChains },
+      sharedSame: shared.every((key) => custom[key] === andrealphus[key]),
+      errors,
+    };
+  });
+
+  expect(result).toEqual({
+    inherits: true,
+    andrealphusOwnMethods: ['constructor', 'drawPortrait', 'getClassType', 'getFieldThemeColors', 'getName'],
+    andrealphus: { targetCombo: 7, light: true, sortPriority: 8, type: 'Andrealphus' },
+    defaults: { targetCombo: 7, light: true, type: 'RealtimeLookaheadEnemy' },
+    custom: { targetCombo: 5, light: false },
+    sharedSame: true,
+    errors: ['RangeError', 'RangeError', 'TypeError'],
+  });
+});
+
 test('외부 Enemy 하위 클래스도 Worker 탐색 보조 함수로 결과를 적용한다', async ({ page }) => {
   // Blob Worker를 직접 확인하는 테스트라서 기준선 라우트를 걷고 시작한다.
   await releaseNetworkInterception(page);
@@ -1039,6 +1078,96 @@ test('advanced Worker 탐색은 방해뿌요가 이번 배치 직후 떨어지�
   expect(result.threatened).toEqual({ depth: 3, combo: 2 });
 });
 
+test('advanced Worker 탐색은 피버 룰 일반 상태에서 목표 연쇄·역공·점등 우선순위와 작은 연쇄 점등 설정을 따른다', async ({ page }) => {
+  // Blob Worker를 직접 확인하는 테스트라서 기준선 라우트를 걷고 시작한다.
+  await releaseNetworkInterception(page);
+  const results = await page.evaluate(async (WORKER_SEARCH_TIME_LIMIT) => {
+    // 게임이 만든 Worker를 붙잡아, 피버 룰 예고 묶음이 담긴 snapshot을 직접 보낸다.
+    const OriginalWorker = window.Worker;
+    let capturedWorker = null;
+    window.Worker = class extends OriginalWorker {
+      constructor(...args) {
+        super(...args);
+        capturedWorker = this;
+      }
+    };
+    try {
+      const warmup = { board: Array.from({ length: 25 }, () => Array(6).fill(null)), active: { x: 2, y: 11.9, rotation: 0, colors: ['red', 'blue'] }, nextPairs: [['green', 'yellow'], ['blue', 'red']], aiSimulations: [], attack: 0, damage: 0, warningReductionDelay: 0 };
+      await window.WebPuyo.common.simulateNMovePlacementsInWorker(warmup, 6, 3, WORKER_SEARCH_TIME_LIMIT, { searchMode: 'advanced' }).promise;
+    } finally {
+      window.Worker = OriginalWorker;
+    }
+    // 0열 빨강 3개 위에 [빨강, 초록]을 세우면 빨강이 터지고 떨어진 초록이 1열 초록 3개와 이어지는 2연쇄 보드다.
+    const createBoard = (tall) => {
+      const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+      ['red', 'red', 'red'].forEach((color, y) => { board[y][0] = color; });
+      ['green', 'green', 'green'].forEach((color, y) => { board[y][1] = color; });
+      board[0][5] = 'yellow';
+      board[1][5] = 'purple';
+      if (tall) {
+        // 두 패배 열을 8칸씩 채워, 방해뿌요 30개가 바로 떨어지면 지는 필드로 만든다.
+        const colors = ['yellow', 'purple', 'blue'];
+        for (let y = 0; y < 8; y += 1) {
+          board[y][2] = colors[y % 3];
+          board[y][3] = colors[(y + 1) % 3];
+        }
+      }
+      return board;
+    };
+    const search = (name, { targetCombo = 7, events = [], gauge = 0, lampChains = true, tall = false }) => new Promise((resolve) => {
+      const snapshot = {
+        self: { board: createBoard(tall), active: { x: 2, y: 11.9, rotation: 0, colors: ['red', 'green'] }, nextPairs: [['yellow', 'purple'], ['purple', 'yellow'], ['yellow', 'blue']], attack: 0, fever: { active: false } },
+        incomingGarbage: 0,
+        urgentGarbageThreshold: 1,
+        targetCombo,
+        turnCount: 3,
+        searchMode: 'advanced',
+        beamWidth: 5,
+        rules: { standard: false, feverRule: true, continuousFever: false, usesSecondDefeatCell: true, marginRate: 70, timeProgressMultiplier: 1 },
+        realtime: { incoming: events.reduce((sum, event) => sum + event.amount, 0), garbageMoveIndex: 0, fever: { gauge, gaugeMax: 7, events, lampChains } },
+      };
+      const onMessage = ({ data }) => {
+        if (data?.requestId !== name || data.type !== 'done') return;
+        capturedWorker.removeEventListener('message', onMessage);
+        resolve([name, { depth: data.result?.depth, combo: data.result?.placement?.combo }]);
+      };
+      capturedWorker.addEventListener('message', onMessage);
+      capturedWorker.postMessage({ type: 'simulate', requestId: name, snapshot, timeLimitMs: WORKER_SEARCH_TIME_LIMIT });
+    });
+    const cases = [
+      ['noIncoming', {}],
+      ['lampOn', { events: [{ amount: 20, availableMove: 0, landMove: 5 }] }],
+      ['lampOff', { events: [{ amount: 20, availableMove: 0, landMove: 5 }], lampChains: false }],
+      ['targetFirst', { targetCombo: 2, events: [{ amount: 20, availableMove: 0, landMove: 5 }], lampChains: false }],
+      ['counterAttack', { events: [{ amount: 2, availableMove: 0, landMove: 5 }], lampChains: false }],
+      ['feverEntry', { events: [{ amount: 20, availableMove: 0, landMove: 5 }], gauge: 5 }],
+      ['deferToSurvive', { events: [{ amount: 30, availableMove: 0, landMove: 0 }], lampChains: false, tall: true }],
+      ['holdForPredicted', { events: [{ amount: 20, availableMove: 2, landMove: 4 }] }],
+    ];
+    const entries = [];
+    for (const [name, options] of cases) entries.push(await search(name, options));
+    return Object.fromEntries(entries);
+  }, WORKER_SEARCH_TIME_LIMIT);
+
+  expect(results).toEqual({
+    // 상쇄할 예고가 없으면 목표(7연쇄)보다 작은 2연쇄를 아낀다.
+    noIncoming: { depth: 3, combo: 0 },
+    // 20개를 다 상쇄할 수 없으면 작은 연쇄로 전등 두 개를 켜고, 설정을 끄면 계속 쌓는다.
+    lampOn: { depth: 3, combo: 2 },
+    lampOff: { depth: 3, combo: 0 },
+    // 이번 수에 목표 연쇄가 되면 설정과 관계없이 목표 연쇄가 먼저다.
+    targetFirst: { depth: 3, combo: 2 },
+    // 2개를 다 받아치고 하나라도 넘길 수 있으면 목표 미만이라도 받아친다.
+    counterAttack: { depth: 3, combo: 2 },
+    // 전등 5개에서 두 단계 상쇄로 피버에 들어간다.
+    feverEntry: { depth: 3, combo: 2 },
+    // 피버 룰은 터진 배치 뒤 방해뿌요가 떨어지지 않으므로, 쌓기 모드에서도 지는 배치 대신 연쇄로 낙하를 미룬다.
+    deferToSurvive: { depth: 3, combo: 2 },
+    // 상대 피버 연쇄가 아직 시작되지 않아 지금은 상쇄할 수 없으면 미리 쏘지 않는다.
+    holdForPredicted: { depth: 3, combo: 0 },
+  });
+});
+
 test('상대 연쇄 예측은 남은 연쇄 수·최종 ATTACK·끝나는 시간을 게임 규칙대로 계산한다', async ({ page }) => {
   const result = await page.evaluate(() => {
     const common = window.WebPuyo.common;
@@ -1113,7 +1242,9 @@ test('안드레알푸스는 빠른 하강 전에 받을 방해뿌요가 바뀌�
     const controller = window.realtimeAndrealphus;
     const state = controller?.realtimeReactionState;
     if (!state || state.fastDownStarted || controller.workerSearchState !== 'ready' || !controller.player.active) return false;
-    if (controller.player.placedPairCount !== state.turn || controller.player.aiDecisionElapsed > 500) return false;
+    if (controller.player.placedPairCount !== state.turn) return false;
+    // 부하로 프레임 간격이 커도 빠른 하강 대기 시간 안에서 확인하도록, 이번 턴의 판단 경과 시간을 처음으로 되돌린다.
+    controller.player.aiDecisionElapsed = 0;
     const before = state.replanCount;
     controller.player.damage = 12;
     const started = controller.updateRealtimeReaction(controller.player);

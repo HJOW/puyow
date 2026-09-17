@@ -775,6 +775,20 @@ class PuyoDuelEnvironment:
 		state.gauge = state.light_start
 		state.left_time_ms = 0.0
 
+	def _drop_pending_garbage(self, side: str) -> None:
+		"""side의 현재 필드에 미정산 피해만큼(한 번에 최대 30개) 방해뿌요를 떨어뜨린다."""
+		damage = self._damage(side)
+		if damage <= 0:
+			return
+		dropped_board, dropped = bundledenemy.drop_garbage(self._board(side), damage, self.random)
+		self._set_board(side, dropped_board)
+		self._set_damage(side, damage - dropped)
+
+	def _is_expired_fever_placement(self, side: str) -> bool:
+		"""side가 남은 시간이 끝난 피버 필드에 뿌요를 두는 중인지 확인한다."""
+		state = self._fever(side)
+		return self.fever_rule and state.active and state.left_time_ms <= 0
+
 	def _register_offset(self, side: str, opponent_side: str) -> bool:
 		"""상쇄 1회를 피버 게이지에 반영하고, 게이지가 가득 차 피버 발동 조건을 채웠는지 반환한다."""
 		state = self._fever(side)
@@ -812,7 +826,10 @@ class PuyoDuelEnvironment:
 					state.left_time_ms += (combo // 2) * 1000 + FEVER_CHAIN_TIME_BONUS_MS
 				self._prepare_fever_stage(side, state.target_combo)
 			elif state.left_time_ms <= 0:
+				# 원작 finishPlayerFever(player, 'A')와 같이, 시간이 끝난 뒤 터지지 않은 배치는 피버 피해를 일반 피해에 합친 뒤
+				# 일반 필드로 돌아가 다음 조작 전에 한꺼번에 떨어뜨린다.
 				self._finish_fever(side)
+				self._drop_pending_garbage(side)
 			return
 		if activate_pending:
 			if all_clear:
@@ -836,6 +853,8 @@ class PuyoDuelEnvironment:
 			loss_value = self.terminal_value(False)
 			return self.observe(), loss_value, True, {"invalid": True, "terminal_value": loss_value}
 		positions = [landing[0], landing[1]]
+		# 시간이 끝난 피버 필드에서 터지지 않은 배치는 곧 사라질 피버 필드에 방해뿌요를 떨어뜨리지 않는다(원작 dropGarbage).
+		agent_expired_fever_placement = self._is_expired_fever_placement("agent")
 		result_board, combo, attack = bundledenemy.resolve_placement(self._board("agent"), self.agent_pair, positions)
 		self._set_board("agent", result_board)
 		if self.fever_rule and combo > 0 and attack < 1 and self._damage("agent") >= 1:
@@ -857,11 +876,8 @@ class PuyoDuelEnvironment:
 		agent_activation = False
 		if combo > 0:
 			agent_activation = self._apply_generated_attack("agent", "enemy", attack)
-		elif self._damage("agent") > 0:
-			damage = self._damage("agent")
-			dropped_board, dropped = bundledenemy.drop_garbage(self._board("agent"), damage, self.random)
-			self._set_board("agent", dropped_board)
-			self._set_damage("agent", damage - dropped)
+		elif self._damage("agent") > 0 and not agent_expired_fever_placement:
+			self._drop_pending_garbage("agent")
 
 		if bundledenemy.is_defeat_board(self._board("agent")):
 			loss_value = self.terminal_value(False)
@@ -871,6 +887,11 @@ class PuyoDuelEnvironment:
 
 		self.agent_pair = self._refill(self.agent_next_pairs)
 		self._after_resolve("agent", combo, agent_all_clear, agent_activation)
+		if agent_expired_fever_placement and combo == 0 and bundledenemy.is_defeat_board(self._board("agent")):
+			loss_value = self.terminal_value(False)
+			return self.observe(), reward + loss_value, True, {
+				**info, "result": "agent_defeated", "terminal_value": loss_value,
+			}
 
 		enemy_positions = self._select_enemy_positions()
 		if enemy_positions is None:
@@ -882,6 +903,7 @@ class PuyoDuelEnvironment:
 			return self.observe(), reward + win_value, True, {**info, "result": result, "terminal_value": win_value}
 
 		bundledenemy.configure_rule(self.fever_rule, self.enemy_fever.active)
+		enemy_expired_fever_placement = self._is_expired_fever_placement("enemy")
 		enemy_result_board, enemy_combo, enemy_attack = bundledenemy.resolve_placement(self._board("enemy"), self.enemy_pair, enemy_positions)
 		if enemy_result_board is None:
 			# bundledenemy가 규칙을 벗어난 배치를 반환하지 않는 한 발생하지 않는다. 방어적으로만 처리한다.
@@ -898,11 +920,8 @@ class PuyoDuelEnvironment:
 		enemy_activation = False
 		if enemy_combo > 0:
 			enemy_activation = self._apply_generated_attack("enemy", "agent", enemy_attack)
-		elif self._damage("enemy") > 0:
-			damage = self._damage("enemy")
-			dropped_board, dropped = bundledenemy.drop_garbage(self._board("enemy"), damage, self.random)
-			self._set_board("enemy", dropped_board)
-			self._set_damage("enemy", damage - dropped)
+		elif self._damage("enemy") > 0 and not enemy_expired_fever_placement:
+			self._drop_pending_garbage("enemy")
 
 		if bundledenemy.is_defeat_board(self._board("enemy")):
 			win_value = self.terminal_value(True)
@@ -912,6 +931,11 @@ class PuyoDuelEnvironment:
 
 		self.enemy_pair = self._refill(self.enemy_next_pairs)
 		self._after_resolve("enemy", enemy_combo, enemy_all_clear, enemy_activation)
+		if enemy_expired_fever_placement and enemy_combo == 0 and bundledenemy.is_defeat_board(self._board("enemy")):
+			win_value = self.terminal_value(True)
+			return self.observe(), reward + win_value, True, {
+				**info, "result": "enemy_defeated", "terminal_value": win_value,
+			}
 		self.turn += 1
 		if self.turn >= self.MAX_TURNS_PER_EPISODE:
 			return self.observe(), reward, True, {**info, "result": "timeout"}

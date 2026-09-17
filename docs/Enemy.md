@@ -395,21 +395,23 @@ class WorkerPlannerEnemy extends PuyoW.Enemy {
 
 ### advanced 탐색 모드와 실시간 재판단
 
-적에 `lookaheadSearchMode = 'advanced'`를 지정하면 `PuyoW.startWorkerLookaheadSearch()`가 Worker 안의 advanced 탐색을 사용합니다. 지정하지 않으면 위의 기존 탐색을 그대로 사용합니다. 기본 제공 적 중에는 안드레알푸스가 이 모드를 사용합니다.
+적에 `lookaheadSearchMode = 'advanced'`를 지정하면 `PuyoW.startWorkerLookaheadSearch()`가 Worker 안의 advanced 탐색을 사용합니다. 지정하지 않으면 위의 기존 탐색을 그대로 사용합니다. 기본 제공 적 중에는 안드레알푸스가 이 모드를 사용합니다. 아래 advanced 탐색·실시간 재판단 판단 전체는 기본 제공 적용 공통 클래스 `PuyoW.RealtimeLookaheadEnemy`에 들어 있고, 안드레알푸스는 이를 상속해 목표 연쇄(`targetCombo`)와 작은 연쇄 점등 여부(`lightFeverGaugeWithSmallChains`)만 `super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true })`로 정합니다. 이 클래스는 기본 제공 적 전용 `BundledEnemy`를 상속하므로, 외부 적은 위 예시처럼 `PuyoW.Enemy`와 Worker 탐색 보조 함수를 사용하세요.
 
 - **빠른 보드 계산**: 보드를 셀 코드 배열과 열 높이로 바꿔 계산합니다. 한 배치의 착지 위치·연쇄 수·ATTACK·결과 보드는 기존 규칙과 같습니다.
 - **빔 탐색**: 현재 수의 후보는 모두 읽고, 그 아래 수부터는 한 수 평가가 좋은 `lookaheadBeamWidth`개(기본 5)만 더 깊이 읽습니다. 같은 색 쌍의 180도 회전처럼 같은 보드를 만드는 후보는 건너뜁니다.
 - **발화점 평가**: 각 열 맨 위에 뿌요를 한두 개 떨어뜨렸을 때 터지는 최대 연쇄를 보드 점수에 더해, 아직 터뜨리지 않은 연쇄 기반을 평가합니다.
-- **방해뿌요 도착 예측**: 상대가 연쇄 중이면 남은 연쇄를 끝까지 계산해 받을 방해뿌요 양과 도착 시각을 구하고, 그 시각이 자신의 몇 번째 배치 직후인지 어림합니다. 그 배치까지 보낸 공격만 상쇄로 인정하고, 이후 수는 남은 방해뿌요를 보드에 올린 채로 읽습니다. 피버 룰은 방해뿌요 유예 규칙이 달라 기존처럼 이번 배치 직후에 온다고 봅니다.
+- **방해뿌요 도착 예측**: 상대가 연쇄 중이면 남은 연쇄를 끝까지 계산해 받을 방해뿌요 양과 도착 시각을 구하고, 그 시각이 자신의 몇 번째 배치 직후인지 어림합니다. 그 배치까지 보낸 공격만 상쇄로 인정하고, 이후 수는 남은 방해뿌요를 보드에 올린 채로 읽습니다.
+- **피버 룰(일반 상태)**: 받을 예고를 "지금 상쇄할 수 있는 수·도착하는 수"별 묶음으로 나눠, 연쇄 단계마다 상쇄·점등·역공을 게임과 같은 순서(최소 공격 1 포함)로 계산합니다. 터진 배치 뒤에는 방해뿌요가 떨어지지 않고, 전등이 모두 켜져 피버에 들어가는 경로는 그 뒤를 읽지 않습니다. 상쇄할 예고가 있으면 이번 수 기준으로 ① 목표 연쇄 ② 다 받아치고 하나라도 넘기는 역공 ③ 점등 순으로 우선합니다. 이번 수 최대 공격이 받을 양보다 작으면 `lightFeverGaugeWithSmallChains`(기본 `true`)가 켜져 있을 때만 작은 연쇄로 점등하고, 끄면 목표 연쇄를 계속 쌓습니다. 점등은 단계당 터지는 색 뿌요가 적을수록 좋게 평가합니다. 상대가 피버 중이고 아직 연쇄를 시작하지 않았다면 피버 패턴 연쇄를 예측해 넣고, 그 연쇄가 시작되기 전에는 상쇄할 수 없다고 봅니다. 적 자신이 피버 중일 때는 기존 피버 공통 규칙을 씁니다.
 
 조작 도중 상황이 바뀌어 다시 탐색하려면 `PuyoW.startWorkerLookaheadSearch(this, player, { allowedPlacements, keepDecisionElapsed: true })`를 호출합니다. `allowedPlacements`는 지금 위치에서 도달할 수 있는 `{ x, rotation }` 목록이며, 현재 수를 이 안에서만 고릅니다. `keepDecisionElapsed`가 `true`이면 결과를 적용할 때 빠른 하강 대기 시간을 처음부터 다시 세지 않습니다. 재탐색이 결과를 내지 못하면 직전 목표를 유지합니다.
 
-안드레알푸스는 기본 룰에서 이 기능으로 실시간 반응합니다. 조작 중 매 프레임 받을 방해뿌요 양과 상대 연쇄 진행 여부를 확인하고, 둘 중 하나가 바뀌면 다시 탐색합니다. 이번 턴에 빠른 하강을 이미 시작했거나, 받을 양이 바뀌기 전후 모두 `ignorableIncomingGarbage`보다 작으면 다시 탐색하지 않습니다. `realtimeReaction = false`로 끌 수 있습니다.
+안드레알푸스는 기본 룰과 피버 룰(피버 룰 (시작)·피버 (완화) 포함)에서 이 기능으로 실시간 반응합니다. 조작 중 매 프레임 받을 방해뿌요 양, 상대 연쇄 진행 여부, 상대 피버 패턴 연쇄 예측을 확인하고, 하나라도 바뀌면 다시 탐색합니다. 이번 턴에 빠른 하강을 이미 시작했거나, 받을 양이 바뀌기 전후 모두 무시 기준보다 작으면 다시 탐색하지 않습니다. 무시 기준은 `getLookaheadIgnorableIncomingGarbage(player)`로 정하며, 안드레알푸스는 피버 룰에서 1(무시 기준 없음), 그 밖에는 `ignorableIncomingGarbage`를 씁니다. 이 메서드를 정의한 적이면 `startWorkerLookaheadSearch()`도 같은 값을 탐색에 넘깁니다. 적 자신이 피버 중이면 재판단하지 않습니다. `realtimeReaction = false`로 끌 수 있습니다.
 
 예측에 쓰는 함수는 공통 함수로도 공개됩니다.
 
 - `PuyoW.common.predictPlayerChain(player)`: 연쇄 중인 플레이어의 `{ active, currentCombo, remainingCombo, finalCombo, finalAttack, endInMs }`를 반환합니다. 연쇄 진행에는 무작위 요소가 없어 연쇄 수와 ATTACK은 정확하고, `endInMs`는 폭발 대기·폭발 연출·중력 연출 시간을 더한 값입니다.
-- `PuyoW.common.getRealtimeGarbageForecast(player, opponent)`: `player`가 받을 방해뿌요 수 `incoming`과, 그것이 떨어지기 직전 배치의 순번 `garbageMoveIndex`(0이 지금 조작 중인 배치, 받을 것이 없으면 -1)를 반환합니다.
+- `PuyoW.common.getRealtimeGarbageForecast(player, opponent)`: `player`가 받을 방해뿌요 수 `incoming`과, 그것이 떨어지기 직전 배치의 순번 `garbageMoveIndex`(0이 지금 조작 중인 배치, 받을 것이 없으면 -1)를 반환합니다. 피버 룰에서 `player`가 일반 상태이면 `fever: { gauge, gaugeMax, events, predictedOpponentFeverChain }`도 담습니다. `events`의 각 항목은 `{ amount, availableMove, landMove }`로, 상쇄할 수 있게 되는 배치 순번과 도착하는 배치 순번입니다.
+- `PuyoW.common.predictFeverStageChain(opponent)`: 피버 중인 상대가 지금 조작 중인 뿌요(안 되면 다음 1쌍까지)로 피버 패턴을 최대 연쇄로 터뜨리고 곧바로 빠른 하강한다고 가정해 `{ combo, attack, startInMs, endInMs }`를 반환합니다. 터뜨릴 수 없거나 조작 중이 아니면 `null`입니다.
 
 기반 클래스를 사용하지 않는 도구나 실험용 적은 공통 함수를 직접 호출할 수 있습니다. 반환된 작업의 `cancel()`은 결과를 더 이상 적용하지 않을 때 호출하고, `promise`는 최종 깊이의 결과 또는 fallback 결과로 완료됩니다.
 

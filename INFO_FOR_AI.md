@@ -79,6 +79,7 @@
 - 피버 룰·피버 룰 (시작)·연속 피버의 싹쓸이는 티켓을 사용하지 않으며, 기존의 점수 `+100`·황금 연출·목표 연쇄/시간 보너스 규칙을 유지한다.
 - 연쇄 중에는 에너지/ATTACK 전달과 DAMAGE 상쇄 순서가 중요하다. `resolveExplosions()`와 전송·정산 함수의 대기 조건을 우회하지 말고, 연쇄 완료 뒤 상대 DAMAGE로 넘어가는 계약을 보존한다.
 - 대전 피버 룰의 최종 DAMAGE 목적지는 **연쇄 첫 폭발 당시 상대의 피버 상태**로 결정한다. `resolveExplosions()`가 정수 ATTACK 생성 여부와 관계없이 `chainTargetFeverId`를 기록한다. 상대가 일반 상태였다면 도중에 피버로 진입해도 연쇄 전체의 잔여 공격은 `normalDamage`로 들어가며 피버 종료까지 낙하를 유예한다. 처음부터 피버였다면 해당 피버의 `damage`에 넣는다. `activationId`로 피버 회차를 구별하므로 그 피버가 이미 끝났다면 일반 피해에 합산하며, 새로 진입한 피버에 이전 공격을 넣지 않는다.
+- **피버 룰 방해뿌요 낙하와 피버 종료(BUILDNO 77 점검)**: 피버 룰에서는 터진 배치 뒤 `garbage` 단계를 건너뛰고(`resolveExplosions()`가 바로 `check`), 터지지 않은 배치 뒤에만 `dropGarbage()`가 떨어뜨린다(`fever.deferGarbage`는 값만 기록하고 읽는 곳이 없다). 피버 남은 시간이 끝난 경우 — 터진 배치면 `feverWait` 정산 뒤 `finishPlayerFever(player, 'B')`가 피버 DAMAGE를 일반 DAMAGE에 합치고 바로 조작으로 넘어가며, 이후 터지지 않은 배치에서 일반 필드에 떨어진다. 터지지 않은 배치면 `check`의 종료 A가 합친 뒤 `garbage` 단계로 **조작 전에** 일반 필드에 떨어뜨린다. BUILDNO 76까지는 이 경우 `garbage` 단계가 종료 전에 먼저 돌아 피버 DAMAGE가 곧 사라질 피버 필드에 떨어져 **없어지는 버그**가 있었고, `dropGarbage()`가 시간이 끝난 피버 필드에서는 낙하 없이 `check`로 넘기도록 고쳤다. `python/learning.py`도 같은 규칙으로 맞췄다(`_is_expired_fever_placement()`·`_drop_pending_garbage()`, 종료 직후 패배 판정 포함). 회귀 테스트는 `tests/test01_fever_damage.spec.js`의 피버 시간 만료 두 경우와 `python/test_learning.py`의 `test_expired_fever_placement_*` 두 개다.
 - `applyAttackDamage()`는 즉시 정산과 에너지 연출 완료 후 지연 정산에 공통으로 쓰인다. 지연 에너지는 목적지를 자체 보관하고, 연쇄 종료 시 플레이어의 목적지는 전달량이 0이어도 초기화한다. 상쇄 순서·정수 처리·연출 대기·비피버 룰은 유지한다. `tests/test01_fever_damage.spec.js`는 실제 게임 루프에서 첫 폭발의 ATTACK이 1 미만인 연쇄, 피버 진입 전후, 즉시/지연 정산, 피버 중 낙하 유예와 종료 후 실제 낙하, 전량 상쇄 후 새 연쇄, 피버 종료·재진입, 일반/피버 예고의 앞뒤 표시와 리플레이 보존을 검사한다.
 - BUILDNO 73부터 `normalWarningPreview()`가 현재 예고를 만든 `announcedAttackEnergy.targetFeverId`로 일반 필드행 미정산 예고를 분리한다. 피버 중에는 이 값을 일반 DAMAGE에 더해 뒤쪽에 흐리게 그리고, `currentFieldWarningAmount()`로 앞쪽 예고에서 제외한다. 상쇄·AI용 `warningAmount()`와 실제 피해량은 변경하지 않았다. `getGameState()`의 `warningPuyos`는 앞쪽에 그리는 목록과 일치한다. 뒤쪽 예고는 `FEVER_NORMAL_WARNING_ALPHA`를 `globalAlpha`에 걸어 통째로 흐리게 그리므로, 예고뿌요의 `draw()`는 `globalAlpha`를 덮어쓰지 말고 호출 시점의 값을 곱해서 쓴다. 슬라임 계열(1·6개 단위)과 초입방체 세 종이 이 규칙을 따르며, 새 예고뿌요를 더할 때도 같은 규칙을 지킨다. 새 리플레이는 수신 플레이어의 선택적 델타 필드 `nw`에 분리된 미정산 예고량을 기록한다. 기존 형식 3과 호환되며, `nw`가 없는 과거 기록은 구분을 추측하지 않고 기존 표시를 유지한다.
 
@@ -840,13 +841,51 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 
 **메인 스코프**
 - `predictPlayerChain(player)`: 연쇄 중(`isResolutionPhase`)인 플레이어의 보드 복사본으로 남은 연쇄를 끝까지 풀어 `{ active, currentCombo, remainingCombo, finalCombo, finalAttack, endInMs }`를 낸다. 연쇄 보너스를 위해 `player.combo`부터 이어 센다. 시간은 `CHAIN_PHASE_WAIT_MS`(150, `updatePlayer()` 대기와 같아야 함)·`EXPLOSION_EFFECT_DURATION_MS`(430, `resolveExplosions()` 연출과 같아야 함)·`measureGravityOnBoard()`(startGravity와 같은 식)의 합이다. 이 상수를 바꾸면 두 곳을 함께 고친다. 싹쓸이 티켓·피버 최소 공격은 넣지 않는다.
-- `getRealtimeGarbageForecast(player, opponent)`: `incoming = floor(max(기존 예고량, damage + 예측 최종 ATTACK))`. 기본 룰에서 상대 연쇄가 진행 중이고 그 공격이 확정 DAMAGE보다 크면, 연쇄 종료 시각을 "현재 뿌요 착지 시간 + 300ms(고정 후 garbage 단계) + m × (450ms + 한 배치 낙하 시간)"과 비교해 `garbageMoveIndex`를 구한다. 낙하 시간은 평균 열 높이, 자연 낙하 간격, 난이도별 빠른 하강 대기(적의 일반·위기 비율 반영) 뒤 55ms/칸으로 어림한다. 피버 룰·연속 피버·확정 DAMAGE뿐인 경우는 0이다. 둘 다 `PuyoW.common`에 공개했다.
+- `getRealtimeGarbageForecast(player, opponent)`: `incoming = floor(max(기존 예고량, damage + 예측 최종 ATTACK))`. 기본 룰에서 상대 연쇄가 진행 중이고 그 공격이 확정 DAMAGE보다 크면, 연쇄 종료 시각을 "현재 뿌요 착지 시간 + 300ms(고정 후 garbage 단계) + m × (450ms + 한 배치 낙하 시간)"과 비교해 `garbageMoveIndex`를 구한다. 낙하 시간은 평균 열 높이, 자연 낙하 간격, 난이도별 빠른 하강 대기(적의 일반·위기 비율 반영) 뒤 55ms/칸으로 어림한다. 연속 피버·적 자신이 피버 중·확정 DAMAGE뿐인 경우는 0이다. 피버 룰 일반 상태는 아래 「피버 룰 실시간 반응」의 `fever` 항목을 따로 담는다. 배치 시간 어림은 `estimateAiPlacementTiming()`으로 분리했다. `predictPlayerChain`·`predictFeverStageChain`·`getRealtimeGarbageForecast`를 `PuyoW.common`에 공개했다.
 - `getReachableAiPlacements(player)`: 지금 위치에서 "회전 후 이동"이나 기존 `canUseAiPlacement()`의 "이동 후 회전(킥 포함)"으로 갈 수 있는 `aiSimulations` 후보만 돌려준다.
 - `startWorkerLookaheadSearch(enemy, player, { allowedPlacements, keepDecisionElapsed })`: 적의 `lookaheadSearchMode`·`lookaheadBeamWidth`를 Worker 옵션으로 넘긴다. `keepDecisionElapsed`면 `applyWorkerSearchResult()`가 `aiDecisionElapsed`를 0으로 되돌리지 않는다(`enemy.workerSearchKeepsDecisionElapsed`, `beginWorkerSearchTurn()`에서 false로 초기화). 재탐색이 결과를 못 내면 직전 `attackPlacement`를 유지하고, `simulateNMovePlacementsInWorker()`의 동기 대체도 허용 목록 안에서만 고른다.
 
-**안드레알푸스** — `lookaheadSearchMode = 'advanced'`, `lookaheadBeamWidth = 5`, `realtimeReaction = true`이며 목표 7연쇄·3수·50ms는 그대로다. `prepareTurn()`에서 Worker 탐색을 시작한 턴에만 `realtimeReactionState = { turn(placedPairCount), incoming, opponentChainActive, fastDownStarted, replanCount }`를 만든다. `updateControl()`이 매 프레임 `updateRealtimeReaction()`을 불러, 받을 양이나 상대 연쇄 진행 여부가 바뀌면 도달 가능 후보로 재탐색한다. **사용자 요구: 빠른 하강 대기 시간 안에서만 재판단하고, 이번 턴에 빠른 하강을 시작했으면 재판단하지 않는다.** `useFastDown()`이 처음 true를 돌려준 순간 `fastDownStarted`를 세운다. 쉬움 난이도는 빠른 하강이 없으므로 착지 전까지 재판단할 수 있다. 바뀌기 전후 받을 양이 모두 `ignorableIncomingGarbage`(4) 미만이면 기준 상태만 갱신한다. 피버 룰·연속 피버·공통 우선 후보(피버·패배 위치 보호·80% 보호) 턴에서는 재판단하지 않는다. 재탐색 중에는 기존처럼 이동을 멈추고 빠른 하강도 하지 않는다(Worker 결과는 `player.active` 객체가 같아야 적용되기 때문이다).
+**안드레알푸스** — `lookaheadSearchMode = 'advanced'`, `lookaheadBeamWidth = 5`, `realtimeReaction = true`이며 목표 7연쇄·3수·50ms는 그대로다. `prepareTurn()`에서 Worker 탐색을 시작한 턴에만 `realtimeReactionState = { turn(placedPairCount), incoming, opponentChainActive, fastDownStarted, replanCount }`를 만든다. `updateControl()`이 매 프레임 `updateRealtimeReaction()`을 불러, 받을 양이나 상대 연쇄 진행 여부가 바뀌면 도달 가능 후보로 재탐색한다. **사용자 요구: 빠른 하강 대기 시간 안에서만 재판단하고, 이번 턴에 빠른 하강을 시작했으면 재판단하지 않는다.** `useFastDown()`이 처음 true를 돌려준 순간 `fastDownStarted`를 세운다. 쉬움 난이도는 빠른 하강이 없으므로 착지 전까지 재판단할 수 있다. 바뀌기 전후 받을 양이 모두 무시 기준(`getLookaheadIgnorableIncomingGarbage()`: 기본 룰 `ignorableIncomingGarbage`(4), 피버 룰 1) 미만이면 기준 상태만 갱신한다. 재판단 비교는 `getRealtimeReactionSignature()`(받을 양·상대 연쇄 진행·상대 피버 패턴 예측의 연쇄 수와 ATTACK)이며 시간에 따라 바뀌는 도착 순번은 넣지 않는다. 연속 피버·적 자신이 피버 중·공통 우선 후보(피버·패배 위치 보호·80% 보호) 턴에서는 재판단하지 않는다. 재탐색 중에는 기존처럼 이동을 멈추고 빠른 하강도 하지 않는다(Worker 결과는 `player.active` 객체가 같아야 적용되기 때문이다).
 - `python/bundledenemy.py`의 안드레알푸스는 기존 완전 탐색을 유지한다(모듈 docstring에 이유를 적었다).
 - 회귀 테스트(`tests/test01_enemy.spec.js`): 빠른 배치 계산과 기본 규칙 600건 비교(게임이 만든 Worker를 `window.Worker` 감싸기로 붙잡아 `resolvePlacements` 전송), advanced 깊이 1·2·3 전달과 허용 목록 제한, 곧 떨어질 방해뿌요 12개에 2연쇄로 상쇄(공격이 없으면 아껴 둠, 싹쓸이가 되지 않게 연쇄와 무관한 뿌요를 둠), 상대 연쇄 예측의 연쇄 수·ATTACK·시간·연쇄 번호 이어 세기, 실제 대전에서 빠른 하강 전 재판단 시작과 빠른 하강 시작 뒤 재판단 차단.
+
+### 안드레알푸스 피버 룰 실시간 반응 (2026-09-17, BUILDNO 77)
+
+`TODO.md`의 사용자 결정대로, 기본 룰의 advanced 탐색·실시간 재판단을 피버 룰·피버 룰 (시작)·피버 (완화)로 넓혔다. 세 규칙은 모두 `game.feverRule`을 공유한다(완화는 구경 설정 전용, 시작은 양쪽이 피버로 시작하므로 적의 첫 피버가 끝난 뒤부터 동작). **적 자신이 피버 중이면 실시간 반응을 하지 않고** 기존 피버 공통 규칙(최대 연쇄 우선, `preparedPlacement`)을 쓴다. 다른 적과 기본 룰 동작은 바꾸지 않았다.
+
+**사용자 결정 사항(구현 기준)**
+- 피버 룰 일반 상태에서 상쇄로 전등을 켜는 행동에 가중치를 준다. 목적은 빠르게 피버에 들어가는 것이므로 **단계당 공격을 작게**(터지는 색 뿌요를 적게) 해서 받을 예고가 남아 있는 동안 더 많은 단계가 상쇄되게 한다. 연쇄 수가 많은 것은 괜찮다(단계마다 점등).
+- 상쇄할 예고(유예된 것·곧 떨어질 것·진행 중 상대 연쇄 모두 포함)가 있을 때 **이번 수(1턴)** 기준 우선순위: ① 목표 연쇄 ② 목표 미만이지만 다 받아치고 방해뿌요를 하나라도 넘기는 역공 ③ 점등.
+- 이번 수 최대 공격이 받을 양보다 작으면(다 상쇄 불가) 작은 연쇄로 일부러 점등할지 `lightFeverGaugeWithSmallChains`로 켜고 끈다. **기본값 켜짐.** 끄면 그 상황에서 목표 연쇄를 계속 쌓는다. 켜짐은 피버 진입까지 못 가도 전등을 켜러 쏜다는 뜻이다.
+- 상쇄로 전등 7개가 다 켜지는 경로는 피버 패턴이 무작위로 정해지므로 그 뒤를 읽지 않는다.
+- 상대가 피버 중이면 현재 피버 패턴으로 연쇄를 예측하되 **상대가 즉시 빠른 하강한다고 가정**하고, 상대가 실제로 연쇄를 시작하면 실제 연쇄로 다시 예측한다(일부러 작게 터뜨릴 수 있으므로).
+- 안드레알푸스는 피버 룰에서 무시 기준을 쓰지 않는다. 그 밖의 명시되지 않은 사항은 추천안을 따랐다(아래).
+
+**메인 스코프**
+- `predictFeverStageChain(opponent)`: 피버 중·조작 단계인 상대의 현재 뿌요를 모든 위치로 두어 최대 연쇄(같으면 큰 ATTACK)를 고르고, 없으면 연쇄 없는 첫 배치 뒤 다음 1쌍까지 본다(추천안). 고른 배치 직후 보드를 `measureGravityOnBoard()`(피버 중력 1.5배)와 가짜 `gravity` 단계 `predictPlayerChain()`에 넣어 연쇄 수·ATTACK·시간을 구한다. 배치 탐색 결과는 `feverStageChainPredictionCache`(WeakMap, 키: 피버 회차·턴·배치 수·현재/다음 색)로 같은 조작 턴 동안 재사용하고, 착지 시간만 현재 Y × 빠른 하강 간격(55ms)으로 매번 다시 계산한다. `startInMs`는 첫 폭발 시각, `endInMs`는 연쇄 종료 시각이다.
+- `getFeverRealtimeGarbageForecast()`: 피버 룰에서 CPU가 일반 상태이면 `getRealtimeGarbageForecast()`가 이쪽으로 넘어가 `fever: { gauge, gaugeMax, events, predictedOpponentFeverChain }`를 만든다. `events`는 `{ amount, availableMove, landMove }` 묶음이다 — 확정 DAMAGE(0, 0), 진행 중 상대 연쇄의 나머지(0, 연쇄 종료 시각의 배치 순번), 상대 피버 패턴 예측(첫 폭발 뒤 CPU 첫 폭발이 가능한 배치 순번, 종료 시각의 배치 순번). `incoming`은 묶음 합계다.
+- 스냅샷의 `realtime.fever.lampChains`에 `lightFeverGaugeWithSmallChains`를 싣는다. `startWorkerLookaheadSearch()`는 적에 `getLookaheadIgnorableIncomingGarbage(player)`가 있으면 그 값을 `urgentGarbageThreshold`로 쓴다.
+
+**Worker (advanced, `feverModel`)** — `snapshot.rules.feverRule && realtime.fever && !self.fever.active`일 때만 켠다. 이때 기본 룰용 `incoming`·`garbageMoveIndex`·위험 우선 비교(`urgent`)는 쓰지 않는다.
+- `resolveFastChain(..., record)`가 단계별 ATTACK(`links`)과 터진 색 뿌요 수(`popped`)를 기록한다(기록 없이 부르면 기존과 같다).
+- `applyFeverOffsets()`: 단계마다 누적 ATTACK을 더하고, 지금 상쇄 가능한(`availableMove <= 수`) 예고가 있으면 최소 공격 1을 보장한 뒤 정수 부분만큼 상쇄한다. 상쇄한 단계마다 전등 +1, 남은 누적의 정수 부분이 역공(`overflow`)이다. 먼저 도착할 묶음부터 줄인다.
+- 낙하: 터지지 않은 배치이고 피버에 들어가지 않았을 때만, 도착한(`landMove <= 수`) 묶음을 최대 30개 떨어뜨린다(한 줄 몫만 보드에 올리고 위험 열 높이 + ceil(양/6) > 11이면 후보 제외).
+- `decideFeverSearchMode()`: 요청마다 첫 수 후보를 한 번 풀어 모드를 정한다. 지금 상쇄 가능한 예고가 없으면 `none`(기존 점수). 있으면 목표 연쇄 후보가 있으면 `target`, 다 받아치고 역공 1 이상 후보가 있으면 `counter`(둘 다 첫 수를 그 후보로 제한하고 기존 점수로 고름), 그 밖에는 이번 수 최대 전송량(상쇄 + 역공)이 받을 양보다 작으면 설정에 따라 `lamp`/`build`, 아니면 `lamp`.
+- 점수: `lamp` 모드에서 상쇄가 일어난(또는 터지지 않은) 배치는 `보드 점수 + 전등 × 100,000 − 터진 색 뿌요 × 2,500 + 역공 × 200 (+ 싹쓸이 200만)`이고, 상쇄 없이 터뜨린 배치는 기존 점수(조기 연쇄 감점)를 쓴다. 모든 모드에서 전등이 다 켜지면 `FEVER_ENTRY_SCORE`(40만)를 더하고 더 읽지 않는다(패배 경로 감점도 없음). `build`는 기존 점수 그대로다.
+- 상대 예측 연쇄가 아직 시작 전이면 그 묶음은 `availableMove` 전에는 상쇄할 수 없어, 지금 작은 연쇄를 쏠 이유가 없다(추천안 "받아칠 연쇄를 아껴 둔다"가 이렇게 나온다).
+- 개발 중 Node 시나리오 8개와 회귀 테스트로 확인했다: 받을 것 없음 → 쌓기, 20개·점등 켜짐 → 2연쇄 점등, 꺼짐 → 쌓기, 목표 2연쇄 가능 → 목표 연쇄, 2개 → 역공, 전등 5 → 2단계로 피버 진입, 높은 필드에 30개 즉시 도착·꺼짐 → 연쇄로 낙하 미룸, 상대 예측 연쇄(2수 뒤 상쇄 가능) → 지금 쏘지 않음. 기본 룰 탐색 결과·속도(평균 약 16ms)는 바뀌지 않았다.
+
+**회귀 테스트** — `tests/test01_enemy.spec.js`의 "advanced Worker 탐색은 피버 룰 일반 상태에서…"(위 8개 시나리오를 게임 Worker에 직접 보냄), `tests/test01_fever_damage.spec.js`의 "피버 룰 실시간 예측은…"(실제 피버 룰 구경 대전에서 상대 피버 패턴 예측·예고 묶음·실제 연쇄 시작 뒤 재예측)과 "안드레알푸스는 피버 룰 일반 상태에서 무시 기준 없이…"(방해뿌요 1개에도 재판단, 빠른 하강 시작 뒤 차단). 실제 피버 룰·완화 구경 대전을 안드레알푸스 포함으로 50초씩 돌려 오류가 없음을 따로 확인했다(임시 스크립트, 저장소에 남기지 않음).
+
+### 실시간 N수 탐색 공통 클래스 `RealtimeLookaheadEnemy` (2026-09-17, BUILDNO 78)
+
+사용자가 안드레알푸스 알고리즘을 다른 적에도 넓히려고 공통 클래스로 분리를 요청했다. **동작은 바꾸지 않고 구조만 나눴다.**
+
+- `RealtimeLookaheadEnemy extends BundledEnemy`에 안드레알푸스의 판단 전체(탐색 설정 필드, `prepareTurn`·`chooseTarget`·`chooseRotate`·`updateControl`·`useFastDown`, 실시간 재판단 `updateRealtimeReaction`·`getRealtimeReactionSignature`·`getLookaheadIgnorableIncomingGarbage`, 호환용 2수 탐색 등)를 옮겼다. `PuyoW.RealtimeLookaheadEnemy`로 공개한다(`OnnxEnemy`와 같은 방식).
+- **적마다 다르게 정하는 값은 constructor 옵션 두 개뿐이다(사용자 지정).** `super({ targetCombo, lightFeverGaugeWithSmallChains })` — `targetCombo`는 1 이상 정수(기본 7, 아니면 `RangeError`), `lightFeverGaugeWithSmallChains`는 boolean(기본 true, 아니면 `TypeError`). 그 밖의 탐색 수(3)·시간(50ms)·빔 폭(5)·무시 기준(4, 피버 룰 1)·빠른 하강 비율(1.0/0.5)은 공통값이며, 필요하면 하위 클래스 constructor에서 필드를 덮어쓸 수 있다.
+- `Andrealphus extends RealtimeLookaheadEnemy`는 `super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true })`, `sortPriority = 8`, `notAvail = false`, `getClassType()`·`getName()`·`getFieldThemeColors()`·`drawPortrait()`만 가진다. 공통 클래스의 `getClassType()`은 `'RealtimeLookaheadEnemy'`를 돌려주며 하위 클래스가 반드시 재정의해야 하고, 공통 클래스 자체는 적 목록에 등록하지 않는다.
+- **새 적을 이 클래스로 만들 때 함께 할 일**: 적 종류 문자열로 동작이 갈리는 `RANDOM_EMPTY_FIELD_ENEMY_TYPES`(빈 필드 무작위 첫 배치)와 `ENEMY_GOLD_BONUSES`(GOLD 배율)에 새 종류를 넣는다. 적 목록 등록(`createOpponentEntry`), 번역 문자열, 초상화 팔레트, `python/bundledenemy.py` 이식 여부도 기존 적 추가 절차대로 확인한다. `python/bundledenemy.py`의 안드레알푸스는 이번에도 바꾸지 않았다.
+- 회귀 테스트: `tests/test01_enemy.spec.js`의 "실시간 N수 탐색 공통 클래스는…"이 상속 관계, 안드레알푸스가 직접 가진 메서드 목록(constructor·drawPortrait·getClassType·getFieldThemeColors·getName), 기본값·사용자 지정값, 공통값이 같음, 잘못된 옵션의 예외를 확인한다.
 
 ### 온라인 플레이 저장소 분리와 서버 안내 (2026-09-15)
 
