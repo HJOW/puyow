@@ -60,7 +60,7 @@ test('모든 적의 세 표정은 카드·대전·갤러리 크기로 그려지�
   });
   expect(result.map(({ type }) => type).sort()).toEqual([
     'Solomon', 'Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias',
-    'Kimaris', 'Andrealphus', 'Flauros', 'Andras', 'Valak', 'Zagan',
+    'Kimaris', 'Andrealphus', 'Flauros', 'Andras', 'Valak', 'Zagan', 'Vapula', 'Oriax',
   ].sort());
   for (const enemy of result) {
     for (const variant of enemy.variants) {

@@ -18,14 +18,14 @@ test('갤러리 일반뿌요 목록에 철구뿌요를 처음부터 잠금 해�
   expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['잠김', 'Locked', 'ロック中', '已锁定'].includes(text)))).toBe(false);
 });
 
-test('갤러리 적 목록에는 안드라스·발라크·출시 예정 자간이 모두 등록된다', async ({ page }) => {
+test('갤러리 적 목록에는 출시 적과 출시 예정 바퓰라·오리아스가 모두 등록된다', async ({ page }) => {
   await page.evaluate(() => {
-    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: [], enemies: ['Andras', 'Valak', 'Zagan'] }));
+    localStorage.setItem('puyow_gallery', JSON.stringify({ warning: [], enemies: ['Andras', 'Valak', 'Zagan', 'Vapula', 'Oriax'] }));
   });
   await page.reload();
   await page.evaluate(() => {
-    window.newEnemyGalleryDraws = { Andras: 0, Valak: 0, Zagan: 0 };
-    ['Andras', 'Valak', 'Zagan'].forEach((classType) => {
+    window.newEnemyGalleryDraws = { Andras: 0, Valak: 0, Zagan: 0, Vapula: 0, Oriax: 0 };
+    ['Andras', 'Valak', 'Zagan', 'Vapula', 'Oriax'].forEach((classType) => {
       const prototype = window.WebPuyo[classType].prototype;
       const original = prototype.drawPortrait;
       prototype.drawPortrait = function (...args) {
@@ -40,26 +40,28 @@ test('갤러리 적 목록에는 안드라스·발라크·출시 예정 자간�
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
-  // 최초 공개 적 다음부터 잠금 해제된 새 적 세 종을 차례로 선택해 초상화까지 확인한다.
-  for (const classType of ['Andras', 'Valak', 'Zagan']) {
+  // 최초 공개 적 다음부터 저장 기록으로 열린 적들을 차례로 선택해 초상화까지 확인한다.
+  for (const classType of ['Andras', 'Valak', 'Zagan', 'Vapula', 'Oriax']) {
     await page.keyboard.press('ArrowDown');
     await expect.poll(() => page.evaluate((name) => window.newEnemyGalleryDraws[name], classType)).toBeGreaterThan(0);
   }
-  await expect.poll(() => page.evaluate(() => Object.fromEntries(Object.entries(window.newEnemyGalleryDraws).map(([name, count]) => [name, count > 0])))).toEqual({ Andras: true, Valak: true, Zagan: true });
+  await expect.poll(() => page.evaluate(() => Object.fromEntries(Object.entries(window.newEnemyGalleryDraws).map(([name, count]) => [name, count > 0])))).toEqual({ Andras: true, Valak: true, Zagan: true, Vapula: true, Oriax: true });
 });
 
-test('출시된 안드라스·발라크·자간 카드는 모두 유효한 카드로 그려진다', async ({ page }) => {
+test('출시된 적 카드는 유효하지만 출시 예정 바퓰라·오리아스 카드는 제외한다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_cards', JSON.stringify([
       { id: 'andras-card', type: 'enemy:Andras' },
       { id: 'valak-card', type: 'enemy:Valak' },
-      { id: 'zagan-card', type: 'enemy:Zagan' }
+      { id: 'zagan-card', type: 'enemy:Zagan' },
+      { id: 'vapula-card', type: 'enemy:Vapula' },
+      { id: 'oriax-card', type: 'enemy:Oriax' }
     ]));
   });
   await page.reload();
   await page.evaluate(() => {
-    window.newEnemyCardDraws = { Andras: 0, Valak: 0, Zagan: 0 };
-    ['Andras', 'Valak', 'Zagan'].forEach((classType) => {
+    window.newEnemyCardDraws = { Andras: 0, Valak: 0, Zagan: 0, Vapula: 0, Oriax: 0 };
+    ['Andras', 'Valak', 'Zagan', 'Vapula', 'Oriax'].forEach((classType) => {
       const prototype = window.WebPuyo[classType].prototype;
       const original = prototype.drawPortrait;
       prototype.drawPortrait = function (...args) {
@@ -74,6 +76,34 @@ test('출시된 안드라스·발라크·자간 카드는 모두 유효한 카�
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowRight');
   // 자간은 BUILDNO 79에 출시되어 더 이상 카드 풀에서 빠지지 않는다.
   await expect.poll(() => page.evaluate(() => window.newEnemyCardDraws.Andras > 0 && window.newEnemyCardDraws.Valak > 0 && window.newEnemyCardDraws.Zagan > 0)).toBe(true);
+  expect(await page.evaluate(() => [window.newEnemyCardDraws.Vapula, window.newEnemyCardDraws.Oriax])).toEqual([0, 0]);
+});
+
+test('바퓰라·오리아스는 출시 예정으로 표시되고 코드·키보드·마우스로도 선택되지 않는다', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('puyow_code', JSON.stringify(['observation'])));
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 11; index += 1) await page.keyboard.press('ArrowRight');
+  const selectedName = () => page.evaluate(() => window.testCanvasTextCalls.filter((call) => call.y === 450).at(-1)?.text);
+  const zaganName = await page.evaluate(() => window.WebPuyo.translate('자간'));
+  await expect.poll(selectedName).toBe(zaganName);
+  await expect.poll(() => page.evaluate(() => ['바퓰라', '오리아스'].every((name) => window.testCanvasTexts.includes(window.WebPuyo.translate(name))))).toBe(true);
+  // 마지막 출시 적 다음의 두 회색 카드 모두 클릭해도 선택이 바뀌지 않는다.
+  for (const x of [820, 1000]) {
+    await page.evaluate(() => { window.testCanvasTextCalls = []; });
+    await page.locator('[data-puyow-canvas="2d"]').click({ position: { x, y: 505 } });
+    await expect.poll(selectedName).toBe(zaganName);
+  }
+  await page.evaluate(() => { window.testCanvasTextCalls = []; });
+  await page.keyboard.press('ArrowRight');
+  // 출시 예정 둘은 이동 대상이 아니므로 마지막 출시 적에서 더 이동하지 않는다.
+  await expect.poll(selectedName).toBe(zaganName);
+  expect(await page.evaluate(() => window.WebPuyo.getGameState())).toBe(null);
 });
 
 test('테서렉트·펜터렉트·헥사액트 예고뿌요는 갤러리와 카드에 각자 단위로 나타난다', async ({ page }) => {

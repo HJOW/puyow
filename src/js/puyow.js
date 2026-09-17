@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 79;
+    const BUILDNO = 80;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -373,6 +373,7 @@
             '초기화': 'Reset', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Reset all settings for this game?', '초기화 중...': 'Resetting...',
             '게임 시작': 'Game Start', '구경': 'Watch', '모드': 'Mode', '규칙': 'Rules', '색상 수': 'Colors', '다음 대전까지 %1초': 'Next match in %1 sec', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Pop %1 colors at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '안드레알푸스': 'Andrealphus', '플라우로스': 'Flauros', '안드라스': 'Andras', '발라크': 'Valak', '자간': 'Zagan', '시작': 'Start', '이전': 'Back',
+            '바퓰라': 'Vapula', '오리아스': 'Oriax',
             '극한': 'Extreme',
             '일시정지': 'Paused', '재개': 'Resume', '다시하기': 'Restart', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -405,6 +406,7 @@
             '초기화': '初期化', '이 게임의 모든 설정을 초기화하시겠습니까?': 'このゲームのすべての設定を初期化しますか？', '초기화 중...': '初期化中…',
             '게임 시작': 'ゲーム開始', '구경': '観戦', '모드': 'モード', '규칙': 'ルール', '색상 수': '色数', '다음 대전까지 %1초': '次の対戦まで%1秒', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '현재 턴 %1 / %2': 'ターン %1 / %2', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一度に%1色のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '안드레알푸스': 'アンドレアルフス', '플라우로스': 'フラウロス', '안드라스': 'アンドラス', '발라크': 'ヴァラク', '자간': 'ザガン', '시작': '開始', '이전': '戻る',
+            '바퓰라': 'ヴァプラ', '오리아스': 'オリアス',
             '극한': '極限',
             '일시정지': '一時停止', '재개': '再開', '다시하기': 'やり直す', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -438,6 +440,7 @@
             '게임 시작': '开始游戏', '구경': '观战', '모드': '模式', '규칙': '规则', '색상 수': '颜色数', '다음 대전까지 %1초': '距离下一场对战还有%1秒', '기본 룰': '基本规则', '피버 룰': 'FEVER规则', '연속 피버': '连续FEVER', '퍼즐뿌요': '益智魔法气泡', '퍼즐뿌요 스테이지': '益智魔法气泡关卡', '스테이지 %1': '关卡 %1', '권장 턴 수 %1': '推荐回合数: %1', '현재 턴 %1': '第 %1 回合', '현재 턴 %1 / %2': '第 %1 / %2 回合', '%1 연쇄 해봐': '试试 %1 连锁！', '싹쓸이 해봐': '试试全消！', '한 번에 %1개 뿌요를 터뜨려봐': '一次消除 %1 个魔法气泡！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一次消除 %1 种颜色的魔法气泡！', '방해뿌요 %1개를 발생 시켜봐': '发送 %1 个垃圾魔法气泡！', '스테이지 클리어': '关卡完成', '(출시 예정)': '(即将推出)', '목표 연쇄': '目标连锁', '남은 시간': '剩余时间', '연습': '练习', '선택': '选择', '난이도': '难度', '적 선택': '对手', 'ENTER 혹은 클릭하여 시작': '按 ENTER 键或点击开始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯', '안드레알푸스': '安德雷阿尔弗斯', '플라우로스': '弗劳洛斯', '안드라스': '安德拉斯', '발라크': '瓦拉克', '자간': '扎甘',
+            '바퓰라': '瓦布拉', '오리아스': '欧里亚斯',
             '극한': '极限',
             '일시정지': '暂停', '재개': '继续', '다시하기': '重新开始', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -18706,6 +18709,8 @@
         Andras: { hair: '#8496b8', light: '#ccd9ee', coat: '#526486', accent: '#f9c185', skin: '#ffe1d0', motif: 'owl' },
         Valak: { hair: '#edc17a', light: '#fff0bf', coat: '#b76668', accent: '#f6d788', skin: '#ffe0c9', motif: 'dragon' },
         Zagan: { hair: '#bd8b58', light: '#eed0a0', coat: '#ad7f4d', accent: '#ffe6a4', skin: '#f3c5a3', motif: 'bull' },
+        Vapula: { hair: '#cc955c', light: '#ffe0ac', coat: '#568f87', accent: '#f8d589', skin: '#ffddbf', motif: 'griffin' },
+        Oriax: { hair: '#b594c7', light: '#ecd8f7', coat: '#64588f', accent: '#f5db96', skin: '#ffddcd', motif: 'astrologer' },
         ChainBuildingEnemy: { hair: '#8389b8', light: '#c6ccee', coat: '#71679e', accent: '#e7ccfa', skin: '#ffe0cf', motif: 'oracle' }
     };
 
@@ -18771,8 +18776,19 @@
                 context.restore();
             }
         }
-        if (['prince', 'angel', 'owl', 'dragon', 'bull'].includes(motif)) {
-            for (const direction of [-1, 1]) featherWing(direction, motif === 'owl' ? '#b6c5dc' : motif === 'bull' ? '#f3d58e' : '#f8eef3', defeated ? 9 : 0);
+        if (['prince', 'angel', 'owl', 'dragon', 'bull', 'griffin'].includes(motif)) {
+            for (const direction of [-1, 1]) featherWing(direction, motif === 'owl' ? '#b6c5dc' : motif === 'bull' ? '#f3d58e' : motif === 'griffin' ? '#b9ded1' : '#f8eef3', defeated ? 9 : 0);
+        }
+        if (motif === 'griffin') {
+            // 사자 꼬리 장식과 깃털 날개로 전승을 표현한다.
+            path('M29 65 Q70 86 67 48', null, ink, 11);
+            path('M29 65 Q70 86 67 48', null, hair, 6);
+            path('M67 51 Q51 44 67 31 Q82 45 67 51 Z', light);
+        }
+        if (motif === 'astrologer') {
+            // 뱀 꼬리는 머리 없는 곡선 장식으로 남겨 인간형 얼굴을 유지한다.
+            path('M26 69 C79 89 78 49 57 57 C42 65 76 69 72 42', null, ink, 11);
+            path('M26 69 C79 89 78 49 57 57 C42 65 76 69 72 42', null, '#93b9aa', 6);
         }
         if (motif === 'leopard') {
             path('M28 63 C79 83 83 35 61 43', null, ink, 15);
@@ -18783,7 +18799,7 @@
             path('M29 69 Q66 85 66 50 L77 42 L73 62 Q61 94 29 80 Z', '#c77878');
             path('M60 75 L62 65 L70 69 M48 81 L51 73 L57 80', accent, ink, 2);
         }
-        if (['king', 'prince', 'knight', 'angel', 'oracle'].includes(motif)) {
+        if (['king', 'prince', 'knight', 'angel', 'oracle', 'astrologer'].includes(motif)) {
             path('M-24 22 Q-41 37 -49 75 Q-22 87 0 70 Q22 87 49 75 Q41 37 24 22 Z', coat);
             path('M-29 42 L-38 73 M29 42 L38 73', null, light, 2.4);
         }
@@ -18815,6 +18831,10 @@
         }
 
         // 큰 머리와 부드러운 앞머리 안에 사람 얼굴 하나만 배치한다.
+        if (motif === 'griffin' || motif === 'astrologer') {
+            // 두 사자 전승은 갈기 모양의 후드로 공유하고 색·소품으로 구별한다.
+            path('M-37 -57 L-50 -46 L-44 -30 L-51 -14 L-41 -1 L-44 16 L-26 22 L-18 31 L0 23 L18 31 L26 22 L44 16 L41 -1 L51 -14 L44 -30 L50 -46 L37 -57 Z', light);
+        }
         oval(0, -29, 43, 43, hair);
         oval(-38, -17, 7, 10, skin); oval(38, -17, 7, 10, skin);
         path('M-36 -38 Q-38 -1 -24 13 Q0 30 24 13 Q38 -1 36 -38 Q0 -58 -36 -38 Z', skin);
@@ -18863,6 +18883,17 @@
             oval(-32, -65, 14, 14, hair); oval(32, -65, 14, 14, hair);
             oval(-32, -65, 7, 7, '#f5c0a4', null); oval(32, -65, 7, 7, '#f5c0a4', null);
             for (const [x, y] of [[-23, -50], [26, -44], [9, -57]]) oval(x, y, 4, 3, '#86513c', null);
+        } else if (motif === 'griffin' || motif === 'astrologer') {
+            oval(-33, -65, 13, 13, hair); oval(33, -65, 13, 13, hair);
+            oval(-33, -65, 6, 6, light, null); oval(33, -65, 6, 6, light, null);
+            if (motif === 'griffin') {
+                path('M-21 -64 Q0 -72 21 -64', null, coat, 6);
+                oval(-12, -65, 9, 8, '#d7f3ee', ink, 2); oval(12, -65, 9, 8, '#d7f3ee', ink, 2);
+                path('M-3 -65 L3 -65', null, accent, 3);
+            } else {
+                path('M-23 -64 L-22 -78 L-10 -72 L0 -85 L10 -72 L22 -78 L23 -64 Z', coat);
+                star(0, -73, 7);
+            }
         } else if (motif === 'owl') {
             path('M-37 -49 L-47 -83 L-20 -69 Q0 -76 20 -69 L47 -83 L37 -49 L16 -60 L0 -50 L-16 -60 Z', light);
             path('M-36 -66 L-27 -59 M36 -66 L27 -59 M-5 -61 L0 -55 L5 -61', null, coat, 2.5);
@@ -18950,6 +18981,19 @@
         } else if (motif === 'dragon') {
             path('M-21 39 L0 47 L21 39 L16 61 L0 72 L-16 61 Z', '#d58a86');
             path('M-12 48 L0 55 L12 48 M-9 57 L0 63 L9 57', null, accent, 2.5);
+        } else if (motif === 'griffin') {
+            // 기술과 학문의 상징으로 펼친 설계책과 작은 공구를 든다.
+            path('M0 45 L-25 38 L-25 61 L0 68 L25 61 L25 38 Z', '#f7eed7');
+            path('M0 45 L0 68 M-18 47 L-7 50 M-18 53 L-7 56', null, coat, 2);
+            oval(13, 53, 7, 7, null, coat, 2);
+            path('M45 54 L45 29 M35 26 L55 26 L55 34 L35 34 Z', accent, ink, 3);
+        } else if (motif === 'astrologer') {
+            // 별의 궤도와 쌍뱀 문양 지팡이, 말발굽 문장으로 점성술·기마 전승을 담는다.
+            oval(-4, 52, 21, 15, '#37385f', ink, 2);
+            oval(-4, 52, 17, 8, null, accent, 2, -0.45); star(-4, 52, 7);
+            path('M48 67 L48 27 M45 58 C27 51 61 42 42 34 M51 58 C69 51 35 42 54 34', null, accent, 3);
+            star(48, 23, 8);
+            path('M-22 31 L-22 36 Q-16 44 -10 36 L-10 31', null, accent, 3);
         } else if (motif === 'bull') {
             path('M-12 39 L12 39 L10 52 Q0 65 -10 52 Z', accent);
             path('M0 60 L0 70 M-10 71 L10 71', null, accent, 4);
@@ -20022,8 +20066,8 @@
             // 이 적은 ONNX 런타임이 없는 페이지의 적 선택 화면과 구경 후보에서 숨긴다.
             this.requiresOnnx = true;
             /**
-             * 이 적이 사용할 ONNX 모델의 `src/` 기준 상대 경로다. 적과 모델은 1:1로 대응하므로
-             * 하위 클래스가 각자 model02.onnx, model03.onnx처럼 다른 값을 지정한다.
+             * 이 적이 사용할 ONNX 모델의 `src/` 기준 상대 경로다.
+             * 하위 클래스별로 지정하며, 출시 예정 적은 임시로 기존 적의 모델을 공유할 수 있다.
              * @type {string}
              */
             this.modelPath = 'onnx/model01.onnx';
@@ -20484,6 +20528,60 @@
         }
     }
 
+    /** 그리폰 날개를 가진 사자 전승의 바퓰라. 출시 전에는 자간의 판단·모델을 그대로 사용한다. */
+    class Vapula extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 13;
+            this.notAvail = true;
+            // 추후 전용 모델을 배치하면 이 경로만 교체한다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Vapula'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '바퓰라'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 옥색 의상과 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#233e38', field: '#36594e', center: '#101e1a' };
+        }
+
+        /** 사자 갈기 후드·깃털 날개·설계책을 갖춘 인간형의 세 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Vapula');
+        }
+    }
+
+    /** 사자·뱀·말과 별의 전승을 가진 오리아스. 출시 전에는 자간의 판단·모델을 그대로 사용한다. */
+    class Oriax extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 14;
+            this.notAvail = true;
+            // 바퓰라와 독립된 경로이므로 나중에 각 적의 모델만 교체할 수 있다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Oriax'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '오리아스'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 별무늬 망토와 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#30283f', field: '#49405d', center: '#17121f' };
+        }
+
+        /** 사자 갈기 후드·별 장식·쌍뱀 문양 지팡이를 가진 인간형의 세 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Oriax');
+        }
+    }
+
     /**
      * 연습 모드에서 조작하거나 뿌요를 받지 않는 상대다.
      */
@@ -20523,7 +20621,9 @@
         createOpponentEntry(() => new Flauros()),
         createOpponentEntry(() => new Andras()),
         createOpponentEntry(() => new Valak()),
-        createOpponentEntry(() => new Zagan())
+        createOpponentEntry(() => new Zagan()),
+        createOpponentEntry(() => new Vapula()),
+        createOpponentEntry(() => new Oriax())
     );
 
     /**
@@ -20639,6 +20739,8 @@
         Andras,
         Valak,
         Zagan,
+        Vapula,
+        Oriax,
         Puyo,
         RedPuyo,
         GreenPuyo,

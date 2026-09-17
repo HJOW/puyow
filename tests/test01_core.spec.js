@@ -723,6 +723,30 @@ test('헥사액트·펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 
   });
 });
 
+test('바퓰라와 오리아스는 독립된 출시 예정 적이며 자간과 같은 AI와 모델을 사용한다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const zagan = new window.WebPuyo.Zagan();
+    return ['Vapula', 'Oriax'].map((type) => {
+      const enemy = new window.WebPuyo[type]();
+      // 표시·출시 메타데이터를 제외한 초기 AI 상태와 실제 호출 메서드를 비교한다.
+      const aiState = (controller) => Object.fromEntries(Object.entries(controller).filter(([key]) => !['sortPriority', 'notAvail'].includes(key)));
+      const sameMethods = ['prepareTurn', 'prepareModel', 'chooseTarget', 'chooseRotate', 'chooseFastDown'].every((method) => enemy[method] === zagan[method]);
+      const modelPath = enemy.modelPath;
+      enemy.modelPath = `onnx/${type}.onnx`;
+      return {
+        type: enemy.getClassType(), name: enemy.getName(), priority: enemy.sortPriority,
+        notAvail: enemy.notAvail, requiresOnnx: enemy.requiresOnnx, modelPath, sameMethods,
+        sameState: JSON.stringify(aiState({ ...enemy, modelPath })) === JSON.stringify(aiState(zagan)),
+        independentModel: zagan.modelPath === modelPath && new window.WebPuyo[type]().modelPath === modelPath,
+      };
+    });
+  });
+  expect(result).toEqual([
+    { type: 'Vapula', name: '바퓰라', priority: 13, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Oriax', name: '오리아스', priority: 14, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+  ]);
+});
+
 test('발라크와 자간은 세 가지 표정의 초상화를 캔버스에 그린다', async ({ page }) => {
   const painted = await page.evaluate(() => [window.WebPuyo.Valak, window.WebPuyo.Zagan].map((EnemyType) => {
     const enemy = new EnemyType();
