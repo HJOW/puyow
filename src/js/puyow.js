@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 83;
+    const BUILDNO = 84;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -9829,10 +9829,7 @@
             if (isDefeated) drawDefeatAnimation(player);
             if (isDefeated) drawFieldBezelForeground(player);
         }
-        for (let index = 0; index < COLUMNS; index += 1) {
-            context.fillStyle = '#0a1d29'; context.fillRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
-            context.strokeStyle = 'rgba(176, 232, 244, 0.25)'; context.strokeRect(x + index * CELL + 3, FIELD_TOP - CELL + 3, CELL - 6, CELL - 6);
-        }
+        // 예고뿌요 줄은 칸 테두리 없이 베젤 배경만 보이게 두고, 예고뿌요만 같은 위치에 그린다.
         const displayedWarnings = warningUnits(currentFieldWarningAmount(player, opponent));
         const normalWarnings = player.normalDamage + normalWarningPreview(player, opponent);
         // 피버 중에는 보존된 일반 필드의 DAMAGE 예고를 흐리게 뒤에 먼저 그린다. 피버 필드 예고는 현행 불투명도로 앞에 그린다.
