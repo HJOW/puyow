@@ -1,6 +1,6 @@
 {
-  "model_version": 3,
-  "observation_size": 528,
+  "model_version": 4,
+  "observation_size": 1035,
   "action_count": 24,
   "board": [
     6,
