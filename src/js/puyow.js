@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 87;
+    const BUILDNO = 88;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -9806,6 +9806,12 @@
                 const puyo = player.board[y][column];
                 if (puyo && !fallingTargets.has(`${column},${y}`)) drawPuyo(x + column * CELL, FIELD_BOTTOM - (y + 1) * CELL, puyo);
             }
+            // 낙하 중인 뿌요와 조작 중인 뿌요는 숨김 줄에서 내려오며 필드 위 경계에 걸칠 수 있다.
+            // 베젤보다 뒤에 있어야 하므로 필드 영역 밖으로 나간 부분은 그리지 않는다.
+            context.save();
+            context.beginPath();
+            context.rect(x, FIELD_TOP, CELL * COLUMNS, CELL * VISIBLE_ROWS);
+            context.clip();
             // 낙하 중인 뿌요는 고정 뿌요 대신 보간된 위치에 그린다.
             if (!isDefeated && player.gravityAnimation) {
                 const animation = player.gravityAnimation;
@@ -9825,6 +9831,7 @@
                     drawActiveOutline(cellX, cellY);
                 }
             });
+            context.restore();
             drawRecommendedPoint(player);
             if (isDefeated) drawDefeatAnimation(player);
             if (isDefeated) drawFieldBezelForeground(player);

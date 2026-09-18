@@ -1556,6 +1556,50 @@ async function readThemePixels(page) {
   });
 }
 
+test('조작 중인 뿌요가 필드 위 경계에 걸쳐 있어도 상단 베젤보다 뒤에 그려진다', async ({ page }) => {
+  // 조작 뿌요를 11.5줄 높이에 멈춰 두는 테스트용 적이다. 아래쪽 칸의 윗부분 절반이 상단 베젤 줄에 걸친다.
+  await page.evaluate(() => {
+    class BezelOverlapEnemy extends window.WebPuyo.Enemy {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'BezelOverlapEnemy'; }
+      getName() { return '베젤 겹침 테스트 적'; }
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        this.player = player;
+        window.bezelOverlapEnemy = this;
+      }
+      updateControl(player) {
+        if (player.active) player.active.y = 11.5;
+        return true;
+      }
+      useFastDown() { return false; }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new BezelOverlapEnemy() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('베젤 겹침 테스트 적');
+
+  // 조작 뿌요가 걸친 칸 바로 위(상단 베젤 줄)의 픽셀은 뿌요가 없는 오른쪽 끝 칸 위의 베젤 픽셀과 같아야 한다.
+  const CELL = 38;
+  const FIELD_TOP = 102;
+  await expect.poll(() => page.evaluate(({ CELL, FIELD_TOP }) => {
+    const player = window.bezelOverlapEnemy?.player;
+    if (!player?.active || player.active.y < 11.3 || player.active.y > 11.6 || player.phase !== 'control') return null;
+    const drawingContext = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d');
+    const at = (x, y) => Array.from(drawingContext.getImageData(x, y, 1, 1).data).slice(0, 3);
+    const y = FIELD_TOP - 6;
+    const overlapped = at(player.fieldX + player.active.x * CELL + CELL / 2, y);
+    const bezel = at(player.fieldX + 5 * CELL + CELL / 2, y);
+    return overlapped.join(',') === bezel.join(',');
+  }, { CELL, FIELD_TOP }), { timeout: 15000 }).toBe(true);
+});
+
 test('기본 제공 적은 각자의 게임 테마를 쓰고 단독 모드는 기본 테마를 유지한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
