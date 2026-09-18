@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 88;
+    const BUILDNO = 89;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -10392,14 +10392,16 @@
         game.themeController.drawCenterBackground(context, { x: 450, y: 0, width: 380, height: HEIGHT });
         context.fillStyle = '#d8f2f5'; context.textAlign = 'center'; context.font = `42px ${TITLE_FONT}`; context.fillText(translate('뿌요 W'), WIDTH / 2, 95);
         const enemy = game.players[1];
+        const resultButtons = getResultScreenButtons();
+        // 리플레이 재생 결과처럼 버튼이 세 개 이상이면 초상화를 버튼이 늘어난 만큼 내려 얼굴이 가려지지 않게 한다.
+        const portraitY = 380 + Math.max(0, resultButtons.length - 2) * (64 + RESULT_BUTTON_GAP);
         // "너랑 나랑"은 적 초상화 대신 누적 승수를 결과 화면에서도 이어서 보여 준다.
         if (game.together) drawTogetherRecordPanel(400);
         // 온라인 대전도 적 컨트롤러가 없으므로 초상화 대신 서버가 확정한 WIN POINT 변화를 보여 준다.
         else if (game.online) drawOnlineResultPanel(380);
-        else if (!game.puzzle && enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, 'defeated');
+        else if (!game.puzzle && enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, portraitY, 0.86, 'defeated');
         context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
         context.fillText(translate('게임 시간 %1초', Math.floor(game.elapsed / 1000)), WIDTH / 2, 145);
-        const resultButtons = getResultScreenButtons();
         // 구경 대전의 자동 재시작 안내는 버튼이 두 개일 때 두 번째 버튼과 겹치지 않도록 초상화 아래로 내린다.
         if (game.watch && !game.replayPlayback) {
             const seconds = Math.max(0, Math.ceil((WATCH_AUTO_RESTART_DELAY - game.watch.resultElapsed) / 1000));
@@ -10846,17 +10848,23 @@
 
     /** 결과 화면에 리플레이 복사 버튼을 보여 줄 수 있는 상태인지 확인한다. @returns {boolean} 복사 가능 여부 */
     function hasCopyableReplay() {
-        return Boolean(game?.replay?.frames?.length);
+        return Boolean(game?.replay?.frames?.length || game?.replayPlayback?.replay);
     }
 
-    /** 현재 게임의 리플레이 기록을 JSON 문자열로 클립보드에 복사한다. @returns {void} */
+    /**
+     * 현재 게임의 리플레이를 JSON 문자열로 클립보드에 복사한다.
+     * 기록한 대전은 기록 데이터를, 리플레이 재생은 붙여넣었던 원본 JSON(없으면 정리한 재생 데이터)을 복사한다.
+     * @returns {void}
+     */
     function copyReplayToClipboard() {
         const recorder = game?.replay;
-        if (!recorder) return;
+        const playback = game?.replayPlayback;
+        if (!recorder && !playback?.replay) return;
         playMenuSelectSound();
         let serialized = null;
         try {
-            serialized = JSON.stringify(buildReplayData(recorder));
+            if (recorder) serialized = JSON.stringify(buildReplayData(recorder));
+            else serialized = typeof playback.source === 'string' ? playback.source : JSON.stringify(playback.replay);
         } catch (error) {
             console.error('리플레이 데이터를 JSON으로 변환하지 못했습니다.', error);
             showMessage(translate('리플레이 복사 실패'), '#ef5350', 3500);
@@ -10937,16 +10945,17 @@
                 showMessage(translate('리플레이 데이터가 올바르지 않습니다.'), '#ef5350', 3500);
                 return;
             }
-            startReplayPlayback(replay);
+            startReplayPlayback(replay, serialized.trim());
         });
     }
 
     /**
      * 리플레이 데이터로 재생용 게임 화면을 구성하고 카운트다운을 시작한다.
      * @param {object} replay normalizeReplayData()로 정리한 리플레이 데이터
+     * @param {string|null} [source=null] 사용자가 붙여넣은 원본 리플레이 JSON. 결과 화면의 리플레이 복사에 그대로 쓴다.
      * @returns {void}
      */
-    function startReplayPlayback(replay) {
+    function startReplayPlayback(replay, source = null) {
         const meta = replay.meta;
         const colors = meta.colors;
         const controllers = meta.players.map((info) => createReplayController(info.controller));
@@ -11004,6 +11013,7 @@
             replay: null,
             replayPlayback: {
                 replay,
+                source: typeof source === 'string' ? source : null,
                 frames: replay.frames,
                 sounds: replay.sounds,
                 index: 0,
@@ -11022,9 +11032,10 @@
         if (!playback || game?.restartPending) return;
         playMenuSelectSound();
         const replay = playback.replay;
+        const source = playback.source;
         const previousGame = game;
         stopBackgroundMusic();
-        scheduleGameRestart(previousGame, () => startReplayPlayback(replay));
+        scheduleGameRestart(previousGame, () => startReplayPlayback(replay, source));
     }
 
     /** 리플레이 재현을 끝내고 결과 화면으로 넘어간다. @returns {void} */
@@ -11230,7 +11241,7 @@
     /**
      * 결과 화면에 표시할 버튼 목록과 위치를 반환한다.
      * "너랑 나랑"은 누적 승수를 이어서 다시 대전하는 경우가 많으므로 다시 플레이를 맨 위에 두어 기본 포커스를 받게 한다.
-     * 리플레이 재생 결과에는 다시보기를, 리플레이가 기록된 대전 결과에는 리플레이 복사를 종료 버튼 아래에 둔다.
+     * 리플레이 재생 결과에는 다시보기와 그 아래 리플레이 복사를, 리플레이가 기록된 대전 결과에는 리플레이 복사를 종료 버튼 아래에 둔다.
      * @returns {{key:string,label:string,color:string,x:number,y:number,width:number,height:number}[]} 결과 화면 버튼 목록
      */
     function getResultScreenButtons() {
@@ -11239,7 +11250,7 @@
         if (game.together && !game.replayPlayback) buttons.push({ key: 'playAgain', label: '다시 플레이', color: '#7e57c2' });
         buttons.push({ key: 'exit', label: '종료', color: '#ef5350' });
         if (game.replayPlayback) buttons.push({ key: 'replayAgain', label: '다시보기', color: '#34556b' });
-        else if (hasCopyableReplay()) buttons.push({ key: 'copyReplay', label: '리플레이 복사', color: '#34556b' });
+        if (hasCopyableReplay()) buttons.push({ key: 'copyReplay', label: '리플레이 복사', color: '#34556b' });
         return buttons.map((button, index) => ({ ...button, x: 515, y: 165 + index * (64 + RESULT_BUTTON_GAP), width: 250, height: 64 }));
     }
 

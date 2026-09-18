@@ -137,6 +137,60 @@ test('기록한 기본 룰 리플레이를 재생하면 마지막 상태가 원�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
+test('리플레이 재생 결과 화면은 다시보기 아래 리플레이 복사 버튼으로 붙여넣었던 리플레이 JSON을 복사한다', async ({ page }) => {
+  test.setTimeout(420000);
+  await enableReplayFeature(page);
+  await playQuickMatch(page);
+  const replayJson = await page.evaluate(() => JSON.stringify(window.WebPuyo.getReplayData()));
+
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await clickReplayPlaybackButton(page);
+  await submitTextDialog(page, replayJson);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 240000 }).toBe('game_over');
+
+  // 버튼은 위에서부터 종료·다시보기·리플레이 복사 순서다. 세 번째 버튼 문구는 y 359에 그려진다.
+  const [exitLabel, againLabel, copyLabel] = await Promise.all(['종료', '다시보기', '리플레이 복사'].map((text) => translated(page, text)));
+  await page.evaluate(() => { window.testCanvasTextCalls = []; });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.length)).toBeGreaterThan(0);
+  const labels = await page.evaluate(() => window.testCanvasTextCalls.filter(({ y }) => y > 150 && y < 400).map(({ text, y }) => ({ text, y })));
+  const labelY = (text) => labels.find((label) => label.text === text)?.y;
+  expect(labelY(exitLabel)).toBeLessThan(labelY(againLabel));
+  expect(labelY(againLabel)).toBeLessThan(labelY(copyLabel));
+
+  // 클립보드 쓰기를 가로채 복사된 문자열을 확인한다.
+  await page.evaluate(() => {
+    window.testCopiedTexts = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (text) => { window.testCopiedTexts.push(String(text)); }, readText: async () => '' },
+    });
+  });
+
+  // 방향키로 리플레이 복사까지 이동해 엔터로 누른다.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testCopiedTexts.length)).toBe(1);
+  expect(await page.evaluate(() => window.testCopiedTexts[0])).toBe(replayJson);
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('game_over');
+
+  // 마우스로 눌러도 같은 문자열을 복사한다(버튼 영역 x 515~765, y 317~381).
+  const bounds = await page.locator('[data-puyow-canvas="2d"]').boundingBox();
+  const scale = bounds.width / 1280;
+  await page.mouse.click(bounds.x + 640 * scale, bounds.y + 349 * scale);
+  await expect.poll(() => page.evaluate(() => window.testCopiedTexts.length)).toBe(2);
+  expect(await page.evaluate(() => window.testCopiedTexts[1])).toBe(replayJson);
+
+  // 복사한 뒤에도 다시보기는 같은 리플레이를 처음부터 재생한다.
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
+});
+
 test('기록한 피버 룰 리플레이도 피버 필드와 게이지까지 같은 상태로 재현한다', async ({ page }) => {
   test.setTimeout(420000);
   await enableReplayFeature(page);
