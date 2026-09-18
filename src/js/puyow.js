@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 86;
+    const BUILDNO = 87;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -20063,6 +20063,9 @@
      * 솔로몬과 달리 파이썬 백엔드를 거치지 않고 브라우저의 ONNX Runtime for Web으로 추론한다. 추론은
      * 비동기라 그동안에도 자연 낙하는 계속되고, 결과가 나오기 전에 뿌요가 닿으면 그 턴은 그대로 넘어간다.
      *
+     * BUILDNO 87부터 안드레알푸스처럼 실시간 반응을 한다. 받을 피해량 입력에 진행 중인 상대 연쇄의 예측 공격을
+     * 더하고, 빠른 하강 전에 그 예측이 바뀌면 지금 도달할 수 있는 위치만으로 다시 추론한다(모델 입력 계약은 그대로).
+     *
      * 하위 클래스는 `modelPath`에 자기 모델을 지정하고 `getClassType()`·`getName()`·`drawPortrait()`만
      * 재정의하면 된다.
      */
@@ -20098,6 +20101,18 @@
             this.targetX = 2;
             this.targetRotation = 0;
             this.fastDownElapsed = 0;
+            /**
+             * 조작 중 상대 연쇄·받을 방해뿌요 변화에 맞춰 다시 추론할지 여부다(안드레알푸스의 실시간 재판단과 같은 흐름).
+             * 모델 입력 계약(528개 관측값)은 그대로 두고, 받을 피해량 자리에 상대 연쇄 예측을 반영한 값을 넣는다.
+             * 적 자신이 피버 중이거나 연속 피버에서는 동작하지 않는다. @type {boolean}
+             */
+            this.realtimeReaction = true;
+            /** 기본 룰에서 바뀌기 전후 모두 이 수보다 적은 받을 양은 다시 추론하지 않는다. 피버 룰 일반 상태는 1을 쓴다. @type {number} */
+            this.ignorableIncomingGarbage = 4;
+            /** 이번 조작 턴의 실시간 재추론 상태다. 추론을 시작한 턴에만 만든다. @type {{turn:number, signature:string, incoming:number, fastDownStarted:boolean, replanCount:number}|null} */
+            this.realtimeReactionState = null;
+            /** 재추론이 결과를 내지 못했을 때 되돌아갈 직전 배치다. @type {{x:number, rotation:number}|null} */
+            this.replanPreviousTarget = null;
         }
 
         getClassType() { return 'OnnxEnemy'; }
@@ -20167,9 +20182,10 @@
          * 상쇄하고 남은 피해량만 스칼라로 남긴다.
          * @param {PlayerState} player CPU 플레이어
          * @param {object} simulation 착지 후보
+         * @param {number|null} [incomingDamage=null] 일반 필드의 받을 피해량으로 쓸 값. null이면 확정 DAMAGE(`player.damage`)를 쓴다.
          * @returns {{simulation:object, reward:number, observation:number[]}|null} 후보 평가 정보. 유효하지 않으면 null이다.
          */
-        buildAfterstate(player, simulation) {
+        buildAfterstate(player, simulation, incomingDamage = null) {
             // prepareAiPlacementSimulations()가 이미 돌려 둔 결과가 있으면 같은 연쇄를 다시 돌리지 않는다.
             // 이 보드는 다른 곳과 공유하므로 읽기만 하며, 후보 목록 밖에서 들어온 배치만 직접 계산한다.
             const result = simulation.board !== undefined
@@ -20179,7 +20195,8 @@
             const feverRule = game?.feverRule === true;
             const feverActive = feverRule && player.fever?.active === true;
             // 피버 중에는 피버 필드 전용 미정산 피해가 그 시점의 실제 피해량이다.
-            const damage = feverActive ? (player.fever?.damage || 0) : (player.damage || 0);
+            // 실시간 반응은 상대 연쇄 예측을 더한 받을 양을 넘기며, 피버 중에는 넘기지 않는다.
+            const damage = feverActive ? (player.fever?.damage || 0) : (incomingDamage ?? (player.damage || 0));
             let attack = result.attack;
             let ticket = player.allClearTicket === true;
             if (feverRule && result.combo > 0 && attack < 1 && damage >= 1) attack = 1;
@@ -20218,19 +20235,28 @@
 
         /**
          * 이번 턴의 모든 후보를 한 번에 추론해 가장 좋은 배치를 고른다.
+         * 재추론(`options.replan`)이 결과를 내지 못하면 1수 대체 AI 대신 직전 배치를 유지한다.
          * @param {PlayerState} player CPU 플레이어
          * @param {number} token 이 추론을 시작한 턴의 일련번호
+         * @param {{incomingDamage?:number|null, allowedPlacements?:{x:number,rotation:number}[]|null, replan?:boolean}} [options={}] 받을 피해량·허용 배치·재추론 여부
          * @returns {Promise<void>}
          */
-        async decidePlacement(player, token) {
+        async decidePlacement(player, token, options = {}) {
             let tensor = null;
             let outputs = null;
+            const giveUp = () => (options.replan ? this.restoreReplanTarget(player) : this.applyFallback(player));
             try {
                 const runtime = getOnnxRuntime();
                 if (!runtime) throw new Error('ONNX 런타임(ort)이 없습니다.');
                 if (!this.session) throw new Error(`${this.modelPath} 추론 세션이 준비되지 않았습니다.`);
-                const candidates = this.getUsablePlacements(player)
-                    .map((simulation) => this.buildAfterstate(player, simulation))
+                const allowedKeys = options.allowedPlacements
+                    ? new Set(options.allowedPlacements.map((placement) => `${placement.x}:${((placement.rotation % 4) + 4) % 4}`))
+                    : null;
+                const placements = allowedKeys
+                    ? player.aiSimulations.filter((simulation) => allowedKeys.has(`${simulation.x}:${((simulation.rotation % 4) + 4) % 4}`))
+                    : this.getUsablePlacements(player);
+                const candidates = placements
+                    .map((simulation) => this.buildAfterstate(player, simulation, options.incomingDamage ?? null))
                     .filter((candidate) => candidate !== null);
                 if (!candidates.length) throw new Error('추론할 수 있는 배치 후보가 없습니다.');
                 const inputData = new Float32Array(candidates.length * ONNX_OBSERVATION_SIZE);
@@ -20244,7 +20270,7 @@
                 outputs = await runOnnxSessionIfIdle(this.session, { [ONNX_INPUT_NAME]: tensor });
                 // 앞선 턴 또는 다른 ONNX 적이 같은 세션을 쓰고 있으면 요청을 쌓지 않고 즉시 대체 AI를 쓴다.
                 if (outputs === null) {
-                    if (token === this.inferenceToken && this.isCurrentTurn(player)) this.applyFallback(player);
+                    if (token === this.inferenceToken && this.isCurrentTurn(player)) giveUp();
                     return;
                 }
                 // 추론을 기다리는 동안 턴이 넘어갔으면 이 결과는 버린다.
@@ -20271,14 +20297,17 @@
                 this.targetRotation = ((best.rotation % 4) + 4) % 4;
                 player.aiTarget = this.targetX;
                 player.aiRotation = this.targetRotation;
-                player.aiDecisionElapsed = 0;
-                this.fastDownElapsed = 0;
+                // 재추론은 같은 턴의 판단을 이어 가므로 착지 시간 어림에 쓰는 판단 경과 시간을 되돌리지 않는다.
+                if (!options.replan) {
+                    player.aiDecisionElapsed = 0;
+                    this.fastDownElapsed = 0;
+                }
                 this.decisionState = 'ready';
             } catch (error) {
                 if (token !== this.inferenceToken || !this.isCurrentTurn(player)) return;
-                // 추론·출력 검증 실패는 대전을 멈추지 않고 앞 1수 시뮬레이션 결과로 이어 간다.
-                console.error(`${this.getClassType()}의 ONNX 추론에 실패했습니다. 앞 1수 시뮬레이션으로 진행합니다.`, error);
-                this.applyFallback(player);
+                // 추론·출력 검증 실패는 대전을 멈추지 않고 앞 1수 시뮬레이션 결과(재추론이면 직전 배치)로 이어 간다.
+                console.error(`${this.getClassType()}의 ONNX 추론에 실패했습니다. ${options.replan ? '직전 배치를 유지합니다.' : '앞 1수 시뮬레이션으로 진행합니다.'}`, error);
+                giveUp();
             } finally {
                 // CPU wasm 텐서도 내부 버퍼 참조를 끊고, 이후 GPU 실행 제공자로 바뀌어도 리소스를 남기지 않는다.
                 if (typeof tensor?.dispose === 'function') tensor.dispose();
@@ -20301,8 +20330,132 @@
             this.decisionState = 'fallback';
         }
 
+        /**
+         * 재추론이 결과를 내지 못했을 때 직전 배치로 되돌린다. 직전 배치에 더는 도달할 수 없으면 1수 대체 AI를 쓴다.
+         * @param {PlayerState} player CPU 플레이어
+         * @returns {void}
+         */
+        restoreReplanTarget(player) {
+            this.clearDecisionTimeout();
+            const previous = this.replanPreviousTarget;
+            const reachable = previous && getReachableAiPlacements(player)
+                .some((placement) => placement.x === previous.x && ((placement.rotation % 4) + 4) % 4 === previous.rotation);
+            if (!reachable) {
+                this.applyFallback(player);
+                return;
+            }
+            this.targetX = previous.x;
+            this.targetRotation = previous.rotation;
+            player.aiTarget = this.targetX;
+            player.aiRotation = this.targetRotation;
+            this.decisionState = 'ready';
+        }
+
+        /**
+         * 마감 시한 타이머와 함께 추론을 시작한다. 호출 전에 `inferenceToken`을 올려 이전 추론 결과를 버려야 한다.
+         * 마감 시한을 넘기면 첫 추론은 앞 1수 시뮬레이션으로, 재추론은 직전 배치로 그 턴을 확정한다.
+         * @param {PlayerState} player CPU 플레이어
+         * @param {{incomingDamage?:number|null, allowedPlacements?:{x:number,rotation:number}[]|null, replan?:boolean}} [options={}] decidePlacement()에 넘길 값
+         * @returns {void}
+         */
+        startInference(player, options = {}) {
+            this.clearDecisionTimeout();
+            this.decisionState = 'pending';
+            const token = this.inferenceToken;
+            // 추론은 Web Worker에서 돌아가므로 이 타이머가 실제로 제때 깨어난다.
+            this.decisionTimeoutId = setTimeout(() => {
+                this.decisionTimeoutId = null;
+                if (token !== this.inferenceToken || this.decisionState !== 'pending' || !this.isCurrentTurn(player)) return;
+                this.inferenceToken += 1;
+                if (options.replan) this.restoreReplanTarget(player);
+                else this.applyFallback(player);
+            }, ONNX_INFERENCE_TIMEOUT);
+            void this.decidePlacement(player, token, options);
+        }
+
+        /** @param {PlayerState} player CPU 플레이어 @returns {boolean} 이 턴에 실시간 재추론을 쓸 수 있는지 */
+        isRealtimeReactionActive(player) {
+            return this.realtimeReaction === true && this.onnxEnabled && Boolean(game) && !game.continuousFever && player?.fever?.active !== true;
+        }
+
+        /** @param {PlayerState} player CPU 플레이어 @returns {object} 상대 연쇄를 반영한 방해뿌요 예측(getRealtimeGarbageForecast()와 같은 형식) */
+        getRealtimeGarbageForecast(player) {
+            const opponent = game?.players.find((candidate) => candidate !== player) ?? null;
+            return getRealtimeGarbageForecast(player, opponent);
+        }
+
+        /**
+         * 모델 입력의 받을 피해량 자리에 넣을 값을 정한다. 모델은 이 값을 "이번에 터뜨리지 않으면 떨어질 양"으로 배웠으므로,
+         * 기본 룰은 확정 DAMAGE와 진행 중인 상대 연쇄의 예측 최종 ATTACK을 합친 양을 넣는다(도착 순번은 표현하지 못한다).
+         * 피버 룰 일반 상태는 지금 상쇄할 수 있는 묶음(`availableMove` 0)만 더하고, 아직 시작하지 않은 상대 피버 연쇄 예측은 뺀다.
+         * @param {PlayerState} player CPU 플레이어
+         * @param {object|null} forecast getRealtimeGarbageForecast() 결과
+         * @returns {number} 받을 피해량
+         */
+        getRealtimeIncomingDamage(player, forecast) {
+            const damage = Math.max(0, Number(player?.damage) || 0);
+            if (!forecast) return damage;
+            if (forecast.fever) {
+                const available = forecast.fever.events
+                    .filter((event) => event.availableMove <= 0)
+                    .reduce((total, event) => total + event.amount, 0);
+                return Math.max(damage, Math.floor(available));
+            }
+            return Math.max(damage, Math.floor(Number(forecast.incoming) || 0));
+        }
+
+        /** @param {PlayerState} player CPU 플레이어 @returns {number} 재추론 기준 방해뿌요 수. 피버 룰에서는 방해뿌요 하나도 상쇄·점등 기회라 1이다. */
+        getRealtimeIgnorableIncomingGarbage(player) {
+            return game?.feverRule && player?.fever ? 1 : this.ignorableIncomingGarbage;
+        }
+
+        /**
+         * 재추론 여부를 가르는 상황 요약이다. 받을 피해량·상대 연쇄 진행·상대 피버 패턴 연쇄 예측만 비교한다.
+         * @param {object} forecast getRealtimeGarbageForecast() 결과
+         * @param {number} incomingDamage getRealtimeIncomingDamage() 결과
+         * @returns {string} 비교용 문자열
+         */
+        getRealtimeReactionSignature(forecast, incomingDamage) {
+            const predicted = forecast?.fever?.predictedOpponentFeverChain;
+            return [incomingDamage, forecast?.opponentChainActive ? 1 : 0, predicted ? `${predicted.combo}:${Math.floor(predicted.attack)}` : '-'].join('|');
+        }
+
+        /**
+         * 추론 결과로 조작 중일 때, 상대 연쇄가 시작·종료되거나 받을 양이 바뀌면 지금 도달할 수 있는 위치만으로 다시 추론한다.
+         * 안드레알푸스와 같이 이번 턴에 빠른 하강을 시작했으면 재추론하지 않고, 바뀌기 전후 받을 양이 모두 기준 미만이면
+         * 기준 상태만 갱신한다. 재추론 중에는 이동·빠른 하강을 멈추고 자연 낙하만 한다.
+         * @param {PlayerState} player CPU 플레이어
+         * @returns {boolean} 재추론을 시작했는지 여부
+         */
+        updateRealtimeReaction(player) {
+            const state = this.realtimeReactionState;
+            if (!state || state.fastDownStarted || this.decisionState !== 'ready' || !player.active || state.turn !== player.placedPairCount) return false;
+            // 이동·회전은 player.active를 새 객체로 바꾸므로 턴 판별은 배치 수(state.turn)로 한다.
+            if (!this.isRealtimeReactionActive(player) || !game.running || player !== this.turnPlayer || player.controller !== this || player.phase !== 'control') return false;
+            const forecast = this.getRealtimeGarbageForecast(player);
+            const incomingDamage = this.getRealtimeIncomingDamage(player, forecast);
+            const signature = this.getRealtimeReactionSignature(forecast, incomingDamage);
+            if (signature === state.signature) return false;
+            const previousIncoming = state.incoming;
+            state.signature = signature;
+            state.incoming = incomingDamage;
+            const threshold = this.getRealtimeIgnorableIncomingGarbage(player);
+            if (incomingDamage < threshold && previousIncoming < threshold) return false;
+            const allowedPlacements = getReachableAiPlacements(player);
+            if (!allowedPlacements.length) return false;
+            state.replanCount += 1;
+            this.replanPreviousTarget = { x: this.targetX, rotation: this.targetRotation };
+            // 재추론 중에는 이동·회전을 하지 않고 자연 낙하(같은 객체의 Y만 바뀜)만 하므로, 지금 객체를 결과 적용 기준으로 삼는다.
+            this.turnActive = player.active;
+            this.inferenceToken += 1;
+            this.startInference(player, { incomingDamage, allowedPlacements, replan: true });
+            return true;
+        }
+
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {void} */
         prepareTurn(player) {
+            this.realtimeReactionState = null;
+            this.replanPreviousTarget = null;
             // 프록시 Worker가 불가능한 대전은 ONNX를 절대 메인 스레드에서 재시도하지 않는다.
             if (!this.onnxEnabled) {
                 super.prepareTurn(player);
@@ -20321,17 +20474,20 @@
                 this.decisionState = 'idle';
                 return;
             }
-            this.decisionState = 'pending';
-            const token = this.inferenceToken;
-            // 추론이 마감 시한을 넘기면 그 턴은 앞 1수 시뮬레이션으로 확정하고, 늦게 온 결과는 버린다.
-            // 추론은 Web Worker에서 돌아가므로 이 타이머가 실제로 제때 깨어난다.
-            this.decisionTimeoutId = setTimeout(() => {
-                this.decisionTimeoutId = null;
-                if (token !== this.inferenceToken || this.decisionState !== 'pending' || !this.isCurrentTurn(player)) return;
-                this.inferenceToken += 1;
-                this.applyFallback(player);
-            }, ONNX_INFERENCE_TIMEOUT);
-            void this.decidePlacement(player, token);
+            // 턴 시작 시점에 이미 상대 연쇄가 진행 중이면 첫 추론부터 그 예측을 받을 피해량에 반영한다.
+            let incomingDamage = null;
+            if (this.isRealtimeReactionActive(player)) {
+                const forecast = this.getRealtimeGarbageForecast(player);
+                incomingDamage = this.getRealtimeIncomingDamage(player, forecast);
+                this.realtimeReactionState = {
+                    turn: player.placedPairCount,
+                    signature: this.getRealtimeReactionSignature(forecast, incomingDamage),
+                    incoming: incomingDamage,
+                    fastDownStarted: false,
+                    replanCount: 0
+                };
+            }
+            this.startInference(player, { incomingDamage });
         }
 
         chooseTarget() { return this.targetX; }
@@ -20346,6 +20502,7 @@
          */
         updateControl(player, delta) {
             if (this.decisionState === 'fallback') return false;
+            if (this.decisionState === 'ready') this.updateRealtimeReaction(player);
             if (this.decisionState !== 'ready') return true;
             if (player.active.x !== player.aiTarget) {
                 this.fastDownElapsed = 0;
@@ -20370,7 +20527,10 @@
             if (delay === null) return false;
             const opponent = game?.players.find((candidate) => candidate !== player);
             const delayRate = isEnemyInCrisis(player, opponent) ? this.dangerFastDownDelayRate : this.normalFastDownDelayRate;
-            return this.fastDownElapsed >= delay * delayRate;
+            const fastDown = this.fastDownElapsed >= delay * delayRate;
+            // 빠른 하강을 한 번 시작한 턴은 더 이상 실시간 재추론을 하지 않는다.
+            if (fastDown && this.realtimeReactionState?.turn === player.placedPairCount) this.realtimeReactionState.fastDownStarted = true;
+            return fastDown;
         }
 
         /** 착지 또는 턴 교체 시 진행 중인 추론 결과를 버린다. @param {PlayerState|null} player CPU 플레이어 @param {string} reason 취소 사유 @returns {void} */

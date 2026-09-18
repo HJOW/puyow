@@ -413,6 +413,8 @@ class WorkerPlannerEnemy extends PuyoW.Enemy {
 
 안드레알푸스는 기본 룰과 피버 룰(피버 룰 (시작)·피버 (완화) 포함)에서 이 기능으로 실시간 반응합니다. 조작 중 매 프레임 받을 방해뿌요 양, 상대 연쇄 진행 여부, 상대 피버 패턴 연쇄 예측을 확인하고, 하나라도 바뀌면 다시 탐색합니다. 이번 턴에 빠른 하강을 이미 시작했거나, 받을 양이 바뀌기 전후 모두 무시 기준보다 작으면 다시 탐색하지 않습니다. 무시 기준은 `getLookaheadIgnorableIncomingGarbage(player)`로 정하며, 안드레알푸스는 피버 룰에서 1(무시 기준 없음), 그 밖에는 `ignorableIncomingGarbage`를 씁니다. 이 메서드를 정의한 적이면 `startWorkerLookaheadSearch()`도 같은 값을 탐색에 넘깁니다. 적 자신이 피버 중이면 재판단하지 않습니다. `realtimeReaction = false`로 끌 수 있습니다.
 
+브라우저 ONNX 추론 적(`OnnxEnemy` 계열: 발라크·자간·바퓰라·오리아스)도 BUILDNO 87부터 같은 방식으로 실시간 반응합니다. 모델 입력(528개 관측값)은 바꾸지 않고, 받을 피해량 자리에 확정 DAMAGE와 진행 중인 상대 연쇄의 예측 공격을 합친 양을 넣습니다(피버 룰 일반 상태는 지금 상쇄할 수 있는 묶음만). 추론 결과로 조작하는 동안 이 양이나 상대 연쇄 진행 여부가 바뀌면 지금 도달할 수 있는 위치만으로 다시 추론하며, 빠른 하강 시작 뒤·기준(기본 룰 `ignorableIncomingGarbage` 4, 피버 룰 1) 미만·적 자신의 피버 중·연속 피버에서는 다시 추론하지 않습니다. 재추론이 실패하거나 마감 시한을 넘기면 직전 배치를 유지합니다. 모델은 방해뿌요가 몇 수 뒤에 도착하는지는 입력으로 받지 못합니다. `realtimeReaction = false`로 끌 수 있습니다.
+
 예측에 쓰는 함수는 공통 함수로도 공개됩니다.
 
 - `PuyoW.common.predictPlayerChain(player)`: 연쇄 중인 플레이어의 `{ active, currentCombo, remainingCombo, finalCombo, finalAttack, endInMs }`를 반환합니다. 연쇄 진행에는 무작위 요소가 없어 연쇄 수와 ATTACK은 정확하고, `endInMs`는 폭발 대기·폭발 연출·중력 연출 시간을 더한 값입니다.

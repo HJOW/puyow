@@ -574,6 +574,96 @@ Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 �
 - 검증: 배치 검사 10개와 기존 솔로몬/ONNX 대전 5개를 Chromium에서 통과했다(실제 Node Local AI 끝까지 대전 포함). 별도로 Chromium·Firefox·WebKit에서 원본 JS와 빌드 번들 각각에 순환 필드를 넣어 후보 검사 후 `requestAnimationFrame`·새로고침이 완료되는 6개 테스트도 통과했다. `puyow.html` 기본값은 원본 JS이므로 번들 테스트는 원본 스크립트 응답만 실제 빌드 산출물로 교체한다. ESLint와 webpack 빌드를 통과했고 번들을 갱신했다. 버전값 자체는 테스트하지 않았다.
 - 이전에 언급한 서버 취소 전파/동시 실행 상한, 학습 요청 큐의 제한 시간, ONNX Worker 장애는 별도로 계측할 안정성 점검 대상이지 이번 재현의 전제나 확정 원인이 아니다. 이번 수정은 확인된 공통 무한 반복을 제거하며 서버/API 동작은 변경하지 않는다. 장시간 실제 플레이에서 다른 종류의 정지가 없는지는 별도 확인이 필요하다.
 
+#### ONNX 추론 적의 실시간 재추론 (2026-09-18, BUILDNO 87)
+
+사용자 요청으로 모델을 쓰는 적도 안드레알푸스처럼 실시간 반응하게 했다(조사 때 "수정 방법 A"라 부른 안). **학습 쪽(`learning.py`·`lngui.py`·`common.py`)과 모델 입력 계약(528개, `MODEL_VERSION` 3)은 바꾸지 않았고 `OnnxEnemy`만 고쳤다.** 기존 `model01~03.onnx`·`default.onnx`·`.pt` 체크포인트는 그대로 쓴다. 학습부터 실시간 개념을 넣는 근본 해결("수정 방법 B")은 바로 아래 「[향후 작업] 학습 환경부터 실시간 반응 도입」 절에 정리했다.
+
+- **바꾸기 전 문제**: 게임은 상대 연쇄가 **끝난 뒤**에야 `deliverFinalAttackEnergy()` → `applyAttackDamage()`로 `player.damage`를 늘린다. 이전 `buildAfterstate()`는 받을 피해에 `player.damage`만 넣었으므로 상대가 대연쇄를 치는 중이어도 0으로 보았다. 추론도 `prepareTurn()`에서 턴마다 한 번뿐이었다.
+- **입력**: `buildAfterstate(player, simulation, incomingDamage = null)`의 세 번째 인수가 있으면 일반 필드의 받을 피해로 쓴다. 적 자신이 피버 중이면 인수를 무시하고 `fever.damage`를 쓴다. 인수 없이 부르면 이전과 같으므로, 파이썬 `enumerate_afterstates()`와 후보·보상·528개 값이 일치한다는 계약도 그대로다.
+- **받을 양**: `getRealtimeIncomingDamage(player, forecast)`는 `getRealtimeGarbageForecast()` 결과를 모델이 배운 의미("이번에 터뜨리지 않으면 떨어질 양")에 맞춘다. 기본 룰은 `max(player.damage, floor(forecast.incoming))`(확정 DAMAGE + 진행 중 상대 연쇄의 예측 최종 ATTACK)다. 피버 룰 일반 상태는 `forecast.fever.events` 중 `availableMove <= 0`인 묶음만 더한다. 아직 시작하지 않은 상대 피버 패턴 예측 연쇄는 지금 상쇄할 수 없으므로 뺀다. 도착 순번(`garbageMoveIndex`·`landMove`)은 v3 입력에 자리가 없어 버린다.
+- **흐름**: `prepareTurn()`은 `isRealtimeReactionActive()`(`realtimeReaction`·`onnxEnabled`·연속 피버 아님·자신이 피버 아님)이면 첫 추론부터 이 양을 넣는다. 이때 `realtimeReactionState = { turn(placedPairCount), signature, incoming, fastDownStarted, replanCount }`를 만든다. `updateControl()`은 `decisionState === 'ready'`일 때 매 프레임 `updateRealtimeReaction()`을 부른다. 비교값 `getRealtimeReactionSignature()`는 "받을 양 | 상대 연쇄 진행 | 상대 피버 예측 연쇄 수:ATTACK"이다. 바뀌면 기준을 갱신하고, 바뀌기 전후 모두 `getRealtimeIgnorableIncomingGarbage()`(기본 룰 `ignorableIncomingGarbage` 4, 피버 룰 1) 미만이면 여기서 멈춘다. 그 밖에는 `getReachableAiPlacements()`로 `aiSimulations`를 걸러 다시 추론한다. `useFastDown()`이 처음 true를 돌려주면 `fastDownStarted`를 세우며, 그 뒤로는 재추론하지 않는다(안드레알푸스와 같은 사용자 요구). 재추론 중에는 `decisionState`가 `pending`이라 이동·회전·빠른 하강 없이 자연 낙하만 한다.
+- **턴 판별 주의**: `moveActive()`·회전은 `player.active`를 **새 객체로 바꾸므로**, 조작 도중에는 `isCurrentTurn()`(`turnActive` 동일성)이 거짓이다. 그래서 `updateRealtimeReaction()`은 배치 수(`state.turn`)·`turnPlayer`·`controller`·`phase`로 판별한다. 재추론을 시작할 때는 `turnActive`를 현재 객체로 갱신한다. 자연 낙하는 같은 객체의 `y`만 고치므로 결과가 올 때까지 동일성이 유지된다.
+- **실패 처리**: `startInference(player, options)`가 마감 시한 타이머와 `decidePlacement(player, token, options)`를 묶는다. 첫 추론은 기존처럼 실패·세션 사용 중·마감 초과 시 `applyFallback()`(앞 1수 시뮬레이션)을 쓴다. 재추론(`options.replan`)은 같은 경우에 `restoreReplanTarget()`으로 **직전 배치를 유지**하고, 직전 배치에 더는 도달할 수 없을 때만 `applyFallback()`을 쓴다. 재추론 성공은 `aiDecisionElapsed`·`fastDownElapsed`를 되돌리지 않는다.
+- **한계**: v3 모델은 받을 피해를 "다음 비연쇄 배치 뒤 떨어지는 확정 양"으로만 배웠다. 예측량을 넣는 것은 근사이고, 몇 수 뒤에 도착하는지는 모른다. 실제 대응 품질은 대전으로 따로 확인해야 한다.
+- **솔로몬(Local AI)은 바꾸지 않았다.** 서버 왕복이라 재요청 비용이 크고 이번 범위 밖이다. 넓힌다면 프롬프트의 `currentState.incomingDamage`에 같은 값을 넣고 같은 재요청 흐름을 붙이면 된다(서버·모델 변경 없음).
+- 회귀 테스트는 `tests/test03_ai.spec.js`의 "ONNX 추론 적은 빠른 하강 전에 받을 방해뿌요가 바뀌면 그 양을 넣어 다시 추론하고…"다. 발라크 하위 클래스를 등록해 실제 `model01.onnx`로 대전한다. 결과가 준비된 뒤 DAMAGE를 12로 늘려 재추론 시작·`pending`·`replanCount` +1을 확인하고, 재추론 입력의 받을 피해량(관측값 516번 × 30)이 12 이상인지 본다. 빠른 하강을 시작한 턴에서는 재추론하지 않는지도 확인한다. 검증 결과: `test03_ai.spec.js` 43개, ONNX 관련 `test01_core`·`test01_enemy`·`test01_menu` 8개가 Chromium에서 통과했고 ESLint(`npm.cmd test`)·`node --check`·`git diff --check`를 통과했다. 실제 사람 대전에서 상대 연쇄 중 재추론이 나은 판단을 내는지는 측정하지 않았다.
+
+### [향후 작업] 학습 환경부터 실시간 반응 도입 — 모델 버전 4 ("수정 방법 B") 작업 안내
+
+2026-09-18 조사에서 사용자가 "언젠간 적용해야 한다"고 한 안이다. **아직 구현하지 않았다.** 위 BUILDNO 87의 재추론은 입력 계약을 지키느라 "받을 양"만 근사로 넣는다. 이 안은 모델이 "상대 연쇄 진행 중", "몇 수 뒤 도착"을 직접 보고 배우게 한다. 관측 계약이 바뀌므로 **기존 모델과 호환되지 않는다.** 아래 순서로 작업한다.
+
+**0. 시작 전에 사용자에게 확인할 것**
+- 추가할 관측 항목. 추천안은 아래 1의 스칼라 3개다. 상대 보드 전체(504개)까지 넣으면 합성곱 입력 채널이나 별도 가지까지 바뀌어 학습 비용이 크게 늘어나므로, 넣을지 따로 묻는다.
+- 기존 v3 모델(`src/onnx/model01~03.onnx`, `default.onnx`, 서버 `.pt`)을 계속 쓸지. 쓴다면 게임·서버가 두 계약을 모두 지원해야 한다(아래 4).
+- 처음부터 새로 학습할지, v3 가중치를 이식해 이어 학습할지(아래 3).
+- 학습 환경의 시간 모델 정밀도. 추천은 게임의 `estimateAiPlacementTiming()`을 옮긴 높이 기반 어림이고, 간단히는 고정 배치 시간도 가능하다.
+- 보상(`move_reward`·`terminal_reward`)과 감가율(`DISCOUNT_GAMMA` 0.70)은 이 작업에서 바꾸지 않는 것이 기본이다. 바꾸려면 별도 결정으로 다룬다(「고연쇄를 덜 노리는 근본 원인」 참고).
+
+**1. 관측 계약 v4 (`python/common.py`)**
+- 기존 14개 스칼라의 순서와 의미는 그대로 두고 **뒤에 덧붙인다.** 그래야 디코딩 코드 영향이 작고 가중치 이식이 쉽다.
+- 추천 스칼라(`OBSERVATION_SCALAR_COUNT` 14 → 17):
+  1. `incoming_in_flight`: 상대가 진행 중인 연쇄에서 아직 DAMAGE로 확정되지 않은 예측 공격(JS `getRealtimeGarbageForecast()`의 `incoming − floor(damage)`에 해당). `DAMAGE_SCALE`(30)로 정규화한다.
+  2. `incoming_land_move`: 그 공격이 떨어지기 전에 내가 둘 수 있는 배치 수(JS `garbageMoveIndex`). 새 상수 예: `LAND_MOVE_SCALE = 8.0`. 받을 것이 없으면 0이다.
+  3. `opponent_chain_active`: 상대가 연쇄 중이면 1이다.
+  - (선택) 피버 룰에서 상대 피버 패턴 예측 공격(JS `predictFeverStageChain()`).
+- **`incoming_damage`는 v3와 같이 확정 DAMAGE만 뜻한다.** v4 모델에 BUILDNO 87 방식(예측을 섞은 값)을 넣으면 같은 공격을 두 번 세게 된다.
+- `OBSERVATION_SIZE` 528 → 531, `MODEL_VERSION` 3 → 4로 바꾼다. `encode_observation_values()`에는 기본값 0인 키워드 인수를 더해 기존 호출을 깨지 않게 하고, `decode_observation_scalars()`에 새 키를 더한다. `validate_observation()`은 길이를 상수로 보므로 자동으로 따라온다.
+
+**2. 학습 환경 (`python/learning.py`의 `PuyoDuelEnvironment`, `python/bundledenemy.py`)**
+- 지금은 턴제다. `step()`은 에이전트 한 수 → 즉시 연쇄·상쇄·전달(`_apply_attack_exchange()`) → 상대 한 수이고, 한 번에 `DUEL_TURN_DURATION_MS`(3초)씩 흐른다. 그래서 "상대 연쇄 진행 중"이라는 상태가 없다.
+- **두 플레이어가 각자 시계를 가진 이벤트 시뮬레이션으로 바꾼다.**
+  - 배치 시간(스폰 → 착지): 게임의 `estimateAiPlacementTiming()`과 같은 어림(평균 열 높이, `PLAYER_FALL_INTERVAL` 2048ms, 난이도별 빠른 하강 대기, 55ms/칸)을 파이썬으로 옮긴다.
+  - 연쇄 시간: 단계마다 `CHAIN_PHASE_WAIT_MS`(150) + `EXPLOSION_EFFECT_DURATION_MS`(430) + 중력 시간(`measureGravityOnBoard()`, 피버 중 1.5배)을 더한다. 고정 뒤 방해뿌요 낙하까지는 `LOCK_TO_GARBAGE_DROP_MS`(300)다. `predictPlayerChain()`과 같은 식이어야 한다. 이 상수들은 `puyow.js` 두 곳(`updatePlayer()` 대기·`resolveExplosions()` 연출)과 파이썬이 함께 맞아야 한다.
+  - **상쇄는 연쇄 단계마다 한다**(게임 `sendAttackEnergy()`). 기본 룰은 그 단계까지의 정수 ATTACK으로 먼저 상대의 진행 중 ATTACK(`opponent.attack`)을, 그다음 자기 DAMAGE를 상쇄한다. 공격하는 쪽이 피버 중이면 피버 DAMAGE → 보존된 일반 DAMAGE → 상대 ATTACK 순이다. 남은 공격은 연쇄가 끝난 뒤 상대 DAMAGE가 된다(`deliverFinalAttackEnergy()` → `applyAttackDamage()`, 연쇄 시작 때의 피버 회차 기준). 지금 `_apply_attack_exchange()`는 배치 결과를 한 번에 상쇄하므로 이 규칙으로 바꿔야 한다. 이를 위해 `bundledenemy.resolve_placement()`가 단계별 ATTACK(과 단계 시간)을 돌려주도록 넓힌다. 기존 반환값은 유지하고 새 함수나 선택 인수로 더한다.
+  - 방해뿌요 낙하: 확정 DAMAGE만 터지지 않은 배치 뒤에 떨어진다(`_drop_pending_garbage()`). 진행 중인 상대 연쇄 몫은 아직 DAMAGE가 아니므로 떨어지지 않는다. 피버 만료 규칙(`_is_expired_fever_placement()`, BUILDNO 77)과 회귀 테스트 `test_expired_fever_placement_*`는 유지한다.
+  - **`step(action)` 계약은 "에이전트의 결정 한 번 = step 한 번"으로 유지한다.** 그래야 `build_value_samples()`·n스텝·리플레이·학습 방식(`TrainingStrategy`)이 그대로 동작한다. `step()` 안에서 타임라인을 에이전트의 다음 결정 시점(다음 스폰)까지 진행하고, 그 사이 상대의 결정·연쇄 단계·공격 전달을 시간순으로 처리한다. 그 사이 상대가 여러 번 둘 수도, 한 번도 두지 않을 수도 있다.
+  - `elapsed_ms`·마진 레이트·시간 배율·피버 남은 시간은 실제 타임라인에서 계산한다. `DUEL_TURN_DURATION_MS`는 없애거나 보조값으로만 둔다. `MAX_TURNS_PER_EPISODE`는 에이전트 결정 수로 유지한다.
+  - 관측(`_observe_side()`)은 그 시점의 상대 진행 중 연쇄로 새 스칼라를 채운다. 연쇄 진행은 결정적이라 파이썬판 `predict_player_chain()`(보드 복사본으로 남은 연쇄를 끝까지 풀기)으로 충분하다.
+  - 상대 적(`bundledenemy`)은 스폰 때 한 번 `decide()`한다. `incoming_garbage` 인수는 원작 `getLookaheadIncomingGarbage()`처럼 DAMAGE + 상대 ATTACK을 넣는 것을 추천한다. 파이썬 안드레알푸스의 판단 자체는 바꾸지 않는다(`CHAIN_GUIDE_ENEMY_TYPES` 안내 적이라 학습 비교가 어긋난다). 모듈 docstring의 "실시간 판단은 턴제 학습 환경에 대응되는 개념이 없어 제외"라는 설명은 새 환경에 맞게 고친다.
+  - self-play·대체 모델 상대(`POLICY_OPPONENTS`)도 v4 관측을 받는다. `standard` 학습 방식의 난수 흐름 보존 원칙(`strategy_random` 분리)은 새 환경에서도 지킨다. 다만 환경 자체가 바뀌므로 이전 결과와 같은 난수열은 기대하지 않는다.
+- **애프터스테이트** (`_build_afterstate()`·`enumerate_afterstates()`): 한 수의 상쇄 순서를 위 단계별 규칙과 같게 적용한다(상대 진행 중 공격 먼저, 그다음 확정 DAMAGE). 새 스칼라는 결정적으로 갱신한다. 추천은 이번 수로 상쇄하고 남은 `incoming_in_flight`, `incoming_land_move − 1`(최소 0)이다. 무작위인 방해뿌요 낙하를 반영하지 않는 기존 원칙은 유지한다. **학습기·파이썬 서버 추론·서버 온라인 학습·Node 서버·브라우저 JS가 모두 같은 규칙이어야 한다.**
+
+**3. 신경망·체크포인트·`lngui.py`**
+- `ValueNetwork`의 첫 은닉층 입력(`CONV_CHANNELS * 72 + OBSERVATION_EXTRA_SIZE`)은 상수를 따라 자동으로 늘어난다. `load_existing_policy()`는 버전 검증으로 v3 체크포인트를 거부한다(의도된 동작).
+- 가중치 이식(선택): v3 `state_dict`에서 합성곱 전부와 `head.0.weight`의 기존 열을 복사하고, 새 입력 열은 0으로 초기화해 v4의 시작값으로 쓴다. 이식 함수는 `learning.py`에 두고 CLI 옵션(예: `--warm-start-from`)으로 노출한다. 환경 역학이 바뀌므로 이식하더라도 이어 학습은 반드시 해야 한다.
+- `lngui.py`의 `export_checkpoint_to_onnx()`와 `convertonnx.py`는 `learning.OBSERVATION_SIZE`로 예시 입력을 만들므로 코드 변경이 거의 없다. 이식 옵션을 GUI에 둘지는 사용자에게 묻는다. 두면 `TRAINING_STRATEGIES`처럼 영어·한국어 문구를 함께 추가한다.
+
+**4. 추론 쪽**
+- `src/js/puyow.js`
+  - `ONNX_OBSERVATION_SIZE`: 스칼라 14가 식에 박혀 있다.
+  - `buildObservationValues()`: 새 스칼라와 정규화 상수를 `common.py`와 같게 더한다.
+  - `getLearningObservation()`: 학습 API용 관측이다.
+  - `OnnxEnemy.buildAfterstate()`: 새 스칼라를 채운다. 값은 `getRealtimeGarbageForecast()`의 `incoming − floor(damage)`·`garbageMoveIndex`·`opponentChainActive`에서 가져오고, 피버 룰 일반 상태는 `fever.events`에서 가져온다.
+  - 솔로몬 프롬프트의 `currentState`: 새 필드를 더한다.
+- **이중 계약**: v3 모델을 계속 쓰면 `OnnxEnemy`가 모델 버전을 알아야 한다. 하위 클래스 필드(예: `this.modelVersion = 3`)로 두거나, 세션 입력 메타데이터 모양(528/531)으로 판별한다. v3는 BUILDNO 87 방식(받을 양에 예측 합산), v4는 확정 DAMAGE + 새 스칼라를 넣는다. 재추론 흐름(`updateRealtimeReaction()` 등)은 두 버전이 공통으로 쓴다.
+- `node/server.js`: `OBSERVATION_SCALAR_COUNT`·`OBSERVATION_SCALES`·인코딩/디코딩·애프터스테이트를 고친다. `default.onnx`를 v4로 바꾸면 v3 요청과 섞이지 않게 한다.
+- `python/pythonserver.py`: `build_model_observation()`(프롬프트 → 관측)이 새 필드를 읽게 한다. `choose_model_action()`·`build_solomon_afterstate()`·`_close_solomon_side()`는 `learning`의 애프터스테이트 함수를 따라가므로 함께 확인한다. 서버 `model_path` 체크포인트도 v4로 바꾼다.
+
+**5. 테스트**
+- `python/test_learning.py`에서 확인할 것:
+  - 관측 길이·버전 상수
+  - 상대 연쇄 진행 중 에이전트 결정 시점의 새 스칼라 값
+  - 단계별 상쇄 순서(상대 ATTACK 먼저)
+  - 진행 중 공격이 연쇄 종료 뒤에야 DAMAGE가 되는 시점
+  - 기존 피버 만료 테스트
+  - 애프터스테이트 결정성
+  - v3 체크포인트 거부와 이식 결과
+- JS↔파이썬 일치: 기본 룰·피버 룰에서 `enumerate_afterstates()`와 `OnnxEnemy.buildAfterstate()`의 후보·보상·관측값이 완전히 같은지를 v4로 다시 확인한다.
+- `tests/test03_ai.spec.js`에서 확인할 것:
+  - v4 모델 로딩·추론(v3도 유지하면 둘 다)
+  - BUILDNO 87 재추론 테스트
+  - Node 서버 Local AI 테스트
+- 실행: `npm.cmd test`, `python -B -m unittest test_learning`(python 폴더), `npx.cmd playwright test --project=chromium`.
+
+**6. 문서**
+- 이 파일에서 고칠 곳:
+  - 「머신러닝 작업 참고」의 "모델 버전 3의 관측값은 528개" 문단
+  - 「애프터스테이트 가치 학습」·「브라우저 ONNX 추론 적」 절
+  - 이 절: 완료 표시와 결정 사항 기록
+- `docs/MachineLearning.md`·`docs/MachineLearning.en.md`: 관측·환경 설명을 고친다.
+- `docs/Enemy.md`·`docs/Enemy.en.md`: ONNX 적 실시간 반응 문단을 고친다.
+- BUILDNO·패키지 버전 절차는 평소와 같다.
+
 ### Local AI 서버에 보내는 배치 후보 목록
 
 서버의 `is_legal_observation_action()`은 관측 벡터에 담긴 **화면 12줄의 목적지 열 높이**만 본다. 반면 게임의 `Solomon.canUsePlacement()`는 뿌요의 현재 낙하 Y에서의 가로 이동 경로, 회전 킥으로 X가 밀리는지, 숨김 행까지 포함한 25줄 보드의 `aiSimulations` 포함 여부를 함께 본다. 그래서 필드가 높아지면 서버가 "합법"이라고 답한 배치를 게임이 거부해 `handleRequestFailure()`로 일시정지되는 일이 생겼다.

@@ -1282,6 +1282,91 @@ test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1�
   await expect.poll(() => page.evaluate(() => window.onnxSessionStats.releases)).toBeGreaterThan(0);
 });
 
+test('ONNX 추론 적은 빠른 하강 전에 받을 방해뿌요가 바뀌면 그 양을 넣어 다시 추론하고, 빠른 하강을 시작한 턴에는 재추론하지 않는다', async ({ page }) => {
+  test.setTimeout(180000);
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_code', JSON.stringify(['observation']));
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], onnxWarningAcknowledged: true }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  await page.evaluate(() => {
+    // 추론마다 후보들이 받은 "받을 피해량" 입력(528개 관측값 중 516번, 30으로 정규화)의 최댓값을 기록한다.
+    window.onnxIncomingInputs = [];
+    const originalCreate = window.ort.InferenceSession.create.bind(window.ort.InferenceSession);
+    window.ort.InferenceSession.create = async (...args) => {
+      const session = await originalCreate(...args);
+      const originalRun = session.run.bind(session);
+      session.run = async (feeds, ...rest) => {
+        const data = feeds?.observation?.data;
+        if (data) {
+          let maximum = 0;
+          for (let index = 516; index < data.length; index += 528) maximum = Math.max(maximum, data[index] * 30);
+          window.onnxIncomingInputs.push(maximum);
+        }
+        return originalRun(feeds, ...rest);
+      };
+      return session;
+    };
+    class RealtimeValak extends window.WebPuyo.Valak {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'RealtimeValak'; }
+      getName() { return '실시간 재추론 테스트 발라크'; }
+      prepareTurn(player) {
+        super.prepareTurn(player);
+        this.player = player;
+        window.realtimeOnnxEnemy = this;
+      }
+    }
+    window.WebPuyo.registerOpponent({ createController: () => new RealtimeValak() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('실시간 재추론 테스트 발라크');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
+
+  // 추론 결과로 조작 중이고 아직 빠른 하강 전인 순간에 확정 DAMAGE를 늘린다.
+  await expect.poll(() => page.evaluate(() => {
+    const controller = window.realtimeOnnxEnemy;
+    const state = controller?.realtimeReactionState;
+    if (!state || state.fastDownStarted || controller.decisionState !== 'ready' || !controller.player.active) return false;
+    if (controller.player.placedPairCount !== state.turn) return false;
+    const before = state.replanCount;
+    const runsBefore = window.onnxIncomingInputs.length;
+    controller.player.damage = 12;
+    const started = controller.updateRealtimeReaction(controller.player);
+    window.onnxReplanResult = { started, replanDelta: state.replanCount - before, pending: controller.decisionState === 'pending', incoming: state.incoming, runsBefore };
+    return true;
+  }), { timeout: 30000 }).toBe(true);
+  const replanned = await page.evaluate(() => window.onnxReplanResult);
+  expect(replanned).toMatchObject({ started: true, replanDelta: 1, pending: true });
+  expect(replanned.incoming).toBeGreaterThanOrEqual(12);
+  // 재추론의 모델 입력에는 늘어난 받을 양이 들어간다(터지지 않는 후보는 상쇄 없이 12개가 남는다).
+  await expect.poll(() => page.evaluate((count) => window.onnxIncomingInputs.length > count, replanned.runsBefore), { timeout: 10000 }).toBe(true);
+  expect(await page.evaluate((count) => window.onnxIncomingInputs[count], replanned.runsBefore)).toBeGreaterThanOrEqual(11.99);
+
+  // 빠른 하강을 시작한 턴에서는 받을 양이 다시 바뀌어도 재추론하지 않는다.
+  await expect.poll(() => page.evaluate(() => {
+    const controller = window.realtimeOnnxEnemy;
+    const state = controller?.realtimeReactionState;
+    if (!state?.fastDownStarted || !controller.player.active || controller.player.placedPairCount !== state.turn) return false;
+    const before = state.replanCount;
+    controller.player.damage += 20;
+    window.onnxGateResult = { started: controller.updateRealtimeReaction(controller.player), replanDelta: state.replanCount - before };
+    return true;
+  }), { timeout: 30000 }).toBe(true);
+  expect(await page.evaluate(() => window.onnxGateResult)).toEqual({ started: false, replanDelta: 0 });
+});
+
 test('ONNX 프록시 워커를 만들지 못하면 메인 스레드 재시도 없이 기본 AI로 대전한다', async ({ page }) => {
   test.setTimeout(180000);
   // 첫 대전 전 불안정 안내는 전용 테스트가 확인하므로, 여기서는 이미 `계속`을 고른 저장 기록으로 시작한다.
