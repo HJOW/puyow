@@ -96,7 +96,8 @@
             'Auto generation failed: %1': '자동생성 실패: %1',
             'Auto generation finished. %1 puyos were added.': '자동생성을 마쳤습니다. 뿌요 %1개를 더했습니다.',
             'Auto generation stopped.': '자동생성을 중단했습니다.',
-            'Looking for a layout that reaches the goal on the first turn...': '첫 턴에 목표를 이룰 수 있는 배치를 찾고 있습니다...',
+            'Looking for a layout that reaches the goal on turn %1 and not earlier...': '%1턴째에 목표를 이루고 그 전에는 이룰 수 없는 배치를 찾고 있습니다...',
+            'Auto generation is not available when the win condition is attack.': '목표 타입이 attack (공격량)이면 자동생성을 사용할 수 없습니다.',
             'Could not find a layout that reaches the goal. Try changing the goal or the puyos already placed.': '목표를 이룰 수 있는 배치를 찾지 못했습니다. 목표나 이미 놓은 뿌요를 바꿔 보세요.',
             'Looking for a layout that makes exactly %1 chains...': '정확히 %1연쇄가 되는 배치를 찾고 있습니다...',
             'Could not find a layout that makes exactly %1 chains. Try changing the colors in use or the puyos already placed.': '정확히 %1연쇄가 되는 배치를 찾지 못했습니다. 사용할 색상 목록이나 이미 놓은 뿌요를 바꿔 보세요.',
@@ -211,7 +212,8 @@
             'Auto generation failed: %1': '自動生成に失敗: %1',
             'Auto generation finished. %1 puyos were added.': '自動生成が終わりました。ぷよを%1個追加しました。',
             'Auto generation stopped.': '自動生成を中断しました。',
-            'Looking for a layout that reaches the goal on the first turn...': '最初の手で目標を達成できる配置を探しています…',
+            'Looking for a layout that reaches the goal on turn %1 and not earlier...': '%1手目で目標を達成でき、それより前には達成できない配置を探しています…',
+            'Auto generation is not available when the win condition is attack.': '目標タイプが attack（攻撃量）のときは自動生成を使えません。',
             'Could not find a layout that reaches the goal. Try changing the goal or the puyos already placed.': '目標を達成できる配置が見つかりませんでした。目標や、すでに置いたぷよを変えてみてください。',
             'Looking for a layout that makes exactly %1 chains...': 'ちょうど%1連鎖になる配置を探しています…',
             'Could not find a layout that makes exactly %1 chains. Try changing the colors in use or the puyos already placed.': 'ちょうど%1連鎖になる配置が見つかりませんでした。使用する色の一覧や、すでに置いたぷよを変えてみてください。',
@@ -326,7 +328,8 @@
             'Auto generation failed: %1': '自动生成失败：%1',
             'Auto generation finished. %1 puyos were added.': '自动生成完成。已添加 %1 个气泡。',
             'Auto generation stopped.': '已中断自动生成。',
-            'Looking for a layout that reaches the goal on the first turn...': '正在寻找能在第一回合达成目标的布局…',
+            'Looking for a layout that reaches the goal on turn %1 and not earlier...': '正在寻找在第%1回合达成目标、之前无法达成的布局…',
+            'Auto generation is not available when the win condition is attack.': '目标类型为 attack（攻击量）时无法使用自动生成。',
             'Could not find a layout that reaches the goal. Try changing the goal or the puyos already placed.': '未能找到可以达成目标的布局。请尝试更改目标或已放置的气泡。',
             'Looking for a layout that makes exactly %1 chains...': '正在寻找正好形成 %1 连锁的布局…',
             'Could not find a layout that makes exactly %1 chains. Try changing the colors in use or the puyos already placed.': '未能找到正好形成 %1 连锁的布局。请尝试更改使用的颜色列表或已放置的气泡。',
@@ -441,7 +444,8 @@
             'Auto generation failed: %1': 'Automatische Erzeugung fehlgeschlagen: %1',
             'Auto generation finished. %1 puyos were added.': 'Automatische Erzeugung fertig. %1 Puyos wurden hinzugefügt.',
             'Auto generation stopped.': 'Automatische Erzeugung abgebrochen.',
-            'Looking for a layout that reaches the goal on the first turn...': 'Suche nach einer Anordnung, die das Ziel im ersten Zug erreicht …',
+            'Looking for a layout that reaches the goal on turn %1 and not earlier...': 'Suche nach einer Anordnung, die das Ziel in Zug %1 und nicht früher erreicht …',
+            'Auto generation is not available when the win condition is attack.': 'Bei der Siegbedingung attack (Angriffsmenge) ist die automatische Erzeugung nicht verfügbar.',
             'Could not find a layout that reaches the goal. Try changing the goal or the puyos already placed.': 'Es wurde keine Anordnung gefunden, die das Ziel erreicht. Ändere das Ziel oder die bereits gesetzten Puyos.',
             'Looking for a layout that makes exactly %1 chains...': 'Suche nach einer Anordnung mit genau %1 Ketten …',
             'Could not find a layout that makes exactly %1 chains. Try changing the colors in use or the puyos already placed.': 'Es wurde keine Anordnung mit genau %1 Ketten gefunden. Ändere die verwendeten Farben oder die bereits gesetzten Puyos.',
@@ -556,7 +560,8 @@
             'Auto generation failed: %1': 'Échec de la génération auto : %1',
             'Auto generation finished. %1 puyos were added.': 'Génération auto terminée. %1 puyos ont été ajoutés.',
             'Auto generation stopped.': 'Génération auto arrêtée.',
-            'Looking for a layout that reaches the goal on the first turn...': 'Recherche d’une disposition qui atteint l’objectif au premier tour…',
+            'Looking for a layout that reaches the goal on turn %1 and not earlier...': 'Recherche d’une disposition qui atteint l’objectif au tour %1 et pas avant…',
+            'Auto generation is not available when the win condition is attack.': 'La génération auto n’est pas disponible avec l’objectif attack (quantité d’attaque).',
             'Could not find a layout that reaches the goal. Try changing the goal or the puyos already placed.': 'Aucune disposition atteignant l’objectif n’a été trouvée. Essaie de changer l’objectif ou les puyos déjà placés.',
             'Looking for a layout that makes exactly %1 chains...': 'Recherche d’une disposition donnant exactement %1 chaînes…',
             'Could not find a layout that makes exactly %1 chains. Try changing the colors in use or the puyos already placed.': 'Aucune disposition donnant exactement %1 chaînes n’a été trouvée. Essaie de changer les couleurs utilisées ou les puyos déjà placés.',
@@ -698,8 +703,20 @@
     /** 자동생성 탐색 한 판의 시작 예산이다. 실패할 때마다 두 배로 늘린다. @type {number} */
     const AUTO_GENERATE_START_NODES = 120;
 
-    /** 자동생성을 포기하기까지 기다리는 시간(ms)이다. @type {number} */
-    const AUTO_GENERATE_TIME_LIMIT = 120000;
+    /**
+     * 게임 규칙 값이다. 퍼즐 자동생성 Worker는 목표 턴수 전에 목표를 이룰 수 없는지 모든 경우를 따지므로
+     * 연쇄·착지·패배 판정이 게임과 정확히 같아야 한다. puyow.js의 VISIBLE_ROWS, ACTIVE_PUYO_SPAWN_Y의 정수 줄,
+     * 기본 패배 칸(2, 11)과 같게 맞춘다.
+     * @type {{visibleRows:number, spawnRow:number, defeatColumn:number}}
+     */
+    const GAME_RULES = Object.freeze({ visibleRows: 12, spawnRow: 11, defeatColumn: 2 });
+
+    /**
+     * 퍼즐 자동생성 결과의 "목표 턴수 전에는 이룰 수 없음"을 본래 쓰레드에서 게임 코드로 다시 확인하는 최대 목표 턴수다.
+     * 확인할 경우의 수가 턴마다 약 22배로 늘어 화면이 멈출 수 있으므로, 그보다 큰 목표 턴수는 Worker 판정만 믿는다.
+     * @type {number}
+     */
+    const PUZZLE_MAIN_EARLY_CHECK_MAX_TURNS = 3;
 
     /**
      * 직전과 같은 결과가 나왔을 때 다른 경우를 다시 찾아볼 최대 횟수다.
@@ -1256,30 +1273,19 @@
                 width: 380px;
             }
 
-            /* 남은 시간을 알 수 없는 작업이라 진행률 대신 흐르는 막대만 보여 준다. */
-            .puyow-tools-progress {
-                background: var(--tools-input-bg);
-                border: 1px solid var(--tools-border);
-                border-radius: 3px;
-                height: 10px;
-                overflow: hidden;
-                position: relative;
-                width: 100%;
+            /* 남은 시간을 알 수 없는 작업이라 진행률 대신 도는 동그라미만 보여 준다. */
+            .puyow-tools-spinner {
+                animation: puyow-tools-spin 0.9s linear infinite;
+                border: 5px solid var(--tools-border);
+                border-radius: 50%;
+                border-top-color: var(--tools-button-active-border);
+                box-sizing: border-box;
+                height: 48px;
+                width: 48px;
             }
 
-            .puyow-tools-progress > span {
-                animation: puyow-tools-indeterminate 1.2s linear infinite;
-                background: var(--tools-button-active-border);
-                display: block;
-                height: 100%;
-                left: -40%;
-                position: absolute;
-                width: 40%;
-            }
-
-            @keyframes puyow-tools-indeterminate {
-                from { left: -40%; }
-                to { left: 100%; }
+            @keyframes puyow-tools-spin {
+                to { transform: rotate(360deg); }
             }
 
             .puyow-tools-overlay-text {
@@ -1903,9 +1909,10 @@
         }, section);
 
         elements.winConditionType.addEventListener('change', refreshWinConditionValueState);
-        refreshWinConditionValueState();
 
         buildControlSection();
+        // 자동생성 버튼의 활성 상태도 목표 타입을 따르므로, 조작 버튼을 만든 뒤에 맞춘다.
+        refreshWinConditionValueState();
     }
 
     /**
@@ -1918,6 +1925,8 @@
         const isClear = elements.winConditionType.value === 'clear';
         elements.winConditionValue.disabled = isClear;
         elements.winConditionDescription.textContent = selected ? translate(selected.description) : '';
+        // 목표 타입 attack은 자동생성을 지원하지 않으므로 버튼을 끈다. 테스트 중에는 setTesting()이 끈 상태를 유지한다.
+        if (elements.autoGenerateButton) elements.autoGenerateButton.disabled = testing || elements.winConditionType.value === 'attack';
     }
 
     /**
@@ -2276,10 +2285,10 @@
      * 자동생성 Worker의 본체다.
      * Blob URL로 만들 스크립트에 문자열로 넣기 때문에 바깥 변수를 참조하지 않고,
      * 필요한 값은 모두 constants와 메시지로 받는다. 게임 코드를 그대로 가져올 수 없어
-     * 연쇄 판정을 여기서 다시 구현하지만, 이것은 후보를 고르기 위한 근사 판정일 뿐이다.
-     * 최종 확인은 본래 쓰레드가 puyow.js의 코드로 다시 하므로, 두 판정이 어긋나도
-     * 잘못된 배치가 그대로 반영되지는 않는다.
-     * @param {{columns:number, rows:number, branch:number, startNodes:number}} constants 탐색 설정
+     * 연쇄 판정을 여기서 다시 구현한다. 피버 경로의 판정은 후보를 고르기 위한 근사이며,
+     * 최종 확인은 본래 쓰레드가 puyow.js의 코드로 다시 하므로 두 판정이 어긋나도 잘못된 배치가 반영되지 않는다.
+     * 퍼즐 경로는 목표 턴수 전 조기 달성 검사를 모든 경우에 대해 여기서 하므로 게임 규칙을 그대로 옮긴 정확 판정을 쓴다.
+     * @param {{columns:number, rows:number, visibleRows:number, spawnRow:number, defeatColumn:number, puyoColors:string[], branch:number, startNodes:number}} constants 탐색 설정
      * @returns {void}
      */
     function autoGenerateWorkerBootstrap(constants) {
@@ -2475,14 +2484,16 @@
 
         // 목표에 한 걸음 더 다가가는 후보만, 더하는 뿌요가 적은 순으로 추린다.
         // 연쇄 수를 키우는 목표는 한 번에 하나씩만 올려야 목표치를 넘기지 않는다.
-        const nextSteps = (board, colors, pair, detail, objective, random) => {
+        // ops.isStable은 쌍을 놓기 전 보드가 스스로 터지지 않는지, ops.evaluate는 그 보드의 목표 값을 본다(쓸 수 없으면 null).
+        const nextSteps = (board, colors, ops, detail, objective, random) => {
             const current = metricOf(detail, objective);
             const exact = objective.kind === 'combo' || objective.kind === 'clear' || objective.kind === 'attack';
             const found = [];
             buildCandidates(board, colors).forEach((candidate) => {
                 // 쌍을 놓기도 전에 스스로 터지는 배치는 쓸 수 없다.
-                if (resolveDetail(candidate.board).combo !== 0) return;
-                const next = evaluate(candidate.board, pair);
+                if (!ops.isStable(candidate.board)) return;
+                const next = ops.evaluate(candidate.board);
+                if (!next) return;
                 const value = metricOf(next, objective);
                 if (exact) {
                     if (value !== current + 1) return;
@@ -2500,14 +2511,15 @@
         };
 
         // 목표를 이룰 때까지 한 걸음씩 키워 간다. 막히면 직전 선택을 바꿔 다시 시도한다.
-        const search = (startBoard, colors, pair, objective, random, nodeBudget, deadline) => {
+        // 목표를 이룬 보드라도 ops.accept가 거절하면(퍼즐의 조기 달성 등) 그 갈래를 버리고 되돌아간다.
+        const search = (startBoard, colors, ops, objective, random, nodeBudget, deadline) => {
             const budget = { nodes: nodeBudget };
             const walk = (board, detail) => {
-                if (satisfied(detail, objective)) return board;
+                if (satisfied(detail, objective)) return ops.accept(board) ? board : null;
                 // 한 판이 길어져도 정해 둔 시각을 넘기지 않도록 여기서도 확인한다.
                 if (budget.nodes <= 0 || Date.now() > deadline) return null;
                 budget.nodes -= 1;
-                const steps = nextSteps(board, colors, pair, detail, objective, random);
+                const steps = nextSteps(board, colors, ops, detail, objective, random);
                 for (let index = 0; index < steps.length; index += 1) {
                     const result = walk(steps[index].board, steps[index].detail);
                     if (result) return result;
@@ -2515,8 +2527,233 @@
                 }
                 return null;
             };
-            return walk(startBoard, evaluate(startBoard, pair));
+            const startDetail = ops.evaluate(startBoard);
+            return startDetail ? walk(startBoard, startDetail) : null;
         };
+
+        // ---- 퍼즐뿌요 전용 정확 판정 ----
+        // 아래 함수들은 puyow.js의 findExplosionGroupsOnBoard()·getExplosionResolution()·collapseBoard()·
+        // findLandingPlacement()·isDefeatBoard()와 결과가 같아야 한다. 목표 턴수 전 조기 달성 검사는 모든 경우를
+        // 여기서만 따지므로, 근사가 아니라 게임 규칙 그대로 옮긴다(회귀 테스트가 게임 코드와 비교한다).
+        const { visibleRows, spawnRow, defeatColumn, puyoColors } = constants;
+        const puyoColorSet = new Set(puyoColors);
+
+        // 한 폭발 단계: 보이는 줄 안에서만 같은 색 4개 이상을 찾고, 터진 칸에 닿은 방해뿌요는 모든 줄에서 지운다.
+        const exactStep = (board) => {
+            const seen = Array.from({ length: rows }, () => Array(columns).fill(false));
+            const removed = [];
+            const colorsPopped = new Set();
+            let popped = 0;
+            for (let y = 0; y < visibleRows; y += 1) {
+                for (let x = 0; x < columns; x += 1) {
+                    const color = board[y][x];
+                    if (!puyoColorSet.has(color) || seen[y][x]) continue;
+                    const group = [];
+                    const queue = [[x, y]];
+                    seen[y][x] = true;
+                    while (queue.length) {
+                        const [cx, cy] = queue.pop();
+                        group.push([cx, cy]);
+                        neighbors.forEach(([dx, dy]) => {
+                            const nx = cx + dx;
+                            const ny = cy + dy;
+                            if (nx < 0 || nx >= columns || ny < 0 || ny >= visibleRows || seen[ny][nx] || board[ny][nx] !== color) return;
+                            seen[ny][nx] = true;
+                            queue.push([nx, ny]);
+                        });
+                    }
+                    if (group.length < 4) continue;
+                    colorsPopped.add(color);
+                    popped += group.length;
+                    group.forEach(([gx, gy]) => {
+                        removed.push([gx, gy]);
+                        neighbors.forEach(([dx, dy]) => {
+                            const nx = gx + dx;
+                            const ny = gy + dy;
+                            if (nx >= 0 && nx < columns && ny >= 0 && ny < rows && board[ny][nx] === 'garbage') removed.push([nx, ny]);
+                        });
+                    });
+                }
+            }
+            return { removed, popped, colors: colorsPopped.size };
+        };
+
+        // 안정된 보드를 끝까지 연쇄시킨다. 한 단계에서 터진 색 뿌요 수·색 수는 단계별 최댓값을 남긴다.
+        const exactResolve = (board) => {
+            const work = cloneBoard(board);
+            collapse(work);
+            const detail = { combo: 0, popped: 0, colors: 0, allClear: false };
+            for (;;) {
+                const step = exactStep(work);
+                if (!step.removed.length) break;
+                step.removed.forEach(([x, y]) => { work[y][x] = null; });
+                collapse(work);
+                detail.combo += 1;
+                if (step.popped > detail.popped) detail.popped = step.popped;
+                if (step.colors > detail.colors) detail.colors = step.colors;
+            }
+            detail.allClear = detail.combo > 0 && work.every((row) => row.every((cell) => !cell));
+            return { detail, board: work, defeat: Boolean(work[spawnRow][defeatColumn]) };
+        };
+
+        // 게임의 착지 규칙: 조작 뿌요는 (x, 11)에 나타나므로 두 칸의 시작 자리가 비어 있어야 하고,
+        // 그대로 떨어진 뒤 떠 있는 칸은 중력으로 내려간다. 안정된 보드에서 "그 줄이 비었다"는 열 높이 <= 그 줄과 같다.
+        const exactPlace = (board, pair, x, rotation) => {
+            const [dx, dy] = offsets[rotation];
+            const childX = x + dx;
+            const childY = spawnRow + dy;
+            if (x < 0 || x >= columns || childX < 0 || childX >= columns || childY < 0 || childY >= rows) return null;
+            const axisHeight = heightOf(board, x);
+            const childHeight = heightOf(board, childX);
+            if (axisHeight > spawnRow || childHeight > childY) return null;
+            const work = cloneBoard(board);
+            let cells;
+            if (dx !== 0) {
+                cells = [[x, axisHeight], [childX, childHeight]];
+            } else if (dy > 0) {
+                cells = [[x, axisHeight], [x, axisHeight + 1]];
+            } else {
+                cells = [[x, axisHeight + 1], [x, axisHeight]];
+            }
+            if (cells.some(([, cy]) => cy >= rows)) return null;
+            work[cells[0][1]][cells[0][0]] = pair[0];
+            work[cells[1][1]][cells[1][0]] = pair[1];
+            return { x, rotation, board: work, cells };
+        };
+
+        // 한 쌍을 놓을 수 있는 모든 자리다. 결과 보드가 같은 자리(같은 색 쌍의 회전 등)는 한 번만 돌려준다.
+        const exactPlacements = (board, pair) => {
+            const list = [];
+            const keys = new Set();
+            for (let rotation = 0; rotation < 4; rotation += 1) {
+                for (let x = 0; x < columns; x += 1) {
+                    const placed = exactPlace(board, pair, x, rotation);
+                    if (!placed) continue;
+                    const key = placed.cells.map(([cx, cy], index) => `${cx},${cy},${pair[index]}`).sort().join('|');
+                    if (keys.has(key)) continue;
+                    keys.add(key);
+                    list.push(placed);
+                }
+            }
+            return list;
+        };
+
+        // 방금 놓은 두 칸에서만 폭발이 시작될 수 있다(놓기 전 보드는 안정 상태). 두 칸 주변만 세어 빠르게 판정한다.
+        const popsFromCells = (board, cells) => cells.some(([sx, sy]) => {
+            const color = board[sy][sx];
+            if (sy >= visibleRows || !puyoColorSet.has(color)) return false;
+            const seen = new Set([sy * columns + sx]);
+            const queue = [[sx, sy]];
+            let size = 0;
+            while (queue.length) {
+                const [cx, cy] = queue.pop();
+                size += 1;
+                if (size >= 4) return true;
+                neighbors.forEach(([dx, dy]) => {
+                    const nx = cx + dx;
+                    const ny = cy + dy;
+                    const key = ny * columns + nx;
+                    if (nx < 0 || nx >= columns || ny < 0 || ny >= visibleRows || seen.has(key) || board[ny][nx] !== color) return;
+                    seen.add(key);
+                    queue.push([nx, ny]);
+                });
+            }
+            return false;
+        });
+
+        const cellCodes = { red: 'R', green: 'G', yellow: 'Y', blue: 'B', purple: 'P', garbage: 'X' };
+        const boardKey = (board) => board.map((row) => row.map((cell) => (cell ? (cellCodes[cell] || '?') : '.')).join('')).join('/');
+
+        // 게임이 그 턴에 클리어로 보는지다. 게임은 연쇄 수가 목표 이상이면 클리어한다.
+        const reachedInGame = (detail, objective) => {
+            if (objective.kind === 'combo') return detail.combo >= objective.target;
+            if (objective.kind === 'clear') return detail.allClear;
+            if (objective.kind === 'multiple') return detail.popped >= objective.target;
+            if (objective.kind === 'color') return detail.colors >= objective.target;
+            return false;
+        };
+
+        // 1~turns번째 쌍을 어떻게 두어도(도중에 터뜨리는 수순 포함) 그 턴들 안에 목표를 이룰 수 없는지 모든 경우를 본다.
+        // 이룰 수 있으면 true다. 패배 칸이 막히는 수순은 그 턴에 게임이 끝나므로 더 보지 않는다.
+        const canReachEarly = (startBoard, pairs, turns, objective) => {
+            if (turns <= 0) return false;
+            const seen = new Set();
+            const visit = (board, turn) => {
+                const key = `${turn}:${boardKey(board)}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                const placements = exactPlacements(board, pairs[turn]);
+                for (let index = 0; index < placements.length; index += 1) {
+                    const placed = placements[index];
+                    if (!popsFromCells(placed.board, placed.cells)) {
+                        // 아무것도 터지지 않은 턴은 목표를 이룰 수 없다. 떠 있는 칸을 내린 뒤 다음 턴으로 넘어간다.
+                        if (turn + 1 >= turns) continue;
+                        const next = cloneBoard(placed.board);
+                        collapse(next);
+                        if (next[spawnRow][defeatColumn]) continue;
+                        if (visit(next, turn + 1)) return true;
+                        continue;
+                    }
+                    const resolved = exactResolve(placed.board);
+                    if (resolved.defeat) continue;
+                    if (reachedInGame(resolved.detail, objective)) return true;
+                    if (turn + 1 < turns && visit(resolved.board, turn + 1)) return true;
+                }
+                return false;
+            };
+            return visit(startBoard, 0);
+        };
+
+        // 정답 수순의 1~T-1턴은 아무것도 터뜨리지 않고 쌓기만 한다. 계획은 (x, 회전)만 정하고 착지는 매번 다시 계산한다.
+        // 쌓는 중에 터지거나 패배 칸을 막거나 놓을 수 없으면 null이다.
+        const applyPlan = (board, pairs, plan) => {
+            let work = board;
+            for (let turn = 0; turn < plan.length; turn += 1) {
+                const placed = exactPlace(work, pairs[turn], plan[turn].x, plan[turn].rotation);
+                if (!placed || popsFromCells(placed.board, placed.cells)) return null;
+                collapse(placed.board);
+                if (placed.board[spawnRow][defeatColumn]) return null;
+                work = placed.board;
+            }
+            return work;
+        };
+
+        // 지금 보드에서 무작위로 쌓기만 하는 계획을 만든다. 둘 곳이 없으면 null이다.
+        const makePlan = (board, pairs, turns, random) => {
+            const plan = [];
+            let work = board;
+            for (let turn = 0; turn < turns; turn += 1) {
+                const options = exactPlacements(work, pairs[turn]).filter((placed) => {
+                    if (popsFromCells(placed.board, placed.cells)) return false;
+                    collapse(placed.board);
+                    return !placed.board[spawnRow][defeatColumn];
+                });
+                if (!options.length) return null;
+                const chosen = options[Math.floor(random() * options.length)];
+                plan.push({ x: chosen.x, rotation: chosen.rotation });
+                work = chosen.board;
+            }
+            return plan;
+        };
+
+        // 계획대로 쌓은 뒤 마지막 쌍을 놓을 수 있는 모든 자리의 최댓값을 모은다. 패배하는 자리는 게임이 목표보다 먼저 패배로 끝내므로 뺀다.
+        const evaluatePuzzle = (board, pairs, plan) => {
+            const planned = applyPlan(board, pairs, plan);
+            if (!planned) return null;
+            const best = { combo: 0, popped: 0, colors: 0, allClear: false };
+            exactPlacements(planned, pairs[plan.length]).forEach((placed) => {
+                const resolved = exactResolve(placed.board);
+                if (resolved.defeat) return;
+                const detail = resolved.detail;
+                if (detail.combo > best.combo) best.combo = detail.combo;
+                if (detail.popped > best.popped) best.popped = detail.popped;
+                if (detail.colors > best.colors) best.colors = detail.colors;
+                if (detail.allClear) best.allClear = true;
+            });
+            return best;
+        };
+
+        const isExactlyStable = (board) => exactResolve(board).detail.combo === 0;
 
         const toPuyos = (board) => {
             const puyos = [];
@@ -2528,19 +2765,38 @@
 
         let job = null;
 
+        // 한 판의 탐색 방법을 정한다. 피버는 지급 쌍 하나로 평가하고, 퍼즐은 판마다 새 쌓기 계획을 세워
+        // 계획대로 쌓은 뒤 마지막 쌍으로 평가하며, 목표를 이룬 보드도 목표 턴수 전에 이룰 수 있으면 거절한다.
+        const buildOps = (random) => {
+            if (job.mode !== 'puzzle') {
+                return {
+                    plan: null,
+                    isStable: (board) => resolveDetail(board).combo === 0,
+                    evaluate: (board) => evaluate(board, job.pair),
+                    accept: () => true
+                };
+            }
+            const plan = makePlan(job.board, job.pairs, job.turnLimit - 1, random);
+            if (!plan) return null;
+            return {
+                plan,
+                isStable: isExactlyStable,
+                evaluate: (board) => evaluatePuzzle(board, job.pairs, plan),
+                accept: (board) => !canReachEarly(board, job.pairs, job.turnLimit - 1, job.objective)
+            };
+        };
+
+        // 제한 시간이 없으면(deadline이 Infinity) 찾을 때까지 계속 돈다. 본래 쓰레드는 terminate()로 언제든 끝낼 수 있다.
         const runJob = () => {
             while (Date.now() < job.deadline) {
                 job.seed += 1;
-                const result = search(job.board, job.colors, job.pair, job.objective, makeRandom(job.seed * 7919), job.nodes, job.deadline);
+                const random = makeRandom(job.seed * 7919);
+                const ops = buildOps(random);
+                const result = ops ? search(job.board, job.colors, ops, job.objective, random, job.nodes, job.deadline) : null;
                 job.nodes = Math.min(job.nodes * 2, 4000);
                 if (result) {
-                    self.postMessage({ type: 'found', puyos: toPuyos(result) });
+                    self.postMessage({ type: 'found', puyos: toPuyos(result), plan: ops.plan });
                     return;
-                }
-                // attack 목표는 실제 계산식을 여기서 알 수 없으므로, 막히면 연쇄를 한 단계 더 노린다.
-                if (job.objective.kind === 'attack' && job.objective.target < 12) {
-                    job.objective = { kind: 'attack', target: job.objective.target + 1 };
-                    job.nodes = startNodes;
                 }
             }
             self.postMessage({ type: 'failed' });
@@ -2554,18 +2810,28 @@
                     if (puyo.y >= 0 && puyo.y < rows && puyo.x >= 0 && puyo.x < columns) board[puyo.y][puyo.x] = puyo.color;
                 });
                 collapse(board);
-                if (resolveDetail(board).combo !== 0) { self.postMessage({ type: 'unstable' }); return; }
+                const puzzle = data.mode === 'puzzle';
+                const stable = puzzle ? isExactlyStable(board) : resolveDetail(board).combo === 0;
+                if (!stable) { self.postMessage({ type: 'unstable' }); return; }
                 const objective = data.objective;
-                if (objective.kind === 'combo' && evaluate(board, data.pair).combo > objective.target) {
-                    self.postMessage({ type: 'overshoot' });
-                    return;
+                const pairs = puzzle ? data.pairs : [data.pair];
+                // 한 턴짜리에서 놓인 뿌요만으로 이미 목표보다 많이 터지면 뿌요를 더해도 줄일 수 없다.
+                if (objective.kind === 'combo' && pairs.length === 1) {
+                    const best = puzzle ? evaluatePuzzle(board, pairs, []) : evaluate(board, data.pair);
+                    if (best && best.combo > objective.target) {
+                        self.postMessage({ type: 'overshoot' });
+                        return;
+                    }
                 }
                 job = {
+                    mode: puzzle ? 'puzzle' : 'fever',
                     board,
                     colors: data.colors,
-                    pair: data.pair,
+                    pair: pairs[0],
+                    pairs,
+                    turnLimit: pairs.length,
                     objective,
-                    deadline: Date.now() + data.timeLimit,
+                    deadline: Number(data.timeLimit) > 0 ? Date.now() + Number(data.timeLimit) : Infinity,
                     // 씨앗을 본래 쓰레드에서 받아 매번 다르게 시작한다. 조건을 만족하는 배치가
                     // 여럿일 때 자동생성을 누를 때마다 다른 결과가 나오게 하려는 것이다.
                     seed: Number(data.seed) || 0,
@@ -2575,12 +2841,20 @@
                 return;
             }
             // 본래 쓰레드가 게임 코드로 확인했을 때 목표와 달랐다면 다음 후보를 찾는다.
-            if (data.type === 'reject' && job) {
-                if (job.objective.kind === 'attack' && job.objective.target < 12) {
-                    job.objective = { kind: 'attack', target: job.objective.target + 1 };
-                    job.nodes = startNodes;
+            if (data.type === 'reject' && job) runJob();
+            // 회귀 테스트가 Worker의 정확 판정을 게임 코드와 비교할 때 쓴다.
+            if (data.type === 'probe') {
+                const board = emptyBoard();
+                (data.puyos || []).forEach((puyo) => { board[puyo.y][puyo.x] = puyo.color; });
+                if (data.probe === 'resolve') {
+                    const resolved = exactResolve(board);
+                    self.postMessage({ type: 'probe', id: data.id, result: { ...resolved.detail, defeat: resolved.defeat, puyos: toPuyos(resolved.board) } });
+                } else if (data.probe === 'placements') {
+                    const list = exactPlacements(board, data.pair).map((placed) => ({ x: placed.x, rotation: placed.rotation, cells: placed.cells }));
+                    self.postMessage({ type: 'probe', id: data.id, result: list });
+                } else if (data.probe === 'early') {
+                    self.postMessage({ type: 'probe', id: data.id, result: canReachEarly(board, data.pairs, data.turns, data.objective) });
                 }
-                runJob();
             }
         };
     }
@@ -2594,7 +2868,7 @@
         if (typeof Worker !== 'function' || typeof Blob !== 'function' || !URL?.createObjectURL) {
             throw new Error(translate('This browser cannot run the background search.'));
         }
-        const constants = { ...AUTO_GENERATE_BOARD, branch: AUTO_GENERATE_BRANCH, startNodes: AUTO_GENERATE_START_NODES };
+        const constants = { ...AUTO_GENERATE_BOARD, ...GAME_RULES, puyoColors: [...COLORS], branch: AUTO_GENERATE_BRANCH, startNodes: AUTO_GENERATE_START_NODES };
         const source = `(${autoGenerateWorkerBootstrap.toString()})(${JSON.stringify(constants)});`;
         const objectUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
         try {
@@ -2617,8 +2891,7 @@
         const overlay = createElement('div', { className: 'puyow-tools-overlay' }, rootElement);
         overlay.hidden = true;
         const panel = createElement('div', { className: 'puyow-tools-overlay-panel' }, overlay);
-        const bar = createElement('div', { className: 'puyow-tools-progress' }, panel);
-        createElement('span', {}, bar);
+        createElement('div', { className: 'puyow-tools-spinner', attributes: { role: 'progressbar', 'aria-busy': 'true' } }, panel);
         elements.overlayText = createElement('div', { className: 'puyow-tools-overlay-text', text: '' }, panel);
         elements.overlayStopButton = createElement('button', { text: translate('Stop'), attributes: { type: 'button' } }, panel);
         elements.overlay = overlay;
@@ -2683,6 +2956,19 @@
     }
 
     /**
+     * 진행 중인 자동생성을 취소한다. 결과는 성공했을 때만 편집 화면에 반영되므로,
+     * Worker를 끝내기만 하면 플레이 영역과 입력값은 자동생성을 시작하기 전 그대로 남는다.
+     * 화면의 중단 버튼과 WebMCP의 tools_stop_auto_generate가 함께 쓴다.
+     * @returns {boolean} 진행 중이던 자동생성을 취소했는지 여부
+     */
+    function cancelAutoGenerate() {
+        if (!generateWorker) return false;
+        stopAutoGenerate();
+        finishAutoGenerate(translate('Auto generation stopped.'), 'error');
+        return true;
+    }
+
+    /**
      * 피버 패턴의 플레이 영역을 목표 연쇄가 되도록 자동으로 채운다.
      * 이미 놓여 있는 뿌요와 "다음에 나올 뿌요"는 그대로 두고 필요한 만큼만 더한다.
      * @returns {void}
@@ -2732,18 +3018,16 @@
             stopAutoGenerate();
             finishAutoGenerate(translate('Auto generation failed: %1', translate('The background search stopped with an error.')), 'error');
         };
-        openProgressOverlay(translate('Looking for a layout that makes exactly %1 chains...', stage.targetCombo), () => {
-            stopAutoGenerate();
-            finishAutoGenerate(translate('Auto generation stopped.'), 'error');
-        });
+        openProgressOverlay(translate('Looking for a layout that makes exactly %1 chains...', stage.targetCombo), cancelAutoGenerate);
         autoGenerateVarietyRetries = 0;
+        // 제한 시간은 두지 않는다. 사용자가 중단하거나 WebMCP로 중단을 요청할 때까지 찾는다.
         worker.postMessage({
             type: 'start',
+            mode: 'fever',
             puyos: stage.stageData.puyos,
             colors: stage.usingColors,
             pair: [...stage.suppliedNextPuyos],
             objective: { kind: 'combo', target: stage.targetCombo },
-            timeLimit: AUTO_GENERATE_TIME_LIMIT,
             seed: createAutoGenerateSeed()
         });
     }
@@ -2807,55 +3091,115 @@
     }
 
     /**
-     * Worker가 찾은 퍼즐뿌요 배치를 게임 코드로 다시 확인한다.
-     * 첫 턴에 목표를 이룰 수 있는지만 본다. 목표 턴수는 1 이상이므로 첫 턴 해법은 언제나 제한 안이다.
-     * @param {{x:number,y:number,color:string}[]} puyos Worker가 돌려준 배치
-     * @param {string[]} pair 첫 턴 지급 뿌요 쌍
+     * 게임 코드로 한 턴을 정산한 결과가 퍼즐 목표를 이뤘는지 본다.
+     * @param {{steps:{popped:number, colors:number}[], board:(string|null)[][]}} resolved resolveBoardWithGameCode() 결과
      * @param {object} stage 편집 중인 PuzzlePuyoStage
-     * @returns {boolean} 그대로 써도 되는지 여부
+     * @param {boolean} exact combo 목표를 정확히 같을 때만 인정할지 여부. 게임은 목표 이상이면 클리어하고, 도구 테스트는 정확히 같아야 성공이다.
+     * @returns {boolean} 목표 달성 여부
      */
-    function verifyGeneratedPuzzleBoard(puyos, pair, stage) {
+    function isPuzzleGoalReachedWithGameCode(resolved, stage, exact) {
         const api = getGameApi();
-        const board = buildVerificationBoard(puyos);
-        if (api.findExplosionsOnBoard(board).length > 0) return false;
-        let reached = false;
-        forEachPlacement(board, pair, (placed, positions) => {
-            if (reached) return;
-            const resolved = resolveBoardWithGameCode(placed);
-            if (!resolved.steps.length) return;
-            if (stage.winConditionType === 'combo') reached = resolved.steps.length === stage.winConditionValue;
-            else if (stage.winConditionType === 'clear') reached = api.isAllClearBoard(resolved.board);
-            else if (stage.winConditionType === 'multiple') reached = resolved.steps.some((step) => step.popped >= stage.winConditionValue);
-            else if (stage.winConditionType === 'color') reached = resolved.steps.some((step) => step.colors >= stage.winConditionValue);
-            else if (stage.winConditionType === 'attack') {
-                const result = api.simulatePlacementResult(board, pair, positions);
-                reached = Boolean(result) && result.attack >= stage.winConditionValue;
-            }
-        });
-        return reached;
+        if (!resolved.steps.length) return false;
+        const value = stage.winConditionValue;
+        if (stage.winConditionType === 'combo') return exact ? resolved.steps.length === value : resolved.steps.length >= value;
+        if (stage.winConditionType === 'clear') return api.isAllClearBoard(resolved.board);
+        if (stage.winConditionType === 'multiple') return resolved.steps.some((step) => step.popped >= value);
+        if (stage.winConditionType === 'color') return resolved.steps.some((step) => step.colors >= value);
+        return false;
+    }
+
+    /** 게임의 기본 패배 칸(2, 11)이 막혔는지 본다. 퍼즐뿌요는 목표보다 패배를 먼저 판정한다. @param {(string|null)[][]} board 정산을 마친 보드 @returns {boolean} 패배 여부 */
+    function isPuzzleDefeatBoard(board) {
+        return Boolean(board[GAME_RULES.spawnRow][GAME_RULES.defeatColumn]);
     }
 
     /**
-     * 퍼즐뿌요의 플레이 영역을 목표를 이룰 수 있도록 자동으로 채운다.
+     * 게임 코드로, 지급 쌍 앞의 turns개를 어떻게 두어도(도중에 터뜨리는 수순 포함) 그 안에 목표를 이룰 수 없는지 본다.
+     * 경우의 수가 턴마다 약 22배로 늘어나므로 PUZZLE_MAIN_EARLY_CHECK_MAX_TURNS 이하의 목표 턴수에서만 부른다.
+     * @param {(string|null)[][]} board 시작 보드
+     * @param {string[][]} pairs 지급 쌍 목록
+     * @param {number} turns 살펴볼 턴 수
+     * @param {object} stage 편집 중인 PuzzlePuyoStage
+     * @returns {boolean} 그 턴들 안에 목표를 이룰 수 있으면 true
+     */
+    function canReachPuzzleGoalEarlyWithGameCode(board, pairs, turns, stage) {
+        const visit = (current, turn) => {
+            let reached = false;
+            forEachPlacement(current, pairs[turn], (placed) => {
+                if (reached) return;
+                const resolved = resolveBoardWithGameCode(placed);
+                if (isPuzzleDefeatBoard(resolved.board)) return;
+                if (isPuzzleGoalReachedWithGameCode(resolved, stage, false)) { reached = true; return; }
+                if (turn + 1 < turns && visit(resolved.board, turn + 1)) reached = true;
+            });
+            return reached;
+        };
+        return turns > 0 && visit(board, 0);
+    }
+
+    /**
+     * Worker가 찾은 퍼즐뿌요 배치를 게임 코드로 다시 확인한다.
+     * 계획한 1~T-1턴 쌓기가 실제로 터지지 않고 패배 칸도 막지 않는지, 그 뒤 T번째 쌍으로 목표를 이룰 수 있는지 본다.
+     * 목표 턴수가 PUZZLE_MAIN_EARLY_CHECK_MAX_TURNS 이하면 그 전에 이룰 수 없다는 것도 게임 코드로 다시 확인하고,
+     * 그보다 크면 같은 규칙을 옮긴 Worker의 전수 검사를 믿는다.
+     * @param {{x:number,y:number,color:string}[]} puyos Worker가 돌려준 배치
+     * @param {{x:number,rotation:number}[]} plan Worker가 쓴 1~T-1턴 쌓기 계획
+     * @param {object} stage 편집 중인 PuzzlePuyoStage
+     * @returns {boolean} 그대로 써도 되는지 여부
+     */
+    function verifyGeneratedPuzzleBoard(puyos, plan, stage) {
+        const api = getGameApi();
+        const pairs = stage.suppliedNextPuyos.slice(0, stage.turnLimit);
+        const startBoard = buildVerificationBoard(puyos);
+        if (api.findExplosionsOnBoard(startBoard).length > 0) return false;
+        if (!Array.isArray(plan) || plan.length !== pairs.length - 1) return false;
+        let board = startBoard;
+        for (let turn = 0; turn < plan.length; turn += 1) {
+            // 조작 뿌요가 나타나는 높이는 puyow.js의 ACTIVE_PUYO_SPAWN_Y와 같은 값이다.
+            const virtualPlayer = { board, active: { x: 2, y: 11.9, rotation: 0, colors: [...pairs[turn]] } };
+            const placement = api.findLandingPlacement(virtualPlayer, plan[turn].x, plan[turn].rotation);
+            if (!placement) return false;
+            const placed = board.map((row) => [...row]);
+            api.activeCells(placement).forEach(({ x, y, color }) => { placed[y][x] = color; });
+            board = api.collapseBoard(placed);
+            if (api.findExplosionsOnBoard(board).length > 0 || isPuzzleDefeatBoard(board)) return false;
+        }
+        let reached = false;
+        forEachPlacement(board, pairs[pairs.length - 1], (placed) => {
+            if (reached) return;
+            const resolved = resolveBoardWithGameCode(placed);
+            reached = !isPuzzleDefeatBoard(resolved.board) && isPuzzleGoalReachedWithGameCode(resolved, stage, true);
+        });
+        if (!reached) return false;
+        if (pairs.length > 1 && pairs.length <= PUZZLE_MAIN_EARLY_CHECK_MAX_TURNS
+            && canReachPuzzleGoalEarlyWithGameCode(startBoard, pairs, pairs.length - 1, stage)) return false;
+        return true;
+    }
+
+    /**
+     * 퍼즐뿌요의 플레이 영역을 목표 턴수째에 목표를 이룰 수 있고, 그 전에는 이룰 수 없도록 자동으로 채운다.
      * 이미 놓여 있는 뿌요와 "다음에 나올 뿌요", 목표 타입·값·턴수·힌트는 그대로 둔다.
+     * 목표 타입이 attack이면 공격량 계산을 Worker가 똑같이 할 수 없어 자동생성을 하지 않고 안내만 한다.
      * @returns {void}
      */
     function startPuzzleAutoGenerate() {
+        if (elements.winConditionType.value === 'attack') {
+            finishAutoGenerate(translate('Auto generation is not available when the win condition is attack.'), 'error');
+            return;
+        }
         let stage = null;
         try {
             stage = collectPuzzleStage({ requirePuyos: false });
         } catch (error) {
-            setStatus(translate('Auto generation failed: %1', error.message), 'error');
+            finishAutoGenerate(translate('Auto generation failed: %1', error.message), 'error');
             return;
         }
-        const pair = stage.suppliedNextPuyos[0];
-        // 첫 턴 해법을 찾는 것이므로, 쓸 수 있는 색은 배치와 지급 뿌요에 나온 색과 기본 5색을 모두 본다.
+        const pairs = stage.suppliedNextPuyos.slice(0, stage.turnLimit).map((pair) => [...pair]);
+        // 쓸 수 있는 색은 배치와 지급 뿌요에 나온 색과 기본 5색을 모두 본다.
         const colors = getToolsApi().getColors();
         const objective = stage.winConditionType === 'clear'
             ? { kind: 'clear', target: 1 }
             : { kind: stage.winConditionType, target: stage.winConditionValue };
-        // attack 목표는 얕은 연쇄부터 시험한다. 실제 공격량 판정은 본래 쓰레드가 한다.
-        if (objective.kind === 'attack') objective.target = 2;
         const before = stage.stageData.puyos.length;
         try {
             generateWorker = createAutoGenerateWorker();
@@ -2867,7 +3211,7 @@
         worker.onmessage = (event) => {
             const data = event.data || {};
             if (data.type === 'found') {
-                if (!verifyGeneratedPuzzleBoard(data.puyos, pair, stage)) {
+                if (!verifyGeneratedPuzzleBoard(data.puyos, data.plan, stage)) {
                     worker.postMessage({ type: 'reject' });
                     return;
                 }
@@ -2892,18 +3236,16 @@
             stopAutoGenerate();
             finishAutoGenerate(translate('Auto generation failed: %1', translate('The background search stopped with an error.')), 'error');
         };
-        openProgressOverlay(translate('Looking for a layout that reaches the goal on the first turn...'), () => {
-            stopAutoGenerate();
-            finishAutoGenerate(translate('Auto generation stopped.'), 'error');
-        });
+        openProgressOverlay(translate('Looking for a layout that reaches the goal on turn %1 and not earlier...', stage.turnLimit), cancelAutoGenerate);
         autoGenerateVarietyRetries = 0;
+        // 제한 시간은 두지 않는다. 사용자가 중단하거나 WebMCP로 중단을 요청할 때까지 찾는다.
         worker.postMessage({
             type: 'start',
+            mode: 'puzzle',
             puyos: stage.stageData.puyos,
             colors,
-            pair: [...pair],
+            pairs,
             objective,
-            timeLimit: AUTO_GENERATE_TIME_LIMIT,
             seed: createAutoGenerateSeed()
         });
     }
@@ -2942,6 +3284,7 @@
             language: toolsLanguage,
             darkMode: toolsSettings.darkMode,
             testing,
+            autoGenerating: Boolean(generateWorker),
             verified: verifiedSnapshot !== null && verifiedSnapshot === (currentMode ? buildVerificationSnapshot() : null),
             message: elements.status ? elements.status.textContent : '',
             script: elements.output ? elements.output.value : '',
@@ -3069,7 +3412,7 @@
                     'Start with tools_select_mode, then edit the play field with tools_place_puyos and the supplied pairs with tools_set_next_puyos.',
                     'The play field is 6 columns wide and 13 rows tall; y = 0 is the bottom row. Colors are red, green, yellow, blue and purple, plus garbage on the play field only.',
                     'tools_set_options changes the sidebar values: target chain, difficulty and colors in use for FEVER; win condition, value, turn limit and hint for Puzzle Puyo.',
-                    'tools_auto_generate fills the play field so that the goal becomes reachable, keeping every puyo that is already placed. It can take up to two minutes.',
+                    'tools_auto_generate fills the play field so that the goal becomes reachable, keeping every puyo that is already placed. For Puzzle Puyo the goal is reachable on the turn limit and never earlier; the attack win condition is not supported. It has no time limit: pass wait = false to return at once, poll tools_status (autoGenerating), and call tools_stop_auto_generate to cancel.',
                     'tools_generate_script only works after a successful test, and a person has to play that test with the keyboard: tools_run_test starts it and tools_stop_test ends it.',
                     'tools_status reports the current mode, sidebar values, board, whether a test is running and whether the current content has passed a test.'
                 ].join(' ')
@@ -3170,15 +3513,27 @@
             },
             {
                 name: `${TOOLS_MCP_PREFIX}auto_generate`,
-                description: 'Fill the play field so the goal of the current mode becomes reachable, keeping the puyos that are already placed and adding as few as possible. Waits until the search finishes, which can take up to two minutes, and returns the result message.',
-                inputSchema: emptyInput,
-                execute: () => {
+                description: 'Fill the play field so the goal of the current mode becomes reachable, keeping the puyos that are already placed and adding as few as possible. For Puzzle Puyo the goal becomes reachable on the turn limit and never earlier; the attack win condition is not supported. The search has no time limit. By default this waits until the search finishes and returns the result message; pass wait = false to return as soon as it starts, then poll tools_status (autoGenerating) and cancel with tools_stop_auto_generate.',
+                inputSchema: {
+                    type: 'object',
+                    properties: { wait: { type: 'boolean', description: 'Wait for the result (default true).' } },
+                    additionalProperties: false
+                },
+                execute: (input = {}) => {
                     requireEditor();
                     if (generateWorker) throw new Error('Auto generation is already running.');
                     const waiting = new Promise((resolve) => { autoGenerateWaiters.push(resolve); });
                     startAutoGenerate();
+                    // 검증 실패·attack 안내처럼 곧바로 끝난 경우는 기다리지 않아도 결과 문구가 이미 있다.
+                    if (input?.wait === false && generateWorker) return 'Auto generation started. Poll tools_status and call tools_stop_auto_generate to cancel.';
                     return waiting;
                 }
+            },
+            {
+                name: `${TOOLS_MCP_PREFIX}stop_auto_generate`,
+                description: 'Cancel a running auto generation. The play field and the sidebar values stay as they were before it started. A pending tools_auto_generate call returns the stop message.',
+                inputSchema: emptyInput,
+                execute: () => (cancelAutoGenerate() ? translate('Auto generation stopped.') : 'Auto generation is not running.')
             },
             {
                 name: `${TOOLS_MCP_PREFIX}run_test`,

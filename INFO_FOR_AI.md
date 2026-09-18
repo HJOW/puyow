@@ -425,21 +425,35 @@ aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
 ### 개발용 도구의 자동생성
 
 - 사이드바 `조작` 영역의 `자동생성` 버튼이 플레이 영역을 목표에 맞게 채운다. 이미 놓인 뿌요와 `다음에 나올 뿌요`, 사이드바 값은 그대로 두고 필요한 만큼만 더한다. 시작 전에 테스트와 같은 검증을 거치되, 플레이 영역이 비어 있는 것은 허용한다(`collectFeverStage({requirePuyos:false})`).
-- 진행 중에는 화면 전체를 덮는 음영(`.puyow-tools-overlay`)과 진행률을 알 수 없는 게이지, `중단` 버튼이 나온다. 중단은 `worker.terminate()`이며, 완료·중단 모두 음영을 걷고 이어서 손으로 고칠 수 있는 상태로 돌아간다.
+- 진행 중에는 화면 전체를 덮는 음영(`.puyow-tools-overlay`)과 동그랗게 도는 진행 표시(`.puyow-tools-spinner`, 2026-09-18부터. 그 전에는 흐르는 가로 막대), `중단` 버튼이 나온다. 중단은 `cancelAutoGenerate()` → `worker.terminate()`이며, 완료·중단 모두 음영을 걷는다. **결과는 성공했을 때만 `acceptAutoGenerateResult()`가 편집 화면에 반영하므로, 중단하면 플레이 영역과 입력값이 자동생성을 시작하기 전 그대로다.** 화면의 `중단` 버튼과 WebMCP `tools_stop_auto_generate`가 같은 `cancelAutoGenerate()`를 쓴다.
+- **제한 시간은 없다**(2026-09-18, 피버·퍼즐 모두). 예전 `AUTO_GENERATE_TIME_LIMIT`(2분)을 없앴고, `start` 메시지에 `timeLimit`을 싣지 않으면 Worker의 마감이 `Infinity`다(값을 주면 그 시간 뒤 `failed`를 보내는 경로는 남아 있다). Worker의 `runJob()`은 찾을 때까지 쉬지 않고 돌지만 `terminate()`는 루프 도중에도 Worker를 끝낸다. 답이 없는 조건이면 사용자가 중단할 때까지 계속 찾는다.
 - 탐색은 `autoGenerateWorkerBootstrap()`을 문자열로 만들어 Blob URL로 띄운 Worker가 맡는다. 별도 파일은 두지 않는다. `puyow.js`의 연쇄 코드는 IIFE 안에 있어 Worker로 넘길 수 없으므로 Worker가 연쇄 판정을 다시 구현하지만, **그것은 후보를 고르기 위한 근사일 뿐이고 최종 확인은 본래 쓰레드가 게임 코드로 다시 한다**. 두 판정이 어긋나도 잘못된 배치가 반영되지 않는 이유가 이 역할 분담이다.
 - 알고리즘은 목표에 한 걸음씩 다가가는 깊이 우선 탐색이다. 한 걸음은 같은 색 뿌요를 1~4개, 한 열 또는 이웃한 두 열에 쌓는 것이며, 쌍을 놓기 전에 스스로 터지는 배치는 버린다. 막히면 직전 선택을 바꿔 되돌아간다. 더하는 뿌요가 적은 후보를 먼저 보므로 결과는 "찾은 것 중 가장 적은" 배치이며, 이론적 최소를 보장하지는 않는다.
-- 본래 쓰레드의 확인은 피버가 `findExplosionsOnBoard()`(스스로 터지지 않는지)와 `findBestPreviewResult()`(정확히 목표 연쇄인지)를, 퍼즐이 `findExplosionGroupsOnBoard()`·`collapseBoard()`로 단계를 직접 밟으며 목표 타입별 값을 센다. 게임이 단계별 폭발 수·색 수를 따로 내보내지 않기 때문이다. `attack` 목표만 `simulatePlacementResult().attack`으로 어림한다.
-- **퍼즐 자동생성은 첫 턴에 목표를 이룰 수 있는 배치만 찾는다.** 목표 턴수는 1 이상이므로 첫 턴 해법은 언제나 제한 안이다. 여러 턴을 써야 풀리는 배치는 찾지 않는다.
-- 못 찾으면 `AUTO_GENERATE_TIME_LIMIT`(2분) 뒤 안내 문구를 낸다. 알려진 한계로 3색만 쓰는 11~12연쇄와 목표 타입 `color`의 4·5색은 잘 찾지 못한다.
+- 본래 쓰레드의 확인은 피버가 `findExplosionsOnBoard()`(스스로 터지지 않는지)와 `findBestPreviewResult()`(정확히 목표 연쇄인지)를, 퍼즐이 `findExplosionGroupsOnBoard()`·`collapseBoard()`로 단계를 직접 밟으며 목표 타입별 값을 센다(`resolveBoardWithGameCode()`, `isPuzzleGoalReachedWithGameCode()`). 게임이 단계별 폭발 수·색 수를 따로 내보내지 않기 때문이다.
+- 알려진 한계로 3색만 쓰는 11~12연쇄와 목표 타입 `color`의 4·5색은 잘 찾지 못한다(이제 제한 시간이 없으므로 중단할 때까지 찾는다).
+
+#### 퍼즐 자동생성: 목표 턴수째에만 달성 (2026-09-18, `TODO.md`)
+
+**퍼즐 자동생성은 `다음에 나올 뿌요`의 목표 턴수(T)번째 쌍으로 목표를 이루고, 그 전(1~T−1턴)에는 어떻게 두어도 목표를 이룰 수 없는 배치를 만든다.** 이미 만들어진 퍼즐을 플레이할 때는 게임 규칙대로 더 일찍 풀어도 되지만, 개발 도구의 자동생성 결과는 목표 턴수 전에 풀리면 안 된다는 사용자 결정이다. 그 전에는 첫 쌍만 보고 첫 턴 해법을 찾았다. T = 1이면 예전과 같다.
+
+- **목표 타입 `attack`은 자동생성하지 않는다.** `startPuzzleAutoGenerate()`가 Worker를 띄우지 않고 `Auto generation is not available when the win condition is attack.`(한국어 `목표 타입이 attack (공격량)이면 자동생성을 사용할 수 없습니다.`)만 상태 줄에 낸다. 공격량 계산을 Worker가 똑같이 할 수 없어서다. 목표 타입 설명 문구는 바꾸지 않았다(사용자 결정). 이어서 사용자 요청으로 **목표 타입이 attack이면 자동생성 버튼 자체를 비활성화**한다. `refreshWinConditionValueState()`가 목표 타입을 바꿀 때마다(선택 변경·스크립트/기존 패턴 불러오기·WebMCP `tools_set_options`·테스트 종료 뒤) `autoGenerateButton.disabled = testing || attack`으로 맞추며, 퍼즐 사이드바는 조작 버튼을 만든 뒤 이 함수를 부른다. 위 안내 문구는 버튼을 거치지 않는 WebMCP `tools_auto_generate` 경로를 위해 그대로 둔다. 회귀 테스트는 "퍼즐뿌요 자동생성 버튼은 목표 타입이 attack이면 비활성화되고…"다. 예전의 attack 전용 처리(목표 연쇄를 2부터 한 단계씩 올려 보기)는 지웠다.
+- **정답 수순**: 1~T−1턴은 아무것도 터뜨리지 않고 쌓기만 한다(사용자 결정). Worker의 `buildOps()`가 탐색 한 판마다 `makePlan()`으로 무작위 쌓기 계획(`{x, rotation}` 목록)을 세우고, `evaluatePuzzle()`이 후보 보드에 그 계획을 `applyPlan()`으로 차례로 떨어뜨린 뒤(도중에 터지거나 패배 칸을 막거나 놓을 수 없으면 후보 제외) T번째 쌍의 모든 자리로 목표 값을 센다. 뿌요 묶음은 예전처럼 초기 보드에 쌓으므로 계획한 쌍은 그 위에 얹힌다. 성장 탐색 `search()`·`nextSteps()`는 피버와 같고, 평가 방법만 `ops`(`isStable`·`evaluate`·`accept`)로 갈라 끼운다.
+- **조기 달성 검사**: 목표를 이룬 보드도 `ops.accept` = `!canReachEarly()`를 통과해야 한다. 1~T−1번째 쌍을 놓을 수 있는 모든 자리를 도중에 터뜨리는 수순까지 전부 따지며, 게임처럼 연쇄 목표는 **목표 이상**이면 그 턴에 클리어로 본다(`reachedInGame()`). 패배 칸(2, 11)이 막히는 수순은 게임이 목표보다 패배를 먼저 판정하므로 더 보지 않는다. 턴마다 경우의 수가 최대 22배라, 놓은 두 칸 주변만 세는 `popsFromCells()`로 터지지 않는 자리를 빠르게 거르고 `턴:보드` 지문으로 같은 상태를 한 번만 본다. 마지막 턴(T번째)의 목표는 도구 테스트처럼 연쇄 목표가 **정확히** 같아야 한다.
+- **퍼즐 경로의 Worker 판정은 근사가 아니라 게임 규칙 그대로다.** 조기 달성은 모든 경우를 Worker만 따지므로 틀리면 안 된다. `exactStep()`·`exactResolve()`(보이는 12줄에서만 폭발, 터진 칸에 닿은 방해뿌요는 모든 줄에서 제거, 패배 칸 판정), `exactPlace()`·`exactPlacements()`(조작 뿌요가 (x, 11)에 나타나므로 시작 두 칸이 비어야 함 — 안정 보드에서 열 높이 ≤ 그 줄, 착지 뒤 떠 있는 칸은 중력) 모두 `puyow.js`의 `findExplosionGroupsOnBoard()`·`getExplosionResolution()`·`collapseBoard()`·`findLandingPlacement()`·`isDefeatBoard()`와 같아야 한다. 규칙 값은 `puyow_tools.js`의 `GAME_RULES`(`visibleRows` 12, `spawnRow` 11, `defeatColumn` 2)와 `COLORS`로 Worker에 넘긴다. **게임의 이 규칙을 바꾸면 Worker도 함께 고친다.** 피버 경로는 여전히 13줄 근사 판정(`resolveDetail()`·`placePair()`)을 쓰며 이번에 바꾸지 않았다.
+- **본래 쓰레드 확인**(`verifyGeneratedPuzzleBoard(puyos, plan, stage)`): Worker가 `found`에 실어 보낸 `plan`을 게임 코드(`findLandingPlacement()`·`activeCells()`·`collapseBoard()`)로 다시 두어 쌓는 동안 터지거나 패배 칸이 막히지 않는지, 그 뒤 T번째 쌍으로 목표(연쇄는 정확히)를 이루는지 본다. T가 `PUZZLE_MAIN_EARLY_CHECK_MAX_TURNS`(3) 이하면 조기 달성 불가도 게임 코드로 다시 확인하고(`canReachPuzzleGoalEarlyWithGameCode()`), 그보다 크면 경우의 수 때문에 화면이 멈출 수 있어 Worker의 전수 검사를 믿는다.
+- `overshoot`(놓인 뿌요만으로 목표보다 많이 터짐) 검사는 쌍이 하나일 때(피버, T = 1 퍼즐)만 한다.
+- 측정(Node, 빈 보드): T = 2~4는 연쇄 2~4·싹쓸이·multiple 6·color 2 모두 0.1~0.2초, T = 6은 연쇄 3·color 2가 약 7초였다. T = 6의 조기 달성 검사 한 번은 반쯤 찬 보드에서 약 6.6초다.
+- 회귀 테스트(`tests/test02_tools.spec.js`): 목표 턴수 2(연쇄 2)·3(color 2) 결과를 도구 코드를 거치지 않고 게임 API만으로 다시 따져 "마지막 턴에만 달성·그 전 불가"를 확인, attack 안내와 배치 유지, 동그란 진행 표시와 중단 후 배치 복원, 그리고 **Worker 본체를 Node에서 그대로 실행해 160개 무작위 보드의 착지·연쇄·단계별 폭발 수·색 수·싹쓸이·패배와 60개 보드의 2턴 조기 달성 판정을 게임 코드와 비교**한다(Worker의 보이는 줄 수를 13으로 바꾸면 실패함을 확인했다). 이 비교 테스트는 `autoGenerateWorkerBootstrap()`을 소스에서 잘라 쓰므로, 그 함수 바로 뒤 주석(`자동생성 Worker를 만든다.`)을 바꾸면 테스트의 자르는 위치도 고친다.
 - **자동생성은 누를 때마다 다른 결과를 내려고 한다.** 사용자가 마음에 들 때까지 눌러 보고 이어서 손으로 고칠 수 있게 하려는 것이다. 두 가지가 이 성질을 만든다. 첫째, 탐색 난수의 씨앗을 본래 쓰레드가 `createAutoGenerateSeed()`(게임의 `randomFloat()`를 거친다)로 매번 새로 만들어 `start` 메시지에 실어 보낸다. 예전에는 Worker가 씨앗 0에서 시작해 같은 조건이면 늘 같은 배치가 나왔다. Worker의 `nextSteps()`는 후보를 섞은 뒤 안정 정렬로 이득·더하는 뿌요 수만 비교하므로, 같은 값끼리의 순서가 이 씨앗에 따라 달라진다. 둘째, 찾은 배치가 직전 결과(`autoGenerateLastSignature`)와 완전히 같으면 `retryAutoGenerateForVariety()`가 `reject`를 보내 다른 경우를 더 찾게 한다. 해가 하나뿐인 조건에서 멈추지 않도록 `AUTO_GENERATE_VARIETY_RETRIES`(8)회까지만 다시 찾고 그 뒤에는 같은 결과라도 받아들인다. 개발 대상을 바꾸면 이 지문은 지운다.
 - 자동생성 결과도 그대로 쓸 수 있는 완성품이 아니라 손으로 다듬을 초안이다. 배치가 바뀌면 검증 지문도 달라지므로 스크립트를 만들려면 다시 테스트해야 한다.
 
 ### 개발용 도구의 WebMCP
 
 - `PuyoWTools.initialize()`에서 `registerMcpTools()`가 `document.modelContext`에 도구를 등록한다. 미지원 브라우저에서는 아무 일도 하지 않으며, `destroy()`가 `AbortController`로 한 번에 해제한다.
-- 이름은 모두 `tools_` 접두어를 쓴다. 편집 화면에 들어가면 `puyow.js`도 같은 문서에 `manual`·`now_screen`·`now_game_status`·`point_recommend`·`show_message`를 등록하므로 이름이 겹치면 안 된다. 게임 도구는 `PuyoW.initialize()` 때 등록되므로 개발 대상을 고르기 전에는 도구 페이지 것 11개만 있다.
-- 도구 목록은 `tools_manual`, `tools_status`, `tools_select_mode`, `tools_load_script`, `tools_set_options`, `tools_place_puyos`, `tools_set_next_puyos`, `tools_auto_generate`, `tools_run_test`, `tools_stop_test`, `tools_generate_script`다.
-- `tools_auto_generate`는 결과가 나올 때까지 기다린다. `finishAutoGenerate()`가 결과 문구를 화면에 적으면서 `autoGenerateWaiters`에 담긴 완료 함수를 모두 깨우는 구조다.
+- 이름은 모두 `tools_` 접두어를 쓴다. 편집 화면에 들어가면 `puyow.js`도 같은 문서에 `manual`·`now_screen`·`now_game_status`·`point_recommend`·`show_message`를 등록하므로 이름이 겹치면 안 된다. 게임 도구는 `PuyoW.initialize()` 때 등록되므로 개발 대상을 고르기 전에는 도구 페이지 것 12개만 있다.
+- 도구 목록은 `tools_manual`, `tools_status`, `tools_select_mode`, `tools_load_script`, `tools_set_options`, `tools_place_puyos`, `tools_set_next_puyos`, `tools_auto_generate`, `tools_stop_auto_generate`, `tools_run_test`, `tools_stop_test`, `tools_generate_script`다.
+- `tools_auto_generate`는 기본적으로 결과가 나올 때까지 기다린다. `finishAutoGenerate()`가 결과 문구를 화면에 적으면서 `autoGenerateWaiters`에 담긴 완료 함수를 모두 깨우는 구조다. 제한 시간이 없어졌으므로(2026-09-18) `{ wait: false }`를 주면 시작하자마자 돌아오고, `tools_status`의 `autoGenerating`으로 진행 여부를 본다. attack 안내·검증 실패처럼 곧바로 끝난 경우는 `wait: false`여도 결과 문구를 돌려준다.
+- `tools_stop_auto_generate`(2026-09-18)는 진행 중인 자동생성을 화면의 `중단`과 같은 `cancelAutoGenerate()`로 취소하고 `자동생성을 중단했습니다.`를 돌려준다. 기다리던 `tools_auto_generate` 호출도 같은 문구로 끝난다. 진행 중이 아니면 `Auto generation is not running.`이다.
 - **`tools_run_test`는 테스트를 시작만 하고 바로 돌아온다.** 조작을 넣는 도구가 없어 AI가 대신 플레이할 수 없기 때문이다. 사람이 키보드로 플레이해야 하며 결과는 `tools_status`로 확인한다. 그래서 AI 혼자서는 스크립트 생성까지 갈 수 없고, 배치를 준비하는 데까지가 이 도구들의 몫이다.
 - 피버 패턴 화면의 `사용할 색상 목록` 기본값은 `DEFAULT_FEVER_USING_COLORS`(빨강·초록·파랑 3색)다.
 

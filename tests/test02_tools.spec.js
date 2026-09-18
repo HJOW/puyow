@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
 
 // 개발용 도구 화면(tools.html, puyow_tools.js)의 회귀 테스트다.
 // 게임 페이지(puyow.html) 자체의 동작은 test01.spec.js가 맡는다.
@@ -611,6 +612,238 @@ test('퍼즐뿌요 자동생성은 목표 턴수가 잘못되면 시작하지 �
   await expect(page.locator('.puyow-tools-overlay')).toBeHidden();
 });
 
+// 게임 코드(PuyoW)만으로 퍼즐 한 턴의 결과를 모두 구하는 도우미를 페이지에 둔다.
+// 도구의 판정 코드를 거치지 않으므로 자동생성 결과를 독립적으로 확인할 수 있다.
+async function installGamePuzzleHelpers(page) {
+  await page.evaluate(() => {
+    const api = window.PuyoW;
+    const toBoard = (puyos) => {
+      const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+      puyos.forEach(({ x, y, color }) => { board[y][x] = color; });
+      return board;
+    };
+    // 한 쌍을 놓을 수 있는 모든 자리의 결과. 단계별 터진 색 뿌요 수·색 수도 게임의 폭발 그룹 함수로 센다.
+    const outcomes = (board, pair) => {
+      const list = [];
+      for (let rotation = 0; rotation < 4; rotation += 1) {
+        for (let x = 0; x < 6; x += 1) {
+          const placement = api.findLandingPlacement({ board, active: { x: 2, y: 11.9, rotation: 0, colors: [...pair] } }, x, rotation);
+          if (!placement) continue;
+          const cells = api.activeCells(placement);
+          const placed = board.map((row) => [...row]);
+          cells.forEach(({ x: cx, y: cy, color }) => { placed[cy][cx] = color; });
+          const result = api.simulatePlacementResult(board, pair, cells.map(({ x: cx, y: cy }) => ({ x: cx, y: cy })));
+          let work = api.collapseBoard(placed);
+          let popped = 0;
+          let colors = 0;
+          for (;;) {
+            const groups = api.findExplosionGroupsOnBoard(work);
+            if (!groups.length) break;
+            popped = Math.max(popped, groups.reduce((sum, group) => sum + group.cells.length, 0));
+            colors = Math.max(colors, new Set(groups.map((group) => group.color)).size);
+            const next = work.map((row) => [...row]);
+            groups.forEach((group) => group.cells.forEach(([gx, gy]) => {
+              next[gy][gx] = null;
+              [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+                if (work[gy + dy]?.[gx + dx] === 'garbage') next[gy + dy][gx + dx] = null;
+              });
+            }));
+            work = api.collapseBoard(next);
+          }
+          list.push({
+            x, rotation, placed: api.collapseBoard(placed), board: result.board, combo: result.combo, popped, colors,
+            allClear: result.combo > 0 && api.isAllClearBoard(result.board), defeat: Boolean(result.board[11][2])
+          });
+        }
+      }
+      return list;
+    };
+    const reached = (outcome, objective, exact) => {
+      if (objective.kind === 'combo') return exact ? outcome.combo === objective.target : outcome.combo >= objective.target;
+      if (objective.kind === 'clear') return outcome.allClear;
+      if (objective.kind === 'multiple') return outcome.popped >= objective.target;
+      return outcome.colors >= objective.target;
+    };
+    // 앞 turns턴 안에 (도중에 터뜨리는 수순 포함) 목표를 이룰 수 있는지 모두 따진다.
+    const canReachEarly = (board, pairs, turns, objective, turn = 0) => turns > 0 && outcomes(board, pairs[turn])
+      .some((outcome) => !outcome.defeat && (reached(outcome, objective, false)
+        || (turn + 1 < turns && canReachEarly(outcome.board, pairs, turns, objective, turn + 1))));
+    // 앞 턴에서 목표를 이루지 않고 마지막 턴에 목표(연쇄는 정확히)를 이루는 수순이 있는지 본다.
+    const canReachOnLastTurn = (board, pairs, objective, turn = 0) => outcomes(board, pairs[turn]).some((outcome) => {
+      if (outcome.defeat) return false;
+      if (turn === pairs.length - 1) return reached(outcome, objective, true);
+      return !reached(outcome, objective, false) && canReachOnLastTurn(outcome.board, pairs, objective, turn + 1);
+    });
+    window.testGamePuzzle = { toBoard, outcomes, canReachEarly, canReachOnLastTurn };
+  });
+}
+
+// 퍼즐뿌요 자동생성을 끝까지 돌리고, 결과가 목표 턴수째에 이뤄지며 그 전에는 이룰 수 없는지 게임 코드로 확인한다.
+async function expectPuzzleGeneratedOnTurnLimit(page, { pairs, type, value, objective }) {
+  await selectMode(page, '퍼즐뿌요 개발');
+  await page.evaluate((suppliedNextPuyos) => window.PuyoW.tools.setEditorData({ stageData: { puyos: [] }, suppliedNextPuyos }), pairs);
+  await page.locator('.puyow-tools-sidebar select').first().selectOption(type);
+  await page.locator('.puyow-tools-sidebar input[type="number"]').first().fill(String(value));
+  await page.locator('.puyow-tools-sidebar input[type="number"]').nth(1).fill(String(pairs.length));
+  await page.getByRole('button', { name: '자동생성' }).click();
+  await expect(page.locator('.puyow-tools-status')).toHaveText(/자동생성을 마쳤습니다/, { timeout: 150000 });
+  await expect(page.locator('.puyow-tools-overlay')).toBeHidden();
+  await installGamePuzzleHelpers(page);
+  const check = await page.evaluate(({ pairs: suppliedPairs, objective: goal }) => {
+    const helper = window.testGamePuzzle;
+    const board = helper.toBoard(window.PuyoW.tools.getEditorData().stageData.puyos);
+    return {
+      selfPops: window.PuyoW.findExplosionsOnBoard(board).length,
+      onLastTurn: helper.canReachOnLastTurn(board, suppliedPairs, goal),
+      early: helper.canReachEarly(board, suppliedPairs, suppliedPairs.length - 1, goal)
+    };
+  }, { pairs, objective });
+  expect(check).toEqual({ selfPops: 0, onLastTurn: true, early: false });
+}
+
+test('퍼즐뿌요 자동생성은 목표 턴수 2에서 2턴째에 목표를 이루고 1턴째에는 이룰 수 없는 배치를 만든다', async ({ page }) => {
+  await expectPuzzleGeneratedOnTurnLimit(page, {
+    pairs: [['red', 'green'], ['blue', 'yellow']], type: 'combo', value: 2, objective: { kind: 'combo', target: 2 }
+  });
+});
+
+test('퍼즐뿌요 자동생성은 목표 턴수 3에서 도중에 터뜨리는 수순까지 막고 3턴째에 목표를 이루는 배치를 만든다', async ({ page }) => {
+  await expectPuzzleGeneratedOnTurnLimit(page, {
+    pairs: [['red', 'green'], ['blue', 'yellow'], ['green', 'blue']], type: 'color', value: 2, objective: { kind: 'color', target: 2 }
+  });
+});
+
+test('퍼즐뿌요 자동생성 버튼은 목표 타입이 attack이면 비활성화되고 다른 타입으로 바꾸면 다시 켜진다', async ({ page }) => {
+  await selectMode(page, '퍼즐뿌요 개발');
+  const puyos = [{ x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'blue' }];
+  await page.evaluate((stagePuyos) => window.PuyoW.tools.setEditorData({
+    stageData: { puyos: stagePuyos },
+    suppliedNextPuyos: [['red', 'green'], ['blue', 'yellow']]
+  }), puyos);
+  const button = page.getByRole('button', { name: '자동생성' });
+  const typeSelect = page.locator('.puyow-tools-sidebar select').first();
+  await expect(button).toBeEnabled();
+  await typeSelect.selectOption('attack');
+  await expect(button).toBeDisabled();
+  // 비활성화된 버튼은 눌러도 아무 일이 없고 배치도 그대로다.
+  await button.click({ force: true });
+  await expect(page.locator('.puyow-tools-overlay')).toBeHidden();
+  expect(await page.evaluate(() => window.PuyoW.tools.getEditorData().stageData.puyos)).toEqual(puyos);
+  for (const type of ['combo', 'clear', 'multiple', 'color']) {
+    await typeSelect.selectOption(type);
+    await expect(button).toBeEnabled();
+    await typeSelect.selectOption('attack');
+    await expect(button).toBeDisabled();
+  }
+  // 피버 패턴 개발로 바꾸면 목표 타입과 무관하게 자동생성 버튼이 켜져 있고, 퍼즐로 돌아오면 기본 목표 타입이라 켜진다.
+  await selectMode(page, '피버 패턴 개발');
+  await expect(page.getByRole('button', { name: '자동생성' })).toBeEnabled();
+  await selectMode(page, '퍼즐뿌요 개발');
+  await expect(page.getByRole('button', { name: '자동생성' })).toBeEnabled();
+});
+
+test('퍼즐뿌요 자동생성은 동그란 진행 표시를 띄우고, 중단하면 시작 전 배치로 돌아간다', async ({ page }) => {
+  await selectMode(page, '퍼즐뿌요 개발');
+  const puyos = [{ x: 0, y: 0, color: 'red' }, { x: 5, y: 0, color: 'garbage' }];
+  await page.evaluate((stagePuyos) => window.PuyoW.tools.setEditorData({
+    stageData: { puyos: stagePuyos },
+    suppliedNextPuyos: [['red', 'green'], ['blue', 'yellow']]
+  }), puyos);
+  await page.locator('.puyow-tools-sidebar select').first().selectOption('combo');
+  // 2쌍으로 12연쇄는 사실상 찾을 수 없어, 제한 시간이 없어진 지금은 중단할 때까지 계속 찾는다.
+  await page.locator('.puyow-tools-sidebar input[type="number"]').first().fill('12');
+  await page.locator('.puyow-tools-sidebar input[type="number"]').nth(1).fill('2');
+  await page.getByRole('button', { name: '자동생성' }).click();
+  await expect(page.locator('.puyow-tools-overlay')).toBeVisible();
+  const spinner = page.locator('.puyow-tools-overlay .puyow-tools-spinner');
+  await expect(spinner).toBeVisible();
+  const shape = await spinner.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { radius: style.borderTopLeftRadius, animation: style.animationName, width: element.offsetWidth, height: element.offsetHeight };
+  });
+  expect(shape).toEqual({ radius: '50%', animation: 'puyow-tools-spin', width: 48, height: 48 });
+  await expect(page.locator('.puyow-tools-overlay-text')).toHaveText('2턴째에 목표를 이루고 그 전에는 이룰 수 없는 배치를 찾고 있습니다...');
+  await page.getByRole('button', { name: '중단' }).click();
+  await expect(page.locator('.puyow-tools-overlay')).toBeHidden();
+  await expect(page.locator('.puyow-tools-status')).toHaveText('자동생성을 중단했습니다.');
+  expect(await page.evaluate(() => window.PuyoW.tools.getEditorData().stageData.puyos)).toEqual(puyos);
+});
+
+// 자동생성 Worker 본체를 Node에서 그대로 실행한다. 퍼즐 경로의 정확 판정을 게임 코드와 비교하는 데 쓴다.
+function createNodeAutoGenerateWorker() {
+  const source = fs.readFileSync('src/js/puyow_tools.js', 'utf8').replace(/\r\n/g, '\n');
+  const start = source.indexOf('    function autoGenerateWorkerBootstrap(constants) {');
+  const end = source.indexOf('\n    /**\n     * 자동생성 Worker를 만든다.');
+  expect(start).toBeGreaterThan(0);
+  expect(end).toBeGreaterThan(start);
+  // puyow_tools.js의 createAutoGenerateWorker()가 넘기는 값과 같다(GAME_RULES·COLORS·AUTO_GENERATE_BOARD).
+  const constants = { columns: 6, rows: 13, visibleRows: 12, spawnRow: 11, defeatColumn: 2, puyoColors: ['red', 'green', 'yellow', 'blue', 'purple'], branch: 6, startNodes: 120 };
+  const self = { last: null, postMessage(message) { this.last = message; } };
+  new Function('self', `${source.slice(start, end)}\nautoGenerateWorkerBootstrap(${JSON.stringify(constants)});`)(self);
+  const probe = (data) => { self.onmessage({ data: { type: 'probe', id: 0, ...data } }); return self.last.result; };
+  return { probe };
+}
+
+test('퍼즐 자동생성 Worker의 착지·연쇄·패배·조기 달성 판정은 게임 코드와 같다', async ({ page }) => {
+  test.setTimeout(180000);
+  await selectMode(page, '퍼즐뿌요 개발');
+  await installGamePuzzleHelpers(page);
+  const worker = createNodeAutoGenerateWorker();
+  let seed = 20260918;
+  const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const palette = ['red', 'green', 'blue', 'yellow', 'garbage'];
+  const toKey = (puyos) => puyos.map(({ x, y, color }) => `${x},${y},${color}`).sort().join('|');
+
+  // 열마다 0~13칸을 무작위로 쌓고, 스스로 터지는 보드는 버린다. 높은 보드로 착지 불가·숨김 줄·패배 칸을 함께 확인한다.
+  const cases = [];
+  while (cases.length < 160) {
+    const puyos = [];
+    for (let x = 0; x < 6; x += 1) {
+      const height = Math.floor(random() * 14);
+      for (let y = 0; y < height; y += 1) puyos.push({ x, y, color: palette[Math.floor(random() * (y > 9 ? 5 : 4))] });
+    }
+    if (worker.probe({ probe: 'resolve', puyos }).combo !== 0) continue;
+    const pair = [palette[Math.floor(random() * 4)], palette[Math.floor(random() * 4)]];
+    cases.push({ puyos, pair });
+  }
+  const workerResults = cases.map(({ puyos, pair }) => worker.probe({ probe: 'placements', puyos, pair }).map(({ cells }) => {
+    const placed = [...puyos, { x: cells[0][0], y: cells[0][1], color: pair[0] }, { x: cells[1][0], y: cells[1][1], color: pair[1] }];
+    const resolved = worker.probe({ probe: 'resolve', puyos: placed });
+    return [toKey(placed), resolved.combo, resolved.popped, resolved.colors, resolved.allClear, resolved.defeat, toKey(resolved.puyos)].join('#');
+  }).sort());
+  const gameResults = await page.evaluate(({ list }) => {
+    const helper = window.testGamePuzzle;
+    const key = (board) => board.flatMap((row, y) => row.flatMap((color, x) => (color ? [`${x},${y},${color}`] : []))).sort().join('|');
+    return list.map(({ puyos, pair }) => [...new Set(helper.outcomes(helper.toBoard(puyos), pair).map((outcome) => [
+      key(outcome.placed), outcome.combo, outcome.popped, outcome.colors, outcome.allClear, outcome.defeat, key(outcome.board)
+    ].join('#')))].sort());
+  }, { list: cases });
+  expect(workerResults).toEqual(gameResults);
+  // 숨김 줄(y = 12)에 걸치는 착지와 패배 칸이 막히는 경우가 비교 대상에 들어 있어야 의미가 있다.
+  expect(gameResults.flat().some((entry) => /(^|\|)\d,12,/.test(entry.split('#')[0]))).toBe(true);
+  expect(gameResults.flat().some((entry) => entry.split('#')[5] === 'true')).toBe(true);
+
+  // 조기 달성 검사: 2턴 안에 목표를 이룰 수 있는지를 목표 타입마다 비교한다. 연쇄가 잘 나도록 낮은 보드를 쓴다.
+  const objectives = [{ kind: 'combo', target: 2 }, { kind: 'combo', target: 1 }, { kind: 'multiple', target: 5 }, { kind: 'color', target: 2 }, { kind: 'clear', target: 1 }];
+  const earlyCases = [];
+  while (earlyCases.length < 60) {
+    const puyos = [];
+    for (let x = 0; x < 6; x += 1) {
+      const height = Math.floor(random() * 5);
+      for (let y = 0; y < height; y += 1) puyos.push({ x, y, color: palette[Math.floor(random() * 4)] });
+    }
+    if (worker.probe({ probe: 'resolve', puyos }).combo !== 0) continue;
+    const pairs = [0, 1].map(() => [palette[Math.floor(random() * 4)], palette[Math.floor(random() * 4)]]);
+    earlyCases.push({ puyos, pairs, objective: objectives[earlyCases.length % objectives.length] });
+  }
+  const workerEarly = earlyCases.map(({ puyos, pairs, objective }) => worker.probe({ probe: 'early', puyos, pairs, turns: 2, objective }));
+  const gameEarly = await page.evaluate(({ list }) => list.map(({ puyos, pairs, objective }) => (
+    window.testGamePuzzle.canReachEarly(window.testGamePuzzle.toBoard(puyos), pairs, 2, objective)
+  )), { list: earlyCases });
+  expect(workerEarly).toEqual(gameEarly);
+  expect(gameEarly.includes(true) && gameEarly.includes(false)).toBe(true);
+});
+
 test('설정 창은 다크 모드를 끄면 도구 화면을 밝은 톤으로 바꾸고 저장한다', async ({ page }) => {
   await expect(page.locator('body.puyow-tools-light')).toHaveCount(0);
   // 설정 버튼은 툴바의 마지막 요소, 즉 오른쪽 끝에 있다.
@@ -663,7 +896,7 @@ test.describe('WebMCP', () => {
     const names = await page.evaluate(() => window.registeredWebMcpTools.map((tool) => tool.name));
     expect(names).toEqual([
       'tools_manual', 'tools_status', 'tools_select_mode', 'tools_load_script', 'tools_set_options',
-      'tools_place_puyos', 'tools_set_next_puyos', 'tools_auto_generate', 'tools_run_test',
+      'tools_place_puyos', 'tools_set_next_puyos', 'tools_auto_generate', 'tools_stop_auto_generate', 'tools_run_test',
       'tools_stop_test', 'tools_generate_script'
     ]);
 
@@ -723,6 +956,39 @@ test.describe('WebMCP', () => {
     });
     expect(outcome.message).toContain('자동생성을 마쳤습니다');
     expect(outcome.count).toBeGreaterThan(0);
+  });
+
+  test('WebMCP 자동생성은 기다리지 않고 시작할 수 있고, tools_stop_auto_generate로 중단하면 시작 전 배치가 남는다', async ({ page }) => {
+    const outcome = await page.evaluate(async () => {
+      const tools = Object.fromEntries(window.registeredWebMcpTools.map((tool) => [tool.name, tool]));
+      await tools.tools_select_mode.execute({ kind: 'puzzle' });
+      await tools.tools_place_puyos.execute({ clearFirst: true, puyos: [{ x: 0, y: 0, color: 'red' }] });
+      await tools.tools_set_next_puyos.execute({ turns: [['red', 'green'], ['blue', 'yellow']] });
+      // 2쌍으로 12연쇄는 사실상 찾을 수 없어 중단할 때까지 계속 찾는다.
+      await tools.tools_set_options.execute({ winConditionType: 'combo', winConditionValue: 12, turnLimit: 2 });
+      const started = await tools.tools_auto_generate.execute({ wait: false });
+      const running = await tools.tools_status.execute({});
+      const stopped = await tools.tools_stop_auto_generate.execute({});
+      const after = await tools.tools_status.execute({});
+      const again = await tools.tools_stop_auto_generate.execute({});
+      // 기다리는 호출도 중단 문구를 받는다.
+      await tools.tools_set_options.execute({ winConditionType: 'combo', winConditionValue: 12, turnLimit: 2 });
+      const waiting = tools.tools_auto_generate.execute({});
+      await tools.tools_stop_auto_generate.execute({});
+      const waitedMessage = await waiting;
+      // attack 목표는 기다리지 않아도 곧바로 안내 문구를 돌려준다.
+      await tools.tools_set_options.execute({ winConditionType: 'attack', winConditionValue: 3 });
+      const attackMessage = await tools.tools_auto_generate.execute({ wait: false });
+      return { started, running: running.autoGenerating, stopped, after: after.autoGenerating, puyos: after.puyos, again, waitedMessage, attackMessage };
+    });
+    expect(outcome.started).toContain('Auto generation started');
+    expect(outcome.running).toBe(true);
+    expect(outcome.stopped).toBe('자동생성을 중단했습니다.');
+    expect(outcome.after).toBe(false);
+    expect(outcome.puyos).toEqual([{ x: 0, y: 0, color: 'red' }]);
+    expect(outcome.again).toBe('Auto generation is not running.');
+    expect(outcome.waitedMessage).toBe('자동생성을 중단했습니다.');
+    expect(outcome.attackMessage).toBe('목표 타입이 attack (공격량)이면 자동생성을 사용할 수 없습니다.');
   });
 });
 
