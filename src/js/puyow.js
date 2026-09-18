@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 84;
+    const BUILDNO = 85;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -9861,13 +9861,19 @@
         if (puzzleTargetField) drawPuzzleStageStatus(x);
     }
 
-    /** 패배 연출 중 움직이는 뿌요보다 앞에 고정 베젤을 다시 그린다. @param {PlayerState} player 대상 플레이어 @returns {void} */
+    /**
+     * 패배 연출 중 움직이는 뿌요보다 앞에 고정 베젤을 다시 그린다.
+     * 숨김 영역 13번째 줄 이상은 베젤 위쪽 바깥에서 낙하를 시작하므로, 상단 클립을 필드 위 헤더까지 넓혀 함께 가린다.
+     * 플레이어 이름·예고뿌요·피버 게이지는 이 함수보다 나중에 그려지므로 넓힌 베젤에 묻히지 않는다.
+     * @param {PlayerState} player 대상 플레이어
+     * @returns {void}
+     */
     function drawFieldBezelForeground(player) {
         const x = player.fieldX;
-        const bezel = { x: x - CELL, y: FIELD_TOP - CELL, width: CELL * 8, height: CELL * 14 };
+        const bezel = { x: x - CELL, y: 0, width: CELL * 8, height: FIELD_BOTTOM + CELL };
         context.save();
         context.beginPath();
-        context.rect(x - CELL, FIELD_TOP - CELL, CELL * 8, CELL);
+        context.rect(x - CELL, 0, CELL * 8, FIELD_TOP);
         context.rect(x - CELL, FIELD_TOP, CELL, CELL * VISIBLE_ROWS);
         context.rect(x + CELL * COLUMNS, FIELD_TOP, CELL, CELL * VISIBLE_ROWS);
         context.clip();
