@@ -33,14 +33,26 @@ API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다.
 * 딱딱뿌요(hardGarbage)·철구뿌요(iron)는 시뮬레이터 전용이므로 제외했다. 방해뿌요
   (GARBAGE)는 지원한다.
 * `shouldCounterPlayerChain`(상대가 실시간으로 연쇄를 진행 중일 때 끼어드는 판단)은
-  순서대로 수를 두는 턴제 학습 환경에는 대응되는 개념이 없어 제외했다.
+  이식하지 않았다. 모델 버전 4부터 학습 환경(learning.PuyoDuelEnvironment)은 양측이 각자
+  시계를 갖는 실시간 대전이라 "상대 연쇄 진행 중"이라는 상태가 실제로 존재하지만, 적 AI의
+  판단 자체는 원작과 같게 두고 그 정보를 `decide()`의 `incoming_garbage` 인수로만 전달한다.
+  학습 환경은 원작 `getLookaheadIncomingGarbage()`처럼 확정 DAMAGE에 상대가 지금 만들고 있는
+  공격까지 더한 값을 넣는다.
 * 안드레알푸스의 3수 탐색은 원작에서 Blob Worker로 비동기 수행하지만, 이 모듈은
   오프라인 학습 스크립트에서 동기적으로 실행한다(find_best_n_move_placement 재사용).
   시간 제한 대신 항상 완전 탐색을 수행하므로 원작보다 느릴 수 있다.
   BUILDNO 76부터 원작 안드레알푸스는 Worker의 advanced 탐색(빔 탐색·발화점 평가·방해뿌요
   도착 예측)과 조작 중 실시간 재판단을 쓰지만, 이 모듈은 기존 완전 탐색 판단을 유지한다.
-  실시간 재판단은 턴제 학습 환경에 대응되는 개념이 없고, 이 적은 학습 안내 적으로도 쓰이므로
-  판단을 바꾸면 기존 학습 결과와의 비교가 어긋나기 때문이다.
+  이 적은 학습 안내 적(CHAIN_GUIDE_ENEMY_TYPES)으로도 쓰이므로, 판단을 바꾸면 기존 학습
+  결과와의 비교가 어긋나기 때문이다.
+
+## 실시간 시간 모델 (모델 버전 4)
+
+학습 환경이 브라우저와 같은 시각으로 양측을 진행시키려면 puyow.js의 연출·조작 시간이 필요하다.
+`estimate_placement_ms()`(스폰에서 착지까지, `estimateAiPlacementTiming()` 이식),
+`measure_gravity_duration()`(`measureGravityOnBoard()` 이식), 연쇄 단계별 ATTACK과 시각을 함께 내는
+`resolve_placement_timeline()`(`predictPlayerChain()`과 같은 식)이 그 몫을 맡는다. 시간 상수
+(CHAIN_PHASE_WAIT_MS 등)는 puyow.js와 같은 값이어야 하므로 한쪽을 고치면 다른 쪽도 함께 맞춘다.
 * 키마리스는 원작에서 chooseRotate()를 재정의하지 않기 때문에, 2수 탐색이 옆으로
   눕는 배치를 골라도 실제로는 항상 세로(회전 0)로 놓는다. 이 별난 동작은 실제
   puyow.js의 동작이므로 "버그 수정" 없이 그대로 재현했다(Kimaris._choose 참고).
@@ -54,6 +66,7 @@ API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다.
 import math
 import random
 import time
+from dataclasses import dataclass
 from typing import Callable, List, Optional, Sequence, Tuple
 
 from common import BOARD_HEIGHT, BOARD_WIDTH, ROTATION_COUNT, ROTATION_UP
@@ -116,6 +129,88 @@ def configure_timing(margin_rate: float, time_progress_multiplier: float) -> Non
     global MARGIN_RATE, TIME_PROGRESS_MULTIPLIER
     MARGIN_RATE = max(1.0, float(margin_rate))
     TIME_PROGRESS_MULTIPLIER = max(1.0, float(time_progress_multiplier))
+
+
+# puyow.js의 실제 연출·조작 시간 상수다. 학습 환경이 양측의 시계를 따로 돌리려면 브라우저와 같은
+# 시간 모델이 있어야 하므로 그대로 옮겼다. puyow.js를 고치면 이 값들도 함께 맞춰야 한다.
+# 연쇄 한 단계가 끝난 뒤 다음 단계까지의 대기 시간이다(puyow.js CHAIN_PHASE_WAIT_MS).
+CHAIN_PHASE_WAIT_MS = 150
+# 폭발 연출 한 번의 길이다(puyow.js EXPLOSION_EFFECT_DURATION_MS).
+EXPLOSION_EFFECT_DURATION_MS = 430
+# 뿌요가 고정된 뒤 방해뿌요가 떨어지기까지의 시간이다(puyow.js LOCK_TO_GARBAGE_DROP_MS).
+LOCK_TO_GARBAGE_DROP_MS = CHAIN_PHASE_WAIT_MS * 2
+# 뿌요가 고정(또는 연쇄 종료)된 뒤 다음 조작 뿌요가 나올 때까지의 시간이다(puyow.js LOCK_TO_NEXT_CONTROL_MS).
+LOCK_TO_NEXT_CONTROL_MS = CHAIN_PHASE_WAIT_MS * 3
+# 자연 낙하 기본 간격(ms/칸)과 빠른 하강 간격이다(puyow.js PLAYER_FALL_INTERVAL, getActivePuyoFallInterval).
+PLAYER_FALL_INTERVAL = 2048
+FAST_DOWN_FALL_INTERVAL = 55
+# 경과 시간에 따른 자연 낙하 가속이다(puyow.js getPlayerFallSpeedMultiplier).
+PLAYER_FALL_SPEED_INCREASE_PER_MINUTE = 1.0
+MAX_PLAYER_FALL_SPEED_MULTIPLIER = 128
+# 조작 뿌요가 나오는 높이다(puyow.js ACTIVE_PUYO_SPAWN_Y). 화면 12행 바로 위에서 내려오기 시작한다.
+ACTIVE_PUYO_SPAWN_Y = 11.9
+# 피버 필드의 중력 연출 배속이다(puyow.js FEVER_GRAVITY_SPEED_MULTIPLIER).
+FEVER_GRAVITY_SPEED_MULTIPLIER = 1.5
+
+
+def get_player_fall_speed_multiplier(elapsed_ms: float) -> float:
+    """puyow.js의 getPlayerFallSpeedMultiplier와 같은 자연 낙하 가속 배율을 구한다."""
+    elapsed_minutes = max(0, int(max(0.0, float(elapsed_ms)) // 60_000))
+    return min(MAX_PLAYER_FALL_SPEED_MULTIPLIER, 1.0 + elapsed_minutes * PLAYER_FALL_SPEED_INCREASE_PER_MINUTE)
+
+
+def get_fall_interval(elapsed_ms: float, fast_down: bool = False) -> float:
+    """puyow.js의 getActivePuyoFallInterval과 같은 한 칸 낙하 시간(ms)을 구한다."""
+    if fast_down:
+        return float(FAST_DOWN_FALL_INTERVAL)
+    return PLAYER_FALL_INTERVAL / get_player_fall_speed_multiplier(elapsed_ms)
+
+
+def get_average_column_height(board: Sequence[Sequence[int]]) -> float:
+    """보드의 평균 열 높이를 구한다. puyow.js estimateAiPlacementTiming의 averageHeight에 대응한다."""
+    return sum(_column_height(board, x) for x in range(BOARD_WIDTH)) / BOARD_WIDTH
+
+
+def estimate_fall_time(rows: float, decision_elapsed_ms: float, normal_interval: float, fast_down_delay_ms: Optional[float]) -> float:
+    """빠른 하강 대기 시간을 고려해 `rows`칸을 내려가는 데 걸리는 시간을 어림한다.
+
+    puyow.js estimateAiPlacementTiming 안의 fallTime()과 같은 식이다. `fast_down_delay_ms`가 None이면
+    빠른 하강을 쓰지 않는 난이도(쉬움)이므로 끝까지 자연 낙하 속도로 내려간다.
+    """
+    rows = max(0.0, float(rows))
+    if fast_down_delay_ms is None:
+        return rows * normal_interval
+    normal_ms = max(0.0, float(fast_down_delay_ms) - max(0.0, float(decision_elapsed_ms)))
+    normal_rows = normal_ms / normal_interval
+    if rows <= normal_rows:
+        return rows * normal_interval
+    return normal_ms + (rows - normal_rows) * FAST_DOWN_FALL_INTERVAL
+
+
+def estimate_placement_ms(board: Sequence[Sequence[int]], elapsed_ms: float, fast_down_delay_ms: Optional[float]) -> float:
+    """조작 뿌요가 스폰 위치에서 나와 고정될 때까지의 시간을 어림한다.
+
+    puyow.js estimateAiPlacementTiming의 nextPlacementMs에서 고정 후 대기(LOCK_TO_NEXT_CONTROL_MS)를
+    뺀 값, 즉 "스폰 → 착지"만의 시간이다. 실제 착지 높이 대신 평균 열 높이를 쓰는 어림도 게임과 같다.
+    """
+    normal_interval = get_fall_interval(elapsed_ms, False)
+    rows = max(0.0, ACTIVE_PUYO_SPAWN_Y - get_average_column_height(board))
+    return estimate_fall_time(rows, 0.0, normal_interval, fast_down_delay_ms)
+
+
+def measure_gravity_duration(board: Sequence[Sequence[int]], gravity_speed_multiplier: float = 1.0) -> float:
+    """중력으로 뿌요가 내려앉는 연출 시간을 구한다. puyow.js measureGravityOnBoard의 duration과 같다."""
+    duration = 0.0
+    multiplier = max(0.1, float(gravity_speed_multiplier))
+    for x in range(BOARD_WIDTH):
+        target_y = 0
+        for y in range(BOARD_HEIGHT):
+            if board[y][x] == EMPTY:
+                continue
+            if y != target_y:
+                duration = max(duration, (210 + 790 * math.sqrt((y - target_y) / VISIBLE_ROWS)) / multiplier)
+            target_y += 1
+    return duration
 
 
 class Placement:
@@ -303,6 +398,68 @@ def _place_and_resolve(board: Sequence[Sequence[int]], colors: Sequence[int], po
 def resolve_placement(board, colors, positions) -> Tuple[Optional[List[List[int]]], int, float]:
     """`_place_and_resolve`의 공개 별칭이다. 학습 환경이 한 수를 두고 연쇄를 해소할 때 사용한다."""
     return _place_and_resolve(board, colors, positions)
+
+
+@dataclass
+class ChainStep:
+    """연쇄 한 단계의 결과와 시각이다. `explode_ms`는 뿌요가 고정된 시점부터 이 단계가 터질 때까지의 시간이다."""
+    combo: int
+    attack: float
+    explode_ms: float
+
+
+@dataclass
+class PlacementTimeline:
+    """한 수의 연쇄를 단계별 시각과 함께 푼 결과다.
+
+    `steps`는 터진 순서대로의 단계이고, `end_ms`는 고정 시점부터 연쇄가 완전히 끝날 때까지의 시간이다.
+    연쇄가 없으면 `steps`가 비고 `end_ms`는 0이다. 배치가 불가능하면 `board`가 None이다.
+    """
+    board: Optional[List[List[int]]]
+    combo: int
+    attack: float
+    steps: List[ChainStep]
+    end_ms: float
+
+
+def resolve_placement_timeline(board, colors, positions, gravity_speed_multiplier: float = 1.0) -> PlacementTimeline:
+    """`resolve_placement`와 같은 결과를 내면서 연쇄 단계별 ATTACK과 시각까지 함께 구한다.
+
+    양측이 각자 시계를 갖는 학습 환경이 "상대 연쇄가 지금 몇 단계까지 진행됐는지"를 알아야 해서
+    필요하다. 시간 계산은 puyow.js의 predictPlayerChain()과 같다. 착지 직후 중력 연출이 끝나고
+    CHAIN_PHASE_WAIT_MS가 지나면 첫 단계가 터지며, 그 뒤로는 단계마다
+    EXPLOSION_EFFECT_DURATION_MS + 중력 연출 + CHAIN_PHASE_WAIT_MS가 지나야 다음 단계가 터진다.
+    """
+    if positions is None or colors is None or len(colors) != 2 or len(positions) != 2:
+        return PlacementTimeline(None, 0, 0.0, [], 0.0)
+    working = copy_board(board)
+    for (x, y), color in zip(positions, colors):
+        if not (0 <= x < BOARD_WIDTH and 0 <= y < BOARD_HEIGHT) or working[y][x] != EMPTY:
+            return PlacementTimeline(None, 0, 0.0, [], 0.0)
+        working[y][x] = color
+    elapsed = measure_gravity_duration(working, gravity_speed_multiplier)
+    working = collapse_board(working)
+    combo = 0
+    attack = 0.0
+    steps: List[ChainStep] = []
+    while True:
+        groups = find_explosion_groups(working)
+        if not groups:
+            break
+        combo += 1
+        # 이 단계가 실제로 터지는 시각은 직전 중력 연출이 끝나고 대기 시간이 지난 뒤다.
+        explode_ms = elapsed + CHAIN_PHASE_WAIT_MS
+        removed = resolve_explosion_step(working, groups)
+        step_attack = calculate_explosion_attack(calculate_explosion_point(groups, combo))
+        attack += step_attack
+        steps.append(ChainStep(combo, step_attack, explode_ms))
+        for x, y in removed:
+            working[y][x] = EMPTY
+        gravity_ms = measure_gravity_duration(working, gravity_speed_multiplier)
+        working = collapse_board(working)
+        elapsed = explode_ms + EXPLOSION_EFFECT_DURATION_MS + gravity_ms
+    end_ms = elapsed + CHAIN_PHASE_WAIT_MS if steps else 0.0
+    return PlacementTimeline(working, combo, attack, steps, end_ms)
 
 
 def drop_garbage(board: Sequence[Sequence[int]], pending_damage: float, rng: random.Random) -> Tuple[List[List[int]], int]:

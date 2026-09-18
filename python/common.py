@@ -9,7 +9,7 @@
 """Puyo W 학습기와 Python 서버가 함께 사용하는 학습 계약 모듈."""
 
 from math import isfinite, log2
-from typing import Any, Sequence
+from typing import Any, Optional, Sequence
 
 
 # Python 학습 환경과 서버 API에서 공통으로 사용하는 보드 크기다.
@@ -32,16 +32,25 @@ ACTION_COUNT = BOARD_WIDTH * ROTATION_COUNT
 # 체크포인트와 관측 계약을 함께 식별한다. 이전 모델과의 묵시적 혼용을 막기 위해
 # 관측 구조나 모델 종류가 바뀔 때 반드시 이 값도 올린다. 버전 3부터는 24개 행동의 Q값을 내는
 # DQN 대신, 한 수를 둔 직후 상태(애프터스테이트) 하나의 가치를 내는 가치망을 사용한다.
-MODEL_VERSION = 3
+# 버전 4부터는 학습 환경 자체가 양측이 각자 시계를 갖는 실시간 대전이 되어, 관측값에 상대 보드
+# 전체와 "진행 중인 상대 연쇄" 스칼라 세 개가 들어간다. 버전 3 체크포인트와는 호환되지 않는다.
+MODEL_VERSION = 4
 # 빈 칸, 방해뿌요, 5색을 서로 구분하는 보드 채널 수다.
 BOARD_CHANNELS = COLORS + 2
-# 공격·룰·실제 경과 시간·피버 상태를 담는 스칼라 수다.
-OBSERVATION_SCALAR_COUNT = 14
+# 보드 하나를 원-핫 채널로 편 길이다. 관측 벡터는 자기 보드와 상대 보드를 이 크기로 두 번 담는다.
+OBSERVATION_BOARD_SIZE = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS
+# 관측 벡터에 담는 보드 수다. 0번은 자기 보드, 1번은 상대 보드이며, 가치망은 둘을 같은 6×12 평면 위의
+# 채널로 이어 붙여 합성곱에 넣는다(learning.ValueNetwork 참고).
+OBSERVATION_BOARD_COUNT = 2
+# 보드 구간 전체의 길이다.
+OBSERVATION_BOARDS_SIZE = OBSERVATION_BOARD_SIZE * OBSERVATION_BOARD_COUNT
+# 공격·룰·실제 경과 시간·피버 상태·진행 중인 상대 연쇄를 담는 스칼라 수다.
+OBSERVATION_SCALAR_COUNT = 17
 # 보드 채널 뒤에 붙는 값(현재 쌍 원-핫 + 스칼라)의 수다. 가치망은 보드를 2차원 그대로 합성곱에
 # 넣고 이 부분만 따로 이어 붙이므로, 두 구간의 경계를 한 곳에서 정의해 둔다.
 OBSERVATION_EXTRA_SIZE = COLORS * 2 + OBSERVATION_SCALAR_COUNT
-# 보드 채널, 현재 쌍, 전투/시간/피버 상태를 합친 관측 벡터 길이다.
-OBSERVATION_SIZE = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS + OBSERVATION_EXTRA_SIZE
+# 양측 보드 채널, 현재 쌍, 전투/시간/피버 상태를 합친 관측 벡터 길이다.
+OBSERVATION_SIZE = OBSERVATION_BOARDS_SIZE + OBSERVATION_EXTRA_SIZE
 
 # 스칼라 관측값을 0~1로 정규화할 때 쓰는 기준값이다. encode_observation_values와
 # decode_observation_scalars가 같은 값을 써야 하므로 한 곳에 모아 둔다. 이 값을 바꾸면 관측
@@ -56,6 +65,9 @@ FEVER_GAUGE_SCALE = 7.0
 FEVER_NEXT_TIME_SCALE = 30.0
 FEVER_TARGET_COMBO_SCALE = 12.0
 FEVER_LEFT_TIME_SCALE = 60_000.0
+# 진행 중인 상대 연쇄가 도착하기 전에 내가 둘 수 있는 배치 수(incoming_land_move)의 정규화 기준이다.
+# 실제 대전에서 이 값이 8을 넘는 일은 드물어 그 위는 모두 1.0으로 잘린다.
+LAND_MOVE_SCALE = 8.0
 
 # 한 수의 연쇄 보상 기준값이다. 피버 상태가 아닐 때의 연쇄 보상은 이 값에 연쇄 수의 제곱을 곱한
 # 값이며(2연쇄 20, 7연쇄 245), 피버 중에는 FEVER_CHAIN_REWARD_RATIO를 곱해 5분의 1로 낮춘다.
@@ -163,27 +175,51 @@ def _cell_channel(cell: Any) -> int:
 	return 1
 
 
-def encode_observation_values(
-	board: Sequence[Sequence[Any]], current_pair: Sequence[Any], *, attack: float = 0.0,
-	turn: int = 0, incoming_damage: float = 0.0, fever_rule: bool = False,
-	all_clear_ticket: bool = False, elapsed_ms: float = 0.0, margin_rate: float = 70.0,
-	time_progress_multiplier: float = 1.0, fever: Any = None,
-) -> list[float]:
-	"""학습기·Python 서버가 공유하는 528개 관측 벡터를 만든다.
+def _encode_board_planes(board: Optional[Sequence[Sequence[Any]]], name: str) -> list[float]:
+	"""보드 하나를 빈 칸·방해뿌요·5색 원-핫 채널(채널→y→x 순서)로 편다.
 
-	보드는 y=0이 바닥인 6×12이며, 채널 순서는 빈 칸·방해뿌요·red·green·yellow·blue·purple다.
+	`None`은 아직 아무것도 없는 보드로 보아 빈 칸 채널만 1인 평면을 만든다. 상대 보드를 알 수 없는
+	호출(단일 플레이어 환경, 예전 형식의 요청)이 계약을 깨지 않고 같은 길이의 벡터를 얻게 하기 위해서다.
 	"""
+	if board is None:
+		return [
+			1.0 if channel == 0 else 0.0
+			for channel in range(BOARD_CHANNELS)
+			for _y in range(BOARD_HEIGHT)
+			for _x in range(BOARD_WIDTH)
+		]
 	if len(board) < BOARD_HEIGHT or any(len(row) < BOARD_WIDTH for row in board[:BOARD_HEIGHT]):
-		raise ValueError("board는 최소 6×12 크기여야 합니다.")
-	if len(current_pair) != 2:
-		raise ValueError("current_pair는 두 색이어야 합니다.")
+		raise ValueError(f"{name}은(는) 최소 6×12 크기여야 합니다.")
 	cell_channels = [[_cell_channel(board[y][x]) for x in range(BOARD_WIDTH)] for y in range(BOARD_HEIGHT)]
-	values = [
+	return [
 		1.0 if cell_channels[y][x] == channel else 0.0
 		for channel in range(BOARD_CHANNELS)
 		for y in range(BOARD_HEIGHT)
 		for x in range(BOARD_WIDTH)
 	]
+
+
+def encode_observation_values(
+	board: Sequence[Sequence[Any]], current_pair: Sequence[Any], *, attack: float = 0.0,
+	turn: int = 0, incoming_damage: float = 0.0, fever_rule: bool = False,
+	all_clear_ticket: bool = False, elapsed_ms: float = 0.0, margin_rate: float = 70.0,
+	time_progress_multiplier: float = 1.0, fever: Any = None,
+	opponent_board: Optional[Sequence[Sequence[Any]]] = None, incoming_in_flight: float = 0.0,
+	incoming_land_move: float = 0.0, opponent_chain_active: bool = False,
+) -> list[float]:
+	"""학습기·Python 서버가 공유하는 1035개 관측 벡터를 만든다.
+
+	보드는 y=0이 바닥인 6×12이며, 채널 순서는 빈 칸·방해뿌요·red·green·yellow·blue·purple다.
+	자기 보드 다음에 상대 보드가 같은 형식으로 이어지고, 그 뒤에 현재 쌍과 스칼라가 붙는다.
+
+	`incoming_damage`는 이미 확정된 DAMAGE만 뜻한다. 상대가 지금 진행 중인 연쇄에서 아직 DAMAGE로
+	확정되지 않은 예측 공격은 `incoming_in_flight`에 따로 넣는다(같은 공격을 두 번 세지 않기 위해서다).
+	`incoming_land_move`는 그 공격이 떨어지기 전에 내가 둘 수 있는 배치 수다.
+	"""
+	if len(current_pair) != 2:
+		raise ValueError("current_pair는 두 색이어야 합니다.")
+	values = _encode_board_planes(board, "board")
+	values.extend(_encode_board_planes(opponent_board, "opponent_board"))
 	for color in current_pair:
 		channel = _cell_channel(color)
 		# 색 정수는 2~6, 문자열 색도 같은 값이며 빈 칸/방해뿌요는 모두 0으로 남긴다.
@@ -205,33 +241,45 @@ def encode_observation_values(
 		_clamp_ratio(fever_state.get("targetCombo", fever_state.get("target_combo", 5)), FEVER_TARGET_COMBO_SCALE),
 		_clamp_ratio(fever_state.get("leftTime", fever_state.get("left_time_ms", 0)), FEVER_LEFT_TIME_SCALE),
 		_clamp_ratio(fever_state.get("damage", 0), DAMAGE_SCALE),
+		_clamp_ratio(incoming_in_flight, DAMAGE_SCALE),
+		_clamp_ratio(incoming_land_move, LAND_MOVE_SCALE),
+		float(bool(opponent_chain_active)),
 	))
 	if len(values) != OBSERVATION_SIZE:
 		raise AssertionError(f"관측값 길이 오류: {len(values)} != {OBSERVATION_SIZE}")
 	return values
 
 
-def decode_observation_board(observation: Sequence[Any]) -> list[list[int]]:
+def decode_observation_board(observation: Sequence[Any], board_index: int = 0) -> list[list[int]]:
 	"""관측 벡터의 보드 채널을 학습 환경과 같은 정수 보드로 되돌린다.
 
-	반환하는 칸 값은 bundledenemy와 같은 계약이다. 빈 칸은 -1, 방해뿌요는 -2, 일반 색은 0~4다.
+	`board_index`는 0이 자기 보드, 1이 상대 보드다. 반환하는 칸 값은 bundledenemy와 같은 계약이다.
+	빈 칸은 -1, 방해뿌요는 -2, 일반 색은 0~4다.
 	"""
+	if not 0 <= board_index < OBSERVATION_BOARD_COUNT:
+		raise ValueError(f"board_index는 0부터 {OBSERVATION_BOARD_COUNT - 1} 사이여야 합니다.")
 	cells = BOARD_WIDTH * BOARD_HEIGHT
+	offset = board_index * OBSERVATION_BOARD_SIZE
 	board: list[list[int]] = []
 	for y in range(BOARD_HEIGHT):
 		row: list[int] = []
 		for x in range(BOARD_WIDTH):
 			index = y * BOARD_WIDTH + x
 			# 원-핫이므로 값이 가장 큰 채널 하나가 그 칸의 내용이다.
-			channel = max(range(BOARD_CHANNELS), key=lambda candidate: float(observation[candidate * cells + index]))
+			channel = max(range(BOARD_CHANNELS), key=lambda candidate: float(observation[offset + candidate * cells + index]))
 			row.append(-1 if channel == 0 else -2 if channel == 1 else channel - 2)
 		board.append(row)
 	return board
 
 
+def decode_observation_opponent_board(observation: Sequence[Any]) -> list[list[int]]:
+	"""관측 벡터의 상대 보드 채널을 정수 보드로 되돌린다."""
+	return decode_observation_board(observation, 1)
+
+
 def decode_observation_pair(observation: Sequence[Any]) -> tuple[int, int]:
 	"""관측 벡터의 현재 쌍 원-핫 두 묶음을 색 번호 쌍으로 되돌린다."""
-	base = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS
+	base = OBSERVATION_BOARDS_SIZE
 	colors: list[int] = []
 	for order in range(2):
 		offset = base + order * COLORS
@@ -243,11 +291,11 @@ def decode_observation_pair(observation: Sequence[Any]) -> tuple[int, int]:
 
 
 def decode_observation_scalars(observation: Sequence[Any]) -> dict[str, Any]:
-	"""관측 벡터 끝의 14개 정규화 스칼라를 원래 단위로 되돌린다.
+	"""관측 벡터 끝의 17개 정규화 스칼라를 원래 단위로 되돌린다.
 
 	정규화 때 상한을 넘겨 잘린 값(clamp)은 그 상한으로만 복원된다.
 	"""
-	base = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS + COLORS * 2
+	base = OBSERVATION_BOARDS_SIZE + COLORS * 2
 	values = [float(observation[base + index]) for index in range(OBSERVATION_SCALAR_COUNT)]
 	return {
 		"attack": values[0] * ATTACK_SCALE,
@@ -264,6 +312,9 @@ def decode_observation_scalars(observation: Sequence[Any]) -> dict[str, Any]:
 		"fever_target_combo": values[11] * FEVER_TARGET_COMBO_SCALE,
 		"fever_left_time": values[12] * FEVER_LEFT_TIME_SCALE,
 		"fever_damage": values[13] * DAMAGE_SCALE,
+		"incoming_in_flight": values[14] * DAMAGE_SCALE,
+		"incoming_land_move": values[15] * LAND_MOVE_SCALE,
+		"opponent_chain_active": values[16] >= 0.5,
 	}
 
 

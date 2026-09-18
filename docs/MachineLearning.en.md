@@ -272,11 +272,22 @@ python python/learning.py --episodes 2000 --output python/puyow/default.pt --tra
 
 ## 9. Details: observations and actions
 
-The current Python environment's model-version-3 observation vector has a length of `528` (the same contract as version 2).
+The current Python environment's model-version-4 observation vector has a length of `1035`. It is not compatible with version 3 (`528`), so older checkpoints cannot be trained further.
 
-- One-hot channels for empty cells, garbage, and the 5 puyo colors across the 6×12 board: `504` values
+- One-hot channels for empty cells, garbage, and the 5 puyo colors across your own 6×12 board: `504` values
+- The same channels for the opponent's 6×12 board: `504` values
 - One-hot info for the two colors of the current pair: `10` values
-- Normalized battle/rule/time/fever state: `14` values, in this order — ATTACK, turn, DAMAGE, whether fever rules are active, all-clear ticket, elapsed time, margin rate, time-progress multiplier, fever active, gauge, next fever time, target chain, time left, and fever DAMAGE.
+- Normalized battle/rule/time/fever/realtime state: `17` values, in this order — ATTACK, turn, DAMAGE, whether fever rules are active, all-clear ticket, elapsed time, margin rate, time-progress multiplier, fever active, gauge, next fever time, target chain, time left, fever DAMAGE, the unsettled attack of the opponent's ongoing chain, how many placements you can make before it lands, and whether the opponent is chaining.
+
+The three scalars added in version 4 mean:
+
+- `incoming_in_flight`: the predicted attack from the opponent's ongoing chain that has not yet become settled DAMAGE. Normalized by `DAMAGE_SCALE` (30).
+- `incoming_land_move`: how many placements you can make before that attack lands (`LAND_MOVE_SCALE` 8). It is 0 when settled DAMAGE already exists (that drops right after the next non-popping placement) and also 0 when nothing is incoming.
+- `opponent_chain_active`: 1 while the opponent is chaining.
+
+`incoming_damage` (the third value) means **settled DAMAGE only**. Mixing the predicted attack of an ongoing chain into it would count the same attack twice, so that amount always goes into `incoming_in_flight` instead.
+
+The value network stacks your 7 board channels and the opponent's 7 board channels into 14 channels over the same 6×12 plane for the convolution, then concatenates the current pair and the 17 scalars after the convolutional features.
 
 Board coordinates are `board[y][x]`, with `y=0` at the bottom. The action number is computed as `column * 4 + rotation`.
 
@@ -304,7 +315,7 @@ The top-level `mode` is one of `versus`, `practice`, `watch`, `continuous_fever`
 - `allClearTicket`: whether an all-clear ticket is held, to be used on the next color-puyo pop, under standard rules.
 - `nextPairs`: only the next two pairs after the current move are provided for both sides. The full internal queue used for CPU search is not exposed.
 
-The remaining time and target state for continuous fever are found in the existing top-level `fever.leftTime`, `fever.targetCombo`, and so on. `/apis/learning` and the Solomon placement request use the same 528-value observation contract, and `currentState.elapsedMs` in the Solomon prompt is the actual `game.elapsed` managed by the JS game loop.
+The remaining time and target state for continuous fever are found in the existing top-level `fever.leftTime`, `fever.targetCombo`, and so on. `/apis/learning` and the Solomon placement request use the same 1035-value observation contract; the Solomon prompt sends the opponent field (`opponentField`) next to your own (`currentField`), plus `incomingInFlight`, `incomingLandMove`, and `opponentChainActive` in `currentState`, and `currentState.elapsedMs` in the Solomon prompt is the actual `game.elapsed` managed by the JS game loop.
 
 ## 11. Details: current implementation scope
 
@@ -314,6 +325,21 @@ The current training environment implements: connected pops and chains of normal
 - Continuous-fever-only mode (duel training targets standard rules and fever rules)
 - Collecting state from, and injecting actions into, the actual browser game loop
 - Andrealphus's asynchronous 3-move Worker search (currently replaced with a synchronous, time-limited search)
+- The travel animation of warning-energy transfers (attack is treated as settled DAMAGE the moment the chain ends)
+
+### The realtime duel timeline (model version 4)
+
+From version 4 the duel environment is no longer turn-based. Both sides carry their own clock, and these events are processed in time order.
+
+- **Placement time**: how long it takes a controlled pair to spawn and lock. It is estimated exactly like the game's `estimateAiPlacementTiming()`, from the average column height, the natural fall interval (`PLAYER_FALL_INTERVAL` 2048ms, accelerated by elapsed time), the per-difficulty fast-drop delay, and the 55ms-per-row fast-drop interval. The difficulty (fast-drop delay) is drawn per episode.
+- **Chain time**: every step costs `CHAIN_PHASE_WAIT_MS` (150) + `EXPLOSION_EFFECT_DURATION_MS` (430) + the gravity animation (1.5× faster on a fever field), the same formula as the game's `predictPlayerChain()`.
+- **Offsetting**: happens on every chain step. The integer ATTACK accumulated so far first cancels the opponent's in-flight attack, then your own DAMAGE. While the attacker is in Fever the order is fever DAMAGE → preserved normal DAMAGE → the opponent's in-flight attack.
+- **Attack delivery**: whatever is left after offsetting becomes the opponent's DAMAGE **only once the chain ends**. That is why an attack can exist without being settled while the opponent is chaining, and `incoming_in_flight` carries that amount.
+- **Garbage drop**: only settled DAMAGE drops, `LOCK_TO_GARBAGE_DROP_MS` (300) after a non-popping placement locks.
+
+The `step(action)` contract is unchanged: one agent decision is one step. `step()` schedules the landing of the chosen placement and then advances the timeline to the agent's next decision point, so in between the opponent may move several times or not at all. Elapsed time, margin rate, time multiplier, and fever time left all come from this real timeline.
+
+The ported enemy AIs (`bundledenemy.py`) keep the original game's judgement; realtime information reaches them only through the `incoming_garbage` argument of `decide()` (settled DAMAGE plus the attack the opponent is currently building).
 
 The current `/apis/learning` API only receives training events and keeps session statistics; transitions received through this path do not change the model's weights. `src/js/puyow.js` sends the actual placement and settlement results from a user's game through this same API contract, and sending is only enabled once `configureLearningApi()` is called in the browser. The only path that actually updates the model's weights is `/apis/solomonlearning`, described above in "Training live by dueling Solomon."
 
@@ -393,7 +419,7 @@ If `model_path` is empty or points to a file that doesn't exist, only `/v1/chat/
 
 [node/server.js](../node/server.js), started with `npm start`, provides the same `/apis/localmodelinfo` and `/v1/chat/completions` contract, so you can choose **Local AI** in the game settings and play against Solomon without Python. Instead of a `.pt` checkpoint, this server runs [src/onnx/default.onnx](../src/onnx/default.onnx) with `onnxruntime-node`, which `npm install` installs; change the model path with the `LOCAL_AI_MODEL_PATH` constant in `node/server.js`. If no file exists at that path, `/apis/localmodelinfo` returns `available: false` so the game cannot select Local AI, while static files and the other APIs keep working. The placement rule (afterstate reward + 0.70 × value) is the same as `pythonserver.py`. Reverse training is not supported: `/apis/solomonlearning` only accepts requests and never changes the model.
 
-To run inference on a single observation vector without a server, prepare a JSON array of 528 numbers and run:
+To run inference on a single observation vector without a server, prepare a JSON array of 1035 numbers and run:
 
 ```powershell
 python python/learning.py --output python/puyow/default.pt --infer-observation observation.json

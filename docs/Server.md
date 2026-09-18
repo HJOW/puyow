@@ -458,7 +458,7 @@ Chat Completions의 본문 제한은 기본 1MiB입니다. `model`은 비어 있
 | `step` | `observation`, `nextObservation`, `action`(정수), `reward`(유한한 수), `done`(boolean) |
 | `episode_end` | `done:true` |
 
-Python 관측은 정확히 528개, action은 0~23입니다. Node의 이벤트 수집 API는 관측 1~10000개와 정수 action을 허용합니다. 두 서버에 같은 요청을 보내려면 Python의 더 엄격한 형식을 사용합니다. 성공 응답은 `{ok,event,sessionId,sequence,steps,totalReward,done}`입니다. 이 API는 이벤트를 누적하며 그 호출만으로 모델 학습을 수행하지 않습니다. 오류는 `{ok:false,error:"..."}`, 주요 상태는 400/401/405/413/500/503(인증 설정 없음)입니다.
+Python 관측은 정확히 1035개, action은 0~23입니다. Node의 이벤트 수집 API는 관측 1~10000개와 정수 action을 허용합니다. 두 서버에 같은 요청을 보내려면 Python의 더 엄격한 형식을 사용합니다. 성공 응답은 `{ok,event,sessionId,sequence,steps,totalReward,done}`입니다. 이 API는 이벤트를 누적하며 그 호출만으로 모델 학습을 수행하지 않습니다. 오류는 `{ok:false,error:"..."}`, 주요 상태는 400/401/405/413/500/503(인증 설정 없음)입니다.
 
 `POST /apis/solomonlearning`의 Python 요청:
 

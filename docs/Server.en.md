@@ -458,7 +458,7 @@ Common `POST /apis/learning` fields are `sessionId` (1–128 characters) and `ev
 | `step` | `observation`, `nextObservation`, `action` (integer), `reward` (finite number), `done` (boolean) |
 | `episode_end` | `done:true` |
 
-Python requires exactly 528 observation values and action 0–23. Node's event collector accepts 1–10000 observation values and an integer action. Use Python's stricter shape for requests shared between both servers. Success returns `{ok,event,sessionId,sequence,steps,totalReward,done}`. This endpoint accumulates events; calling it does not itself train a model. Errors use `{ok:false,error:"..."}`, mainly 400/401/405/413/500/503 (missing authentication configuration).
+Python requires exactly 1035 observation values and action 0–23. Node's event collector accepts 1–10000 observation values and an integer action. Use Python's stricter shape for requests shared between both servers. Success returns `{ok,event,sessionId,sequence,steps,totalReward,done}`. This endpoint accumulates events; calling it does not itself train a model. Errors use `{ok:false,error:"..."}`, mainly 400/401/405/413/500/503 (missing authentication configuration).
 
 Python `POST /apis/solomonlearning` requests:
 

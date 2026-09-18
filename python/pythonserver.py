@@ -449,30 +449,43 @@ def get_latest_user_message(payload: dict[str, Any]) -> str:
 
 
 # Solomon 프롬프트의 게임 상태를 현재 체크포인트가 요구하는 고정 길이 벡터로 바꾼다.
+def build_prompt_board(occupied_cells: Any, name: str) -> list[list[str | None]]:
+	"""프롬프트의 희소 좌표 목록을 y=0이 바닥인 12행 관측 보드로 복원한다."""
+	if not isinstance(occupied_cells, list):
+		raise ApiError(f"{name}.occupiedCells는 배열이어야 합니다.")
+	board: list[list[str | None]] = [[None for _ in range(BOARD_WIDTH)] for _ in range(BOARD_HEIGHT)]
+	for cell in occupied_cells:
+		if not isinstance(cell, dict):
+			raise ApiError(f"{name}.occupiedCells 항목은 객체여야 합니다.")
+		x, y, color = cell.get("x"), cell.get("y"), cell.get("color")
+		if isinstance(x, bool) or not isinstance(x, int) or not 0 <= x < BOARD_WIDTH:
+			raise ApiError(f"{name}.occupiedCells.x가 보드 범위를 벗어났습니다.")
+		if isinstance(y, bool) or not isinstance(y, int) or y < 0:
+			raise ApiError(f"{name}.occupiedCells.y가 올바르지 않습니다.")
+		if not isinstance(color, str) or not color:
+			raise ApiError(f"{name}.occupiedCells.color가 올바르지 않습니다.")
+		# 현재 관측 계약은 puyow.js와 같이 표시 영역 12행만 사용한다.
+		if y < BOARD_HEIGHT:
+			board[y][x] = color
+	return board
+
+
 def build_model_observation(prompt: dict[str, Any]) -> list[float]:
-	"""Solomon 프롬프트의 필드·현재 쌍·실제 시간·피버 상태를 공통 관측으로 변환한다."""
+	"""Solomon 프롬프트의 양측 필드·현재 쌍·실제 시간·피버 상태를 공통 관측으로 변환한다.
+
+	모델 버전 4의 관측값은 상대 필드와 "진행 중인 상대 연쇄" 상태까지 담는다. 상대 필드를 보내지
+	않은 요청은 빈 상대 필드로 본다.
+	"""
 	field = prompt.get("currentField")
 	supplied = prompt.get("suppliedPuyos")
 	if not isinstance(field, dict) or not isinstance(supplied, list):
 		raise ApiError("Solomon 필드 또는 제공 뿌요 정보가 없습니다.")
-	occupied_cells = field.get("occupiedCells")
-	if not isinstance(occupied_cells, list):
-		raise ApiError("currentField.occupiedCells는 배열이어야 합니다.")
-	board: list[list[str | None]] = [[None for _ in range(BOARD_WIDTH)] for _ in range(BOARD_HEIGHT)]
-	# 프롬프트의 희소 좌표 목록을 y=0이 바닥인 12행 관측 보드로 복원한다.
-	for cell in occupied_cells:
-		if not isinstance(cell, dict):
-			raise ApiError("occupiedCells 항목은 객체여야 합니다.")
-		x, y, color = cell.get("x"), cell.get("y"), cell.get("color")
-		if isinstance(x, bool) or not isinstance(x, int) or not 0 <= x < BOARD_WIDTH:
-			raise ApiError("occupiedCells.x가 보드 범위를 벗어났습니다.")
-		if isinstance(y, bool) or not isinstance(y, int) or y < 0:
-			raise ApiError("occupiedCells.y가 올바르지 않습니다.")
-		if not isinstance(color, str) or not color:
-			raise ApiError("occupiedCells.color가 올바르지 않습니다.")
-		# 현재 관측 계약은 puyow.js와 같이 표시 영역 12행만 사용한다.
-		if y < BOARD_HEIGHT:
-			board[y][x] = color
+	board = build_prompt_board(field.get("occupiedCells"), "currentField")
+	opponent_field = prompt.get("opponentField")
+	opponent_board = (
+		build_prompt_board(opponent_field.get("occupiedCells"), "opponentField")
+		if isinstance(opponent_field, dict) else None
+	)
 	current_pair = next((entry.get("colors") for entry in supplied if isinstance(entry, dict) and entry.get("order") == "current"), None)
 	if not isinstance(current_pair, list) or len(current_pair) != 2 or any(color not in PUYO_COLORS for color in current_pair):
 		raise ApiError("현재 뿌요 쌍은 두 개의 색으로 제공되어야 합니다.")
@@ -490,6 +503,10 @@ def build_model_observation(prompt: dict[str, Any]) -> list[float]:
 			margin_rate=current_state.get("marginRate", 70),
 			time_progress_multiplier=current_state.get("timeProgressMultiplier", 1),
 			fever=current_state.get("fever"),
+			opponent_board=opponent_board,
+			incoming_in_flight=current_state.get("incomingInFlight", 0),
+			incoming_land_move=current_state.get("incomingLandMove", 0),
+			opponent_chain_active=current_state.get("opponentChainActive", False),
 		)
 	except (TypeError, ValueError) as error:
 		raise ApiError(f"관측 상태가 올바르지 않습니다: {error}") from error

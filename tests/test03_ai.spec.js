@@ -705,7 +705,7 @@ test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 �
   const stepRequests = learningRequests.filter(({ body }) => body.event === 'step');
   expect(stepRequests.length).toBeGreaterThan(0);
   expect(stepRequests.every(({ body }) => (
-    body.sessionId === sessionId && Array.isArray(body.observation) && body.observation.length === 528
+    body.sessionId === sessionId && Array.isArray(body.observation) && body.observation.length === 1035
     && Number.isInteger(body.action) && body.action >= 0 && body.action < 24
   ))).toBe(true);
   // 후보 안에서 고른 배치는 항상 사용할 수 있어야 하므로 배치 검증 오류가 나면 안 된다.
@@ -1292,7 +1292,7 @@ test('ONNX 추론 적은 빠른 하강 전에 받을 방해뿌요가 바뀌면 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
 
   await page.evaluate(() => {
-    // 추론마다 후보들이 받은 "받을 피해량" 입력(528개 관측값 중 516번, 30으로 정규화)의 최댓값을 기록한다.
+    // 추론마다 후보들이 받은 "받을 피해량" 입력(1035개 관측값 중 1020번, 30으로 정규화)의 최댓값을 기록한다.
     window.onnxIncomingInputs = [];
     const originalCreate = window.ort.InferenceSession.create.bind(window.ort.InferenceSession);
     window.ort.InferenceSession.create = async (...args) => {
@@ -1302,7 +1302,7 @@ test('ONNX 추론 적은 빠른 하강 전에 받을 방해뿌요가 바뀌면 �
         const data = feeds?.observation?.data;
         if (data) {
           let maximum = 0;
-          for (let index = 516; index < data.length; index += 528) maximum = Math.max(maximum, data[index] * 30);
+          for (let index = 1020; index < data.length; index += 1035) maximum = Math.max(maximum, data[index] * 30);
           window.onnxIncomingInputs.push(maximum);
         }
         return originalRun(feeds, ...rest);

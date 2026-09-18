@@ -41,6 +41,7 @@ mode, rule, 양측 board/normalBoard/fever.field 및 앞 두 nextPairs 계약을
 # See INFO_FOR_AI.md if you are AI.
 
 import argparse
+import heapq
 import json
 import math
 import random
@@ -63,8 +64,10 @@ from torch import nn
 import bundledenemy
 from common import (
 	ACTION_COUNT, BOARD_CHANNELS, BOARD_HEIGHT, BOARD_WIDTH, COLORS, DISCOUNT_GAMMA, MODEL_VERSION,
-	OBSERVATION_EXTRA_SIZE, OBSERVATION_SIZE, ROTATION_COUNT, ROTATION_UP, action_to_placement,
-	decode_observation_board, decode_observation_pair, decode_observation_scalars,
+	OBSERVATION_BOARD_COUNT, OBSERVATION_BOARDS_SIZE, OBSERVATION_EXTRA_SIZE, OBSERVATION_SIZE,
+	ROTATION_COUNT, ROTATION_UP, action_to_placement,
+	decode_observation_board, decode_observation_opponent_board, decode_observation_pair,
+	decode_observation_scalars,
 	encode_observation_values, is_legal_observation_action, move_reward, terminal_reward,
 	validate_observation,
 )
@@ -160,13 +163,16 @@ def encode_observation(
 	board: List[List[int]], current_pair: Tuple[int, int], attack: float, turn: int, *,
 	incoming_damage: float = 0.0, fever_rule: bool = False, all_clear_ticket: bool = False,
 	elapsed_ms: float = 0.0, margin_rate: float = 70.0, time_progress_multiplier: float = 1.0,
-	fever: Optional[dict[str, Any]] = None,
+	fever: Optional[dict[str, Any]] = None, opponent_board: Optional[List[List[int]]] = None,
+	incoming_in_flight: float = 0.0, incoming_land_move: float = 0.0, opponent_chain_active: bool = False,
 ) -> torch.Tensor:
-	"""보드·현재 쌍·전투/시간/피버 상태를 공통 관측 벡터로 인코딩한다."""
+	"""보드·상대 보드·현재 쌍·전투/시간/피버 상태를 공통 관측 벡터로 인코딩한다."""
 	return torch.tensor(encode_observation_values(
 		board, current_pair, attack=attack, turn=turn, incoming_damage=incoming_damage,
 		fever_rule=fever_rule, all_clear_ticket=all_clear_ticket, elapsed_ms=elapsed_ms,
 		margin_rate=margin_rate, time_progress_multiplier=time_progress_multiplier, fever=fever,
+		opponent_board=opponent_board, incoming_in_flight=incoming_in_flight,
+		incoming_land_move=incoming_land_move, opponent_chain_active=opponent_chain_active,
 	), dtype=torch.float32)
 
 
@@ -302,6 +308,19 @@ class FeverState:
 		}
 
 
+# puyow.js의 AI 난이도별 빠른 하강 대기 시간(ms)이다(AI_FAST_DOWN_DELAY_*). None은 "쉬움"으로
+# 빠른 하강을 아예 쓰지 않는다. 대전 환경은 에피소드마다 이 중 하나를 뽑아 양측 배치 시간에 쓴다.
+AI_FAST_DOWN_DELAYS: Tuple[Optional[int], ...] = (None, 1_500, 300, 100)
+
+# 실시간 대전 타임라인의 사건 종류다. 값이 작을수록 같은 시각에 먼저 처리되므로, 한 순간에 여러
+# 사건이 겹쳐도 "상쇄 → 공격 전달 → 방해뿌요 낙하 → 착지 → 다음 조작" 순서가 늘 같게 유지된다.
+EVENT_CHAIN_STEP = 0
+EVENT_CHAIN_END = 1
+EVENT_SETTLE = 2
+EVENT_LAND = 3
+EVENT_SPAWN = 4
+
+
 class PuyoEnvironment:
 	"""간결한 단일 플레이어 Puyo W 보드 환경. board[y][x]에서 y=0은 바닥이다.
 
@@ -396,31 +415,23 @@ class PuyoEnvironment:
 		return self.observe(), reward, False, info
 
 
-def _apply_attack_exchange(attacker_pending_damage: float, attack_generated: float, defender_pending_damage: float) -> Tuple[float, float]:
-	"""puyow.js의 sendAttackEnergy/deliverFinalAttackEnergy를 한 턴 단위로 단순화한 버전이다.
-
-	이번 수로 만든 ATTACK은 먼저 공격한 쪽 자신의 미정산 피해(pending_damage)를 상쇄하고,
-	남는 양만큼만 상대의 미정산 피해로 넘어간다. 실제 게임은 연쇄 단계마다 상쇄가 여러 번
-	일어나고 상대의 미도착 ATTACK까지 함께 상쇄하지만, 이 환경은 턴을 번갈아 완전히 해소하므로
-	상대의 ATTACK이 상쇄 시점에 미도착 상태로 남아 있는 경우가 없어 그 부분은 자연히 생략된다.
-	"""
-	amount = math.floor(attack_generated)
-	if amount < 1:
-		return attacker_pending_damage, defender_pending_damage
-	cancelled = min(amount, math.floor(attacker_pending_damage))
-	attacker_pending_damage -= cancelled
-	defender_pending_damage += (amount - cancelled)
-	return attacker_pending_damage, defender_pending_damage
-
-
 class PuyoDuelEnvironment:
 	"""puyow.js에 탑재된 적 AI(bundledenemy) 또는 학습 중인 정책 자신과 실제로 대전하며 학습하는 2인용 환경이다.
 
-	매 step()은 학습 중인 에이전트가 한 수를 두고 판정한 뒤, 곧바로 상대가 자신의 판단으로
-	한 수를 두는 것까지 함께 처리한다. 상대는 bundledenemy의 Enemy 하위 클래스이거나(적 AI
-	대전), 그 자리에 SELF_PLAY_OPPONENT를 골랐다면 `self_play_action_fn`으로 전달받은 학습
-	중인 정책 자신이다(self-play). 관측값은 PuyoEnvironment와 같은 계약(encode_observation)을
-	쓰며 에이전트 자신의 보드만 담는다.
+	**모델 버전 4부터 이 환경은 턴제가 아니라 양측이 각자 시계를 갖는 실시간 대전이다.** 조작 뿌요의
+	낙하 시간, 연쇄 한 단계의 연출 시간, 고정 뒤 방해뿌요 낙하까지가 모두 puyow.js와 같은 시간
+	모델(bundledenemy의 estimate_placement_ms·resolve_placement_timeline)로 진행되며, 사건을
+	시각 순으로 처리하는 이벤트 시뮬레이션으로 굴러간다. 그래서 "상대가 지금 연쇄 중"이라는 상태가
+	실제로 존재하고, 관측값의 incoming_in_flight·incoming_land_move·opponent_chain_active가 그
+	상황을 담는다. 상대는 한 step 동안 여러 번 둘 수도, 한 번도 두지 않을 수도 있다.
+
+	`step(action)`의 계약은 그대로 "에이전트의 결정 한 번 = step 한 번"이다. step()은 에이전트가
+	고른 수의 착지를 예약한 뒤, 에이전트가 다음으로 결정할 시점(다음 조작 뿌요가 나오는 때)까지
+	타임라인을 진행하면서 그 사이의 상대 결정·연쇄 단계·공격 전달·방해뿌요 낙하를 시간순으로 처리한다.
+
+	상대는 bundledenemy의 Enemy 하위 클래스이거나(적 AI 대전), 그 자리에 SELF_PLAY_OPPONENT를
+	골랐다면 `self_play_action_fn`으로 전달받은 학습 중인 정책 자신이다(self-play). 관측값은
+	PuyoEnvironment와 같은 계약(encode_observation)을 쓰며, 자기 보드와 상대 보드를 함께 담는다.
 
 	기본 룰/피버 룰, 색상 수(3~5색)는 에피소드(대전)마다 무작위로 정해진다. 이 포팅의 피버
 	룰이 실제로 얼마나 단순화되어 있는지는 bundledenemy.py 모듈 docstring을 참고한다.
@@ -442,9 +453,12 @@ class PuyoDuelEnvironment:
 	COLOR_COUNT_CHOICES: Tuple[int, ...] = (3, 4, 5)
 
 	MAX_TURNS_PER_EPISODE = 150
-	# 브라우저에서는 game.elapsed의 실제 밀리초를 관측한다. 오프라인 고속 학습에는 벽시계가
-	# 의미 없으므로 한 번의 양측 턴을 실제 플레이의 대표값인 3초로 진행시킨다.
+	# 실시간 타임라인을 쓰지 않는 단일 플레이어 환경(PuyoEnvironment)이 턴 수를 시간으로 환산할 때만
+	# 쓰는 보조값이다. 대전 환경의 경과 시간은 이제 이벤트 시뮬레이션의 실제 시각에서 나온다.
 	DUEL_TURN_DURATION_MS = 3_000
+	# 에이전트의 한 결정 안에서 처리할 사건 수의 상한이다. 어떤 이유로든 타임라인이 끝나지 않을 때
+	# 학습이 멈추지 않도록 방어적으로 둔 값이며, 정상 대전에서는 수십 건을 넘지 않는다.
+	MAX_EVENTS_PER_DECISION = 4_096
 	# 승패 보상은 common.py의 공통 계약을 그대로 쓴다. pythonserver.py가 실제 대전에서 모은
 	# 전이로 같은 체크포인트를 추가 학습하므로 양쪽 보상 크기가 같아야 한다. 실제 종료 가치는
 	# 여기에 게임 시간 보정을 더한 terminal_value()이며, 이 두 상수는 그 기준값이다.
@@ -502,6 +516,17 @@ class PuyoDuelEnvironment:
 		self.margin_rate = 70.0
 		self.time_progress_multiplier = 1.0
 		self.turn = 0
+		# 실시간 타임라인 상태다. events는 (시각, 종류, 일련번호, 쪽, 부가정보)를 담은 최소 힙이고,
+		# in_flight는 그 쪽이 만들었지만 아직 상대 DAMAGE로 확정되지 않은 ATTACK(게임의 player.attack),
+		# chain_state는 지금 진행 중인 연쇄의 남은 단계와 종료 시각이다.
+		self.events: List[Tuple[float, int, int, str, dict[str, Any]]] = []
+		self.event_seq = 0
+		self.in_flight: dict[str, float] = {"agent": 0.0, "enemy": 0.0}
+		self.chain_state: dict[str, Optional[dict[str, Any]]] = {"agent": None, "enemy": None}
+		self.fast_down_delay_ms: Optional[int] = None
+		self.pending_reward = 0.0
+		self.pending_move_info: dict[str, Any] = {}
+		self.enemy_move_count = 0
 		self.reset()
 
 	@staticmethod
@@ -580,6 +605,16 @@ class PuyoDuelEnvironment:
 		self.margin_rate = get_margin_rate(self.elapsed_ms)
 		self.time_progress_multiplier = get_time_progress_multiplier(self.elapsed_ms)
 		bundledenemy.configure_timing(self.margin_rate, self.time_progress_multiplier)
+		self.events = []
+		self.event_seq = 0
+		self.in_flight = {"agent": 0.0, "enemy": 0.0}
+		self.chain_state = {"agent": None, "enemy": None}
+		# 배치 속도는 실제 대전의 AI 난이도 설정에 해당한다. 한 모델이 어느 난이도에서도 쓰이므로
+		# 에피소드마다 무작위로 골라 다양한 템포를 겪게 한다.
+		self.fast_down_delay_ms = self.random.choice(AI_FAST_DOWN_DELAYS)
+		self.pending_reward = 0.0
+		self.pending_move_info = {}
+		self.enemy_move_count = 0
 		self.agent_pair = self._pair()
 		self.enemy_pair = self._pair()
 		self.agent_next_pairs = [self._pair() for _ in range(self.NEXT_PAIR_LOOKAHEAD)]
@@ -591,13 +626,16 @@ class PuyoDuelEnvironment:
 			self._activate_fever("agent")
 			self._activate_fever("enemy")
 		self.turn = 0
+		# 양측 모두 0ms에 첫 조작을 시작한다. 에이전트의 결정은 step()이 직접 받으므로 상대 쪽만 예약한다.
+		self._push_event(0.0, EVENT_SPAWN, "enemy")
 		return self.observe()
 
 	def terminal_value(self, win: bool) -> float:
 		"""이번 판이 지금 끝났을 때 마지막 애프터스테이트가 가질 종료 가치다.
 
-		승패 항(피버 밖 7연쇄와 같은 크기)에 지금까지의 경과 시간 보정을 더한다. step()은 판정
-		전에 _advance_time()을 먼저 부르므로, 여기서 보는 elapsed_ms에는 이번 턴이 이미 포함된다.
+		승패 항(피버 밖 7연쇄와 같은 크기)에 지금까지의 경과 시간 보정을 더한다. 승부가 나는 순간은
+		타임라인의 한 사건이고 그 시각까지 _advance_clock()이 이미 불렸으므로, 여기서 보는
+		elapsed_ms는 실제로 대전이 끝난 시각이다.
 		"""
 		return terminal_reward(win, self.elapsed_ms)
 
@@ -612,7 +650,9 @@ class PuyoDuelEnvironment:
 	def suggest_agent_action(self, guide: bundledenemy.BaseEnemy) -> Optional[int]:
 		"""안내 역할의 적 AI가 에이전트 자리에서 이번 수에 고를 배치를 행동 번호로 알려 준다. 둘 곳이 없으면 None이다."""
 		bundledenemy.configure_rule(self.fever_rule, self.agent_fever.active)
-		placement = guide.decide(self._board("agent"), self.agent_pair, self.agent_next_pairs, self._damage("agent"))
+		placement = guide.decide(
+			self._board("agent"), self.agent_pair, self.agent_next_pairs, self._lookahead_incoming_garbage("agent"),
+		)
 		return _placement_action(placement)
 
 	def _fever(self, side: str) -> FeverState:
@@ -653,17 +693,78 @@ class PuyoDuelEnvironment:
 		else:
 			self.enemy_damage = damage
 
+	def _opponent_side(self, side: str) -> str:
+		"""side의 상대 쪽 이름을 반환한다."""
+		return "enemy" if side == "agent" else "agent"
+
+	def _attack(self, side: str) -> float:
+		"""side가 마지막 수로 만든 ATTACK이다. 관측값의 attack 스칼라에 들어간다."""
+		return self.agent_attack if side == "agent" else self.enemy_attack
+
+	def _set_attack(self, side: str, value: float) -> None:
+		"""side가 마지막 수로 만든 ATTACK을 기록한다."""
+		if side == "agent":
+			self.agent_attack = value
+		else:
+			self.enemy_attack = value
+
+	def _normal_damage(self, side: str) -> float:
+		"""피버 중이라도 일반 필드에 보존된 미정산 피해를 반환한다(게임의 player.normalDamage)."""
+		return self.agent_damage if side == "agent" else self.enemy_damage
+
+	def _set_normal_damage(self, side: str, value: float) -> None:
+		"""일반 필드에 보존된 미정산 피해를 갱신한다."""
+		if side == "agent":
+			self.agent_damage = value
+		else:
+			self.enemy_damage = value
+
+	def _predicted_in_flight(self, side: str) -> float:
+		"""side가 지금 만들고 있지만 아직 상대 DAMAGE로 확정되지 않은 공격의 예측 총량이다.
+
+		이미 보내 놓고 상쇄되지 않은 양(in_flight)에, 진행 중인 연쇄에서 아직 터지지 않은 단계의
+		ATTACK까지 더한다. 브라우저의 `predictPlayerChain()`이 내는 finalAttack과 같은 의미다.
+		"""
+		chain = self.chain_state[side]
+		pending = sum(step.attack for step in chain["pending"]) if chain else 0.0
+		return max(0.0, self.in_flight[side] + pending)
+
+	def _estimate_incoming_land_move(self, side: str) -> int:
+		"""side가 받을 방해뿌요가 떨어지기 전에 둘 수 있는 배치 수를 어림한다.
+
+		puyow.js `getRealtimeGarbageForecast()`의 garbageMoveIndex와 같은 계약이며, 0은 "이번 배치를
+		두고 나면 떨어진다"는 뜻이다. 이미 확정된 DAMAGE는 다음 비연쇄 배치 직후에 떨어지므로 0이고,
+		상대 연쇄가 진행 중일 뿐이라면 그 연쇄가 끝나는 시각으로 몇 번째 배치 뒤인지 센다.
+		받을 것이 아예 없으면 0이다.
+		"""
+		opponent_side = self._opponent_side(side)
+		settled = math.floor(max(0.0, self._damage(side)))
+		in_flight = math.floor(self._predicted_in_flight(opponent_side))
+		chain = self.chain_state[opponent_side]
+		if settled + in_flight < 1 or settled >= 1 or chain is None:
+			return 0
+		placement_ms = bundledenemy.estimate_placement_ms(self._board(side), self.elapsed_ms, self.fast_down_delay_ms)
+		first_drop_ms = self.elapsed_ms + placement_ms + bundledenemy.LOCK_TO_GARBAGE_DROP_MS
+		next_placement_ms = max(1.0, bundledenemy.LOCK_TO_NEXT_CONTROL_MS + placement_ms)
+		if chain["end_ms"] <= first_drop_ms:
+			return 0
+		return int(math.ceil((chain["end_ms"] - first_drop_ms) / next_placement_ms))
+
 	def _observe_side(self, side: str) -> torch.Tensor:
-		"""지정한 side의 보드·쌍·공격력·피버 상태 등을 관측 벡터로 인코딩한다."""
+		"""지정한 side의 보드·상대 보드·쌍·공격력·피버 상태·진행 중인 상대 연쇄를 관측 벡터로 인코딩한다."""
+		opponent_side = self._opponent_side(side)
 		pair = self.agent_pair if side == "agent" else self.enemy_pair
-		attack = self.agent_attack if side == "agent" else self.enemy_attack
 		ticket = self.agent_all_clear_ticket if side == "agent" else self.enemy_all_clear_ticket
 		state = self._fever(side)
 		return encode_observation(
-			self._board(side), pair, attack, self.turn, incoming_damage=self._damage(side),
+			self._board(side), pair, self._attack(side), self.turn, incoming_damage=self._damage(side),
 			fever_rule=self.fever_rule, all_clear_ticket=ticket, elapsed_ms=self.elapsed_ms,
 			margin_rate=self.margin_rate, time_progress_multiplier=self.time_progress_multiplier,
 			fever=state.observation() if self.fever_rule else None,
+			opponent_board=self._board(opponent_side),
+			incoming_in_flight=math.floor(self._predicted_in_flight(opponent_side)),
+			incoming_land_move=self._estimate_incoming_land_move(side),
+			opponent_chain_active=self.chain_state[opponent_side] is not None,
 		)
 
 	def _refill(self, pairs: List[Tuple[int, int]]) -> Tuple[int, int]:
@@ -671,11 +772,21 @@ class PuyoDuelEnvironment:
 		pairs.append(self._pair())
 		return pairs.pop(0)
 
+	def _lookahead_incoming_garbage(self, side: str) -> float:
+		"""탑재 적 AI에게 알려 줄 "곧 받을 방해뿌요" 양이다.
+
+		원작 `getLookaheadIncomingGarbage()`처럼 확정된 DAMAGE에 상대가 지금 만들고 있는 공격까지
+		더한다. 적 AI의 판단 자체는 puyow.js와 같게 두고, 실시간 정보를 이 인수로만 전달한다.
+		"""
+		return math.floor(max(0.0, self._damage(side))) + math.floor(self._predicted_in_flight(self._opponent_side(side)))
+
 	def _select_enemy_positions(self) -> Optional[List[Tuple[int, int]]]:
 		"""상대(적 AI 또는 self-play 정책)의 이번 수 착지 좌표를 정한다. 둘 곳이 없으면 None이다."""
 		if not self.is_self_play:
 			bundledenemy.configure_rule(self.fever_rule, self.enemy_fever.active)
-			placement = self.opponent.decide(self._board("enemy"), self.enemy_pair, self.enemy_next_pairs, self._damage("enemy"))
+			placement = self.opponent.decide(
+				self._board("enemy"), self.enemy_pair, self.enemy_next_pairs, self._lookahead_incoming_garbage("enemy"),
+			)
 			return placement.positions if placement is not None else None
 		observation = self._observe_side("enemy")
 		action = (
@@ -686,16 +797,23 @@ class PuyoDuelEnvironment:
 		landing = bundledenemy.find_landing_placement(self._board("enemy"), column, rotation)
 		return [landing[0], landing[1]] if landing is not None else None
 
-	def _advance_time(self) -> None:
-		"""경과 시간을 한 턴만큼 진행시키고 마진 레이트·시간 배율·피버 남은 시간을 갱신한다."""
-		self.elapsed_ms += self.DUEL_TURN_DURATION_MS
-		self.margin_rate = get_margin_rate(self.elapsed_ms)
-		self.time_progress_multiplier = get_time_progress_multiplier(self.elapsed_ms)
+	def _push_event(self, time_ms: float, kind: int, side: str, payload: Optional[dict[str, Any]] = None) -> None:
+		"""타임라인에 사건 하나를 예약한다. 같은 시각이면 종류 번호가 작은 쪽부터 처리된다."""
+		self.event_seq += 1
+		heapq.heappush(self.events, (float(time_ms), kind, self.event_seq, side, payload or {}))
+
+	def _advance_clock(self, time_ms: float) -> None:
+		"""타임라인을 주어진 시각까지 진행시키고 마진 레이트·시간 배율·피버 남은 시간을 갱신한다."""
+		target = max(self.elapsed_ms, float(time_ms))
+		delta = target - self.elapsed_ms
+		self.elapsed_ms = target
+		self.margin_rate = get_margin_rate(target)
+		self.time_progress_multiplier = get_time_progress_multiplier(target)
 		bundledenemy.configure_timing(self.margin_rate, self.time_progress_multiplier)
-		if self.fever_rule:
+		if self.fever_rule and delta > 0:
 			for state in (self.agent_fever, self.enemy_fever):
 				if state.active:
-					state.left_time_ms = max(0.0, state.left_time_ms - self.DUEL_TURN_DURATION_MS)
+					state.left_time_ms = max(0.0, state.left_time_ms - delta)
 
 	def _select_fever_stage(self, target_combo: int, pair: Tuple[int, int]) -> tuple[dict[str, Any], dict[str, int]]:
 		"""목표 연쇄·색상 수·지급쌍 조건에 맞는 피버 스테이지를 고르고 실제 색상으로 매핑한다."""
@@ -799,13 +917,38 @@ class PuyoDuelEnvironment:
 		opponent_state.next_time = min(FEVER_MAX_TIME, opponent_state.next_time + 1)
 		return state.gauge >= FEVER_GAUGE_MAX
 
-	def _apply_generated_attack(self, side: str, opponent_side: str, attack: float) -> bool:
-		"""side가 만든 공격을 상쇄·전달하고, 상쇄가 발생했다면 피버 게이지 등록 결과를 반환한다."""
-		before = self._damage(side)
-		after, defender = _apply_attack_exchange(before, attack, self._damage(opponent_side))
-		self._set_damage(side, after)
-		self._set_damage(opponent_side, defender)
-		return self._register_offset(side, opponent_side) if after < before else False
+	def _cancel_attack(self, side: str, amount: int) -> bool:
+		"""side가 보낸 정수 ATTACK으로 상쇄를 처리하고, 남은 양을 미도착 공격으로 쌓는다.
+
+		puyow.js의 `sendAttackEnergy()`와 같은 순서다. 공격하는 쪽이 피버 중이면 피버 DAMAGE →
+		보존된 일반 DAMAGE → 상대의 진행 중 ATTACK 순이고, 그 밖에는 상대의 진행 중 ATTACK →
+		자기 DAMAGE 순이다. 상쇄하고 남은 양은 연쇄가 끝날 때 상대 DAMAGE가 되도록 in_flight에 쌓는다.
+		상쇄가 한 번이라도 일어났으면 피버 전등을 등록하고, 게이지가 가득 찼는지를 반환한다.
+		"""
+		opponent_side = self._opponent_side(side)
+		state = self._fever(side)
+		remaining = int(amount)
+		cancelled = False
+
+		def take(available: float) -> float:
+			"""가능한 만큼 상쇄하고 남은 값을 돌려준다."""
+			nonlocal remaining, cancelled
+			taken = min(remaining, int(math.floor(max(0.0, available))))
+			if taken <= 0:
+				return available
+			remaining -= taken
+			cancelled = True
+			return available - taken
+
+		if self.fever_rule and state.active:
+			state.damage = take(state.damage)
+			self._set_normal_damage(side, take(self._normal_damage(side)))
+			self.in_flight[opponent_side] = take(self.in_flight[opponent_side])
+		else:
+			self.in_flight[opponent_side] = take(self.in_flight[opponent_side])
+			self._set_damage(side, take(self._damage(side)))
+		self.in_flight[side] += remaining
+		return self._register_offset(side, opponent_side) if cancelled else False
 
 	def _after_resolve(self, side: str, combo: int, all_clear: bool, activate_pending: bool) -> None:
 		"""연쇄 해소 이후 싹쓸이 티켓·피버 목표/발동/종료 상태를 갱신한다."""
@@ -839,107 +982,201 @@ class PuyoDuelEnvironment:
 			# 피버 비활성 일반 필드의 싹쓸이는 실제 게임처럼 4연쇄 패턴을 지급한다.
 			self._prepare_fever_stage(side, FEVER_MIN_TARGET_COMBO, count_turn=False)
 
-	def step(self, action: int) -> Tuple[torch.Tensor, float, bool, dict]:
-		"""에이전트가 한 수를 두고 판정한 뒤 상대의 수까지 처리해, 다음 관측·보상·종료 여부·정보를 반환한다."""
-		self._advance_time()
-		# 이번 수의 연쇄 가중치 기준이 되는 피버 상태다. _after_resolve()가 피버를 켜고 끄기 전의
-		# 값이어야 실제로 그 수를 둔 필드의 기준과 같다.
-		agent_fever_active = self.fever_rule and self.agent_fever.active
-		bundledenemy.configure_rule(self.fever_rule, self.agent_fever.active)
-		column, rotation = action_to_placement(action)
-		landing = bundledenemy.find_landing_placement(self._board("agent"), column, rotation)
-		if landing is None:
-			# 놓을 자리가 하나도 없는 상태는 실제 게임의 패배와 같다.
-			loss_value = self.terminal_value(False)
-			return self.observe(), loss_value, True, {"invalid": True, "terminal_value": loss_value}
-		positions = [landing[0], landing[1]]
-		# 시간이 끝난 피버 필드에서 터지지 않은 배치는 곧 사라질 피버 필드에 방해뿌요를 떨어뜨리지 않는다(원작 dropGarbage).
-		agent_expired_fever_placement = self._is_expired_fever_placement("agent")
-		result_board, combo, attack = bundledenemy.resolve_placement(self._board("agent"), self.agent_pair, positions)
-		self._set_board("agent", result_board)
-		if self.fever_rule and combo > 0 and attack < 1 and self._damage("agent") >= 1:
-			attack = 1.0
-		if combo > 0 and not self.fever_rule and self.agent_all_clear_ticket:
-			attack += ALL_CLEAR_TICKET_ATTACK
-			self.agent_all_clear_ticket = False
-		self.agent_attack = attack
-		reward = move_reward(attack, combo, agent_fever_active)
-		agent_all_clear = combo > 0 and all(cell == bundledenemy.EMPTY for row in result_board for cell in row)
-		info = {
-			"combo": combo, "attack": attack,
+	def _episode_info(self) -> dict[str, Any]:
+		"""이번 에피소드와 마지막 에이전트 수를 설명하는 공통 info 딕셔너리다."""
+		return {
+			**self.pending_move_info,
 			"opponent": self.policy_opponent_type if self.is_self_play else self.opponent.get_class_type(),
 			"rule": self.rule, "fever_rule": self.fever_rule, "color_count": self.color_count,
 			"elapsed_ms": self.elapsed_ms, "margin_rate": self.margin_rate,
 			"time_progress_multiplier": self.time_progress_multiplier,
+			"fast_down_delay_ms": self.fast_down_delay_ms, "enemy_moves": self.enemy_move_count,
 		}
 
-		agent_activation = False
-		if combo > 0:
-			agent_activation = self._apply_generated_attack("agent", "enemy", attack)
-		elif self._damage("agent") > 0 and not agent_expired_fever_placement:
-			self._drop_pending_garbage("agent")
+	def _finish(self, win: bool, result: str) -> Tuple[torch.Tensor, float, bool, dict]:
+		"""승부가 난 시점의 관측·보상·종료 정보를 만든다."""
+		value = self.terminal_value(win)
+		return self.observe(), self.pending_reward + value, True, {
+			**self._episode_info(), "result": result, "terminal_value": value,
+		}
 
-		if bundledenemy.is_defeat_board(self._board("agent")):
+	def _defeated(self, side: str) -> Tuple[torch.Tensor, float, bool, dict]:
+		"""side가 패배 칸을 막아 승부가 났을 때의 결과를 만든다."""
+		return self._finish(side != "agent", "agent_defeated" if side == "agent" else "enemy_defeated")
+
+	def step(self, action: int) -> Tuple[torch.Tensor, float, bool, dict]:
+		"""에이전트가 고른 수를 예약하고, 다음 결정 시점까지 타임라인을 진행한다.
+
+		그 사이의 상대 결정·연쇄 단계·공격 전달·방해뿌요 낙하는 모두 시각 순서대로 처리된다.
+		반환하는 보상은 이번에 고른 수 하나의 즉시 보상이며, 승부가 나면 종료 가치가 더해진다.
+		"""
+		self.pending_reward = 0.0
+		self.pending_move_info = {}
+		bundledenemy.configure_rule(self.fever_rule, self.agent_fever.active)
+		landing = bundledenemy.find_landing_placement(self._board("agent"), *action_to_placement(action))
+		if landing is None:
+			# 놓을 자리가 하나도 없는 상태는 실제 게임의 패배와 같다.
 			loss_value = self.terminal_value(False)
-			return self.observe(), reward + loss_value, True, {
-				**info, "result": "agent_defeated", "terminal_value": loss_value,
-			}
+			return self.observe(), loss_value, True, {"invalid": True, "terminal_value": loss_value}
+		self._schedule_landing("agent", [landing[0], landing[1]], self.agent_pair)
+		return self._run_until_agent_decision()
 
-		self.agent_pair = self._refill(self.agent_next_pairs)
-		self._after_resolve("agent", combo, agent_all_clear, agent_activation)
-		if agent_expired_fever_placement and combo == 0 and bundledenemy.is_defeat_board(self._board("agent")):
-			loss_value = self.terminal_value(False)
-			return self.observe(), reward + loss_value, True, {
-				**info, "result": "agent_defeated", "terminal_value": loss_value,
-			}
+	def _schedule_landing(self, side: str, positions: List[Tuple[int, int]], colors: Sequence[int]) -> None:
+		"""side가 지금 고른 수가 언제 고정될지 어림해 착지 사건을 예약한다."""
+		placement_ms = bundledenemy.estimate_placement_ms(self._board(side), self.elapsed_ms, self.fast_down_delay_ms)
+		self._push_event(self.elapsed_ms + placement_ms, EVENT_LAND, side, {
+			"positions": list(positions), "colors": tuple(colors),
+		})
 
-		enemy_positions = self._select_enemy_positions()
-		if enemy_positions is None:
+	def _run_until_agent_decision(self) -> Tuple[torch.Tensor, float, bool, dict]:
+		"""에이전트가 다음으로 수를 고를 시점까지 사건을 시각 순서대로 처리한다."""
+		for _ in range(self.MAX_EVENTS_PER_DECISION):
+			if not self.events:
+				# 예약된 사건이 없으면 더 진행할 수 없다. 정상 대전에서는 일어나지 않는다.
+				return self.observe(), self.pending_reward, True, {**self._episode_info(), "result": "timeout"}
+			time_ms, kind, _seq, side, payload = heapq.heappop(self.events)
+			self._advance_clock(time_ms)
+			if kind == EVENT_SPAWN and side == "agent":
+				self.turn += 1
+				if self.turn >= self.MAX_TURNS_PER_EPISODE:
+					return self.observe(), self.pending_reward, True, {**self._episode_info(), "result": "timeout"}
+				return self.observe(), self.pending_reward, False, self._episode_info()
+			outcome = self._handle_event(kind, side, payload)
+			if outcome is not None:
+				return outcome
+		return self.observe(), self.pending_reward, True, {**self._episode_info(), "result": "timeout"}
+
+	def _handle_event(self, kind: int, side: str, payload: dict[str, Any]) -> Optional[Tuple[torch.Tensor, float, bool, dict]]:
+		"""사건 하나를 처리한다. 승부가 났으면 종료 결과를, 아니면 None을 반환한다."""
+		if kind == EVENT_SPAWN:
+			return self._begin_enemy_move()
+		if kind == EVENT_LAND:
+			return self._resolve_landing(side, payload)
+		if kind == EVENT_CHAIN_STEP:
+			return self._deliver_chain_step(side, payload)
+		if kind == EVENT_CHAIN_END:
+			return self._finish_chain(side)
+		if kind == EVENT_SETTLE:
+			return self._settle_placement(side, payload)
+		return None
+
+	def _begin_enemy_move(self) -> Optional[Tuple[torch.Tensor, float, bool, dict]]:
+		"""상대의 조작 뿌요가 나온 시점에 상대의 수를 정하고 착지를 예약한다."""
+		positions = self._select_enemy_positions()
+		if positions is None:
 			# 상대 필드에 더 이상 둘 곳이 없다: 상대의 패배로 처리한다. 가치망이 상대를 맡은 경우
 			# (self-play·대체 모델)는 예전부터 쓰던 result 값을 그대로 유지한다. 두 값 모두 학습기와
 			# 평가가 "승리"로 세므로 구분이 필요하지 않고, 실제 상대는 info["opponent"]에 남는다.
-			result = "enemy_invalid_self_play" if self.is_self_play else "enemy_no_moves"
-			win_value = self.terminal_value(True)
-			return self.observe(), reward + win_value, True, {**info, "result": result, "terminal_value": win_value}
+			return self._finish(True, "enemy_invalid_self_play" if self.is_self_play else "enemy_no_moves")
+		self.enemy_move_count += 1
+		self._schedule_landing("enemy", positions, self.enemy_pair)
+		return None
 
-		bundledenemy.configure_rule(self.fever_rule, self.enemy_fever.active)
-		enemy_expired_fever_placement = self._is_expired_fever_placement("enemy")
-		enemy_result_board, enemy_combo, enemy_attack = bundledenemy.resolve_placement(self._board("enemy"), self.enemy_pair, enemy_positions)
-		if enemy_result_board is None:
+	def _resolve_landing(self, side: str, payload: dict[str, Any]) -> Optional[Tuple[torch.Tensor, float, bool, dict]]:
+		"""고정된 수의 연쇄를 단계별 시각과 함께 풀고, 이어질 사건을 예약한다."""
+		bundledenemy.configure_rule(self.fever_rule, self._fever(side).active)
+		fever_active = self.fever_rule and self._fever(side).active
+		# 시간이 끝난 피버 필드에서 터지지 않은 배치는 곧 사라질 피버 필드에 방해뿌요를 떨어뜨리지 않는다(원작 dropGarbage).
+		expired_fever = self._is_expired_fever_placement(side)
+		gravity_multiplier = bundledenemy.FEVER_GRAVITY_SPEED_MULTIPLIER if fever_active else 1.0
+		timeline = bundledenemy.resolve_placement_timeline(
+			self._board(side), payload["colors"], payload["positions"], gravity_multiplier,
+		)
+		if timeline.board is None:
 			# bundledenemy가 규칙을 벗어난 배치를 반환하지 않는 한 발생하지 않는다. 방어적으로만 처리한다.
-			enemy_result_board, enemy_combo, enemy_attack = self._board("enemy"), 0, 0.0
-		self._set_board("enemy", enemy_result_board)
-		if self.fever_rule and enemy_combo > 0 and enemy_attack < 1 and self._damage("enemy") >= 1:
-			enemy_attack = 1.0
-		if enemy_combo > 0 and not self.fever_rule and self.enemy_all_clear_ticket:
-			enemy_attack += ALL_CLEAR_TICKET_ATTACK
-			self.enemy_all_clear_ticket = False
-		self.enemy_attack = enemy_attack
-		enemy_all_clear = enemy_combo > 0 and all(cell == bundledenemy.EMPTY for row in enemy_result_board for cell in row)
-
-		enemy_activation = False
-		if enemy_combo > 0:
-			enemy_activation = self._apply_generated_attack("enemy", "agent", enemy_attack)
-		elif self._damage("enemy") > 0 and not enemy_expired_fever_placement:
-			self._drop_pending_garbage("enemy")
-
-		if bundledenemy.is_defeat_board(self._board("enemy")):
-			win_value = self.terminal_value(True)
-			return self.observe(), reward + win_value, True, {
-				**info, "result": "enemy_defeated", "terminal_value": win_value,
+			self._push_event(self.elapsed_ms + bundledenemy.LOCK_TO_NEXT_CONTROL_MS, EVENT_SPAWN, side)
+			return None
+		self._set_board(side, timeline.board)
+		combo = timeline.combo
+		attack = timeline.attack
+		# 아래 두 보정은 _build_afterstate()와 같은 순서·계약이어야 보상이 어긋나지 않는다.
+		if self.fever_rule and combo > 0 and attack < 1 and self._damage(side) >= 1:
+			attack = 1.0
+		ticket = self.agent_all_clear_ticket if side == "agent" else self.enemy_all_clear_ticket
+		if combo > 0 and not self.fever_rule and ticket:
+			attack += ALL_CLEAR_TICKET_ATTACK
+			if side == "agent":
+				self.agent_all_clear_ticket = False
+			else:
+				self.enemy_all_clear_ticket = False
+		self._set_attack(side, attack)
+		all_clear = combo > 0 and bundledenemy.is_all_clear_board(timeline.board)
+		if side == "agent":
+			self.pending_reward += move_reward(attack, combo, fever_active)
+			self.pending_move_info = {"combo": combo, "attack": attack}
+		if combo > 0:
+			# 보정으로 늘어난 ATTACK은 마지막 단계에 붙여, 단계별 합이 보정 뒤 총량과 같게 한다.
+			steps = list(timeline.steps)
+			bonus = attack - timeline.attack
+			if bonus:
+				last = steps[-1]
+				steps[-1] = bundledenemy.ChainStep(last.combo, last.attack + bonus, last.explode_ms)
+			self.chain_state[side] = {
+				"pending": steps, "end_ms": self.elapsed_ms + timeline.end_ms, "generated": 0.0,
+				"sent": 0, "activation": False, "combo": combo, "all_clear": all_clear,
 			}
+			for step in steps:
+				self._push_event(self.elapsed_ms + step.explode_ms, EVENT_CHAIN_STEP, side, {"attack": step.attack})
+			self._push_event(self.elapsed_ms + timeline.end_ms, EVENT_CHAIN_END, side)
+		else:
+			self._push_event(self.elapsed_ms + bundledenemy.LOCK_TO_GARBAGE_DROP_MS, EVENT_SETTLE, side, {
+				"expired_fever": expired_fever,
+			})
+			self._push_event(self.elapsed_ms + bundledenemy.LOCK_TO_NEXT_CONTROL_MS, EVENT_SPAWN, side)
+		if bundledenemy.is_defeat_board(self._board(side)):
+			return self._defeated(side)
+		return None
 
-		self.enemy_pair = self._refill(self.enemy_next_pairs)
-		self._after_resolve("enemy", enemy_combo, enemy_all_clear, enemy_activation)
-		if enemy_expired_fever_placement and enemy_combo == 0 and bundledenemy.is_defeat_board(self._board("enemy")):
-			win_value = self.terminal_value(True)
-			return self.observe(), reward + win_value, True, {
-				**info, "result": "enemy_defeated", "terminal_value": win_value,
-			}
-		self.turn += 1
-		if self.turn >= self.MAX_TURNS_PER_EPISODE:
-			return self.observe(), reward, True, {**info, "result": "timeout"}
-		return self.observe(), reward, False, info
+	def _deliver_chain_step(self, side: str, payload: dict[str, Any]) -> Optional[Tuple[torch.Tensor, float, bool, dict]]:
+		"""연쇄 한 단계가 터진 시점에 그때까지의 정수 ATTACK을 상쇄·전달한다."""
+		chain = self.chain_state[side]
+		if chain is None:
+			return None
+		if chain["pending"]:
+			chain["pending"].pop(0)
+		chain["generated"] += float(payload["attack"])
+		amount = int(math.floor(chain["generated"])) - chain["sent"]
+		if amount < 1:
+			return None
+		chain["sent"] += amount
+		if self._cancel_attack(side, amount):
+			chain["activation"] = True
+		return None
+
+	def _finish_chain(self, side: str) -> Optional[Tuple[torch.Tensor, float, bool, dict]]:
+		"""연쇄가 끝난 시점에 남은 공격을 상대 DAMAGE로 확정하고 다음 조작을 예약한다."""
+		chain = self.chain_state[side]
+		self.chain_state[side] = None
+		if chain is None:
+			return None
+		opponent_side = self._opponent_side(side)
+		delivered = int(math.floor(max(0.0, self.in_flight[side])))
+		self.in_flight[side] = 0.0
+		if delivered >= 1:
+			self._set_damage(opponent_side, self._damage(opponent_side) + delivered)
+		self._refill_pair(side)
+		self._after_resolve(side, chain["combo"], chain["all_clear"], chain["activation"])
+		self._push_event(self.elapsed_ms + bundledenemy.LOCK_TO_NEXT_CONTROL_MS, EVENT_SPAWN, side)
+		if bundledenemy.is_defeat_board(self._board(side)):
+			return self._defeated(side)
+		return None
+
+	def _settle_placement(self, side: str, payload: dict[str, Any]) -> Optional[Tuple[torch.Tensor, float, bool, dict]]:
+		"""터지지 않은 배치가 고정된 뒤 방해뿌요 낙하와 다음 쌍·피버 상태 갱신을 처리한다."""
+		if self._damage(side) > 0 and not payload["expired_fever"]:
+			self._drop_pending_garbage(side)
+		self._refill_pair(side)
+		self._after_resolve(side, 0, False, False)
+		if bundledenemy.is_defeat_board(self._board(side)):
+			return self._defeated(side)
+		return None
+
+	def _refill_pair(self, side: str) -> None:
+		"""side의 조작 쌍을 다음 쌍으로 넘긴다."""
+		if side == "agent":
+			self.agent_pair = self._refill(self.agent_next_pairs)
+		else:
+			self.enemy_pair = self._refill(self.enemy_next_pairs)
 
 
 @dataclass
@@ -957,11 +1194,17 @@ def observation_values(observation: Any) -> List[float]:
 
 def _build_afterstate(
 	board: List[List[int]], pair: Tuple[int, int], scalars: dict[str, Any], action: int, next_pair: Sequence[Any],
+	opponent_board: Optional[List[List[int]]] = None,
 ) -> Optional[Afterstate]:
 	"""이미 디코딩한 관측 상태에서 한 행동의 애프터스테이트와 즉시 보상을 만든다.
 
 	호출 전에 bundledenemy의 룰·시간 설정을 이 관측값에 맞춰 두어야 ATTACK 계산이 실제 게임과 같다.
 	방해뿌요 낙하는 무작위라 애프터스테이트에 반영하지 않고, 상쇄하고 남은 피해량만 상태에 남긴다.
+	상대 보드는 내 수로 바뀌지 않으므로 관측값에서 읽은 그대로 이어 붙인다.
+
+	상쇄 순서는 PuyoDuelEnvironment의 단계별 상쇄와 같다. 이번 수의 ATTACK은 먼저 상대가 지금
+	진행 중인 공격(incoming_in_flight)을 지우고, 그다음 이미 확정된 DAMAGE를 지운다. 도착까지 남은
+	배치 수(incoming_land_move)는 이 수를 두었으니 하나 줄어든다.
 	"""
 	landing = bundledenemy.find_landing_placement(board, *action_to_placement(action))
 	if landing is None:
@@ -974,7 +1217,7 @@ def _build_afterstate(
 	# 피버 중에는 피버 필드 전용 미정산 피해가 그 시점의 실제 피해량이다.
 	damage = scalars["fever_damage"] if fever_active else scalars["incoming_damage"]
 	ticket = scalars["all_clear_ticket"]
-	# 아래 세 보정은 PuyoDuelEnvironment.step()과 같은 순서·계약이어야 보상이 어긋나지 않는다.
+	# 아래 세 보정은 PuyoDuelEnvironment의 착지 처리와 같은 순서·계약이어야 보상이 어긋나지 않는다.
 	if fever_rule and combo > 0 and attack < 1 and damage >= 1:
 		attack = 1.0
 	if combo > 0 and not fever_rule and ticket:
@@ -982,7 +1225,12 @@ def _build_afterstate(
 		ticket = False
 	if combo > 0 and not fever_rule and bundledenemy.is_all_clear_board(result_board):
 		ticket = True
-	remaining_damage = damage - min(math.floor(attack), math.floor(damage))
+	remaining_attack = math.floor(attack)
+	in_flight = scalars["incoming_in_flight"]
+	cancelled_in_flight = min(remaining_attack, math.floor(in_flight))
+	remaining_in_flight = in_flight - cancelled_in_flight
+	remaining_attack -= cancelled_in_flight
+	remaining_damage = damage - min(remaining_attack, math.floor(damage))
 	fever = {
 		"active": fever_active, "gauge": scalars["fever_gauge"], "nextTime": scalars["fever_next_time"],
 		"targetCombo": scalars["fever_target_combo"], "leftTime": scalars["fever_left_time"],
@@ -992,7 +1240,10 @@ def _build_afterstate(
 		result_board, next_pair, attack=attack, turn=scalars["turn"] + 1, incoming_damage=remaining_damage,
 		fever_rule=fever_rule, all_clear_ticket=ticket, elapsed_ms=scalars["elapsed_ms"],
 		margin_rate=scalars["margin_rate"], time_progress_multiplier=scalars["time_progress_multiplier"],
-		fever=fever if fever_rule else None,
+		fever=fever if fever_rule else None, opponent_board=opponent_board,
+		incoming_in_flight=remaining_in_flight,
+		incoming_land_move=max(0.0, scalars["incoming_land_move"] - 1.0),
+		opponent_chain_active=scalars["opponent_chain_active"],
 	)
 	return Afterstate(action, move_reward(attack, combo, fever_active), observation)
 
@@ -1008,6 +1259,7 @@ def enumerate_afterstates(
 	"""
 	values = observation_values(observation)
 	board = decode_observation_board(values)
+	opponent_board = decode_observation_opponent_board(values)
 	pair = decode_observation_pair(values)
 	scalars = decode_observation_scalars(values)
 	# bundledenemy는 룰·시간 배율을 모듈 전역으로 관리한다. 관측값에서 되살려 두어야 ATTACK이 맞는다.
@@ -1016,7 +1268,7 @@ def enumerate_afterstates(
 	candidates = sorted(usable_actions) if usable_actions is not None else [
 		action for action in range(ACTION_COUNT) if is_legal_observation_action(values, action)
 	]
-	afterstates = [_build_afterstate(board, pair, scalars, action, next_pair) for action in candidates]
+	afterstates = [_build_afterstate(board, pair, scalars, action, next_pair, opponent_board) for action in candidates]
 	return [afterstate for afterstate in afterstates if afterstate is not None]
 
 
@@ -1029,17 +1281,21 @@ def build_afterstate(observation: Any, action: int, next_pair: Sequence[Any]) ->
 class ValueNetwork(nn.Module):
 	"""애프터스테이트 하나의 가치를 출력하는 합성곱 신경망.
 
-	보드는 6×12 위에 빈 칸·방해뿌요·5색을 나눈 7채널 평면으로 그대로 넣고, 조작 쌍과 스칼라 상태는
-	합성곱을 지난 특징 뒤에 이어 붙인다. 출력은 행동 수와 무관한 스칼라 하나다.
+	보드는 6×12 위에 빈 칸·방해뿌요·5색을 나눈 7채널 평면으로 그대로 넣는다. 모델 버전 4부터는
+	자기 보드 7채널과 상대 보드 7채널을 같은 6×12 평면 위에 겹쳐 14채널로 넣어, 내 필드와 상대
+	필드의 높이·색 배치를 한 번에 본다. 조작 쌍과 스칼라 상태는 합성곱을 지난 특징 뒤에 이어 붙인다.
+	출력은 행동 수와 무관한 스칼라 하나다.
 	"""
 
 	CONV_CHANNELS = 32
+	# 관측 벡터에 담긴 보드 수만큼 합성곱 입력 채널이 늘어난다(자기 보드 7 + 상대 보드 7 = 14).
+	INPUT_CHANNELS = BOARD_CHANNELS * OBSERVATION_BOARD_COUNT
 
 	def __init__(self) -> None:
 		"""보드 합성곱 두 단과 256-128 은닉층의 가치 헤드를 구성한다."""
 		super().__init__()
 		self.board = nn.Sequential(
-			nn.Conv2d(BOARD_CHANNELS, self.CONV_CHANNELS, kernel_size=3, padding=1), nn.ReLU(),
+			nn.Conv2d(self.INPUT_CHANNELS, self.CONV_CHANNELS, kernel_size=3, padding=1), nn.ReLU(),
 			nn.Conv2d(self.CONV_CHANNELS, self.CONV_CHANNELS, kernel_size=3, padding=1), nn.ReLU(),
 		)
 		self.head = nn.Sequential(
@@ -1050,9 +1306,9 @@ class ValueNetwork(nn.Module):
 	def forward(self, observation: torch.Tensor) -> torch.Tensor:
 		"""관측 벡터(한 개 또는 배치)를 받아 상태 가치를 계산한다."""
 		flat = observation.reshape(-1, OBSERVATION_SIZE)
-		cells = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS
-		# 관측 벡터의 보드 구간은 채널→y→x 순서라 그대로 (채널, 높이, 너비)로 볼 수 있다.
-		planes = flat[:, :cells].reshape(-1, BOARD_CHANNELS, BOARD_HEIGHT, BOARD_WIDTH)
+		cells = OBSERVATION_BOARDS_SIZE
+		# 관측 벡터의 보드 구간은 보드→채널→y→x 순서라 그대로 (채널, 높이, 너비)로 볼 수 있다.
+		planes = flat[:, :cells].reshape(-1, self.INPUT_CHANNELS, BOARD_HEIGHT, BOARD_WIDTH)
 		return self.head(torch.cat([self.board(planes).flatten(1), flat[:, cells:]], dim=1)).reshape(-1)
 
 

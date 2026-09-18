@@ -272,11 +272,22 @@ python python/learning.py --episodes 2000 --output python/puyow/default.pt --tra
 
 ## 9. 상세: 관측값과 행동
 
-현재 Python 환경의 모델 버전 3 관측 벡터는 길이 `528`이다(버전 2와 같은 계약이다).
+현재 Python 환경의 모델 버전 4 관측 벡터는 길이 `1035`이다. 버전 3(`528`)과는 호환되지 않으므로 예전 체크포인트는 이어 학습할 수 없다.
 
-- 6×12 보드의 빈 칸, 방해뿌요, 5색 뿌요 원-핫 채널: `504`개
+- 자기 6×12 보드의 빈 칸, 방해뿌요, 5색 뿌요 원-핫 채널: `504`개
+- 상대 6×12 보드의 같은 형식 채널: `504`개
 - 현재 뿌요 쌍의 두 색 원-핫 정보: `10`개
-- 정규화된 전투·룰·시간·피버 상태: `14`개. 순서는 ATTACK, 턴, DAMAGE, 피버 룰 여부, 싹쓸이 티켓, 경과시간, 마진 레이트, 시간 진행 배율, 피버 활성, 게이지, 다음 피버 시간, 목표 연쇄, 남은 시간, 피버 DAMAGE다.
+- 정규화된 전투·룰·시간·피버·실시간 상태: `17`개. 순서는 ATTACK, 턴, DAMAGE, 피버 룰 여부, 싹쓸이 티켓, 경과시간, 마진 레이트, 시간 진행 배율, 피버 활성, 게이지, 다음 피버 시간, 목표 연쇄, 남은 시간, 피버 DAMAGE, 진행 중인 상대 연쇄의 미확정 공격, 그 공격이 떨어지기 전에 둘 수 있는 배치 수, 상대 연쇄 진행 여부다.
+
+버전 4에서 추가된 뒤쪽 세 스칼라의 의미는 다음과 같다.
+
+- `incoming_in_flight`: 상대가 지금 진행 중인 연쇄에서 아직 DAMAGE로 확정되지 않은 예측 공격이다. `DAMAGE_SCALE`(30)로 정규화한다.
+- `incoming_land_move`: 그 공격이 떨어지기 전에 내가 둘 수 있는 배치 수다(`LAND_MOVE_SCALE` 8). 이미 확정된 DAMAGE가 있으면 다음 비연쇄 배치 직후에 떨어지므로 0이고, 받을 것이 없을 때도 0이다.
+- `opponent_chain_active`: 상대가 지금 연쇄 중이면 1이다.
+
+`incoming_damage`(3번째 값)는 **이미 확정된 DAMAGE만** 뜻한다. 진행 중인 연쇄의 예측 공격을 여기에 섞으면 같은 공격을 두 번 세게 되므로, 반드시 `incoming_in_flight`에 따로 넣는다.
+
+가치망은 자기 보드 7채널과 상대 보드 7채널을 같은 6×12 평면 위의 14채널로 합쳐 합성곱에 넣고, 조작 쌍과 17개 스칼라는 합성곱을 지난 특징 뒤에 이어 붙인다.
 
 보드 좌표는 `board[y][x]`이며 `y=0`이 바닥이다. 행동 번호는 `열 * 4 + 회전`으로 계산한다.
 
@@ -304,7 +315,7 @@ const state = window.PuyoW.getGameState();
 - `allClearTicket`: 기본 룰에서 다음 색 뿌요 폭발에 쓸 싹쓸이 티켓 보유 여부.
 - `nextPairs`: 양측 모두 현재 수 뒤의 앞 두 쌍만 제공한다. 내부 CPU 탐색용 대기열 전체를 노출하지 않는다.
 
-연속 피버의 남은 시간과 목표 상태는 기존 최상위 `fever.leftTime`, `fever.targetCombo` 등에 들어 있다. `/apis/learning`과 솔로몬 배치 요청은 같은 528개 관측 계약을 사용하며, 솔로몬 프롬프트의 `currentState.elapsedMs`는 JS 게임 루프가 관리하는 실제 `game.elapsed`다.
+연속 피버의 남은 시간과 목표 상태는 기존 최상위 `fever.leftTime`, `fever.targetCombo` 등에 들어 있다. `/apis/learning`과 솔로몬 배치 요청은 같은 1035개 관측 계약을 사용하며, 솔로몬 프롬프트는 자기 필드(`currentField`)와 함께 상대 필드(`opponentField`), 그리고 `currentState`의 `incomingInFlight`·`incomingLandMove`·`opponentChainActive`를 보낸다. 솔로몬 프롬프트의 `currentState.elapsedMs`는 JS 게임 루프가 관리하는 실제 `game.elapsed`다.
 
 ## 11. 상세: 현재 구현 범위
 
@@ -314,6 +325,21 @@ const state = window.PuyoW.getGameState();
 - 연속 피버 단독 모드(대전 학습은 기본 룰과 피버 룰을 대상으로 한다)
 - 실제 브라우저 게임 루프의 상태 수집 및 행동 주입
 - 안드레알푸스의 Worker 비동기 3수 탐색(현재는 동기 시간 제한 탐색으로 대체)
+- 방해뿌요 예고 에너지의 이동 연출 시간(연쇄가 끝나는 즉시 상대 DAMAGE로 확정된다고 본다)
+
+### 실시간 대전 타임라인 (모델 버전 4)
+
+버전 4부터 대전 환경은 턴제가 아니다. 양측이 각자 시계를 갖고, 다음 사건들을 시각 순서대로 처리한다.
+
+- **배치 시간**: 조작 뿌요가 나와 고정될 때까지의 시간이다. 게임의 `estimateAiPlacementTiming()`과 같이 평균 열 높이, 자연 낙하 간격(`PLAYER_FALL_INTERVAL` 2048ms를 경과 시간으로 가속), 난이도별 빠른 하강 대기 시간, 빠른 하강 간격 55ms/칸으로 어림한다. 난이도(빠른 하강 대기 시간)는 에피소드마다 무작위로 고른다.
+- **연쇄 시간**: 단계마다 `CHAIN_PHASE_WAIT_MS`(150) + `EXPLOSION_EFFECT_DURATION_MS`(430) + 중력 연출 시간(피버 필드는 1.5배)이 걸린다. 게임의 `predictPlayerChain()`과 같은 식이다.
+- **상쇄**: 연쇄 단계마다 일어난다. 그 단계까지의 정수 ATTACK으로 먼저 상대가 진행 중인 공격을, 그다음 자기 DAMAGE를 상쇄한다. 공격하는 쪽이 피버 중이면 피버 DAMAGE → 보존된 일반 DAMAGE → 상대의 진행 중 공격 순이다.
+- **공격 전달**: 상쇄하고 남은 공격은 **연쇄가 끝난 뒤에야** 상대의 DAMAGE가 된다. 그래서 상대 연쇄가 진행 중인 동안에는 아직 확정되지 않은 공격이 존재하고, 관측값의 `incoming_in_flight`가 그 양이다.
+- **방해뿌요 낙하**: 확정된 DAMAGE만, 터지지 않은 배치가 고정되고 `LOCK_TO_GARBAGE_DROP_MS`(300) 뒤에 떨어진다.
+
+`step(action)`의 계약은 그대로 "에이전트의 결정 한 번 = step 한 번"이다. `step()`은 에이전트가 고른 수의 착지를 예약한 뒤 다음 결정 시점까지 타임라인을 진행하므로, 그 사이 상대는 여러 번 둘 수도 한 번도 두지 않을 수도 있다. 경과 시간·마진 레이트·시간 배율·피버 남은 시간은 모두 이 실제 타임라인에서 나온다.
+
+탑재 적 AI(`bundledenemy.py`)의 판단 자체는 원작과 같게 두었고, 실시간 정보는 `decide()`의 `incoming_garbage` 인수(확정 DAMAGE + 상대가 지금 만들고 있는 공격)로만 전달한다.
 
 현재 `/apis/learning` API는 학습 이벤트를 수신하고 세션 통계만 보관하며, 이 경로로 받은 전이가 모델 가중치를 바꾸지는 않는다. `src/js/puyow.js`는 사용자 게임의 실제 배치·정산 결과를 해당 API 계약으로 전송하며, 브라우저에서 `configureLearningApi()`를 호출해야 전송이 활성화된다. 실제로 모델 가중치를 갱신하는 경로는 위 "솔로몬과 대전하며 실시간으로 학습"의 `/apis/solomonlearning` 하나뿐이다.
 
@@ -393,7 +419,7 @@ AI API KEY : localhost
 
 `npm start`로 띄우는 [node/server.js](../node/server.js)도 같은 `/apis/localmodelinfo`·`/v1/chat/completions` 계약을 제공하므로, 파이썬 없이도 게임 설정에서 **Local AI**를 골라 솔로몬과 대전할 수 있다. 이 서버는 `.pt` 대신 [src/onnx/default.onnx](../src/onnx/default.onnx)를 `npm install`로 설치되는 `onnxruntime-node`로 추론하며, 모델 경로는 `node/server.js`의 `LOCAL_AI_MODEL_PATH` 상수로 바꾼다. 이 경로에 파일이 없으면 `/apis/localmodelinfo`가 `available: false`를 돌려주어 게임에서 Local AI를 고를 수 없고, 정적 파일과 다른 API는 그대로 동작한다. 배치를 고르는 규칙(애프터스테이트 보상 + 0.70 × 가치)은 `pythonserver.py`와 같다. 역학습은 지원하지 않아 `/apis/solomonlearning`은 요청을 받기만 하고 모델을 바꾸지 않는다.
 
-서버 없이 관측 벡터 하나를 직접 추론하려면 528개 숫자 배열 JSON을 준비하고 다음처럼 실행한다. 결과는 `action`, `x`, `rotation` JSON이며, 가득 찬 열과 벽을 침범하는 행동은 후보에서 아예 빠진다. 실제 대전과 같은 기준으로 평가하려면 배열 대신 `{"observation": [...], "nextPair": [3, 4]}` 형식으로 다음 쌍까지 넣는다(색 번호는 red·green·yellow·blue·purple 순서인 0~4다).
+서버 없이 관측 벡터 하나를 직접 추론하려면 1035개 숫자 배열 JSON을 준비하고 다음처럼 실행한다. 결과는 `action`, `x`, `rotation` JSON이며, 가득 찬 열과 벽을 침범하는 행동은 후보에서 아예 빠진다. 실제 대전과 같은 기준으로 평가하려면 배열 대신 `{"observation": [...], "nextPair": [3, 4]}` 형식으로 다음 쌍까지 넣는다(색 번호는 red·green·yellow·blue·purple 순서인 0~4다).
 
 ```powershell
 python python/learning.py --output python/puyow/default.pt --infer-observation observation.json

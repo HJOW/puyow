@@ -17,6 +17,7 @@ from unittest import mock
 
 import torch
 
+import bundledenemy as bundled
 import common
 import learning as training
 import lngui
@@ -1895,6 +1896,373 @@ class OnnxExportTest(unittest.TestCase):
 		torch.save({"model": {}, "model_version": training.MODEL_VERSION - 1}, broken)
 		with self.assertRaises((ValueError, RuntimeError)):
 			lngui.export_checkpoint_to_onnx(broken, self.directory / "old.onnx")
+
+
+class RealtimeObservationContractTest(unittest.TestCase):
+	"""모델 버전 4 관측 계약(상대 보드 + 진행 중인 상대 연쇄 스칼라)을 확인한다."""
+
+	def test_observation_holds_two_boards_and_seventeen_scalars(self) -> None:
+		self.assertEqual(4, common.MODEL_VERSION)
+		self.assertEqual(17, common.OBSERVATION_SCALAR_COUNT)
+		self.assertEqual(2, common.OBSERVATION_BOARD_COUNT)
+		self.assertEqual(
+			common.OBSERVATION_BOARD_SIZE * common.OBSERVATION_BOARD_COUNT + common.COLORS * 2 + common.OBSERVATION_SCALAR_COUNT,
+			common.OBSERVATION_SIZE,
+		)
+		# 가치망의 합성곱 입력 채널도 보드 수를 따라간다.
+		self.assertEqual(common.BOARD_CHANNELS * common.OBSERVATION_BOARD_COUNT, training.ValueNetwork.INPUT_CHANNELS)
+
+	def test_opponent_board_is_encoded_and_decoded_separately(self) -> None:
+		board = bundled.new_empty_board()
+		board[0][0] = 0
+		opponent_board = bundled.new_empty_board()
+		opponent_board[3][5] = bundled.GARBAGE
+
+		values = common.encode_observation_values(board, (1, 2), opponent_board=opponent_board)
+
+		self.assertEqual(board, common.decode_observation_board(values))
+		self.assertEqual(opponent_board, common.decode_observation_opponent_board(values))
+
+	def test_missing_opponent_board_is_read_back_as_an_empty_field(self) -> None:
+		values = common.encode_observation_values(bundled.new_empty_board(), (0, 0))
+
+		self.assertEqual(bundled.new_empty_board(), common.decode_observation_opponent_board(values))
+
+	def test_realtime_scalars_survive_a_round_trip(self) -> None:
+		values = common.encode_observation_values(
+			bundled.new_empty_board(), (0, 1), incoming_damage=4,
+			incoming_in_flight=11, incoming_land_move=3, opponent_chain_active=True,
+		)
+
+		scalars = common.decode_observation_scalars(values)
+
+		self.assertEqual(4.0, scalars["incoming_damage"])
+		self.assertEqual(11.0, scalars["incoming_in_flight"])
+		self.assertEqual(3.0, scalars["incoming_land_move"])
+		self.assertTrue(scalars["opponent_chain_active"])
+
+
+class ChainTimelineTest(unittest.TestCase):
+	"""연쇄를 단계별 시각과 함께 푸는 bundledenemy의 시간 모델을 확인한다."""
+
+	def setUp(self) -> None:
+		bundled.configure_rule(False)
+		bundled.configure_timing(70, 1)
+
+	@staticmethod
+	def _two_chain_board() -> "list[list[int]]":
+		"""1열에 색 0을 하나 더 쌓으면 2연쇄가 되는 보드를 만든다.
+
+		0열에 색 1이 셋, 1열에 색 0이 셋 쌓여 있다. 1열에 색 0과 색 1을 세로로 놓으면 색 0 넷이
+		먼저 터지고, 남은 색 1이 바닥으로 떨어져 0열의 셋과 이어져 다시 터진다.
+		"""
+		board = bundled.new_empty_board()
+		for y in range(3):
+			board[y][0] = 1
+			board[y][1] = 0
+		return board
+
+	def _two_chain_placement(self) -> "tuple[list[list[int]], tuple[int, int], list[tuple[int, int]]]":
+		"""2연쇄가 되는 보드와 그 배치를 만든다."""
+		board = self._two_chain_board()
+		landing = bundled.find_landing_placement(board, 1, common.ROTATION_UP)
+		return board, (0, 1), [landing[0], landing[1]]
+
+	def test_timeline_matches_the_plain_resolution(self) -> None:
+		board, colors, positions = self._two_chain_placement()
+
+		plain_board, plain_combo, plain_attack = bundled.resolve_placement(board, colors, positions)
+		timeline = bundled.resolve_placement_timeline(board, colors, positions)
+
+		self.assertEqual(plain_board, timeline.board)
+		self.assertEqual(plain_combo, timeline.combo)
+		self.assertAlmostEqual(plain_attack, timeline.attack)
+		self.assertEqual(plain_combo, len(timeline.steps))
+		self.assertAlmostEqual(plain_attack, sum(step.attack for step in timeline.steps))
+
+	def test_each_chain_step_explodes_later_than_the_previous_one(self) -> None:
+		board, colors, positions = self._two_chain_placement()
+
+		timeline = bundled.resolve_placement_timeline(board, colors, positions)
+
+		self.assertGreater(timeline.combo, 1)
+		explode_times = [step.explode_ms for step in timeline.steps]
+		self.assertEqual(sorted(explode_times), explode_times)
+		# 첫 폭발은 착지 직후 중력 연출이 끝나고 대기 시간이 지나야 일어나고, 연쇄 종료는 마지막 폭발 뒤다.
+		self.assertGreaterEqual(explode_times[0], bundled.CHAIN_PHASE_WAIT_MS)
+		self.assertGreater(timeline.end_ms, explode_times[-1])
+
+	def test_a_placement_without_a_chain_has_no_steps(self) -> None:
+		board = bundled.new_empty_board()
+		landing = bundled.find_landing_placement(board, 0, common.ROTATION_UP)
+
+		timeline = bundled.resolve_placement_timeline(board, (0, 1), [landing[0], landing[1]])
+
+		self.assertEqual(0, timeline.combo)
+		self.assertEqual([], timeline.steps)
+		self.assertEqual(0.0, timeline.end_ms)
+
+	def test_placement_time_falls_as_the_field_gets_higher(self) -> None:
+		empty = bundled.new_empty_board()
+		high = bundled.new_empty_board()
+		for y in range(8):
+			for x in range(common.BOARD_WIDTH):
+				high[y][x] = 0
+
+		self.assertGreater(
+			bundled.estimate_placement_ms(empty, 0, 1_500),
+			bundled.estimate_placement_ms(high, 0, 1_500),
+		)
+		# 빠른 하강을 쓰지 않는 난이도는 끝까지 자연 낙하 속도라 언제나 더 오래 걸린다.
+		self.assertGreater(
+			bundled.estimate_placement_ms(empty, 0, None),
+			bundled.estimate_placement_ms(empty, 0, 100),
+		)
+
+
+class RealtimeDuelEnvironmentTest(unittest.TestCase):
+	"""양측이 각자 시계를 갖는 실시간 대전 환경의 상쇄·전달·관측 시점을 확인한다."""
+
+	def _environment(self, rule: str = training.RULE_STANDARD) -> object:
+		environment = training.PuyoDuelEnvironment("Seere", seed=11, rule=rule)
+		# 시간 모델을 확인하는 테스트가 아니므로 배치 속도는 난이도 "어려움"으로 고정한다.
+		environment.fast_down_delay_ms = 300
+		return environment
+
+	def _start_enemy_chain(self, environment: object, attacks: "list[float]") -> None:
+		"""상대가 주어진 단계별 ATTACK으로 연쇄를 진행 중인 상태를 만든다."""
+		steps = [bundled.ChainStep(index + 1, attack, 150.0 * (index + 1)) for index, attack in enumerate(attacks)]
+		environment.chain_state["enemy"] = {
+			"pending": steps, "end_ms": environment.elapsed_ms + 5_000.0, "generated": 0.0,
+			"sent": 0, "activation": False, "combo": len(steps), "all_clear": False,
+		}
+
+	def test_an_ongoing_opponent_chain_shows_up_in_the_agent_observation(self) -> None:
+		environment = self._environment()
+		self._start_enemy_chain(environment, [4.0, 9.0])
+
+		scalars = common.decode_observation_scalars(training.observation_values(environment.observe()))
+
+		self.assertTrue(scalars["opponent_chain_active"])
+		# 아직 확정되지 않은 예측 공격은 incoming_damage가 아니라 incoming_in_flight에 들어간다.
+		self.assertAlmostEqual(0.0, scalars["incoming_damage"], places=4)
+		self.assertAlmostEqual(13.0, scalars["incoming_in_flight"], places=4)
+		self.assertGreater(scalars["incoming_land_move"], 0)
+
+	def test_settled_damage_lands_after_the_next_placement(self) -> None:
+		environment = self._environment()
+		environment.agent_damage = 6.0
+		self._start_enemy_chain(environment, [4.0])
+
+		scalars = common.decode_observation_scalars(training.observation_values(environment.observe()))
+
+		self.assertAlmostEqual(6.0, scalars["incoming_damage"], places=4)
+		# 확정된 DAMAGE는 다음 비연쇄 배치 직후에 떨어지므로 남은 배치 수는 0이다.
+		self.assertEqual(0.0, scalars["incoming_land_move"])
+
+	def test_a_chain_step_cancels_the_opponent_attack_before_its_own_damage(self) -> None:
+		environment = self._environment()
+		environment.agent_damage = 10.0
+		environment.in_flight["enemy"] = 4.0
+
+		environment._cancel_attack("agent", 6)
+
+		# 상대의 진행 중 공격 4를 먼저 지우고, 남은 2만 자기 DAMAGE에서 뺀다.
+		self.assertEqual(0.0, environment.in_flight["enemy"])
+		self.assertEqual(8.0, environment.agent_damage)
+		self.assertEqual(0.0, environment.in_flight["agent"])
+
+	def test_attack_left_after_cancelling_waits_for_the_chain_to_end(self) -> None:
+		environment = self._environment()
+		environment.agent_damage = 2.0
+		self._start_enemy_chain(environment, [])
+		environment.chain_state["agent"] = {
+			"pending": [], "end_ms": environment.elapsed_ms, "generated": 0.0,
+			"sent": 0, "activation": False, "combo": 1, "all_clear": False,
+		}
+		environment.chain_state["enemy"] = None
+
+		environment._deliver_chain_step("agent", {"attack": 9.0})
+
+		# 자기 DAMAGE 2를 지우고 남은 7은 아직 상대 DAMAGE가 아니다.
+		self.assertEqual(0.0, environment.agent_damage)
+		self.assertEqual(0.0, environment.enemy_damage)
+		self.assertEqual(7.0, environment.in_flight["agent"])
+
+		environment._finish_chain("agent")
+
+		self.assertEqual(7.0, environment.enemy_damage)
+		self.assertEqual(0.0, environment.in_flight["agent"])
+
+	def test_a_step_advances_the_clock_by_real_placement_time(self) -> None:
+		environment = self._environment()
+		before = environment.elapsed_ms
+
+		environment.step(training.enumerate_afterstates(environment.observe(), environment.next_pair_for_agent())[0].action)
+
+		# 한 수에 최소한 "고정 뒤 다음 조작까지"의 시간만큼은 흐른다.
+		self.assertGreater(environment.elapsed_ms - before, bundled.LOCK_TO_NEXT_CONTROL_MS)
+
+	def test_the_opponent_moves_on_its_own_clock(self) -> None:
+		environment = self._environment()
+		moves = 0
+		observation = environment.observe()
+		for _ in range(10):
+			candidates = training.enumerate_afterstates(observation, environment.next_pair_for_agent())
+			if not candidates:
+				break
+			observation, _reward, done, info = environment.step(candidates[0].action)
+			moves = info.get("enemy_moves", moves)
+			if done:
+				break
+		# 양측이 같은 시간 모델을 쓰므로 상대도 비슷한 수만큼 두어야 한다.
+		self.assertGreater(moves, 0)
+
+	def test_every_rule_runs_a_whole_episode(self) -> None:
+		for rule in training.DUEL_RULES:
+			with self.subTest(rule=rule):
+				environment = training.PuyoDuelEnvironment(None, seed=5, rule=rule)
+				observation = environment.reset()
+				chooser = random.Random(5)
+				done = False
+				for _ in range(training.PuyoDuelEnvironment.MAX_TURNS_PER_EPISODE):
+					candidates = training.enumerate_afterstates(observation, environment.next_pair_for_agent())
+					if not candidates:
+						break
+					observation, _reward, done, _info = environment.step(chooser.choice(candidates).action)
+					if done:
+						break
+				self.assertTrue(done)
+
+
+class RealtimeAfterstateTest(unittest.TestCase):
+	"""애프터스테이트가 새 스칼라를 학습 환경과 같은 규칙으로 갱신하는지 확인한다."""
+
+	def setUp(self) -> None:
+		bundled.configure_rule(False)
+		bundled.configure_timing(70, 1)
+
+	def _observation(self, **kwargs: object) -> list[float]:
+		"""1열에 색 0을 더 쌓으면 2연쇄가 되는 보드의 관측값을 만든다(ChainTimelineTest와 같은 배치다)."""
+		board = bundled.new_empty_board()
+		for y in range(3):
+			board[y][0] = 1
+			board[y][1] = 0
+		opponent_board = bundled.new_empty_board()
+		opponent_board[0][5] = 1
+		return common.encode_observation_values(board, (0, 1), opponent_board=opponent_board, **kwargs)
+
+	def test_the_opponent_board_is_carried_over_unchanged(self) -> None:
+		observation = self._observation()
+		expected = common.decode_observation_opponent_board(observation)
+
+		for afterstate in training.enumerate_afterstates(observation, (0, 1)):
+			self.assertEqual(expected, common.decode_observation_opponent_board(afterstate.observation))
+
+	def test_an_attack_cancels_the_in_flight_amount_before_the_settled_damage(self) -> None:
+		observation = self._observation(incoming_damage=8, incoming_in_flight=20, incoming_land_move=2, opponent_chain_active=True)
+		# 2연쇄가 되는 배치, 즉 이 상황에서 ATTACK이 가장 큰 후보를 고른다.
+		afterstate = max(training.enumerate_afterstates(observation, (0, 1)), key=lambda candidate: candidate.reward)
+
+		scalars = common.decode_observation_scalars(afterstate.observation)
+
+		# 이번 수의 ATTACK은 상대의 진행 중 공격만 지우고, 확정된 DAMAGE는 그대로 남는다.
+		self.assertLess(scalars["incoming_in_flight"], 20.0)
+		self.assertAlmostEqual(8.0, scalars["incoming_damage"], places=4)
+		# 도착까지 남은 배치 수는 이 수를 두었으니 하나 줄어든다.
+		self.assertAlmostEqual(1.0, scalars["incoming_land_move"], places=4)
+		self.assertTrue(scalars["opponent_chain_active"])
+
+	def test_land_move_never_falls_below_zero(self) -> None:
+		observation = self._observation(incoming_in_flight=3, incoming_land_move=0, opponent_chain_active=True)
+
+		for afterstate in training.enumerate_afterstates(observation, (0, 1)):
+			self.assertAlmostEqual(0.0, common.decode_observation_scalars(afterstate.observation)["incoming_land_move"], places=4)
+
+	def test_afterstates_are_deterministic(self) -> None:
+		observation = self._observation(incoming_damage=3, incoming_in_flight=6, incoming_land_move=2)
+
+		first = training.enumerate_afterstates(observation, (0, 1))
+		second = training.enumerate_afterstates(observation, (0, 1))
+
+		self.assertEqual([item.action for item in first], [item.action for item in second])
+		self.assertEqual([item.observation for item in first], [item.observation for item in second])
+		self.assertEqual([item.reward for item in first], [item.reward for item in second])
+
+
+class ModelVersionRejectionTest(unittest.TestCase):
+	"""관측 계약이 바뀐 버전 3 체크포인트를 이어 학습하지 않는지 확인한다."""
+
+	def test_a_version_three_checkpoint_is_rejected(self) -> None:
+		with tempfile.TemporaryDirectory() as directory:
+			output = Path(directory) / "old.pt"
+			torch.save({
+				"model": {}, "model_version": 3, "observation_size": 528, "action_count": common.ACTION_COUNT,
+			}, output)
+
+			with self.assertRaises(ValueError) as error:
+				training.load_existing_policy(output, training.ValueNetwork(), torch.device("cpu"))
+
+			self.assertIn("모델 버전", str(error.exception))
+
+
+@unittest.skipUnless(shutil.which("node"), "Node.js가 없어 서버 관측 계약 비교를 건너뜁니다.")
+class NodeServerObservationParityTest(unittest.TestCase):
+	"""node/server.js에 옮겨 적은 관측 인코딩이 common.py와 값 하나까지 같은지 확인한다.
+
+	`nodeserver.js`는 `puyow.js`의 `buildObservationValues()`를 require할 수 없어 인코딩을 따로 적어 두었다.
+	관측 계약이 바뀔 때마다 두 구현이 어긋나기 쉬우므로 실제 값으로 비교한다.
+	"""
+
+	# server.js는 모듈을 내보내지 않고 바로 포트를 연다. listen 호출 앞까지만 평가해 순수 함수를 꺼낸다.
+	SCRIPT = (
+		"const fs=require('fs'),path=require('path'),Module=require('module');"
+		"const p=path.resolve('node/server.js');const src=fs.readFileSync(p,'utf8');"
+		"const body=src.slice(0,src.indexOf('server.listen('))"
+		"+'\\nmodule.exports={encodeObservationValues,decodeObservationScalars,OBSERVATION_SIZE};\\n';"
+		"const m=new Module(p,null);m.filename=p;m.paths=Module._nodeModulePaths(path.dirname(p));"
+		"m._compile(body,p);const s=JSON.parse(fs.readFileSync(0,'utf8'));"
+		"process.stdout.write(JSON.stringify({size:m.exports.OBSERVATION_SIZE,"
+		"values:m.exports.encodeObservationValues(s)}));"
+	)
+
+	def _run_node(self, state: dict) -> dict:
+		completed = subprocess.run(
+			["node", "-e", self.SCRIPT], input=json.dumps(state), capture_output=True, text=True,
+			cwd=Path(__file__).resolve().parents[1], check=True,
+		)
+		return json.loads(completed.stdout)
+
+	def test_encoded_observation_matches_common_py(self) -> None:
+		board = [[None] * common.BOARD_WIDTH for _ in range(common.BOARD_HEIGHT)]
+		board[0][0] = "red"
+		board[1][0] = "red"
+		board[0][1] = "garbage"
+		board[2][3] = "blue"
+		opponent_board = [[None] * common.BOARD_WIDTH for _ in range(common.BOARD_HEIGHT)]
+		opponent_board[0][5] = "green"
+		opponent_board[1][5] = "purple"
+		opponent_board[0][2] = "garbage"
+		fever = {"active": False, "gauge": 3, "nextTime": 18, "targetCombo": 6, "leftTime": 0, "damage": 2}
+		node_state = {
+			"board": board, "opponentBoard": opponent_board, "pair": ["red", "blue"], "attack": 12.5,
+			"turn": 7, "incomingDamage": 6, "feverRule": True, "allClearTicket": False,
+			"elapsedMs": 123456, "marginRate": 52, "timeProgressMultiplier": 4, "fever": fever,
+			"incomingInFlight": 9, "incomingLandMove": 3, "opponentChainActive": True,
+		}
+		expected = common.encode_observation_values(
+			board, ["red", "blue"], attack=12.5, turn=7, incoming_damage=6, fever_rule=True,
+			all_clear_ticket=False, elapsed_ms=123456, margin_rate=52, time_progress_multiplier=4,
+			fever=fever, opponent_board=opponent_board, incoming_in_flight=9, incoming_land_move=3,
+			opponent_chain_active=True,
+		)
+
+		result = self._run_node(node_state)
+
+		self.assertEqual(common.OBSERVATION_SIZE, result["size"])
+		self.assertEqual(len(expected), len(result["values"]))
+		for index, (mine, theirs) in enumerate(zip(expected, result["values"])):
+			self.assertAlmostEqual(mine, theirs, places=9, msg=f"{index}번 관측값이 다릅니다.")
 
 
 if __name__ == "__main__":

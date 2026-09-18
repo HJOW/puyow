@@ -327,11 +327,15 @@ const ROTATION_COUNT = 4;
 const ACTION_COUNT = BOARD_WIDTH * ROTATION_COUNT;
 const PUYO_COLORS = ['red', 'green', 'yellow', 'blue', 'purple'];
 const BOARD_CHANNELS = PUYO_COLORS.length + 2;
-const OBSERVATION_SCALAR_COUNT = 14;
-const OBSERVATION_SIZE = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS + PUYO_COLORS.length * 2 + OBSERVATION_SCALAR_COUNT;
+const OBSERVATION_SCALAR_COUNT = 17;
+/** 관측 벡터에 담는 보드 수다(0번 자기 보드, 1번 상대 보드). common.py OBSERVATION_BOARD_COUNT와 같다. */
+const OBSERVATION_BOARD_COUNT = 2;
+/** 관측 벡터에서 보드 하나가 차지하는 길이다(common.py OBSERVATION_BOARD_SIZE). */
+const OBSERVATION_BOARD_SIZE = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS;
+const OBSERVATION_SIZE = OBSERVATION_BOARD_SIZE * OBSERVATION_BOARD_COUNT + PUYO_COLORS.length * 2 + OBSERVATION_SCALAR_COUNT;
 const OBSERVATION_SCALES = {
-    attack: 30, turn: 100, damage: 30, elapsedMs: 600000, marginRate: 70, timeMultiplierLog2: 10,
-    feverGauge: 7, feverNextTime: 30, feverTargetCombo: 12, feverLeftTime: 60000
+    attack: 30, turn: 100, damage: 30, elapsedMs: 600000, marginRate: 70, timeMultiplierLog2: 12,
+    feverGauge: 7, feverNextTime: 30, feverTargetCombo: 12, feverLeftTime: 60000, landMove: 8
 };
 /** 즉시 보상과 애프터스테이트 가치를 합칠 때 쓰는 감가율(common.py DISCOUNT_GAMMA). */
 const DISCOUNT_GAMMA = 0.70;
@@ -447,7 +451,7 @@ function getLocalAiSession() {
 
 /**
  * 애프터스테이트 관측 벡터들의 가치를 한 번에 추론한다.
- * @param {number[][]} observations 528개 관측 벡터 목록
+ * @param {number[][]} observations 1035개 관측 벡터 목록
  * @returns {Promise<number[]>} 관측 벡터별 가치
  */
 async function runLocalAiModel(observations) {
@@ -488,15 +492,20 @@ function getOrDefault(source, key, fallback) {
 }
 
 /**
- * 학습기·파이썬 서버와 같은 528개 관측 벡터를 만든다(common.py encode_observation_values).
- * @param {object} state 보드(y=0이 바닥, 최소 12행), 조작 쌍, 스칼라 상태
+ * 학습기·파이썬 서버와 같은 1035개 관측 벡터를 만든다(common.py encode_observation_values).
+ * 자기 보드 다음에 상대 보드가 같은 형식으로 이어지고, 그 뒤에 현재 쌍과 17개 스칼라가 붙는다.
+ * @param {object} state 보드(y=0이 바닥, 최소 12행), 상대 보드, 조작 쌍, 스칼라 상태
  * @returns {number[]} 관측 벡터
  */
 function encodeObservationValues(state) {
     const values = [];
-    for (let channel = 0; channel < BOARD_CHANNELS; channel += 1) {
-        for (let y = 0; y < BOARD_HEIGHT; y += 1) {
-            for (let x = 0; x < BOARD_WIDTH; x += 1) values.push(getCellChannel(state.board[y][x]) === channel ? 1 : 0);
+    for (const board of [state.board, state.opponentBoard || null]) {
+        for (let channel = 0; channel < BOARD_CHANNELS; channel += 1) {
+            for (let y = 0; y < BOARD_HEIGHT; y += 1) {
+                for (let x = 0; x < BOARD_WIDTH; x += 1) {
+                    values.push(getCellChannel(board ? board[y][x] : null) === channel ? 1 : 0);
+                }
+            }
         }
     }
     state.pair.forEach((color) => {
@@ -521,19 +530,23 @@ function encodeObservationValues(state) {
         clampRatio(getOrDefault(fever, 'nextTime', 15), OBSERVATION_SCALES.feverNextTime),
         clampRatio(getOrDefault(fever, 'targetCombo', 5), OBSERVATION_SCALES.feverTargetCombo),
         clampRatio(getOrDefault(fever, 'leftTime', 0), OBSERVATION_SCALES.feverLeftTime),
-        clampRatio(getOrDefault(fever, 'damage', 0), OBSERVATION_SCALES.damage)
+        clampRatio(getOrDefault(fever, 'damage', 0), OBSERVATION_SCALES.damage),
+        clampRatio(state.incomingInFlight, OBSERVATION_SCALES.damage),
+        clampRatio(state.incomingLandMove, OBSERVATION_SCALES.landMove),
+        state.opponentChainActive ? 1 : 0
     );
     return values;
 }
 
-/** 관측 벡터의 보드를 정수 보드로 되돌린다(common.py decode_observation_board). @param {number[]} values 관측 벡터 @returns {number[][]} -1: 빈 칸, -2: 방해뿌요, 0~4: 색 */
-function decodeObservationBoard(values) {
+/** 관측 벡터의 보드를 정수 보드로 되돌린다(common.py decode_observation_board). @param {number[]} values 관측 벡터 @param {number} [boardIndex=0] 0은 자기 보드, 1은 상대 보드 @returns {number[][]} -1: 빈 칸, -2: 방해뿌요, 0~4: 색 */
+function decodeObservationBoard(values, boardIndex = 0) {
     const cells = BOARD_WIDTH * BOARD_HEIGHT;
+    const offset = boardIndex * OBSERVATION_BOARD_SIZE;
     return Array.from({ length: BOARD_HEIGHT }, (_, y) => Array.from({ length: BOARD_WIDTH }, (__, x) => {
         const index = y * BOARD_WIDTH + x;
         let channel = 0;
         for (let candidate = 1; candidate < BOARD_CHANNELS; candidate += 1) {
-            if (values[candidate * cells + index] > values[channel * cells + index]) channel = candidate;
+            if (values[offset + candidate * cells + index] > values[offset + channel * cells + index]) channel = candidate;
         }
         return channel === 0 ? -1 : channel === 1 ? -2 : channel - 2;
     }));
@@ -541,7 +554,7 @@ function decodeObservationBoard(values) {
 
 /** 관측 벡터의 현재 쌍을 색 번호 쌍으로 되돌린다(common.py decode_observation_pair). @param {number[]} values 관측 벡터 @returns {number[]} 색 번호 두 개 */
 function decodeObservationPair(values) {
-    const base = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS;
+    const base = OBSERVATION_BOARD_SIZE * OBSERVATION_BOARD_COUNT;
     return [0, 1].map((order) => {
         const offset = base + order * PUYO_COLORS.length;
         let best = 0;
@@ -552,9 +565,9 @@ function decodeObservationPair(values) {
     });
 }
 
-/** 관측 벡터 끝 14개 스칼라를 원래 단위로 되돌린다(common.py decode_observation_scalars). @param {number[]} values 관측 벡터 @returns {object} 스칼라 상태 */
+/** 관측 벡터 끝 17개 스칼라를 원래 단위로 되돌린다(common.py decode_observation_scalars). @param {number[]} values 관측 벡터 @returns {object} 스칼라 상태 */
 function decodeObservationScalars(values) {
-    const base = BOARD_WIDTH * BOARD_HEIGHT * BOARD_CHANNELS + PUYO_COLORS.length * 2;
+    const base = OBSERVATION_BOARD_SIZE * OBSERVATION_BOARD_COUNT + PUYO_COLORS.length * 2;
     const scalar = (index) => values[base + index];
     return {
         attack: scalar(0) * OBSERVATION_SCALES.attack,
@@ -570,7 +583,10 @@ function decodeObservationScalars(values) {
         feverNextTime: scalar(10) * OBSERVATION_SCALES.feverNextTime,
         feverTargetCombo: scalar(11) * OBSERVATION_SCALES.feverTargetCombo,
         feverLeftTime: scalar(12) * OBSERVATION_SCALES.feverLeftTime,
-        feverDamage: scalar(13) * OBSERVATION_SCALES.damage
+        feverDamage: scalar(13) * OBSERVATION_SCALES.damage,
+        incomingInFlight: scalar(14) * OBSERVATION_SCALES.damage,
+        incomingLandMove: scalar(15) * OBSERVATION_SCALES.landMove,
+        opponentChainActive: scalar(16) >= 0.5
     };
 }
 
@@ -622,16 +638,20 @@ function findLandingPositions(board, action) {
  * @param {object} scalars decodeObservationScalars() 결과
  * @param {number} action 행동 번호
  * @param {(string|null)[]} nextPair 애프터스테이트의 조작 쌍 자리에 넣을 다음 쌍
+ * @param {number[][]|null} [opponentBoard=null] 상대의 정수 보드. 내 수로 바뀌지 않으므로 그대로 이어 붙인다.
  * @returns {{action:number, reward:number, observation:number[]}|null} 놓을 수 없으면 null
  */
-function buildAfterstate(board, pair, scalars, action, nextPair) {
+function buildAfterstate(board, pair, scalars, action, nextPair, opponentBoard = null) {
     const positions = findLandingPositions(board, action);
     if (!positions) return null;
     const common = getPuyowCommon();
-    const gameBoard = Array.from({ length: GAME_BOARD_ROWS }, (_, y) => Array.from({ length: BOARD_WIDTH }, (__, x) => {
-        const cell = y < BOARD_HEIGHT ? board[y][x] : -1;
-        return cell === -1 ? null : cell === -2 ? 'garbage' : PUYO_COLORS[cell];
-    }));
+    const toGameCell = (cell) => (cell === -1 ? null : cell === -2 ? 'garbage' : PUYO_COLORS[cell]);
+    const gameBoard = Array.from({ length: GAME_BOARD_ROWS }, (_, y) => Array.from({ length: BOARD_WIDTH }, (__, x) => (
+        y < BOARD_HEIGHT ? toGameCell(board[y][x]) : null
+    )));
+    const opponentGameBoard = opponentBoard
+        ? Array.from({ length: BOARD_HEIGHT }, (_, y) => Array.from({ length: BOARD_WIDTH }, (__, x) => toGameCell(opponentBoard[y][x])))
+        : null;
     const result = common.simulatePlacementResult(gameBoard, pair.map((color) => PUYO_COLORS[color]), positions);
     if (!result?.board) return null;
     const combo = result.combo;
@@ -649,23 +669,52 @@ function buildAfterstate(board, pair, scalars, action, nextPair) {
         ticket = false;
     }
     if (combo > 0 && !feverRule && common.isAllClearBoard(result.board)) ticket = true;
-    const remainingDamage = damage - Math.min(Math.floor(attack), Math.floor(damage));
+    // learning.py _build_afterstate()와 같은 상쇄 순서다. 상대가 진행 중인 공격을 먼저 지우고, 남은 만큼만 확정 DAMAGE를 지운다.
+    let remainingAttack = Math.floor(attack);
+    const cancelledInFlight = Math.min(remainingAttack, Math.floor(scalars.incomingInFlight));
+    const remainingInFlight = scalars.incomingInFlight - cancelledInFlight;
+    remainingAttack -= cancelledInFlight;
+    const remainingDamage = damage - Math.min(remainingAttack, Math.floor(damage));
     const fever = {
         active: feverActive, gauge: scalars.feverGauge, nextTime: scalars.feverNextTime,
         targetCombo: scalars.feverTargetCombo, leftTime: scalars.feverLeftTime,
         damage: feverActive ? remainingDamage : scalars.feverDamage
     };
     const observation = encodeObservationValues({
-        board: result.board, pair: nextPair, attack, turn: scalars.turn + 1, incomingDamage: remainingDamage,
-        feverRule, allClearTicket: ticket, elapsedMs: scalars.elapsedMs, marginRate: scalars.marginRate,
-        timeProgressMultiplier: scalars.timeProgressMultiplier, fever: feverRule ? fever : null
+        board: result.board, opponentBoard: opponentGameBoard, pair: nextPair, attack, turn: scalars.turn + 1,
+        incomingDamage: remainingDamage, feverRule, allClearTicket: ticket, elapsedMs: scalars.elapsedMs,
+        marginRate: scalars.marginRate, timeProgressMultiplier: scalars.timeProgressMultiplier,
+        fever: feverRule ? fever : null, incomingInFlight: remainingInFlight,
+        incomingLandMove: Math.max(0, scalars.incomingLandMove - 1),
+        opponentChainActive: scalars.opponentChainActive
     });
     // common.py move_reward(): 같은 ATTACK이라도 더 긴 연쇄를 높게 보고, 피버 중의 연쇄는 5분의 1로 친다.
     return { action, reward: attack + chainReward(combo, feverActive), observation };
 }
 
 /**
- * 솔로몬 프롬프트의 필드·현재 쌍·상태를 관측 벡터로 바꾼다(pythonserver.py build_model_observation).
+ * 프롬프트의 희소 좌표 목록을 y=0이 바닥인 12행 관측 보드로 복원한다(pythonserver.py build_prompt_board).
+ * @param {*} occupiedCells 점유 칸 목록
+ * @param {string} name 오류 메시지에 쓸 필드 이름
+ * @returns {(string|null)[][]} 관측 보드
+ */
+function buildPromptBoard(occupiedCells, name) {
+    if (!Array.isArray(occupiedCells)) throw createApiError(`${name}.occupiedCells는 배열이어야 합니다.`);
+    const board = Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(null));
+    occupiedCells.forEach((cell) => {
+        if (!isPlainObject(cell)) throw createApiError(`${name}.occupiedCells 항목은 객체여야 합니다.`);
+        if (!isIntegerInRange(cell.x, 0, BOARD_WIDTH)) throw createApiError(`${name}.occupiedCells.x가 보드 범위를 벗어났습니다.`);
+        if (!isIntegerInRange(cell.y, 0, Infinity)) throw createApiError(`${name}.occupiedCells.y가 올바르지 않습니다.`);
+        if (typeof cell.color !== 'string' || !cell.color) throw createApiError(`${name}.occupiedCells.color가 올바르지 않습니다.`);
+        // 관측 계약은 화면에 보이는 12행만 사용한다.
+        if (cell.y < BOARD_HEIGHT) board[cell.y][cell.x] = cell.color;
+    });
+    return board;
+}
+
+/**
+ * 솔로몬 프롬프트의 양측 필드·현재 쌍·상태를 관측 벡터로 바꾼다(pythonserver.py build_model_observation).
+ * 상대 필드를 보내지 않은 요청은 빈 상대 필드로 본다.
  * @param {object} prompt 솔로몬 배치 프롬프트
  * @returns {number[]} 관측 벡터
  */
@@ -673,23 +722,17 @@ function buildModelObservation(prompt) {
     const field = prompt.currentField;
     const supplied = prompt.suppliedPuyos;
     if (!isPlainObject(field) || !Array.isArray(supplied)) throw createApiError('Solomon 필드 또는 제공 뿌요 정보가 없습니다.');
-    if (!Array.isArray(field.occupiedCells)) throw createApiError('currentField.occupiedCells는 배열이어야 합니다.');
-    const board = Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(null));
-    field.occupiedCells.forEach((cell) => {
-        if (!isPlainObject(cell)) throw createApiError('occupiedCells 항목은 객체여야 합니다.');
-        if (!isIntegerInRange(cell.x, 0, BOARD_WIDTH)) throw createApiError('occupiedCells.x가 보드 범위를 벗어났습니다.');
-        if (!isIntegerInRange(cell.y, 0, Infinity)) throw createApiError('occupiedCells.y가 올바르지 않습니다.');
-        if (typeof cell.color !== 'string' || !cell.color) throw createApiError('occupiedCells.color가 올바르지 않습니다.');
-        // 관측 계약은 화면에 보이는 12행만 사용한다.
-        if (cell.y < BOARD_HEIGHT) board[cell.y][cell.x] = cell.color;
-    });
+    const board = buildPromptBoard(field.occupiedCells, 'currentField');
+    const opponentBoard = isPlainObject(prompt.opponentField)
+        ? buildPromptBoard(prompt.opponentField.occupiedCells, 'opponentField')
+        : null;
     const current = supplied.find((entry) => isPlainObject(entry) && entry.order === 'current')?.colors;
     if (!Array.isArray(current) || current.length !== 2 || current.some((color) => !PUYO_COLORS.includes(color))) {
         throw createApiError('현재 뿌요 쌍은 두 개의 색으로 제공되어야 합니다.');
     }
     const state = isPlainObject(prompt.currentState) ? prompt.currentState : {};
     return encodeObservationValues({
-        board, pair: current,
+        board, opponentBoard, pair: current,
         attack: getOrDefault(state, 'attack', 0),
         turn: getOrDefault(state, 'placedPairCount', 0),
         incomingDamage: getOrDefault(state, 'incomingDamage', 0),
@@ -698,7 +741,10 @@ function buildModelObservation(prompt) {
         elapsedMs: getOrDefault(state, 'elapsedMs', 0),
         marginRate: getOrDefault(state, 'marginRate', 70),
         timeProgressMultiplier: getOrDefault(state, 'timeProgressMultiplier', 1),
-        fever: state.fever
+        fever: state.fever,
+        incomingInFlight: getOrDefault(state, 'incomingInFlight', 0),
+        incomingLandMove: getOrDefault(state, 'incomingLandMove', 0),
+        opponentChainActive: getOrDefault(state, 'opponentChainActive', false)
     });
 }
 
@@ -735,12 +781,13 @@ async function chooseLocalAiAction(prompt) {
     const nextPair = buildModelNextPair(prompt);
     const usableActions = parseUsableActions(prompt.usablePlacements);
     const board = decodeObservationBoard(observation);
+    const opponentBoard = decodeObservationBoard(observation, 1);
     const pair = decodeObservationPair(observation);
     const scalars = decodeObservationScalars(observation);
     const candidates = usableActions
         ? [...usableActions].sort((left, right) => left - right)
         : Array.from({ length: ACTION_COUNT }, (_, action) => action).filter((action) => isLegalObservationAction(observation, action));
-    const afterstates = candidates.map((action) => buildAfterstate(board, pair, scalars, action, nextPair)).filter(Boolean);
+    const afterstates = candidates.map((action) => buildAfterstate(board, pair, scalars, action, nextPair, opponentBoard)).filter(Boolean);
     if (!afterstates.length) {
         // 12행만으로는 착지시킬 수 없어도 게임이 쓸 수 있다고 알려 준 배치가 있으면 그중 하나를 돌려 대체 AI로 넘어가지 않게 한다.
         if (usableActions) return Math.min(...usableActions);

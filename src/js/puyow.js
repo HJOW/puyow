@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 89;
+    const BUILDNO = 90;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -318,8 +318,17 @@
     function getOnnxChainReward(combo, feverActive) {
         return ONNX_CHAIN_REWARD_WEIGHT * (feverActive ? ONNX_FEVER_CHAIN_REWARD_RATIO : 1) * combo * combo;
     }
+    /** 관측 벡터에 담는 스칼라 수다. `python/common.py`의 `OBSERVATION_SCALAR_COUNT`와 같아야 한다. @type {number} */
+    const ONNX_OBSERVATION_SCALAR_COUNT = 17;
+    /** 관측 벡터에 담는 보드 수다(0번 자기 보드, 1번 상대 보드). `python/common.py`의 `OBSERVATION_BOARD_COUNT`와 같다. @type {number} */
+    const ONNX_OBSERVATION_BOARD_COUNT = 2;
+    /** 관측 벡터에서 보드 하나가 차지하는 길이다. @type {number} */
+    const ONNX_OBSERVATION_BOARD_SIZE = VISIBLE_ROWS * COLUMNS * (COLORS.length + 2);
+    /** 진행 중인 상대 연쇄가 도착하기 전에 둘 수 있는 배치 수의 정규화 기준이다. `python/common.py`의 `LAND_MOVE_SCALE`과 같다. @type {number} */
+    const ONNX_LAND_MOVE_SCALE = 8;
     /** ONNX 모델이 받는 관측 벡터의 길이다. `python/common.py`의 `OBSERVATION_SIZE`와 같아야 한다. @type {number} */
-    const ONNX_OBSERVATION_SIZE = VISIBLE_ROWS * COLUMNS * (COLORS.length + 2) + COLORS.length * 2 + 14;
+    const ONNX_OBSERVATION_SIZE = ONNX_OBSERVATION_BOARD_SIZE * ONNX_OBSERVATION_BOARD_COUNT
+        + COLORS.length * 2 + ONNX_OBSERVATION_SCALAR_COUNT;
     /** ONNX 모델 입력 텐서의 이름이다. `lngui.py`가 내보낸 그래프의 입력 이름과 같아야 한다. @type {string} */
     const ONNX_INPUT_NAME = 'observation';
     /** ONNX 모델 출력 텐서의 이름이다. `lngui.py`가 내보낸 그래프의 출력 이름과 같아야 한다. @type {string} */
@@ -4370,41 +4379,50 @@
 
     /**
      * 임의의 보드·조작 쌍·상태를 learning.py(`common.py`의 `encode_observation_values`)와 같은
-     * 528개 관측 벡터로 인코딩한다. 실제 플레이어의 현재 상태(`getLearningObservation`)와
+     * 1035개 관측 벡터로 인코딩한다. 실제 플레이어의 현재 상태(`getLearningObservation`)와
      * ONNX 적이 평가할 애프터스테이트가 같은 계약을 쓰도록 이 함수 하나만 사용한다.
+     * 모델 버전 4부터 자기 보드 뒤에 상대 보드가 같은 형식으로 이어지고, 진행 중인 상대 연쇄를
+     * 설명하는 스칼라 세 개가 끝에 붙는다.
      * @param {object} state 인코딩할 상태
      * @param {(string|null)[][]} state.board 아래 행부터의 보드. 화면에 보이는 12행만 사용한다.
+     * @param {(string|null)[][]|null} state.opponentBoard 상대의 보드. 없으면 빈 보드로 본다.
      * @param {(string|null)[]} state.pair 조작 쌍의 두 색
      * @param {number} state.attack 누적 ATTACK
      * @param {number} state.turn 지금까지 놓은 쌍 수
-     * @param {number} state.incomingDamage 아직 상쇄되지 않은 피해량
+     * @param {number} state.incomingDamage 이미 확정된 피해량(DAMAGE). 상대의 진행 중 연쇄 예측은 넣지 않는다.
      * @param {boolean} state.feverRule 피버 룰 대전 여부
      * @param {boolean} state.allClearTicket 싹쓸이 티켓 보유 여부
      * @param {number} state.elapsedMs 대전 경과 시간(ms)
      * @param {number} state.marginRate 현재 마진 레이트
      * @param {number} state.timeProgressMultiplier 현재 시간 진행 배율
      * @param {object|null} state.fever 피버 상태. 피버 룰이 아니면 null이다.
+     * @param {number} state.incomingInFlight 상대가 진행 중인 연쇄에서 아직 DAMAGE로 확정되지 않은 예측 공격
+     * @param {number} state.incomingLandMove 그 공격이 떨어지기 전에 둘 수 있는 배치 수
+     * @param {boolean} state.opponentChainActive 상대가 지금 연쇄 중인지 여부
      * @returns {number[]} 관측 벡터
      */
     function buildObservationValues(state) {
         const values = [];
-        // common.py와 동일하게 빈 칸, 방해뿌요, 다섯 색을 독립 채널로 기록한다.
-        for (let channel = 0; channel < COLORS.length + 2; channel += 1) {
-            for (let y = 0; y < VISIBLE_ROWS; y += 1) {
-                for (let x = 0; x < COLUMNS; x += 1) {
-                    const color = state.board[y]?.[x] || null;
-                    values.push(channel === 0
-                        ? Number(!color)
-                        : channel === 1
-                            ? Number(Boolean(color) && !COLORS.includes(color))
-                            : Number(color === COLORS[channel - 2]));
+        // common.py와 동일하게 빈 칸, 방해뿌요, 다섯 색을 독립 채널로 기록한다. 자기 보드 다음에
+        // 상대 보드가 같은 형식으로 이어진다.
+        for (const board of [state.board, state.opponentBoard || null]) {
+            for (let channel = 0; channel < COLORS.length + 2; channel += 1) {
+                for (let y = 0; y < VISIBLE_ROWS; y += 1) {
+                    for (let x = 0; x < COLUMNS; x += 1) {
+                        const color = board?.[y]?.[x] || null;
+                        values.push(channel === 0
+                            ? Number(!color)
+                            : channel === 1
+                                ? Number(Boolean(color) && !COLORS.includes(color))
+                                : Number(color === COLORS[channel - 2]));
+                    }
                 }
             }
         }
         for (const color of (state.pair || []).slice(0, 2)) {
             for (const candidate of COLORS) values.push(Number(color === candidate));
         }
-        while (values.length < VISIBLE_ROWS * COLUMNS * (COLORS.length + 2) + COLORS.length * 2) values.push(0);
+        while (values.length < ONNX_OBSERVATION_BOARD_SIZE * ONNX_OBSERVATION_BOARD_COUNT + COLORS.length * 2) values.push(0);
         const clampRatio = (value, maximum) => Math.min(Math.max(Number(value) || 0, 0), maximum) / maximum;
         const fever = state.fever || {};
         values.push(
@@ -4421,25 +4439,31 @@
             clampRatio(fever.nextTime ?? FEVER_INITIAL_TIME, FEVER_MAX_TIME),
             clampRatio(fever.targetCombo ?? FEVER_INITIAL_TARGET_COMBO, CONTINUOUS_FEVER_MAX_TARGET_COMBO),
             clampRatio(fever.leftTime, FEVER_START_INITIAL_TIME),
-            clampRatio(fever.damage, 30)
+            clampRatio(fever.damage, 30),
+            clampRatio(state.incomingInFlight, 30),
+            clampRatio(state.incomingLandMove, ONNX_LAND_MOVE_SCALE),
+            Number(state.opponentChainActive === true)
         );
         return values;
     }
 
-    /** 실제 게임 보드와 현재 조작 쌍·경과 시간·피버 상태를 learning.py의 관측 벡터로 변환한다. @param {PlayerState} player 관측할 사용자 플레이어 @returns {number[]} 관측 벡터 */
+    /** 실제 게임 보드와 현재 조작 쌍·경과 시간·피버 상태·상대 필드를 learning.py의 관측 벡터로 변환한다. @param {PlayerState} player 관측할 사용자 플레이어 @returns {number[]} 관측 벡터 */
     function getLearningObservation(player) {
+        const opponent = findOpponentPlayer(player);
+        const incoming = getModelIncomingState(player, opponent);
         return buildObservationValues({
             board: player.board,
+            opponentBoard: opponent?.board || null,
             pair: player.active?.colors || [],
             attack: player.attack,
             turn: player.placedPairCount,
-            incomingDamage: player.damage,
             feverRule: game?.feverRule === true,
             allClearTicket: player.allClearTicket === true,
             elapsedMs: game?.elapsed,
             marginRate: game?.marginRate,
             timeProgressMultiplier: game?.timeProgressMultiplier,
-            fever: player.fever || null
+            fever: player.fever || null,
+            ...incoming
         });
     }
 
@@ -7642,6 +7666,41 @@
             opponentChainEndInMs: base.opponentChainEndInMs,
             fever: { gauge: player.fever.gauge, gaugeMax: FEVER_GAUGE_MAX, events, predictedOpponentFeverChain }
         };
+    }
+
+    /**
+     * 모델 버전 4의 관측값에 넣을 "받을 방해뿌요" 상태를 만든다. 학습 환경의
+     * `_estimate_incoming_land_move()`·`_predicted_in_flight()`와 같은 계약이어야 한다.
+     * `incomingDamage`에는 이미 확정된 DAMAGE만 넣고, 상대가 진행 중인 연쇄의 예측 공격은
+     * `incomingInFlight`에 따로 넣는다(같은 공격을 두 번 세지 않기 위해서다).
+     * `incomingLandMove`는 그 공격이 떨어지기 전에 둘 수 있는 배치 수다. 확정된 DAMAGE가 이미 있으면
+     * 다음 비연쇄 배치 직후에 떨어지므로 0이고, 받을 것이 아예 없어도 0이다.
+     * @param {PlayerState|object} player 대상 플레이어
+     * @param {PlayerState|object|null} opponent 상대 플레이어
+     * @returns {{incomingDamage:number, incomingInFlight:number, incomingLandMove:number, opponentChainActive:boolean}} 관측값에 넣을 상태
+     */
+    function getModelIncomingState(player, opponent) {
+        const damage = Math.max(0, Number(player?.damage) || 0);
+        const prediction = opponent && Array.isArray(opponent.board) ? predictPlayerChain(opponent) : null;
+        const opponentChainActive = prediction?.active === true;
+        // 상대가 이미 보내 놓고 아직 도착하지 않은 ATTACK과, 진행 중인 연쇄의 예측 최종 ATTACK 중 큰 쪽이다.
+        const incomingInFlight = Math.max(0, Math.floor(Math.max(
+            Number(opponent?.attack) || 0,
+            opponentChainActive ? prediction.finalAttack : 0
+        )));
+        const base = { incomingDamage: damage, incomingInFlight, opponentChainActive };
+        if (incomingInFlight < 1 || Math.floor(damage) >= 1 || !opponentChainActive) return { ...base, incomingLandMove: 0 };
+        const { currentLandingMs, nextPlacementMs } = estimateAiPlacementTiming(player, opponent);
+        const firstDropMs = currentLandingMs + LOCK_TO_GARBAGE_DROP_MS;
+        const incomingLandMove = prediction.endInMs <= firstDropMs
+            ? 0
+            : Math.ceil((prediction.endInMs - firstDropMs) / Math.max(1, nextPlacementMs));
+        return { ...base, incomingLandMove };
+    }
+
+    /** @param {PlayerState|object} player 대상 플레이어 @returns {PlayerState|object|null} 같은 대전의 상대 플레이어 */
+    function findOpponentPlayer(player) {
+        return game?.players.find((candidate) => candidate !== player) ?? null;
     }
 
     /**
@@ -18321,10 +18380,17 @@
 
         /** API 프롬프트에 넣을 현재 규칙·필드·제공 뿌요 정보를 만든다. @param {PlayerState} player CPU 플레이어 @returns {string} */
         buildPlacementPrompt(player) {
-            const occupiedCells = [];
-            player.board.forEach((row, y) => row.forEach((color, x) => {
-                if (color) occupiedCells.push({ x, y, color });
-            }));
+            const collectCells = (board) => {
+                const cells = [];
+                (board || []).forEach((row, y) => row.forEach((color, x) => {
+                    if (color) cells.push({ x, y, color });
+                }));
+                return cells;
+            };
+            const occupiedCells = collectCells(player.board);
+            const opponent = findOpponentPlayer(player);
+            // 모델 버전 4의 관측값은 상대 필드와 진행 중인 상대 연쇄까지 본다.
+            const incoming = getModelIncomingState(player, opponent);
             const feverRule = game?.feverRule === true;
             const dangerCells = feverRule ? [{ x: 2, y: 5 }, { x: 3, y: 5 }] : [{ x: 2, y: 5 }];
             // 로컬 AI 서버로 극한 난이도 대전을 할 때만 학습 세션 ID가 붙는다. 다른 제공자와 난이도의
@@ -18346,10 +18412,14 @@
                     outputCoordinates: 'x is the final column of the first (rotation-axis) puyo. rotation is one of 0,1,2,3 as defined above.'
                 },
                 currentField: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, occupiedCells },
+                opponentField: { columns: COLUMNS, rows: ROWS, visibleRows: VISIBLE_ROWS, occupiedCells: collectCells(opponent?.board) },
                 currentState: {
                     attack: player.attack,
                     placedPairCount: player.placedPairCount,
-                    incomingDamage: player.damage,
+                    incomingDamage: incoming.incomingDamage,
+                    incomingInFlight: incoming.incomingInFlight,
+                    incomingLandMove: incoming.incomingLandMove,
+                    opponentChainActive: incoming.opponentChainActive,
                     feverRule,
                     allClearTicket: player.allClearTicket,
                     elapsedMs: game?.elapsed || 0,
@@ -20074,7 +20144,7 @@
      * ONNX 가치망으로 배치를 고르는 적들의 공통 클래스다.
      *
      * `python/learning.py`의 `select_afterstate()`를 그대로 옮겨 왔다. 놓을 수 있는 배치마다 연쇄까지
-     * 끝난 결과 보드(애프터스테이트)를 만들어 `common.py`와 같은 528개 관측 벡터로 인코딩한 뒤, 한 번의
+     * 끝난 결과 보드(애프터스테이트)를 만들어 `common.py`와 같은 1035개 관측 벡터로 인코딩한 뒤, 한 번의
      * 추론으로 모든 후보의 가치를 받아 `move_reward + DISCOUNT_GAMMA * V(애프터스테이트)`가 가장 큰
      * 배치를 고른다. 모델은 행동을 직접 내지 않는 가치망이므로 후보 열거와 보상 계산은 이쪽에서 한다.
      *
@@ -20121,7 +20191,7 @@
             this.fastDownElapsed = 0;
             /**
              * 조작 중 상대 연쇄·받을 방해뿌요 변화에 맞춰 다시 추론할지 여부다(안드레알푸스의 실시간 재판단과 같은 흐름).
-             * 모델 입력 계약(528개 관측값)은 그대로 두고, 받을 피해량 자리에 상대 연쇄 예측을 반영한 값을 넣는다.
+             * 모델 버전 4의 관측값은 상대 필드와 진행 중인 상대 연쇄를 직접 담으므로, 바뀐 상태를 그대로 넣어 다시 추론한다.
              * 적 자신이 피버 중이거나 연속 피버에서는 동작하지 않는다. @type {boolean}
              */
             this.realtimeReaction = true;
@@ -20148,7 +20218,13 @@
             this.modelLeaseHeld = true;
             this.modelLoadPromise = acquireOnnxSession(this.modelPath).then((session) => {
                 // 로딩 중 대전이 끝나 반납했다면 세션 참조를 다시 붙잡지 않는다.
-                if (this.modelLeaseHeld) this.session = session;
+                if (!this.modelLeaseHeld) return;
+                if (!this.isSessionObservationCompatible(session)) {
+                    console.error(`${this.modelPath}는 현재 관측 계약(${ONNX_OBSERVATION_SIZE}개)과 다른 모델 버전입니다. 이번 대전은 기존 인공지능으로 진행합니다.`);
+                    this.disableOnnx();
+                    return;
+                }
+                this.session = session;
             }).catch((error) => {
                 this.modelLeaseHeld = false;
                 this.modelLoadPromise = null;
@@ -20163,6 +20239,25 @@
             this.modelLeaseHeld = false;
             this.session = null;
             return releaseOnnxSession(this.modelPath);
+        }
+
+        /**
+         * 빌린 세션이 현재 관측 계약(`ONNX_OBSERVATION_SIZE`)을 받는 모델인지 확인한다.
+         * 모델 버전이 올라가면 예전에 내보낸 .onnx 파일은 입력 길이가 달라 추론이 매 턴 실패하므로,
+         * 한 번만 알리고 이번 대전은 기존 시뮬레이션 AI로 진행한다.
+         * 런타임이 입력 정보를 주지 않으면 검사할 수 없으므로 통과로 본다.
+         * @param {object} session ONNX 추론 세션
+         * @returns {boolean} 지금 관측 계약과 맞으면 true
+         */
+        isSessionObservationCompatible(session) {
+            const metadata = session?.inputMetadata;
+            const info = Array.isArray(metadata)
+                ? (metadata.find((item) => item?.name === ONNX_INPUT_NAME) ?? metadata[0])
+                : metadata?.[ONNX_INPUT_NAME];
+            const shape = info?.shape ?? info?.dims;
+            if (!Array.isArray(shape) || !shape.length) return true;
+            const size = shape[shape.length - 1];
+            return typeof size !== 'number' || size <= 0 || size === ONNX_OBSERVATION_SIZE;
         }
 
         /** 프록시 Worker를 만들 수 없을 때 이번 대전만 기존 시뮬레이션 AI로 전환한다. @returns {void} */
@@ -20200,10 +20295,10 @@
          * 상쇄하고 남은 피해량만 스칼라로 남긴다.
          * @param {PlayerState} player CPU 플레이어
          * @param {object} simulation 착지 후보
-         * @param {number|null} [incomingDamage=null] 일반 필드의 받을 피해량으로 쓸 값. null이면 확정 DAMAGE(`player.damage`)를 쓴다.
+         * @param {object|null} [incoming=null] `getModelIncomingState()` 결과. null이면 이 자리에서 새로 계산한다.
          * @returns {{simulation:object, reward:number, observation:number[]}|null} 후보 평가 정보. 유효하지 않으면 null이다.
          */
-        buildAfterstate(player, simulation, incomingDamage = null) {
+        buildAfterstate(player, simulation, incoming = null) {
             // prepareAiPlacementSimulations()가 이미 돌려 둔 결과가 있으면 같은 연쇄를 다시 돌리지 않는다.
             // 이 보드는 다른 곳과 공유하므로 읽기만 하며, 후보 목록 밖에서 들어온 배치만 직접 계산한다.
             const result = simulation.board !== undefined
@@ -20212,9 +20307,10 @@
             if (!result?.board) return null;
             const feverRule = game?.feverRule === true;
             const feverActive = feverRule && player.fever?.active === true;
+            const opponent = findOpponentPlayer(player);
+            const state = incoming || getModelIncomingState(player, opponent);
             // 피버 중에는 피버 필드 전용 미정산 피해가 그 시점의 실제 피해량이다.
-            // 실시간 반응은 상대 연쇄 예측을 더한 받을 양을 넘기며, 피버 중에는 넘기지 않는다.
-            const damage = feverActive ? (player.fever?.damage || 0) : (incomingDamage ?? (player.damage || 0));
+            const damage = feverActive ? (player.fever?.damage || 0) : state.incomingDamage;
             let attack = result.attack;
             let ticket = player.allClearTicket === true;
             if (feverRule && result.combo > 0 && attack < 1 && damage >= 1) attack = 1;
@@ -20223,7 +20319,13 @@
                 ticket = false;
             }
             if (result.combo > 0 && !feverRule && isAllClearBoard(result.board)) ticket = true;
-            const remainingDamage = damage - Math.min(Math.floor(attack), Math.floor(damage));
+            // learning.py의 _build_afterstate()와 같은 상쇄 순서다. 이번 수의 ATTACK은 상대가 지금
+            // 진행 중인 공격을 먼저 지우고, 남은 만큼만 확정된 DAMAGE를 지운다.
+            let remainingAttack = Math.floor(attack);
+            const cancelledInFlight = Math.min(remainingAttack, Math.floor(state.incomingInFlight));
+            const remainingInFlight = state.incomingInFlight - cancelledInFlight;
+            remainingAttack -= cancelledInFlight;
+            const remainingDamage = damage - Math.min(remainingAttack, Math.floor(damage));
             const fever = player.fever ? {
                 active: feverActive,
                 gauge: player.fever.gauge,
@@ -20234,6 +20336,8 @@
             } : null;
             const observation = buildObservationValues({
                 board: result.board,
+                // 상대 보드는 내 수로 바뀌지 않으므로 지금 상태를 그대로 넣는다.
+                opponentBoard: opponent?.board || null,
                 // 애프터스테이트의 조작 쌍 자리에는 이 수 다음에 내려올 쌍을 넣는다.
                 pair: player.nextPairs?.[0] || [],
                 attack,
@@ -20244,7 +20348,11 @@
                 elapsedMs: game?.elapsed,
                 marginRate: game?.marginRate,
                 timeProgressMultiplier: game?.timeProgressMultiplier,
-                fever: feverRule ? fever : null
+                fever: feverRule ? fever : null,
+                incomingInFlight: remainingInFlight,
+                // 이 수를 두었으니 도착까지 남은 배치 수가 하나 줄어든다.
+                incomingLandMove: Math.max(0, state.incomingLandMove - 1),
+                opponentChainActive: state.opponentChainActive
             });
             // common.py의 move_reward()와 같은 계약이다. 같은 ATTACK이라도 더 긴 연쇄를 높게 보고,
             // 피버 중에 터진 연쇄는 피버 밖 연쇄의 5분의 1로만 친다.
@@ -20256,7 +20364,7 @@
          * 재추론(`options.replan`)이 결과를 내지 못하면 1수 대체 AI 대신 직전 배치를 유지한다.
          * @param {PlayerState} player CPU 플레이어
          * @param {number} token 이 추론을 시작한 턴의 일련번호
-         * @param {{incomingDamage?:number|null, allowedPlacements?:{x:number,rotation:number}[]|null, replan?:boolean}} [options={}] 받을 피해량·허용 배치·재추론 여부
+         * @param {{incoming?:object|null, allowedPlacements?:{x:number,rotation:number}[]|null, replan?:boolean}} [options={}] 받을 방해뿌요 상태·허용 배치·재추론 여부
          * @returns {Promise<void>}
          */
         async decidePlacement(player, token, options = {}) {
@@ -20274,7 +20382,7 @@
                     ? player.aiSimulations.filter((simulation) => allowedKeys.has(`${simulation.x}:${((simulation.rotation % 4) + 4) % 4}`))
                     : this.getUsablePlacements(player);
                 const candidates = placements
-                    .map((simulation) => this.buildAfterstate(player, simulation, options.incomingDamage ?? null))
+                    .map((simulation) => this.buildAfterstate(player, simulation, options.incoming ?? null))
                     .filter((candidate) => candidate !== null);
                 if (!candidates.length) throw new Error('추론할 수 있는 배치 후보가 없습니다.');
                 const inputData = new Float32Array(candidates.length * ONNX_OBSERVATION_SIZE);
@@ -20373,7 +20481,7 @@
          * 마감 시한 타이머와 함께 추론을 시작한다. 호출 전에 `inferenceToken`을 올려 이전 추론 결과를 버려야 한다.
          * 마감 시한을 넘기면 첫 추론은 앞 1수 시뮬레이션으로, 재추론은 직전 배치로 그 턴을 확정한다.
          * @param {PlayerState} player CPU 플레이어
-         * @param {{incomingDamage?:number|null, allowedPlacements?:{x:number,rotation:number}[]|null, replan?:boolean}} [options={}] decidePlacement()에 넘길 값
+         * @param {{incoming?:object|null, allowedPlacements?:{x:number,rotation:number}[]|null, replan?:boolean}} [options={}] decidePlacement()에 넘길 값
          * @returns {void}
          */
         startInference(player, options = {}) {
@@ -20403,23 +20511,13 @@
         }
 
         /**
-         * 모델 입력의 받을 피해량 자리에 넣을 값을 정한다. 모델은 이 값을 "이번에 터뜨리지 않으면 떨어질 양"으로 배웠으므로,
-         * 기본 룰은 확정 DAMAGE와 진행 중인 상대 연쇄의 예측 최종 ATTACK을 합친 양을 넣는다(도착 순번은 표현하지 못한다).
-         * 피버 룰 일반 상태는 지금 상쇄할 수 있는 묶음(`availableMove` 0)만 더하고, 아직 시작하지 않은 상대 피버 연쇄 예측은 뺀다.
+         * 모델 버전 4의 관측값에 넣을 받을 방해뿌요 상태를 구한다. 확정 DAMAGE와 상대의 진행 중 공격을
+         * 따로 담으므로, 모델은 "지금 확정된 양"과 "곧 도착할 양"을 구분해 본다.
          * @param {PlayerState} player CPU 플레이어
-         * @param {object|null} forecast getRealtimeGarbageForecast() 결과
-         * @returns {number} 받을 피해량
+         * @returns {{incomingDamage:number, incomingInFlight:number, incomingLandMove:number, opponentChainActive:boolean}} 관측값에 넣을 상태
          */
-        getRealtimeIncomingDamage(player, forecast) {
-            const damage = Math.max(0, Number(player?.damage) || 0);
-            if (!forecast) return damage;
-            if (forecast.fever) {
-                const available = forecast.fever.events
-                    .filter((event) => event.availableMove <= 0)
-                    .reduce((total, event) => total + event.amount, 0);
-                return Math.max(damage, Math.floor(available));
-            }
-            return Math.max(damage, Math.floor(Number(forecast.incoming) || 0));
+        getModelIncomingState(player) {
+            return getModelIncomingState(player, findOpponentPlayer(player));
         }
 
         /** @param {PlayerState} player CPU 플레이어 @returns {number} 재추론 기준 방해뿌요 수. 피버 룰에서는 방해뿌요 하나도 상쇄·점등 기회라 1이다. */
@@ -20428,14 +20526,18 @@
         }
 
         /**
-         * 재추론 여부를 가르는 상황 요약이다. 받을 피해량·상대 연쇄 진행·상대 피버 패턴 연쇄 예측만 비교한다.
-         * @param {object} forecast getRealtimeGarbageForecast() 결과
-         * @param {number} incomingDamage getRealtimeIncomingDamage() 결과
+         * 재추론 여부를 가르는 상황 요약이다. 받을 양·도착 순번·상대 연쇄 진행·상대 피버 패턴 연쇄 예측만 비교한다.
+         * @param {object} incoming getModelIncomingState() 결과
+         * @param {object|null} forecast getRealtimeGarbageForecast() 결과. 상대 피버 패턴 예측을 얻는 데만 쓴다.
          * @returns {string} 비교용 문자열
          */
-        getRealtimeReactionSignature(forecast, incomingDamage) {
+        getRealtimeReactionSignature(incoming, forecast) {
             const predicted = forecast?.fever?.predictedOpponentFeverChain;
-            return [incomingDamage, forecast?.opponentChainActive ? 1 : 0, predicted ? `${predicted.combo}:${Math.floor(predicted.attack)}` : '-'].join('|');
+            return [
+                Math.floor(incoming.incomingDamage), incoming.incomingInFlight, incoming.incomingLandMove,
+                incoming.opponentChainActive ? 1 : 0,
+                predicted ? `${predicted.combo}:${Math.floor(predicted.attack)}` : '-'
+            ].join('|');
         }
 
         /**
@@ -20451,14 +20553,16 @@
             // 이동·회전은 player.active를 새 객체로 바꾸므로 턴 판별은 배치 수(state.turn)로 한다.
             if (!this.isRealtimeReactionActive(player) || !game.running || player !== this.turnPlayer || player.controller !== this || player.phase !== 'control') return false;
             const forecast = this.getRealtimeGarbageForecast(player);
-            const incomingDamage = this.getRealtimeIncomingDamage(player, forecast);
-            const signature = this.getRealtimeReactionSignature(forecast, incomingDamage);
+            const incoming = this.getModelIncomingState(player);
+            const signature = this.getRealtimeReactionSignature(incoming, forecast);
             if (signature === state.signature) return false;
             const previousIncoming = state.incoming;
+            // 재추론 기준에는 확정 DAMAGE와 곧 도착할 공격을 함께 센다.
+            const incomingTotal = Math.floor(incoming.incomingDamage) + incoming.incomingInFlight;
             state.signature = signature;
-            state.incoming = incomingDamage;
+            state.incoming = incomingTotal;
             const threshold = this.getRealtimeIgnorableIncomingGarbage(player);
-            if (incomingDamage < threshold && previousIncoming < threshold) return false;
+            if (incomingTotal < threshold && previousIncoming < threshold) return false;
             const allowedPlacements = getReachableAiPlacements(player);
             if (!allowedPlacements.length) return false;
             state.replanCount += 1;
@@ -20466,7 +20570,7 @@
             // 재추론 중에는 이동·회전을 하지 않고 자연 낙하(같은 객체의 Y만 바뀜)만 하므로, 지금 객체를 결과 적용 기준으로 삼는다.
             this.turnActive = player.active;
             this.inferenceToken += 1;
-            this.startInference(player, { incomingDamage, allowedPlacements, replan: true });
+            this.startInference(player, { incoming, allowedPlacements, replan: true });
             return true;
         }
 
@@ -20492,20 +20596,20 @@
                 this.decisionState = 'idle';
                 return;
             }
-            // 턴 시작 시점에 이미 상대 연쇄가 진행 중이면 첫 추론부터 그 예측을 받을 피해량에 반영한다.
-            let incomingDamage = null;
+            // 턴 시작 시점에 이미 상대 연쇄가 진행 중이면 첫 추론부터 그 상태를 관측값에 반영한다.
+            let incoming = null;
             if (this.isRealtimeReactionActive(player)) {
                 const forecast = this.getRealtimeGarbageForecast(player);
-                incomingDamage = this.getRealtimeIncomingDamage(player, forecast);
+                incoming = this.getModelIncomingState(player);
                 this.realtimeReactionState = {
                     turn: player.placedPairCount,
-                    signature: this.getRealtimeReactionSignature(forecast, incomingDamage),
-                    incoming: incomingDamage,
+                    signature: this.getRealtimeReactionSignature(incoming, forecast),
+                    incoming: Math.floor(incoming.incomingDamage) + incoming.incomingInFlight,
                     fastDownStarted: false,
                     replanCount: 0
                 };
             }
-            this.startInference(player, { incomingDamage });
+            this.startInference(player, { incoming });
         }
 
         chooseTarget() { return this.targetX; }
@@ -20887,6 +20991,7 @@
         predictPlayerChain,
         predictFeverStageChain,
         getRealtimeGarbageForecast,
+        getModelIncomingState,
         findExplosionsOnBoard,
         findExplosionGroupsOnBoard,
         getChainBonus,
@@ -20981,6 +21086,7 @@
         predictPlayerChain,
         predictFeverStageChain,
         getRealtimeGarbageForecast,
+        getModelIncomingState,
         findExplosionsOnBoard,
         findExplosionGroupsOnBoard,
         getChainBonus,
