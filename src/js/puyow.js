@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 82;
+    const BUILDNO = 83;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -7904,7 +7904,7 @@
         player.outgoingWarningDelay = Math.floor(player.attack);
         // 연쇄 중에는 에너지만 상대 천장까지 보낸다. 도착 시 예고뿌요만 갱신하고 DAMAGE는 정산하지 않는다.
         if (cancelledOpponentAttack || cancelledDamage || cancelledNormalDamage || remaining) {
-            const energy = queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledOpponentAttack, 0, remaining > 0, Math.floor(player.attack), true);
+            const energy = queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledOpponentAttack, 0, remaining > 0, Math.floor(player.attack), true, cancelledNormalDamage);
             if (remaining > 0 && energy) {
                 energy.spellEffectCombo = player.combo;
                 player.lastAttackTransfer = energy;
@@ -7985,16 +7985,18 @@
      * @param {boolean} [travelToOpponent=false] 피해량이 없어도 상대방까지 이동할지 여부
      * @param {number|null} [previewAmount=null] 이동 중 표시할 공격 예고량
      * @param {boolean} [startsAtExplosion=false] 폭발 지점에서 바로 출발하는지 여부
+     * @param {number} [cancelledNormalDamage=0] 피버 중 상쇄한 일반 필드행 유예 DAMAGE. 수치는 이미 차감했으므로 연출 경로에만 쓴다.
      * @returns {object|null|undefined} 생성한 에너지 정보. 경로 또는 전달 목록이 없으면 null 또는 undefined
      */
-    function queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledAttack, delivered, travelToOpponent = false, previewAmount = null, startsAtExplosion = false) {
+    function queueEnergyTransfer(player, opponent, source, cancelledDamage, cancelledAttack, delivered, travelToOpponent = false, previewAmount = null, startsAtExplosion = false, cancelledNormalDamage = 0) {
         const energyTransfers = getEnergyTransfers();
         if (!energyTransfers) return;
         const ownTarget = { x: player.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP - CELL / 2 };
         const opponentTarget = { x: opponent.fieldX + COLUMNS * CELL / 2, y: FIELD_TOP - CELL / 2 };
         const route = [];
-        if (cancelledDamage || cancelledAttack) route.push({ target: ownTarget, kind: 'cancel', amount: cancelledDamage, attackAmount: cancelledAttack, arcDirection: 'up' });
-        if (delivered || travelToOpponent) route.push({ target: opponentTarget, kind: 'damage', amount: delivered, previewAmount, arcDirection: (cancelledDamage || cancelledAttack) ? 'down' : startsAtExplosion ? 'up' : 'down' });
+        // 유예된 일반 DAMAGE는 이미 normalDamage에서 차감했으므로, warningReductionDelay를 다시 줄이지 않는 별도 값으로 보관한다.
+        if (cancelledDamage || cancelledNormalDamage || cancelledAttack) route.push({ target: ownTarget, kind: 'cancel', amount: cancelledDamage, normalAmount: cancelledNormalDamage, attackAmount: cancelledAttack, arcDirection: 'up' });
+        if (delivered || travelToOpponent) route.push({ target: opponentTarget, kind: 'damage', amount: delivered, previewAmount, arcDirection: (cancelledDamage || cancelledNormalDamage || cancelledAttack) ? 'down' : startsAtExplosion ? 'up' : 'down' });
         if (!route.length) return null;
         const energy = { player, opponent, position: source, route, routeIndex: 0, elapsed: 0, fading: false, previewCancelled: false, finalDamageAmount: 0, targetFeverId: player.chainTargetFeverId, spellEffectCombo: null, spellEffectPlayed: false };
         energyTransfers.push(energy);

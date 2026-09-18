@@ -942,6 +942,13 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 - `python/bundledenemy.py`도 같게 맞췄다. `Andrealphus.target_combo`를 5로 바꾸고, `Flauros`(6)·`Andras`(7)는 생성자에서 목표 연쇄만 덮어쓴다. 파이썬 안드레알푸스는 `learning.py`의 연쇄 유도 탐험 안내 적(`CHAIN_GUIDE_ENEMY_TYPES`)이기도 하므로, 그 안내 수도 5연쇄 기준으로 바뀐다.
 - 테스트: `test01_enemy.spec.js`의 안드레알푸스 Worker 싹쓸이 테스트·공통 클래스 테스트 기대값을 5로 바꿨다. 모델 미사용 적 반복 테스트는 목표 연쇄를 공통 설정 비교에서 빼고 적별 기대값(플라우로스 6·안드라스 7)으로 확인한다. `python/test_learning.py`에 `test_realtime_family_differs_only_by_target_combo`를 추가했다.
 
+### 피버 유예 예고 상쇄 에너지 연출 (2026-09-18, BUILDNO 83)
+
+- 피버가 활성화된 플레이어가 자기 연쇄로 `normalDamage`(피버 종료 뒤 일반 필드로 떨어질 유예 DAMAGE)를 상쇄할 때, 기존 `sendAttackEnergy()`는 수치와 전등 규칙만 처리하고 `queueEnergyTransfer()`의 상쇄 경로에는 그 값을 넘기지 않았다. 피버 DAMAGE와 상대 ATTACK이 모두 0이면 빈 경로가 되어 에너지 이동 효과가 아예 생기지 않았고, 다른 상쇄와 함께여도 유예분은 자기 필드 천장으로 가는 연출에서 빠졌다.
+- `queueEnergyTransfer()`의 선택적 `cancelledNormalDamage` 인자로 유예분을 상쇄 경로 생성 조건에 포함했다. 이 값은 이미 `normalDamage`에서 차감한 수치라 `warningReductionDelay`를 다시 줄이지 않는 `normalAmount` 메타데이터로만 보관한다. 따라서 상쇄·예고·DAMAGE 정산 순서는 그대로이며, 에너지 구체만 자기 필드 천장까지 이동한다. 남은 공격이 있으면 기존처럼 이어서 상대 천장으로 간다.
+- 이 경로는 `game.feverRule && player.fever.active`를 쓰므로 피버 룰·피버 룰 (시작)·구경의 피버 (완화)에 공통 적용된다. `tests/test01_fever_damage.spec.js`는 실제 피버 룰·피버 (완화) 구경 대전에서 유예 DAMAGE만 상쇄하고, 리플레이의 `et` 에너지 표본이 남는지 확인한다. 피버 룰 (시작)은 같은 상쇄 함수·피버 상태 분기를 공유한다.
+- 검증: 새 회귀 2개를 Chromium·Firefox·WebKit에서 모두 통과했고, `node --check src/js/puyow.js`와 `npm.cmd test`도 통과했다. BUILDNO는 83, `package.json`·`package-lock.json`의 패키지 버전은 `0.0.83`이며 버전값 자체는 테스트하지 않았다.
+
 ### 적 AI 한 칸씩 밀기 2차 (2026-09-17, BUILDNO 81)
 
 `TODO.md` 요구: 다른 AI가 출시 예정 적 바퓰라·오리아스를 추가(BUILDNO 80)한 뒤, 바퓰라를 출시하고 오리아스는 출시 예정으로 두며, 안드라스~자간의 AI를 한 칸씩 밀고 안드라스를 플라우로스와 같은 방식으로 모델 미사용 적으로 만든다. 위 「[반복 작업 절차]」를 그대로 따랐다.

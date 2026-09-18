@@ -417,6 +417,34 @@ test('일반 필드행 미정산 예고가 전량 상쇄되면 뒤쪽에서도 �
   await expectWarningLayers(page, 0, 0);
 });
 
+for (const relaxed of [false, true]) {
+  test(`${relaxed ? '피버 (완화)' : '피버 룰'}에서 유예된 일반 DAMAGE만 상쇄해도 에너지 이동 연출을 남긴다`, async ({ page }) => {
+    await enableReplayFeature(page);
+    await prepareDamageMatch(page, relaxed);
+    await activateReceiver(page);
+    await page.evaluate(() => {
+      const { a, b } = window.damagePlayers;
+      // 피버 DAMAGE 없이 일반 필드행 유예 DAMAGE만 남긴다. 상대 ATTACK은 최소 공격 1을
+      // 보장하는 조건일 뿐, 피버 중 상쇄 순서상 유예 DAMAGE를 먼저 지우지 못하게 한다.
+      b.fever.damage = 0;
+      b.normalDamage = 1;
+      a.attack = 1;
+      window.beginDamageChain(b, false);
+    });
+    await advanceUntil(page, () => window.damagePlayers.b.normalDamage === 0);
+    await page.clock.runFor(100);
+    const result = await page.evaluate(() => {
+      const replay = window.WebPuyo.getReplayData();
+      return {
+        normalDamage: window.damagePlayers.b.normalDamage,
+        opponentAttack: window.damagePlayers.a.attack,
+        hasEnergyFrame: replay.frames.some((frame) => Array.isArray(frame.g?.et) && frame.g.et.length > 0),
+      };
+    });
+    expect(result).toEqual({ normalDamage: 0, opponentAttack: 1, hasEnergyFrame: true });
+  });
+}
+
 test('새 리플레이는 일반·피버 예고의 앞뒤 구분을 보존하고 구형 기록도 재생한다', async ({ page }) => {
   test.setTimeout(60000);
   await enableReplayFeature(page);
