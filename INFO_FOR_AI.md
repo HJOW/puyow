@@ -1200,6 +1200,12 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - GUI에는 장치 선택란이나 GPU 사용률 표시가 없고 CPU·RAM만 표시한다. 현재 점검 환경의 PyTorch는 `2.14.0+cpu`(`torch.version.cuda is None`)이며 CUDA 장치가 0개라 `auto`는 CPU로 폴백한다. GPU를 쓰려면 NVIDIA 드라이버와 CUDA 지원 PyTorch를 설치한 별도 환경에서 실행해야 한다.
 - 이 확인은 `puyow.js`를 수정하지 않은 진단 작업이므로 BUILDNO와 `package.json` 버전은 변경하지 않았다.
 
+### 리플레이 재생 보간 (2026-09-20, BUILDNO 102)
+
+- 리플레이 형식 버전 3과 기록 주기(`REPLAY_SAMPLE_INTERVAL`, 초당 30표본)는 바꾸지 않았다. 재생 상태 내부에만 마지막으로 반영한 프레임 시각과 화면용 Y 좌표를 보관하므로 기존 리플레이 JSON과 복사·붙여넣기 호환성이 유지된다.
+- 재생 중 바로 다음 `ac` 델타를 확인해 같은 뿌요 쌍·같은 열·같은 회전인 동안 조작 중 뿌요의 Y 좌표를 현재 재생 시각에 맞춰 선형 보간한다. 화면에 그리는 값만 보간하고 `PlayerState`의 실제 상태, 이동·회전·고정·폭발 같은 이산 이벤트 시점은 바꾸지 않는다. 따라서 기록 주기를 늘리지 않고도 표본 사이의 낙하가 계단식으로 보이는 현상을 줄이며, 다음 표본 확인 비용도 일정하다.
+- `src/js/puyow.js`의 BUILDNO는 102, `package.json` 버전은 `0.0.102`다. `node --check`, `npm.cmd test`, `git diff --check`와 Chromium 리플레이 기본 룰 재생 회귀 테스트 1개(`1 passed`, 57.2초)를 통과했다. 전체 리플레이 묶음은 실행 환경의 긴 실제 대전 시간 때문에 별도로 돌리지 않았다.
+
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.

@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 101;
+    const BUILDNO = 102;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -10160,7 +10160,7 @@
                 });
             }
             // 조작 중인 뿌요 쌍은 필드 위에 별도로 표시한다.
-            if (!isDefeated && player.active) activeRenderCells(player.active).forEach((cell) => {
+            if (!isDefeated && player.active) activeRenderCells(getReplayActiveRenderState(player)).forEach((cell) => {
                 if (cell.y < VISIBLE_ROWS && cell.y + 1 > 0) {
                     const cellX = x + cell.x * CELL;
                     const cellY = FIELD_BOTTOM - (cell.y + 1) * CELL;
@@ -11361,6 +11361,8 @@
                 index: 0,
                 soundIndex: 0,
                 time: 0,
+                lastFrameTime: null,
+                activeRenderY: [null, null],
                 errorElapsed: null,
                 allClearEnd: [0, 0]
             }
@@ -11531,6 +11533,44 @@
         if (frame.b) applyReplayPlayerFields(playback, 1, frame.b);
     }
 
+    /** 리플레이 재생에서 조작 중인 뿌요를 그릴 상태를 반환한다. 표본 사이의 Y 좌표만 보간한다. @param {PlayerState} player 대상 플레이어 @returns {{x:number,y:number,rotation:number,colors:string[]}|null} 그릴 상태 */
+    function getReplayActiveRenderState(player) {
+        const playback = game?.replayPlayback;
+        const index = game?.players?.indexOf(player) ?? -1;
+        const renderY = playback?.activeRenderY?.[index];
+        if (!Number.isFinite(renderY) || !player.active) return player.active;
+        return { ...player.active, y: renderY };
+    }
+
+    /** 아직 반영하지 않은 바로 다음 리플레이 프레임에서 조작 뿌요 상태를 찾는다. ac가 없으면 그 표본까지 상태가 그대로라는 뜻이다. @param {object} playback 재생 상태 @param {number} playerIndex 플레이어 번호 @returns {{time:number,value:unknown}|null} 다음 조작 상태 */
+    function findNextReplayActive(playback, playerIndex) {
+        const group = playerIndex === 0 ? 'a' : 'b';
+        const frame = playback.frames[playback.index];
+        const fields = frame?.[group];
+        return fields && Object.prototype.hasOwnProperty.call(fields, 'ac')
+            ? { time: Number(frame.t), value: fields.ac }
+            : null;
+    }
+
+    /** 리플레이 표본 사이에서 낙하 중인 조작 뿌요의 Y 좌표를 보간한다. 저장 형식은 바꾸지 않고 화면 표시용 값만 만든다. @param {object} playback 재생 상태 @returns {void} */
+    function refreshReplayActiveInterpolation(playback) {
+        playback.activeRenderY = [null, null];
+        if (!Number.isFinite(playback.lastFrameTime)) return;
+        game.players.forEach((player, playerIndex) => {
+            if (!player.active) return;
+            const next = findNextReplayActive(playback, playerIndex);
+            if (!next || !Number.isFinite(next.time) || next.time <= playback.lastFrameTime || !Array.isArray(next.value) || next.value.length < 5) return;
+            const nextFirst = REPLAY_PUYO_TYPES[next.value[3]];
+            const nextSecond = REPLAY_PUYO_TYPES[next.value[4]];
+            const nextY = Number(next.value[1]);
+            if (!nextFirst || !nextSecond || !Number.isFinite(nextY)) return;
+            if (player.active.x !== Number(next.value[0]) || player.active.rotation !== Number(next.value[2])
+                || player.active.colors[0] !== nextFirst || player.active.colors[1] !== nextSecond) return;
+            const progress = Math.min(1, Math.max(0, (playback.time - playback.lastFrameTime) / (next.time - playback.lastFrameTime)));
+            playback.activeRenderY[playerIndex] = player.active.y + (nextY - player.active.y) * progress;
+        });
+    }
+
     /** 시작 시각만 저장한 연출들의 경과 시간을 현재 재생 시각으로 다시 계산한다. @param {object} playback 재생 상태 @returns {void} */
     function refreshReplayAnimationTimers(playback) {
         const time = playback.time;
@@ -11566,9 +11606,12 @@
         playback.time += delta;
         try {
             while (playback.index < playback.frames.length && playback.frames[playback.index].t <= playback.time) {
-                applyReplayFrame(playback, playback.frames[playback.index]);
+                const frame = playback.frames[playback.index];
+                applyReplayFrame(playback, frame);
+                playback.lastFrameTime = Number(frame.t);
                 playback.index += 1;
             }
+            refreshReplayActiveInterpolation(playback);
             refreshReplayAnimationTimers(playback);
             playReplaySounds(playback);
         } catch (error) {
