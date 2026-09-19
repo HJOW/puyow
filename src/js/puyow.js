@@ -195,7 +195,7 @@
     /** 한 방향을 대각선으로도 볼지 판단하는 다른 축 대비 최대 배율이다. 값이 클수록 대각선으로 인정하는 범위가 넓어진다. @type {number} */
     const VIRTUAL_JOYSTICK_DIAGONAL_RATIO = 2;
     /** AI 쉬움 난이도에서 빠른 하강을 사용하지 않음을 나타내는 지연 시간이다. @type {number|null} */
-    const AI_FAST_DOWN_DELAY_EASY = null;
+    const AI_FAST_DOWN_DELAY_EASY = 4000;
     /** AI 보통 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number|null} */
     const AI_FAST_DOWN_DELAY_NORMAL = 1500;
     /** AI 어려움 난이도에서 목표 결정 후 빠른 하강까지 기다리는 시간(ms)이다. @type {number|null} */
