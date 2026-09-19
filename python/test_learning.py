@@ -2135,6 +2135,206 @@ class RealtimeDuelEnvironmentTest(unittest.TestCase):
 				self.assertTrue(done)
 
 
+class FeverOffsetPriorityTest(unittest.TestCase):
+	"""피버 중 상쇄 우선순위(BUILDNO 99)와 연쇄 첫 폭발 기준 공격 목적지가 puyow.js와 같은지 확인한다."""
+
+	def _environment(self) -> object:
+		environment = training.PuyoDuelEnvironment("Seere", seed=13, rule=training.RULE_FEVER)
+		environment.fast_down_delay_ms = 300
+		return environment
+
+	def _start_chain(self, environment: object, side: str) -> dict:
+		"""side가 첫 폭발 전인 연쇄를 진행 중인 상태를 만든다."""
+		chain = {
+			"pending": [], "end_ms": environment.elapsed_ms, "generated": 0.0,
+			"sent": 0, "activation": False, "combo": 1, "all_clear": False,
+		}
+		environment.chain_state[side] = chain
+		return chain
+
+	def _agent_in_fever(self, environment: object, fever_damage: float, normal_damage: float) -> None:
+		environment._activate_fever("agent")
+		environment.agent_fever.damage = fever_damage
+		environment.agent_damage = normal_damage
+
+	def test_fever_damage_then_fever_bound_attack_before_deferred_damage(self) -> None:
+		environment = self._environment()
+		self._agent_in_fever(environment, 2.0, 20.0)
+		self._start_chain(environment, "enemy")["target_fever_id"] = environment.agent_fever.activation_id
+		environment.in_flight["enemy"] = 8.0
+
+		environment._cancel_attack("agent", 5)
+
+		# 피버 DAMAGE 2 → 현재 피버행 상대 ATTACK 3 순으로 지우고, 유예된 일반 DAMAGE 20은 그대로 둔다.
+		self.assertEqual(0.0, environment.agent_fever.damage)
+		self.assertEqual(5.0, environment.in_flight["enemy"])
+		self.assertEqual(20.0, environment.agent_damage)
+		self.assertEqual(0.0, environment.in_flight["agent"])
+
+	def test_fever_bound_attack_is_cleared_before_reaching_deferred_damage(self) -> None:
+		environment = self._environment()
+		self._agent_in_fever(environment, 2.0, 20.0)
+		self._start_chain(environment, "enemy")["target_fever_id"] = environment.agent_fever.activation_id
+		environment.in_flight["enemy"] = 8.0
+
+		environment._cancel_attack("agent", 15)
+
+		self.assertEqual(0.0, environment.agent_fever.damage)
+		self.assertEqual(0.0, environment.in_flight["enemy"])
+		self.assertEqual(15.0, environment.agent_damage)
+
+	def test_normal_bound_and_previous_fever_attacks_come_after_deferred_damage(self) -> None:
+		for label, target in (("일반 필드행", -1), ("이전 피버행", 0), ("목적지 미정", None)):
+			with self.subTest(target=label):
+				environment = self._environment()
+				self._agent_in_fever(environment, 2.0, 3.0)
+				chain = self._start_chain(environment, "enemy")
+				if target is not None:
+					chain["target_fever_id"] = target
+				environment.in_flight["enemy"] = 8.0
+
+				environment._cancel_attack("agent", 10)
+
+				# 피버 DAMAGE 2 → 유예 DAMAGE 3 → 상대 ATTACK 5 순이다.
+				self.assertEqual(0.0, environment.agent_fever.damage)
+				self.assertEqual(0.0, environment.agent_damage)
+				self.assertEqual(3.0, environment.in_flight["enemy"])
+
+	def test_non_fever_side_still_cancels_the_opponent_attack_first(self) -> None:
+		environment = self._environment()
+		environment.agent_damage = 10.0
+		self._start_chain(environment, "enemy")["target_fever_id"] = -1
+		environment.in_flight["enemy"] = 4.0
+
+		environment._cancel_attack("agent", 6)
+
+		self.assertEqual(0.0, environment.in_flight["enemy"])
+		self.assertEqual(8.0, environment.agent_damage)
+
+	def test_the_first_explosion_records_the_target_even_without_integer_attack(self) -> None:
+		environment = self._environment()
+		chain = self._start_chain(environment, "enemy")
+
+		environment._deliver_chain_step("enemy", {"attack": 0.5})
+		environment._activate_fever("agent")
+		environment._deliver_chain_step("enemy", {"attack": 9.0})
+
+		# 첫 폭발 당시 에이전트는 일반 상태였으므로, 도중에 피버에 진입해도 목적지는 일반 필드다.
+		self.assertEqual(-1, chain["target_fever_id"])
+
+	def test_a_chain_started_before_the_fever_lands_on_the_deferred_normal_damage(self) -> None:
+		environment = self._environment()
+		self._start_chain(environment, "enemy")
+		environment._deliver_chain_step("enemy", {"attack": 9.0})
+		environment._activate_fever("agent")
+
+		environment._finish_chain("enemy")
+
+		self.assertTrue(environment.agent_fever.active)
+		self.assertEqual(0.0, environment.agent_fever.damage)
+		self.assertEqual(9.0, environment.agent_damage)
+
+	def test_a_chain_started_during_the_fever_lands_on_that_fever(self) -> None:
+		environment = self._environment()
+		environment._activate_fever("agent")
+		self._start_chain(environment, "enemy")
+		environment._deliver_chain_step("enemy", {"attack": 9.0})
+
+		environment._finish_chain("enemy")
+
+		self.assertEqual(9.0, environment.agent_fever.damage)
+		self.assertEqual(0.0, environment.agent_damage)
+
+	def test_a_chain_aimed_at_an_ended_fever_does_not_enter_the_next_fever(self) -> None:
+		environment = self._environment()
+		environment._activate_fever("agent")
+		self._start_chain(environment, "enemy")
+		environment._deliver_chain_step("enemy", {"attack": 9.0})
+		environment._finish_fever("agent")
+		environment._activate_fever("agent")
+
+		environment._finish_chain("enemy")
+
+		# 이전 회차의 피버를 향한 공격은 새 피버가 아니라 유예된 일반 DAMAGE에 합산된다.
+		self.assertEqual(0.0, environment.agent_fever.damage)
+		self.assertEqual(9.0, environment.agent_damage)
+
+	def test_counter_attack_keeps_the_chain_start_target_after_offsetting_everything(self) -> None:
+		environment = self._environment()
+		environment.agent_damage = 4.0
+		chain = self._start_chain(environment, "agent")
+
+		# 에이전트 쪽 첫 폭발은 상대가 일반 상태일 때 일어나 DAMAGE 4를 모두 지운다.
+		environment._deliver_chain_step("agent", {"attack": 4.0})
+		environment._activate_fever("enemy")
+		environment._deliver_chain_step("agent", {"attack": 6.0})
+		environment._finish_chain("agent")
+
+		self.assertEqual(-1, chain["target_fever_id"])
+		self.assertEqual(0.0, environment.enemy_fever.damage)
+		self.assertEqual(6.0, environment.enemy_damage)
+
+
+class FeverStageOpeningTest(unittest.TestCase):
+	"""피버 패턴 첫 배치 무작위 규칙(BUILDNO 100)이 puyow.js와 같은지 확인한다."""
+
+	def _environment(self, enemy: str = "Decarabia") -> object:
+		return training.PuyoDuelEnvironment(enemy, seed=17, rule=training.RULE_FEVER)
+
+	@staticmethod
+	def _random_opening_calls(selector: mock.MagicMock) -> int:
+		"""패턴 첫 배치 무작위 규칙(빈 보드가 아니어도 무작위)으로 호출된 횟수다."""
+		return sum(1 for call in selector.call_args_list if len(call.args) > 4 and call.args[4])
+
+	def test_real_fever_entry_from_an_empty_field_randomizes_the_first_placement(self) -> None:
+		environment = self._environment()
+
+		environment._activate_fever("enemy")
+
+		self.assertTrue(environment.enemy_fever.randomize_stage_opening)
+		self.assertEqual(1, environment.enemy_fever.activation_id)
+
+	def test_real_fever_entry_from_a_non_empty_field_keeps_the_strategy(self) -> None:
+		environment = self._environment()
+		environment.enemy_board[0][0] = 0
+
+		environment._activate_fever("enemy")
+
+		self.assertFalse(environment.enemy_fever.randomize_stage_opening)
+
+	def test_all_clear_reward_pattern_before_fever_does_not_randomize(self) -> None:
+		environment = self._environment()
+
+		environment._after_resolve("enemy", 3, True, False)
+
+		# 피버에 진입하지 않은 일반 필드 싹쓸이 보상 4연쇄 패턴이 깔렸지만 무작위 첫 수는 쓰지 않는다.
+		self.assertFalse(environment.enemy_fever.active)
+		self.assertTrue(any(cell != bundled.EMPTY for row in environment.enemy_board for cell in row))
+		self.assertFalse(environment.enemy_fever.randomize_stage_opening)
+		with mock.patch.object(bundled, "select_random_empty_field_placement", wraps=bundled.select_random_empty_field_placement) as selector:
+			environment._select_enemy_positions()
+		self.assertEqual(0, self._random_opening_calls(selector))
+
+	def test_the_first_fever_pattern_placement_is_random_only_once(self) -> None:
+		environment = self._environment()
+		environment._activate_fever("enemy")
+
+		with mock.patch.object(bundled, "select_random_empty_field_placement", wraps=bundled.select_random_empty_field_placement) as selector:
+			self.assertIsNotNone(environment._select_enemy_positions())
+			self.assertEqual(1, self._random_opening_calls(selector))
+			self.assertFalse(environment.enemy_fever.randomize_stage_opening)
+			environment._select_enemy_positions()
+			self.assertEqual(1, self._random_opening_calls(selector))
+
+	def test_finishing_the_fever_clears_the_random_opening(self) -> None:
+		environment = self._environment()
+		environment._activate_fever("enemy")
+
+		environment._finish_fever("enemy")
+
+		self.assertFalse(environment.enemy_fever.randomize_stage_opening)
+
+
 class RealtimeAfterstateTest(unittest.TestCase):
 	"""애프터스테이트가 새 스칼라를 학습 환경과 같은 규칙으로 갱신하는지 확인한다."""
 

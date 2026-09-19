@@ -299,6 +299,12 @@ class FeverState:
 	# 게임 시작·피버 종료 직후로 되돌릴 전등 수다. puyow.js의 fever.lightStart에 대응하며,
 	# "피버 (완화)" 룰만 0이 아닌 값을 쓴다. 관측값에는 현재 gauge만 들어가므로 계약은 그대로다.
 	light_start: int = 0
+	# 피버 진입 회차다. puyow.js의 fever.activationId에 대응하며, 연쇄 공격의 최종 목적지(피버 DAMAGE인지
+	# 일반 DAMAGE인지)와 피버 중 상쇄 우선순위를 가릴 때 쓴다. 관측값에는 들어가지 않는다.
+	activation_id: int = 0
+	# 피버 패턴 첫 배치를 무작위로 둘지 여부다. puyow.js의 fever.randomizeStageOpening에 대응하며,
+	# 실제 피버에 진입해(또는 피버 중 싹쓸이 뒤) 빈 필드 위에 올린 패턴에서만 True다.
+	randomize_stage_opening: bool = False
 
 	def observation(self) -> dict[str, Any]:
 		"""이 피버 상태를 관측 인코딩용 딕셔너리로 변환한다."""
@@ -784,9 +790,13 @@ class PuyoDuelEnvironment:
 		"""상대(적 AI 또는 self-play 정책)의 이번 수 착지 좌표를 정한다. 둘 곳이 없으면 None이다."""
 		if not self.is_self_play:
 			bundledenemy.configure_rule(self.fever_rule, self.enemy_fever.active)
+			randomize_stage_opening = self.fever_rule and self.enemy_fever.active and self.enemy_fever.randomize_stage_opening
 			placement = self.opponent.decide(
 				self._board("enemy"), self.enemy_pair, self.enemy_next_pairs, self._lookahead_incoming_garbage("enemy"),
+				randomize_stage_opening=randomize_stage_opening,
 			)
+			# 무작위 첫 배치는 패턴의 첫 수에만 쓴다. 무작위 배치를 쓰지 않는 적에게는 값이 의미가 없으므로 함께 끈다.
+			self.enemy_fever.randomize_stage_opening = False
 			return placement.positions if placement is not None else None
 		observation = self._observe_side("enemy")
 		action = (
@@ -847,9 +857,19 @@ class PuyoDuelEnvironment:
 				color_map[source] = remaining.pop()
 		return stage, color_map
 
-	def _prepare_fever_stage(self, side: str, target_combo: int, count_turn: bool = True) -> None:
-		"""선택한 피버 스테이지를 필드에 배치하고 필요하면 피버 턴 수를 올린다."""
+	def _prepare_fever_stage(
+		self, side: str, target_combo: int, count_turn: bool = True, source_field_was_empty: Optional[bool] = None,
+	) -> None:
+		"""선택한 피버 스테이지를 필드에 배치하고 필요하면 피버 턴 수를 올린다.
+
+		`source_field_was_empty`는 패턴을 올리기 직전 플레이 영역이 비어 있었는지다(생략하면 지금 보드로 판단).
+		puyow.js `prepareFeverTurn()`처럼 실제 피버 중일 때만 패턴 첫 배치 무작위 여부에 반영하고,
+		피버에 진입하지 않은 일반 필드 싹쓸이 보상 4연쇄 패턴은 무작위 첫 수를 쓰지 않는다(BUILDNO 100).
+		"""
 		state = self._fever(side)
+		if source_field_was_empty is None:
+			source_field_was_empty = bundledenemy.is_board_empty(self._board(side))
+		state.randomize_stage_opening = self.fever_rule and state.active and source_field_was_empty
 		pair = self.agent_pair if side == "agent" else self.enemy_pair
 		stage, color_map = self._select_fever_stage(target_combo, pair)
 		board = bundledenemy.new_empty_board()
@@ -870,13 +890,16 @@ class PuyoDuelEnvironment:
 		state = self._fever(side)
 		if not self.fever_rule or state.active:
 			return
+		# 피버로 바꾸기 전의 일반 필드가 비어 있었는지를 보존한다(패턴이 올라오면 비어 있지 않다).
+		normal_field_was_empty = bundledenemy.is_board_empty(self._board(side))
 		state.active = True
+		state.activation_id += 1
 		state.field = bundledenemy.new_empty_board()
 		state.damage = 0.0
 		state.gauge = state.light_start
 		state.left_time_ms = state.next_time * 1000.0
 		state.next_time = FEVER_INITIAL_TIME
-		self._prepare_fever_stage(side, state.target_combo)
+		self._prepare_fever_stage(side, state.target_combo, source_field_was_empty=normal_field_was_empty)
 
 	def _finish_fever(self, side: str) -> None:
 		"""side의 피버를 종료하고 누적된 피버 피해를 평소 미정산 피해로 합산한다."""
@@ -892,6 +915,7 @@ class PuyoDuelEnvironment:
 		state.damage = 0.0
 		state.gauge = state.light_start
 		state.left_time_ms = 0.0
+		state.randomize_stage_opening = False
 
 	def _drop_pending_garbage(self, side: str) -> None:
 		"""side의 현재 필드에 미정산 피해만큼(한 번에 최대 30개) 방해뿌요를 떨어뜨린다."""
@@ -917,13 +941,52 @@ class PuyoDuelEnvironment:
 		opponent_state.next_time = min(FEVER_MAX_TIME, opponent_state.next_time + 1)
 		return state.gauge >= FEVER_GAUGE_MAX
 
+	def _chain_target_fever_id(self, side: str) -> Optional[int]:
+		"""side가 진행 중인 연쇄의 공격 목적지다. puyow.js의 player.chainTargetFeverId에 대응한다.
+
+		연쇄 첫 폭발 당시 상대가 피버 중이었으면 그 피버 회차(1 이상), 일반 상태였으면 -1이다.
+		피버 룰이 아니거나 진행 중인 연쇄가 없으면(아직 첫 폭발 전 포함) None이다.
+		"""
+		chain = self.chain_state[side]
+		return chain.get("target_fever_id") if chain else None
+
+	def _record_chain_target(self, side: str, chain: dict[str, Any]) -> None:
+		"""연쇄 첫 폭발 시점에 상대의 피버 상태로 이번 연쇄 전체의 공격 목적지를 정한다.
+
+		puyow.js `resolveExplosions()`처럼 정수 ATTACK이 생기지 않는 첫 폭발에서도 기록하며, 이후 상대가
+		피버에 진입·종료해도 이 연쇄의 잔여 공격은 첫 폭발 당시 목적지로 간다.
+		"""
+		if "target_fever_id" in chain:
+			return
+		opponent_state = self._fever(self._opponent_side(side))
+		chain["target_fever_id"] = (
+			(opponent_state.activation_id if opponent_state.active else -1) if self.fever_rule else None
+		)
+
+	def _apply_attack_damage(self, side: str, amount: float, target_fever_id: Optional[int]) -> None:
+		"""연쇄 시작 당시의 목적지에 따라 side가 받을 피해를 적용한다. puyow.js의 `applyAttackDamage()`에 대응한다.
+
+		피버 룰 밖(None)이면 지금 필드의 DAMAGE에, 목적지 피버가 아직 진행 중이면 그 피버 DAMAGE에 넣는다.
+		그 밖(일반 상태로 시작한 연쇄, 이미 끝난 이전 피버행)은 일반 DAMAGE에 넣으며, 피버 중이면
+		피버가 끝날 때까지 낙하가 유예된다. 새로 진입한 피버에 이전 공격을 넣지 않는다.
+		"""
+		state = self._fever(side)
+		if target_fever_id is None:
+			self._set_damage(side, self._damage(side) + amount)
+		elif target_fever_id >= 0 and state.active and state.activation_id == target_fever_id:
+			state.damage += amount
+		else:
+			self._set_normal_damage(side, self._normal_damage(side) + amount)
+
 	def _cancel_attack(self, side: str, amount: int) -> bool:
 		"""side가 보낸 정수 ATTACK으로 상쇄를 처리하고, 남은 양을 미도착 공격으로 쌓는다.
 
-		puyow.js의 `sendAttackEnergy()`와 같은 순서다. 공격하는 쪽이 피버 중이면 피버 DAMAGE →
-		보존된 일반 DAMAGE → 상대의 진행 중 ATTACK 순이고, 그 밖에는 상대의 진행 중 ATTACK →
-		자기 DAMAGE 순이다. 상쇄하고 남은 양은 연쇄가 끝날 때 상대 DAMAGE가 되도록 in_flight에 쌓는다.
-		상쇄가 한 번이라도 일어났으면 피버 전등을 등록하고, 게이지가 가득 찼는지를 반환한다.
+		puyow.js의 `sendAttackEnergy()`와 같은 순서다. 공격하는 쪽이 피버 중이면 매 폭발 단계의 현재
+		상태로 피버 DAMAGE → 현재 피버 회차를 향하는 상대의 진행 중 ATTACK → 보존된 일반 DAMAGE →
+		나머지 상대 ATTACK(일반 필드행·이전 피버행·목적지 미정) 순이다(BUILDNO 99). 그 밖에는 상대의
+		진행 중 ATTACK → 자기 DAMAGE 순이다. 자기 연쇄의 공격 목적지는 여기서 바꾸지 않는다. 상쇄하고
+		남은 양은 연쇄가 끝날 때 상대 DAMAGE가 되도록 in_flight에 쌓는다. 상쇄가 한 번이라도 일어났으면
+		피버 전등을 등록하고, 게이지가 가득 찼는지를 반환한다.
 		"""
 		opponent_side = self._opponent_side(side)
 		state = self._fever(side)
@@ -941,9 +1004,16 @@ class PuyoDuelEnvironment:
 			return available - taken
 
 		if self.fever_rule and state.active:
+			incoming_target = self._chain_target_fever_id(opponent_side)
+			incoming_targets_current_fever = (
+				incoming_target is not None and incoming_target >= 0 and incoming_target == state.activation_id
+			)
 			state.damage = take(state.damage)
+			if incoming_targets_current_fever:
+				self.in_flight[opponent_side] = take(self.in_flight[opponent_side])
 			self._set_normal_damage(side, take(self._normal_damage(side)))
-			self.in_flight[opponent_side] = take(self.in_flight[opponent_side])
+			if not incoming_targets_current_fever:
+				self.in_flight[opponent_side] = take(self.in_flight[opponent_side])
 		else:
 			self.in_flight[opponent_side] = take(self.in_flight[opponent_side])
 			self._set_damage(side, take(self._damage(side)))
@@ -1134,6 +1204,7 @@ class PuyoDuelEnvironment:
 			return None
 		if chain["pending"]:
 			chain["pending"].pop(0)
+		self._record_chain_target(side, chain)
 		chain["generated"] += float(payload["attack"])
 		amount = int(math.floor(chain["generated"])) - chain["sent"]
 		if amount < 1:
@@ -1153,7 +1224,8 @@ class PuyoDuelEnvironment:
 		delivered = int(math.floor(max(0.0, self.in_flight[side])))
 		self.in_flight[side] = 0.0
 		if delivered >= 1:
-			self._set_damage(opponent_side, self._damage(opponent_side) + delivered)
+			# 연쇄 도중 상대가 피버에 진입·종료했더라도 첫 폭발 당시의 목적지로 보낸다.
+			self._apply_attack_damage(opponent_side, delivered, chain.get("target_fever_id"))
 		self._refill_pair(side)
 		self._after_resolve(side, chain["combo"], chain["all_clear"], chain["activation"])
 		self._push_event(self.elapsed_ms + bundledenemy.LOCK_TO_NEXT_CONTROL_MS, EVENT_SPAWN, side)

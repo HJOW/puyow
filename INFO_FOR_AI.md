@@ -1172,9 +1172,19 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - `TODO.md`의 현상을 수정 전 회귀 검사에서 재현했다. 피버 DAMAGE 2·유예 DAMAGE 20·현재 피버행 상대 ATTACK 8에서 공격 5로 상쇄하면 기존에는 유예 DAMAGE가 17이 되고 상대 ATTACK은 8로 남았다. 수정 후에는 유예 DAMAGE 20을 유지하고 상대 ATTACK이 5가 된다.
 - 변경은 실제 게임의 `sendAttackEnergy()` 상쇄 분기에 적용했다. 일반 상태의 기존 상쇄 순서와 `resolveExplosions()`·`deliverFinalAttackEnergy()`·`applyAttackDamage()`의 공격 귀속 규칙은 유지한다. 첫 폭발이 전부 상쇄되어 공격 잔여량이 0이 된 경우에도 같은 연쇄의 이후 반격은 첫 폭발 당시 상대 상태로 귀속된다.
 - `tests/test01_fever_damage.spec.js`에 우선순위 5가지(피버 피해 우선·피버행 공격 우선·유예 피해까지 상쇄·일반행 공격·이전 피버행 공격), 연쇄 도중 새로 발생한 피버행 공격, 첫 폭발 전량 상쇄 후 즉시/지연 반격의 귀속을 추가했다. 기존 유예 피해 연출 검사는 상대 공격이 일반 필드행임을 명시한다.
-- AI 미리보기와 Python 학습 환경도 점검했다. 이들은 피해·예측 공격을 단순화해서 사용하며, 특히 `python/learning.py`는 아직 연쇄 시작 때의 피버 목적지/회차를 저장하지 않고 피버 중 상쇄도 종전 순서다. 이번 게임 런타임 수정과 학습 시뮬레이션은 동일하지 않으므로, 향후 학습 규칙을 맞출 때 목적지 저장·최종 피해 귀속까지 함께 변경해야 한다.
+- AI 미리보기와 Python 학습 환경도 점검했다. 이들은 피해·예측 공격을 단순화해서 사용한다. `python/learning.py`의 대전 환경은 이후 아래 「피버 상쇄·첫 배치 규칙의 학습 환경 반영」 절에서 목적지 저장·최종 피해 귀속·상쇄 순서를 게임과 맞췄다.
 - BUILDNO는 99, 패키지 버전은 `0.0.99`로 갱신했다. 버전값 자체는 테스트하지 않는다.
 - 검증: 수정 전 새 검사 8개 중 우선순위 관련 3개가 실패해 현상을 재현했고, 수정 후 `test01_fever_damage.spec.js` 21개 × Chromium·Firefox·WebKit = 63개가 통과했다. `test01_fever.spec.js`의 기본 룰 싹쓸이 티켓·피버 양쪽 DAMAGE 상쇄 후 잔여 공격·전량 상쇄 후 예고 취소 3개도 Chromium에서 통과했다. JS 문법 검사·ESLint·번들 재생성·변경 파일의 공백 검사를 완료했다. 사용자 기존 `TODO.md`의 줄 끝 공백은 변경하지 않았다.
+
+### 피버 상쇄·첫 배치 규칙의 학습 환경 반영 (2026-09-19, Python만 변경)
+
+- BUILDNO 99(피버 상쇄 우선순위)와 BUILDNO 100(일반 필드 싹쓸이 보상 패턴의 무작위 첫 수 제외)을 `python/learning.py`의 `PuyoDuelEnvironment`와 `python/bundledenemy.py`에 반영했다. `puyow.js`는 바꾸지 않았으므로 BUILDNO·패키지 버전은 그대로다.
+- `FeverState`에 `activation_id`(게임의 `fever.activationId`, `_activate_fever()`에서 1 증가)와 `randomize_stage_opening`(게임의 `fever.randomizeStageOpening`)을 추가했다. 둘 다 관측값에는 들어가지 않으므로 모델 계약(`MODEL_VERSION`·관측 크기)은 그대로다.
+- **공격 목적지**: `_deliver_chain_step()`이 연쇄 첫 폭발에서(정수 ATTACK이 없어도) `_record_chain_target()`으로 `chain_state[side]["target_fever_id"]`를 기록한다(피버 룰 밖 None, 상대 일반 상태 -1, 상대 피버 중이면 그 회차). `_finish_chain()`은 `_apply_attack_damage()`(게임의 `applyAttackDamage()`)로 전달한다. 목적지 피버가 아직 진행 중이면 피버 DAMAGE, 그 밖(일반 상태에서 시작, 이미 끝난 이전 피버)은 일반 DAMAGE(피버 중이면 유예)에 넣는다. 예전에는 연쇄 종료 시점의 상대 상태로 넣었다.
+- **피버 중 상쇄**: `_cancel_attack()`이 피버 DAMAGE → 상대 연쇄 목적지가 내 현재 피버 회차와 같은 in_flight → 일반(유예) DAMAGE → 나머지 in_flight 순으로 매 단계 상쇄한다. 피버가 아닐 때의 순서(상대 in_flight → 자기 DAMAGE)는 그대로다. 학습 환경은 에너지 연출 지연을 모형화하지 않으므로 목적지는 연쇄 상태에만 보관한다.
+- **피버 패턴 첫 배치 무작위**: `_prepare_fever_stage()`가 `source_field_was_empty`를 받아 `fever_rule and state.active and 빈 필드`일 때만 `randomize_stage_opening`을 켠다. `_activate_fever()`는 피버로 바꾸기 전 일반 필드의 빈 상태를 넘기고, 피버 중 다음 패턴은 직전 피버 필드로 판단하며, 피버 미진입 싹쓸이 보상 4연쇄 패턴은 켜지 않는다. `_finish_fever()`는 끈다. `_select_enemy_positions()`가 이 값을 `BaseEnemy.decide(..., randomize_stage_opening=...)`로 넘긴 뒤 바로 끈다. `bundledenemy`의 `decide()`는 `uses_random_empty_field` 적이면 피버 중 최대 연쇄 우선 분기보다 먼저 `select_random_empty_field_placement(..., randomize_stage_opening=True)`로 비어 있지 않은 패턴 보드에서도 무작위 첫 수를 고른다(게임 `Enemy.prepareTurn()` 순서). 예전 Python은 실제 피버 진입 패턴에서도 무작위 첫 수를 쓰지 않았다. 에이전트 쪽 안내 적(`suggest_agent_action()`)에는 넘기지 않는다.
+- 애프터스테이트(`_build_afterstate()`와 JS `buildAfterstate()`)의 단순화된 상쇄 순서(진행 중 공격 → 확정 DAMAGE)는 관측값에 목적지·유예 DAMAGE가 없어 바꾸지 않았다. 바꾸려면 두 구현을 함께 맞춰야 한다.
+- 회귀 테스트: `python/test_learning.py`의 `FeverOffsetPriorityTest`(9개)와 `FeverStageOpeningTest`(5개). 수정 전 코드에서는 14개 중 11개가 실패했고, 수정 후 `test_learning`·`test_onlineplay_storage` 전체 177개가 통과했다(Tk 1개 건너뜀).
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 

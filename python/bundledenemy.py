@@ -622,9 +622,13 @@ def find_ai_defeat_position_safe_placement(board, colors, simulations: Sequence[
     return best
 
 
-def select_random_empty_field_placement(board, colors, simulations: Sequence[Placement], rng: random.Random) -> Optional[Placement]:
-    """빈 필드에서 첫 배치를 무작위로 고른다(즉시 패배하지 않는 후보 우선). puyow.js의 selectRandomEmptyFieldPlacement에 대응한다."""
-    if not is_board_empty(board) or not simulations:
+def select_random_empty_field_placement(board, colors, simulations: Sequence[Placement], rng: random.Random, randomize_stage_opening: bool = False) -> Optional[Placement]:
+    """빈 필드에서 첫 배치를 무작위로 고른다(즉시 패배하지 않는 후보 우선). puyow.js의 selectRandomEmptyFieldPlacement에 대응한다.
+
+    `randomize_stage_opening`은 puyow.js의 fever.randomizeStageOpening이다. 실제 피버에 진입해(또는 피버 중
+    싹쓸이 뒤) 빈 필드 위에 올라온 피버 패턴의 첫 배치라면, 패턴 때문에 보드가 비어 있지 않아도 무작위로 고른다.
+    """
+    if (not is_board_empty(board) and not randomize_stage_opening) or not simulations:
         return None
     safe = [s for s in simulations if not causes_immediate_defeat(board, colors, s.positions)]
     candidates = safe if safe else simulations
@@ -793,16 +797,25 @@ class BaseEnemy:
         """진행 상황 저장·비교에 쓰는 클래스 이름이다. 하위 클래스는 반드시 재정의해야 한다."""
         return 'Enemy'
 
-    def decide(self, board, colors, next_pairs, incoming_garbage: float = 0.0) -> Optional[Placement]:
+    def decide(self, board, colors, next_pairs, incoming_garbage: float = 0.0, randomize_stage_opening: bool = False) -> Optional[Placement]:
         """이번 수의 배치를 결정한다. 착지 가능한 후보가 하나도 없으면 None(필드가 가득 참)을 반환한다.
 
         `incoming_garbage`는 puyow.js의 player.damage(자신의 미정산 피해)와 opponent.attack
         (상대의 미도착 ATTACK)을 합친 하나의 값이다. 원작 일부 분기(예: Amdusias의 피버 전용
         분기)는 이 둘을 따로 쓰지만, 이 포팅은 호출부 단순화를 위해 합계 하나만 받는다.
+
+        `randomize_stage_opening`은 puyow.js의 fever.randomizeStageOpening이다. 호출부(학습 환경)가 실제
+        피버의 빈 필드 시작 패턴 첫 배치일 때만 True로 넘긴다. 일반 필드 싹쓸이 보상 4연쇄 패턴(피버 미진입)은
+        BUILDNO 100부터 무작위 첫 수를 쓰지 않으므로 False다.
         """
         simulations = prepare_simulations(board, colors)
         if not simulations:
             return None
+        # puyow.js Enemy.prepareTurn처럼 피버 패턴의 무작위 첫 배치는 피버 중 최대 연쇄 우선 분기보다 먼저 본다.
+        if self.uses_random_empty_field and randomize_stage_opening:
+            placement = select_random_empty_field_placement(board, colors, simulations, self.rng, True)
+            if placement is not None:
+                return self._finalize(board, colors, simulations, placement)
         # 실제 게임의 BundledEnemy.prepareTurn처럼 피버 중에는 적별 빌드 전략보다
         # 즉시 패배하지 않는 최대 연쇄·공격 후보를 우선한다.
         if FEVER_ACTIVE:
@@ -1460,8 +1473,8 @@ class QuietEdgeEnemy(BundledEnemy):
         """터뜨리지 않는 후보가 하나도 없을 때의 우선순위다. 연쇄와 ATTACK이 작을수록 먼저 고른다."""
         return (-sim.combo, -sim.attack) + cls._quiet_key(sim)
 
-    def decide(self, board, colors, next_pairs, incoming_garbage: float = 0.0) -> Optional[Placement]:
-        """터뜨리지 않는 배치를 우선해, 중앙에서 먼 열부터 채운다. 둘 곳이 없으면 None이다."""
+    def decide(self, board, colors, next_pairs, incoming_garbage: float = 0.0, randomize_stage_opening: bool = False) -> Optional[Placement]:
+        """터뜨리지 않는 배치를 우선해, 중앙에서 먼 열부터 채운다. 둘 곳이 없으면 None이다. 무작위 첫 배치는 쓰지 않는다."""
         simulations = prepare_simulations(board, colors)
         if not simulations:
             return None
