@@ -1186,6 +1186,13 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - 애프터스테이트(`_build_afterstate()`와 JS `buildAfterstate()`)의 단순화된 상쇄 순서(진행 중 공격 → 확정 DAMAGE)는 관측값에 목적지·유예 DAMAGE가 없어 바꾸지 않았다. 바꾸려면 두 구현을 함께 맞춰야 한다.
 - 회귀 테스트: `python/test_learning.py`의 `FeverOffsetPriorityTest`(9개)와 `FeverStageOpeningTest`(5개). 수정 전 코드에서는 14개 중 11개가 실패했고, 수정 후 `test_learning`·`test_onlineplay_storage` 전체 177개가 통과했다(Tk 1개 건너뜀).
 
+### WebMCP 게임 도구 최신화 (2026-09-19, BUILDNO 101)
+
+- `getGameState().allClearTicketEnabled`는 `rule === 'standard'`만 보지 않고 실제 `usesAllClearTicket()` 계약을 사용한다. 따라서 기본 룰·너랑 나랑·퍼즐뿌요에서는 `true`, 연습·피버 계열에서는 `false`이며, 도구 상태와 실제 싹쓸이 보상이 일치한다.
+- `manual`과 `now_game_status` 스키마 설명에 최신 ATTACK 상쇄 순서(피버 DAMAGE → 현재 피버 회차행 상대 ATTACK → 유예 일반 DAMAGE → 나머지 상대 ATTACK), 피버 시간 만료 뒤 일반 필드 DAMAGE 낙하, 싹쓸이 모드별 보상(티켓 +2100/+30, 연습 즉시 +2100, 피버 목표·시간 보상)을 반영했다. `damage`·`normalDamage`의 현재 필드/유예 필드 의미도 명시했다.
+- 실제 게임 페이지는 `src/js/puyow.js`를 읽고 번들은 현재 주석 처리되어 있다. 이번 변경에서는 소스 WebMCP를 갱신했으며, 번들 재생성은 실행 환경의 기존 `src/bundle/puyow.bundle.js` 파일 잠금(EPERM)으로 수행하지 못했다.
+- 검증: `node --check src/js/puyow.js`, `npm.cmd test`/`npx eslint src/js/puyow.js`, `git diff --check` 통과. Playwright `test01_core.spec.js`는 테스트 결과 파일 잠금(EPERM)으로 완료하지 못했다. BUILDNO는 101, 패키지 버전은 `0.0.101`이다.
+
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.

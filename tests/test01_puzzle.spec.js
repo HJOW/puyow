@@ -21,6 +21,7 @@ test('퍼즐뿌요는 스테이지 선택, 잠금 해제, 5색 지급과 두 번
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 15000 }).toBe(true);
   const state = await page.evaluate(() => window.WebPuyo.getGameState());
+  expect(state.allClearTicketEnabled).toBe(true);
   expect(state.puzzle).toMatchObject({ stageIndex: 0, turn: 1 });
   expect(state.colors).toEqual(['red', 'green', 'yellow', 'blue', 'purple']);
   expect(state.player.active.colors).toEqual(await page.evaluate(() => window.WebPuyo.PUZZLE_STAGES[0].suppliedNextPuyos[0]));

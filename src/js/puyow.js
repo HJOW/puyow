@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 100;
+    const BUILDNO = 101;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -16705,8 +16705,9 @@
             continuousFever: game.continuousFever === true,
             feverRule: game.feverRule === true,
             feverStart: game.feverStart === true,
-            // 싹쓸이 티켓은 기본 룰에서만 소비되는 값임을 명시한다.
-            allClearTicketEnabled: rule === 'standard',
+            // 싹쓸이 티켓은 기본·너랑 나랑·퍼즐뿌요처럼 usesAllClearTicket()이 적용되는
+            // 모드에서만 다음 색 뿌요 폭발에 소비된다. 연습·피버 계열은 별도 보상 규칙을 쓴다.
+            allClearTicketEnabled: usesAllClearTicket(),
             puzzle: game.puzzle ? {
                 stageIndex: game.puzzle.stageIndex,
                 turn: game.puzzle.turn,
@@ -16836,9 +16837,10 @@
                 isCpu: { type: 'boolean', description: 'True when a CPU controller moves this side. Solo modes (practice, continuous fever, Puzzle Puyo) show a placeholder opponent on the right.' },
                 phase: { type: 'string', description: 'Turn phase such as idle, control, gravity, burst, check, garbage, feverWait, feverAllClearWait, or defeated. Moves are accepted only in control.' },
                 point: { type: 'number', minimum: 0 }, attack: { type: 'number', minimum: 0 },
-                damage: { type: 'number', minimum: 0 }, normalDamage: { type: 'number', minimum: 0 },
+                damage: { type: 'number', minimum: 0, description: 'Unresolved DAMAGE for the currently active field; during FEVER this is FEVER DAMAGE.' },
+                normalDamage: { type: 'number', minimum: 0, description: 'Unresolved DAMAGE reserved for the normal field; during FEVER it is applied after the FEVER field ends.' },
                 combo: { type: 'integer', minimum: 0 }, placedPairCount: { type: 'integer', minimum: 0 },
-                allClearTicket: { type: 'boolean', description: 'Whether the player holds an all-clear ticket for the next colored-puyo explosion.' },
+                allClearTicket: { type: 'boolean', description: 'Whether the player holds an all-clear ticket. In ticket-enabled modes it adds 2100 points and 30 ATTACK to the next colored-puyo explosion; FEVER rules and practice use different all-clear rewards.' },
                 board: { type: 'object', properties: {
                     columns: { type: 'integer', const: COLUMNS }, rows: { type: 'integer', const: ROWS }, visibleRows: { type: 'integer', const: VISIBLE_ROWS },
                     puyos: { type: 'array', items: puyoSchema, description: 'All fixed puyos, including hidden rows.' }
@@ -16853,7 +16855,7 @@
                     active: { type: 'boolean' }, gauge: { type: 'integer', minimum: 0, maximum: FEVER_GAUGE_MAX, description: `FEVER gauge; FEVER starts when it reaches ${FEVER_GAUGE_MAX}.` },
                     nextTime: { type: 'integer', minimum: FEVER_INITIAL_TIME, maximum: Math.max(FEVER_MAX_TIME, FEVER_START_INITIAL_TIME / 1000), description: `Seconds granted when FEVER next starts. FEVER rule (start) begins at ${FEVER_START_INITIAL_TIME / 1000}.` },
                     targetCombo: { type: 'integer', minimum: FEVER_MIN_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO, description: 'Chain length of the next FEVER pattern.' },
-                    leftTime: { type: 'number', minimum: 0, description: 'Remaining FEVER time in milliseconds.' }, damage: { type: 'number', minimum: 0 }, turn: { type: 'integer', minimum: 0 },
+                    leftTime: { type: 'number', minimum: 0, description: 'Remaining FEVER time in milliseconds. A placement made after this reaches zero finishes FEVER before pending normal DAMAGE is dropped.' }, damage: { type: 'number', minimum: 0, description: 'Unresolved DAMAGE reserved for this FEVER round.' }, turn: { type: 'integer', minimum: 0 },
                     selectedStageTarget: { type: ['integer', 'null'], minimum: FEVER_MIN_TARGET_COMBO, maximum: CONTINUOUS_FEVER_MAX_TARGET_COMBO },
                     stageSuppliedPair: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 0, maxItems: 2 },
                     field: { type: ['object', 'null'], properties: {
@@ -16902,7 +16904,7 @@
             continuousFever: { type: 'boolean' },
             feverRule: { type: 'boolean' },
             feverStart: { type: 'boolean', description: 'True for FEVER rule (start), where both players begin inside FEVER.' },
-            allClearTicketEnabled: { type: 'boolean', description: 'True in the standard rule, where an all-clear grants a ticket that adds 2100 points and 30 ATTACK to the next colored-puyo explosion.' },
+            allClearTicketEnabled: { type: 'boolean', description: 'True when this mode grants an all-clear ticket for the next colored-puyo explosion (standard, together, and Puzzle Puyo). Practice adds 2100 points immediately; FEVER modes use their chain/time reward instead.' },
             colorCount: { type: 'integer', minimum: 3, maximum: COLORS.length },
             colors: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 3, maxItems: COLORS.length },
             aiDifficulty: { type: 'object', properties: {
@@ -16933,7 +16935,7 @@
         };
         const statusSchema = {
             type: 'object',
-            description: 'Match mode and rule, time and ATTACK scaling, both current, normal, and FEVER fields, scores, ATTACK and DAMAGE, all-clear tickets, upcoming pairs, warning puyos, FEVER, Puzzle Puyo, together-mode and online-play state, and both active pairs. Board coordinates start at the bottom-left.',
+            description: 'Match mode and rule, time and ATTACK scaling, both current, normal, and FEVER fields, scores, ATTACK and DAMAGE, all-clear tickets, upcoming pairs, warning puyos, FEVER, Puzzle Puyo, together-mode and online-play state, and both active pairs. During FEVER, FEVER DAMAGE is offset before an ATTACK aimed at the current FEVER round, then reserved normal DAMAGE, then other ATTACK; a placement after the timer expires returns to the normal field before dropping reserved DAMAGE. Board coordinates start at the bottom-left.',
             properties: statusProperties,
             // getNowGameStatus()는 모든 항목을 항상 채우므로 required도 properties 전체다.
             required: Object.keys(statusProperties)
@@ -16946,15 +16948,15 @@
                 annotations: { readOnlyHint: true },
                 execute: () => [
                     `Puyo W is a falling-pair puzzle battle on a ${COLUMNS}-column field. x counts columns from the left (0-${COLUMNS - 1}) and y counts rows from the bottom; ${VISIBLE_ROWS} rows are visible and more hidden rows sit above them.`,
-                    'Connect four or more same-color puyos vertically or horizontally to clear them. Garbage puyos next to a clear are removed too; a hard garbage puyo becomes normal garbage when hit once and breaks when hit twice in the same step. Chains create ATTACK, which first offsets your own DAMAGE and then reaches the opponent as warning puyos and falling garbage. ATTACK is the score divided by the current margin rate, which drops over time, multiplied by a time multiplier that doubles every 60 seconds from 360 seconds up to 4096.',
+                    'Connect four or more same-color puyos vertically or horizontally to clear them. Garbage puyos next to a clear are removed too; a hard garbage puyo becomes normal garbage when hit once and breaks when hit twice in the same step. ATTACK is the score divided by the current margin rate, multiplied by the time-progress multiplier (1 until 360 seconds, then doubling every 60 seconds up to 4096). In FEVER, each explosion offsets FEVER DAMAGE first, then an opponent ATTACK aimed at the current FEVER round, then reserved normal DAMAGE, then other opponent ATTACK. Remaining ATTACK becomes opponent DAMAGE after the chain finishes.',
                     'A player loses when cell (2, 11) is filled. FEVER rules and continuous fever also use cell (3, 11).',
                     'Keyboard: Left and Right move, Z rotates one way while X and Up rotate the other way, holding Down drops faster, and Escape pauses. Gamepads and an on-screen virtual joystick with Z, X, and ESC buttons also work.',
-                    'Modes: the standard rule, FEVER rule, and FEVER rule (start) are matches against a CPU opponent. In the standard rule an all-clear grants a ticket that adds 2100 points and 30 ATTACK to your next colored-puyo explosion. In FEVER rules each player has a FEVER gauge; when it fills, the player plays preset chain patterns on a separate FEVER field under a time limit, and FEVER rule (start) begins both players inside FEVER with 60 seconds. Practice is solo play. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result. Online play is a two-human match on separate computers through the configured game server; it is available only when that server reports online play enabled.',
+                    'Modes: the standard rule, FEVER rule, and FEVER rule (start) are matches against a CPU opponent. In standard, together, and Puzzle Puyo modes, an all-clear grants a ticket that adds 2100 points and 30 ATTACK to the next colored-puyo explosion; practice adds 2100 points immediately instead. FEVER rules do not create a ticket: an all-clear contributes to the FEVER target/time rules. Each FEVER player has a separate field and timer; FEVER rule (start) begins both players inside FEVER with 60 seconds. A FEVER placement whose timer has expired finishes FEVER before reserved normal DAMAGE is dropped. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result. Online play is a two-human match on separate computers through the configured game server; it is available only when that server reports online play enabled.',
                     'Leaderboard: the top 10 scores are kept only in this browser (localStorage key puyow_leaderboard) with the player name and the date and time when each score was recorded, and are viewed on the separate leaderboard.html page, which the Leaderboard button at the bottom left of the main menu opens in the same tab. Standard, FEVER, and FEVER (start) matches record the final score only when the human player wins, separately for each AI difficulty, color count, and opponent; matches against Solomon are never recorded. Practice and continuous fever record the final score separately for each color count only when the player loses (quitting from the pause menu is not recorded). Together (offline and online), watch mode, Puzzle Puyo, the tutorial, the simulator, and replay playback are never recorded.',
                     'Choosing Together mode in the main menu first opens a selection of Offline Play, Online Play, and Cancel (together_mode_select). Offline Play opens the offline together guide (together_guide), where the rule and color count are chosen. Online Play opens login and signup, then the lobby and room screens; it is hidden when the configured server does not provide online play.',
                     'Offline together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',
                     'Replays of recorded matches can be played back from the main menu; during playback no input is accepted except Escape, which skips to the result screen. Online matches cannot be paused or recorded. The tutorial, simulator, gallery, and settings are separate menu screens. Confirmation and text input dialogs capture all input until they are answered.',
-                    'Tools: now_screen returns the exact screen, the match mode and rule, and whether a replay, ONNX model loading, confirmation dialog, or text input dialog is in progress. now_game_status works only while a match is playing or paused, in every mode including online, watch, together, and replay playback, and includes online connection state when applicable. point_recommend works only while now_screen reports playerCanControl, and marks one cell on the left field until the active pair locks. show_message displays already-localized text at the top of the current screen.'
+                    'Tools: now_screen returns the exact screen, the match mode and rule, and whether a replay, ONNX model loading, confirmation dialog, or text input dialog is in progress. now_game_status works only while a match is playing or paused, in every mode including online, watch, together, and replay playback, and includes online connection state when applicable. Its warningPuyos are the warnings shown on the current field; normalDamage reports DAMAGE reserved for the normal field during FEVER. point_recommend works only while now_screen reports playerCanControl, and marks one cell on the left field until the active pair locks. show_message displays already-localized text at the top of the current screen.'
                 ].join('\n\n')
             },
             {
@@ -16967,7 +16969,7 @@
             },
             {
                 name: 'now_game_status',
-                description: 'Get complete JSON match state while a match is playing or paused, in any mode (CPU match, online, together, practice, continuous fever, Puzzle Puyo, watch, or replay playback): mode and rule, elapsed time, margin rate and time multiplier, colors, AI difficulty, both current, normal, and FEVER fields, scores, ATTACK and DAMAGE, all-clear tickets, the next two pairs, warning puyos, per-player and continuous FEVER state, Puzzle Puyo objective, together-mode win counts, online connection state, and both active pairs with coordinates.',
+                description: 'Get complete JSON match state while a match is playing or paused, in any mode (CPU match, online, together, practice, continuous fever, Puzzle Puyo, watch, or replay playback): mode and rule, elapsed time, margin rate and time multiplier, colors, AI difficulty, both current, normal, and FEVER fields, scores, ATTACK and DAMAGE, all-clear tickets, the next two pairs, current-field warning puyos, deferred normal DAMAGE during FEVER, per-player and continuous FEVER state, Puzzle Puyo objective, together-mode win counts, online connection state, and both active pairs with coordinates. FEVER DAMAGE and current-round targeting priority are documented by manual and the status schema.',
                 inputSchema: emptyInput,
                 outputSchema: statusSchema,
                 annotations: { readOnlyHint: true, untrustedContentHint: true },
