@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <link rel="icon" type="image/png" sizes="45x45" href="./img/icon45.png"/>
+        <title>Puyo W Leaderboard</title>
+
+        <!--
+        뿌요 W 리더보드 화면
+
+            Copyright 2026 HJOW
+
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+
+            http://www.apache.org/licenses/LICENSE-2.0
+
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+        -->
+
+        <link rel="stylesheet" href="./css/puyow.css"/>
+
+        <!--
+        화면 모드(다크 / 밝은)에 따라 이 변수들만 바뀌고 나머지 규칙은 그대로 쓴다.
+        기본값은 시스템 설정(prefers-color-scheme)을 따르며, 사이드바 하단 토글로 바꿀 수 있다(저장하지 않는다).
+        -->
+        <style>
+            :root {
+                color-scheme: dark;
+                --lb-bg: #0b1820;
+                --lb-sidebar: #10222c;
+                --lb-panel: #132833;
+                --lb-panel-2: #183341;
+                --lb-border: #24455a;
+                --lb-text: #e4eef2;
+                --lb-text-weak: #8ea7b3;
+                --lb-accent: #4fc3e0;
+                --lb-accent-soft: rgba(79, 195, 224, 0.16);
+                --lb-accent-text: #06161d;
+                --lb-gold: #f7c843;
+                --lb-silver: #c9d3da;
+                --lb-bronze: #d8955b;
+                --lb-shadow: rgba(0, 0, 0, 0.5);
+                background: var(--lb-bg);
+            }
+            :root[data-theme="light"] {
+                color-scheme: light;
+                --lb-bg: #eef3f6;
+                --lb-sidebar: #ffffff;
+                --lb-panel: #ffffff;
+                --lb-panel-2: #f2f6f9;
+                --lb-border: #cfdbe3;
+                --lb-text: #172630;
+                --lb-text-weak: #5a6f7c;
+                --lb-accent: #1a7fa0;
+                --lb-accent-soft: rgba(26, 127, 160, 0.12);
+                --lb-accent-text: #ffffff;
+                --lb-gold: #c99400;
+                --lb-silver: #7d8b95;
+                --lb-bronze: #a8622a;
+                --lb-shadow: rgba(23, 38, 48, 0.18);
+            }
+
+            * { box-sizing: border-box; }
+            html, body { margin: 0; padding: 0; height: 100%; }
+            body.webpuyo_leaderboard {
+                background: var(--lb-bg);
+                color: var(--lb-text);
+                font-family: "Pretendard", "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", "Hiragino Sans", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+            button, select { font-family: inherit; font-size: inherit; color: inherit; }
+            button { cursor: pointer; }
+            :focus-visible { outline: 2px solid var(--lb-accent); outline-offset: 2px; }
+
+            /* 전체 배치: 좌측 사이드바 + 우측 본문 */
+            .lb-layout {
+                display: grid;
+                grid-template-columns: 280px minmax(0, 1fr);
+                height: 100vh;
+                height: 100dvh;
+            }
+
+            /* 사이드바 */
+            .lb-sidebar {
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+                background: var(--lb-sidebar);
+                border-right: 1px solid var(--lb-border);
+            }
+            .lb-brand {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 18px 18px 14px 18px;
+                border-bottom: 1px solid var(--lb-border);
+            }
+            .lb-brand img { width: 32px; height: 32px; border-radius: 8px; }
+            .lb-brand-title { font-size: 16px; font-weight: 700; line-height: 1.2; }
+            .lb-brand-sub { font-size: 12px; color: var(--lb-text-weak); }
+            .lb-tree-wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 8px; }
+            .lb-tree, .lb-tree ul { list-style: none; margin: 0; padding: 0; }
+            .lb-tree ul { padding-left: 14px; margin-left: 11px; border-left: 1px solid var(--lb-border); }
+            .lb-tree ul[hidden] { display: none; }
+            .lb-node {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                width: 100%;
+                min-height: 34px;
+                margin: 1px 0;
+                padding: 6px 10px 6px 6px;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                text-align: left;
+            }
+            .lb-node:hover { background: var(--lb-panel-2); }
+            .lb-node[aria-current="true"] {
+                background: var(--lb-accent-soft);
+                color: var(--lb-accent);
+                font-weight: 700;
+            }
+            .lb-node-rule { font-weight: 600; }
+            .lb-caret {
+                flex: none;
+                width: 14px;
+                color: var(--lb-text-weak);
+                font-size: 10px;
+                transition: transform 0.15s ease;
+            }
+            .lb-node[aria-expanded="true"] > .lb-caret { transform: rotate(90deg); }
+            .lb-node-leaf > .lb-caret { visibility: hidden; }
+            .lb-node-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .lb-rule-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+            .lb-count {
+                flex: none;
+                min-width: 22px;
+                padding: 0 6px;
+                border-radius: 10px;
+                background: var(--lb-panel-2);
+                color: var(--lb-text-weak);
+                font-size: 11px;
+                text-align: center;
+                font-variant-numeric: tabular-nums;
+            }
+            .lb-sidebar-footer {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                padding: 12px 14px 16px 14px;
+                border-top: 1px solid var(--lb-border);
+            }
+            .lb-footer-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+            .lb-footer-label { color: var(--lb-text-weak); font-size: 13px; }
+            .lb-select {
+                min-width: 0;
+                max-width: 150px;
+                padding: 5px 8px;
+                border: 1px solid var(--lb-border);
+                border-radius: 6px;
+                background: var(--lb-panel-2);
+            }
+            /* 다크 모드 토글 스위치 */
+            .lb-theme-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                width: 100%;
+                padding: 8px 10px;
+                border: 1px solid var(--lb-border);
+                border-radius: 8px;
+                background: var(--lb-panel-2);
+            }
+            .lb-switch {
+                position: relative;
+                flex: none;
+                width: 38px;
+                height: 22px;
+                border-radius: 11px;
+                background: var(--lb-border);
+                transition: background 0.15s ease;
+            }
+            .lb-switch::after {
+                content: "";
+                position: absolute;
+                top: 3px;
+                left: 3px;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: #ffffff;
+                transition: transform 0.15s ease;
+            }
+            .lb-theme-toggle[aria-checked="true"] .lb-switch { background: var(--lb-accent); }
+            .lb-theme-toggle[aria-checked="true"] .lb-switch::after { transform: translateX(16px); }
+            .lb-back-link { color: var(--lb-accent); font-size: 13px; text-decoration: none; }
+            .lb-back-link:hover { text-decoration: underline; }
+
+            /* 본문 */
+            .lb-main { min-width: 0; overflow-y: auto; padding: 28px 32px 40px 32px; }
+            .lb-main-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+            .lb-menu-button {
+                display: none;
+                flex: none;
+                padding: 6px 10px;
+                border: 1px solid var(--lb-border);
+                border-radius: 6px;
+                background: var(--lb-panel-2);
+            }
+            .lb-breadcrumb { margin: 0 0 4px 0; color: var(--lb-text-weak); font-size: 13px; }
+            .lb-title { margin: 0; font-size: 24px; line-height: 1.3; }
+            .lb-note { margin: 4px 0 0 0; color: var(--lb-text-weak); font-size: 13px; }
+            .lb-card {
+                max-width: 720px;
+                background: var(--lb-panel);
+                border: 1px solid var(--lb-border);
+                border-radius: 12px;
+                box-shadow: 0 8px 24px var(--lb-shadow);
+                overflow: hidden;
+            }
+            .lb-table { width: 100%; border-collapse: collapse; }
+            .lb-table th, .lb-table td { padding: 11px 16px; text-align: left; }
+            .lb-table thead th {
+                background: var(--lb-panel-2);
+                color: var(--lb-text-weak);
+                font-size: 12px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+            .lb-table tbody tr + tr td { border-top: 1px solid var(--lb-border); }
+            .lb-table .lb-col-rank { width: 72px; }
+            .lb-table .lb-col-score { text-align: right; font-variant-numeric: tabular-nums; font-family: "D2Coding", ui-monospace, monospace; font-size: 15px; }
+            .lb-table td.lb-col-name { overflow-wrap: anywhere; }
+            .lb-table .lb-col-date { width: 1%; white-space: nowrap; color: var(--lb-text-weak); font-size: 13px; font-variant-numeric: tabular-nums; }
+            .lb-rank {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: var(--lb-panel-2);
+                font-weight: 700;
+                font-variant-numeric: tabular-nums;
+            }
+            .lb-rank-1 { background: var(--lb-gold); color: #231a00; }
+            .lb-rank-2 { background: var(--lb-silver); color: #1b2227; }
+            .lb-rank-3 { background: var(--lb-bronze); color: #251303; }
+            .lb-empty { padding: 36px 20px; color: var(--lb-text-weak); text-align: center; }
+
+            .lb-backdrop { display: none; }
+
+            /* 좁은 화면: 사이드바를 서랍으로 바꾼다. */
+            @media (max-width: 760px) {
+                .lb-layout { grid-template-columns: minmax(0, 1fr); }
+                .lb-sidebar {
+                    position: fixed;
+                    top: 0;
+                    bottom: 0;
+                    left: 0;
+                    z-index: 20;
+                    width: min(300px, 86vw);
+                    transform: translateX(-100%);
+                    transition: transform 0.2s ease;
+                    box-shadow: 0 0 30px var(--lb-shadow);
+                }
+                .lb-layout.is-menu-open .lb-sidebar { transform: none; }
+                .lb-layout.is-menu-open .lb-backdrop {
+                    display: block;
+                    position: fixed;
+                    inset: 0;
+                    z-index: 10;
+                    background: rgba(0, 0, 0, 0.4);
+                }
+                .lb-menu-button { display: inline-block; }
+                .lb-main { padding: 16px 16px 32px 16px; }
+                .lb-title { font-size: 20px; }
+                .lb-table th, .lb-table td { padding: 10px 10px; }
+                .lb-table .lb-col-rank { width: 52px; }
+                /* 좁은 화면에서는 기록 일시를 두 줄까지 허용해 가로 스크롤을 막는다. */
+                .lb-table .lb-col-date { white-space: normal; min-width: 88px; font-size: 12px; }
+            }
+        </style>
+
+        <script defer src="./js/json5.min.js"></script>
+        <script defer src="./js/puyow.js"></script>
+        <script defer src="./js/puyow_leaderboard.js"></script>
+
+        <script>
+            // 첫 그림이 번쩍이지 않도록 스크립트를 읽기 전에 시스템 화면 모드를 먼저 적용한다.
+            (function() {
+                try {
+                    const light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+                    document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+                } catch (e) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            })();
+            document.addEventListener("DOMContentLoaded", function() {
+                window.PuyoWLeaderboard.initialize(document.getElementById("puyow_leaderboard_target"));
+            });
+        </script>
+    </head>
+    <body class="webpuyo_leaderboard">
+        <div id="puyow_leaderboard_target"></div>
+    </body>
+</html>

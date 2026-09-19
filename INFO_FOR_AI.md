@@ -22,13 +22,14 @@
 - 핵심 엔진·캔버스 UI: `src/js/puyow.js`
 - 선택적 3D 효과 구현: `src/js/puyow_3d.js` (`puyow.js`와 분리된 확장 모듈)
 - 개발용 도구 페이지: `src/tools.html`, `src/js/puyow_tools.js` (피버 패턴·퍼즐뿌요 제작용, 게임 페이지는 이 스크립트를 읽지 않는다)
+- 리더보드 조회 페이지: `src/leaderboard.html`(스타일 포함), `src/js/puyow_leaderboard.js` (기록 읽기·룰/적 목록·게임 번역은 `puyow.js`의 `PuyoW.leaderboard` API를 쓰며 게임은 초기화하지 않는다. 게임 페이지는 이 스크립트를 읽지 않는다)
 - 서버 모니터링·관리 페이지: `src/admin.html`, `src/js/puyow_admin.js` (서버 백엔드는 `node/admin.js`·`python/admin.py`, 게임 페이지는 이 스크립트를 읽지 않는다)
 - 스타일: `src/css/puyow.css`
 - 선택적 라이브러리: `src/js/three.min.js`, `src/js/json5.min.js`
 - 이미지: `src/img/`
 - 언어별 공지사항: `src/notice/`
 - Webpack 번들 출력: `src/bundle/puyow.bundle.js`
-- E2E 회귀 테스트: `tests/test01_*.spec.js` (게임 페이지), `tests/test02_tools.spec.js` (개발용 도구 페이지), `tests/test03_ai.spec.js` (AI 모델 사용·학습), `tests/test04_admin.spec.js` (서버 모니터링·관리 페이지)
+- E2E 회귀 테스트: `tests/test01_*.spec.js` (게임 페이지), `tests/test02_tools.spec.js` (개발용 도구 페이지), `tests/test03_ai.spec.js` (AI 모델 사용·학습), `tests/test04_admin.spec.js` (서버 모니터링·관리 페이지), `tests/test05_leaderboard.spec.js` (리더보드 기록 규칙과 조회 페이지)
 - 개발자 문서: `HOWTO.md`, `docs/`
 - 공개 안내 문서: `README.md`, `README.en.md` (`README.en.md`는 `README.md`의 영어 번역본이므로 플레이 주소·실행 방법 같은 원문 갱신을 함께 반영한다.)
 - 모든 텍스트 파일은 UTF-8, 기본 UI 언어는 한국어다.
@@ -153,7 +154,7 @@
 ## UI·입력·결과 화면
 
 - 초기 화면은 `initial_title`이며 Enter, Gamepad A 또는 캔버스 클릭으로 메인 메뉴에 들어간다.
-- 메인 메뉴 좌측 공지사항은 논리 X=42에서 시작하고 폭 350px로 줄바꿈해 표시한다. 공지사항은 `notice_[LANG].txt`에서 읽으며, 표시 영역을 변경할 때 줄바꿈 폭과 클리핑 폭을 함께 수정한다.
+- 메인 메뉴 좌측 공지사항은 논리 X=42, Y=230에서 시작하고 폭 350px로 줄바꿈해 표시하며, 아래쪽은 좌측 하단 버튼 묶음 위에서 잘린다. 공지사항은 `notice_[LANG].txt`에서 읽으며, 표시 영역을 변경할 때 줄바꿈 폭과 클리핑 폭을 함께 수정한다.
 - 플레이 중 회전 Z/X는 `event.key`뿐 아니라 물리 키 코드 `KeyZ`/`KeyX`도 받아 macOS 한글 입력기·다른 키보드 레이아웃에서 동작해야 한다. 텍스트 입력 중에는 물리 키 코드로 문자 입력을 바꾸지 않는다.
 - 게임 시작 규칙 선택은 첫 줄의 기본 룰·피버 룰·피버 룰 (시작)과 그 아래 연습·연속 피버·퍼즐뿌요, 취소로 구성된다. 물리 배치에 맞춘 방향키 이동을 유지한다. 연속 피버에서 아래는 하단 취소다.
 - 연습·연속 피버의 색 수 화면과 퍼즐 스테이지 선택에도 취소가 있다. ESC와 외부 클릭의 기존 의미를 바꾸지 않는다.
@@ -163,7 +164,9 @@
 - 진행 중인 일반·피버·피버 시작·연습·연속 피버·퍼즐·너랑 나랑·구경·리플레이 재생의 일시정지 오버레이는 `재개`(0)·`다시하기`(1)·`종료`(2) 순서다. 방향키는 순환 포커스를, Enter·Space와 마우스는 선택 실행을 맡는다. 다시하기는 현재 모드·규칙·난이도·퍼즐 스테이지를 보존한 새 게임을 만들고 3초 카운트다운부터 시작한다. 구경은 기존 좌·우 적 종류를 유지하고, 너랑 나랑은 `togetherWinCounts`를 유지하며, 리플레이는 같은 기록 데이터를 처음부터 재생한다. 시뮬레이터와 플레이 방법은 이 오버레이 대상이 아니다.
 - 다시하기 전 `releaseGameRuntimeResources()`가 각 적의 대기 API 요청·Worker 탐색을 `replaced` 사유로 취소하고 ONNX 모델 대여를 반납한다. 새 게임 생성 뒤에는 이전 비동기 결과가 적용되지 않으며, ONNX 모델 로딩이 끝나야 카운트다운이 진행된다.
 - 메인 메뉴 목록은 `TITLE_MENU_OPTIONS`(게임 시작 0, 너랑 나랑 1, 시뮬레이터 2, 플레이 방법 3, 구경 4, 갤러리 5, 설정 6)이고, 항목 배치는 `TITLE_MENU_ITEM_LAYOUT`(폭 218, 높이 42, 시작 Y 250, 간격 8)을 그리기와 클릭 판정이 함께 쓰는 `getTitleMenuItemBounds()`로 계산한다. 항목을 더하거나 빼면 이 두 상수만 고치면 되고, 잠기는 구경 항목은 `TITLE_WATCH_MENU_INDEX`로 참조한다.
-- 메인 메뉴 좌측 하단 GitHub 버튼 바로 위 (32, 634, 85, 23)에 `리플레이 재생` 버튼이 있다. 목록 밖 버튼의 포커스 순번은 `TITLE_GITHUB_FOCUS_INDEX`(7)·`TITLE_MUTE_FOCUS_INDEX`(8)·`TITLE_REPLAY_FOCUS_INDEX`(9)이며 이동 순서는 `TITLE_MENU_FOCUS_ORDER`가 정한다(목록 0~6 → 리플레이 → GitHub → 음소거). 목록이 늘어나면 이 세 상수도 목록 뒤로 밀어야 순번이 겹치지 않는다.
+- 메인 메뉴 좌측 하단에는 위에서부터 `리플레이 재생`(`TITLE_REPLAY_BUTTON`, 32, 603, 85, 23), `리더보드`(`TITLE_LEADERBOARD_BUTTON`, 32, 634), `GitHub`(`TITLE_GITHUB_BUTTON`, 32, 665) 버튼이 8px 간격으로 쌓여 있다. BUILDNO 93에서 리더보드 버튼을 넣으면서 리플레이 재생 버튼을 634에서 603으로 올렸고, 테스트 도우미 `clickReplayPlaybackButton()`의 클릭 Y도 614로 옮겼다. 그리기와 클릭 판정이 모두 이 상수들을 쓴다. 리더보드 버튼은 `openLeaderboardPage()`로 현재 페이지를 `LEADERBOARD_PAGE_URL`(`./leaderboard.html`, 게임 페이지 기준 상대 경로이며 `convertURL()`을 거친다)로 이동시킨다(새 창이 아니다).
+- 목록 밖 버튼의 포커스 순번은 `TITLE_GITHUB_FOCUS_INDEX`(7)·`TITLE_MUTE_FOCUS_INDEX`(8)·`TITLE_REPLAY_FOCUS_INDEX`(9)·`TITLE_LEADERBOARD_FOCUS_INDEX`(10)이며 이동 순서는 `TITLE_MENU_FOCUS_ORDER`가 정한다(목록 0~6 → 리플레이 → 리더보드 → GitHub → 음소거, 좌측 하단은 위에서 아래 순서). 목록이 늘어나면 이 네 상수도 목록 뒤로 밀어야 순번이 겹치지 않는다.
+- 메인 메뉴 공지사항의 클립 높이는 고정 390이 아니라 `TITLE_REPLAY_BUTTON.y - 8 - 230`(현재 365)이다. 좌측 하단 버튼 묶음 맨 위 버튼과 겹치지 않게 하려는 것이므로 버튼을 옮기면 공지 영역도 따라 줄거나 늘어난다.
 - 가상 컨트롤러의 Z·X·ESC 조작 버튼은 표시 레이아웃과 히트 테스트에 같은 `getVirtualControllerLayout()`을 사용해야 한다. 크기 옵션/대형 배치 변경은 둘을 함께 수정한다.
 - 방향 조작은 BUILDNO 30에서 고정 방향 패드를 없애고 [virtualjoystick.js](https://github.com/jeromeetienne/virtualjoystick.js) 방식을 벤치마킹한 가상 조이스틱으로 완전히 대체했다. 조작 버튼 밖을 누른 지점이 그 포인터의 기준점(`virtualJoystickPointers`)이 되고, 손가락을 떼면 기준점과 방향 입력이 함께 사라진다. 기준점은 드래그 중 따라오지 않는다.
 - 방향 판정은 `getVirtualJoystickDirections()` 한 곳에 모여 있다. 기준점에서 `VIRTUAL_JOYSTICK_MIN_DRAG`(10, 논리 픽셀) 미만이면 아무 방향도 아니며, 다른 축이 이 축의 `VIRTUAL_JOYSTICK_DIAGONAL_RATIO`(2)배 안쪽이면 두 축을 함께 눌러 대각선을 두 방향키 동시 입력으로 처리한다. 조이스틱이 만든 방향키도 기존 `virtualPointerButtons`에 담기므로, 좌우 홀드 반복과 빠른 하강 같은 후속 처리는 예전 경로를 그대로 탄다.
@@ -215,7 +218,7 @@
 
 ## 저장소·다국어·외부 확장
 
-- 진행도·설정·GOLD는 `localStorage`의 `puyow_store`, 카드 인스턴스 배열은 `puyow_cards`, 갤러리 잠금은 `puyow_gallery`, 테스트 기능 코드 배열은 `puyow_code`에 저장된다. 초기화 시 `puyow_code`를 JSON 배열로 복원하며, 파싱 실패는 오류를 기록한 뒤 빈 배열로 계속한다. 읽을 때 이전 형식을 보정하므로 새 필드는 기본값·마이그레이션을 함께 설계한다. 설정의 `useReplayFeature`는 리플레이 기능 사용 여부를, `reverseLearning`은 역방향 모델 학습 사용 여부를 저장하는 boolean이며, 기존 저장에 값이 없으면 둘 다 `false`로 보정한다. `puyow_store` 최상위의 `onnxWarningAcknowledged`는 ONNX 적 첫 대전 전 불안정 안내에서 `계속`을 고른 적이 있는지를 담는 boolean이며, 설정 화면에는 나오지 않고 값이 없거나 true가 아니면 `false`로 보정한다.
+- 진행도·설정·GOLD는 `localStorage`의 `puyow_store`, 카드 인스턴스 배열은 `puyow_cards`, 갤러리 잠금은 `puyow_gallery`, 리더보드 기록은 `puyow_leaderboard`(아래 「리더보드」 절), 테스트 기능 코드 배열은 `puyow_code`에 저장된다. 초기화 시 `puyow_code`를 JSON 배열로 복원하며, 파싱 실패는 오류를 기록한 뒤 빈 배열로 계속한다. 읽을 때 이전 형식을 보정하므로 새 필드는 기본값·마이그레이션을 함께 설계한다. 설정의 `useReplayFeature`는 리플레이 기능 사용 여부를, `reverseLearning`은 역방향 모델 학습 사용 여부를 저장하는 boolean이며, 기존 저장에 값이 없으면 둘 다 `false`로 보정한다. `puyow_store` 최상위의 `onnxWarningAcknowledged`는 ONNX 적 첫 대전 전 불안정 안내에서 `계속`을 고른 적이 있는지를 담는 boolean이며, 설정 화면에는 나오지 않고 값이 없거나 true가 아니면 `false`로 보정한다.
 - 설정 화면의 `화면 가로방향 고정`·`리플레이 사용`·`역으로 모델 학습` 체크박스는 마우스 클릭 또는 Enter·Space·Z(해당 게임패드 확인 입력 포함)로만 토글한다. 체크박스에 포커스가 있을 때 좌우 방향키는 세 체크박스 사이의 포커스 이동에 쓰며, 양 끝에서는 더 이동하지 않는다. 위치·포커스 순번·저장 키는 `getSettingsCheckboxes()` 한 곳에서 정의하고 그리기·키보드 토글·마우스 판정이 모두 이 목록을 사용하므로, 체크박스를 더할 때는 이 함수와 `SETTINGS_UI_LAYOUT`의 가로 좌표만 추가하면 된다.
 - 설정 화면 포커스 순번은 0~9 설정 행, 10 AI API 테스트, 11~13 체크박스, 14 저장, 15 취소, 16 초기화다. `getSelectableSettingsFocuses()`가 AI 입력 세 행 7·8·9를 LM Studio에서만 넣고 10도 API 테스트 실행 가능 여부에 따라 빼므로, 키보드 이동 횟수를 검증하는 테스트는 이 목록을 기준으로 계산한다.
 - `registerLanguage()`, `registerOpponent()`, `registerWarningPuyo()`, `registerFeverStage()`, `registerPuzzleStage()`가 주요 확장 지점이다. 입력 검증과 중복 처리 방식은 기존 등록 함수에 맞춘다.
@@ -507,6 +510,7 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 | `test01_replay.spec.js` | 리플레이 기록과 재생 |
 | `test01_together.spec.js` | 너랑 나랑 (한 컴퓨터 2인 대전) |
 | `test02_tools.spec.js` | 개발용 도구 페이지(`tools.html`) |
+| `test05_leaderboard.spec.js` | 리더보드 기록 규칙(기본 룰 승리·연습 패배·일시정지 종료 제외·저장값 정리)과 조회 페이지(`leaderboard.html`)의 트리 메뉴·키보드·화면 모드·다국어·좁은 화면 |
 | `test03_ai.spec.js` | **AI 모델 사용과 학습.** 설정의 AI 서비스 제공자(LM Studio·Local AI), 솔로몬의 배치 요청과 온라인 학습 전송, `역으로 모델 학습` 설정, 브라우저 ONNX 추론 적(적 선택 화면의 느낌표 마크와 첫 대전 전 불안정 안내 포함) |
 
 AI 모델과 학습에 관한 테스트는 반드시 `test03_ai.spec.js`에 둔다. 이 파일만 외부 AI 서버 응답과 ONNX 런타임을 흉내 내고 CPU를 많이 쓰므로, 나머지 게임 동작 테스트와 섞으면 실패 원인을 가리기 어렵다.
@@ -1128,6 +1132,27 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - 지정된 나무위키 두 문서는 조회 오류로 본문을 읽지 못했다. 대체로 [Goetia 원문 전사본의 59·60번](https://www.esotericarchives.com/solomon/goetia.htm)을 확인해 전승 요소를 반영했다. 이미지 파일 없이 기존 `drawCuteEnemyPortrait()`와 `ENEMY_PORTRAIT_STYLES`를 확장했다.
 - 초상화 회귀 검사는 현재 15명 × 3표정 × 5배율을 확인한다. `test01_core.spec.js`는 자간과 같은 AI 상태·메서드·모델 및 독립적인 모델 경로를, `test01_menu.spec.js`는 갤러리 등록·카드 제외·출시 예정 선택 차단을 확인한다.
 - 검증: 관련 5개 검사 × Chromium·Firefox·WebKit = 15개 모두 통과했다. 첫 실행의 선택 차단 검사는 영어 표시 이름을 한국어 기대값과 비교해 실패했으며, 현재 언어의 번역값으로 수정한 뒤 세 브라우저에서 재통과했다. 전체 초상화 비교 이미지를 직접 확인했고 `node --check`, `npm.cmd test`, Playwright 서버 시작 시 실행한 webpack 빌드, `git diff --check`도 통과했다. 번들을 갱신했으며 BUILDNO는 80, 패키지 버전은 `0.0.80`이다. 버전값 자체는 테스트하지 않았다. 새 적의 실제 모델 추론 대전은 실행하지 않았으며, 자간과 동일한 공통 AI 메서드·초기 상태·모델 경로를 확인했다.
+
+### 리더보드 (2026-09-19, BUILDNO 91)
+
+`TODO.md`의 리더보드 기록·조회 요구를 구현했다.
+
+**기록 규칙** — 결과가 확정되는 `updateDefeatSequence()`에서 `recordEnemyClear()`·`recordTogetherResult()` 다음에 `recordLeaderboardResult(winner, loser)`를 한 번 부른다(`game.leaderboardRecorded`로 중복 방지). 대상과 제외는 다음과 같다.
+- 기본 룰·피버 룰·피버 룰 (시작): 사람(1P, `controller === null`)이 **이겼을 때만** 최종 점수(`player.point`, 정수로 내림)를 기록한다. 순위는 룰 × AI 난이도(`AI_DIFFICULTIES[game.aiDifficulty].key`: easy·normal·hard·extreme) × 색 수 × 적 `getClassType()`마다 따로다. BUILDNO 91~93에는 AI 난이도로 나누지 않았고, BUILDNO 94에서 사용자 요청으로 나눴다.
+- 연습·연속 피버: 승리 조건이 없으므로 **사람이 패배했을 때**(`loser === players[0]`) 최종 점수를 룰 × 색 수마다 기록한다. 연속 피버의 시간 만료도 `startDefeatSequence(player, …)`를 거치는 패배라 기록된다. 일시정지 `종료`·`다시하기`, 결과 전 이탈은 이 경로를 지나지 않으므로 기록되지 않는다.
+- 제외: 너랑 나랑(`game.together`, 오프라인)·온라인(`game.online`)·구경·퍼즐뿌요·플레이 방법(`game.tutorial`)·리플레이 재생·개발용 도구 테스트(`game.toolsTest`), 그리고 **솔로몬**(`LEADERBOARD_EXCLUDED_ENEMY_TYPES`)은 모드와 무관하게 제외한다. ONNX 적은 기록 대상이다. 시뮬레이터는 결과 경로가 없어 기록되지 않는다.
+- 닉네임은 게임 시작 때 `PlayerState` 이름으로 들어간 `getPlayerName()` 값(기록 당시 이름)이다. 게임 진행 시간은 기록하지 않는다. BUILDNO 92부터 기록이 발생한 당시의 현재 시각을 `recordedAt`(`Date.now()`, 밀리초)으로 함께 남긴다. 동점은 따로 고려하지 않으며 먼저 들어간 기록 뒤에 놓인다.
+
+**저장 형식** — `localStorage`(`storageManager`)의 `puyow_leaderboard`에 `{version: 2, records, legacy?}` JSON을 둔다(`LEADERBOARD_FORMAT_VERSION`). 단독 룰(`practice`·`continuous_fever`)은 `records[룰키][색 수 문자열] = [{name, score, recordedAt}]`, 대전 룰(`standard`·`fever`·`fever_start`)은 `records[룰키][AI 난이도 키][색 수 문자열][적 classType] = [{name, score, recordedAt}]`다. 정리는 `normalizeLeaderboardSoloRecords()`·`normalizeLeaderboardBattleRecords()`가 나눠 맡고, 알 수 없는 난이도 키는 버린다. **형식 1(BUILDNO 91~93)의 대전 기록은 AI 난이도 정보가 없어 어느 난이도에도 넣지 않는다.** 임의 난이도로 옮기면 사실과 다른 기록이 되므로, 지워지지도 않게 `legacy.v1[룰키]`에 형식 1 구조 그대로 보존만 하고 화면·WebMCP에는 보이지 않는다(사용자에게 알렸다). 형식 1의 단독 룰 기록은 구조가 같아 그대로 옮긴다. `legacy`는 이후 저장에서도 그대로 유지된다. `recordedAt`이 없거나 잘못된 BUILDNO 91 기록은 `normalizeLeaderboardEntry()`가 `null`로 보정한다(형식 버전은 1 그대로). 룰 키와 표시 라벨·대전 여부는 `LEADERBOARD_RULES` 한 곳에 있다. `loadLeaderboard()`가 읽을 때마다 알 수 없는 룰·3~5 밖의 색 수·솔로몬·음수/숫자 아닌 점수를 버리고 점수 내림차순 10개(`LEADERBOARD_MAX_ENTRIES`)로 정리한다. 설정 화면의 `초기화`는 `storageManager.clear()`라 리더보드도 함께 지운다.
+
+**공개 API** — `PuyoW.leaderboard`(`leaderboardApi`)는 `STORE_KEY`, `MAX_ENTRIES`, `getRules()`, `getColorCounts()`, `getDifficulties()`(`{key, label(한국어 키)}` 네 개), `getOpponents()`(숨김·출시 예정·솔로몬 제외, `{classType, name(한국어 키)}`), `getData()`, `translate(language, 한국어키)`를 준다. `translate`는 `initialize()` 없이도 게임 `stringTable`을 쓰며 그 언어에 번역이 없으면 영어, 그것도 없으면 원문이다(독일어·프랑스어 표에 적 이름이 없어 영어 이름이 나온다). 기록 함수 자체는 공개하지 않는다.
+
+**조회 페이지** — `leaderboard.html`은 `puyow.js`와 `puyow_leaderboard.js`를 읽고 `PuyoWLeaderboard.initialize(target)`만 부른다. 좌측 사이드바는 대전 룰이면 룰(1단) → AI 난이도(2단) → 색 수(3단) → 적(4단), 단독 룰이면 룰(1단) → 색 수(2단) 트리 메뉴이고(노드 id는 `standard/normal/4/Kimaris`, `practice/3`처럼 경로를 `/`로 이은 것) 끝 항목 옆에 기록 수를 표시한다. 적 목록은 `getOpponents()` 전체 뒤에 기록만 있는 적(외부 확장 등)을 classType 이름으로 붙인다. 가지를 누르면 펼치고(이미 선택된 가지를 다시 누르면 접는다) 우측에 안내를, 끝 항목을 누르면 순위·닉네임·점수·기록 일시 표를 보인다. 기록 일시는 `Intl.DateTimeFormat(현재 언어, {dateStyle:'medium', timeStyle:'short'})`로 브라우저 현지 시간대로 표시하고 셀 `title`에 ISO 8601(UTC) 문자열을 둔다. `recordedAt`이 null이면 `-`다. 좁은 화면에서는 일시 칸이 두 줄까지 줄바꿈된다. 닉네임은 `textContent`로만 넣는다. 트리는 위아래·Home·End 이동, 오른쪽 펼치기·하위 이동, 왼쪽 접기·상위 이동을 지원하며, 다시 그리기 전에 트리 안 포커스 여부를 먼저 확인해 같은 노드로 포커스를 되돌린다. 다른 탭에서 기록이 바뀌면 `storage` 이벤트로 다시 읽는다.
+- 화면 모드: CSS 변수(`--lb-*`)는 `leaderboard.html`의 `:root`와 `:root[data-theme="light"]`에만 있다. 헤드의 인라인 스크립트가 `prefers-color-scheme`으로 먼저 `data-theme`를 정해 깜박임을 막고, 사이드바 하단 스위치(`role="switch"`, `aria-checked`가 다크 여부)로 바꾼다. 저장하지 않으며, 사용자가 토글하기 전까지는 시스템 모드 변경을 따라간다.
+- 다국어: 기본은 영어이고 한국어·일본어·중국어·독일어·프랑스어를 지원한다. `puyow_tools.js`처럼 영어 원문을 키로 쓰는 `LEADERBOARD_STRINGS`를 두고, 룰·색 수·적 이름은 게임 번역표(`PuyoW.leaderboard.translate`)를 쓴다. 브라우저 언어 앞 두 글자로 고르며 사이드바 하단 언어 선택으로도 바꿀 수 있다(저장하지 않음). 문구를 더할 때는 다섯 언어에 모두 넣는다.
+- 760px 이하에서는 사이드바가 서랍이 되어 본문 헤더의 메뉴 버튼으로 열고, 끝 항목 선택·배경 클릭·ESC로 닫는다.
+- WebMCP: `leaderboard_manual`, `leaderboard_records`(읽기 전용, 닉네임이 들어가 `untrustedContentHint`, 각 항목의 `recordedAt`은 ISO 8601 UTC 문자열 또는 null, 대전 룰은 `difficulty`로 좁히며 결과 순위마다 `difficulty`를 담는다. 대전 룰에서 `colors`를 주려면 `difficulty`도 줘야 한다), `leaderboard_show`(트리에서 해당 순위를 선택해 보여 줌) 세 도구를 `leaderboard_` 접두어로 등록한다. 게임 페이지 WebMCP `manual`에도 리더보드 기록 규칙 문단을 더했다.
+- 검증: `tests/test05_leaderboard.spec.js` 9개 × Chromium·Firefox·WebKit = 27개 통과, `test01_core`·`test01_enemy` Chromium 82개 통과, `node --check`, ESLint, webpack 번들 재생성, `git diff --check`. BUILDNO 91, 패키지 버전 `0.0.91`(버전값 자체는 테스트하지 않음). BUILDNO 92(`0.0.92`)에서 기록 일시를 더한 뒤 같은 27개를 다시 통과했다. BUILDNO 94(`0.0.94`)에서 AI 난이도 단계를 더한 뒤 12개 × 3 브라우저 = 36개가 통과했다(형식 1 이관 테스트 추가). 조회 페이지에는 `puyow.html`로 돌아가는 링크가 있다. BUILDNO 93부터 게임 메인 메뉴 좌측 하단 `리더보드` 버튼으로 이 페이지에 들어간다(위 「UI·입력·결과 화면」 절). 회귀 테스트는 `test05_leaderboard.spec.js`의 버튼 위치·방향키 순서(GitHub에서 위로 한 번)·Enter·마우스 클릭 이동 두 개다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 

@@ -163,7 +163,7 @@ export /** 메인 메뉴 좌측 하단의 리플레이 재생 버튼을 마우�
 async function clickReplayPlaybackButton(page) {
   const bounds = await page.locator('[data-puyow-canvas="2d"]').boundingBox();
   const scale = bounds.width / 1280;
-  await page.mouse.click(bounds.x + 74 * scale, bounds.y + 645 * scale);
+  await page.mouse.click(bounds.x + 74 * scale, bounds.y + 614 * scale);
 }
 
 /** askText 대화상자에 클립보드 문자열을 붙여 넣고 확인한다. @param {import('@playwright/test').Page} page 대상 페이지 @param {string} value 입력 문자열 @param {boolean} [multiline=true] 여러 줄 입력 대화상자 여부 */

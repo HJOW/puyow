@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 90;
+    const BUILDNO = 94;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -511,6 +511,7 @@
 
     // 리플레이 기록·재생 관련 문구다. 독일어·프랑스어 표는 위에서 영어 표를 복사한 뒤이므로 언어별로 각각 추가한다.
     Object.assign(stringTable.en, {
+        '리더보드': 'Leaderboard',
         '리플레이 재생': 'Play Replay', '리플레이 복사': 'Copy Replay',
         '리플레이가 클립보드에 복사됨': 'Replay copied to clipboard', '리플레이 복사 실패': 'Replay copy failed',
         '리플레이 JSON코드를 붙여넣어 주세요.': 'Paste the replay JSON code.',
@@ -518,6 +519,7 @@
         '리플레이 재현 중 오류가 발생했습니다.': 'An error occurred while playing the replay.'
     });
     Object.assign(stringTable.ja, {
+        '리더보드': 'リーダーボード',
         '리플레이 재생': 'リプレイ再生', '리플레이 복사': 'リプレイをコピー',
         '리플레이가 클립보드에 복사됨': 'リプレイをクリップボードにコピーしました', '리플레이 복사 실패': 'リプレイのコピーに失敗しました',
         '리플레이 JSON코드를 붙여넣어 주세요.': 'リプレイのJSONコードを貼り付けてください。',
@@ -525,6 +527,7 @@
         '리플레이 재현 중 오류가 발생했습니다.': 'リプレイの再現中にエラーが発生しました。'
     });
     Object.assign(stringTable.zh, {
+        '리더보드': '排行榜',
         '리플레이 재생': '播放回放', '리플레이 복사': '复制回放',
         '리플레이가 클립보드에 복사됨': '回放已复制到剪贴板', '리플레이 복사 실패': '复制回放失败',
         '리플레이 JSON코드를 붙여넣어 주세요.': '请粘贴回放 JSON 代码。',
@@ -532,6 +535,7 @@
         '리플레이 재현 중 오류가 발생했습니다.': '回放播放过程中发生错误。'
     });
     Object.assign(stringTable.de, {
+        '리더보드': 'Bestenliste',
         '리플레이 재생': 'Wiederholung abspielen', '리플레이 복사': 'Wiederholung kopieren',
         '리플레이가 클립보드에 복사됨': 'Wiederholung in die Zwischenablage kopiert', '리플레이 복사 실패': 'Kopieren der Wiederholung fehlgeschlagen',
         '리플레이 JSON코드를 붙여넣어 주세요.': 'Füge den Wiederholungs-JSON-Code ein.',
@@ -540,6 +544,7 @@
         '리플레이 사용': 'Wiederholung verwenden', '역으로 모델 학습': 'Modell umgekehrt lernen'
     });
     Object.assign(stringTable.fr, {
+        '리더보드': 'Classement',
         '리플레이 재생': 'Lire la reprise', '리플레이 복사': 'Copier la reprise',
         '리플레이가 클립보드에 복사됨': 'Reprise copiée dans le presse-papiers', '리플레이 복사 실패': 'Échec de la copie de la reprise',
         '리플레이 JSON코드를 붙여넣어 주세요.': 'Colle le code JSON de la reprise.',
@@ -814,12 +819,20 @@
     const TITLE_MUTE_FOCUS_INDEX = 8;
     /** 메인 메뉴 리플레이 재생 버튼의 포커스 순번이다. @type {number} */
     const TITLE_REPLAY_FOCUS_INDEX = 9;
-    /** 메인 메뉴 좌측 하단 리플레이 재생 버튼의 위치와 크기다. GitHub 버튼 바로 위에 둔다. @type {{x:number,y:number,width:number,height:number}} */
-    const TITLE_REPLAY_BUTTON = { x: 32, y: 634, width: 85, height: 23 };
-    /** 메인 메뉴 방향키 포커스 이동 순서다. 목록 항목 뒤에 리플레이 재생, GitHub, 음소거 버튼이 온다. @type {number[]} */
+    /** 메인 메뉴 리더보드 버튼의 포커스 순번이다. @type {number} */
+    const TITLE_LEADERBOARD_FOCUS_INDEX = 10;
+    /** 메인 메뉴 좌측 하단 GitHub 버튼의 위치와 크기다. @type {{x:number,y:number,width:number,height:number}} */
+    const TITLE_GITHUB_BUTTON = { x: 32, y: 665, width: 85, height: 23 };
+    /** 메인 메뉴 좌측 하단 리더보드 버튼의 위치와 크기다. GitHub 버튼 바로 위에 둔다. @type {{x:number,y:number,width:number,height:number}} */
+    const TITLE_LEADERBOARD_BUTTON = { x: 32, y: 634, width: 85, height: 23 };
+    /** 메인 메뉴 좌측 하단 리플레이 재생 버튼의 위치와 크기다. 리더보드 버튼 바로 위에 둔다. @type {{x:number,y:number,width:number,height:number}} */
+    const TITLE_REPLAY_BUTTON = { x: 32, y: 603, width: 85, height: 23 };
+    /** 메인 메뉴 좌측 하단 리더보드 버튼이 이동할 리더보드 화면 주소다. 게임 페이지 기준 상대 경로다. @type {string} */
+    const LEADERBOARD_PAGE_URL = './leaderboard.html';
+    /** 메인 메뉴 방향키 포커스 이동 순서다. 목록 항목 뒤에 좌측 하단 버튼을 위에서 아래로(리플레이 재생, 리더보드, GitHub), 이어서 음소거 버튼이 온다. @type {number[]} */
     const TITLE_MENU_FOCUS_ORDER = [
         ...TITLE_MENU_OPTIONS.map((option, index) => index),
-        TITLE_REPLAY_FOCUS_INDEX, TITLE_GITHUB_FOCUS_INDEX, TITLE_MUTE_FOCUS_INDEX
+        TITLE_REPLAY_FOCUS_INDEX, TITLE_LEADERBOARD_FOCUS_INDEX, TITLE_GITHUB_FOCUS_INDEX, TITLE_MUTE_FOCUS_INDEX
     ];
     /** 메인 메뉴의 게임 규칙 선택 오버레이가 열려 있는지 여부다. @type {boolean} */
     let ruleSelectionOpen = false;
@@ -8244,6 +8257,226 @@
         };
     }
 
+    /** 리더보드 기록을 저장할 localStorage 키다. */
+    const LEADERBOARD_STORE_KEY = 'puyow_leaderboard';
+    /** 리더보드 저장 형식 버전이다. 구조를 바꾸면 올리고 loadLeaderboard()에서 이관한다. */
+    const LEADERBOARD_FORMAT_VERSION = 2;
+    /** 한 경우(룰·AI 난이도·색 수·적)마다 남길 최대 순위 수다. */
+    const LEADERBOARD_MAX_ENTRIES = 10;
+    /**
+     * 리더보드에 기록하는 룰 목록이다. battle이 true인 룰(적이 있는 대전)은 AI 난이도 → 색 수 → 적 종류별로 순위를 나눈다.
+     * label은 게임 번역표의 한국어 키다. @type {{key:string, label:string, battle:boolean}[]}
+     */
+    const LEADERBOARD_RULES = Object.freeze([
+        Object.freeze({ key: 'standard', label: '기본 룰', battle: true }),
+        Object.freeze({ key: 'fever', label: '피버 룰', battle: true }),
+        Object.freeze({ key: 'fever_start', label: '피버 룰 (시작)', battle: true }),
+        Object.freeze({ key: 'practice', label: '연습', battle: false }),
+        Object.freeze({ key: 'continuous_fever', label: '연속 피버', battle: false })
+    ]);
+    /** 리더보드 기록에서 제외하는 적 종류다. 솔로몬은 모드와 무관하게 기록하지 않는다. */
+    const LEADERBOARD_EXCLUDED_ENEMY_TYPES = new Set(['Solomon']);
+
+    /**
+     * 순위 한 줄을 정리한다. 잘못된 값이면 null이다.
+     * recordedAt은 기록이 발생한 당시의 현재 시각(1970-01-01 UTC 기준 밀리초)이다. 게임 진행 시간이 아니다.
+     * 이 필드가 없거나 잘못된 예전 기록은 null로 보정한다.
+     * @param {*} entry 저장된 값
+     * @returns {{name:string, score:number, recordedAt:number|null}|null} 정리한 기록
+     */
+    function normalizeLeaderboardEntry(entry) {
+        if (!entry || typeof entry !== 'object') return null;
+        const score = Number(entry.score);
+        if (!Number.isFinite(score) || score < 0) return null;
+        const recordedAt = Number(entry.recordedAt);
+        return {
+            name: typeof entry.name === 'string' ? entry.name : '',
+            score: Math.floor(score),
+            recordedAt: entry.recordedAt !== null && entry.recordedAt !== undefined && Number.isFinite(recordedAt) && recordedAt >= 0 ? Math.floor(recordedAt) : null
+        };
+    }
+
+    /** 순위 목록을 점수 내림차순으로 최대 10개까지 정리한다. 동점은 기존 순서를 유지한다. @param {*} list 저장된 값 @returns {{name:string, score:number, recordedAt:number|null}[]} 정리한 목록 */
+    function normalizeLeaderboardList(list) {
+        if (!Array.isArray(list)) return [];
+        return list.map(normalizeLeaderboardEntry).filter(Boolean)
+            .sort((left, right) => right.score - left.score)
+            .slice(0, LEADERBOARD_MAX_ENTRIES);
+    }
+
+    /** AI 난이도 키 목록이다(쉬움·보통·어려움·극한). 대전 룰 기록의 두 번째 단계 키로 쓴다. @returns {string[]} 키 목록 */
+    function getLeaderboardDifficultyKeys() {
+        return AI_DIFFICULTIES.map((difficulty) => difficulty.key);
+    }
+
+    /** 색 수 → 순위 목록 구조(단독 룰)를 정리한다. @param {*} byColor 저장된 값 @returns {object|null} 정리 결과, 비었으면 null */
+    function normalizeLeaderboardSoloRecords(byColor) {
+        if (!byColor || typeof byColor !== 'object') return null;
+        const result = {};
+        Object.keys(byColor).forEach((colorKey) => {
+            if (!/^[3-5]$/.test(colorKey)) return;
+            const list = normalizeLeaderboardList(byColor[colorKey]);
+            if (list.length > 0) result[colorKey] = list;
+        });
+        return Object.keys(result).length > 0 ? result : null;
+    }
+
+    /** 색 수 → 적 종류 → 순위 목록 구조(대전 룰의 한 난이도)를 정리한다. @param {*} byColor 저장된 값 @returns {object|null} 정리 결과, 비었으면 null */
+    function normalizeLeaderboardBattleRecords(byColor) {
+        if (!byColor || typeof byColor !== 'object') return null;
+        const result = {};
+        Object.keys(byColor).forEach((colorKey) => {
+            if (!/^[3-5]$/.test(colorKey)) return;
+            const byEnemy = byColor[colorKey];
+            if (!byEnemy || typeof byEnemy !== 'object' || Array.isArray(byEnemy)) return;
+            Object.keys(byEnemy).forEach((enemyType) => {
+                if (!enemyType || LEADERBOARD_EXCLUDED_ENEMY_TYPES.has(enemyType)) return;
+                const list = normalizeLeaderboardList(byEnemy[enemyType]);
+                if (list.length > 0) (result[colorKey] ||= {})[enemyType] = list;
+            });
+        });
+        return Object.keys(result).length > 0 ? result : null;
+    }
+
+    /**
+     * 저장된 리더보드를 읽어 정리한 새 객체로 반환한다. 파싱 실패나 잘못된 항목은 버린다.
+     * 구조(형식 2): 단독 룰은 records[룰][색 수] = 순위 배열,
+     * 대전 룰은 records[룰][AI 난이도 키][색 수][적 classType] = 순위 배열이다.
+     * 형식 1(BUILDNO 91~93)의 대전 기록은 AI 난이도 정보가 없어 어느 난이도에도 넣지 않고,
+     * 지워지지 않도록 legacy.v1[룰]에 형식 1 구조 그대로 보존한다(화면에는 표시하지 않는다). 단독 룰 기록은 구조가 같아 그대로 옮긴다.
+     * @returns {{version:number, records:object, legacy?:object}} 리더보드 데이터
+     */
+    function loadLeaderboard() {
+        const records = {};
+        let raw = null;
+        try {
+            const serialized = storageManager.getItem(LEADERBOARD_STORE_KEY);
+            raw = serialized ? JSON.parse(serialized) : null;
+        } catch (error) {
+            console.error('리더보드 기록을 읽지 못했습니다.', error);
+        }
+        const rawRecords = raw && typeof raw === 'object' && raw.records && typeof raw.records === 'object' ? raw.records : {};
+        const rawVersion = Number(raw?.version) || 1;
+        let legacy = raw && raw.legacy && typeof raw.legacy === 'object' && !Array.isArray(raw.legacy) ? raw.legacy : null;
+        LEADERBOARD_RULES.forEach((rule) => {
+            const byRule = rawRecords[rule.key];
+            if (!byRule || typeof byRule !== 'object') return;
+            if (!rule.battle) {
+                const solo = normalizeLeaderboardSoloRecords(byRule);
+                if (solo) records[rule.key] = solo;
+                return;
+            }
+            if (rawVersion < 2) {
+                const oldBattle = normalizeLeaderboardBattleRecords(byRule);
+                if (oldBattle) ((legacy ||= {}).v1 ||= {})[rule.key] = oldBattle;
+                return;
+            }
+            getLeaderboardDifficultyKeys().forEach((difficultyKey) => {
+                const battle = normalizeLeaderboardBattleRecords(byRule[difficultyKey]);
+                if (battle) (records[rule.key] ||= {})[difficultyKey] = battle;
+            });
+        });
+        return legacy ? { version: LEADERBOARD_FORMAT_VERSION, records, legacy } : { version: LEADERBOARD_FORMAT_VERSION, records };
+    }
+
+    /**
+     * 리더보드에 점수 하나를 넣고 저장한다. 상위 10위 밖이면 저장하지 않는다.
+     * 기록이 발생한 현재 시각(Date.now())을 recordedAt으로 함께 남긴다.
+     * @param {string} ruleKey LEADERBOARD_RULES의 key
+     * @param {number} colorCount 색 수(3~5)
+     * @param {string|null} enemyType 대전 룰의 적 classType, 단독 룰이면 null
+     * @param {string|null} difficultyKey 대전 룰의 AI 난이도 키(easy·normal·hard·extreme), 단독 룰이면 null
+     * @param {string} name 기록 당시 플레이어 닉네임
+     * @param {number} score 최종 점수
+     * @returns {boolean} 순위에 들어 저장했는지 여부
+     */
+    function addLeaderboardRecord(ruleKey, colorCount, enemyType, difficultyKey, name, score) {
+        const rule = LEADERBOARD_RULES.find((entry) => entry.key === ruleKey);
+        const entry = normalizeLeaderboardEntry({ name, score, recordedAt: Date.now() });
+        if (!rule || !entry) return false;
+        if (rule.battle && (!enemyType || !getLeaderboardDifficultyKeys().includes(difficultyKey))) return false;
+        const data = loadLeaderboard();
+        const byRule = data.records[rule.key] ||= {};
+        const colorKey = String(colorCount);
+        let list;
+        if (rule.battle) list = ((byRule[difficultyKey] ||= {})[colorKey] ||= {})[enemyType] ||= [];
+        else list = byRule[colorKey] ||= [];
+        // 동점은 따로 고려하지 않는다. 먼저 들어간 기록 뒤에 놓이고 10위 밖으로 밀리면 버려진다.
+        const insertIndex = list.findIndex((item) => item.score < entry.score);
+        if (insertIndex < 0 && list.length >= LEADERBOARD_MAX_ENTRIES) return false;
+        list.splice(insertIndex < 0 ? list.length : insertIndex, 0, entry);
+        list.length = Math.min(list.length, LEADERBOARD_MAX_ENTRIES);
+        try {
+            storageManager.setItem(LEADERBOARD_STORE_KEY, JSON.stringify(data));
+        } catch (error) {
+            console.error('리더보드 기록을 저장하지 못했습니다.', error);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 끝난 게임이 리더보드 기록 대상이면 사용자 점수를 기록한다. 결과가 확정되는 updateDefeatSequence()에서 한 번 부른다.
+     * 대전(기본 룰·피버 룰·피버 룰 (시작))은 사용자가 이겼을 때, 연습·연속 피버는 사용자가 패배 조건을 만족했을 때만 기록한다.
+     * 너랑 나랑(오프라인·온라인)·구경·퍼즐뿌요·플레이 방법·리플레이 재생·개발용 도구 테스트와 솔로몬 대전은 기록하지 않는다.
+     * @param {PlayerState} winner 승리한 플레이어
+     * @param {PlayerState} loser 패배한 플레이어
+     * @returns {boolean} 기록했는지 여부
+     */
+    function recordLeaderboardResult(winner, loser) {
+        if (!game || game.leaderboardRecorded) return false;
+        game.leaderboardRecorded = true;
+        if (game.watch || game.together || game.online || game.puzzle || game.tutorial || game.replayPlayback || game.toolsTest) return false;
+        const player = game.players?.[0];
+        if (!player || player.controller !== null) return false;
+        const colorCount = DIFFICULTIES[game.difficulty]?.colors.length;
+        if (!colorCount) return false;
+        if (game.practice) {
+            // 단독 모드는 승리 조건이 없으므로 사용자가 패배했을 때의 최종 점수를 남긴다.
+            if (loser !== player) return false;
+            return addLeaderboardRecord(game.continuousFever ? 'continuous_fever' : 'practice', colorCount, null, null, player.name, player.point);
+        }
+        if (winner !== player) return false;
+        const enemyType = game.players[1]?.controller?.getClassType?.();
+        if (!enemyType || LEADERBOARD_EXCLUDED_ENEMY_TYPES.has(enemyType)) return false;
+        const ruleKey = game.feverStart ? 'fever_start' : game.feverRule ? 'fever' : 'standard';
+        // 적이 있는 대전은 게임 시작 때 고른 AI 난이도마다 순위를 따로 둔다.
+        const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key;
+        if (!difficultyKey) return false;
+        return addLeaderboardRecord(ruleKey, colorCount, enemyType, difficultyKey, player.name, player.point);
+    }
+
+    /**
+     * 게임 번역표로 한국어 원문을 지정한 언어로 번역한다. 초기화하지 않은 페이지(리더보드 화면)에서도 쓸 수 있다.
+     * 해당 언어에 번역이 없으면 영어, 그것도 없으면 원문을 돌려준다.
+     * @param {string} language 언어 코드(ko, en, ja, zh, de, fr 등)
+     * @param {string} text 한국어 원문 키
+     * @returns {string} 번역한 문구
+     */
+    function translateLeaderboardText(language, text) {
+        const code = typeof language === 'string' ? language.trim().slice(0, 2).toLowerCase() : 'en';
+        if (code === 'ko') return text;
+        return stringTable[code]?.[text] || stringTable.en?.[text] || text;
+    }
+
+    /** 리더보드 화면(leaderboard.html)이 쓰는 읽기 전용 API다. */
+    const leaderboardApi = Object.freeze({
+        STORE_KEY: LEADERBOARD_STORE_KEY,
+        MAX_ENTRIES: LEADERBOARD_MAX_ENTRIES,
+        /** @returns {{key:string, label:string, battle:boolean}[]} 기록 대상 룰 목록 */
+        getRules: () => LEADERBOARD_RULES.map((rule) => ({ ...rule })),
+        /** 대전 룰 기록을 나누는 AI 난이도 목록이다. label은 한국어 원문 키다. @returns {{key:string, label:string}[]} 난이도 목록 */
+        getDifficulties: () => AI_DIFFICULTIES.map((difficulty) => ({ key: difficulty.key, label: difficulty.name })),
+        /** @returns {number[]} 선택할 수 있는 색 수 목록 */
+        getColorCounts: () => DIFFICULTIES.map((difficulty) => difficulty.colors.length),
+        /** 기록 대상이 될 수 있는 적 목록이다(숨김·출시 예정·솔로몬 제외). name은 한국어 원문 키다. @returns {{classType:string, name:string}[]} 적 목록 */
+        getOpponents: () => OPPONENTS
+            .filter((entry) => !entry.hidden && !entry.notAvail && !LEADERBOARD_EXCLUDED_ENEMY_TYPES.has(entry.classType))
+            .map((entry) => ({ classType: entry.classType, name: entry.createController().getName() })),
+        getData: loadLeaderboard,
+        translate: translateLeaderboardText
+    });
+
     /**
      * 대전에서 이긴 적의 클래스명을 한 번만 저장한다.
      * @param {PlayerState} winner 승리한 플레이어
@@ -8571,6 +8804,7 @@
         if (ending.elapsed > ending.duration && !isWinnerSettlementPending(ending.winner)) {
             recordEnemyClear(ending.winner);
             recordTogetherResult(ending.winner);
+            recordLeaderboardResult(ending.winner, ending.loser);
             game.winner = ending.winner;
             awardCurrentGameGold();
             game.running = false;
@@ -12034,7 +12268,8 @@
         if (!noticeText) return;
         const x = 42; const y = 230; const width = 370; const lineHeight = 18; const lines = [];
         context.save();
-        context.beginPath(); context.rect(x, y, width, 390); context.clip();
+        // 좌측 하단 버튼 묶음 맨 위(리플레이 재생, y=603) 위 8px까지만 그린다.
+        context.beginPath(); context.rect(x, y, width, TITLE_REPLAY_BUTTON.y - 8 - y); context.clip();
         context.fillStyle = '#a9d9e5'; context.textAlign = 'left'; context.font = `13px ${quoteFontNameIfNeeded(MESSAGE_FONT_NAME)}`;
         noticeText.split(/\r?\n/).forEach((sourceLine) => {
             let line = '';
@@ -13815,9 +14050,15 @@
         context.strokeRect(TITLE_REPLAY_BUTTON.x, TITLE_REPLAY_BUTTON.y, TITLE_REPLAY_BUTTON.width, TITLE_REPLAY_BUTTON.height);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`;
         context.fillText(translate('리플레이 재생'), TITLE_REPLAY_BUTTON.x + TITLE_REPLAY_BUTTON.width / 2, TITLE_REPLAY_BUTTON.y + 16);
-        context.fillStyle = '#24292f'; context.fillRect(32, 665, 85, 23);
-        context.strokeStyle = titleMenuFocus === TITLE_GITHUB_FOCUS_INDEX ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === TITLE_GITHUB_FOCUS_INDEX ? 2 : 1; context.strokeRect(32, 665, 85, 23);
-        context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), 74.5, 681);
+        context.fillStyle = '#3b4f2c'; context.fillRect(TITLE_LEADERBOARD_BUTTON.x, TITLE_LEADERBOARD_BUTTON.y, TITLE_LEADERBOARD_BUTTON.width, TITLE_LEADERBOARD_BUTTON.height);
+        context.strokeStyle = titleMenuFocus === TITLE_LEADERBOARD_FOCUS_INDEX ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === TITLE_LEADERBOARD_FOCUS_INDEX ? 2 : 1;
+        context.strokeRect(TITLE_LEADERBOARD_BUTTON.x, TITLE_LEADERBOARD_BUTTON.y, TITLE_LEADERBOARD_BUTTON.width, TITLE_LEADERBOARD_BUTTON.height);
+        context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`;
+        context.fillText(translate('리더보드'), TITLE_LEADERBOARD_BUTTON.x + TITLE_LEADERBOARD_BUTTON.width / 2, TITLE_LEADERBOARD_BUTTON.y + 16);
+        context.fillStyle = '#24292f'; context.fillRect(TITLE_GITHUB_BUTTON.x, TITLE_GITHUB_BUTTON.y, TITLE_GITHUB_BUTTON.width, TITLE_GITHUB_BUTTON.height);
+        context.strokeStyle = titleMenuFocus === TITLE_GITHUB_FOCUS_INDEX ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === TITLE_GITHUB_FOCUS_INDEX ? 2 : 1;
+        context.strokeRect(TITLE_GITHUB_BUTTON.x, TITLE_GITHUB_BUTTON.y, TITLE_GITHUB_BUTTON.width, TITLE_GITHUB_BUTTON.height);
+        context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate('GitHub'), TITLE_GITHUB_BUTTON.x + TITLE_GITHUB_BUTTON.width / 2, TITLE_GITHUB_BUTTON.y + 16);
         context.fillStyle = store.muted ? '#52606d' : '#264b5b'; context.fillRect(WIDTH - 117, 665, 85, 23);
         context.strokeStyle = titleMenuFocus === TITLE_MUTE_FOCUS_INDEX ? '#f7c843' : '#52606d'; context.lineWidth = titleMenuFocus === TITLE_MUTE_FOCUS_INDEX ? 2 : 1; context.strokeRect(WIDTH - 117, 665, 85, 23);
         context.fillStyle = '#ffffff'; context.font = `10px ${BUTTON_FONT}`; context.fillText(translate(store.muted ? '음소거(활성)' : '음소거(꺼짐)'), WIDTH - 74.5, 681);
@@ -15117,12 +15358,18 @@
         else if (titleMenuFocus === 5) openGallery();
         else if (titleMenuFocus === 6) openSettings();
         else if (titleMenuFocus === TITLE_REPLAY_FOCUS_INDEX) openReplayPlaybackPrompt();
+        else if (titleMenuFocus === TITLE_LEADERBOARD_FOCUS_INDEX) openLeaderboardPage();
         else if (titleMenuFocus === TITLE_GITHUB_FOCUS_INDEX) {
             const githubWindow = window.open(convertURL('https://github.com/HJOW/puyow'), '_blank');
             if (githubWindow) githubWindow.opener = null;
         } else {
             toggleMuted();
         }
+    }
+
+    /** 현재 페이지를 리더보드 화면(leaderboard.html)으로 이동시킨다. @returns {void} */
+    function openLeaderboardPage() {
+        window.location.href = convertURL(LEADERBOARD_PAGE_URL);
     }
 
     /** 일시정지 메뉴에서 방향키로 포커스를 옮긴다. @param {string} key 누른 방향키 @returns {void} */
@@ -15651,8 +15898,11 @@
             } else if (x >= WIDTH - 117 && x <= WIDTH - 32 && y >= 665 && y <= 688) {
                 playMenuSelectSound();
                 toggleMuted();
-            } else if (x >= 32 && x <= 117 && y >= 665 && y <= 688) {
+            } else if (x >= TITLE_GITHUB_BUTTON.x && x <= TITLE_GITHUB_BUTTON.x + TITLE_GITHUB_BUTTON.width && y >= TITLE_GITHUB_BUTTON.y && y <= TITLE_GITHUB_BUTTON.y + TITLE_GITHUB_BUTTON.height) {
                 titleMenuFocus = TITLE_GITHUB_FOCUS_INDEX;
+                activateTitleMenu();
+            } else if (x >= TITLE_LEADERBOARD_BUTTON.x && x <= TITLE_LEADERBOARD_BUTTON.x + TITLE_LEADERBOARD_BUTTON.width && y >= TITLE_LEADERBOARD_BUTTON.y && y <= TITLE_LEADERBOARD_BUTTON.y + TITLE_LEADERBOARD_BUTTON.height) {
+                titleMenuFocus = TITLE_LEADERBOARD_FOCUS_INDEX;
                 activateTitleMenu();
             } else if (x >= TITLE_REPLAY_BUTTON.x && x <= TITLE_REPLAY_BUTTON.x + TITLE_REPLAY_BUTTON.width && y >= TITLE_REPLAY_BUTTON.y && y <= TITLE_REPLAY_BUTTON.y + TITLE_REPLAY_BUTTON.height) {
                 titleMenuFocus = TITLE_REPLAY_FOCUS_INDEX;
@@ -16633,6 +16883,7 @@
                     'A player loses when cell (2, 11) is filled. FEVER rules and continuous fever also use cell (3, 11).',
                     'Keyboard: Left and Right move, Z rotates one way while X and Up rotate the other way, holding Down drops faster, and Escape pauses. Gamepads and an on-screen virtual joystick with Z, X, and ESC buttons also work.',
                     'Modes: the standard rule, FEVER rule, and FEVER rule (start) are matches against a CPU opponent. In the standard rule an all-clear grants a ticket that adds 2100 points and 30 ATTACK to your next colored-puyo explosion. In FEVER rules each player has a FEVER gauge; when it fills, the player plays preset chain patterns on a separate FEVER field under a time limit, and FEVER rule (start) begins both players inside FEVER with 60 seconds. Practice is solo play. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result. Online play is a two-human match on separate computers through the configured game server; it is available only when that server reports online play enabled.',
+                    'Leaderboard: the top 10 scores are kept only in this browser (localStorage key puyow_leaderboard) with the player name and the date and time when each score was recorded, and are viewed on the separate leaderboard.html page, which the Leaderboard button at the bottom left of the main menu opens in the same tab. Standard, FEVER, and FEVER (start) matches record the final score only when the human player wins, separately for each AI difficulty, color count, and opponent; matches against Solomon are never recorded. Practice and continuous fever record the final score separately for each color count only when the player loses (quitting from the pause menu is not recorded). Together (offline and online), watch mode, Puzzle Puyo, the tutorial, the simulator, and replay playback are never recorded.',
                     'Choosing Together mode in the main menu first opens a selection of Offline Play, Online Play, and Cancel (together_mode_select). Offline Play opens the offline together guide (together_guide), where the rule and color count are chosen. Online Play opens login and signup, then the lobby and room screens; it is hidden when the configured server does not provide online play.',
                     'Offline together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',
                     'Replays of recorded matches can be played back from the main menu; during playback no input is accepted except Escape, which skips to the result screen. Online matches cannot be paused or recorded. The tutorial, simulator, gallery, and settings are separate menu screens. Confirmation and text input dialogs capture all input until they are answered.',
@@ -21072,6 +21323,7 @@
         common: commonFunctions,
         getCommonFunctions: () => commonFunctions,
         tools: toolsApi,
+        leaderboard: leaderboardApi,
         randomFloat,
         randomColor,
         translate,

@@ -1,0 +1,345 @@
+// 리더보드 회귀 테스트다. 게임 페이지(puyow.html)의 기록 규칙과 조회 화면(leaderboard.html)을 다룬다.
+
+import { test, expect } from '@playwright/test';
+import { setupGamePage, enterMainMenu } from './common/gamepage.js';
+
+const LEADERBOARD_PAGE = '/leaderboard.html';
+
+/** 저장된 리더보드 원본을 읽는다. */
+function readLeaderboard(page) {
+  return page.evaluate(() => JSON.parse(localStorage.getItem('puyow_leaderboard') || 'null'));
+}
+
+test.describe('게임 페이지의 리더보드 기록', () => {
+  setupGamePage();
+
+  /** 첫 조작에서 스스로 패배 칸을 막는 테스트용 적을 맨 앞에 등록한다. */
+  async function registerSelfLosingEnemy(page, classType) {
+    await page.evaluate((type) => {
+      class SelfLosingEnemy extends window.WebPuyo.Enemy {
+        constructor() { super(); this.sortPriority = -1; }
+        getClassType() { return type; }
+        getName() { return '리더보드 테스트 적'; }
+        prepareTurn(player) {
+          super.prepareTurn(player);
+          player.board[11][2] = 'red';
+          player.board[11][3] = 'red';
+          player.phase = 'check';
+          player.phaseTimer = 150;
+        }
+      }
+      window.WebPuyo.registerOpponent({ createController: () => new SelfLosingEnemy() });
+    }, classType);
+  }
+
+  test('기본 룰에서 이기면 AI 난이도·색 수·적별로 닉네임과 점수를 기록한다', async ({ page }) => {
+    await registerSelfLosingEnemy(page, 'LeaderboardWinEnemy');
+    await enterMainMenu(page);
+    const startedAt = await page.evaluate(() => Date.now());
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+    for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
+    const colorCount = await page.evaluate(() => window.WebPuyo.getGameState().colorCount);
+    const difficultyKey = await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty.key);
+    const playerName = await page.evaluate(() => window.WebPuyo.getGameState().player.name);
+    const saved = await readLeaderboard(page);
+    expect(saved.version).toBe(2);
+    const finishedAt = await page.evaluate(() => Date.now());
+    // 적이 있는 대전은 룰 → AI 난이도 → 색 수 → 적 순서로 나눠 기록한다.
+    expect(Object.keys(saved.records.standard)).toEqual([difficultyKey]);
+    const [entry] = saved.records.standard[difficultyKey][String(colorCount)].LeaderboardWinEnemy;
+    expect(saved.records.standard[difficultyKey][String(colorCount)].LeaderboardWinEnemy).toHaveLength(1);
+    expect(entry).toMatchObject({ name: playerName, score: 0 });
+    // 기록 일시는 게임 진행 시간이 아니라 기록이 발생한 당시의 현재 시각이다.
+    expect(entry.recordedAt).toBeGreaterThanOrEqual(startedAt);
+    expect(entry.recordedAt).toBeLessThanOrEqual(finishedAt);
+    expect(saved.records.fever).toBeUndefined();
+    expect(saved.records.practice).toBeUndefined();
+  });
+
+  test('연습은 패배했을 때 최종 점수를 기록하고, 일시정지 종료로 빠져나가면 기록하지 않는다', async ({ page }) => {
+    await enterMainMenu(page);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().playerCanControl), { timeout: 15000 }).toBe(true);
+
+    // 일시정지 → 종료(2번)는 패배가 아니므로 기록하지 않는다.
+    await page.keyboard.press('Escape');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+    expect(await readLeaderboard(page)).toBeNull();
+
+    // 다시 연습을 시작해 패배 열(X=2)에 세로 쌍을 계속 떨어뜨려 진다.
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => {
+      const state = await page.evaluate(() => window.WebPuyo.getScreenState());
+      if (state.playerCanControl) {
+        await page.keyboard.down('ArrowDown');
+        await page.waitForTimeout(300);
+        await page.keyboard.up('ArrowDown');
+      }
+      return state.screen;
+    }, { timeout: 60000, intervals: [100] }).toBe('game_over');
+    const colorCount = await page.evaluate(() => window.WebPuyo.getSelectedColorCount());
+    const saved = await readLeaderboard(page);
+    const list = saved.records.practice[String(colorCount)];
+    expect(list).toHaveLength(1);
+    expect(list[0].score).toBeGreaterThanOrEqual(0);
+    expect(Math.abs(list[0].recordedAt - await page.evaluate(() => Date.now()))).toBeLessThan(60000);
+    expect(saved.records.standard).toBeUndefined();
+  });
+
+  /** 메인 메뉴 좌측 하단 버튼의 문구 좌표를 모은다. */
+  async function collectBottomLeftButtons(page) {
+    const labels = await page.evaluate(() => ({ replay: window.WebPuyo.translate('리플레이 재생'), leaderboard: window.WebPuyo.translate('리더보드') }));
+    await page.evaluate(() => { window.testCanvasTextCalls = []; });
+    await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.length)).toBeGreaterThan(0);
+    return page.evaluate((names) => {
+      const find = (text) => window.testCanvasTextCalls.find((call) => call.text === text);
+      return { replay: find(names.replay), leaderboard: find(names.leaderboard), github: find('GitHub') };
+    }, labels);
+  }
+
+  test('메인 메뉴 리더보드 버튼은 리플레이 재생과 GitHub 사이에 있고 방향키로 골라 리더보드 화면으로 이동한다', async ({ page }) => {
+    await enterMainMenu(page);
+    const buttons = await collectBottomLeftButtons(page);
+    expect(buttons.replay && buttons.leaderboard && buttons.github).toBeTruthy();
+    expect(buttons.leaderboard.x).toBeCloseTo(buttons.github.x, 0);
+    expect(buttons.replay.x).toBeCloseTo(buttons.github.x, 0);
+    expect(buttons.replay.y).toBeLessThan(buttons.leaderboard.y);
+    expect(buttons.leaderboard.y).toBeLessThan(buttons.github.y);
+
+    // 목록 항목(잠긴 구경 제외) → 리플레이 재생 → 리더보드 → GitHub 순서다. GitHub에서 위로 한 번 가면 리더보드다.
+    await page.evaluate(() => { window.open = () => null; });
+    for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('Enter');
+    await page.waitForURL(/\/leaderboard\.html$/);
+    await expect(page.locator('.lb-sidebar')).toBeVisible();
+  });
+
+  test('메인 메뉴 리더보드 버튼을 마우스로 누르면 리더보드 화면으로 이동한다', async ({ page }) => {
+    await enterMainMenu(page);
+    const canvas = await page.locator('[data-puyow-canvas="2d"]').boundingBox();
+    const scale = canvas.width / 1280;
+    // 리플레이 재생 버튼(위)과 GitHub 버튼(아래)은 그대로 원래 동작을 한다.
+    await page.evaluate(() => { window.openedUrls = []; window.open = (url) => { window.openedUrls.push(url); return null; }; });
+    await page.mouse.click(canvas.x + 74 * scale, canvas.y + 676 * scale);
+    expect(await page.evaluate(() => window.openedUrls)).toEqual(['https://github.com/HJOW/puyow']);
+    await page.mouse.click(canvas.x + 74 * scale, canvas.y + 645 * scale);
+    await page.waitForURL(/\/leaderboard\.html$/);
+    await expect(page.locator('.lb-sidebar')).toBeVisible();
+  });
+
+  test('저장된 기록은 점수순 10개로 정리하고 솔로몬·잘못된 항목은 버린다', async ({ page }) => {
+    const data = await page.evaluate(() => {
+      const many = Array.from({ length: 13 }, (_, index) => ({ name: `P${index}`, score: index * 10 }));
+      localStorage.setItem('puyow_leaderboard', JSON.stringify({
+        version: 2,
+        records: {
+          standard: {
+            hard: { 4: { Kimaris: many, Solomon: [{ name: 'S', score: 1 }] }, 9: { Kimaris: [{ name: 'X', score: 1 }] } },
+            unknown: { 4: { Kimaris: [{ name: 'U', score: 1 }] } }
+          },
+          practice: { 3: [{ name: 'A', score: -1 }, { name: 'B', score: 'x' }, { name: 'C', score: 55.7, recordedAt: 1758240000000.9 }, { name: 'D', score: 5, recordedAt: 'x' }] },
+          puzzle: { 3: [{ name: 'Z', score: 1 }] }
+        }
+      }));
+      return window.WebPuyo.leaderboard.getData();
+    });
+    expect(data.version).toBe(2);
+    expect(Object.keys(data.records.standard)).toEqual(['hard']);
+    expect(data.records.standard.hard['4'].Kimaris.map((entry) => entry.score)).toEqual([120, 110, 100, 90, 80, 70, 60, 50, 40, 30]);
+    expect(data.records.standard.hard['4'].Solomon).toBeUndefined();
+    expect(data.records.standard.hard['9']).toBeUndefined();
+    // 일시가 없거나 잘못된 예전 기록은 recordedAt을 null로 보정한다.
+    expect(data.records.practice['3']).toEqual([{ name: 'C', score: 55, recordedAt: 1758240000000 }, { name: 'D', score: 5, recordedAt: null }]);
+    expect(data.records.standard.hard['4'].Kimaris[0].recordedAt).toBeNull();
+    expect(data.records.puzzle).toBeUndefined();
+    expect(data.legacy).toBeUndefined();
+    expect(await page.evaluate(() => window.WebPuyo.leaderboard.getDifficulties().map((entry) => entry.key))).toEqual(['easy', 'normal', 'hard', 'extreme']);
+    const opponents = await page.evaluate(() => window.WebPuyo.leaderboard.getOpponents().map((entry) => entry.classType));
+    expect(opponents).toContain('Andromalius');
+    expect(opponents).not.toContain('Solomon');
+    expect(opponents).not.toContain('Oriax');
+  });
+
+  test('AI 난이도가 없던 형식 1의 대전 기록은 어느 난이도에도 넣지 않고 legacy에 보존한다', async ({ page }) => {
+    const data = await page.evaluate(() => {
+      localStorage.setItem('puyow_leaderboard', JSON.stringify({
+        version: 1,
+        records: {
+          standard: { 4: { Kimaris: [{ name: 'Old', score: 700, recordedAt: 1758240000000 }] } },
+          practice: { 3: [{ name: 'Solo', score: 30 }] }
+        }
+      }));
+      return window.WebPuyo.leaderboard.getData();
+    });
+    expect(data.version).toBe(2);
+    expect(data.records.standard).toBeUndefined();
+    expect(data.legacy.v1.standard['4'].Kimaris).toEqual([{ name: 'Old', score: 700, recordedAt: 1758240000000 }]);
+    // 단독 룰은 구조가 같아 그대로 옮긴다.
+    expect(data.records.practice['3']).toEqual([{ name: 'Solo', score: 30, recordedAt: null }]);
+  });
+});
+
+test.describe('리더보드 조회 화면', () => {
+  const SAMPLE = {
+    version: 2,
+    records: {
+      standard: {
+        normal: { 4: { Kimaris: [{ name: 'Alice', score: 98765, recordedAt: Date.UTC(2026, 8, 19, 3, 4) }, { name: '<b>Bob</b>', score: 1200 }] } },
+        extreme: { 4: { Kimaris: [{ name: 'Eve', score: 5 }] } }
+      },
+      continuous_fever: { 5: [{ name: 'Carol', score: 4321 }] }
+    }
+  };
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript((sample) => {
+      if (!sessionStorage.getItem('lb_seeded')) {
+        localStorage.setItem('puyow_leaderboard', JSON.stringify(sample));
+        sessionStorage.setItem('lb_seeded', '1');
+      }
+    }, SAMPLE);
+  });
+
+  test('기본 언어는 영어이고 트리 메뉴로 룰·AI 난이도·색 수·적을 골라 점수 목록을 본다', async ({ page }) => {
+    await page.goto(LEADERBOARD_PAGE);
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.locator('.lb-brand-title')).toHaveText('Leaderboard');
+    await expect(page.locator('.lb-empty')).toHaveText('Select a rule and its options from the menu.');
+
+    // 대전 룰 아래 두 번째 단계는 AI 난이도다.
+    await expect(page.locator('[data-node-id="standard"] + ul > li > .lb-node .lb-node-label')).toHaveText(['Easy', 'Normal', 'Hard', 'Extreme']);
+    await page.locator('[data-node-id="standard/normal"]').click();
+    await expect(page.locator('.lb-empty')).toHaveText('Select a color count.');
+    await page.locator('[data-node-id="standard/normal/4"]').click();
+    await expect(page.locator('.lb-empty')).toHaveText('Select an opponent.');
+    await page.locator('[data-node-id="standard/normal/4/Kimaris"]').click();
+    await expect(page.locator('.lb-title')).toHaveText('Kimaris');
+    await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules › Normal › 4 Colors');
+    const rows = page.locator('.lb-table tbody tr');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0)).toContainText('Alice');
+    await expect(rows.nth(0)).toContainText('98,765');
+    await expect(page.locator('.lb-table thead')).toContainText('Recorded at');
+    // 기록 일시는 브라우저 현지 시간대로 표시하고, 일시가 없는 예전 기록은 대시로 표시한다.
+    const expectedDate = await page.evaluate((time) => new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(time)), SAMPLE.records.standard.normal[4].Kimaris[0].recordedAt);
+    await expect(rows.nth(0).locator('.lb-col-date')).toHaveText(expectedDate);
+    await expect(rows.nth(0).locator('.lb-col-date')).toHaveAttribute('title', '2026-09-19T03:04:00.000Z');
+    await expect(rows.nth(1).locator('.lb-col-date')).toHaveText('-');
+    // 닉네임은 HTML로 해석하지 않는다.
+    await expect(rows.nth(1).locator('.lb-col-name')).toHaveText('<b>Bob</b>');
+    await expect(page.locator('[data-node-id="standard/normal/4/Kimaris"] .lb-count')).toHaveText('2');
+
+    // 같은 적·색 수라도 AI 난이도가 다르면 순위가 따로다.
+    await page.locator('[data-node-id="standard/extreme"]').click();
+    await page.locator('[data-node-id="standard/extreme/4"]').click();
+    await page.locator('[data-node-id="standard/extreme/4/Kimaris"]').click();
+    await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules › Extreme › 4 Colors');
+    await expect(page.locator('.lb-table tbody tr')).toHaveCount(1);
+    await expect(page.locator('.lb-table tbody tr')).toContainText('Eve');
+
+    // 기록이 없는 적은 빈 목록 안내를 보여 준다.
+    await page.locator('[data-node-id="standard/normal/4/Andromalius"]').click();
+    await expect(page.locator('.lb-empty')).toHaveText('No records yet.');
+    await expect(page.locator('[data-node-id$="/Solomon"]')).toHaveCount(0);
+
+    // 단독 룰은 AI 난이도 단계 없이 색 수가 끝 항목이다.
+    await page.locator('[data-node-id="continuous_fever"]').click();
+    await expect(page.locator('[data-node-id="continuous_fever"] + ul > li > .lb-node')).toHaveCount(3);
+    await page.locator('[data-node-id="continuous_fever/5"]').click();
+    await expect(page.locator('.lb-table tbody tr')).toHaveCount(1);
+    await expect(page.locator('.lb-table tbody tr')).toContainText('Carol');
+  });
+
+  test('트리 메뉴는 키보드로 펼치고 이동할 수 있다', async ({ page }) => {
+    await page.goto(LEADERBOARD_PAGE);
+    await page.locator('[data-node-id="standard"]').focus();
+    await expect(page.locator('[data-node-id="standard"]')).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('[data-node-id="standard"]')).toHaveAttribute('aria-expanded', 'false');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('[data-node-id="standard/easy"]')).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('[data-node-id="standard/normal"]')).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('[data-node-id="standard/normal/3"]')).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('[data-node-id="standard/normal/3/Andromalius"]')).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect(page.locator('[data-node-id="standard/normal/3"]')).toBeFocused();
+  });
+
+  test('시스템 화면 모드를 따르고 사이드바 하단 토글로 바꾼다', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto(LEADERBOARD_PAGE);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    const toggle = page.locator('.lb-theme-toggle');
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await toggle.click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  });
+
+  test('언어 선택으로 문구와 게임 이름 번역을 함께 바꾼다', async ({ page }) => {
+    await page.goto(LEADERBOARD_PAGE);
+    await page.locator('#lb_language_select').selectOption('ko');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ko');
+    await expect(page.locator('.lb-brand-title')).toHaveText('리더보드');
+    await expect(page.locator('[data-node-id="standard"] .lb-node-label')).toHaveText('기본 룰');
+    await page.locator('#lb_language_select').selectOption('de');
+    await expect(page.locator('.lb-brand-title')).toHaveText('Bestenliste');
+    // 게임 번역표에 독일어 적 이름이 없으면 영어 이름을 쓴다.
+    await expect(page.locator('[data-node-id="standard/extreme"] .lb-node-label')).toHaveText('Extrem');
+    await page.locator('[data-node-id="standard/normal"]').click();
+    await page.locator('[data-node-id="standard/normal/4"]').click();
+    await expect(page.locator('[data-node-id="standard/normal/4/Kimaris"] .lb-node-label')).toHaveText('Kimaris');
+  });
+
+  test('좁은 화면에서는 메뉴 버튼으로 서랍 사이드바를 연다', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.goto(LEADERBOARD_PAGE);
+    const sidebar = page.locator('.lb-sidebar');
+    await expect.poll(async () => (await sidebar.boundingBox()).x).toBeLessThan(0);
+    await page.locator('.lb-menu-button').click();
+    await expect.poll(async () => (await sidebar.boundingBox()).x).toBe(0);
+    await page.locator('[data-node-id="standard/normal"]').click();
+    await page.locator('[data-node-id="standard/normal/4"]').click();
+    await page.locator('[data-node-id="standard/normal/4/Kimaris"]').click();
+    await expect.poll(async () => (await sidebar.boundingBox()).x).toBeLessThan(0);
+    await expect(page.locator('.lb-table tbody tr')).toHaveCount(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
+  test.describe('일본어 브라우저', () => {
+    test.use({ locale: 'ja-JP' });
+    test('브라우저 언어를 따라 일본어로 표시한다', async ({ page }) => {
+      await page.goto(LEADERBOARD_PAGE);
+      await expect(page.locator('.lb-brand-title')).toHaveText('リーダーボード');
+      await expect(page.locator('[data-node-id="practice"] .lb-node-label')).toHaveText('練習');
+    });
+  });
+});
