@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 94;
+    const BUILDNO = 98;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -257,6 +257,15 @@
     ];
     /** 새 설정 및 잘못된 저장값에 사용할 기본 그래픽 품질이다. @type {'low'} */
     const DEFAULT_GRAPHICS_QUALITY = 'low';
+    /** 설정 화면에서 고를 수 있는 언어 코드다. 지원하지 않는 시스템 언어와 저장값은 영어로 보정한다. @type {string[]} */
+    const SUPPORTED_LANGUAGE_CODES = ['en', 'ko', 'ja', 'zh', 'fr', 'de'];
+    /** 새 설정 및 잘못된 저장값에 사용할 기본 언어 코드다. */
+    const DEFAULT_LANGUAGE_CODE = 'en';
+    /** 설정 화면의 언어 선택지다. 언어를 바꾸기 전에도 알아볼 수 있도록 각 언어의 자체 표기를 쓴다. @type {{key:string,label:string}[]} */
+    const LANGUAGE_OPTIONS = [
+        { key: 'en', label: 'English' }, { key: 'ko', label: '한국어' }, { key: 'ja', label: '日本語' },
+        { key: 'zh', label: '中文' }, { key: 'fr', label: 'Français' }, { key: 'de', label: 'Deutsch' }
+    ];
     /** 플레이어 이름으로 허용할 최대 글자 수다. */
     const PLAYER_NAME_MAX_LENGTH = 10;
     /** 사운드 데이터 URL로 허용할 최대 글자 수다. */
@@ -499,6 +508,13 @@
         '좌우, 아래 키로 뿌요를 이동시킬 수 있고, Z, X 키로 뿌요를 회전시킬 수 있어': 'Déplace les Puyos avec Gauche, Droite et Bas. Tourne-les avec Z et X.', '좌우 방향키로 뿌요 이동': 'Déplace avec Gauche et Droite.', '아래 방향키로 빨리 떨어뜨리기': 'Fais tomber plus vite avec Bas.', 'Z 키를 눌러 좌측으로 뿌요 회전': 'Tourne à gauche avec Z.', 'X 키를 눌러 우측으로 뿌요 회전': 'Tourne à droite avec X.', '같은 색의 뿌요 4개 이상이 붙으면 뿌요를 터뜨려 적을 공격할 수 있어.': 'Relie au moins quatre Puyos de même couleur pour les faire éclater et attaquer.', '같은 색의 뿌요 4개가 붙어, 적을 공격할 수 있어': 'Quatre Puyos de même couleur attaquent l’adversaire.', '뿌요가 터질 때 인접한 방해뿌요도 같이 터져': 'Les Puyos-ordures adjacents éclatent aussi.', '연쇄적으로 뿌요를 폭발시키면 강력한 공격을 할 수 있어.': 'Les chaînes permettent des attaques plus puissantes.', '게임 중 싹쓸이를 하면 그 다음 번 공격이 대폭 강해져.': 'Un Tout Effacé renforce considérablement ta prochaine attaque.', '3번째 줄 끝에 뿌요가 오래 닿으면 패배해.': 'Tu perds si des Puyos restent au bout de la troisième ligne.',
         '은하': 'Galaxie', '음소거(꺼짐)': 'Muet (désactivé)', '음소거(활성)': 'Muet (activé)', '화면 가로방향 고정': 'Verrouiller le mode paysage', '피버 (완화)': 'FEVER (adouci)'
     });
+
+    // 설정 화면의 언어 이름은 어느 언어 화면에서도 바로 알아볼 수 있게 선택지 자체는 각 언어의 자체 표기를 쓴다.
+    Object.assign(stringTable.en, { '언어': 'Language' });
+    Object.assign(stringTable.ja, { '언어': '言語' });
+    Object.assign(stringTable.zh, { '언어': '语言' });
+    Object.assign(stringTable.de, { '언어': 'Sprache' });
+    Object.assign(stringTable.fr, { '언어': 'Langue' });
 
     Object.assign(stringTable.en, { '피버 룰 (시작)': 'FEVER Rules (Start)' });
     Object.assign(stringTable.ja, { '피버 룰 (시작)': 'FEVER ルール (開始)' });
@@ -1001,7 +1017,7 @@
         { z: false, x: false, enter: false, escape: false }
     ];
     /** 현재 화면 문구에 적용할 언어 코드다. @type {string} */
-    let languageCode = 'ko';
+    let languageCode = DEFAULT_LANGUAGE_CODE;
     /** [CTX] 예약어를 치환할 웹 애플리케이션의 URL 컨텍스트 경로다. @type {string} */
     let urlContextPath = '/';
     /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverStartClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} */
@@ -2596,11 +2612,29 @@
             puzzleGoldClearStages: [],
             puzzleGoldStarStages: [],
             gold: 0,
-            settings: { playerName: DEFAULT_PLAYER_NAME, musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, useReplayFeature: false, reverseLearning: false, soundDataURL: '', ...createDefaultAiSettings() },
+            settings: { playerName: DEFAULT_PLAYER_NAME, language: detectSystemLanguageCode(), musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, useReplayFeature: false, reverseLearning: false, soundDataURL: '', ...createDefaultAiSettings() },
             muted: false,
             /** ONNX 추론 적 대전 전 불안정 안내에서 한 번이라도 `계속`을 골랐는지 여부다. */
             onnxWarningAcknowledged: false
         };
+    }
+
+    /** 지원하는 두 글자 언어 코드로 보정한다. @param {unknown} value 언어 코드 후보 @param {string} [fallback=DEFAULT_LANGUAGE_CODE] 보정 실패 시 값 @returns {string} 지원 언어 코드 */
+    function normalizeLanguageCode(value, fallback = DEFAULT_LANGUAGE_CODE) {
+        const code = typeof value === 'string' ? value.trim().slice(0, 2).toLowerCase() : '';
+        return SUPPORTED_LANGUAGE_CODES.includes(code) ? code : fallback;
+    }
+
+    /** 브라우저 시스템 언어를 설정 기본값으로 보정한다. 지원하지 않거나 알 수 없으면 영어를 사용한다. @returns {string} 지원 언어 코드 */
+    function detectSystemLanguageCode() {
+        const systemLanguage = typeof navigator !== 'undefined' ? (navigator.language || navigator.userLanguage) : '';
+        return normalizeLanguageCode(systemLanguage);
+    }
+
+    /** 저장소를 읽은 뒤 설정 언어를 현재 화면 언어로 적용한다. 이후에는 시스템 언어가 아니라 이 값을 유일한 기준으로 쓴다. @returns {void} */
+    function applyStoredLanguage() {
+        languageCode = normalizeLanguageCode(store?.settings?.language, detectSystemLanguageCode());
+        if (store?.settings) store.settings.language = languageCode;
     }
 
     /** 저장되거나 계산된 GOLD를 0 이상의 안전한 정수로 정규화한다. @param {unknown} value GOLD 후보 @returns {number} 정규화한 GOLD */
@@ -3103,6 +3137,7 @@
             store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, feverStartClearListByDifficulty, puzzleClearStages, puzzleStarStages,
                 puzzleGoldClearStages, puzzleGoldStarStages, gold: normalizeGold(parsed.gold), settings: {
                 playerName: normalizePlayerName(settings.playerName),
+                language: normalizeLanguageCode(settings.language, initial.settings.language),
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
                 // 이전 켜기/끄기 불리언 저장값도 각각 보통/없음으로 유지한다.
@@ -3542,20 +3577,15 @@
     }
 
     /**
-     * 시스템 언어에서 URL 예약어에 쓸 두 글자 언어 코드를 구한다.
-     * 한국어 원문은 번역표 밖에 있으나 기본 언어이므로 지원 언어로 취급한다.
-     * @returns {string} stringTable에 있는 언어 코드 또는 ko, 그 외에는 en
+     * 설정에서 선택한 언어를 URL 예약어에 쓸 두 글자 코드로 구한다.
+     * @returns {string} 지원 언어 코드
      */
     function getURLLanguageCode() {
-        const systemLanguage = typeof navigator !== 'undefined'
-            ? (navigator.language || navigator.userLanguage || languageCode)
-            : languageCode;
-        const code = typeof systemLanguage === 'string' ? systemLanguage.trim().slice(0, 2).toLowerCase() : '';
-        return code === 'ko' || Object.prototype.hasOwnProperty.call(stringTable, code) ? code : 'en';
+        return normalizeLanguageCode(languageCode);
     }
 
     /**
-     * URL 안의 [CTX], [LANG] 예약어를 현재 컨텍스트 경로와 시스템 언어 코드로 모두 치환한다.
+     * URL 안의 [CTX], [LANG] 예약어를 현재 컨텍스트 경로와 설정 언어 코드로 모두 치환한다.
      * 상대경로와 절대 URL 모두 전달할 수 있다.
      * @param {string} url 변환할 URL
      * @returns {string} 예약어가 치환된 URL
@@ -3588,13 +3618,13 @@
     }
 
     /**
-     * 현재 브라우저 언어에 맞춰 한국어 원문을 번역하고 %1, %2 형식의 인수를 채운다.
+     * 설정에서 선택한 언어에 맞춰 한국어 원문을 번역하고 %1, %2 형식의 인수를 채운다.
      * @param {string} text 한국어 원문 키
      * @param {...(string|number)} values 치환할 값
      * @returns {string} 표시할 문구
      */
     function translate(text, ...values) {
-        const localeTable = stringTable[languageCode] || stringTable[languageCode.split('-')[0]] || stringTable.en;
+        const localeTable = stringTable[languageCode] || stringTable.en;
         const translated = languageCode === 'ko' ? text : localeTable[text] || text;
         return values.reduce((result, value, index) => result.replace(`%${index + 1}`, String(value)), translated);
     }
@@ -10156,9 +10186,14 @@
         player.comboPopups.forEach((popup) => drawComboPopup(x, popup));
         if (!(usesSoloPlayLayout() && player === game.players[1])) {
             context.fillStyle = '#e7f8fa'; context.font = `18px ${MESSAGE_FONT}`; context.textAlign = 'left';
-            context.fillText(player.name, x, 54);
+            context.fillText(getDisplayedPlayerName(player), x, 54);
         }
         if (puzzleTargetField) drawPuzzleStageStatus(x);
+    }
+
+    /** 게임 화면에 표시할 플레이어 이름을 반환한다. CPU 적은 한국어 원문 이름을 보관하고, 그릴 때만 현재 설정 언어로 번역한다. @param {PlayerState} player 대상 플레이어 @returns {string} 화면 표시 이름 */
+    function getDisplayedPlayerName(player) {
+        return player.controller instanceof Enemy ? translate(player.name) : player.name;
     }
 
     /** 패배 연출 중 움직이는 뿌요보다 앞에 고정 베젤을 다시 그린다. @param {PlayerState} player 대상 플레이어 @returns {void} */
@@ -10286,7 +10321,7 @@
             ].forEach(({ player, x, color }, playerIndex) => {
                 context.fillStyle = '#0b202c'; context.fillRect(x, nextAreaY, 148, 150);
                 context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, nextAreaY, 148, 150);
-                context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(`${player.name} NEXT`, x + 74, nextAreaY + 23);
+                context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(`${getDisplayedPlayerName(player)} NEXT`, x + 74, nextAreaY + 23);
                 const displayedPairs = playerIndex === 1 ? [...player.nextPairs.slice(0, 2)].reverse() : player.nextPairs.slice(0, 2);
                 displayedPairs.forEach((pair, pairIndex) => {
                     const pairX = x + 21 + pairIndex * 70;
@@ -10321,7 +10356,7 @@
         scores.forEach(({ player, x, width, color }) => {
             context.fillStyle = '#0b202c'; context.fillRect(x, 492, width, 92);
             context.strokeStyle = color; context.lineWidth = 2; context.strokeRect(x, 492, width, 92);
-            context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(player.name, x + width / 2, 516);
+            context.fillStyle = color; context.font = `13px ${MESSAGE_FONT}`; context.fillText(getDisplayedPlayerName(player), x + width / 2, 516);
             context.fillStyle = '#f5fbfc'; context.font = `22px ${NUMBER_FONT}`; context.fillText(formatPoint(player.point), x + width / 2, 557);
         });
     }
@@ -10672,7 +10707,7 @@
         }
         if (!(usesSoloPlayLayout() && player === game.players[1])) {
             context.fillStyle = '#e7f8fa'; context.font = `18px ${MESSAGE_FONT}`; context.textAlign = 'left';
-            context.fillText(player.name, x, 54);
+            context.fillText(getDisplayedPlayerName(player), x, 54);
         }
         if (puzzleTargetField) drawPuzzleStageStatus(x, true);
     }
@@ -11830,6 +11865,7 @@
         playMenuSelectSound();
         clearSettingsApiTest();
         settingsDraft.playerName = playerNameResult.name;
+        settingsDraft.language = normalizeLanguageCode(settingsDraft.language);
         settingsDraft.soundDataURL = normalizeSoundDataURL(settingsDraft.soundDataURL);
         settingsDraft.aiApiURL = normalizeAiApiURL(settingsDraft.aiApiURL);
         const convertedSoundDataURL = convertURL(settingsDraft.soundDataURL);
@@ -11837,6 +11873,7 @@
         // Local AI는 게임 서버가 직접 모델을 제공하므로 AI API 테스트 없이도 솔로몬을 열어 준다.
         if (isLocalAiProvider(settingsDraft)) unlockSolomonForSession();
         store.settings = { ...settingsDraft };
+        applyStoredLanguage();
         saveStore();
         applyCanvasOutputResolution();
         updateCanvasOrientation();
@@ -11946,8 +11983,8 @@
     function getSelectableSettingsFocuses() {
         // URL·키·모델명은 사용자가 직접 입력하는 LM Studio에서만 쓴다. Local AI는 고정값을 채우고,
         // 아무 제공자도 고르지 않았으면 입력할 대상 자체가 없으므로 세 행을 모두 건너뛴다.
-        const aiSettingFocuses = isLmStudioProvider(settingsDraft) ? [7, 8, 9] : [];
-        return [0, 1, 2, 3, 4, 5, 6, ...aiSettingFocuses, ...(canRunAiApiTest() ? [10] : []), 11, 12, 13, 14, 15, 16];
+        const aiSettingFocuses = isLmStudioProvider(settingsDraft) ? [8, 9, 10] : [];
+        return [0, 1, 2, 3, 4, 5, 6, 7, ...aiSettingFocuses, ...(canRunAiApiTest() ? [11] : []), 12, 13, 14, 15, 16, 17];
     }
 
     /** 설정 화면에서 다음 또는 이전 포커스로 이동한다. @param {number} direction 이동 방향 @returns {void} */
@@ -12085,24 +12122,29 @@
 
     /** 설정 화면의 포커스 항목을 실행한다. @returns {void} */
     function activateSettingsFocus() {
-        if (settingsFocus === 3) {
+        if (settingsFocus === 1) {
+            playMenuSelectSound();
+            const currentIndex = LANGUAGE_OPTIONS.findIndex((option) => option.key === settingsDraft.language);
+            settingsDraft.language = LANGUAGE_OPTIONS[(currentIndex + 1) % LANGUAGE_OPTIONS.length].key;
+        }
+        else if (settingsFocus === 4) {
             playMenuSelectSound();
             const currentIndex = VIRTUAL_CONTROLLER_OPTIONS.findIndex((option) => option.key === settingsDraft.virtualController);
             settingsDraft.virtualController = VIRTUAL_CONTROLLER_OPTIONS[(currentIndex + 1) % VIRTUAL_CONTROLLER_OPTIONS.length].key;
         }
-        else if (settingsFocus === 4) {
+        else if (settingsFocus === 5) {
             playMenuSelectSound();
             const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
             settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + 1) % GRAPHICS_QUALITY_OPTIONS.length].key;
-        } else if (settingsFocus === 6) {
+        } else if (settingsFocus === 7) {
             playMenuSelectSound();
             const providers = getAiServiceProviders();
             const currentIndex = providers.indexOf(settingsDraft.aiProvider);
             setSettingsDraftProvider(providers[(currentIndex + 1) % providers.length]);
-        } else if (settingsFocus === 10 && canRunAiApiTest()) { playMenuSelectSound(); runAiApiTest(); }
-        else if (settingsFocus === 14) saveSettings();
-        else if (settingsFocus === 15) cancelSettings();
-        else if (settingsFocus === 16) resetAllSettings();
+        } else if (settingsFocus === 11 && canRunAiApiTest()) { playMenuSelectSound(); runAiApiTest(); }
+        else if (settingsFocus === 15) saveSettings();
+        else if (settingsFocus === 16) cancelSettings();
+        else if (settingsFocus === 17) resetAllSettings();
         else {
             const checkbox = getSettingsCheckboxes().find((candidate) => candidate.focus === settingsFocus);
             if (checkbox) toggleSettingsCheckbox(checkbox);
@@ -12118,17 +12160,17 @@
 
     /** 코드 버튼을 제외하고 축소한 설정 화면의 공통 논리 좌표다. 그리기와 마우스 판정이 함께 사용한다. */
     const SETTINGS_UI_LAYOUT = {
-        rowYs: [82, 126, 170, 214, 258, 302, 346, 390, 434, 478],
+        rowYs: [78, 112, 146, 180, 214, 248, 282, 316, 350, 384, 418],
         labelX: 300,
         controlX: 550,
         controlWidth: 400,
-        controlHeight: 28,
-        optionWidth: 115,
-        optionGap: 20,
-        sliderWidth: 340,
-        testY: 502,
-        testHeight: 32,
-        checkboxY: 568,
+        controlHeight: 24,
+        optionWidth: 110,
+        optionGap: 18,
+        sliderWidth: 330,
+        testY: 448,
+        testHeight: 28,
+        checkboxY: 518,
         // 체크박스 줄은 다른 행과 달리 왼쪽에 별도 라벨 열이 필요 없으므로, controlX(550)가 아니라
         // 라벨 열의 시작 좌표(labelX)부터 시작해 그만큼 왼쪽 공간을 더 쓴다.
         landscapeCheckboxX: 300,
@@ -12136,10 +12178,10 @@
         reverseLearningCheckboxX: 780,
         // 체크박스 하나가 클릭을 받는 가로 폭이다. 체크박스 사이 간격과 같아 라벨을 눌러도 토글된다.
         checkboxHitWidth: 240,
-        checkboxSize: 18,
-        actionY: 652,
+        checkboxSize: 16,
+        actionY: 640,
         actionWidth: 140,
-        actionHeight: 38
+        actionHeight: 34
     };
 
     /** 현재 설정값으로 표시할 행 정보를 만든다. @returns {object[]} 설정 행 */
@@ -12148,6 +12190,7 @@
         const step = SETTINGS_UI_LAYOUT.optionWidth + SETTINGS_UI_LAYOUT.optionGap;
         return [
             { label: '이름', value: settingsDraft.playerName, kind: 'text' },
+            { label: '언어', value: settingsDraft.language, kind: 'radio', options: LANGUAGE_OPTIONS.map((option, index) => ({ ...option, value: option.key, x: x + index * 67, width: 64, translateLabel: false })) },
             { label: '배경음악 볼륨', value: settingsDraft.musicVolume, kind: 'slider' },
             { label: '효과음 볼륨', value: settingsDraft.effectsVolume, kind: 'slider' },
             { label: '가상 컨트롤러 사용', value: settingsDraft.virtualController, kind: 'radio', options: VIRTUAL_CONTROLLER_OPTIONS.map((option, index) => ({ label: option.label, value: option.key, x: x + index * step, translateLabel: true })) },
@@ -12162,7 +12205,11 @@
 
     /** 저장·취소·초기화 버튼 정보를 반환한다. @returns {object[]} 동작 버튼 */
     function getSettingsActionButtons() {
-        return [{ label: '저장', x: 410, focus: 14, color: '#4cc9b0' }, { label: '취소', x: 570, focus: 15, color: '#ef5350' }, { label: '초기화', x: 730, focus: 16, color: '#7e6bc4' }];
+        return [
+            { label: '저장', action: 'save', x: 410, focus: 15, color: '#4cc9b0' },
+            { label: '취소', action: 'cancel', x: 570, focus: 16, color: '#ef5350' },
+            { label: '초기화', action: 'reset', x: 730, focus: 17, color: '#7e6bc4' }
+        ];
     }
 
     /**
@@ -12172,9 +12219,9 @@
      */
     function getSettingsCheckboxes() {
         return [
-            { x: SETTINGS_UI_LAYOUT.landscapeCheckboxX, focus: 11, key: 'landscapeOrientationLocked', label: '화면 가로방향 고정' },
-            { x: SETTINGS_UI_LAYOUT.replayCheckboxX, focus: 12, key: 'useReplayFeature', label: '리플레이 사용' },
-            { x: SETTINGS_UI_LAYOUT.reverseLearningCheckboxX, focus: 13, key: 'reverseLearning', label: '역으로 모델 학습' }
+            { x: SETTINGS_UI_LAYOUT.landscapeCheckboxX, focus: 12, key: 'landscapeOrientationLocked', label: '화면 가로방향 고정' },
+            { x: SETTINGS_UI_LAYOUT.replayCheckboxX, focus: 13, key: 'useReplayFeature', label: '리플레이 사용' },
+            { x: SETTINGS_UI_LAYOUT.reverseLearningCheckboxX, focus: 14, key: 'reverseLearning', label: '역으로 모델 학습' }
         ];
     }
 
@@ -12182,10 +12229,10 @@
     function drawSettings() {
         const layout = SETTINGS_UI_LAYOUT;
         context.fillStyle = '#071621'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `30px ${TITLE_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 44);
+        context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `28px ${TITLE_FONT}`; context.fillText(translate('설정'), WIDTH / 2, 44);
         const rows = getSettingsRows();
         rows.forEach((row, index) => {
-            context.textAlign = 'left'; context.fillStyle = row.disabled ? '#6f858e' : '#d8f2f5'; context.font = `12px ${BUTTON_FONT}`; context.fillText(translate(row.label), layout.labelX, row.y + 4);
+            context.textAlign = 'left'; context.fillStyle = row.disabled ? '#6f858e' : '#d8f2f5'; context.font = `11px ${BUTTON_FONT}`; context.fillText(translate(row.label), layout.labelX, row.y + 4);
             const focused = settingsFocus === index;
             if (row.kind === 'slider') {
                 context.strokeStyle = focused ? '#ffd54f' : '#426474'; context.lineWidth = focused ? 3 : 2; context.strokeRect(layout.controlX, row.y - 7, layout.sliderWidth, 14);
@@ -12195,13 +12242,14 @@
                 // 아무 선택지도 고르지 않은 상태에서는 포커스를 표시할 선택지가 없으므로 모든 선택지에 포커스 테두리를 그린다.
                 const noneSelected = !row.options.some((option) => row.value === option.value);
                 row.options.forEach((option) => {
+                    const optionWidth = option.width || layout.optionWidth;
                     const selected = row.value === option.value;
                     const focusHighlighted = focused && (selected || noneSelected);
-                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(option.x, row.y - layout.controlHeight / 2, layout.optionWidth, layout.controlHeight);
-                    context.strokeStyle = focusHighlighted ? '#ffd54f' : '#426474'; context.lineWidth = focusHighlighted ? 3 : 2; context.strokeRect(option.x, row.y - layout.controlHeight / 2, layout.optionWidth, layout.controlHeight);
+                    context.fillStyle = selected ? '#563068' : '#0b202c'; context.fillRect(option.x, row.y - layout.controlHeight / 2, optionWidth, layout.controlHeight);
+                    context.strokeStyle = focusHighlighted ? '#ffd54f' : '#426474'; context.lineWidth = focusHighlighted ? 3 : 2; context.strokeRect(option.x, row.y - layout.controlHeight / 2, optionWidth, layout.controlHeight);
                     context.beginPath(); context.arc(option.x + 14, row.y, 5, 0, Math.PI * 2); context.fillStyle = '#d8f2f5'; context.strokeStyle = '#d8f2f5'; context.lineWidth = 2; context.stroke();
                     if (selected) { context.beginPath(); context.arc(option.x + 14, row.y, 2.5, 0, Math.PI * 2); context.fill(); }
-                    context.fillStyle = '#f5fbfc'; context.textAlign = 'center'; context.fillText(option.translateLabel ? translate(option.label) : option.label, option.x + (layout.optionWidth + 14) / 2, row.y + 4);
+                    context.fillStyle = '#f5fbfc'; context.font = `10px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(option.translateLabel ? translate(option.label) : option.label, option.x + (optionWidth + 14) / 2, row.y + 4);
                 });
             } else {
                 context.fillStyle = row.disabled ? '#172932' : '#0b202c'; context.fillRect(layout.controlX, row.y - layout.controlHeight / 2, layout.controlWidth, layout.controlHeight); context.strokeStyle = focused ? '#ffd54f' : (row.disabled ? '#354851' : '#426474'); context.lineWidth = focused ? 3 : 2; context.strokeRect(layout.controlX, row.y - layout.controlHeight / 2, layout.controlWidth, layout.controlHeight);
@@ -12214,7 +12262,7 @@
                 let visibleEnd = visibleStart;
                 while (visibleEnd < characters.length && context.measureText(characters.slice(visibleStart, visibleEnd + 1).join('')).width <= textFieldWidth) visibleEnd += 1;
                 context.save();
-                context.beginPath(); context.rect(textFieldX, row.y - 13, textFieldWidth, 26); context.clip();
+                context.beginPath(); context.rect(textFieldX, row.y - layout.controlHeight / 2 + 2, textFieldWidth, layout.controlHeight - 4); context.clip();
                 const selection = settingsEditing && settingsFocus === index ? getSettingsTextSelectionRange() : null;
                 if (selection) {
                     const selectionStart = Math.max(selection[0], visibleStart);
@@ -12225,27 +12273,27 @@
                         context.fillStyle = '#426f9e'; context.fillRect(selectionX, row.y - 10, selectionWidth, 16);
                     }
                 }
-                context.fillStyle = row.disabled ? '#70838c' : '#f5fbfc'; context.textAlign = 'left'; context.fillText(characters.slice(visibleStart, visibleEnd).join('') || ' ', textFieldX, row.y + 4);
-                if (settingsEditing && settingsFocus === index) { const cursorX = textFieldX + context.measureText(characters.slice(visibleStart, settingsCursor).join('')).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 10, 2, 16); }
+                context.fillStyle = row.disabled ? '#70838c' : '#f5fbfc'; context.font = `11px ${BUTTON_FONT}`; context.textAlign = 'left'; context.fillText(characters.slice(visibleStart, visibleEnd).join('') || ' ', textFieldX, row.y + 4);
+                if (settingsEditing && settingsFocus === index) { const cursorX = textFieldX + context.measureText(characters.slice(visibleStart, settingsCursor).join('')).width; context.fillStyle = '#ffd54f'; context.fillRect(cursorX, row.y - 8, 2, 14); }
                 context.restore();
             }
         });
         const apiTestEnabled = canRunAiApiTest();
         context.fillStyle = apiTestEnabled ? '#264b5b' : '#263640'; context.fillRect(layout.controlX, layout.testY, layout.controlWidth, layout.testHeight);
-        context.strokeStyle = settingsFocus === 10 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 10 && apiTestEnabled ? 3 : 2; context.strokeRect(layout.controlX, layout.testY, layout.controlWidth, layout.testHeight);
-        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), layout.controlX + layout.controlWidth / 2, layout.testY + 21);
-        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `10px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), layout.controlX, 552);
+        context.strokeStyle = settingsFocus === 11 && apiTestEnabled ? '#ffd54f' : (apiTestEnabled ? '#4cc9b0' : '#4b5b64'); context.lineWidth = settingsFocus === 11 && apiTestEnabled ? 3 : 2; context.strokeRect(layout.controlX, layout.testY, layout.controlWidth, layout.testHeight);
+        context.fillStyle = apiTestEnabled ? '#f5fbfc' : '#7f969e'; context.font = `12px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate('AI API 테스트'), layout.controlX + layout.controlWidth / 2, layout.testY + 19);
+        context.textAlign = 'left'; context.fillStyle = '#a9d9e5'; context.font = `10px ${MESSAGE_FONT}`; context.fillText(translate('이 API키는 브라우저에만 저장됩니다.'), layout.controlX, 490);
         const checkboxY = layout.checkboxY;
         getSettingsCheckboxes().forEach((checkbox) => {
             context.fillStyle = '#0b202c'; context.fillRect(checkbox.x, checkboxY, layout.checkboxSize, layout.checkboxSize);
             context.strokeStyle = settingsFocus === checkbox.focus ? '#ffd54f' : '#426474'; context.lineWidth = settingsFocus === checkbox.focus ? 3 : 2; context.strokeRect(checkbox.x, checkboxY, layout.checkboxSize, layout.checkboxSize);
             if (settingsDraft[checkbox.key]) {
-                context.strokeStyle = '#4cc9b0'; context.lineWidth = 3; context.beginPath(); context.moveTo(checkbox.x + 3, checkboxY + 9); context.lineTo(checkbox.x + 7, checkboxY + 14); context.lineTo(checkbox.x + 16, checkboxY + 4); context.stroke();
+                context.strokeStyle = '#4cc9b0'; context.lineWidth = 3; context.beginPath(); context.moveTo(checkbox.x + 3, checkboxY + 8); context.lineTo(checkbox.x + 7, checkboxY + 12); context.lineTo(checkbox.x + 14, checkboxY + 4); context.stroke();
             }
-            context.fillStyle = '#f5fbfc'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'left'; context.fillText(translate(checkbox.label), checkbox.x + 27, checkboxY + 15);
+            context.fillStyle = '#f5fbfc'; context.font = `12px ${BUTTON_FONT}`; context.textAlign = 'left'; context.fillText(translate(checkbox.label), checkbox.x + 27, checkboxY + 15);
         });
         getSettingsActionButtons().forEach((button) => {
-            context.fillStyle = button.color; context.fillRect(button.x, layout.actionY, layout.actionWidth, layout.actionHeight); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, layout.actionY, layout.actionWidth, layout.actionHeight); context.fillStyle = '#fff'; context.font = `13px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + layout.actionWidth / 2, layout.actionY + 24);
+            context.fillStyle = button.color; context.fillRect(button.x, layout.actionY, layout.actionWidth, layout.actionHeight); context.strokeStyle = settingsFocus === button.focus ? '#ffd54f' : button.color; context.lineWidth = settingsFocus === button.focus ? 3 : 2; context.strokeRect(button.x, layout.actionY, layout.actionWidth, layout.actionHeight); context.fillStyle = '#fff'; context.font = `12px ${BUTTON_FONT}`; context.textAlign = 'center'; context.fillText(translate(button.label), button.x + layout.actionWidth / 2, layout.actionY + 23);
         });
         context.fillStyle = '#8aa6af'; context.font = `10px ${MESSAGE_FONT}`; context.textAlign = 'left'; context.fillText(`Build ${BUILDNO}`, 10, HEIGHT - 10);
         context.fillStyle = '#263640'; context.fillRect(SETTINGS_CODE_BUTTON.x, SETTINGS_CODE_BUTTON.y, SETTINGS_CODE_BUTTON.width, SETTINGS_CODE_BUTTON.height);
@@ -14621,10 +14669,10 @@
     /** 설정 화면에서 편집 가능한 텍스트 입력 필드 이름을 반환한다. @returns {'playerName'|'soundDataURL'|'aiApiURL'|'aiApiKey'|'aiModel'|null} 설정 입력 필드 */
     function getSettingsTextField() {
         if (settingsFocus === 0) return 'playerName';
-        if (settingsFocus === 5) return 'soundDataURL';
-        if (settingsFocus === 7 && isLmStudioProvider(settingsDraft)) return 'aiApiURL';
-        if (settingsFocus === 8 && isLmStudioProvider(settingsDraft)) return 'aiApiKey';
-        if (settingsFocus === 9 && isLmStudioProvider(settingsDraft)) return 'aiModel';
+        if (settingsFocus === 6) return 'soundDataURL';
+        if (settingsFocus === 8 && isLmStudioProvider(settingsDraft)) return 'aiApiURL';
+        if (settingsFocus === 9 && isLmStudioProvider(settingsDraft)) return 'aiApiKey';
+        if (settingsFocus === 10 && isLmStudioProvider(settingsDraft)) return 'aiModel';
         return null;
     }
 
@@ -14740,24 +14788,28 @@
         else if (key === 'arrowup' || key === 'arrowdown') moveSettingsFocus(key === 'arrowup' ? -1 : 1);
         else if (key === 'arrowleft' || key === 'arrowright') {
             const direction = key === 'arrowleft' ? -1 : 1;
-            if (settingsFocus === 1) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
-            else if (settingsFocus === 2) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
-            else if (settingsFocus === 3) {
+            if (settingsFocus === 1) {
+                const currentIndex = LANGUAGE_OPTIONS.findIndex((option) => option.key === settingsDraft.language);
+                settingsDraft.language = LANGUAGE_OPTIONS[(currentIndex + direction + LANGUAGE_OPTIONS.length) % LANGUAGE_OPTIONS.length].key;
+            }
+            else if (settingsFocus === 2) settingsDraft.musicVolume = Math.max(0, Math.min(100, settingsDraft.musicVolume + direction));
+            else if (settingsFocus === 3) settingsDraft.effectsVolume = Math.max(0, Math.min(100, settingsDraft.effectsVolume + direction));
+            else if (settingsFocus === 4) {
                 const currentIndex = VIRTUAL_CONTROLLER_OPTIONS.findIndex((option) => option.key === settingsDraft.virtualController);
                 settingsDraft.virtualController = VIRTUAL_CONTROLLER_OPTIONS[(currentIndex + direction + VIRTUAL_CONTROLLER_OPTIONS.length) % VIRTUAL_CONTROLLER_OPTIONS.length].key;
             }
-            else if (settingsFocus === 4) {
+            else if (settingsFocus === 5) {
                 const currentIndex = GRAPHICS_QUALITY_OPTIONS.findIndex((option) => option.key === settingsDraft.graphicsQuality);
                 settingsDraft.graphicsQuality = GRAPHICS_QUALITY_OPTIONS[(currentIndex + direction + GRAPHICS_QUALITY_OPTIONS.length) % GRAPHICS_QUALITY_OPTIONS.length].key;
-            } else if (settingsFocus === 6) {
+            } else if (settingsFocus === 7) {
                 const providers = getAiServiceProviders();
                 const currentIndex = providers.indexOf(settingsDraft.aiProvider);
                 setSettingsDraftProvider(providers[(currentIndex + direction + providers.length) % providers.length]);
-            } else if (settingsFocus >= 11 && settingsFocus <= 13) {
+            } else if (settingsFocus >= 12 && settingsFocus <= 14) {
                 // 체크박스 사이 좌우 이동은 양 끝에서 멈추고 저장·취소 버튼으로 넘어가지 않는다.
-                settingsFocus = Math.max(11, Math.min(13, settingsFocus + direction));
+                settingsFocus = Math.max(12, Math.min(14, settingsFocus + direction));
             }
-            else if (settingsFocus >= 14) settingsFocus = 14 + (settingsFocus - 14 + (direction < 0 ? 2 : 1)) % 3;
+            else if (settingsFocus >= 15) settingsFocus = 15 + (settingsFocus - 15 + (direction < 0 ? 2 : 1)) % 3;
         }
     }
 
@@ -15911,7 +15963,7 @@
         } else if (menuScreen === 'settings') {
             const layout = SETTINGS_UI_LAYOUT;
             if (x >= SETTINGS_CODE_BUTTON.x && x <= SETTINGS_CODE_BUTTON.x + SETTINGS_CODE_BUTTON.width && y >= SETTINGS_CODE_BUTTON.y && y <= SETTINGS_CODE_BUTTON.y + SETTINGS_CODE_BUTTON.height) enterSettingsCode();
-            else if (y >= layout.testY && y <= layout.testY + layout.testHeight && x >= layout.controlX && x <= layout.controlX + layout.controlWidth && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 10; runAiApiTest(); }
+            else if (y >= layout.testY && y <= layout.testY + layout.testHeight && x >= layout.controlX && x <= layout.controlX + layout.controlWidth && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 11; runAiApiTest(); }
             else if (y >= layout.checkboxY && y <= layout.checkboxY + layout.checkboxSize && x >= layout.landscapeCheckboxX && x <= layout.reverseLearningCheckboxX + layout.checkboxHitWidth) {
                 // 각 체크박스는 자기 위치부터 다음 체크박스 직전까지를 클릭 범위로 가진다.
                 const checkbox = getSettingsCheckboxes().filter((candidate) => x >= candidate.x).pop();
@@ -15921,8 +15973,8 @@
                 const action = getSettingsActionButtons().find((button) => x >= button.x && x <= button.x + layout.actionWidth && y >= layout.actionY && y <= layout.actionY + layout.actionHeight);
                 if (action) {
                     settingsFocus = action.focus;
-                    if (action.focus === 14) saveSettings();
-                    else if (action.focus === 15) cancelSettings();
+                    if (action.action === 'save') saveSettings();
+                    else if (action.action === 'cancel') cancelSettings();
                     else resetAllSettings();
                     return;
                 }
@@ -15930,20 +15982,21 @@
                 const rowIndex = rows.findIndex((row) => {
                     if (row.disabled) return false;
                     if (row.kind === 'slider') return x >= layout.controlX && x <= layout.controlX + layout.sliderWidth && y >= row.y - 7 && y <= row.y + 7;
-                    if (row.kind === 'radio') return row.options.some((option) => x >= option.x && x <= option.x + layout.optionWidth && y >= row.y - layout.controlHeight / 2 && y <= row.y + layout.controlHeight / 2);
+                    if (row.kind === 'radio') return row.options.some((option) => x >= option.x && x <= option.x + (option.width || layout.optionWidth) && y >= row.y - layout.controlHeight / 2 && y <= row.y + layout.controlHeight / 2);
                     return x >= layout.controlX && x <= layout.controlX + layout.controlWidth && y >= row.y - layout.controlHeight / 2 && y <= row.y + layout.controlHeight / 2;
                 });
                 if (rowIndex >= 0) {
                     const row = rows[rowIndex];
                     settingsFocus = rowIndex;
                     if (row.kind === 'slider') {
-                        settingsDraft[rowIndex === 1 ? 'musicVolume' : 'effectsVolume'] = Math.round(Math.max(0, Math.min(100, (x - layout.controlX) / layout.sliderWidth * 100)));
+                        settingsDraft[rowIndex === 2 ? 'musicVolume' : 'effectsVolume'] = Math.round(Math.max(0, Math.min(100, (x - layout.controlX) / layout.sliderWidth * 100)));
                     } else if (row.kind === 'radio') {
-                        const option = row.options.find((candidate) => x >= candidate.x && x <= candidate.x + layout.optionWidth);
+                        const option = row.options.find((candidate) => x >= candidate.x && x <= candidate.x + (candidate.width || layout.optionWidth));
                         if (option) {
                             playMenuSelectSound();
-                            if (rowIndex === 3) settingsDraft.virtualController = option.value;
-                            else if (rowIndex === 4) settingsDraft.graphicsQuality = option.value;
+                            if (rowIndex === 1) settingsDraft.language = option.value;
+                            else if (rowIndex === 4) settingsDraft.virtualController = option.value;
+                            else if (rowIndex === 5) settingsDraft.graphicsQuality = option.value;
                             else setSettingsDraftProvider(option.value);
                         }
                         settingsEditing = false;
@@ -17178,9 +17231,9 @@
         refreshOnnxRuntimeAvailability();
         prepareFontImportStyle();
         prepareRuntimeLayoutStyle();
-        languageCode = navigator.language || navigator.userLanguage || 'ko';
-        if (languageCode === 'ko-KR') languageCode = 'ko';
+        languageCode = detectSystemLanguageCode();
         loadStore();
+        applyStoredLanguage();
         loadCards();
         loadAppliedCodes();
         soundDataURL = store.settings.soundDataURL;

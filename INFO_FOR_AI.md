@@ -1154,6 +1154,16 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - WebMCP: `leaderboard_manual`, `leaderboard_records`(읽기 전용, 닉네임이 들어가 `untrustedContentHint`, 각 항목의 `recordedAt`은 ISO 8601 UTC 문자열 또는 null, 대전 룰은 `difficulty`로 좁히며 결과 순위마다 `difficulty`를 담는다. 대전 룰에서 `colors`를 주려면 `difficulty`도 줘야 한다), `leaderboard_show`(트리에서 해당 순위를 선택해 보여 줌) 세 도구를 `leaderboard_` 접두어로 등록한다. 게임 페이지 WebMCP `manual`에도 리더보드 기록 규칙 문단을 더했다.
 - 검증: `tests/test05_leaderboard.spec.js` 9개 × Chromium·Firefox·WebKit = 27개 통과, `test01_core`·`test01_enemy` Chromium 82개 통과, `node --check`, ESLint, webpack 번들 재생성, `git diff --check`. BUILDNO 91, 패키지 버전 `0.0.91`(버전값 자체는 테스트하지 않음). BUILDNO 92(`0.0.92`)에서 기록 일시를 더한 뒤 같은 27개를 다시 통과했다. BUILDNO 94(`0.0.94`)에서 AI 난이도 단계를 더한 뒤 12개 × 3 브라우저 = 36개가 통과했다(형식 1 이관 테스트 추가). 조회 페이지에는 `puyow.html`로 돌아가는 링크가 있다. BUILDNO 93부터 게임 메인 메뉴 좌측 하단 `리더보드` 버튼으로 이 페이지에 들어간다(위 「UI·입력·결과 화면」 절). 회귀 테스트는 `test05_leaderboard.spec.js`의 버튼 위치·방향키 순서(GitHub에서 위로 한 번)·Enter·마우스 클릭 이동 두 개다.
 
+### 설정 언어 선택 (2026-09-19, BUILDNO 95)
+
+- 게임 설정에 `language`를 저장하며, 이름과 배경음악 볼륨 사이에서 영어·한국어·일본어·중국어·프랑스어·독일어를 고를 수 있다. 선택지는 언어를 바꾸기 전에도 구분할 수 있도록 `English`·`한국어`·`日本語`·`中文`·`Français`·`Deutsch` 자체 표기로 표시한다.
+- 새 저장 데이터와 언어 저장값이 없는 기존 데이터는 브라우저 시스템 언어의 앞 두 글자를 위 여섯 언어와 대조한다. 지원하지 않거나 판별할 수 없으면 영어를 저장한다. 잘못된 저장값도 같은 방식으로 보정한다.
+- `translate()`와 URL의 `[LANG]` 치환은 시스템 언어가 아니라 저장된 `settings.language`를 사용한다. 설정 저장 직후부터 화면 문구와 공지 경로에 반영된다.
+- 언어 행을 추가하면서 설정 화면의 행 간격·입력/선택 컨트롤·버튼 글자 크기와 높이를 조금 줄였다. 언어 선택지는 여섯 개를 한 줄에 배치하며 개별 폭을 사용하므로 마우스 판정도 선택지 폭을 따른다.
+- BUILDNO 96부터 초기화에서 저장소를 읽은 직후와 설정 저장 직후에 `applyStoredLanguage()`를 호출한다. 이 함수가 저장된 `settings.language`를 `languageCode`에 적용하므로, 그 시점 이후 `translate()`와 `[LANG]`은 시스템 언어를 다시 읽지 않는다.
+- BUILDNO 97에서 언어 행 추가 뒤 남아 있던 설정 화면 마우스 동작 버튼의 예전 포커스 번호 분기를 고쳤다. 버튼 정보에 `action`(`save`·`cancel`·`reset`)을 명시하고, 마우스 클릭은 이 식별자로 실행하므로 포커스 순번 변경과 저장·취소·초기화 실행이 다시 어긋나지 않는다.
+- BUILDNO 98에서 게임 시작 시 `PlayerState.name`에 보관하는 적의 한국어 원문 이름을 바꾸지 않고, 게임 필드 상단·NEXT·점수 패널을 그릴 때 `getDisplayedPlayerName()`으로 번역한다. 따라서 게임 상태 API·리플레이·리더보드의 안정적인 이름 키는 유지하면서 설정 언어에 맞는 적 이름을 게임 화면에 표시한다.
+
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.

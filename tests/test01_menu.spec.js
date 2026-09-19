@@ -405,11 +405,88 @@ test('설정의 배경음악·효과음 볼륨 값은 슬라이더 오른쪽 여
     const buildText = `Build ${window.WebPuyo.BUILDNO}`;
     const values = window.testCanvasTextCalls.filter((call) => ['42', '73', buildText].includes(call.text));
       return {
-      music: values.some((call) => call.text === '42' && call.x === 920 && call.y === 130),
-      effects: values.some((call) => call.text === '73' && call.x === 920 && call.y === 174),
+      music: values.some((call) => call.text === '42' && call.x === 920 && call.y === 150),
+      effects: values.some((call) => call.text === '73' && call.x === 920 && call.y === 184),
       build: values.some((call) => call.text === buildText && call.x === 10 && call.y === 710),
       };
   })).toEqual({ music: true, effects: true, build: true });
+});
+
+test('설정 언어는 여섯 선택지를 표시하고 저장한 언어로 게임 번역과 URL 언어를 적용한다', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'language', { configurable: true, value: 'ja-JP' });
+  });
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: 'PLAYER 1', language: 'en' } }));
+  });
+  await page.reload();
+  expect(await page.evaluate(() => window.WebPuyo.translate('설정'))).toBe('Settings');
+  await openSettings(page);
+  await expect.poll(() => page.evaluate(() => ['English', '한국어', '日本語', '中文', 'Français', 'Deutsch']
+    .every((label) => window.testCanvasTexts.includes(label)))).toBe(true);
+
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 635, y: 112 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.language)).toBe('ko');
+  expect(await page.evaluate(() => window.WebPuyo.translate('설정'))).toBe('설정');
+
+  await page.evaluate(() => {
+    const store = JSON.parse(localStorage.getItem('puyow_store'));
+    store.settings.language = 'es-MX';
+    localStorage.setItem('puyow_store', JSON.stringify(store));
+  });
+  await page.reload();
+  expect(await page.evaluate(() => ({
+    language: JSON.parse(localStorage.getItem('puyow_store')).settings.language,
+    settings: window.WebPuyo.translate('설정'),
+  }))).toEqual({ language: 'en', settings: 'Settings' });
+});
+
+test('설정 하단 버튼의 마우스 클릭은 저장·취소·초기화를 각각 실행한다', async ({ page }) => {
+  const setConfirmSpy = () => page.evaluate(() => {
+    window.testSettingsConfirmCount = 0;
+    window.confirm = () => {
+      window.testSettingsConfirmCount += 1;
+      return false;
+    };
+  });
+
+  await openSettings(page);
+  await setConfirmSpy();
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 657 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  expect(await page.evaluate(() => window.testSettingsConfirmCount)).toBe(0);
+
+  await page.reload();
+  await openSettings(page);
+  await setConfirmSpy();
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 657 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  expect(await page.evaluate(() => window.testSettingsConfirmCount)).toBe(0);
+
+  await page.reload();
+  await openSettings(page);
+  await setConfirmSpy();
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 800, y: 657 } });
+  expect(await page.evaluate(() => window.testSettingsConfirmCount)).toBe(1);
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+});
+
+test('게임 화면의 CPU 적 이름은 현재 설정 언어로 표시한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: 'PLAYER 1', language: 'en' } }));
+  });
+  await page.reload();
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls
+    .some((call) => call.text === 'Andromalius' && call.y === 54))).toBe(true);
+  // 게임 상태·리플레이·리더보드의 안정적인 이름 키는 기존 한국어 원문을 유지한다.
+  expect(await page.evaluate(() => window.WebPuyo.getGameState().opponent.name)).toBe('안드로말리우스');
 });
 
 test('설정 오른쪽 아래 코드 버튼은 마우스로만 코드를 입력받고 공란은 무시한다', async ({ page }) => {
@@ -588,7 +665,7 @@ test('사운드 데이터 URL은 최대 200자로 저장되고 초기화 시 변
     '사운드 데이터 URL', 'Sound data URL', 'サウンドデータURL', '声音数据 URL',
   ].includes(text)))).toBe(true);
 
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 302 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 282 } });
   await page.keyboard.type('x'.repeat(201));
   await page.keyboard.press('Enter');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
@@ -641,7 +718,7 @@ test('설정 텍스트 입력은 선택, 복사, 붙여넣기와 클립보드 �
     });
   });
   await openSettings(page);
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 302 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 282 } });
   await page.keyboard.type('before');
   await page.keyboard.press('Control+A');
   await page.keyboard.type('abcdef');
@@ -686,7 +763,7 @@ test('그래픽 설정은 키보드와 마우스로 저장되며 캔버스 출�
   });
 
   await openSettings(page);
-  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   // 그래픽 설정 행에서 사운드·AI 제공자 행과 체크박스 세 개를 지나 저장 버튼까지 내려간다.
   for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
@@ -699,7 +776,7 @@ test('그래픽 설정은 키보드와 마우스로 저장되며 캔버스 출�
   }))).toEqual({ settings: 'medium', point: { x: 960, y: 540 }, length: 57 });
 
   await page.keyboard.press('Enter');
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 895, y: 258 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 895, y: 248 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
   await expect.poll(() => page.evaluate(() => [document.querySelector('[data-puyow-canvas="2d"]').width, document.querySelector('[data-puyow-canvas="2d"]').height])).toEqual([3840, 2160]);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.graphicsQuality)).toBe('high');
@@ -714,9 +791,7 @@ test('가상 컨트롤러 크기는 이전 저장값을 호환하고 키보드�
   await openSettings(page);
 
   // 이전 켜기(true)는 보통으로 이관되며, 키보드로 없음과 크게를 순서대로 선택할 수 있다.
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
@@ -1207,7 +1282,7 @@ test('변경된 사운드 데이터 URL을 저장하면 즉시 사운드 데이�
   });
 
   await openSettings(page);
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 302 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 282 } });
   await page.keyboard.type('https://sound.example/sounds_[LANG].json');
   await page.keyboard.press('Enter');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
