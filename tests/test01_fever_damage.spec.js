@@ -122,7 +122,99 @@ async function activateReceiver(page) {
   await page.evaluate(() => { window.damagePlayers.b.tutorialHold = true; });
 }
 
+for (const scenario of [
+  { name: '피버 DAMAGE를 가장 먼저', target: 'current', attack: 1, expected: { fever: 1, normal: 20, incoming: 8 } },
+  { name: '피버 대상 ATTACK을 유예 DAMAGE보다 먼저', target: 'current', attack: 5, expected: { fever: 0, normal: 20, incoming: 5 } },
+  { name: '피버 대상 ATTACK까지 지운 뒤 유예 DAMAGE를', target: 'current', attack: 12, expected: { fever: 0, normal: 18, incoming: 0 } },
+  { name: '일반 필드 대상 ATTACK보다 유예 DAMAGE를 먼저', target: 'normal', attack: 5, expected: { fever: 0, normal: 17, incoming: 8 } },
+  { name: '이전 피버 회차 대상 ATTACK보다 유예 DAMAGE를 먼저', target: 'previous', attack: 5, expected: { fever: 0, normal: 17, incoming: 8 } },
+]) {
+  test(`피버 상쇄 우선순위: ${scenario.name} 상쇄한다`, async ({ page }) => {
+    await prepareDamageMatch(page);
+    await activateReceiver(page);
+    await page.evaluate(() => {
+      const { a } = window.damagePlayers;
+      a.attack = 8;
+      window.beginDamageChain(a);
+    });
+    await advanceUntil(page, () => window.damagePlayers.a.combo === 1);
+    await page.evaluate(({ target, attack }) => {
+      const { a, b } = window.damagePlayers;
+      a.tutorialHold = true;
+      // 일반 필드행과 이미 종료된 피버행 공격도 같은 상쇄 경로에서 비교한다.
+      if (target === 'normal') a.chainTargetFeverId = -1;
+      if (target === 'previous') b.fever.activationId += 1;
+      b.fever.damage = 2;
+      b.normalDamage = 20;
+      b.attack = attack;
+      window.beginDamageChain(b, false);
+    }, scenario);
+    await advanceUntil(page, () => window.damagePlayers.b.combo === 1);
+    expect(await page.evaluate(() => {
+      const { a, b } = window.damagePlayers;
+      return { fever: b.fever.damage, normal: b.normalDamage, incoming: Math.floor(a.attack) };
+    })).toEqual(scenario.expected);
+    // 상쇄는 정수만 소비하고, 양쪽 ATTACK의 소수 잔여값은 보존한다.
+    expect(await page.evaluate(() => window.damagePlayers.a.attack % 1)).toBeCloseTo(40 / 70);
+    expect(await page.evaluate(() => window.damagePlayers.b.attack % 1)).toBeCloseTo(40 / 70);
+  });
+}
+
+test('피버 연쇄 도중 새로 생긴 피버 대상 ATTACK도 다음 폭발에서 유예 DAMAGE보다 먼저 상쇄한다', async ({ page }) => {
+  await prepareDamageMatch(page, true);
+  await activateReceiver(page);
+  await page.evaluate(() => {
+    const { b } = window.damagePlayers;
+    b.fever.damage = 2;
+    b.normalDamage = 20;
+    window.beginDamageChain(b);
+  });
+  await advanceUntil(page, () => window.damagePlayers.b.combo === 1);
+  await page.evaluate(() => {
+    const { a, b } = window.damagePlayers;
+    b.tutorialHold = true;
+    a.attack = 8;
+    window.beginDamageChain(a);
+  });
+  await advanceUntil(page, () => window.damagePlayers.a.combo === 1);
+  await page.evaluate(() => {
+    const { a, b } = window.damagePlayers;
+    a.tutorialHold = true;
+    b.tutorialHold = false;
+  });
+  await advanceUntil(page, () => window.damagePlayers.b.combo === 2);
+  expect(await page.evaluate(() => {
+    const { a, b } = window.damagePlayers;
+    return { fever: b.fever.damage, normal: b.normalDamage, incoming: Math.floor(a.attack) };
+  })).toEqual({ fever: 0, normal: 20, incoming: 5 });
+});
+
 for (const delayed of [false, true]) {
+  test(`첫 폭발이 전부 상쇄돼도 이후 반격의 ${delayed ? '지연' : '즉시'} 정산은 최초 연쇄 시작 시점의 목적지를 유지한다`, async ({ page }) => {
+    await prepareDamageMatch(page);
+    await page.evaluate(() => {
+      const { a } = window.damagePlayers;
+      a.normalDamage = 1;
+      window.beginDamageChain(a);
+    });
+    await advanceUntil(page, () => window.damagePlayers.a.combo === 1);
+    expect(await page.evaluate(() => window.damagePlayers.a.attack)).toBe(0);
+    await page.evaluate(() => { window.damagePlayers.a.tutorialHold = true; });
+    await activateReceiver(page);
+    await page.evaluate((delayed) => {
+      const { a } = window.damagePlayers;
+      a.normalDamage = delayed ? 1 : 0;
+      a.tutorialHold = false;
+    }, delayed);
+    await advanceUntil(page, () => window.damagePlayers.a.combo === 0);
+    if (delayed) expect(await page.evaluate(() => window.damagePlayers.b.normalDamage)).toBe(0);
+    await advanceUntil(page, () => window.damagePlayers.b.normalDamage > 0);
+    expect(await page.evaluate(() => {
+      const { b } = window.damagePlayers;
+      return { normal: b.normalDamage, fever: b.fever.damage, active: b.fever.active };
+    })).toEqual({ normal: delayed ? 3 : 4, fever: 0, active: true });
+  });
+
   test(`연쇄 중 피버에 진입한 상대에게 ${delayed ? '에너지 완료 뒤' : '즉시 정산으로'} 일반 DAMAGE를 전달한다`, async ({ page }) => {
     await prepareDamageMatch(page, delayed);
     await page.evaluate(() => window.beginDamageChain(window.damagePlayers.a));
@@ -424,11 +516,12 @@ for (const relaxed of [false, true]) {
     await activateReceiver(page);
     await page.evaluate(() => {
       const { a, b } = window.damagePlayers;
-      // 피버 DAMAGE 없이 일반 필드행 유예 DAMAGE만 남긴다. 상대 ATTACK은 최소 공격 1을
-      // 보장하는 조건일 뿐, 피버 중 상쇄 순서상 유예 DAMAGE를 먼저 지우지 못하게 한다.
+      // 피버 DAMAGE 없이 일반 필드행 유예 DAMAGE만 남긴다. 일반 필드행 상대 ATTACK은
+      // 최소 공격 1을 보장하지만, 우선순위상 유예 DAMAGE 뒤에서 상쇄한다.
       b.fever.damage = 0;
       b.normalDamage = 1;
       a.attack = 1;
+      a.chainTargetFeverId = -1;
       window.beginDamageChain(b, false);
     });
     await advanceUntil(page, () => window.damagePlayers.b.normalDamage === 0);

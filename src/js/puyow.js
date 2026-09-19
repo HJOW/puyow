@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 98;
+    const BUILDNO = 99;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -7975,19 +7975,31 @@
         let cancelledDamage = 0;
         let cancelledNormalDamage = 0;
         if (game?.feverRule && player.fever?.active) {
-            // 피버 공격은 피버 DAMAGE와 보존된 일반 DAMAGE를 모두 상쇄한 뒤 상대 ATTACK을 상쇄한다.
+            // 매 폭발마다 현재 피버 DAMAGE → 현재 피버행 상대 ATTACK → 유예된 일반 DAMAGE
+            // → 나머지 상대 ATTACK 순으로 상쇄한다. 내 연쇄의 공격 목적지는 바꾸지 않는다.
+            const incomingTargetsCurrentFever = opponent.chainTargetFeverId != null
+                && opponent.chainTargetFeverId >= 0
+                && opponent.chainTargetFeverId === player.fever.activationId;
             cancelledDamage = Math.min(remaining, Math.floor(player.fever.damage));
             player.fever.damage -= cancelledDamage;
             player.attack -= cancelledDamage;
             remaining -= cancelledDamage;
+            if (incomingTargetsCurrentFever) {
+                cancelledOpponentAttack = Math.min(remaining, Math.floor(opponent.attack));
+                player.attack -= cancelledOpponentAttack;
+                opponent.attack -= cancelledOpponentAttack;
+                remaining -= cancelledOpponentAttack;
+            }
             cancelledNormalDamage = Math.min(remaining, Math.floor(player.normalDamage));
             player.normalDamage -= cancelledNormalDamage;
             player.attack -= cancelledNormalDamage;
             remaining -= cancelledNormalDamage;
-            cancelledOpponentAttack = Math.min(remaining, Math.floor(opponent.attack));
-            player.attack -= cancelledOpponentAttack;
-            opponent.attack -= cancelledOpponentAttack;
-            remaining -= cancelledOpponentAttack;
+            if (!incomingTargetsCurrentFever) {
+                cancelledOpponentAttack = Math.min(remaining, Math.floor(opponent.attack));
+                player.attack -= cancelledOpponentAttack;
+                opponent.attack -= cancelledOpponentAttack;
+                remaining -= cancelledOpponentAttack;
+            }
         } else {
             cancelledOpponentAttack = Math.min(remaining, Math.floor(opponent.attack));
             player.attack -= cancelledOpponentAttack;
