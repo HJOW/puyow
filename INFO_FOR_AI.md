@@ -1193,6 +1193,13 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - 실제 게임 페이지는 `src/js/puyow.js`를 읽고 번들은 현재 주석 처리되어 있다. 이번 변경에서는 소스 WebMCP를 갱신했으며, 번들 재생성은 실행 환경의 기존 `src/bundle/puyow.bundle.js` 파일 잠금(EPERM)으로 수행하지 못했다.
 - 검증: `node --check src/js/puyow.js`, `npm.cmd test`/`npx eslint src/js/puyow.js`, `git diff --check` 통과. Playwright `test01_core.spec.js`는 테스트 결과 파일 잠금(EPERM)으로 완료하지 못했다. BUILDNO는 101, 패키지 버전은 `0.0.101`이다.
 
+### Python GUI 학습기의 GPU 사용 점검 (2026-09-20)
+
+- `python/lngui.py`는 학습 시작 시 `learning.DEFAULT_DEVICE`인 `auto`를 `learning.train()`에 전달한다. `python/learning.py`는 `auto`일 때 `torch.cuda.is_available()`가 참이면 `cuda`, 아니면 `cpu`를 선택하므로 CUDA 지원 PyTorch와 NVIDIA 환경에서는 GUI 학습도 GPU를 사용할 수 있다.
+- `learning.py`의 가치망, 타깃망, 배치 입력·보상·부트스트랩 텐서, 추론 후보 점수 계산과 역전파는 선택한 `device`로 이동한다. 반면 보드·연쇄·상대 AI 시뮬레이션과 애프터스테이트 후보 생성은 Python CPU 코드이므로 학습 전체가 GPU에서 실행되는 구조는 아니다.
+- GUI에는 장치 선택란이나 GPU 사용률 표시가 없고 CPU·RAM만 표시한다. 현재 점검 환경의 PyTorch는 `2.14.0+cpu`(`torch.version.cuda is None`)이며 CUDA 장치가 0개라 `auto`는 CPU로 폴백한다. GPU를 쓰려면 NVIDIA 드라이버와 CUDA 지원 PyTorch를 설치한 별도 환경에서 실행해야 한다.
+- 이 확인은 `puyow.js`를 수정하지 않은 진단 작업이므로 BUILDNO와 `package.json` 버전은 변경하지 않았다.
+
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
