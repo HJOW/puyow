@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 99;
+    const BUILDNO = 100;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -5176,7 +5176,9 @@
     function prepareFeverTurn(player, feverState, targetCombo = feverState.targetCombo, countTurn = true, sourceFieldWasEmpty = isEmptyPlayerField(player)) {
         // 패턴이 올라온 뒤에는 보드가 비어 있지 않으므로, 패턴 배치 전의 실제 플레이 영역 상태를 보존한다.
         // 이 값은 패턴의 첫 AI 배치에만 사용하고, 그 뒤부터는 기존 전략을 따른다.
-        feverState.randomizeStageOpening = game?.feverRule === true && sourceFieldWasEmpty;
+        // 일반 필드 싹쓸이 보상 패턴은 이미 뿌요가 깔린 특수 필드이므로 무작위 첫 수를 쓰지 않는다.
+        // 실제 피버에 진입해 지급하는 첫 패턴에만 빈 일반 필드 시작의 무작위 배치 규칙을 적용한다.
+        feverState.randomizeStageOpening = game?.feverRule === true && feverState.active === true && sourceFieldWasEmpty;
         const nextPair = peekNextPair(player);
         // 개발용 도구의 피버 테스트는 편집 중인 패턴을 색 변환 없이 그대로 첫 화면에 올리고,
         // 그 다음 번 패턴부터는 실제 게임과 같은 방식으로 고른 뒤 배치가 끝나면 편집 모드로 돌아간다.

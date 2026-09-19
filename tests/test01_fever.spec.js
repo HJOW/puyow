@@ -362,7 +362,7 @@ test('연속 피버와 피버 상태는 낮은 연쇄 뒤 4연쇄 피버 패턴�
   expect(await page.evaluate(() => window.feverLowComboEnemy.player.fever.randomizeStageOpening)).toBe(false);
 });
 
-test('피버 룰의 빈 필드 싹쓸이 뒤 4연쇄 패턴 첫 AI 배치는 무작위 대상으로 예약된다', async ({ page }) => {
+test('피버 룰의 빈 필드 싹쓸이 뒤 4연쇄 보상 패턴은 무작위 첫 배치를 예약하지 않는다', async ({ page }) => {
   await page.evaluate(() => {
     class FeverEmptyStageEnemy extends window.WebPuyo.Enemy {
       constructor() { super(); this.sortPriority = -1; this.prepared = false; }
@@ -392,7 +392,7 @@ test('피버 룰의 빈 필드 싹쓸이 뒤 4연쇄 패턴 첫 AI 배치는 무
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
 
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.fever?.selectedStageTarget), { timeout: 15000 }).toBe(4);
-  expect(await page.evaluate(() => window.feverEmptyStageEnemy.player.fever.randomizeStageOpening)).toBe(true);
+  expect(await page.evaluate(() => window.feverEmptyStageEnemy.player.fever.randomizeStageOpening)).toBe(false);
 });
 
 test('피버 상태는 낮은 연쇄 싹쓸이 뒤 직전 목표보다 한 단계만 낮은 목표를 사용한다', async ({ page }) => {
