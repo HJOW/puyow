@@ -228,6 +228,8 @@
                 box-shadow: 0 8px 24px var(--lb-shadow);
                 overflow: hidden;
             }
+            /* 통합 순위표는 조건 칸이 하나 더 붙으므로 조금 넓게 쓴다. */
+            .lb-card.lb-card-wide { max-width: 920px; }
             .lb-table { width: 100%; border-collapse: collapse; }
             .lb-table th, .lb-table td { padding: 11px 16px; text-align: left; }
             .lb-table thead th {
@@ -242,6 +244,8 @@
             .lb-table .lb-col-rank { width: 72px; }
             .lb-table .lb-col-score { text-align: right; font-variant-numeric: tabular-nums; font-family: "D2Coding", ui-monospace, monospace; font-size: 15px; }
             .lb-table td.lb-col-name { overflow-wrap: anywhere; }
+            /* 통합 순위표에만 있는 칸이다. 기록이 나온 AI 난이도·색 수·적을 적는다. */
+            .lb-table .lb-col-condition { color: var(--lb-text-weak); font-size: 13px; overflow-wrap: anywhere; }
             .lb-table .lb-col-date { width: 1%; white-space: nowrap; color: var(--lb-text-weak); font-size: 13px; font-variant-numeric: tabular-nums; }
             .lb-rank {
                 display: inline-flex;
@@ -290,6 +294,8 @@
                 .lb-table .lb-col-rank { width: 52px; }
                 /* 좁은 화면에서는 기록 일시를 두 줄까지 허용해 가로 스크롤을 막는다. */
                 .lb-table .lb-col-date { white-space: normal; min-width: 88px; font-size: 12px; }
+                .lb-table .lb-col-condition { font-size: 12px; }
+                .lb-table.lb-table-combined th, .lb-table.lb-table-combined td { padding: 10px 6px; }
             }
         </style>
 

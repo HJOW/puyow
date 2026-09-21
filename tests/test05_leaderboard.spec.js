@@ -267,6 +267,52 @@ test.describe('리더보드 조회 화면', () => {
     await expect(page.locator('.lb-table tbody tr')).toContainText('Carol');
   });
 
+  test('룰 이름을 직접 고르면 그 룰의 난이도 통합 순위를 보여 준다', async ({ page }) => {
+    await page.goto(LEADERBOARD_PAGE);
+
+    // 대전 룰: AI 난이도·색 수·적을 가리지 않고 한 표에 모아 점수순으로 매긴다.
+    await page.locator('[data-node-id="standard"]').click();
+    await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules');
+    await expect(page.locator('.lb-title')).toHaveText('Combined ranking');
+    await expect(page.locator('.lb-table thead')).toContainText('Conditions');
+    const rows = page.locator('.lb-table tbody tr');
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(0)).toContainText('Alice');
+    await expect(rows.nth(0).locator('.lb-col-condition')).toHaveText('Normal · 4 Colors · Kimaris');
+    await expect(rows.nth(1)).toContainText('<b>Bob</b>');
+    // 난이도가 다른 기록도 점수 순서대로 같은 표에 들어간다.
+    await expect(rows.nth(2)).toContainText('Eve');
+    await expect(rows.nth(2).locator('.lb-col-condition')).toHaveText('Extreme · 4 Colors · Kimaris');
+
+    // 단독 룰은 색 수를 모두 합친다.
+    await page.locator('[data-node-id="continuous_fever"]').click();
+    await expect(page.locator('.lb-title')).toHaveText('Combined ranking');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.nth(0)).toContainText('Carol');
+    await expect(rows.nth(0).locator('.lb-col-condition')).toHaveText('5 Colors');
+
+    // 기록이 하나도 없는 룰은 빈 목록 안내를 보여 준다.
+    await page.locator('[data-node-id="practice"]').click();
+    await expect(page.locator('.lb-empty')).toHaveText('No records yet.');
+
+    // 끝 항목 순위표에는 조건 칸이 붙지 않는다.
+    await page.locator('[data-node-id="standard/normal"]').click();
+    await page.locator('[data-node-id="standard/normal/4"]').click();
+    await page.locator('[data-node-id="standard/normal/4/Kimaris"]').click();
+    await expect(page.locator('.lb-table thead')).not.toContainText('Conditions');
+    await expect(page.locator('.lb-col-condition')).toHaveCount(0);
+  });
+
+  test('통합 순위의 문구와 조건 이름도 선택한 언어를 따른다', async ({ page }) => {
+    await page.goto(LEADERBOARD_PAGE);
+    await page.locator('#lb_language_select').selectOption('ko');
+    await page.locator('[data-node-id="standard"]').click();
+    await expect(page.locator('.lb-breadcrumb')).toHaveText('기본 룰');
+    await expect(page.locator('.lb-title')).toHaveText('통합 순위');
+    await expect(page.locator('.lb-table thead')).toContainText('조건');
+    await expect(page.locator('.lb-table tbody tr').nth(0).locator('.lb-col-condition')).toHaveText('보통 · 4색 · 키마리스');
+  });
+
   test('트리 메뉴는 키보드로 펼치고 이동할 수 있다', async ({ page }) => {
     await page.goto(LEADERBOARD_PAGE);
     await page.locator('[data-node-id="standard"]').focus();
