@@ -831,6 +831,8 @@
     let threeEffectManager = null;
     /** 메인 메뉴에서 포커스된 항목이다. @type {number} */
     let titleMenuFocus = 0;
+    /** 2D 그래픽에 적용할 필터 객체들의 배열이다. @type {PuyoWGraphic2DFilter[]} */
+    let graphic2DFilters = [];
     /** 메인 메뉴 목록 항목의 라벨과 색이다. 포커스 순번은 이 배열의 순서와 같다. @type {{label:string,color:string}[]} */
     const TITLE_MENU_OPTIONS = [
         { label: '게임 시작', color: '#ef5350' }, { label: '너랑 나랑', color: '#7e57c2' }, { label: '시뮬레이터', color: '#34556b' },
@@ -14460,6 +14462,20 @@
     }
 
     /**
+     * 2D 그래픽에 특수 효과를 주기 위한 클래스이다.
+     */
+    class PuyoWGraphic2DFilter {
+        /**
+         * PuyoWGraphic2DFilter 객체가 생성될 때 호출된다.
+         */
+        constructor() {}
+        /** 2D 그래픽을 렌더링하기 전에 호출된다. @type {CanvasRenderingContext2D} context */
+        preRender(context) {}
+        /** 2D 그래픽을 렌더링한 후에 호출된다. @type {CanvasRenderingContext2D} context */
+        postRender(context) {}
+    }
+
+    /**
      * 현재 메뉴 또는 실행 중인 게임의 한 프레임을 렌더링한다.
      * @returns {void}
      */
@@ -14467,6 +14483,7 @@
         applyCanvasCoordinateTransform();
         context.clearRect(0, 0, WIDTH, HEIGHT);
         dispatchPuyoPrerender();
+        dispatchPrerenderFilters();
         if (settingsResetting) {
             drawSettingsResetting();
         } else if (!game) {
@@ -14510,8 +14527,29 @@
         drawTextDialog();
         // 모든 화면 전환 경로가 여기로 모이므로, 실제로 보인 표준 화면이 바뀐 경우에만 외부에 알린다.
         dispatchScreenChangeIfNeeded();
+        dispatchRenderFilters();
         // 게임 그리기가 모두 끝난 뒤 외부 리스너가 최상단에 덧그릴 수 있게 알린다.
         dispatchPuyoRender();
+    }
+
+    /** 모든 2D 그래픽 필터의 사전 렌더링 작업을 수행한다. @returns {void} */
+    function dispatchPrerenderFilters() {
+        for (const filter of graphic2DFilters) {
+            filter.preRender(context);
+        }
+    }
+
+    /** 모든 2D 그래픽 필터의 사후 렌더링 작업을 수행한다. @returns {void} */
+    function dispatchRenderFilters() {
+        for (const filter of graphic2DFilters) {
+            filter.postRender(context);
+        }
+    }
+
+    /** 2D 필터 효과를 등록한다. */
+    function register2DFilter(graphics2DFilter) {
+        if(graphic2DFilters.indexOf(graphics2DFilter) >= 0) return;
+        graphic2DFilters.push(graphics2DFilter);
     }
 
     /** 화면 최상단에 표시 중인 외부 메시지를 그린다. @returns {void} */
@@ -21516,6 +21554,7 @@
         Zagan,
         Vapula,
         Oriax,
+        PuyoWGraphic2DFilter,
         Puyo,
         RedPuyo,
         GreenPuyo,
@@ -21606,6 +21645,7 @@
         getNextPairs,
         configureLearningApi,
         playSound,
+        register2DFilter,
         showMessage,
         askConfirm,
         askText,
