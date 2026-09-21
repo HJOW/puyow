@@ -70,6 +70,61 @@ test('puyow_render는 매 프레임 캔버스와 누적 프레임 수를 전달�
   expect(lastFrameCounts).toBeGreaterThan(events.at(-1).frameCounts);
 });
 
+test('puyow_prerender는 화면을 지운 직후 발생하고 리스너 상태와 오류를 격리한다', async ({ page }) => {
+  const pageErrors = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.evaluate(() => {
+    const canvas = document.querySelector('[data-puyow-canvas="2d"]');
+    const context = canvas.getContext('2d');
+    const originalClearRect = CanvasRenderingContext2D.prototype.clearRect;
+    const originalFillRect = CanvasRenderingContext2D.prototype.fillRect;
+    window.puyowLastCanvasOperation = null;
+    CanvasRenderingContext2D.prototype.clearRect = function recordPuyowClearRect(...args) {
+      if (this === context) window.puyowLastCanvasOperation = 'clearRect';
+      return originalClearRect.call(this, ...args);
+    };
+    CanvasRenderingContext2D.prototype.fillRect = function recordPuyowFillRect(...args) {
+      if (this === context) window.puyowLastCanvasOperation = 'fillRect';
+      return originalFillRect.call(this, ...args);
+    };
+    window.puyowPrerenderEvents = [];
+    window.addEventListener('puyow_prerender', (event) => {
+      const { detail } = event;
+      window.puyowPrerenderEvents.push({
+        sameCanvas: detail.canvas === canvas,
+        sameContext: detail.ctx === context,
+        frameCounts: detail.frameCounts,
+        lastCanvasOperation: window.puyowLastCanvasOperation,
+        globalAlpha: detail.ctx.globalAlpha,
+      });
+      // 리스너가 바꾼 그리기 상태는 같은 프레임의 게임 그리기에도 남지 않아야 한다.
+      detail.ctx.globalAlpha = 0.25;
+      throw new Error('puyow_prerender 리스너 테스트 오류');
+    });
+  });
+
+  await expect.poll(() => page.evaluate(() => window.puyowPrerenderEvents.length)).toBeGreaterThanOrEqual(5);
+  const events = await page.evaluate(() => window.puyowPrerenderEvents.slice());
+  for (const event of events) {
+    expect(event).toMatchObject({
+      sameCanvas: true,
+      sameContext: true,
+      lastCanvasOperation: 'clearRect',
+      globalAlpha: 1,
+    });
+    expect(Number.isInteger(event.frameCounts)).toBe(true);
+  }
+  for (let index = 1; index < events.length; index += 1) {
+    expect(events[index].frameCounts).toBe(events[index - 1].frameCounts + 1);
+  }
+  expect(pageErrors.some((message) => message.includes('puyow_prerender 리스너 테스트 오류'))).toBe(true);
+
+  await enterMainMenu(page);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  const lastFrameCounts = await page.evaluate(() => window.puyowPrerenderEvents.at(-1).frameCounts);
+  expect(lastFrameCounts).toBeGreaterThan(events.at(-1).frameCounts);
+});
+
 test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한다', async ({ page }) => {
   await enterMainMenu(page);
 

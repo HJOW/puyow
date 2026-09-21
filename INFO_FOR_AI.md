@@ -901,19 +901,20 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 
 ### 브라우저 커스텀 이벤트 (2026-09-15, BUILDNO 64)
 
-- `window`에 `CustomEvent` 다섯 종류를 발생시킨다(`puyow_render`는 아래 「렌더링 커스텀 이벤트」 절, BUILDNO 75). 외부 코드는 반드시 `PuyoW.initialize()` 전에 `window.addEventListener()`로 리스너를 등록하고, 전달값은 모두 `event.detail`에서 읽는다. `puyow_init`은 성공한 초기화 끝에 한 번 발생하며 초기 화면은 `puyow_changescreen`으로 알리지 않는다. `destroy()` 뒤 재초기화하면 새 초기화 이벤트를 다시 한 번 발생시키며, 화면 비교 기준도 초기화한다.
+- `window`에 `CustomEvent` 여섯 종류를 발생시킨다(`puyow_prerender`·`puyow_render`는 아래 「렌더링 전·후 커스텀 이벤트」 절). 외부 코드는 반드시 `PuyoW.initialize()` 전에 `window.addEventListener()`로 리스너를 등록하고, 전달값은 모두 `event.detail`에서 읽는다. `puyow_init`은 성공한 초기화 끝에 한 번 발생하며 초기 화면은 `puyow_changescreen`으로 알리지 않는다. `destroy()` 뒤 재초기화하면 새 초기화 이벤트를 다시 한 번 발생시키며, 화면 비교 기준도 초기화한다.
 - `puyow_changescreen`은 렌더링 직후 `getNowScreen().screen`이 직전 값과 달라질 때 한 번 발생한다. `detail`은 `{ screen, previousScreen }`이고 두 값은 `getScreenState().screen`의 표준 화면 식별자를 쓴다. 메뉴의 직접 대입과 대전 상태 전환이 섞여 있으므로 개별 대입 지점에 이벤트를 넣지 말고 이 공통 감지 경로를 유지한다.
 - `puyow_unlocked`의 `detail`은 항상 `{ content, rule, difficulty }`다. 새 갤러리 예고·적, 새 퍼즐뿌요 스테이지, 일반 적 진행도, 피버 룰 (시작), 구경 모드, 세션 한정 솔로몬을 실제로 처음 열 때만 발생한다. `content`는 `gallery_warning:<type>`, `gallery_enemy:<classType>`, `puzzle_stage:<zero-based index>`, `enemy:<classType>`, `rule:fever_start`, `mode:watch` 중 하나다. 일반 적 진행도 `enemy:`만 해당 대전의 `rule`(`standard`·`fever`·`fever_start`)과 AI `difficulty`(`easy`·`normal`·`hard`·`extreme`)를 넣고, 나머지는 `null`이다. 저장값 로드와 테스트 코드 적용은 알리지 않는다.
 - `puyow_win`은 사람이 CPU 적을 이긴 뒤 모든 정산·종료 연출을 마치고 결과 상태가 된 시점에 한 번 발생한다. `detail`은 `{ difficulty, colorCount, rule, enemy, elapsedMs }`이고 난이도는 AI 난이도 key, 규칙은 `standard`·`fever`·`fever_start`, 시간은 `game.elapsed` 밀리초다. 구경, 연습·연속 피버·퍼즐뿌요·튜토리얼, 너랑 나랑, 온라인, 리플레이 재생은 제외한다.
 - 개발자 사용법과 정확한 식별자·payload는 `HOWTO.md`와 `HOWTO.en.md`에 같은 의미로 기록했다. `tests/common/gamepage.js`는 스크립트 초기화 전에 이벤트를 기록하고, `tests/test01_core.spec.js`가 초기화 한 번·초기 화면 이벤트 부재·`initial_title`에서 `main_menu`로의 화면 이벤트 payload를 확인한다.
 
-### 렌더링 커스텀 이벤트 `puyow_render` (2026-09-17, BUILDNO 75)
+### 렌더링 전·후 커스텀 이벤트 `puyow_prerender`·`puyow_render` (2026-09-21, BUILDNO 104)
 
+- `render()`는 `applyCanvasCoordinateTransform()`과 `context.clearRect(0, 0, WIDTH, HEIGHT)`를 마친 **직후**, 다른 게임 그리기 전에 `dispatchPuyoPrerender()`로 `puyow_prerender`를 매번 발생시킨다. `detail`은 `puyow_render`와 같은 `{ canvas, ctx, frameCounts }`이며 초기화 중 첫 `render()`에도 발생한다. 리스너가 그린 내용은 게임 배경·화면 요소보다 먼저 놓인다.
 - `render()`의 맨 끝, `dispatchScreenChangeIfNeeded()` 뒤에서 `dispatchPuyoRender()`가 매번 `puyow_render`를 발생시킨다. `detail`은 `{ canvas, ctx, frameCounts }`로, 게임의 2D `canvas` 요소와 `context` 그대로다. 초기화 중 첫 `render()`(`puyow_init` 이전)에서도 발생한다. 게임 그리기가 모두 끝난 뒤라 리스너가 그린 내용이 최상단에 보인다. `ctx`에는 `applyCanvasCoordinateTransform()`의 논리 좌표계(1280×720)가 적용되어 있고 `canvas.width`·`height`는 그래픽 품질에 따른 실제 해상도다.
-- 리스너가 바꾼 그리기 상태가 다음 프레임 게임 그리기에 새지 않도록 `dispatchPuyoRender()`가 발생 전후로 `context.save()`/`restore()`를 `try/finally`로 감싼다.
+- 리스너가 바꾼 그리기 상태가 같은 프레임 및 다음 프레임 게임 그리기에 새지 않도록 `dispatchPuyoPrerender()`와 `dispatchPuyoRender()` 모두 발생 전후로 `context.save()`/`restore()`를 `try/finally`로 감싼다.
 - `frameCounts`(모듈 변수)는 `render()` 호출 횟수가 아니라 `frame()` 콜백(requestAnimationFrame) 실행 횟수다. `frame()` 첫 줄에서 1 늘리며, `MAX_FRAME_COUNTS`(4294967295)인 상태에서 다음 프레임이 오면 0으로 돌아간다. 초기화 중 첫 `render()`는 0, 첫 애니메이션 프레임은 1이다. `destroy()`에서 0으로 되돌려 재초기화 시 다시 센다.
-- 리스너 오류 격리: 브라우저는 리스너 예외를 `dispatchEvent()` 밖으로 던지지 않고 전역 오류로 보고하므로 게임 루프는 원래 멈추지 않는다. 그래도 환경 차이에 대비해 공통 `dispatchPuyoCustomEvent()`가 발생 과정을 `try/catch`로 감싸 `console.error`로 기록만 하므로 다섯 이벤트 모두 게임 진행을 막지 않는다.
-- 사용법은 `HOWTO.md`·`HOWTO.en.md`의 브라우저 커스텀 이벤트 절에 같은 의미로 적었다. `tests/common/gamepage.js`의 초기화 전 이벤트 기록 목록에는 매 프레임 쌓이는 `puyow_render`를 넣지 않는다. 대신 `tests/test01_core.spec.js`가 초기화 뒤 리스너를 달아 같은 캔버스·컨텍스트·해상도 전달, 연속 이벤트의 `frameCounts` 1씩 증가, 리스너가 바꾼 `globalAlpha`의 복원, 매 프레임 예외를 던지는 리스너가 있어도 메인 메뉴 진입과 프레임 증가가 계속되는지 확인한다.
+- 리스너 오류 격리: 브라우저는 리스너 예외를 `dispatchEvent()` 밖으로 던지지 않고 전역 오류로 보고하므로 게임 루프는 원래 멈추지 않는다. 그래도 환경 차이에 대비해 공통 `dispatchPuyoCustomEvent()`가 발생 과정을 `try/catch`로 감싸 `console.error`로 기록만 하므로 여섯 이벤트 모두 게임 진행을 막지 않는다.
+- 사용법은 `HOWTO.md`·`HOWTO.en.md`의 브라우저 커스텀 이벤트 절에 같은 의미로 적었다. `tests/common/gamepage.js`의 초기화 전 이벤트 기록 목록에는 매 프레임 쌓이는 `puyow_prerender`·`puyow_render`를 넣지 않는다. `tests/test01_core.spec.js`가 두 이벤트에 대해 초기화 뒤 리스너를 달아 같은 캔버스·컨텍스트 전달, 연속 이벤트의 `frameCounts` 1씩 증가, `globalAlpha` 복원, 매 프레임 예외가 있어도 메인 메뉴 진입과 프레임 증가가 계속되는지를 확인한다. `puyow_prerender`는 Canvas API 호출을 기록해 `clearRect()` 직후라는 순서도 확인한다.
 - 검증 결과: ESLint 통과, webpack 번들 재생성. Chromium 전체 278개 중 273개 통과. 실패 5개는 수정 전 커밋(BUILDNO 74)에서도 똑같이 실패하는 기존 실패였다. 사용자 서버가 9891 포트에 떠 있으면 Playwright가 그 서버를 재사용하므로 서버를 끈 뒤 확인했다.
 - 기존 실패 원인 조사(2026-09-17):
   - `test03_ai`의 솔로몬 착지 시 요청 취소: BUILDNO 74에서 낙하 속도 증가량이 1분당 0.2에서 `PLAYER_FALL_SPEED_INCREASE_PER_MINUTE`(1.0)로 바뀌어 경과 75분의 배율이 16이 아니라 76이 됐다. 테스트를 16배가 되는 15분으로 고쳤다(3회 반복 통과).

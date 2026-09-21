@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 103;
+    const BUILDNO = 104;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -14466,6 +14466,7 @@
     function render() {
         applyCanvasCoordinateTransform();
         context.clearRect(0, 0, WIDTH, HEIGHT);
+        dispatchPuyoPrerender();
         if (settingsResetting) {
             drawSettingsResetting();
         } else if (!game) {
@@ -16289,7 +16290,7 @@
      * 브라우저 외부 확장에 Puyo W의 상태 변화를 알린다.
      * 모든 공개 이벤트 정보는 CustomEvent.detail에만 넣어 기존 DOM 이벤트 필드와 충돌하지 않게 한다.
      * 외부 리스너에서 오류가 나더라도 게임 루프가 멈추지 않도록 발생 과정의 예외는 기록만 하고 삼킨다.
-     * @param {'puyow_init'|'puyow_changescreen'|'puyow_unlocked'|'puyow_win'|'puyow_render'} type 발생시킬 이벤트 이름
+     * @param {'puyow_init'|'puyow_changescreen'|'puyow_unlocked'|'puyow_win'|'puyow_prerender'|'puyow_render'} type 발생시킬 이벤트 이름
      * @param {object} [detail={}] 외부에 전달할 읽기 전용 정보
      * @returns {void}
      */
@@ -16299,6 +16300,21 @@
             window.dispatchEvent(new window.CustomEvent(type, { detail }));
         } catch (error) {
             console.error(`${type} 이벤트 처리 중 오류가 발생했습니다.`, error);
+        }
+    }
+
+    /**
+     * 매 render에서 이전 화면을 지운 직후 외부 확장이 게임 배경을 그릴 수 있도록 알린다.
+     * 리스너가 바꾼 그리기 상태(변환·투명도·색 등)가 게임 그리기에 새지 않도록 앞뒤로 컨텍스트 상태를 보존한다.
+     * @returns {void}
+     */
+    function dispatchPuyoPrerender() {
+        if (!canvas || !context) return;
+        context.save();
+        try {
+            dispatchPuyoCustomEvent('puyow_prerender', { canvas, ctx: context, frameCounts });
+        } finally {
+            context.restore();
         }
     }
 
