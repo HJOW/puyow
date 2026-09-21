@@ -831,7 +831,7 @@
     let threeEffectManager = null;
     /** 메인 메뉴에서 포커스된 항목이다. @type {number} */
     let titleMenuFocus = 0;
-    /** 2D 그래픽에 적용할 필터 객체들의 배열이다. @type {PuyoWGraphic2DFilter[]} */
+    /** 2D 그래픽에 적용할 필터 객체들의 배열이다. @type {(PuyoWGraphic2DFilter|string)[]} */
     let graphic2DFilters = [];
     /** 메인 메뉴 목록 항목의 라벨과 색이다. 포커스 순번은 이 배열의 순서와 같다. @type {{label:string,color:string}[]} */
     const TITLE_MENU_OPTIONS = [
@@ -14535,14 +14535,15 @@
     /** 모든 2D 그래픽 필터의 사전 렌더링 작업을 수행한다. @returns {void} */
     function dispatchPrerenderFilters() {
         for (const filter of graphic2DFilters) {
-            filter.preRender(context);
+            if(filter instanceof PuyoWGraphic2DFilter) filter.preRender(context);
+            else if((typeof(filter) == 'string') && typeof(context.filter) != 'undefined') context.filter = filter;
         }
     }
 
     /** 모든 2D 그래픽 필터의 사후 렌더링 작업을 수행한다. @returns {void} */
     function dispatchRenderFilters() {
         for (const filter of graphic2DFilters) {
-            filter.postRender(context);
+            if(filter instanceof PuyoWGraphic2DFilter)filter.postRender(context);
         }
     }
 
