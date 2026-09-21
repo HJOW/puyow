@@ -513,7 +513,7 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 | `test01_replay.spec.js` | 리플레이 기록과 재생 |
 | `test01_together.spec.js` | 너랑 나랑 (한 컴퓨터 2인 대전) |
 | `test02_tools.spec.js` | 개발용 도구 페이지(`tools.html`) |
-| `test05_leaderboard.spec.js` | 리더보드 기록 규칙(기본 룰 승리·연습 패배·일시정지 종료 제외·저장값 정리)과 조회 페이지(`leaderboard.html`)의 트리 메뉴·전체 순위·룰별 통합 순위·키보드·화면 모드·다국어·좁은 화면 |
+| `test05_leaderboard.spec.js` | 리더보드 기록 규칙(기본 룰 승리·연습 패배·일시정지 종료 제외·저장값 정리)과 조회 페이지(`leaderboard.html`)의 트리 메뉴·전체 순위·단계별 통합 순위·키보드·화면 모드·다국어·좁은 화면 |
 | `test03_ai.spec.js` | **AI 모델 사용과 학습.** 설정의 AI 서비스 제공자(LM Studio·Local AI), 솔로몬의 배치 요청과 온라인 학습 전송, `역으로 모델 학습` 설정, 브라우저 ONNX 추론 적(적 선택 화면의 느낌표 마크와 첫 대전 전 불안정 안내 포함) |
 
 AI 모델과 학습에 관한 테스트는 반드시 `test03_ai.spec.js`에 둔다. 이 파일만 외부 AI 서버 응답과 ONNX 런타임을 흉내 내고 CPU를 많이 쓰므로, 나머지 게임 동작 테스트와 섞으면 실패 원인을 가리기 어렵다.
@@ -1150,11 +1150,11 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 
 **공개 API** — `PuyoW.leaderboard`(`leaderboardApi`)는 `STORE_KEY`, `MAX_ENTRIES`, `getRules()`, `getColorCounts()`, `getDifficulties()`(`{key, label(한국어 키)}` 네 개), `getOpponents()`(숨김·출시 예정·솔로몬 제외, `{classType, name(한국어 키)}`), `getData()`, `translate(language, 한국어키)`를 준다. `translate`는 `initialize()` 없이도 게임 `stringTable`을 쓰며 그 언어에 번역이 없으면 영어, 그것도 없으면 원문이다(독일어·프랑스어 표에 적 이름이 없어 영어 이름이 나온다). 기록 함수 자체는 공개하지 않는다.
 
-**조회 페이지** — `leaderboard.html`은 `puyow.js`와 `puyow_leaderboard.js`를 읽고 `PuyoWLeaderboard.initialize(target)`만 부른다. 좌측 사이드바는 대전 룰이면 룰(1단) → AI 난이도(2단) → 색 수(3단) → 적(4단), 단독 룰이면 룰(1단) → 색 수(2단) 트리 메뉴이고(노드 id는 `standard/normal/4/Kimaris`, `practice/3`처럼 경로를 `/`로 이은 것) 끝 항목 옆에 기록 수를 표시한다. 적 목록은 `getOpponents()` 전체 뒤에 기록만 있는 적(외부 확장 등)을 classType 이름으로 붙인다. 가지를 누르면 펼치고(이미 선택된 가지를 다시 누르면 접는다) 우측에 안내를, 끝 항목을 누르면 순위·닉네임·점수·기록 일시 표를 보인다. **아무것도 고르지 않은 처음 화면에는 모든 룰을 합친 전체 순위가, 룰 이름 항목(1단)을 누르면 그 룰의 통합 순위가 나온다**(아래 「룰별 통합 순위」·「처음 화면의 전체 순위」 절). 사이드바 상단 머리글(`리더보드` 제목)을 누르면 처음 화면으로 돌아간다. 기록 일시는 `Intl.DateTimeFormat(현재 언어, {dateStyle:'medium', timeStyle:'short'})`로 브라우저 현지 시간대로 표시하고 셀 `title`에 ISO 8601(UTC) 문자열을 둔다. `recordedAt`이 null이면 `-`다. 좁은 화면에서는 일시 칸이 두 줄까지 줄바꿈된다. 닉네임은 `textContent`로만 넣는다. 트리는 위아래·Home·End 이동, 오른쪽 펼치기·하위 이동, 왼쪽 접기·상위 이동을 지원하며, 다시 그리기 전에 트리 안 포커스 여부를 먼저 확인해 같은 노드로 포커스를 되돌린다. 다른 탭에서 기록이 바뀌면 `storage` 이벤트로 다시 읽는다.
+**조회 페이지** — `leaderboard.html`은 `puyow.js`와 `puyow_leaderboard.js`를 읽고 `PuyoWLeaderboard.initialize(target)`만 부른다. 좌측 사이드바는 대전 룰이면 룰(1단) → AI 난이도(2단) → 색 수(3단) → 적(4단), 단독 룰이면 룰(1단) → 색 수(2단) 트리 메뉴이고(노드 id는 `standard/normal/4/Kimaris`, `practice/3`처럼 경로를 `/`로 이은 것) 끝 항목 옆에 기록 수를 표시한다. 적 목록은 `getOpponents()` 전체 뒤에 기록만 있는 적(외부 확장 등)을 classType 이름으로 붙인다. 가지를 누르면 펼치고(이미 선택된 가지를 다시 누르면 접는다), 끝 항목을 누르면 순위·닉네임·점수·기록 일시 표를 보인다. **자식이 있는 항목(룰·AI 난이도·색 수)을 누르면 그 아래를 모두 합친 통합 순위가, 아무것도 고르지 않은 처음 화면에는 모든 룰을 합친 전체 순위가 나온다**(아래 「단계별 통합 순위」·「처음 화면의 전체 순위」 절). 따라서 어느 항목을 눌러도 표가 나오며, 예전에 가지를 눌렀을 때 나오던 `Select a color count.` 같은 안내 문구는 없어졌다. 사이드바 상단 머리글(`리더보드` 제목)을 누르면 처음 화면으로 돌아간다. 기록 일시는 `Intl.DateTimeFormat(현재 언어, {dateStyle:'medium', timeStyle:'short'})`로 브라우저 현지 시간대로 표시하고 셀 `title`에 ISO 8601(UTC) 문자열을 둔다. `recordedAt`이 null이면 `-`다. 좁은 화면에서는 일시 칸이 두 줄까지 줄바꿈된다. 닉네임은 `textContent`로만 넣는다. 트리는 위아래·Home·End 이동, 오른쪽 펼치기·하위 이동, 왼쪽 접기·상위 이동을 지원하며, 다시 그리기 전에 트리 안 포커스 여부를 먼저 확인해 같은 노드로 포커스를 되돌린다. 다른 탭에서 기록이 바뀌면 `storage` 이벤트로 다시 읽는다.
 - 화면 모드: CSS 변수(`--lb-*`)는 `leaderboard.html`의 `:root`와 `:root[data-theme="light"]`에만 있다. 헤드의 인라인 스크립트가 `prefers-color-scheme`으로 먼저 `data-theme`를 정해 깜박임을 막고, 사이드바 하단 스위치(`role="switch"`, `aria-checked`가 다크 여부)로 바꾼다. 저장하지 않으며, 사용자가 토글하기 전까지는 시스템 모드 변경을 따라간다.
 - 다국어: 기본은 영어이고 한국어·일본어·중국어·독일어·프랑스어를 지원한다. `puyow_tools.js`처럼 영어 원문을 키로 쓰는 `LEADERBOARD_STRINGS`를 두고, 룰·색 수·적 이름은 게임 번역표(`PuyoW.leaderboard.translate`)를 쓴다. 브라우저 언어 앞 두 글자로 고르며 사이드바 하단 언어 선택으로도 바꿀 수 있다(저장하지 않음). 문구를 더할 때는 다섯 언어에 모두 넣는다.
 - 760px 이하에서는 사이드바가 서랍이 되어 본문 헤더의 메뉴 버튼으로 열고, 끝 항목 선택·배경 클릭·ESC로 닫는다.
-- WebMCP: `leaderboard_manual`, `leaderboard_records`(읽기 전용, 닉네임이 들어가 `untrustedContentHint`, 각 항목의 `recordedAt`은 ISO 8601 UTC 문자열 또는 null, 대전 룰은 `difficulty`로 좁히며 결과 순위마다 `difficulty`를 담는다. 대전 룰에서 `colors`를 주려면 `difficulty`도 줘야 한다), `leaderboard_show`(트리에서 해당 순위를 선택해 보여 줌, `rule`만 주면 그 룰의 통합 순위를 보여 줌) 세 도구를 `leaderboard_` 접두어로 등록한다. `leaderboard_manual`에는 처음 화면의 전체 순위와 룰별 통합 순위 설명이 들어 있다. 게임 페이지 WebMCP `manual`에도 리더보드 기록 규칙 문단을 더했다.
+- WebMCP: `leaderboard_manual`, `leaderboard_records`(읽기 전용, 닉네임이 들어가 `untrustedContentHint`, 각 항목의 `recordedAt`은 ISO 8601 UTC 문자열 또는 null), `leaderboard_show` 세 도구를 `leaderboard_` 접두어로 등록한다. 게임은 초기화하지 않으므로 게임 본체 도구는 이 화면에 등록되지 않는다. 게임 페이지 WebMCP `manual`에도 리더보드 기록 규칙 문단을 더했다. 자세한 동작은 아래 「WebMCP의 통합 조회」 절에 있다.
 - 검증: `tests/test05_leaderboard.spec.js` 9개 × Chromium·Firefox·WebKit = 27개 통과, `test01_core`·`test01_enemy` Chromium 82개 통과, `node --check`, ESLint, webpack 번들 재생성, `git diff --check`. BUILDNO 91, 패키지 버전 `0.0.91`(버전값 자체는 테스트하지 않음). BUILDNO 92(`0.0.92`)에서 기록 일시를 더한 뒤 같은 27개를 다시 통과했다. BUILDNO 94(`0.0.94`)에서 AI 난이도 단계를 더한 뒤 12개 × 3 브라우저 = 36개가 통과했다(형식 1 이관 테스트 추가). 조회 페이지에는 `puyow.html`로 돌아가는 링크가 있다. BUILDNO 93부터 게임 메인 메뉴 좌측 하단 `리더보드` 버튼으로 이 페이지에 들어간다(위 「UI·입력·결과 화면」 절). 회귀 테스트는 `test05_leaderboard.spec.js`의 버튼 위치·방향키 순서(GitHub에서 위로 한 번)·Enter·마우스 클릭 이동 두 개다.
 
 ### 설정 언어 선택 (2026-09-19, BUILDNO 95)
@@ -1206,16 +1206,16 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - 재생 중 바로 다음 `ac` 델타를 확인해 같은 뿌요 쌍·같은 열·같은 회전인 동안 조작 중 뿌요의 Y 좌표를 현재 재생 시각에 맞춰 선형 보간한다. 화면에 그리는 값만 보간하고 `PlayerState`의 실제 상태, 이동·회전·고정·폭발 같은 이산 이벤트 시점은 바꾸지 않는다. 따라서 기록 주기를 늘리지 않고도 표본 사이의 낙하가 계단식으로 보이는 현상을 줄이며, 다음 표본 확인 비용도 일정하다.
 - `src/js/puyow.js`의 BUILDNO는 102, `package.json` 버전은 `0.0.102`다. `node --check`, `npm.cmd test`, `git diff --check`와 Chromium 리플레이 기본 룰 재생 회귀 테스트 1개(`1 passed`, 57.2초)를 통과했다. 전체 리플레이 묶음은 실행 환경의 긴 실제 대전 시간 때문에 별도로 돌리지 않았다.
 
-### 리더보드의 룰별 통합 순위 (2026-09-21)
+### 리더보드의 단계별 통합 순위 (2026-09-21)
 
-`TODO.md`의 "난이도를 통합한 리더보드" 요구를 구현했다. **기록 코드와 저장 형식(`puyow_leaderboard`, 형식 버전 2)은 손대지 않았고**, 이미 룰·AI 난이도·색 수·적별로 모아 둔 데이터에서 화면에 보일 때만 산출한다. 따라서 `src/js/puyow.js`는 고치지 않았고 BUILDNO와 `package.json` 버전도 그대로다(각각 102, `0.1.102`). 고친 파일은 `src/js/puyow_leaderboard.js`, `src/leaderboard.html`, `tests/test05_leaderboard.spec.js` 세 개뿐이다.
+`TODO.md`의 "난이도를 통합한 리더보드" 요구를 구현했다(처음에는 룰 항목에서만 동작했고, 같은 날 자식이 있는 모든 단계로 넓혔다. 아래 설명은 넓힌 뒤 기준이다). **기록 코드와 저장 형식(`puyow_leaderboard`, 형식 버전 2)은 손대지 않았고**, 이미 룰·AI 난이도·색 수·적별로 모아 둔 데이터에서 화면에 보일 때만 산출한다. 따라서 `src/js/puyow.js`는 고치지 않았고 BUILDNO와 `package.json` 버전도 그대로다(각각 102, `0.1.102`). 고친 파일은 `src/js/puyow_leaderboard.js`, `src/leaderboard.html`, `tests/test05_leaderboard.spec.js` 세 개뿐이다.
 
-- **여는 법**: 좌측 사이드바에 메뉴 항목을 더하지 않았다. 룰 이름으로 된 1단 항목(`기본 룰`·`피버 룰`·`피버 룰 (시작)`·`연습`·`연속 피버`, 노드 id는 `standard`처럼 룰 키 하나)을 직접 누르면 펼치기와 함께 우측에 통합 순위가 나온다. 기존처럼 이미 선택된 룰을 다시 누르면 접히지만 통합 순위는 계속 보인다. AI 난이도(2단)·색 수(3단) 가지를 고른 경우는 예전처럼 `Select a color count.` 같은 안내를 보여 준다.
-- **판별**: `isRuleSelection(selection)`이 `difficulty`·`colors`·`opponent`가 모두 비었는지로 룰만 고른 선택을 가려낸다. `renderMain()`은 이 값을 `combined`로 받아 제목·안내문·표 구성을 바꾼다.
-- **산출**: `getCombinedRecordList(ruleKey)`가 대전 룰이면 AI 난이도 → 색 수 → 적 순서로, 단독 룰이면 색 수 순서로 저장된 목록을 모두 합친 뒤 점수 내림차순으로 `MAX_ENTRIES`(10)개를 남긴다. 적 목록은 끝 항목과 같은 `getOpponentTypes()`를 쓰므로 기록만 있는 외부 확장 적도 포함된다. `Array.prototype.sort`가 안정 정렬이라 동점은 합친 순서를 유지하며, 이는 게임 쪽 `normalizeLeaderboardList()`의 동점 처리와 같은 방식이다.
-- **화면**: 브레드크럼에 룰 이름, 제목에 `Combined ranking`(한국어 `통합 순위`)을 넣고, 표에 `Conditions`(`조건`) 칸을 하나 더 붙여 그 기록이 나온 AI 난이도·색 수·적을 `보통 · 4색 · 키마리스`처럼 가운뎃점으로 이어 적는다(`getRecordConditionName()`). 조건 칸이 붙는 표에만 `lb-table-combined` 클래스와 카드의 `lb-card-wide`(최대 너비 920px)를 붙이고, 좁은 화면에서는 칸 여백과 글자 크기를 줄여 가로 스크롤이 생기지 않게 했다(390px에서 확인).
-- **문구**: `LEADERBOARD_STRINGS`에 `Combined ranking`·`Conditions`·`This ranking combines every record saved under this rule.` 세 키를 다섯 언어에 모두 넣었다. 조건 칸의 난이도·색 수·적 이름은 기존과 같이 게임 번역표(`PuyoW.leaderboard.translate`)를 쓴다.
-- **검증**: `tests/test05_leaderboard.spec.js`에 `룰 이름을 직접 고르면 그 룰의 난이도 통합 순위를 보여 준다`와 `통합 순위의 문구와 조건 이름도 선택한 언어를 따른다` 두 개를 더해 14개 × Chromium·Firefox·WebKit = 42개가 모두 통과했다. `node --check`, ESLint(`src/js/puyow_leaderboard.js`, 테스트 파일), `git diff --check`도 통과했다. `puyow.js`를 고치지 않아 번들(`src/bundle/puyow.bundle.js`) 재생성은 필요하지 않다(이 리더보드 스크립트는 번들에 들어가지 않는다).
+- **여는 법**: 좌측 사이드바에 메뉴 항목을 더하지 않았다. **자식이 있는 항목이면 어느 단계든** 누르는 순간 펼치기와 함께 우측에 통합 순위가 나온다. 대전 룰은 룰(1단)·AI 난이도(2단)·색 수(3단) 세 단계가, 단독 룰은 룰(1단) 한 단계가 여기에 해당한다. 예를 들어 `기본 룰 › 쉬움`을 누르면 쉬움 난이도의 색 수·적을 모두 합친 순위가, `기본 룰 › 쉬움 › 4색`을 누르면 그 색 수의 적을 모두 합친 순위가 나온다. 이미 선택된 가지를 다시 누르면 접히지만 순위는 계속 보인다.
+- **판별**: `renderMain()`이 `combined = !isLeafSelection(selection)`으로 가른다. 끝 항목이 아니면 모두 통합 순위다. (예전의 `isRuleSelection()`과 `Select an AI difficulty.`·`Select a color count.`·`Select an opponent.` 세 안내 문구는 도달할 수 없게 되어 지웠다.)
+- **산출**: `collectRuleRecords(ruleKey)`가 대전 룰이면 AI 난이도 → 색 수 → 적 순서로, 단독 룰이면 색 수 순서로 저장된 목록을 각 기록의 출처(`rule`·`difficulty`·`colors`·`opponent`)와 함께 모은다. `getCombinedRecordList(selection)`은 여기서 **고른 단계까지 값이 같은 기록만 남기고**(`selection.difficulty`·`selection.colors`가 있으면 그것과 같은 것만) `rankRecords()`로 점수 내림차순 `MAX_ENTRIES`(10)개를 남긴다. 적 목록은 끝 항목과 같은 `getOpponentTypes()`를 쓰므로 기록만 있는 외부 확장 적도 포함된다. `Array.prototype.sort`가 안정 정렬이라 동점은 합친 순서를 유지하며, 이는 게임 쪽 `normalizeLeaderboardList()`의 동점 처리와 같은 방식이다.
+- **화면**: 브레드크럼에 **고른 항목까지의 경로 전체**(`기본 룰 › 쉬움 › 4색`)를, 제목에 `Combined ranking`(한국어 `통합 순위`)을 넣는다. 끝 항목은 예전처럼 경로에서 자기 이름을 빼고 그것을 제목으로 쓴다. 표에는 `Conditions`(`조건`) 칸을 하나 더 붙여 그 기록이 나온 곳을 `보통 · 4색 · 키마리스`처럼 가운뎃점으로 이어 적되, **이미 고른 단계는 모든 줄이 같은 값이라 빼고 그 아래 단계만 적는다**(`getRecordConditionName(entry, selection)`). 그래서 색 수 단계에서는 조건 칸에 적 이름만 남는다. 조건 칸이 붙는 표에만 `lb-table-combined` 클래스와 카드의 `lb-card-wide`를 붙인다.
+- **문구**: `LEADERBOARD_STRINGS`에 `Combined ranking`·`Conditions`·`This ranking combines every record below the selected menu item.` 세 키를 다섯 언어에 모두 넣었다. 조건 칸의 난이도·색 수·적 이름은 기존과 같이 게임 번역표(`PuyoW.leaderboard.translate`)를 쓴다.
+- **검증**: `tests/test05_leaderboard.spec.js`에 `룰 이름을 직접 고르면 그 룰의 난이도 통합 순위를 보여 준다`, `자식이 있는 중간 단계 메뉴도 그 아래를 합친 통합 순위를 보여 준다`, `통합 순위의 문구와 조건 이름도 선택한 언어를 따른다`를 더했다. `node --check`, ESLint(`src/js/puyow_leaderboard.js`, 테스트 파일), `git diff --check`도 통과했다. `puyow.js`를 고치지 않아 번들(`src/bundle/puyow.bundle.js`) 재생성은 필요하지 않다(이 리더보드 스크립트는 번들에 들어가지 않는다).
 
 ### 리더보드 처음 화면의 전체 순위와 표 말줄임 (2026-09-21)
 
@@ -1228,7 +1228,23 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - **칸 너비**: 고정 배치라서 칸마다 너비를 정해 둔다. 기록 일시는 한국어 표기(`2026. 9. 10. 오전 10:02`)가 가장 길어 186px로 잡았다. 칸이 더 붙는 표는 `lb-table-combined`(최소 560px)·`lb-table-overall`(최소 780px)에 최소 너비를 주고, 카드에는 `lb-card-wide`(최대 980px, `overflow-x: auto`)를 붙여 좁은 화면에서는 **문서가 아니라 카드 안에서** 가로로 넘긴다. 좁은 화면(760px 이하)에서는 최소 너비를 480px·620px로, 각 칸도 더 좁게 다시 정한다. 390px에서 문서 가로 스크롤이 생기지 않는 것을 확인했다.
 - **돌아가는 길**: 사이드바 상단 머리글(아이콘 + `리더보드` 제목 + 부제)이 `<button class="lb-brand">`이며, 누르면 `clearSelection()`이 `state.selection`을 비우고 처음 화면(전체 순위)으로 돌아간다. 트리 메뉴에 항목을 더하지 않기로 했으므로 이 머리글이 유일한 복귀 경로다. 펼쳐 둔 가지는 그대로 두어 다시 찾아가기 쉽게 하고, 좁은 화면에서는 `setMenuOpen(false)`로 서랍을 닫아 표가 보이게 한다. 단추라서 Tab·Enter로도 닿는다. 머리글은 사이드바 머리글 모양(`display:flex`, 아래 테두리)을 그대로 쓰되 단추 기본 모양을 지우고 `.lb-node`와 같은 계열의 옅은 배경으로 hover를 준다.
 - **알려진 한계**: 전체 순위 표에는 AI 난이도 칸이 없어, 난이도만 다른 같은 조건의 기록은 표에서 구분되지 않는다(룰별 통합 순위의 조건 칸에는 난이도가 들어 있다). 사용자에게 알린 사항이다.
-- **검증**: `tests/test05_leaderboard.spec.js`에 `아무것도 고르지 않은 처음 화면은 모든 룰을 합친 전체 순위를 보여 준다`(칸 순서·단독 룰의 대시·말줄임·`title`·머리글을 눌러 돌아오기까지 확인)와 `기록이 하나도 없으면 처음 화면에 메뉴 안내를 보여 준다`를 더하고, 좁은 화면 테스트에도 머리글을 눌러 서랍이 닫히는지 확인을 더해 16개 × Chromium·Firefox·WebKit = 48개가 모두 통과했다(Firefox에서 브라우저 컨텍스트 종료 오류로 한 개가 간헐 실패하는데, 같은 테스트를 다시 돌리면 통과하는 실행 환경 문제다). `node --check`, ESLint, `git diff --check`도 통과했다.
+- **검증**: `tests/test05_leaderboard.spec.js`에 `아무것도 고르지 않은 처음 화면은 모든 룰을 합친 전체 순위를 보여 준다`(칸 순서·단독 룰의 대시·말줄임·`title`·머리글을 눌러 돌아오기까지 확인)와 `기록이 하나도 없으면 처음 화면에 메뉴 안내를 보여 준다`를 더하고, 좁은 화면 테스트에도 머리글을 눌러 서랍이 닫히는지 확인을 더했다.
+
+### 이 세 작업의 최종 검증 상태 (2026-09-21)
+
+위 「단계별 통합 순위」·「처음 화면의 전체 순위」와 머리글 복귀까지 모두 넣은 뒤, `tests/test05_leaderboard.spec.js`는 17개 × Chromium·Firefox·WebKit = 51개다. Chromium 17개 전부와 Firefox·WebKit 34개 중 33개가 통과했고, 남은 하나는 WebKit의 `page.goto` 시간 초과였는데 같은 테스트를 단독으로 다시 돌리면 통과한다. Firefox에서도 `browserContext.close` 프로토콜 오류로 다른 테스트가 한 번 실패했다가 재실행에서 통과했다. **둘 다 실행 환경에서 여러 워커를 함께 돌릴 때 나는 간헐 오류이며 이 변경과 무관하다.** `node --check`, ESLint, `git diff --check`도 통과했다. 세 작업 모두 `src/js/puyow.js`를 고치지 않았으므로 BUILDNO는 102, `package.json` 버전은 `0.1.102` 그대로다.
+
+### 리더보드 WebMCP의 통합 조회 (2026-09-21)
+
+화면에 더한 전체 순위·단계별 통합 순위를 WebMCP로도 그대로 물어볼 수 있게 했다. `src/js/puyow.js`는 이번에도 건드리지 않았다(BUILDNO 102, `0.1.102`).
+
+- **선택 경로에서 룰이 선택 사항이 됐다.** `normalizeMcpSelection(input)`은 `rule`이 없으면 `null`을 돌려주고 이는 "모든 룰"을 뜻한다. 룰 없이 `difficulty`·`colors`·`opponent`만 주면 `difficulty, colors, and opponent need a rule.`로 거절한다. 대전 룰에서 `colors`를 주려면 `difficulty`도 줘야 한다는 기존 규칙은 그대로다(트리에 그런 항목이 없어 `leaderboard_show`가 가리킬 수 없기 때문이며, `leaderboard_records`도 같은 규칙을 쓴다).
+- **`leaderboard_records`에 `combine`(boolean)이 생겼다.** 기본값 `false`는 예전처럼 저장 묶음별 순위를 그대로 돌려주고 결과에 `combined: false`가 붙는다. `true`면 화면과 똑같은 산출(`getOverallRecordList()`·`getCombinedRecordList(selection)`)을 써서 합친 순위 하나를 돌려준다. `rule`을 주지 않으면 `combine` 값과 무관하게 항상 합친다(모든 룰의 저장 묶음을 늘어놓는 것은 쓸모가 없기 때문이다). 합친 결과는 `{combined: true, limit, scope, entries}`이고, `limit`은 전체면 `OVERALL_MAX_ENTRIES`(20) 그 밖에는 `MAX_ENTRIES`(10), `scope`는 전체면 `null`, 각 `entries` 항목에는 `rank`·`nickname`·`score`·`recordedAt`에 더해 그 기록이 나온 `rule`·`difficulty`·`colors`·`opponent`가 들어간다.
+- **`getCombinedRecordList()`에 적 거르기를 더했다.** 화면에서는 적을 고르면 끝 항목이라 쓰이지 않지만, `leaderboard_records`가 끝 항목까지 같은 방식으로 물어볼 수 있어야 하기 때문이다.
+- **`leaderboard_show`도 `rule`이 선택 사항이다.** 주지 않으면 `clearSelection()`으로 고른 항목을 지우고 처음 화면(전체 순위)으로 돌아가며 `Showing the overall ranking across every rule.`를 돌려준다. 사이드바 머리글을 누르는 것과 같은 동작이다.
+- **읽기 전용 유지**: 합친 순위를 낼 때 `state.data = state.api.getData()`로 저장소를 다시 읽지만 화면을 다시 그리지는 않는다. 저장값은 바꾸지 않으므로 `readOnlyHint`는 그대로다.
+- **설명서 갱신**: `leaderboard_manual`에 전체 순위(20개)와 단계별 통합 순위(10개), 사이드바 머리글로 처음 화면에 돌아가는 법, 모든 메뉴 항목이 순위를 보여 준다는 점, 두 순위 모두 저장값에서 그릴 때 산출할 뿐 따로 저장하지 않는다는 점을 넣었다.
+- **검증**: `tests/test05_leaderboard.spec.js`에 `WebMCP` 그룹(도구 세 개 등록, `combine` 통합 조회와 거절, `leaderboard_show`의 중간 단계·전체 순위, `leaderboard_manual` 문구)을 더해 21개 × Chromium·Firefox·WebKit = 63개가 모두 통과했다. 다른 테스트 파일처럼 `document.modelContext`를 가짜로 심어 `window.registeredWebMcpTools`에 모으는 방식을 쓴다. `node --check`, ESLint, `git diff --check`도 통과했다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 

@@ -44,10 +44,7 @@
             'Recorded at': '기록 일시',
             'No records yet.': '아직 기록이 없습니다.',
             'Select a rule and its options from the menu.': '메뉴에서 룰과 세부 항목을 선택하세요.',
-            'Select an AI difficulty.': 'AI 난이도를 선택하세요.',
             'Battles are ranked separately by AI difficulty, color count, and opponent.': '적이 있는 대전은 AI 난이도·색상 수·적마다 따로 기록됩니다.',
-            'Select a color count.': '색상 수를 선택하세요.',
-            'Select an opponent.': '적을 선택하세요.',
             'Only wins against this opponent are recorded.': '이 적에게 승리한 대전만 기록됩니다.',
             'The final score is recorded when you lose.': '패배했을 때의 최종 점수가 기록됩니다.',
             'Records are saved only in this browser.': '기록은 이 브라우저에만 저장됩니다.',
@@ -58,7 +55,7 @@
             'Colors': '색상',
             'Opponent': '적',
             'Conditions': '조건',
-            'This ranking combines every record saved under this rule.': '이 룰에 저장된 모든 기록을 합쳐 매긴 순위입니다.',
+            'This ranking combines every record below the selected menu item.': '선택한 메뉴 아래의 모든 기록을 합쳐 매긴 순위입니다.',
             'Dark mode': '다크 모드',
             'Language': '언어',
             'Back to game': '게임으로 돌아가기',
@@ -74,10 +71,7 @@
             'Recorded at': '記録日時',
             'No records yet.': 'まだ記録がありません。',
             'Select a rule and its options from the menu.': 'メニューからルールと項目を選んでください。',
-            'Select an AI difficulty.': 'AIの難易度を選んでください。',
             'Battles are ranked separately by AI difficulty, color count, and opponent.': '対戦はAIの難易度・色数・対戦相手ごとに別々に記録されます。',
-            'Select a color count.': '色数を選んでください。',
-            'Select an opponent.': '対戦相手を選んでください。',
             'Only wins against this opponent are recorded.': 'この相手に勝利した対戦だけが記録されます。',
             'The final score is recorded when you lose.': '負けたときの最終スコアが記録されます。',
             'Records are saved only in this browser.': '記録はこのブラウザにのみ保存されます。',
@@ -88,7 +82,7 @@
             'Colors': '色数',
             'Opponent': '対戦相手',
             'Conditions': '条件',
-            'This ranking combines every record saved under this rule.': 'このルールに保存されたすべての記録をまとめたランキングです。',
+            'This ranking combines every record below the selected menu item.': '選んだメニューの下にあるすべての記録をまとめたランキングです。',
             'Dark mode': 'ダークモード',
             'Language': '言語',
             'Back to game': 'ゲームに戻る',
@@ -104,10 +98,7 @@
             'Recorded at': '记录时间',
             'No records yet.': '暂无记录。',
             'Select a rule and its options from the menu.': '请从菜单中选择规则和选项。',
-            'Select an AI difficulty.': '请选择AI难度。',
             'Battles are ranked separately by AI difficulty, color count, and opponent.': '对战按AI难度、颜色数和对手分别记录。',
-            'Select a color count.': '请选择颜色数。',
-            'Select an opponent.': '请选择对手。',
             'Only wins against this opponent are recorded.': '只记录战胜该对手的对战。',
             'The final score is recorded when you lose.': '记录失败时的最终分数。',
             'Records are saved only in this browser.': '记录只保存在此浏览器中。',
@@ -118,7 +109,7 @@
             'Colors': '颜色数',
             'Opponent': '对手',
             'Conditions': '条件',
-            'This ranking combines every record saved under this rule.': '汇总该规则下保存的所有记录的排行榜。',
+            'This ranking combines every record below the selected menu item.': '汇总所选菜单之下所有记录的排行榜。',
             'Dark mode': '深色模式',
             'Language': '语言',
             'Back to game': '返回游戏',
@@ -134,10 +125,7 @@
             'Recorded at': 'Datum',
             'No records yet.': 'Noch keine Einträge.',
             'Select a rule and its options from the menu.': 'Wähle im Menü eine Regel und ihre Optionen.',
-            'Select an AI difficulty.': 'Wähle einen KI-Schwierigkeitsgrad.',
             'Battles are ranked separately by AI difficulty, color count, and opponent.': 'Duelle werden je KI-Schwierigkeit, Farbanzahl und Gegner getrennt gespeichert.',
-            'Select a color count.': 'Wähle die Anzahl der Farben.',
-            'Select an opponent.': 'Wähle einen Gegner.',
             'Only wins against this opponent are recorded.': 'Nur Siege gegen diesen Gegner werden gespeichert.',
             'The final score is recorded when you lose.': 'Gespeichert wird die Endpunktzahl bei einer Niederlage.',
             'Records are saved only in this browser.': 'Einträge werden nur in diesem Browser gespeichert.',
@@ -148,7 +136,7 @@
             'Colors': 'Farben',
             'Opponent': 'Gegner',
             'Conditions': 'Bedingungen',
-            'This ranking combines every record saved under this rule.': 'Diese Wertung fasst alle unter dieser Regel gespeicherten Einträge zusammen.',
+            'This ranking combines every record below the selected menu item.': 'Diese Wertung fasst alle Einträge unterhalb des gewählten Menüpunkts zusammen.',
             'Dark mode': 'Dunkelmodus',
             'Language': 'Sprache',
             'Back to game': 'Zurück zum Spiel',
@@ -164,10 +152,7 @@
             'Recorded at': 'Date',
             'No records yet.': 'Aucun score pour le moment.',
             'Select a rule and its options from the menu.': 'Choisis une règle et ses options dans le menu.',
-            'Select an AI difficulty.': 'Choisis une difficulté de l’IA.',
             'Battles are ranked separately by AI difficulty, color count, and opponent.': 'Les duels sont enregistrés séparément par difficulté de l’IA, nombre de couleurs et adversaire.',
-            'Select a color count.': 'Choisis le nombre de couleurs.',
-            'Select an opponent.': 'Choisis un adversaire.',
             'Only wins against this opponent are recorded.': 'Seules les victoires contre cet adversaire sont enregistrées.',
             'The final score is recorded when you lose.': 'Le score final est enregistré lorsque tu perds.',
             'Records are saved only in this browser.': 'Les scores sont enregistrés uniquement dans ce navigateur.',
@@ -178,7 +163,7 @@
             'Colors': 'Couleurs',
             'Opponent': 'Adversaire',
             'Conditions': 'Conditions',
-            'This ranking combines every record saved under this rule.': 'Ce classement regroupe tous les scores enregistrés pour cette règle.',
+            'This ranking combines every record below the selected menu item.': 'Ce classement regroupe tous les scores situés sous l’élément de menu choisi.',
             'Dark mode': 'Mode sombre',
             'Language': 'Langue',
             'Back to game': 'Retour au jeu',
@@ -369,9 +354,18 @@
         return list.sort((left, right) => right.score - left.score).slice(0, limit);
     }
 
-    /** 룰 하나의 통합 순위다. 그 룰의 AI 난이도·색 수·적을 모두 합친다. @param {string} ruleKey 룰 키 @returns {object[]} 점수 내림차순 순위(최대 MAX_ENTRIES개) */
-    function getCombinedRecordList(ruleKey) {
-        return rankRecords(collectRuleRecords(ruleKey), state.api.MAX_ENTRIES);
+    /**
+     * 고른 항목 아래의 기록을 모두 합친 통합 순위다. 자식이 있는 항목(룰·AI 난이도·색 수)이면 어느 단계에서나 쓴다.
+     * 고른 단계까지는 값이 같은 기록만 남기고, 그 아래 단계는 모두 합친다.
+     * 예를 들어 `기본 룰 › 쉬움`이면 쉬움 난이도의 색 수·적을 모두 합친다.
+     * @param {{rule:string, difficulty:string|null, colors:number|null}} selection 선택
+     * @returns {object[]} 점수 내림차순 순위(최대 MAX_ENTRIES개)
+     */
+    function getCombinedRecordList(selection) {
+        const matched = collectRuleRecords(selection.rule).filter((entry) => (!selection.difficulty || entry.difficulty === selection.difficulty)
+            && (!selection.colors || entry.colors === selection.colors)
+            && (!selection.opponent || entry.opponent === selection.opponent));
+        return rankRecords(matched, state.api.MAX_ENTRIES);
     }
 
     /** 모든 룰·AI 난이도·색 수·적을 합친 전체 순위다. 아무것도 고르지 않은 처음 화면에서 쓴다. @returns {object[]} 점수 내림차순 순위(최대 OVERALL_MAX_ENTRIES개) */
@@ -381,11 +375,16 @@
         return rankRecords(merged, OVERALL_MAX_ENTRIES);
     }
 
-    /** 통합 순위에서 그 기록이 나온 조건 이름이다. @param {{difficulty:string|null, colors:number, opponent:string|null}} entry 기록 @returns {string} 조건 이름 */
-    function getRecordConditionName(entry) {
+    /**
+     * 통합 순위에서 그 기록이 나온 조건 이름이다. 이미 고른 단계는 모든 줄이 같은 값이라 빼고, 그 아래 단계만 적는다.
+     * @param {{difficulty:string|null, colors:number, opponent:string|null}} entry 기록
+     * @param {{difficulty:string|null, colors:number|null}} selection 고른 항목
+     * @returns {string} 조건 이름
+     */
+    function getRecordConditionName(entry, selection) {
         return [
-            entry.difficulty ? getDifficultyName(entry.difficulty) : null,
-            entry.colors ? getColorName(entry.colors) : null,
+            entry.difficulty && !selection.difficulty ? getDifficultyName(entry.difficulty) : null,
+            entry.colors && !selection.colors ? getColorName(entry.colors) : null,
             entry.opponent ? getOpponentName(entry.opponent) : null
         ].filter(Boolean).join(' · ');
     }
@@ -406,15 +405,6 @@
         const rule = state.rules.find((entry) => entry.key === selection.rule);
         if (!rule) return false;
         return rule.battle ? Boolean(selection.difficulty && selection.colors && selection.opponent) : Boolean(selection.colors);
-    }
-
-    /**
-     * 선택이 룰 자체(하위 항목을 하나도 고르지 않음)인지 확인한다. 이때는 룰 내 통합 순위를 보여 준다.
-     * @param {{rule:string, difficulty:string|null, colors:number|null, opponent:string|null}} selection 선택
-     * @returns {boolean} 룰만 고른 선택인지 여부
-     */
-    function isRuleSelection(selection) {
-        return Boolean(selection) && !selection.difficulty && !selection.colors && !selection.opponent;
     }
 
     /**
@@ -600,13 +590,14 @@
      * 칸을 넘치는 값은 CSS가 말줄임표로 줄이므로, 전체 값을 셀 title에 함께 둔다.
      * @param {object[]} list 순위 목록
      * @param {string} mode 보기 방식(leaf·combined·overall)
+     * @param {{difficulty:string|null, colors:number|null}} [selection] combined일 때 고른 항목. 조건 칸에서 이미 고른 단계를 뺀다.
      * @returns {HTMLTableElement} 표
      */
-    function createRecordTable(list, mode) {
+    function createRecordTable(list, mode, selection = {}) {
         const combined = mode === 'combined';
         const overall = mode === 'overall';
         const body = createElement('tbody', {}, list.map((entry, index) => {
-            const condition = combined ? getRecordConditionName(entry) : '';
+            const condition = combined ? getRecordConditionName(entry, selection) : '';
             const ruleName = overall ? getRuleNameByKey(entry.rule) : '';
             const opponentName = overall && entry.opponent ? getOpponentName(entry.opponent) : '';
             return createElement('tr', {},
@@ -656,16 +647,17 @@
                 : createElement('div', { className: 'lb-empty', text: translate('Select a rule and its options from the menu.') }));
             return;
         }
-        // 룰 이름 항목을 직접 고르면 그 룰의 하위 기록을 모두 합친 통합 순위를 보여 준다.
-        const combined = isRuleSelection(selection);
+        // 자식이 있는 항목(룰·AI 난이도·색 수)을 고르면 그 아래 기록을 모두 합친 통합 순위를, 끝 항목이면 그 순위를 보여 준다.
+        const combined = !isLeafSelection(selection);
         const path = [getRuleName(rule)];
         if (selection.difficulty) path.push(getDifficultyName(selection.difficulty));
         if (selection.colors) path.push(getColorName(selection.colors));
         if (selection.opponent) path.push(getOpponentName(selection.opponent));
-        breadcrumb.textContent = combined ? getRuleName(rule) : path.slice(0, -1).join(' › ');
+        // 통합 순위는 고른 항목까지를 경로에 두고 제목에 통합임을 적는다. 끝 항목은 예전처럼 자기 이름이 제목이다.
+        breadcrumb.textContent = combined ? path.join(' › ') : path.slice(0, -1).join(' › ');
         title.textContent = combined ? translate('Combined ranking') : path[path.length - 1];
         if (combined) {
-            note.textContent = `${translate('This ranking combines every record saved under this rule.')} ${translate('Records are saved only in this browser.')}`;
+            note.textContent = `${translate('This ranking combines every record below the selected menu item.')} ${translate('Records are saved only in this browser.')}`;
         } else {
             note.textContent = rule.battle
                 ? `${translate('Battles are ranked separately by AI difficulty, color count, and opponent.')} ${translate('Only wins against this opponent are recorded.')} ${translate('Records are saved only in this browser.')}`
@@ -673,19 +665,12 @@
         }
         // 통합 순위는 조건 칸이 하나 더 붙으므로 표를 조금 넓게 쓴다.
         card.classList.toggle('lb-card-wide', combined);
-        const list = combined ? getCombinedRecordList(rule.key) : getRecordList(selection);
-        if (list === null) {
-            let guide = 'Select a color count.';
-            if (rule.battle && !selection.difficulty) guide = 'Select an AI difficulty.';
-            else if (rule.battle && selection.colors) guide = 'Select an opponent.';
-            card.replaceChildren(createElement('div', { className: 'lb-empty', text: translate(guide) }));
-            return;
-        }
+        const list = combined ? getCombinedRecordList(selection) : (getRecordList(selection) || []);
         if (list.length === 0) {
             card.replaceChildren(createElement('div', { className: 'lb-empty', text: translate('No records yet.') }));
             return;
         }
-        card.replaceChildren(createRecordTable(list, combined ? 'combined' : 'leaf'));
+        card.replaceChildren(createRecordTable(list, combined ? 'combined' : 'leaf', selection));
     }
 
     /** 사이드바의 고정 문구(제목·하단 설정)를 현재 언어로 다시 쓴다. @returns {void} */
@@ -788,11 +773,16 @@
 
     /**
      * WebMCP 도구에 넘길 선택 경로를 검사해 정리한다. 대전 룰에서 색 수를 주려면 AI 난이도도 함께 줘야 한다.
+     * 룰을 주지 않으면 모든 룰(처음 화면의 전체 순위)을 뜻하며 null을 돌려준다.
      * @param {object} input 도구 입력
-     * @returns {{rule:string, difficulty:string|null, colors:number|null, opponent:string|null}} 선택
+     * @returns {{rule:string, difficulty:string|null, colors:number|null, opponent:string|null}|null} 선택, 룰이 없으면 null
      */
     function normalizeMcpSelection(input) {
-        const rule = state.rules.find((entry) => entry.key === input?.rule);
+        if (input?.rule === undefined || input?.rule === null || input?.rule === '') {
+            if (input?.difficulty || input?.colors || input?.opponent) throw new Error('difficulty, colors, and opponent need a rule.');
+            return null;
+        }
+        const rule = state.rules.find((entry) => entry.key === input.rule);
         if (!rule) throw new Error(`Unknown rule. Use one of: ${state.rules.map((entry) => entry.key).join(', ')}.`);
         const colors = input.colors === undefined || input.colors === null ? null : Number(input.colors);
         if (colors !== null && !state.colorCounts.includes(colors)) throw new Error(`colors must be one of ${state.colorCounts.join(', ')}.`);
@@ -810,15 +800,20 @@
         if (typeof document === 'undefined' || !document.modelContext || typeof document.modelContext.registerTool !== 'function') return;
         mcpAbortController = new AbortController();
         const ruleKeys = state.rules.map((rule) => rule.key);
-        const selectionSchema = {
+        // 선택 경로는 앞 단계부터 채운다. 아무것도 주지 않으면 모든 룰(처음 화면의 전체 순위)을 뜻한다.
+        const selectionProperties = {
+            rule: { type: 'string', enum: ruleKeys, description: 'Rule key. Omit it to mean every rule (the overall ranking the page shows before anything is selected).' },
+            difficulty: { type: 'string', enum: state.difficulties.map((entry) => entry.key), description: 'AI difficulty key. Used only by battle rules (standard, fever, fever_start), and required there before colors.' },
+            colors: { type: 'integer', enum: state.colorCounts, description: 'Color count. Optional.' },
+            opponent: { type: 'string', description: 'Opponent class type (for example Andromalius). Used only by battle rules (standard, fever, fever_start).' }
+        };
+        const selectionSchema = { type: 'object', properties: selectionProperties, additionalProperties: false };
+        const recordsSchema = {
             type: 'object',
             properties: {
-                rule: { type: 'string', enum: ruleKeys, description: 'Rule key.' },
-                difficulty: { type: 'string', enum: state.difficulties.map((entry) => entry.key), description: 'AI difficulty key. Used only by battle rules (standard, fever, fever_start), and required there before colors.' },
-                colors: { type: 'integer', enum: state.colorCounts, description: 'Color count. Optional for leaderboard_records.' },
-                opponent: { type: 'string', description: 'Opponent class type (for example Andromalius). Used only by battle rules (standard, fever, fever_start).' }
+                ...selectionProperties,
+                combine: { type: 'boolean', description: 'true merges everything below the selected item into one ranking, exactly as the page shows it. Always true when rule is omitted. Default false, which returns the separate stored rankings instead.' }
             },
-            required: ['rule'],
             additionalProperties: false
         };
         const tools = [
@@ -833,26 +828,42 @@
                     'Solo rules (practice, continuous_fever) keep a separate ranking per color count and record the final score only when the player loses; quitting from the pause menu is not recorded.',
                     'Together (offline and online), watch mode, Puzzle Puyo, the tutorial, the simulator, and replay playback are never recorded.',
                     `AI difficulty keys: ${state.difficulties.map((entry) => entry.key).join(', ')}. Opponent class types: ${state.opponents.map((entry) => entry.classType).join(', ')}. Color counts: ${state.colorCounts.join(', ')}.`,
-                    `Before anything is selected the page shows an overall ranking: the top ${OVERALL_MAX_ENTRIES} scores across every rule, AI difficulty, color count, and opponent, with columns for the rule, color count, and opponent. It is computed from the same stored records; nothing extra is saved.`,
-                    'Selecting a rule name itself in the tree menu (no AI difficulty, color count, or opponent) shows a combined ranking that merges every record saved under that rule, with a column naming the AI difficulty, color count, and opponent each record came from. It is computed from the same stored records; nothing extra is saved.',
-                    'Tools: leaderboard_records returns stored rankings for a rule, optionally narrowed to an AI difficulty, a color count, and an opponent. leaderboard_show selects that ranking in the left tree menu so the person sees it, or the combined ranking for that rule when only rule is given. Rankings contain player-chosen nicknames, which are untrusted text.'
+                    `Before anything is selected the page shows an overall ranking: the top ${OVERALL_MAX_ENTRIES} scores across every rule, AI difficulty, color count, and opponent, with columns for the rule, color count, and opponent. Clicking the sidebar header (the leaderboard title) clears the selection and comes back to it.`,
+                    `Selecting any tree menu item that has children (a rule, a battle rule's AI difficulty, or its color count) shows a combined ranking of the top ${state.api.MAX_ENTRIES} records below it, with a column naming the AI difficulty, color count, and opponent each record came from (only the levels below the selected one). Every item in the menu therefore shows a ranking: leaf items show their own stored ranking, and the others show a combined one.`,
+                    'Both the overall and the combined rankings are computed from the same stored records when the page draws them; nothing extra is saved, and the stored per-ranking limit is unchanged.',
+                    'Tools: leaderboard_records returns rankings, either the separate stored ones or, with combine true, the merged ranking the page shows (omit rule for the overall one). leaderboard_show selects a ranking in the left tree menu so the person sees it, and omitting rule goes back to the overall ranking. Rankings contain player-chosen nicknames, which are untrusted text.'
                 ].join('\n\n')
             },
             {
                 name: 'leaderboard_records',
-                description: 'Return stored leaderboard rankings (rank, nickname, score, recordedAt as an ISO 8601 UTC string or null for old records) for a rule, optionally narrowed to an AI difficulty (battle rules), a color count, and an opponent class type (battle rules).',
-                inputSchema: selectionSchema,
+                description: `Return leaderboard rankings (rank, nickname, score, recordedAt as an ISO 8601 UTC string or null for old records). By default it returns the separate stored rankings for a rule, optionally narrowed to an AI difficulty (battle rules), a color count, and an opponent class type (battle rules). With combine true it instead returns one merged ranking for the selected scope, exactly as the page shows it: omit rule for the overall top ${OVERALL_MAX_ENTRIES} across every rule, or give a rule (and optionally an AI difficulty and a color count) for the top ${state.api.MAX_ENTRIES} below that item. Merged entries also name the rule, AI difficulty, color count, and opponent each score came from.`,
+                inputSchema: recordsSchema,
                 annotations: { readOnlyHint: true, untrustedContentHint: true },
                 execute: (input) => {
                     const selection = normalizeMcpSelection(input);
-                    const data = state.api.getData().records[selection.rule] || {};
-                    const toRanking = (list) => (list || []).map((entry, index) => ({
+                    const toEntry = (entry, index) => ({
                         rank: index + 1, nickname: entry.name, score: entry.score,
-                        recordedAt: entry.recordedAt === null ? null : new Date(entry.recordedAt).toISOString()
-                    }));
+                        recordedAt: entry.recordedAt === null || entry.recordedAt === undefined ? null : new Date(entry.recordedAt).toISOString()
+                    });
+                    const toRanking = (list) => (list || []).map(toEntry);
+                    // 룰을 주지 않으면 합칠 수밖에 없다. 모든 룰의 저장 묶음을 그대로 늘어놓는 것은 쓸모가 없기 때문이다.
+                    if (selection === null || input.combine === true) {
+                        // 화면과 같은 산출을 쓰므로 저장소에서 다시 읽어 둔다.
+                        state.data = state.api.getData();
+                        const merged = selection === null ? getOverallRecordList() : getCombinedRecordList(selection);
+                        return JSON.stringify({
+                            combined: true,
+                            limit: selection === null ? OVERALL_MAX_ENTRIES : state.api.MAX_ENTRIES,
+                            scope: selection === null ? null : { rule: selection.rule, difficulty: selection.difficulty, colors: selection.colors, opponent: selection.opponent },
+                            entries: merged.map((entry, index) => ({
+                                ...toEntry(entry, index), rule: entry.rule, difficulty: entry.difficulty, colors: entry.colors, opponent: entry.opponent
+                            }))
+                        });
+                    }
+                    const data = state.api.getData().records[selection.rule] || {};
                     const rule = state.rules.find((entry) => entry.key === selection.rule);
                     const colorKeys = selection.colors === null ? state.colorCounts.map(String) : [String(selection.colors)];
-                    const result = { rule: selection.rule, battle: rule.battle, rankings: [] };
+                    const result = { combined: false, rule: selection.rule, battle: rule.battle, rankings: [] };
                     if (!rule.battle) {
                         colorKeys.forEach((colorKey) => result.rankings.push({ difficulty: null, colors: Number(colorKey), opponent: null, entries: toRanking(data[colorKey]) }));
                     } else {
@@ -868,11 +879,15 @@
             },
             {
                 name: 'leaderboard_show',
-                description: 'Select a ranking in the left tree menu so the person sees it: a rule, then for battle rules an AI difficulty, then a color count, then (for battle rules) an opponent class type. Giving only rule shows the combined ranking for that rule, which merges every record saved under it.',
+                description: 'Select a ranking in the left tree menu so the person sees it: a rule, then for battle rules an AI difficulty, then a color count, then (for battle rules) an opponent class type. Stopping before the last level shows the combined ranking that merges every record below the selected item, and omitting rule clears the selection and shows the overall ranking across every rule.',
                 inputSchema: selectionSchema,
                 execute: (input) => {
                     const selection = normalizeMcpSelection(input);
                     state.data = state.api.getData();
+                    if (selection === null) {
+                        clearSelection();
+                        return 'Showing the overall ranking across every rule.';
+                    }
                     select(selection, { focus: false });
                     return `Showing ${selectionToNodeId(selection)}.`;
                 }

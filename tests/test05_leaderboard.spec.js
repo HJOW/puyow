@@ -226,9 +226,9 @@ test.describe('리더보드 조회 화면', () => {
     // 대전 룰 아래 두 번째 단계는 AI 난이도다.
     await expect(page.locator('[data-node-id="standard"] + ul > li > .lb-node .lb-node-label')).toHaveText(['Easy', 'Normal', 'Hard', 'Extreme']);
     await page.locator('[data-node-id="standard/normal"]').click();
-    await expect(page.locator('.lb-empty')).toHaveText('Select a color count.');
+    await expect(page.locator('.lb-title')).toHaveText('Combined ranking');
     await page.locator('[data-node-id="standard/normal/4"]').click();
-    await expect(page.locator('.lb-empty')).toHaveText('Select an opponent.');
+    await expect(page.locator('.lb-title')).toHaveText('Combined ranking');
     await page.locator('[data-node-id="standard/normal/4/Kimaris"]').click();
     await expect(page.locator('.lb-title')).toHaveText('Kimaris');
     await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules › Normal › 4 Colors');
@@ -295,9 +295,9 @@ test.describe('리더보드 조회 화면', () => {
     expect(await rows.nth(0).locator('.lb-col-name').evaluate((cell) => getComputedStyle(cell).textOverflow)).toBe('ellipsis');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
-    // 메뉴에서 고르면 예전처럼 그 순위로 바뀐다.
+    // 메뉴에서 고르면 그 항목의 순위로 바뀐다.
     await page.locator('[data-node-id="standard/normal"]').click();
-    await expect(page.locator('.lb-empty')).toHaveText('Select a color count.');
+    await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules › Normal');
 
     // 사이드바 상단 제목을 누르면 아무것도 고르지 않은 처음 화면으로 돌아온다.
     await page.locator('.lb-brand').click();
@@ -351,6 +351,38 @@ test.describe('리더보드 조회 화면', () => {
     await expect(page.locator('.lb-col-condition')).toHaveCount(0);
   });
 
+  test('자식이 있는 중간 단계 메뉴도 그 아래를 합친 통합 순위를 보여 준다', async ({ page }) => {
+    await page.goto(LEADERBOARD_PAGE);
+
+    // AI 난이도 단계: 그 난이도의 색 수·적을 모두 합친다. 조건 칸에는 고른 난이도를 빼고 그 아래만 적는다.
+    await page.locator('[data-node-id="standard/normal"]').click();
+    await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules › Normal');
+    await expect(page.locator('.lb-title')).toHaveText('Combined ranking');
+    const rows = page.locator('.lb-table tbody tr');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0)).toContainText('Alice');
+    await expect(rows.nth(0).locator('.lb-col-condition')).toHaveText('4 Colors · Kimaris');
+    await expect(rows.nth(1)).toContainText('<b>Bob</b>');
+    // 다른 난이도의 기록은 섞이지 않는다.
+    await expect(page.locator('.lb-table tbody')).not.toContainText('Eve');
+
+    // 색 수 단계: 그 색 수의 적을 모두 합치고, 조건 칸에는 적만 남는다.
+    await page.locator('[data-node-id="standard/normal/4"]').click();
+    await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules › Normal › 4 Colors');
+    await expect(page.locator('.lb-title')).toHaveText('Combined ranking');
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0).locator('.lb-col-condition')).toHaveText('Kimaris');
+
+    // 아래에 기록이 하나도 없는 중간 단계는 빈 목록 안내를 보여 준다.
+    await page.locator('[data-node-id="standard/easy"]').click();
+    await expect(page.locator('.lb-empty')).toHaveText('No records yet.');
+
+    // 끝 항목은 예전처럼 자기 이름이 제목이고 조건 칸이 없다.
+    await page.locator('[data-node-id="standard/normal/4/Kimaris"]').click();
+    await expect(page.locator('.lb-title')).toHaveText('Kimaris');
+    await expect(page.locator('.lb-col-condition')).toHaveCount(0);
+  });
+
   test('통합 순위의 문구와 조건 이름도 선택한 언어를 따른다', async ({ page }) => {
     await page.goto(LEADERBOARD_PAGE);
     await page.locator('#lb_language_select').selectOption('ko');
@@ -373,7 +405,7 @@ test.describe('리더보드 조회 화면', () => {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await expect(page.locator('[data-node-id="standard/normal"]')).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules');
+    await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules › Normal');
     await page.keyboard.press('ArrowRight');
     await expect(page.locator('[data-node-id="standard/normal/3"]')).toBeFocused();
     await page.keyboard.press('ArrowRight');
@@ -433,6 +465,86 @@ test.describe('리더보드 조회 화면', () => {
     await page.locator('.lb-brand').click();
     await expect.poll(async () => (await sidebar.boundingBox()).x).toBeLessThan(0);
     await expect(page.locator('.lb-title')).toHaveText('Overall ranking');
+  });
+
+  test.describe('WebMCP', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.addInitScript(() => {
+        window.registeredWebMcpTools = [];
+        Object.defineProperty(document, 'modelContext', {
+          configurable: true,
+          writable: true,
+          value: { registerTool: (tool) => window.registeredWebMcpTools.push(tool) }
+        });
+      });
+      await page.goto(LEADERBOARD_PAGE);
+      await page.waitForFunction(() => Boolean(window.registeredWebMcpTools?.length));
+    });
+
+    /** 등록된 도구를 이름으로 불러 결과를 돌려준다. */
+    function callTool(page, name, input) {
+      return page.evaluate(([toolName, toolInput]) => {
+        const tool = window.registeredWebMcpTools.find((entry) => entry.name === toolName);
+        return tool.execute(toolInput);
+      }, [name, input]);
+    }
+
+    test('리더보드 화면은 leaderboard_ 접두어 도구 세 개를 등록한다', async ({ page }) => {
+      const names = await page.evaluate(() => window.registeredWebMcpTools.map((tool) => tool.name));
+      expect(names).toEqual(['leaderboard_manual', 'leaderboard_records', 'leaderboard_show']);
+      // 게임 본체 도구는 이 화면에서 등록되지 않는다(게임을 초기화하지 않기 때문이다).
+      expect(names.every((name) => name.startsWith('leaderboard_'))).toBe(true);
+    });
+
+    test('leaderboard_records는 combine으로 화면과 같은 통합 순위를 돌려준다', async ({ page }) => {
+      // rule을 주지 않으면 모든 룰을 합친 전체 순위다.
+      const overall = JSON.parse(await callTool(page, 'leaderboard_records', {}));
+      expect(overall.combined).toBe(true);
+      expect(overall.limit).toBe(20);
+      expect(overall.scope).toBeNull();
+      expect(overall.entries.map((entry) => entry.nickname)).toEqual(['Alice', 'Carol', '<b>Bob</b>', 'Eve']);
+      expect(overall.entries[0]).toMatchObject({ rank: 1, score: 98765, rule: 'standard', difficulty: 'normal', colors: 4, opponent: 'Kimaris' });
+      expect(overall.entries[0].recordedAt).toBe('2026-09-19T03:04:00.000Z');
+      // 적이 없는 단독 룰은 난이도·적이 null이다.
+      expect(overall.entries[1]).toMatchObject({ rule: 'continuous_fever', difficulty: null, colors: 5, opponent: null, recordedAt: null });
+
+      // 룰만 주면 그 룰의 통합 순위, 난이도까지 주면 그 아래만 합친다.
+      const byRule = JSON.parse(await callTool(page, 'leaderboard_records', { rule: 'standard', combine: true }));
+      expect(byRule.limit).toBe(10);
+      expect(byRule.scope).toMatchObject({ rule: 'standard', difficulty: null, colors: null });
+      expect(byRule.entries.map((entry) => entry.nickname)).toEqual(['Alice', '<b>Bob</b>', 'Eve']);
+      const byDifficulty = JSON.parse(await callTool(page, 'leaderboard_records', { rule: 'standard', difficulty: 'normal', combine: true }));
+      expect(byDifficulty.entries.map((entry) => entry.nickname)).toEqual(['Alice', '<b>Bob</b>']);
+
+      // combine을 주지 않으면 예전처럼 저장 묶음을 그대로 돌려준다.
+      const stored = JSON.parse(await callTool(page, 'leaderboard_records', { rule: 'continuous_fever' }));
+      expect(stored.combined).toBe(false);
+      expect(stored.rankings.find((ranking) => ranking.colors === 5).entries[0]).toMatchObject({ rank: 1, nickname: 'Carol' });
+
+      // 룰 없이 하위 단계만 주면 거절한다.
+      await expect(callTool(page, 'leaderboard_records', { difficulty: 'normal' })).rejects.toThrow('difficulty, colors, and opponent need a rule.');
+    });
+
+    test('leaderboard_show는 중간 단계와 전체 순위를 모두 보여 준다', async ({ page }) => {
+      await callTool(page, 'leaderboard_show', { rule: 'standard', difficulty: 'normal' });
+      await expect(page.locator('.lb-breadcrumb')).toHaveText('Standard Rules › Normal');
+      await expect(page.locator('.lb-title')).toHaveText('Combined ranking');
+      await expect(page.locator('.lb-table tbody tr')).toHaveCount(2);
+
+      // rule을 주지 않으면 고른 항목을 지우고 처음 화면(전체 순위)으로 돌아간다.
+      await callTool(page, 'leaderboard_show', {});
+      await expect(page.locator('.lb-title')).toHaveText('Overall ranking');
+      await expect(page.locator('.lb-table tbody tr')).toHaveCount(4);
+      expect(await page.evaluate(() => window.PuyoWLeaderboard.getState().selection)).toBeNull();
+    });
+
+    test('leaderboard_manual은 전체 순위와 통합 순위를 함께 설명한다', async ({ page }) => {
+      const manual = await callTool(page, 'leaderboard_manual', {});
+      expect(manual).toContain('the top 20 scores across every rule');
+      expect(manual).toContain('a combined ranking of the top 10 records below it');
+      expect(manual).toContain('leaderboard_records');
+      expect(manual).toContain('leaderboard_show');
+    });
   });
 
   test.describe('일본어 브라우저', () => {
