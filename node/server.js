@@ -52,6 +52,8 @@ const path = require('path');
 const onlinePlay = require('./onlineplay.js');
 // 서버 모니터링·관리 페이지(src/admin.html) 백엔드도 이 파일에 두지 않고 admin.js 에 분리해 두었다.
 const admin = require('./admin.js');
+// 리더보드 기록을 서버에도 모아 두는 기능 구현은 leaderboard.js 에 분리해 두었다.
+const leaderboard = require('./leaderboard.js');
 
 /*
 로컬 게임 테스트를 위한 CORS 응답 헤더. 
@@ -84,6 +86,17 @@ true  : /apis/onlineplayinfo 가 { "available": true } 를 응답하고, 온라�
 false : 온라인 플레이 관련 요청을 일절 받지 않는다. 게임은 "너랑 나랑" 방식 선택에서 온라인 플레이 항목을 숨긴다.
 */
 const ONLINE_PLAY_ENABLED = false;
+
+/*
+리더보드 기록을 이 서버에도 함께 모을지 여부다. 온라인 대전과는 무관한 기능이며 계정·로그인도 쓰지 않는다.
+true  : /apis/leaderboardinfo 가 { "available": true } 를 응답하고, 게임이 대전·연습을 끝낼 때마다
+        로컬 스토리지 저장에 더해 이 서버로도 기록을 보낸다. 기록은 사람마다 한 파일씩
+        [홈디렉토리]/.puyowserver/leaderboard/[닉네임].json 으로 저장하며, 기록 일시는 서버 시각으로 적는다.
+        리더보드 화면(src/leaderboard.html) 좌측 아래 토글에서 "온라인"을 고르면 이렇게 모인 기록을 볼 수 있다.
+false : 리더보드 관련 요청을 일절 받지 않는다. 게임은 로컬 스토리지에만 기록하고, 리더보드 화면의
+        온라인 토글은 비활성 상태로 로컬에 고정된다.
+*/
+const LEADERBOARD_SERVER_ENABLED = true;
 
 /*
  * 관리자 계정 ID, 온라인 플레이 시 이용할 수 있는 계정은 아니고, admin.html 전용 계정.
@@ -898,6 +911,17 @@ function onlinePlayInfoApi() {
 }
 
 /**
+ * 이 서버가 리더보드 기록을 함께 모으는지 게임·리더보드 화면에 알리는 API 핸들러다.
+ * 응답값은 서버 상단의 LEADERBOARD_SERVER_ENABLED 상수 하나로 결정된다.
+ * @param {import('http').IncomingMessage} req HTTP 요청 객체
+ * @returns {{available:boolean}} 리더보드 서버 기록 사용 가능 여부
+ */
+function leaderboardInfoApi(req) {
+    req.resume();
+    return { available: leaderboardService.isEnabled() };
+}
+
+/**
  * 극한 난이도 솔로몬 대전의 역학습 요청을 받는 API 핸들러.
  * 이 Node 서버는 역학습을 구현하지 않으므로 요청 내용을 처리하지 않고 성공만 응답한다.
  * 게임은 응답의 ok가 true가 아니면 콘솔에 오류를 남기므로 ok만은 true로 돌려준다.
@@ -927,6 +951,9 @@ function sendJson(res, status, payload) {
 // 온라인 플레이 서비스다. ONLINE_PLAY_ENABLED 가 false 면 저장 디렉터리도 만들지 않고 모든 요청을 거절한다.
 const onlinePlayService = onlinePlay.createService({ enabled: ONLINE_PLAY_ENABLED });
 
+// 리더보드 서버 기록 서비스다. LEADERBOARD_SERVER_ENABLED 가 false 면 저장 디렉터리도 만들지 않는다.
+const leaderboardService = leaderboard.createService({ enabled: LEADERBOARD_SERVER_ENABLED });
+
 // 서버 모니터링·관리 페이지(src/admin.html) 백엔드다. ADMIN_PASSWORD 가 공란이면 로그인 자체가 막힌다.
 // 관리자 세션은 온라인 플레이 세션과 완전히 분리되어 있으며, 계정 관리는 위 온라인 플레이 서비스를 거친다.
 const adminService = admin.createService({
@@ -934,16 +961,18 @@ const adminService = admin.createService({
     adminPassword: ADMIN_PASSWORD,
     onlinePlayService,
     // 대시보드에 함께 보여 줄 이 서버만의 정보다.
-    getServerInfo: () => ({ port: PORT, https: sslOptions !== null, onlinePlayEnabled: ONLINE_PLAY_ENABLED === true, localAiAvailable: isLocalAiModelConfigured() })
+    getServerInfo: () => ({ port: PORT, https: sslOptions !== null, onlinePlayEnabled: ONLINE_PLAY_ENABLED === true, localAiAvailable: isLocalAiModelConfigured(), leaderboard: leaderboardService.getStats() })
 });
 
-// 학습 이벤트 API, 로컬 모델·온라인 플레이 사용 가능 여부 확인 API, 솔로몬 역학습 API(요청만 받음),
-// 온라인 플레이 로그인·가입·로그아웃 API, 관리 페이지 API다.
+// 학습 이벤트 API, 로컬 모델·온라인 플레이·리더보드 서버 기록 사용 가능 여부 확인 API,
+// 솔로몬 역학습 API(요청만 받음), 온라인 플레이 로그인·가입·로그아웃 API, 리더보드 기록·조회 API, 관리 페이지 API다.
 const apis = {
     learning: learningApi,
     localmodelinfo: localModelInfoApi,
     onlineplayinfo: onlinePlayInfoApi,
     onlineplay: (req, res) => onlinePlayService.handleApi(req, res),
+    leaderboardinfo: leaderboardInfoApi,
+    leaderboard: (req, res) => leaderboardService.handleApi(req, res),
     admin: (req, res) => adminService.handleApi(req, res),
     solomonlearning: solomonLearningApi
 };

@@ -177,6 +177,34 @@
                 border-radius: 6px;
                 background: var(--lb-panel-2);
             }
+            /* 기록 출처(로컬·온라인) 토글이다. 서버가 기록을 모으지 않으면 온라인 쪽이 비활성이다. */
+            .lb-source {
+                display: flex;
+                flex: none;
+                padding: 2px;
+                border: 1px solid var(--lb-border);
+                border-radius: 8px;
+                background: var(--lb-panel-2);
+            }
+            .lb-source-button {
+                padding: 4px 10px;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                color: var(--lb-text-weak);
+                font-size: 13px;
+                white-space: nowrap;
+            }
+            .lb-source-button[aria-checked="true"] {
+                background: var(--lb-accent);
+                color: var(--lb-accent-text);
+                font-weight: 700;
+            }
+            .lb-source-button[disabled] { cursor: not-allowed; opacity: 0.45; }
+            .lb-source-button:not([disabled]):not([aria-checked="true"]):hover { color: var(--lb-text); }
+            .lb-source-hint { color: var(--lb-text-weak); font-size: 12px; line-height: 1.35; }
+            .lb-source-hint:empty { display: none; }
+
             /* 다크 모드 토글 스위치 */
             .lb-theme-toggle {
                 display: flex;

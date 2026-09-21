@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 102;
+    const BUILDNO = 103;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -249,6 +249,12 @@
     const LOCAL_AI_INFO_API_PATH = 'apis/localmodelinfo';
     /** 게임 서버의 온라인 플레이 사용 가능 여부를 확인하는 API 경로다. @type {string} */
     const ONLINE_PLAY_INFO_API_PATH = 'apis/onlineplayinfo';
+    /** 게임 서버가 리더보드 기록을 함께 모으는지 확인하는 API 경로다. @type {string} */
+    const LEADERBOARD_INFO_API_PATH = 'apis/leaderboardinfo';
+    /** 리더보드 기록 하나를 게임 서버에 보내는 API 경로다. @type {string} */
+    const LEADERBOARD_RECORD_API_PATH = 'apis/leaderboard/record';
+    /** 게임 서버에 모인 리더보드 기록을 모두 읽는 API 경로다. @type {string} */
+    const LEADERBOARD_RECORDS_API_PATH = 'apis/leaderboard/records';
     /** 그래픽 품질별 캔버스 출력 해상도다. 게임 내부 좌표는 항상 WIDTH x HEIGHT를 사용한다. @type {{key:'low'|'medium'|'high', label:string, width:number, height:number}[]} */
     const GRAPHICS_QUALITY_OPTIONS = [
         { key: 'low', label: '낮음', width: WIDTH, height: HEIGHT },
@@ -272,9 +278,13 @@
     const SOUND_DATA_URL_MAX_LENGTH = 200;
     /** 새 설정 및 비어 있거나 잘못된 이름에 사용할 기본 플레이어 이름이다. */
     const DEFAULT_PLAYER_NAME = 'PLAYER 1';
-    /** Windows·Linux 파일 이름과 닉네임에 함께 쓸 수 없는 문자다. 제어 문자도 파일 이름으로 저장할 수 없으므로 막는다. */
+    /**
+     * Windows·Linux 파일 이름과 닉네임에 함께 쓸 수 없는 문자다. 제어 문자도 파일 이름으로 저장할 수 없으므로 막는다.
+     * 리더보드 서버가 이 이름을 그대로 파일명으로 쓰므로(node/leaderboard.js·python/leaderboard.py의
+     * NICKNAME_FORBIDDEN_PATTERN), 상위 경로를 가리킬 수 있는 마침표도 함께 막아 양쪽 규칙을 맞춘다.
+     */
     // eslint-disable-next-line no-control-regex -- 이름을 운영체제 파일명에도 안전하게 쓸 수 있도록 제어 문자를 함께 거부한다.
-    const PLAYER_NAME_FORBIDDEN_PATTERN = /[\\/:*?"<>|'!|\u0000-\u001F\u007F]/u;
+    const PLAYER_NAME_FORBIDDEN_PATTERN = /[\\/:*?"<>|'!.\u0000-\u001F\u007F]/u;
     /** 가상 컨트롤러 표시 크기 선택지다. 기존 true/false 저장값은 normal/none으로 이관한다. @type {{key:'none'|'normal'|'large', label:string}[]} */
     const VIRTUAL_CONTROLLER_OPTIONS = [
         { key: 'none', label: '없음' },
@@ -727,6 +737,8 @@
     let localAiAvailable = false;
     /** 초기화 시 게임 서버에 확인한 온라인 플레이 사용 가능 여부다. @type {boolean} */
     let onlinePlayAvailable = false;
+    /** 게임 서버가 리더보드 기록을 함께 모으는지 여부다. 초기화 때 한 번 확인하며, 리더보드 화면도 같은 확인 함수를 쓴다. @type {boolean} */
+    let leaderboardServerAvailable = false;
     /**
      * 온라인 플레이 로그인 세션이다. 토큰은 메모리에만 두며 puyow_store 등 저장소에 남기지 않는다.
      * @type {{token:string, nickname:string, winPoint:number}|null}
@@ -1277,6 +1289,45 @@
                 onlinePlayAvailable = false;
             }
         }
+    }
+
+    /**
+     * 게임 서버가 리더보드 기록을 함께 모으는지 물어 둔다.
+     * 게임은 초기화 때 한 번 호출해 기록 전송 여부를 정하고, 리더보드 화면(puyow_leaderboard.js)은
+     * PuyoW.leaderboard.checkServer()로 같은 함수를 불러 온라인 토글을 켤지 정한다.
+     * @returns {Promise<boolean>} 서버 기록 사용 가능 여부
+     */
+    async function refreshLeaderboardServerAvailability() {
+        const serverURL = getLocalAiServerURL();
+        leaderboardServerAvailable = false;
+        if (serverURL && typeof fetch === 'function') {
+            try {
+                const response = await fetch(new URL(LEADERBOARD_INFO_API_PATH, `${serverURL}/`).href);
+                if (!response.ok) throw new Error(`${LEADERBOARD_INFO_API_PATH} 요청 실패 (${response.status})`);
+                const info = await response.json();
+                leaderboardServerAvailable = info?.available === true;
+            } catch (error) {
+                // 리더보드 API가 없는 일반 정적 서버에서는 로컬 기록만 쓰고 게임을 그대로 진행한다.
+                console.info('Puyo W 리더보드 서버 기록을 사용할 수 없습니다.', error);
+                leaderboardServerAvailable = false;
+            }
+        }
+        return leaderboardServerAvailable;
+    }
+
+    /**
+     * 게임 서버에 모인 리더보드 기록을 읽는다. 리더보드 화면의 "온라인" 보기가 쓴다.
+     * 응답의 records 구조는 localStorage에 두는 것과 같으므로 같은 정리 함수를 거쳐 돌려준다.
+     * @returns {Promise<{version:number, records:object}>} 리더보드 데이터
+     */
+    async function fetchLeaderboardServerData() {
+        const serverURL = getLocalAiServerURL();
+        if (!serverURL || typeof fetch !== 'function') throw new Error('리더보드 서버 주소를 확인할 수 없습니다.');
+        const response = await fetch(new URL(LEADERBOARD_RECORDS_API_PATH, `${serverURL}/`).href);
+        if (!response.ok) throw new Error(`${LEADERBOARD_RECORDS_API_PATH} 요청 실패 (${response.status})`);
+        const body = await response.json();
+        if (body?.ok !== true) throw new Error('리더보드 서버가 기록을 돌려주지 않았습니다.');
+        return normalizeLeaderboardData(body);
     }
 
     /*
@@ -8391,7 +8442,6 @@
      * @returns {{version:number, records:object, legacy?:object}} 리더보드 데이터
      */
     function loadLeaderboard() {
-        const records = {};
         let raw = null;
         try {
             const serialized = storageManager.getItem(LEADERBOARD_STORE_KEY);
@@ -8399,6 +8449,17 @@
         } catch (error) {
             console.error('리더보드 기록을 읽지 못했습니다.', error);
         }
+        return normalizeLeaderboardData(raw);
+    }
+
+    /**
+     * 저장값이나 서버 응답을 화면이 쓸 수 있는 리더보드 데이터로 정리한다.
+     * localStorage와 리더보드 서버가 같은 records 구조를 쓰므로 두 곳이 이 함수를 함께 쓴다.
+     * @param {*} raw 저장값 또는 서버 응답
+     * @returns {{version:number, records:object, legacy?:object}} 리더보드 데이터
+     */
+    function normalizeLeaderboardData(raw) {
+        const records = {};
         const rawRecords = raw && typeof raw === 'object' && raw.records && typeof raw.records === 'object' ? raw.records : {};
         const rawVersion = Number(raw?.version) || 1;
         let legacy = raw && raw.legacy && typeof raw.legacy === 'object' && !Array.isArray(raw.legacy) ? raw.legacy : null;
@@ -8460,6 +8521,38 @@
     }
 
     /**
+     * 리더보드 기록 하나를 게임 서버에도 보낸다. 로컬 저장과 별개이며 응답을 기다리지 않는다.
+     * 서버가 기록을 모으지 않거나 통신에 실패해도 게임 진행을 막지 않는다.
+     * 기록 일시는 보내지 않는다. 서버가 자기 시각으로 적는다.
+     * @param {string} ruleKey LEADERBOARD_RULES의 key
+     * @param {number} colorCount 색 수(3~5)
+     * @param {string|null} enemyType 대전 룰의 적 classType, 단독 룰이면 null
+     * @param {string|null} difficultyKey 대전 룰의 AI 난이도 키, 단독 룰이면 null
+     * @param {string} name 기록 당시 플레이어 닉네임
+     * @param {number} score 최종 점수
+     * @returns {void}
+     */
+    function sendLeaderboardRecordToServer(ruleKey, colorCount, enemyType, difficultyKey, name, score) {
+        if (!leaderboardServerAvailable) return;
+        const serverURL = getLocalAiServerURL();
+        if (!serverURL || typeof fetch !== 'function') return;
+        try {
+            fetch(new URL(LEADERBOARD_RECORD_API_PATH, `${serverURL}/`).href, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nickname: name, rule: ruleKey, difficulty: difficultyKey, colors: colorCount, opponent: enemyType, score })
+            }).then((response) => {
+                if (!response.ok) console.info(`리더보드 기록을 서버에 남기지 못했습니다. (${response.status})`);
+            }).catch((error) => {
+                // 통신 오류로 게임이 멈추면 안 되므로 알림만 남기고 넘어간다.
+                console.info('리더보드 기록을 서버에 보내지 못했습니다.', error);
+            });
+        } catch (error) {
+            console.info('리더보드 기록을 서버에 보내지 못했습니다.', error);
+        }
+    }
+
+    /**
      * 끝난 게임이 리더보드 기록 대상이면 사용자 점수를 기록한다. 결과가 확정되는 updateDefeatSequence()에서 한 번 부른다.
      * 대전(기본 룰·피버 룰·피버 룰 (시작))은 사용자가 이겼을 때, 연습·연속 피버는 사용자가 패배 조건을 만족했을 때만 기록한다.
      * 너랑 나랑(오프라인·온라인)·구경·퍼즐뿌요·플레이 방법·리플레이 재생·개발용 도구 테스트와 솔로몬 대전은 기록하지 않는다.
@@ -8478,7 +8571,11 @@
         if (game.practice) {
             // 단독 모드는 승리 조건이 없으므로 사용자가 패배했을 때의 최종 점수를 남긴다.
             if (loser !== player) return false;
-            return addLeaderboardRecord(game.continuousFever ? 'continuous_fever' : 'practice', colorCount, null, null, player.name, player.point);
+            const soloRule = game.continuousFever ? 'continuous_fever' : 'practice';
+            const saved = addLeaderboardRecord(soloRule, colorCount, null, null, player.name, player.point);
+            // 로컬 10위 밖이라 저장하지 않았더라도 서버 순위는 사람마다 따로 겨루므로 함께 보낸다.
+            sendLeaderboardRecordToServer(soloRule, colorCount, null, null, player.name, player.point);
+            return saved;
         }
         if (winner !== player) return false;
         const enemyType = game.players[1]?.controller?.getClassType?.();
@@ -8487,7 +8584,10 @@
         // 적이 있는 대전은 게임 시작 때 고른 AI 난이도마다 순위를 따로 둔다.
         const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key;
         if (!difficultyKey) return false;
-        return addLeaderboardRecord(ruleKey, colorCount, enemyType, difficultyKey, player.name, player.point);
+        const saved = addLeaderboardRecord(ruleKey, colorCount, enemyType, difficultyKey, player.name, player.point);
+        // 로컬 10위 밖이라 저장하지 않았더라도 서버 순위는 사람마다 따로 겨루므로 함께 보낸다.
+        sendLeaderboardRecordToServer(ruleKey, colorCount, enemyType, difficultyKey, player.name, player.point);
+        return saved;
     }
 
     /**
@@ -8518,6 +8618,10 @@
             .filter((entry) => !entry.hidden && !entry.notAvail && !LEADERBOARD_EXCLUDED_ENEMY_TYPES.has(entry.classType))
             .map((entry) => ({ classType: entry.classType, name: entry.createController().getName() })),
         getData: loadLeaderboard,
+        /** 게임 서버가 리더보드 기록을 함께 모으는지 확인한다. @returns {Promise<boolean>} 사용 가능 여부 */
+        checkServer: refreshLeaderboardServerAvailability,
+        /** 게임 서버가 모아 둔 기록을 읽는다. 실패하면 예외를 던진다. @returns {Promise<{version:number, records:object}>} 리더보드 데이터 */
+        getServerData: fetchLeaderboardServerData,
         translate: translateLeaderboardText
     });
 
@@ -17343,9 +17447,10 @@
         initializeGamepadInput();
         // 공지사항 로드
         loadNotice();
-        // AI 및 온라인 플레이 가능여부 새로고침
+        // AI, 온라인 플레이, 리더보드 서버 기록 가능여부 새로고침
         refreshLocalAiAvailability();
         refreshOnlinePlayAvailability();
+        refreshLeaderboardServerAvailability();
         // 첫 화면은 제목과 시작 문구만 즉시 표시한 뒤 갤러리 미리보기를 비동기로 준비한다.
         render();
         scheduleFeverStageValidation();

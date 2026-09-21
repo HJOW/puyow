@@ -57,6 +57,8 @@ from common import (
 from onlineplay import OnlinePlayService
 # 서버 모니터링·관리 페이지(src/admin.html) 백엔드도 이 파일에 두지 않고 admin.py에 분리해 두었다.
 from admin import AdminService
+# 리더보드 기록을 서버에도 모아 두는 기능 구현은 leaderboard.py에 분리해 두었다.
+from leaderboard import LeaderboardService
 
 
 # 서버 운영자가 이 컬렉션의 값을 수정해 포트와 인증 토큰을 설정한다.
@@ -71,6 +73,14 @@ SERVER_CONFIG = {
 	#           WebSocket 대전 중계를 모두 제공한다. 계정과 방 정보는 [홈디렉토리]/.puyowserver/ 아래에 저장된다.
 	#   False : 온라인 플레이 관련 요청을 일절 받지 않는다. 게임은 "너랑 나랑" 방식 선택에서 온라인 플레이 항목을 숨긴다.
 	"online_play_enabled": False,
+	# 리더보드 기록을 이 서버에도 함께 모을지 여부다. 온라인 대전과는 무관한 기능이며 계정·로그인도 쓰지 않는다.
+	#   True  : /apis/leaderboardinfo 가 {"available": True} 를 응답하고, 게임이 대전·연습을 끝낼 때마다
+	#           로컬 스토리지 저장에 더해 이 서버로도 기록을 보낸다. 기록은 사람마다 한 파일씩
+	#           [홈디렉토리]/.puyowserver/leaderboard/[닉네임].json 으로 저장하며, 기록 일시는 서버 시각으로 적는다.
+	#           리더보드 화면(src/leaderboard.html) 좌측 아래 토글에서 "온라인"을 고르면 이렇게 모인 기록을 볼 수 있다.
+	#   False : 리더보드 관련 요청을 일절 받지 않는다. 게임은 로컬 스토리지에만 기록하고, 리더보드 화면의
+	#           온라인 토글은 비활성 상태로 로컬에 고정된다.
+	"leaderboard_enabled": True,
     # 관리자 계정 ID, 온라인 플레이 시 이용할 수 있는 계정은 아니고, admin.html 전용 계정.
     "admin_id": "root",
 	# 관리자 계정 비밀번호, 온라인 플레이 시 이용할 수 있는 계정은 아니고, admin.html 전용 계정. 값이 비어있으면 관리자 계정 로그인 불가.
@@ -882,8 +892,16 @@ def online_play_info_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str
 	return HTTPStatus.OK, {"available": SERVER_CONFIG.get("online_play_enabled") is True}
 
 
+def leaderboard_info_api(handler: BaseHTTPRequestHandler) -> tuple[int, dict[str, Any]]:
+	"""이 서버가 리더보드 기록을 함께 모으는지 알린다. 응답값은 SERVER_CONFIG['leaderboard_enabled'] 하나로 결정된다."""
+	return HTTPStatus.OK, {"available": leaderboard_service.enabled}
+
+
 # 온라인 플레이 서비스다. online_play_enabled가 False면 저장 디렉터리도 만들지 않고 모든 요청을 거절한다.
 online_play_service = OnlinePlayService(SERVER_CONFIG.get("online_play_enabled") is True)
+
+# 리더보드 서버 기록 서비스다. leaderboard_enabled가 False면 저장 디렉터리도 만들지 않는다.
+leaderboard_service = LeaderboardService(SERVER_CONFIG.get("leaderboard_enabled") is True)
 
 
 # 대시보드에 함께 보여 줄 이 서버만의 정보다.
@@ -894,6 +912,7 @@ def admin_server_info() -> dict[str, Any]:
 		"https": bool(SERVER_CONFIG.get("ssl_cert_file")) and bool(SERVER_CONFIG.get("ssl_key_file")),
 		"onlinePlayEnabled": SERVER_CONFIG.get("online_play_enabled") is True,
 		"localAiAvailable": get_configured_model_path() is not None,
+		"leaderboard": leaderboard_service.get_stats(),
 	}
 
 
@@ -904,7 +923,7 @@ admin_service = AdminService(SERVER_CONFIG.get("admin_id"), SERVER_CONFIG.get("a
 
 # node/server.js의 apis 객체와 같은 역할을 하는 동적 API 등록 컬렉션이다.
 # 관리 API만 세션 쿠키를 함께 내려야 해서 (상태, 본문, 추가 헤더) 세 값을 돌려준다. 라우터가 두 형태를 모두 받는다.
-apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple]] = {"learning": learning_api, "localmodelinfo": local_model_info_api, "onlineplayinfo": online_play_info_api, "onlineplay": online_play_service.handle_api, "admin": admin_service.handle_api, "solomonlearning": solomon_learning_api}
+apis: dict[str, Callable[[BaseHTTPRequestHandler], tuple]] = {"learning": learning_api, "localmodelinfo": local_model_info_api, "onlineplayinfo": online_play_info_api, "onlineplay": online_play_service.handle_api, "leaderboardinfo": leaderboard_info_api, "leaderboard": leaderboard_service.handle_api, "admin": admin_service.handle_api, "solomonlearning": solomon_learning_api}
 
 
 class PuyoRequestHandler(BaseHTTPRequestHandler):

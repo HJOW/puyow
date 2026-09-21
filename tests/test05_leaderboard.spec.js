@@ -10,6 +10,31 @@ function readLeaderboard(page) {
   return page.evaluate(() => JSON.parse(localStorage.getItem('puyow_leaderboard') || 'null'));
 }
 
+/** 서버가 모아 둔 온라인 기록이다. 구조는 localStorage의 records와 같다. */
+const SERVER_RECORDS = {
+  standard: { normal: { 4: { Kimaris: [{ name: 'SERVERTOP', score: 500000, recordedAt: Date.UTC(2026, 8, 20, 1, 0) }] } } },
+  practice: { 3: [{ name: 'SERVERSOLO', score: 4000, recordedAt: Date.UTC(2026, 8, 18, 2, 0) }] }
+};
+
+/**
+ * 리더보드 서버 API를 흉내 낸다. 실제 서버의 홈 디렉터리를 건드리지 않고 화면 동작만 확인한다.
+ * available이 false면 API가 없는 정적 서버처럼 404를 돌려준다.
+ */
+async function stubLeaderboardServer(page, { available = true, records = SERVER_RECORDS, posted = null } = {}) {
+  await page.route('**/apis/leaderboardinfo', (route) => route.fulfill({
+    status: available ? 200 : 404,
+    contentType: 'application/json',
+    body: JSON.stringify(available ? { available: true } : { ok: false, error: '404 Not Found' })
+  }));
+  await page.route('**/apis/leaderboard/records', (route) => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, version: 2, maxEntries: 10, records })
+  }));
+  await page.route('**/apis/leaderboard/record', (route) => {
+    if (posted) posted.push(JSON.parse(route.request().postData() || '{}'));
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, recorded: true }) });
+  });
+}
+
 test.describe('게임 페이지의 리더보드 기록', () => {
   setupGamePage();
 
@@ -33,6 +58,9 @@ test.describe('게임 페이지의 리더보드 기록', () => {
   }
 
   test('기본 룰에서 이기면 AI 난이도·색 수·적별로 닉네임과 점수를 기록한다', async ({ page }) => {
+    // 서버 전송은 따로 확인하므로, 여기서는 꺼 두어 실제 서버의 홈 디렉터리를 건드리지 않는다.
+    await stubLeaderboardServer(page, { available: false });
+    await page.reload();
     await registerSelfLosingEnemy(page, 'LeaderboardWinEnemy');
     await enterMainMenu(page);
     const startedAt = await page.evaluate(() => Date.now());
@@ -59,7 +87,71 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     expect(saved.records.practice).toBeUndefined();
   });
 
+  test('기록할 때 로컬 저장에 이어 서버로도 같은 기록을 보낸다', async ({ page }) => {
+    const posted = [];
+    await stubLeaderboardServer(page, { posted });
+    // 사용 가능 여부는 초기화 때 한 번만 확인하므로, 흉내 낸 API를 붙인 뒤 다시 읽어야 한다.
+    await page.reload();
+    await registerSelfLosingEnemy(page, 'LeaderboardSendEnemy');
+    await enterMainMenu(page);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+    for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
+    const colorCount = await page.evaluate(() => window.WebPuyo.getGameState().colorCount);
+    const difficultyKey = await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty.key);
+    const playerName = await page.evaluate(() => window.WebPuyo.getGameState().player.name);
+
+    // 로컬 저장은 그대로 진행된다.
+    const saved = await readLeaderboard(page);
+    expect(saved.records.standard[difficultyKey][String(colorCount)].LeaderboardSendEnemy).toHaveLength(1);
+    // 이어서 같은 내용을 서버로도 보낸다. 기록 일시는 서버가 정하므로 보내지 않는다.
+    await expect.poll(() => posted.length).toBe(1);
+    expect(posted[0]).toEqual({
+      nickname: playerName, rule: 'standard', difficulty: difficultyKey, colors: colorCount, opponent: 'LeaderboardSendEnemy', score: 0
+    });
+    expect(posted[0].recordedAt).toBeUndefined();
+  });
+
+  test('서버가 리더보드를 모으지 않으면 로컬에만 기록하고 전송하지 않는다', async ({ page }) => {
+    const posted = [];
+    await stubLeaderboardServer(page, { available: false, posted });
+    await page.reload();
+    await registerSelfLosingEnemy(page, 'LeaderboardOfflineEnemy');
+    await enterMainMenu(page);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+    for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
+    const difficultyKey = await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty.key);
+    const colorCount = await page.evaluate(() => window.WebPuyo.getGameState().colorCount);
+    const saved = await readLeaderboard(page);
+    expect(saved.records.standard[difficultyKey][String(colorCount)].LeaderboardOfflineEnemy).toHaveLength(1);
+    expect(posted).toHaveLength(0);
+  });
+
+  test('이름에 마침표가 들어가면 설정 화면에서 막는다', async ({ page }) => {
+    // 리더보드 서버가 닉네임을 파일 이름으로 쓰므로, 게임 설정 화면에서도 마침표를 막는다.
+    await page.evaluate(() => localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: '' } })));
+    await page.reload();
+    await page.keyboard.press('Enter');
+    const invalidMessage = await page.evaluate(() => window.WebPuyo.translate('이름에 사용할 수 없는 문자가 있습니다.'));
+    await page.keyboard.type('BAD.NAME');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.evaluate((message) => window.testCanvasTexts.includes(message), invalidMessage)).toBe(true);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.playerName)).toBe('');
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type('VALIDNAME');
+    await page.keyboard.press('Enter');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.playerName)).toBe('VALIDNAME');
+  });
+
   test('연습은 패배했을 때 최종 점수를 기록하고, 일시정지 종료로 빠져나가면 기록하지 않는다', async ({ page }) => {
+    // 서버 전송은 따로 확인하므로, 여기서는 꺼 두어 실제 서버의 홈 디렉터리를 건드리지 않는다.
+    await stubLeaderboardServer(page, { available: false });
+    await page.reload();
     await enterMainMenu(page);
     await page.keyboard.press('Enter');
     await page.keyboard.press('ArrowDown');
@@ -467,6 +559,75 @@ test.describe('리더보드 조회 화면', () => {
     await expect(page.locator('.lb-title')).toHaveText('Overall ranking');
   });
 
+  test.describe('기록 출처 토글', () => {
+    test('서버가 기록을 모으면 온라인 기록으로 바꿔 볼 수 있다', async ({ page }) => {
+      await stubLeaderboardServer(page);
+      await page.goto(LEADERBOARD_PAGE);
+      await page.waitForFunction(() => window.PuyoWLeaderboard.getState().serverAvailable === true);
+      const localButton = page.locator('.lb-source-button[data-source="local"]');
+      const onlineButton = page.locator('.lb-source-button[data-source="online"]');
+      await expect(localButton).toHaveText('Local');
+      await expect(onlineButton).toHaveText('Online');
+      await expect(localButton).toHaveAttribute('aria-checked', 'true');
+      await expect(onlineButton).toBeEnabled();
+      await expect(page.locator('.lb-source-hint')).toHaveText('');
+      // 처음에는 이 브라우저의 기록을 보여 준다.
+      await expect(page.locator('.lb-table tbody tr').first()).toContainText('Alice');
+      await expect(page.locator('.lb-note')).toContainText('Records are saved only in this browser.');
+
+      await onlineButton.click();
+      await expect(onlineButton).toHaveAttribute('aria-checked', 'true');
+      await expect(localButton).toHaveAttribute('aria-checked', 'false');
+      // 서버에 모인 다른 사람들의 기록으로 바뀐다.
+      await expect(page.locator('.lb-table tbody tr')).toHaveCount(2);
+      await expect(page.locator('.lb-table tbody tr').first()).toContainText('SERVERTOP');
+      await expect(page.locator('.lb-note')).toContainText('Online records are what other people saved on this server.');
+      // 트리의 기록 수도 서버 기록을 따른다.
+      await page.locator('[data-node-id="standard/normal"]').click();
+      await page.locator('[data-node-id="standard/normal/4"]').click();
+      await expect(page.locator('[data-node-id="standard/normal/4/Kimaris"] .lb-count')).toHaveText('1');
+
+      // 로컬로 되돌리면 이 브라우저의 기록이 다시 보인다.
+      await localButton.click();
+      await expect(localButton).toHaveAttribute('aria-checked', 'true');
+      await expect(page.locator('.lb-table tbody tr').first()).toContainText('Alice');
+    });
+
+    test('서버가 기록을 모으지 않으면 온라인을 고를 수 없고 로컬에 머문다', async ({ page }) => {
+      await stubLeaderboardServer(page, { available: false });
+      await page.goto(LEADERBOARD_PAGE);
+      await expect(page.locator('.lb-source-hint')).toHaveText('This server does not collect online records.');
+      const onlineButton = page.locator('.lb-source-button[data-source="online"]');
+      await expect(onlineButton).toBeDisabled();
+      expect(await page.evaluate(() => window.PuyoWLeaderboard.getState().serverAvailable)).toBe(false);
+      // 강제로 눌러도 로컬에 머문다.
+      await onlineButton.click({ force: true }).catch(() => {});
+      expect(await page.evaluate(() => window.PuyoWLeaderboard.getState().source)).toBe('local');
+      await expect(page.locator('.lb-table tbody tr').first()).toContainText('Alice');
+    });
+
+    test('온라인 기록을 읽지 못하면 로컬로 되돌리고 알린다', async ({ page }) => {
+      await stubLeaderboardServer(page);
+      // 목록 요청만 실패하게 바꾼다.
+      await page.route('**/apis/leaderboard/records', (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{"ok":false}' }));
+      await page.goto(LEADERBOARD_PAGE);
+      await page.waitForFunction(() => window.PuyoWLeaderboard.getState().serverAvailable === true);
+      await page.locator('.lb-source-button[data-source="online"]').click();
+      await expect(page.locator('.lb-empty')).toHaveText('Could not load online records.');
+      expect(await page.evaluate(() => window.PuyoWLeaderboard.getState().source)).toBe('local');
+      await expect(page.locator('.lb-source-button[data-source="local"]')).toHaveAttribute('aria-checked', 'true');
+    });
+
+    test('토글 문구도 선택한 언어를 따른다', async ({ page }) => {
+      await stubLeaderboardServer(page);
+      await page.goto(LEADERBOARD_PAGE);
+      await page.locator('#lb_language_select').selectOption('ko');
+      await expect(page.locator('.lb-source-button[data-source="local"]')).toHaveText('로컬');
+      await expect(page.locator('.lb-source-button[data-source="online"]')).toHaveText('온라인');
+      await expect(page.locator('#lb_source_label')).toHaveText('기록');
+    });
+  });
+
   test.describe('WebMCP', () => {
     test.beforeEach(async ({ page }) => {
       await page.addInitScript(() => {
@@ -536,6 +697,29 @@ test.describe('리더보드 조회 화면', () => {
       await expect(page.locator('.lb-title')).toHaveText('Overall ranking');
       await expect(page.locator('.lb-table tbody tr')).toHaveCount(4);
       expect(await page.evaluate(() => window.PuyoWLeaderboard.getState().selection)).toBeNull();
+    });
+
+    test('WebMCP 도구도 source로 온라인 기록을 읽고 화면을 바꾼다', async ({ page }) => {
+      await stubLeaderboardServer(page);
+      await page.reload();
+      await page.waitForFunction(() => Boolean(window.registeredWebMcpTools?.length));
+      await page.waitForFunction(() => window.PuyoWLeaderboard.getState().serverAvailable === true);
+
+      const online = JSON.parse(await callTool(page, 'leaderboard_records', { source: 'online' }));
+      expect(online.source).toBe('online');
+      expect(online.entries.map((entry) => entry.nickname)).toEqual(['SERVERTOP', 'SERVERSOLO']);
+      // 화면도 함께 온라인으로 바뀐다.
+      expect(await page.evaluate(() => window.PuyoWLeaderboard.getState().source)).toBe('online');
+
+      const local = JSON.parse(await callTool(page, 'leaderboard_records', { source: 'local' }));
+      expect(local.source).toBe('local');
+      expect(local.entries.map((entry) => entry.nickname)).toEqual(['Alice', 'Carol', '<b>Bob</b>', 'Eve']);
+
+      await callTool(page, 'leaderboard_show', { rule: 'standard', source: 'online' });
+      expect(await page.evaluate(() => window.PuyoWLeaderboard.getState().source)).toBe('online');
+      await expect(page.locator('.lb-table tbody tr').first()).toContainText('SERVERTOP');
+
+      await expect(callTool(page, 'leaderboard_records', { source: 'nope' })).rejects.toThrow("source must be 'local' or 'online'.");
     });
 
     test('leaderboard_manual은 전체 순위와 통합 순위를 함께 설명한다', async ({ page }) => {

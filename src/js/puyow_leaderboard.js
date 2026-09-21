@@ -48,6 +48,13 @@
             'Only wins against this opponent are recorded.': '이 적에게 승리한 대전만 기록됩니다.',
             'The final score is recorded when you lose.': '패배했을 때의 최종 점수가 기록됩니다.',
             'Records are saved only in this browser.': '기록은 이 브라우저에만 저장됩니다.',
+            'Records': '기록',
+            'Local': '로컬',
+            'Online': '온라인',
+            'Online records are what other people saved on this server.': '온라인 기록은 이 서버에 모인 다른 사람들의 기록입니다.',
+            'This server does not collect online records.': '이 서버는 온라인 기록을 모으지 않습니다.',
+            'Loading records...': '기록을 불러오는 중...',
+            'Could not load online records.': '온라인 기록을 불러오지 못했습니다.',
             'Combined ranking': '통합 순위',
             'Overall ranking': '전체 순위',
             'This ranking combines every record from every rule.': '모든 룰의 기록을 합쳐 매긴 순위입니다.',
@@ -75,6 +82,13 @@
             'Only wins against this opponent are recorded.': 'この相手に勝利した対戦だけが記録されます。',
             'The final score is recorded when you lose.': '負けたときの最終スコアが記録されます。',
             'Records are saved only in this browser.': '記録はこのブラウザにのみ保存されます。',
+            'Records': '記録',
+            'Local': 'ローカル',
+            'Online': 'オンライン',
+            'Online records are what other people saved on this server.': 'オンライン記録は、このサーバーに集まった他の人の記録です。',
+            'This server does not collect online records.': 'このサーバーはオンライン記録を集めていません。',
+            'Loading records...': '記録を読み込み中...',
+            'Could not load online records.': 'オンライン記録を読み込めませんでした。',
             'Combined ranking': '統合ランキング',
             'Overall ranking': '総合ランキング',
             'This ranking combines every record from every rule.': 'すべてのルールの記録をまとめたランキングです。',
@@ -102,6 +116,13 @@
             'Only wins against this opponent are recorded.': '只记录战胜该对手的对战。',
             'The final score is recorded when you lose.': '记录失败时的最终分数。',
             'Records are saved only in this browser.': '记录只保存在此浏览器中。',
+            'Records': '记录',
+            'Local': '本地',
+            'Online': '在线',
+            'Online records are what other people saved on this server.': '在线记录是其他人保存在此服务器上的记录。',
+            'This server does not collect online records.': '此服务器不收集在线记录。',
+            'Loading records...': '正在加载记录...',
+            'Could not load online records.': '无法加载在线记录。',
             'Combined ranking': '综合排行',
             'Overall ranking': '总排行',
             'This ranking combines every record from every rule.': '汇总所有规则记录的排行榜。',
@@ -129,6 +150,13 @@
             'Only wins against this opponent are recorded.': 'Nur Siege gegen diesen Gegner werden gespeichert.',
             'The final score is recorded when you lose.': 'Gespeichert wird die Endpunktzahl bei einer Niederlage.',
             'Records are saved only in this browser.': 'Einträge werden nur in diesem Browser gespeichert.',
+            'Records': 'Einträge',
+            'Local': 'Lokal',
+            'Online': 'Online',
+            'Online records are what other people saved on this server.': 'Online-Einträge sind die Ergebnisse, die andere auf diesem Server gespeichert haben.',
+            'This server does not collect online records.': 'Dieser Server sammelt keine Online-Einträge.',
+            'Loading records...': 'Einträge werden geladen...',
+            'Could not load online records.': 'Die Online-Einträge konnten nicht geladen werden.',
             'Combined ranking': 'Gesamtwertung',
             'Overall ranking': 'Gesamtrangliste',
             'This ranking combines every record from every rule.': 'Diese Wertung fasst die Einträge aller Regeln zusammen.',
@@ -156,6 +184,13 @@
             'Only wins against this opponent are recorded.': 'Seules les victoires contre cet adversaire sont enregistrées.',
             'The final score is recorded when you lose.': 'Le score final est enregistré lorsque tu perds.',
             'Records are saved only in this browser.': 'Les scores sont enregistrés uniquement dans ce navigateur.',
+            'Records': 'Scores',
+            'Local': 'Local',
+            'Online': 'En ligne',
+            'Online records are what other people saved on this server.': 'Les scores en ligne sont ceux que d’autres ont enregistrés sur ce serveur.',
+            'This server does not collect online records.': 'Ce serveur ne collecte pas de scores en ligne.',
+            'Loading records...': 'Chargement des scores...',
+            'Could not load online records.': 'Impossible de charger les scores en ligne.',
             'Combined ranking': 'Classement global',
             'Overall ranking': 'Classement général',
             'This ranking combines every record from every rule.': 'Ce classement regroupe les scores de toutes les règles.',
@@ -639,7 +674,7 @@
             const overallList = getOverallRecordList();
             breadcrumb.textContent = '';
             title.textContent = translate('Overall ranking');
-            note.textContent = `${translate('This ranking combines every record from every rule.')} ${translate('Records are saved only in this browser.')}`;
+            note.textContent = `${translate('This ranking combines every record from every rule.')} ${getSourceNote()}`;
             card.classList.toggle('lb-card-wide', overallList.length > 0);
             // 기록이 하나도 없으면 예전처럼 메뉴에서 고르라고 안내한다.
             card.replaceChildren(overallList.length
@@ -657,11 +692,11 @@
         breadcrumb.textContent = combined ? path.join(' › ') : path.slice(0, -1).join(' › ');
         title.textContent = combined ? translate('Combined ranking') : path[path.length - 1];
         if (combined) {
-            note.textContent = `${translate('This ranking combines every record below the selected menu item.')} ${translate('Records are saved only in this browser.')}`;
+            note.textContent = `${translate('This ranking combines every record below the selected menu item.')} ${getSourceNote()}`;
         } else {
             note.textContent = rule.battle
-                ? `${translate('Battles are ranked separately by AI difficulty, color count, and opponent.')} ${translate('Only wins against this opponent are recorded.')} ${translate('Records are saved only in this browser.')}`
-                : `${translate('The final score is recorded when you lose.')} ${translate('Records are saved only in this browser.')}`;
+                ? `${translate('Battles are ranked separately by AI difficulty, color count, and opponent.')} ${translate('Only wins against this opponent are recorded.')} ${getSourceNote()}`
+                : `${translate('The final score is recorded when you lose.')} ${getSourceNote()}`;
         }
         // 통합 순위는 조건 칸이 하나 더 붙으므로 표를 조금 넓게 쓴다.
         card.classList.toggle('lb-card-wide', combined);
@@ -713,14 +748,99 @@
         state.language = SUPPORTED_LANGUAGES.some((entry) => entry.code === language) ? language : 'en';
         state.elements.languageSelect.value = state.language;
         renderStaticTexts();
+        renderSourceToggle();
+        renderTree();
+        renderMain();
+    }
+
+    /** 현재 고른 기록 출처(로컬·온라인)에 맞는 설명 문구다. @returns {string} 설명 문구 */
+    function getSourceNote() {
+        return state.source === 'online'
+            ? translate('Online records are what other people saved on this server.')
+            : translate('Records are saved only in this browser.');
+    }
+
+    /** 사이드바 아래 기록 출처 토글을 현재 상태에 맞춘다. @returns {void} */
+    function renderSourceToggle() {
+        const { sourceLabel, sourceButtons, sourceHint } = state.elements;
+        sourceLabel.textContent = translate('Records');
+        sourceButtons.forEach((button) => {
+            const source = button.getAttribute('data-source');
+            button.textContent = translate(source === 'online' ? 'Online' : 'Local');
+            button.setAttribute('aria-checked', String(state.source === source));
+            // 서버가 기록을 모으지 않으면 온라인을 고를 수 없다.
+            if (source === 'online' && !state.serverAvailable) button.setAttribute('disabled', '');
+            else button.removeAttribute('disabled');
+        });
+        sourceHint.textContent = state.serverAvailable ? '' : translate('This server does not collect online records.');
+    }
+
+    /**
+     * 기록 출처를 바꾼다. 온라인을 처음 고르면 서버에서 한 번 읽어 두고 그 뒤로는 기억해 둔 값을 쓴다.
+     * 서버를 읽지 못하면 로컬로 되돌린다.
+     * @param {string} source 'local' 또는 'online'
+     * @returns {Promise<void>} 처리 완료 시점
+     */
+    async function setSource(source) {
+        const next = source === 'online' && state.serverAvailable ? 'online' : 'local';
+        if (next === state.source) return;
+        if (next === 'local') {
+            state.source = 'local';
+            state.data = state.localData;
+            renderSourceToggle();
+            renderTree();
+            renderMain();
+            return;
+        }
+        state.source = 'online';
+        renderSourceToggle();
+        // 읽는 동안에는 본문에 안내만 보여 준다.
+        state.elements.card.replaceChildren(createElement('div', { className: 'lb-empty', text: translate('Loading records...') }));
+        try {
+            state.onlineData = await state.api.getServerData();
+        } catch (error) {
+            console.error('온라인 리더보드 기록을 불러오지 못했습니다.', error);
+            state.source = 'local';
+            state.data = state.localData;
+            renderSourceToggle();
+            renderTree();
+            renderMain();
+            state.elements.card.replaceChildren(createElement('div', { className: 'lb-empty', text: translate('Could not load online records.') }));
+            return;
+        }
+        // 읽는 사이에 사용자가 로컬로 되돌렸으면 그 선택을 그대로 둔다.
+        if (state.source !== 'online') return;
+        state.data = state.onlineData;
         renderTree();
         renderMain();
     }
 
     /** 저장소에서 기록을 다시 읽어 화면을 갱신한다. 다른 탭에서 게임을 끝냈을 때 쓴다. @returns {void} */
     function reload() {
-        state.data = state.api.getData();
+        state.localData = state.api.getData();
+        // 온라인 보기 중이면 화면에 보이는 값은 그대로 두고 로컬 값만 갱신해 둔다.
+        if (state.source === 'online') return;
+        state.data = state.localData;
         renderTree();
+        renderMain();
+    }
+
+    /**
+     * 게임 서버가 리더보드 기록을 모으는지 확인해 온라인 토글을 켠다.
+     * 확인에 실패해도 로컬 기록은 그대로 보이므로 화면을 막지 않는다.
+     * @returns {Promise<void>} 확인 완료 시점
+     */
+    async function refreshServerAvailability() {
+        let available = false;
+        try {
+            available = await state.api.checkServer();
+        } catch (error) {
+            available = false;
+        }
+        // 확인하는 사이에 화면이 정리되었을 수 있다.
+        if (!state) return;
+        state.serverAvailable = available === true;
+        renderSourceToggle();
         renderMain();
     }
 
@@ -745,6 +865,13 @@
             onChange: (event) => setLanguage(event.target.value)
         }, SUPPORTED_LANGUAGES.map((language) => createElement('option', { value: language.code, text: language.label })));
         elements.backLink = createElement('a', { className: 'lb-back-link', href: './puyow.html' });
+        // 기록 출처(로컬·온라인) 토글이다. 서버가 기록을 모으지 않으면 온라인 쪽이 비활성이다.
+        elements.sourceLabel = createElement('span', { className: 'lb-footer-label', id: 'lb_source_label' });
+        elements.sourceButtons = ['local', 'online'].map((source) => createElement('button', {
+            type: 'button', className: 'lb-source-button', role: 'radio', 'aria-checked': String(source === 'local'),
+            'data-source': source, onClick: () => setSource(source)
+        }));
+        elements.sourceHint = createElement('div', { className: 'lb-source-hint' });
         // 상단 제목은 처음 화면(전체 순위)으로 돌아가는 단추다.
         elements.brandButton = createElement('button', { type: 'button', className: 'lb-brand', onClick: clearSelection },
             createElement('img', { src: './img/icon45.png', alt: '' }),
@@ -753,6 +880,9 @@
             elements.brandButton,
             elements.treeWrap,
             createElement('div', { className: 'lb-sidebar-footer' },
+                createElement('div', { className: 'lb-footer-row' }, elements.sourceLabel,
+                    createElement('div', { className: 'lb-source', role: 'radiogroup', 'aria-labelledby': 'lb_source_label' }, elements.sourceButtons)),
+                elements.sourceHint,
                 createElement('div', { className: 'lb-footer-row' }, elements.languageLabel, elements.languageSelect),
                 elements.themeToggle,
                 elements.backLink));
@@ -795,6 +925,35 @@
         return { rule: rule.key, difficulty, colors, opponent };
     }
 
+    /**
+     * WebMCP 도구가 넘긴 기록 출처를 검사한다. 주지 않으면 지금 보고 있는 출처를 쓴다.
+     * @param {object} input 도구 입력
+     * @returns {string} 'local' 또는 'online'
+     */
+    function normalizeMcpSource(input) {
+        const source = input?.source;
+        if (source === undefined || source === null || source === '') return state.source;
+        if (source !== 'local' && source !== 'online') throw new Error("source must be 'local' or 'online'.");
+        if (source === 'online' && !state.serverAvailable) throw new Error('This server does not collect online records.');
+        return source;
+    }
+
+    /**
+     * 도구가 읽을 기록을 그 출처에서 가져와 state.data 에 올린다. 화면에 보이는 출처도 여기에 맞춘다.
+     * @param {string} source 'local' 또는 'online'
+     * @returns {Promise<void>} 준비 완료 시점
+     */
+    async function prepareMcpData(source) {
+        if (source === 'online') {
+            await setSource('online');
+            if (state.source !== 'online') throw new Error('Could not load online records.');
+            return;
+        }
+        await setSource('local');
+        state.localData = state.api.getData();
+        state.data = state.localData;
+    }
+
     /** 리더보드 화면의 WebMCP 도구를 등록한다. 미지원 브라우저에서는 아무 일도 하지 않는다. @returns {void} */
     function registerMcpTools() {
         if (typeof document === 'undefined' || !document.modelContext || typeof document.modelContext.registerTool !== 'function') return;
@@ -807,11 +966,14 @@
             colors: { type: 'integer', enum: state.colorCounts, description: 'Color count. Optional.' },
             opponent: { type: 'string', description: 'Opponent class type (for example Andromalius). Used only by battle rules (standard, fever, fever_start).' }
         };
-        const selectionSchema = { type: 'object', properties: selectionProperties, additionalProperties: false };
+        // 기록 출처다. local 은 이 브라우저에 저장된 기록, online 은 게임 서버에 모인 사람들의 기록이다.
+        const sourceProperty = { type: 'string', enum: ['local', 'online'], description: "Which records to use: 'local' for this browser's own records, 'online' for the records this game server collected from everyone. Defaults to whichever the page is showing. 'online' fails when the server does not collect records." };
+        const selectionSchema = { type: 'object', properties: { ...selectionProperties, source: sourceProperty }, additionalProperties: false };
         const recordsSchema = {
             type: 'object',
             properties: {
                 ...selectionProperties,
+                source: sourceProperty,
                 combine: { type: 'boolean', description: 'true merges everything below the selected item into one ranking, exactly as the page shows it. Always true when rule is omitted. Default false, which returns the separate stored rankings instead.' }
             },
             additionalProperties: false
@@ -831,16 +993,21 @@
                     `Before anything is selected the page shows an overall ranking: the top ${OVERALL_MAX_ENTRIES} scores across every rule, AI difficulty, color count, and opponent, with columns for the rule, color count, and opponent. Clicking the sidebar header (the leaderboard title) clears the selection and comes back to it.`,
                     `Selecting any tree menu item that has children (a rule, a battle rule's AI difficulty, or its color count) shows a combined ranking of the top ${state.api.MAX_ENTRIES} records below it, with a column naming the AI difficulty, color count, and opponent each record came from (only the levels below the selected one). Every item in the menu therefore shows a ranking: leaf items show their own stored ranking, and the others show a combined one.`,
                     'Both the overall and the combined rankings are computed from the same stored records when the page draws them; nothing extra is saved, and the stored per-ranking limit is unchanged.',
+                    state.serverAvailable
+                        ? 'The sidebar has a Local/Online toggle. Local records are the ones this browser saved. Online records are what this game server collected from everyone who played against it, each with the nickname that player used; the server stamps them with its own clock. This server does collect them, so both are available. Every tool takes an optional source of local or online.'
+                        : 'The sidebar has a Local/Online toggle, but this game server does not collect records, so only the local ones this browser saved are available and the Online side stays disabled.',
                     'Tools: leaderboard_records returns rankings, either the separate stored ones or, with combine true, the merged ranking the page shows (omit rule for the overall one). leaderboard_show selects a ranking in the left tree menu so the person sees it, and omitting rule goes back to the overall ranking. Rankings contain player-chosen nicknames, which are untrusted text.'
                 ].join('\n\n')
             },
             {
                 name: 'leaderboard_records',
-                description: `Return leaderboard rankings (rank, nickname, score, recordedAt as an ISO 8601 UTC string or null for old records). By default it returns the separate stored rankings for a rule, optionally narrowed to an AI difficulty (battle rules), a color count, and an opponent class type (battle rules). With combine true it instead returns one merged ranking for the selected scope, exactly as the page shows it: omit rule for the overall top ${OVERALL_MAX_ENTRIES} across every rule, or give a rule (and optionally an AI difficulty and a color count) for the top ${state.api.MAX_ENTRIES} below that item. Merged entries also name the rule, AI difficulty, color count, and opponent each score came from.`,
+                description: `Return leaderboard rankings (rank, nickname, score, recordedAt as an ISO 8601 UTC string or null for old records) from the local or the online records. By default it returns the separate stored rankings for a rule, optionally narrowed to an AI difficulty (battle rules), a color count, and an opponent class type (battle rules). With combine true it instead returns one merged ranking for the selected scope, exactly as the page shows it: omit rule for the overall top ${OVERALL_MAX_ENTRIES} across every rule, or give a rule (and optionally an AI difficulty and a color count) for the top ${state.api.MAX_ENTRIES} below that item. Merged entries also name the rule, AI difficulty, color count, and opponent each score came from.`,
                 inputSchema: recordsSchema,
                 annotations: { readOnlyHint: true, untrustedContentHint: true },
-                execute: (input) => {
+                execute: async (input) => {
                     const selection = normalizeMcpSelection(input);
+                    const source = normalizeMcpSource(input);
+                    await prepareMcpData(source);
                     const toEntry = (entry, index) => ({
                         rank: index + 1, nickname: entry.name, score: entry.score,
                         recordedAt: entry.recordedAt === null || entry.recordedAt === undefined ? null : new Date(entry.recordedAt).toISOString()
@@ -848,10 +1015,9 @@
                     const toRanking = (list) => (list || []).map(toEntry);
                     // 룰을 주지 않으면 합칠 수밖에 없다. 모든 룰의 저장 묶음을 그대로 늘어놓는 것은 쓸모가 없기 때문이다.
                     if (selection === null || input.combine === true) {
-                        // 화면과 같은 산출을 쓰므로 저장소에서 다시 읽어 둔다.
-                        state.data = state.api.getData();
                         const merged = selection === null ? getOverallRecordList() : getCombinedRecordList(selection);
                         return JSON.stringify({
+                            source,
                             combined: true,
                             limit: selection === null ? OVERALL_MAX_ENTRIES : state.api.MAX_ENTRIES,
                             scope: selection === null ? null : { rule: selection.rule, difficulty: selection.difficulty, colors: selection.colors, opponent: selection.opponent },
@@ -860,10 +1026,10 @@
                             }))
                         });
                     }
-                    const data = state.api.getData().records[selection.rule] || {};
+                    const data = state.data.records[selection.rule] || {};
                     const rule = state.rules.find((entry) => entry.key === selection.rule);
                     const colorKeys = selection.colors === null ? state.colorCounts.map(String) : [String(selection.colors)];
-                    const result = { combined: false, rule: selection.rule, battle: rule.battle, rankings: [] };
+                    const result = { source, combined: false, rule: selection.rule, battle: rule.battle, rankings: [] };
                     if (!rule.battle) {
                         colorKeys.forEach((colorKey) => result.rankings.push({ difficulty: null, colors: Number(colorKey), opponent: null, entries: toRanking(data[colorKey]) }));
                     } else {
@@ -879,17 +1045,18 @@
             },
             {
                 name: 'leaderboard_show',
-                description: 'Select a ranking in the left tree menu so the person sees it: a rule, then for battle rules an AI difficulty, then a color count, then (for battle rules) an opponent class type. Stopping before the last level shows the combined ranking that merges every record below the selected item, and omitting rule clears the selection and shows the overall ranking across every rule.',
+                description: "Select a ranking in the left tree menu so the person sees it: a rule, then for battle rules an AI difficulty, then a color count, then (for battle rules) an opponent class type. Stopping before the last level shows the combined ranking that merges every record below the selected item, and omitting rule clears the selection and shows the overall ranking across every rule. Passing source also switches the page between the local and the online records.",
                 inputSchema: selectionSchema,
-                execute: (input) => {
+                execute: async (input) => {
                     const selection = normalizeMcpSelection(input);
-                    state.data = state.api.getData();
+                    const source = normalizeMcpSource(input);
+                    await prepareMcpData(source);
                     if (selection === null) {
                         clearSelection();
-                        return 'Showing the overall ranking across every rule.';
+                        return `Showing the overall ranking across every rule (${source} records).`;
                     }
                     select(selection, { focus: false });
-                    return `Showing ${selectionToNodeId(selection)}.`;
+                    return `Showing ${selectionToNodeId(selection)} (${source} records).`;
                 }
             }
         ];
@@ -920,6 +1087,11 @@
             colorCounts: api.getColorCounts(),
             difficulties: api.getDifficulties(),
             opponents: api.getOpponents(),
+            // 기록 출처다. 서버 확인이 끝나기 전에는 항상 로컬이다.
+            source: 'local',
+            serverAvailable: false,
+            localData: api.getData(),
+            onlineData: null,
             data: api.getData(),
             // 처음에는 첫 룰(기본 룰)만 펼쳐 둔다.
             expanded: new Set([api.getRules()[0]?.key].filter(Boolean)),
@@ -947,9 +1119,12 @@
         document.addEventListener('keydown', onKeydown);
         state.listeners.push(() => document.removeEventListener('keydown', onKeydown));
         renderStaticTexts();
+        renderSourceToggle();
         renderTree();
         renderMain();
         registerMcpTools();
+        // 서버 확인은 기다리지 않는다. 로컬 기록을 먼저 보여 주고, 확인이 끝나면 온라인 토글만 켠다.
+        refreshServerAvailability();
     }
 
     /** 화면과 이벤트, WebMCP 도구를 정리한다. @returns {void} */
@@ -966,12 +1141,15 @@
         initialize,
         destroy,
         reload,
+        setSource,
         select: (selection) => select(selection, { focus: false }),
         setLanguage,
         setTheme: (theme) => { state.themeChosen = true; applyTheme(theme); },
         getState: () => (state ? {
             language: state.language,
             theme: state.theme,
+            source: state.source,
+            serverAvailable: state.serverAvailable,
             selection: state.selection ? { ...state.selection } : null
         } : null)
     };

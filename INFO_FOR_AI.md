@@ -22,6 +22,7 @@
 - 핵심 엔진·캔버스 UI: `src/js/puyow.js`
 - 선택적 3D 효과 구현: `src/js/puyow_3d.js` (`puyow.js`와 분리된 확장 모듈)
 - 개발용 도구 페이지: `src/tools.html`, `src/js/puyow_tools.js` (피버 패턴·퍼즐뿌요 제작용, 게임 페이지는 이 스크립트를 읽지 않는다)
+- 리더보드 서버 기록: `node/leaderboard.js`·`node/leaderboard_storage.js`, `python/leaderboard.py`·`python/leaderboard_storage.py`(검증·병합 규칙과 파일 저장을 나눠 둔다. 두 언어가 같은 규칙과 같은 응답 형식을 쓴다)
 - 리더보드 조회 페이지: `src/leaderboard.html`(스타일 포함), `src/js/puyow_leaderboard.js` (기록 읽기·룰/적 목록·게임 번역은 `puyow.js`의 `PuyoW.leaderboard` API를 쓰며 게임은 초기화하지 않는다. 게임 페이지는 이 스크립트를 읽지 않는다)
 - 서버 모니터링·관리 페이지: `src/admin.html`, `src/js/puyow_admin.js` (서버 백엔드는 `node/admin.js`·`python/admin.py`, 게임 페이지는 이 스크립트를 읽지 않는다)
 - 스타일: `src/css/puyow.css`
@@ -513,7 +514,7 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 | `test01_replay.spec.js` | 리플레이 기록과 재생 |
 | `test01_together.spec.js` | 너랑 나랑 (한 컴퓨터 2인 대전) |
 | `test02_tools.spec.js` | 개발용 도구 페이지(`tools.html`) |
-| `test05_leaderboard.spec.js` | 리더보드 기록 규칙(기본 룰 승리·연습 패배·일시정지 종료 제외·저장값 정리)과 조회 페이지(`leaderboard.html`)의 트리 메뉴·전체 순위·단계별 통합 순위·키보드·화면 모드·다국어·좁은 화면 |
+| `test05_leaderboard.spec.js` | 리더보드 기록 규칙(기본 룰 승리·연습 패배·일시정지 종료 제외·저장값 정리·서버 전송)과 조회 페이지(`leaderboard.html`)의 트리 메뉴·전체 순위·단계별 통합 순위·로컬/온라인 토글·키보드·화면 모드·다국어·좁은 화면 |
 | `test03_ai.spec.js` | **AI 모델 사용과 학습.** 설정의 AI 서비스 제공자(LM Studio·Local AI), 솔로몬의 배치 요청과 온라인 학습 전송, `역으로 모델 학습` 설정, 브라우저 ONNX 추론 적(적 선택 화면의 느낌표 마크와 첫 대전 전 불안정 안내 포함) |
 
 AI 모델과 학습에 관한 테스트는 반드시 `test03_ai.spec.js`에 둔다. 이 파일만 외부 AI 서버 응답과 ONNX 런타임을 흉내 내고 CPU를 많이 쓰므로, 나머지 게임 동작 테스트와 섞으면 실패 원인을 가리기 어렵다.
@@ -1245,6 +1246,33 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - **읽기 전용 유지**: 합친 순위를 낼 때 `state.data = state.api.getData()`로 저장소를 다시 읽지만 화면을 다시 그리지는 않는다. 저장값은 바꾸지 않으므로 `readOnlyHint`는 그대로다.
 - **설명서 갱신**: `leaderboard_manual`에 전체 순위(20개)와 단계별 통합 순위(10개), 사이드바 머리글로 처음 화면에 돌아가는 법, 모든 메뉴 항목이 순위를 보여 준다는 점, 두 순위 모두 저장값에서 그릴 때 산출할 뿐 따로 저장하지 않는다는 점을 넣었다.
 - **검증**: `tests/test05_leaderboard.spec.js`에 `WebMCP` 그룹(도구 세 개 등록, `combine` 통합 조회와 거절, `leaderboard_show`의 중간 단계·전체 순위, `leaderboard_manual` 문구)을 더해 21개 × Chromium·Firefox·WebKit = 63개가 모두 통과했다. 다른 테스트 파일처럼 `document.modelContext`를 가짜로 심어 `window.registeredWebMcpTools`에 모으는 방식을 쓴다. `node --check`, ESLint, `git diff --check`도 통과했다.
+
+### 리더보드 서버 기록과 로컬/온라인 보기 (2026-09-21, BUILDNO 103)
+
+`TODO.md`의 "리더보드 서버에도 같이 저장" 요구를 구현했다. **로컬 스토리지 저장 규칙과 형식(`puyow_leaderboard`, 형식 버전 2)은 그대로이고**, 그 뒤에 서버 전송이 한 단계 더 붙는 구조다. `src/js/puyow.js`를 고쳤으므로 BUILDNO는 103, `package.json` 버전은 `0.1.103`이며 번들(`src/bundle/puyow.bundle.js`)도 다시 만들었다.
+
+**백엔드 구조** — 온라인 플레이와 같은 방식으로 서비스와 저장소를 나눴다. `node/leaderboard.js`·`python/leaderboard.py`가 닉네임·기록 검증과 순위 병합, HTTP 처리를 맡고, `node/leaderboard_storage.js`·`python/leaderboard_storage.py`의 `FileLeaderboardStorage`가 파일 입출력만 맡는다(`FileOnlinePlayStorage`와 같은 계약: `initialize`/`loadPlayer`/`savePlayer`/`listPlayers`). 저장소는 생성자로 교체할 수 있어 테스트에서 독립 경로를 넣는다. **두 언어의 규칙과 응답 형식은 같아야 하므로 한쪽을 고치면 다른 쪽도 함께 고친다.**
+
+- **켜고 끄기**: `node/server.js`의 `LEADERBOARD_SERVER_ENABLED`, `python/pythonserver.py`의 `SERVER_CONFIG["leaderboard_enabled"]` 하나로 결정하며 **기본값은 true**다(온라인 플레이의 기본값 false와 다르다. 계정·비밀번호가 없는 점수 기록이라 바로 쓸 수 있게 두었다). 끄면 저장 디렉터리도 만들지 않고 모든 요청을 404로 거절한다.
+- **API**: `/apis/leaderboardinfo`(GET, `{available}`), `/apis/leaderboard/record`(POST, 기록 하나 저장), `/apis/leaderboard/records`(GET, 모두 모아 조회)다. 오류는 `{ok:false, code}` 형식이며 코드는 `leaderboard_disabled`·`method_not_allowed`·`invalid_body`·`invalid_nickname`·`invalid_record`·`not_found`·`server_error`다.
+- **저장 위치와 이름**: `[홈디렉토리]/.puyowserver/leaderboard/[닉네임].json` 한 사람당 한 파일이다. 내용은 `{version:1, nickname, records:[{rule, difficulty, colors, opponent, score, recordedAt}]}` 평면 배열이고, 순위(룰·AI 난이도·색 수·적)마다 점수 내림차순 10개(`MAX_ENTRIES`)만 남긴다. 한 파일의 상한은 `MAX_RECORDS_PER_PLAYER`(2000)다.
+- **닉네임 검증**: 파일 이름으로 쓸 수 없는 문자(`\ / : * ? " < > | ' ! .` 와 제어 문자)가 하나라도 있으면 저장하지 않는다(`normalizeNickname`/`normalize_nickname`). **마침표를 막는 것이 중요하다.** `..`으로 상위 경로를 가리키는 것을 원천 차단한다. 20자를 넘거나 비어 있어도 거절한다. 게임 쪽 `PLAYER_NAME_FORBIDDEN_PATTERN`에도 마침표를 더해 설정 화면에서 먼저 막으므로, 서버가 거절할 이름은 애초에 저장되지 않는다. 서로 다른 사람이 같은 닉네임을 쓰는 경우는 (요청대로) 고려하지 않았다.
+- **동시 저장 대비**: node.js는 단일 스레드이고 저장소가 동기 입출력을 쓰므로 읽기·고치기·쓰기가 한 번에 끝난다(잠금 없음). 파이썬은 `ThreadingHTTPServer`라 `FileLeaderboardStorage`가 `threading.Lock`을 들고 있고 서비스가 `with self.storage.lock():`으로 감싼다.
+- **기록 일시**: 요청에 `recordedAt`이 들어와도 무시하고 서버 시각(`Date.now()`/`time.time()`)으로 적는다. 게임도 이 값을 보내지 않는다.
+- **조회 응답**: `/apis/leaderboard/records`는 모든 사람의 기록을 합쳐 `{ok, version:2, maxEntries, records}`를 돌려주며, **`records` 구조는 게임이 localStorage에 두는 것과 똑같다**(대전 룰은 `룰 > 난이도 > 색 수 > 적`, 단독 룰은 `룰 > 색 수`, 항목은 `{name, score, recordedAt}`). 그래서 리더보드 화면은 로컬이든 온라인이든 같은 코드로 그린다.
+- **관리 화면**: `getServerInfo()`·`admin_server_info()`의 `leaderboard`에 `{enabled, players, records}` 요약을 실어 보낸다.
+
+**게임(`src/js/puyow.js`)** — `refreshLeaderboardServerAvailability()`를 초기화 때 한 번 불러 `leaderboardServerAvailable`에 담아 둔다(`refreshLocalAiAvailability`·`refreshOnlinePlayAvailability` 옆). `recordLeaderboardResult()`는 기존대로 `addLeaderboardRecord()`로 로컬에 저장한 뒤, 이어서 `sendLeaderboardRecordToServer()`로 같은 내용을 POST한다. **전송은 응답을 기다리지 않고 모든 오류를 삼킨다**(`try`와 `.catch()` 둘 다 둔다). 통신 오류로 게임이 멈추면 안 되기 때문이다. **로컬 10위 밖이라 저장하지 않은 기록도 서버에는 보낸다.** 서버 순위는 여러 사람이 함께 겨루므로 내 로컬 순위와 기준이 다르기 때문이다. `loadLeaderboard()`는 저장소를 읽는 부분과 정리하는 부분(`normalizeLeaderboardData()`)으로 나눴고, 서버 응답도 같은 정리 함수를 거친다.
+
+**리더보드 화면** — 사이드바 아래 `기록` 줄에 `로컬`/`온라인` 토글(`.lb-source`, `role="radiogroup"`)을 두었다. 상태는 `state.source`·`state.serverAvailable`·`state.localData`·`state.onlineData`다.
+
+- 화면을 열 때는 **로컬 기록을 먼저 보여 주고**, `PuyoW.leaderboard.checkServer()` 확인이 끝나면 온라인 단추만 켠다(기다리지 않는다). 서버가 기록을 모으지 않으면 온라인 단추가 `disabled`이고 아래에 `이 서버는 온라인 기록을 모으지 않습니다.`가 나온다.
+- 온라인을 처음 고르면 `PuyoW.leaderboard.getServerData()`로 한 번 읽어 `state.onlineData`에 담아 두고 그 뒤로는 그 값을 쓴다. 읽는 동안에는 `기록을 불러오는 중...`을, 실패하면 **로컬로 되돌린 뒤** `온라인 기록을 불러오지 못했습니다.`를 보여 준다.
+- 다른 탭에서 기록이 바뀌어 `storage` 이벤트가 와도 온라인 보기 중이면 화면을 바꾸지 않고 `state.localData`만 갱신해 둔다.
+- 본문 아래 설명은 출처에 따라 `기록은 이 브라우저에만 저장됩니다.`와 `온라인 기록은 이 서버에 모인 다른 사람들의 기록입니다.` 사이를 오간다(`getSourceNote()`).
+- WebMCP `leaderboard_records`·`leaderboard_show`에 `source`(`local`·`online`)를 더했다. 주지 않으면 지금 보고 있는 출처를 쓰고, 응답에 `source`를 함께 담는다. `online`을 주면 화면도 함께 바뀌며, 서버가 기록을 모으지 않으면 오류를 던진다. `leaderboard_manual`도 토글 설명을 싣는다.
+
+**검증** — `python/test_leaderboard.py` 9개(닉네임·기록 검증, 사람마다 한 파일, 순위 병합, 순위별 10개 제한, 스레드 30개 동시 저장, 기능 끔) 통과. `tests/test05_leaderboard.spec.js`는 `page.route()`로 세 API를 흉내 내 **실제 홈 디렉터리를 건드리지 않고** 확인하며(도우미 `stubLeaderboardServer`), 29개 × Chromium·Firefox·WebKit = 87개가 모두 통과했다. **기록을 남기는 테스트에는 `stubLeaderboardServer(page, {available:false})`와 `page.reload()`를 먼저 둔다.** 사용 가능 여부는 초기화 때 한 번만 확인하므로 흉내 낸 API를 붙인 뒤 다시 읽어야 하고, 이렇게 해야 진짜 서버가 떠 있어도 테스트가 홈 디렉터리에 파일을 만들지 않는다. 여기에 더해 실제 node 서버와 파이썬 서버를 임시 홈 디렉터리로 각각 띄워, 기록 저장 → 파일 생성 → 온라인 조회 → 화면 표시까지 손으로 한 번씩 확인했다. `node --check`, ESLint, `git diff --check`도 통과했다. **주의: `tests/test01_menu.spec.js`의 언어 폴백·화면 회전 관련 4개는 이 작업 전부터 실패하던 것이다**(변경분을 모두 치워 두고 확인했다). 이 작업과 무관하다.
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
