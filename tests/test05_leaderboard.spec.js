@@ -221,7 +221,7 @@ test.describe('리더보드 조회 화면', () => {
     await page.goto(LEADERBOARD_PAGE);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(page.locator('.lb-brand-title')).toHaveText('Leaderboard');
-    await expect(page.locator('.lb-empty')).toHaveText('Select a rule and its options from the menu.');
+    await expect(page.locator('.lb-title')).toHaveText('Overall ranking');
 
     // 대전 룰 아래 두 번째 단계는 AI 난이도다.
     await expect(page.locator('[data-node-id="standard"] + ul > li > .lb-node .lb-node-label')).toHaveText(['Easy', 'Normal', 'Hard', 'Extreme']);
@@ -265,6 +265,54 @@ test.describe('리더보드 조회 화면', () => {
     await page.locator('[data-node-id="continuous_fever/5"]').click();
     await expect(page.locator('.lb-table tbody tr')).toHaveCount(1);
     await expect(page.locator('.lb-table tbody tr')).toContainText('Carol');
+  });
+
+  test('아무것도 고르지 않은 처음 화면은 모든 룰을 합친 전체 순위를 보여 준다', async ({ page }) => {
+    await page.goto(LEADERBOARD_PAGE);
+    await expect(page.locator('.lb-title')).toHaveText('Overall ranking');
+    await expect(page.locator('.lb-breadcrumb')).toHaveText('');
+    // 룰·색상·적 칸이 함께 나온다.
+    await expect(page.locator('.lb-table thead')).toContainText(['Rank', 'Nickname', 'Score', 'Rule', 'Colors', 'Opponent', 'Recorded at'].join(''));
+
+    const rows = page.locator('.lb-table tbody tr');
+    await expect(rows).toHaveCount(4);
+    // 룰이 달라도 점수 순서 하나로 줄을 세운다.
+    await expect(rows.nth(0).locator('.lb-col-name')).toHaveText('Alice');
+    await expect(rows.nth(0).locator('.lb-col-rule')).toHaveText('Standard Rules');
+    await expect(rows.nth(0).locator('.lb-col-colors')).toHaveText('4 Colors');
+    await expect(rows.nth(0).locator('.lb-col-opponent')).toHaveText('Kimaris');
+    await expect(rows.nth(0).locator('.lb-col-score')).toHaveText('98,765');
+    // 적이 없는 단독 룰은 적 칸이 대시다.
+    await expect(rows.nth(1).locator('.lb-col-name')).toHaveText('Carol');
+    await expect(rows.nth(1).locator('.lb-col-rule')).toHaveText('Continuous FEVER');
+    await expect(rows.nth(1).locator('.lb-col-colors')).toHaveText('5 Colors');
+    await expect(rows.nth(1).locator('.lb-col-opponent')).toHaveText('-');
+    await expect(rows.nth(2).locator('.lb-col-name')).toHaveText('<b>Bob</b>');
+    await expect(rows.nth(3).locator('.lb-col-name')).toHaveText('Eve');
+
+    // 칸을 넘치는 값은 말줄임표로 줄이고 전체 값은 title에 둔다.
+    await expect(rows.nth(0).locator('.lb-col-name')).toHaveAttribute('title', 'Alice');
+    expect(await rows.nth(0).locator('.lb-col-name').evaluate((cell) => getComputedStyle(cell).textOverflow)).toBe('ellipsis');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    // 메뉴에서 고르면 예전처럼 그 순위로 바뀐다.
+    await page.locator('[data-node-id="standard/normal"]').click();
+    await expect(page.locator('.lb-empty')).toHaveText('Select a color count.');
+
+    // 사이드바 상단 제목을 누르면 아무것도 고르지 않은 처음 화면으로 돌아온다.
+    await page.locator('.lb-brand').click();
+    await expect(page.locator('.lb-title')).toHaveText('Overall ranking');
+    await expect(rows).toHaveCount(4);
+    await expect(page.locator('.lb-node[aria-current="true"]')).toHaveCount(0);
+    // 펼쳐 둔 가지는 그대로 남는다.
+    await expect(page.locator('[data-node-id="standard"]')).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test('기록이 하나도 없으면 처음 화면에 메뉴 안내를 보여 준다', async ({ page }) => {
+    await page.addInitScript(() => localStorage.removeItem('puyow_leaderboard'));
+    await page.goto(LEADERBOARD_PAGE);
+    await expect(page.locator('.lb-empty')).toHaveText('Select a rule and its options from the menu.');
+    await expect(page.locator('.lb-table')).toHaveCount(0);
   });
 
   test('룰 이름을 직접 고르면 그 룰의 난이도 통합 순위를 보여 준다', async ({ page }) => {
@@ -378,6 +426,13 @@ test.describe('리더보드 조회 화면', () => {
     await expect.poll(async () => (await sidebar.boundingBox()).x).toBeLessThan(0);
     await expect(page.locator('.lb-table tbody tr')).toHaveCount(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    // 서랍 안의 제목을 누르면 서랍을 닫고 전체 순위를 보여 준다.
+    await page.locator('.lb-menu-button').click();
+    await expect.poll(async () => (await sidebar.boundingBox()).x).toBe(0);
+    await page.locator('.lb-brand').click();
+    await expect.poll(async () => (await sidebar.boundingBox()).x).toBeLessThan(0);
+    await expect(page.locator('.lb-title')).toHaveText('Overall ranking');
   });
 
   test.describe('일본어 브라우저', () => {

@@ -96,14 +96,22 @@
                 background: var(--lb-sidebar);
                 border-right: 1px solid var(--lb-border);
             }
+            /* 처음 화면(전체 순위)으로 돌아가는 단추다. 사이드바 머리글 모양을 그대로 쓴다. */
             .lb-brand {
                 display: flex;
                 align-items: center;
                 gap: 10px;
+                width: 100%;
                 padding: 18px 18px 14px 18px;
+                border: 0;
                 border-bottom: 1px solid var(--lb-border);
+                background: transparent;
+                color: inherit;
+                text-align: left;
             }
-            .lb-brand img { width: 32px; height: 32px; border-radius: 8px; }
+            .lb-brand:hover { background: var(--lb-panel-2); }
+            .lb-brand img { flex: none; width: 32px; height: 32px; border-radius: 8px; }
+            .lb-brand-text { min-width: 0; }
             .lb-brand-title { font-size: 16px; font-weight: 700; line-height: 1.2; }
             .lb-brand-sub { font-size: 12px; color: var(--lb-text-weak); }
             .lb-tree-wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 8px; }
@@ -228,10 +236,14 @@
                 box-shadow: 0 8px 24px var(--lb-shadow);
                 overflow: hidden;
             }
-            /* 통합 순위표는 조건 칸이 하나 더 붙으므로 조금 넓게 쓴다. */
-            .lb-card.lb-card-wide { max-width: 920px; }
-            .lb-table { width: 100%; border-collapse: collapse; }
-            .lb-table th, .lb-table td { padding: 11px 16px; text-align: left; }
+            /* 칸이 더 붙는 통합·전체 순위표는 조금 넓게 쓰고, 좁은 화면에서는 카드 안에서 가로로 넘겨 본다. */
+            .lb-card.lb-card-wide { max-width: 980px; overflow-x: auto; }
+            /* 칸 너비를 먼저 정해 두고(table-layout: fixed) 넘치는 값은 말줄임표로 줄인다. 전체 값은 셀 title에 있다. */
+            .lb-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            .lb-table th, .lb-table td { padding: 11px 16px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            /* 칸이 더 붙는 표는 좁아지면 카드 안에서 가로로 넘긴다. 순위·닉네임·점수는 넘기지 않아도 보이도록 앞에 둔다. */
+            .lb-table-combined { min-width: 560px; }
+            .lb-table-overall { min-width: 780px; }
             .lb-table thead th {
                 background: var(--lb-panel-2);
                 color: var(--lb-text-weak);
@@ -242,11 +254,14 @@
             }
             .lb-table tbody tr + tr td { border-top: 1px solid var(--lb-border); }
             .lb-table .lb-col-rank { width: 72px; }
-            .lb-table .lb-col-score { text-align: right; font-variant-numeric: tabular-nums; font-family: "D2Coding", ui-monospace, monospace; font-size: 15px; }
-            .lb-table td.lb-col-name { overflow-wrap: anywhere; }
+            .lb-table .lb-col-score { width: 118px; text-align: right; font-variant-numeric: tabular-nums; font-family: "D2Coding", ui-monospace, monospace; font-size: 15px; }
+            .lb-table .lb-col-date { width: 186px; color: var(--lb-text-weak); font-size: 13px; font-variant-numeric: tabular-nums; }
             /* 통합 순위표에만 있는 칸이다. 기록이 나온 AI 난이도·색 수·적을 적는다. */
-            .lb-table .lb-col-condition { color: var(--lb-text-weak); font-size: 13px; overflow-wrap: anywhere; }
-            .lb-table .lb-col-date { width: 1%; white-space: nowrap; color: var(--lb-text-weak); font-size: 13px; font-variant-numeric: tabular-nums; }
+            .lb-table .lb-col-condition { width: 210px; color: var(--lb-text-weak); font-size: 13px; }
+            /* 전체 순위표에만 있는 칸이다. */
+            .lb-table .lb-col-rule { width: 128px; }
+            .lb-table .lb-col-colors { width: 78px; color: var(--lb-text-weak); }
+            .lb-table .lb-col-opponent { width: 140px; }
             .lb-rank {
                 display: inline-flex;
                 align-items: center;
@@ -290,12 +305,18 @@
                 .lb-menu-button { display: inline-block; }
                 .lb-main { padding: 16px 16px 32px 16px; }
                 .lb-title { font-size: 20px; }
-                .lb-table th, .lb-table td { padding: 10px 10px; }
-                .lb-table .lb-col-rank { width: 52px; }
-                /* 좁은 화면에서는 기록 일시를 두 줄까지 허용해 가로 스크롤을 막는다. */
-                .lb-table .lb-col-date { white-space: normal; min-width: 88px; font-size: 12px; }
-                .lb-table .lb-col-condition { font-size: 12px; }
-                .lb-table.lb-table-combined th, .lb-table.lb-table-combined td { padding: 10px 6px; }
+                .lb-table th, .lb-table td { padding: 10px 8px; }
+                .lb-table .lb-col-rank { width: 48px; }
+                .lb-table .lb-col-score { width: 88px; font-size: 14px; }
+                /* 좁은 화면에서는 기록 일시만 두 줄까지 접는다. 사람이 넣은 값이 아니라 줄여도 알아보기 어렵기 때문이다. */
+                .lb-table .lb-col-date { width: 92px; white-space: normal; font-size: 12px; }
+                .lb-table .lb-col-condition { width: 150px; font-size: 12px; }
+                .lb-table .lb-col-rule { width: 92px; }
+                .lb-table .lb-col-colors { width: 62px; }
+                .lb-table .lb-col-opponent { width: 104px; }
+                /* 좁은 화면에서도 순위·닉네임·점수까지는 가로로 넘기지 않고 보이도록 표 최소 너비를 줄인다. */
+                .lb-table-combined { min-width: 480px; }
+                .lb-table-overall { min-width: 620px; }
             }
         </style>
 
