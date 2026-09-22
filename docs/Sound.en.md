@@ -54,13 +54,19 @@ window.PuyoW.applySoundDataJson({
         spellCombo5: 'https://puyosound.com/enemy/spellCombo5.ogg', // opponent default 5-chain spell
         spellCombo6: 'https://puyosound.com/enemy/spellCombo6.ogg', // opponent default 6-chain spell
         spellCombo7: 'https://puyosound.com/enemy/spellCombo7.ogg' // opponent default 7+-chain spell
+    },
+    enemies: {
+        Andromalius: {
+            spellCombo1: 'https://puyosound.com/andromalius/spellCombo1.ogg', // Andromalius-only 1-chain spell
+            backgroundMusic: 'https://puyosound.com/andromalius/backgroundMusic.mp3' // Andromalius-only BGM
+        }
     }
 });
 ```
 
 ## Applying sound data with `applySoundDataJson()`
 
-`PuyoW.applySoundDataJson(soundDataJson)` applies an object or JSON string containing sound URL settings to the common sound pool at once. Specify menu and common effects (game start, selection, cancellation, focus movement, defeat, landing, attack arrival, and puyo bursts) under `common`; player spell effects (`spellCombo1`–`spellCombo7`) under `player`; and common opponent spell effects under `enemy`. Omitted items retain their current settings.
+`PuyoW.applySoundDataJson(soundDataJson)` applies an object or JSON string containing sound URL settings at once. Specify menu and common effects (game start, selection, cancellation, focus movement, defeat, landing, attack arrival, and puyo bursts) under `common`; player spell effects (`spellCombo1`–`spellCombo7`) under `player`; and common opponent spell effects under `enemy`. Under `enemies`, use a `getClassType()` return value as the key and specify that opponent's `spellCombo1`–`spellCombo7` and `backgroundMusic`. Only registered opponents are processed, and properties without a value retain their current settings. An instance of that opponent already in a match uses the new pool from its next chain effect.
 
 ```js
 PuyoW.applySoundDataJson({
@@ -72,7 +78,13 @@ PuyoW.applySoundDataJson({
         puyoBurstCombo1: 'sounds/puyo-burst-1.ogg'
     },
     player: { spellCombo1: 'sounds/player-combo-1.ogg' },
-    enemy: { spellCombo1: 'sounds/enemy-combo-1.ogg' }
+    enemy: { spellCombo1: 'sounds/enemy-combo-1.ogg' },
+    enemies: {
+        Andromalius: {
+            spellCombo1: 'sounds/andromalius-combo-1.ogg',
+            backgroundMusic: 'sounds/andromalius-bgm.ogg'
+        }
+    }
 });
 ```
 

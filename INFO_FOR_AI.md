@@ -1277,6 +1277,10 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 
 ## 작업를 마치기 전 수행할 추가 작업 및 참고 사항
 
+### 적별 사운드 데이터 JSON 적용 (2026-09-22, BUILDNO 105)
+
+`applySoundDataJson()`은 `enemies` 객체를 적 클래스명(`getClassType()` 반환값)별로 읽는다. 각 적 항목의 `spellCombo1~7`과 `backgroundMusic` 중 값이 있는 것만 기존 `EnemySoundPool`에 덮어쓴 뒤 `setEnemySoundPool()`으로 등록한다. 따라서 JSON에 없는 속성은 기존 값을 유지하며, 현재 대전 중인 같은 적도 다음 연쇄부터 새 사운드풀을 사용한다. 등록되지 않은 적 이름이나 효과음 값이 없는 항목은 무시한다. 사용 방법은 `docs/Sound.md`와 `docs/Sound.en.md`의 `enemies` 예제로도 안내한다. `src/js/puyow.js`를 고쳤으므로 BUILDNO는 105, `package.json` 버전은 `0.1.105`다.
+
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.
 주석 및 채팅창 답변은 모두 한국어로 해줘.

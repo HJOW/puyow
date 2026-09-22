@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 104;
+    const BUILDNO = 105;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -3573,6 +3573,27 @@
             if(enemyObj.spellCombo5) commonSoundPool.commonEnemySpellCombo5 = enemyObj.spellCombo5;
             if(enemyObj.spellCombo6) commonSoundPool.commonEnemySpellCombo6 = enemyObj.spellCombo6;
             if(enemyObj.spellCombo7) commonSoundPool.commonEnemySpellCombo7 = enemyObj.spellCombo7;
+        }
+        if(soundDataJson.enemies) {
+            const enemiesObj = soundDataJson.enemies;
+            const soundPropertyNames = [
+                'spellCombo1', 'spellCombo2', 'spellCombo3', 'spellCombo4',
+                'spellCombo5', 'spellCombo6', 'spellCombo7', 'backgroundMusic'
+            ];
+            Object.entries(enemiesObj).forEach(([enemyClassType, enemyObj]) => {
+                if (!enemyObj || typeof enemyObj !== 'object') return;
+                if (!OPPONENTS.some((entry) => entry.classType === enemyClassType)) return;
+                const soundPool = enemySoundPools.get(enemyClassType) || createSoundPool(false);
+                let hasSoundData = false;
+                soundPropertyNames.forEach((propertyName) => {
+                    if (enemyObj[propertyName]) {
+                        soundPool[propertyName] = enemyObj[propertyName];
+                        hasSoundData = true;
+                    }
+                });
+                // 등록되지 않은 적 이름과 효과음이 전혀 없는 항목은 사운드풀을 만들지 않는다.
+                if (hasSoundData) setEnemySoundPool(enemyClassType, soundPool);
+            });
         }
     }
 

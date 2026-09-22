@@ -56,13 +56,19 @@ window.PuyoW.applySoundDataJson({
 		spellCombo5 : 'https://puyosound.com/enemy/spellCombo5.ogg', // 적의 5연쇄 주문음 (기본값으로만 사용되며, 개별 적마다 따로 지정되어 있으면 이 지정값은 우선순위가 떨어짐)
 		spellCombo6 : 'https://puyosound.com/enemy/spellCombo6.ogg', // 적의 6연쇄 주문음 (기본값으로만 사용되며, 개별 적마다 따로 지정되어 있으면 이 지정값은 우선순위가 떨어짐)
 		spellCombo7 : 'https://puyosound.com/enemy/spellCombo7.ogg'  // 적의 7연쇄 주문음 (기본값으로만 사용되며, 개별 적마다 따로 지정되어 있으면 이 지정값은 우선순위가 떨어짐)
+	},
+	enemies : {
+		Andromalius : {
+			spellCombo1 : 'https://puyosound.com/andromalius/spellCombo1.ogg', // 안드로말리우스 전용 1연쇄 주문음
+			backgroundMusic : 'https://puyosound.com/andromalius/backgroundMusic.mp3' // 안드로말리우스 전용 배경음악
+		}
 	}
 });
 ```
 
 ## `applySoundDataJson()`으로 사운드 데이터 적용
 
-`PuyoW.applySoundDataJson(soundDataJson)`은 사운드 URL 설정을 담은 객체 또는 JSON 문자열을 한 번에 공통 사운드 풀에 적용합니다. `common`에는 메뉴·공통 효과음(게임 시작, 선택, 취소, 포커스 이동, 패배, 착지, 공격 도착, 뿌요 폭발)을, `player`에는 플레이어 주문 효과음(`spellCombo1`~`spellCombo7`)을, `enemy`에는 적 공통 주문 효과음(`spellCombo1`~`spellCombo7`)을 지정합니다. 지정하지 않은 항목은 현재 설정을 유지합니다.
+`PuyoW.applySoundDataJson(soundDataJson)`은 사운드 URL 설정을 담은 객체 또는 JSON 문자열을 한 번에 적용합니다. `common`에는 메뉴·공통 효과음(게임 시작, 선택, 취소, 포커스 이동, 패배, 착지, 공격 도착, 뿌요 폭발)을, `player`에는 플레이어 주문 효과음(`spellCombo1`~`spellCombo7`)을, `enemy`에는 적 공통 주문 효과음(`spellCombo1`~`spellCombo7`)을 지정합니다. `enemies`에는 `getClassType()` 반환값을 키로 하여 적 전용 `spellCombo1`~`spellCombo7`과 `backgroundMusic`을 지정합니다. 등록된 적만 처리하며, 값이 없는 속성은 현재 설정을 유지합니다. 이미 대전 중인 같은 적도 다음 연쇄부터 새 사운드풀을 사용합니다.
 
 ```js
 PuyoW.applySoundDataJson({
@@ -78,6 +84,12 @@ PuyoW.applySoundDataJson({
     },
     enemy: {
         spellCombo1: 'sounds/enemy-combo-1.ogg'
+    },
+    enemies: {
+        Andromalius: {
+            spellCombo1: 'sounds/andromalius-combo-1.ogg',
+            backgroundMusic: 'sounds/andromalius-bgm.ogg'
+        }
     }
 });
 ```
