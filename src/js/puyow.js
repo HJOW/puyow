@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 109;
+    const BUILDNO = 110;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -11648,6 +11648,8 @@
         if (!initialized) return false;
         const replay = normalizeReplayData(typeof data === 'string' ? parseJSON(data) : data);
         if (!replay) return false;
+        // 리플레이 뷰어는 타이틀 화면을 거치지 않으므로, 사용자가 재생을 요청한 시점에 시작 상태를 기록한다.
+        hasUserStarted = true;
         // 결과 화면의 리플레이 복사가 원본 그대로를 복사하도록, 객체로 받았으면 직렬화해 원본으로 보관한다.
         let source = null;
         try { source = typeof data === 'string' ? data.trim() : JSON.stringify(data); } catch { source = null; }
