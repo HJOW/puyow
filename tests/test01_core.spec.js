@@ -293,6 +293,92 @@ test('초기화는 최상위 div 안에 같은 난수 접미사의 2D·3D canvas
   expect(defaultRootLifecycle).toEqual({ directBodyChild: true, canvasCount: 2, removed: true });
 });
 
+test('캔버스 맞춤 모드 1은 여백을 뺀 화면의 짧은 쪽에 맞추고 모드 0은 HTML·CSS 크기를 따른다', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.registeredWebMcpTools = [];
+    Object.defineProperty(document, 'modelContext', {
+      configurable: true,
+      writable: true,
+      value: { registerTool: (tool) => window.registeredWebMcpTools.push(tool) }
+    });
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+
+  // 초기화 뒤에는 맞춤 설정을 바꿀 수 없다.
+  expect(await page.evaluate(() => {
+    try { window.PuyoW.setCanvasFitMode(0); return 'changed'; } catch (error) { return error.message; }
+  })).toContain('initialize 호출 전');
+
+  const reinitialize = (mode, margin) => page.evaluate(({ mode, margin }) => {
+    window.PuyoW.destroy();
+    window.PuyoW.setCanvasFitMode(mode);
+    window.PuyoW.setCanvasFitMargin(margin);
+    window.PuyoW.initialize(document.getElementById('puyow_target'));
+  }, { mode, margin });
+  const readLayout = () => page.evaluate(() => {
+    const tool = window.registeredWebMcpTools.find((candidate) => candidate.name === 'screen_layout');
+    return tool.execute();
+  });
+  // 뷰포트 변경 뒤 resize 이벤트가 처리될 때까지 기다린다.
+  const resizeViewport = async (width, height) => {
+    await page.setViewportSize({ width, height });
+    await expect.poll(() => page.evaluate(() => window.innerWidth)).toBe(width);
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  };
+
+  // 17:9처럼 가로가 긴 화면은 세로에 100% 맞추고 양옆이 남는다.
+  await resizeViewport(1700 + 30, 900 + 60);
+  await reinitialize(1, { top: 40, right: 10, bottom: 20, left: 20 });
+  let layout = await readLayout();
+  expect(layout.fitMode).toBe(1);
+  expect(layout.rotated).toBe(false);
+  expect(layout.canvasRect.height).toBeCloseTo(900, 1);
+  expect(layout.canvasRect.width).toBeCloseTo(1600, 1);
+  expect(layout.canvasRect.top).toBeCloseTo(40, 1);
+  expect(layout.canvasRect.left).toBeCloseTo(20 + 50, 1);
+
+  // 4:3처럼 가로가 짧은 화면은 가로에 100% 맞추고 위아래가 남는다.
+  await resizeViewport(800, 600);
+  layout = await readLayout();
+  expect(layout.canvasRect.width).toBeCloseTo(770, 1);
+  expect(layout.canvasRect.left).toBeCloseTo(20, 1);
+  expect(layout.canvasRect.top).toBeCloseTo(40 + (540 - 770 * 9 / 16) / 2, 1);
+
+  // 세로 화면은 90도 돌린 시점에서 같은 규칙을 적용한다.
+  await resizeViewport(430, 900);
+  layout = await readLayout();
+  expect(layout.rotated).toBe(true);
+  expect(layout.canvasRect.width).toBeCloseTo(400, 1);
+  expect(layout.canvasRect.height).toBeCloseTo(400 * 16 / 9, 1);
+  expect(layout.canvasRect.left).toBeCloseTo(20, 1);
+  expect(layout.canvasRect.top).toBeCloseTo(40 + (840 - 400 * 16 / 9) / 2, 1);
+
+  // 회전·여백이 있어도 클릭은 논리 좌표로 변환된다. 메인 메뉴의 (640, 580)은 설정 버튼이다.
+  await enterMainMenu(page);
+  const rect = layout.canvasRect;
+  await page.mouse.click(rect.left + rect.width * (1 - 580 / 720), rect.top + rect.height * 640 / 1280);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+
+  // 모드 0은 세로 화면에서도 회전하지 않고 인라인 크기를 넣지 않는다.
+  await reinitialize(0, 0);
+  layout = await readLayout();
+  expect(layout.fitMode).toBe(0);
+  expect(layout.rotated).toBe(false);
+  expect(await page.evaluate(() => ({
+    portrait: document.body.classList.contains('puyow-portrait'),
+    inlineWidth: document.getElementById('puyow_target').style.width,
+  }))).toEqual({ portrait: false, inlineWidth: '' });
+  expect(layout.canvasRect.height).toBeCloseTo(layout.canvasRect.width * 9 / 16, 1);
+
+  // 모드 1이 넣은 인라인 스타일은 destroy 때 되돌린다.
+  await reinitialize(1, 5);
+  expect(await page.evaluate(() => {
+    window.PuyoW.destroy();
+    return document.getElementById('puyow_target').getAttribute('style') || '';
+  })).toBe('');
+});
+
 test('Three.js가 없어도 3D canvas를 만들되 3D 컨텍스트 없이 2D 게임을 실행한다', async ({ page }) => {
   await page.addInitScript(() => {
     window.puyowCanvasContextRequests = [];
@@ -325,7 +411,7 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
     });
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.registeredWebMcpTools.length)).toBe(5);
+  await expect.poll(() => page.evaluate(() => window.registeredWebMcpTools.length)).toBe(6);
 
   const schema = await page.evaluate(() => {
     const tools = Object.fromEntries(window.registeredWebMcpTools.map((tool) => [tool.name, tool]));

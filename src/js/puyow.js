@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 105;
+    const BUILDNO = 106;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -655,6 +655,20 @@
     let initialized = false;
     /** 마지막으로 외부에 알린 표준 화면 식별자다. 초기화와 destroy 사이에서만 사용한다. */
     let lastDispatchedScreen = null;
+    /** 
+     * 캔버스 화면 맞춤 모드
+     *     0 : 기본 (스크립트로 화면을 맞추지 않고 HTML 및 CSS에 의존한다. 주의 ! 이 경우 게임 자체에서는 화면 방향 전환을 지원하지 않는다.) 
+     *     1 : 캔버스를 화면에 맞춘다. 여백은 canvasFitMargin으로 조정한다.
+     * initialize 호출 전 setCanvasFitMode()로만 바꾼다. @type {0|1}
+    */
+    let canvasFitMode = 1;
+    /** canvasFitMode 1에서 웹 화면 가장자리와 게임 영역 사이에 비워 둘 여백(px)이다. initialize 호출 전 setCanvasFitMargin()으로만 바꾼다. @type {{top:number,right:number,bottom:number,left:number}} */
+    let canvasFitMargin = {
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0
+    };
     /** 초기 타이틀에서 탑재된 피버 스테이지 검증을 마쳤는지 여부다. @type {boolean} */
     let feverStageValidationComplete = false;
     /** 피버 스테이지 검증 전에 받은 초기 타이틀 진입 입력을 보관한다. @type {boolean} */
@@ -2843,14 +2857,116 @@
         return applyCanvasCoordinateTransform();
     }
 
-    /** 현재 뷰포트에서 게임 화면을 회전해야 하는지 반환한다. @returns {boolean} 화면 회전 여부 */
+    /** 현재 뷰포트에서 게임 화면을 회전해야 하는지 반환한다. 맞춤 모드 0에서는 회전하지 않는다. @returns {boolean} 화면 회전 여부 */
     function shouldRotateCanvasForViewport() {
-        return window.innerWidth < window.innerHeight && !store?.settings?.landscapeOrientationLocked;
+        return canvasFitMode === 1 && window.innerWidth < window.innerHeight && !store?.settings?.landscapeOrientationLocked;
     }
 
-    /** 뷰포트 방향에 맞춰 게임 화면 회전 클래스를 갱신한다. @returns {void} */
+    /**
+     * 캔버스 화면 맞춤 모드를 설정한다. initialize 호출 전에만 바꿀 수 있다.
+     * @param {0|1} mode 0이면 HTML·CSS에 크기를 맡기고(화면 회전 없음), 1이면 스크립트가 여백을 뺀 화면에 맞추고 세로 화면에서 회전한다.
+     * @returns {void}
+     */
+    function setCanvasFitMode(mode) {
+        if (initialized) throw new Error('캔버스 화면 맞춤 모드 설정은 initialize 호출 전에 해야 합니다.');
+        if (mode !== 0 && mode !== 1) throw new RangeError('캔버스 화면 맞춤 모드는 0 또는 1이어야 합니다.');
+        canvasFitMode = mode;
+    }
+
+    /**
+     * 캔버스 화면 맞춤 모드 1에서 사용할 여백(px)을 설정한다. initialize 호출 전에만 바꿀 수 있다.
+     * 숫자 하나를 주면 네 방향에 같은 값을 쓰고, 객체를 주면 생략한 방향은 0으로 둔다.
+     * @param {number|{top?:number,right?:number,bottom?:number,left?:number}} margin 여백(px)
+     * @returns {void}
+     */
+    function setCanvasFitMargin(margin) {
+        if (initialized) throw new Error('캔버스 여백 설정은 initialize 호출 전에 해야 합니다.');
+        const source = typeof margin === 'number' ? { top: margin, right: margin, bottom: margin, left: margin } : margin;
+        if (!source || typeof source !== 'object') throw new TypeError('캔버스 여백은 숫자 또는 {top, right, bottom, left} 객체여야 합니다.');
+        const next = {};
+        for (const side of ['top', 'right', 'bottom', 'left']) {
+            const value = source[side] === undefined ? 0 : source[side];
+            if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw new RangeError(`캔버스 여백 ${side}는 0 이상의 유한한 숫자(px)여야 합니다.`);
+            next[side] = value;
+        }
+        canvasFitMargin = next;
+    }
+
+    /** 캔버스 화면 맞춤 설정을 복사해 반환한다. @returns {{mode:0|1, margin:{top:number,right:number,bottom:number,left:number}}} */
+    function getCanvasFit() {
+        return { mode: canvasFitMode, margin: { ...canvasFitMargin } };
+    }
+
+    /** 맞춤 모드 1에서 최상위 div에 스크립트로 넣는 인라인 스타일 속성 목록이다. destroy 때 외부에서 받은 div를 이만큼만 되돌린다. */
+    const CANVAS_FIT_ROOT_STYLE_PROPERTIES = ['position', 'box-sizing', 'width', 'height', 'margin'];
+    /** 맞춤 모드 1에서 두 canvas에 스크립트로 넣는 인라인 스타일 속성 목록이다. */
+    const CANVAS_FIT_CANVAS_STYLE_PROPERTIES = ['left', 'top', 'width', 'height', 'transform', 'transform-origin'];
+
+    /**
+     * 맞춤 모드 1에서 여백을 뺀 화면 안에 16:9 게임 영역을 가운데 맞춰 배치한다.
+     * 가로·세로 중 비율상 더 짧은 쪽에 100% 맞추고, 세로 화면이면 90도 회전한 상태로 같은 규칙을 적용한다.
+     * @returns {void}
+     */
+    function applyCanvasFitLayout() {
+        if (canvasFitMode !== 1 || !puyowRoot) return;
+        const { top, right, bottom, left } = canvasFitMargin;
+        const availableWidth = Math.max(0, window.innerWidth - left - right);
+        const availableHeight = Math.max(0, window.innerHeight - top - bottom);
+        const rotated = shouldRotateCanvasForViewport();
+        // 회전 시에는 게임의 가로(1280)가 화면 세로에, 게임의 세로(720)가 화면 가로에 대응한다.
+        const scale = rotated
+            ? Math.min(availableHeight / WIDTH, availableWidth / HEIGHT)
+            : Math.min(availableWidth / WIDTH, availableHeight / HEIGHT);
+        const canvasWidth = WIDTH * scale;
+        const canvasHeight = HEIGHT * scale;
+        const boxWidth = rotated ? canvasHeight : canvasWidth;
+        const boxHeight = rotated ? canvasWidth : canvasHeight;
+        const offsetX = (availableWidth - boxWidth) / 2;
+        const offsetY = (availableHeight - boxHeight) / 2;
+        const rootStyle = puyowRoot.style;
+        rootStyle.position = 'relative';
+        rootStyle.boxSizing = 'content-box';
+        rootStyle.width = `${availableWidth}px`;
+        rootStyle.height = `${availableHeight}px`;
+        rootStyle.margin = `${top}px ${right}px ${bottom}px ${left}px`;
+        [canvas, threeCanvas].forEach((element) => {
+            if (!element) return;
+            element.style.left = `${offsetX}px`;
+            element.style.top = `${offsetY}px`;
+            element.style.width = `${canvasWidth}px`;
+            element.style.height = `${canvasHeight}px`;
+            // 시계 방향 90도 회전 후 표시 영역의 좌측 상단이 배치 위치에 오도록 회전 폭만큼 옮긴다.
+            element.style.transform = rotated ? `translateX(${canvasHeight}px) rotate(90deg)` : '';
+            element.style.transformOrigin = rotated ? 'top left' : '';
+        });
+    }
+
+    /** 맞춤 모드 1에서 넣은 인라인 스타일을 지운다. @returns {void} */
+    function clearCanvasFitLayout() {
+        if (canvasFitMode !== 1) return;
+        CANVAS_FIT_ROOT_STYLE_PROPERTIES.forEach((property) => puyowRoot?.style.removeProperty(property));
+        [canvas, threeCanvas].forEach((element) => CANVAS_FIT_CANVAS_STYLE_PROPERTIES.forEach((property) => element?.style.removeProperty(property)));
+    }
+
+    /**
+     * 현재 게임 화면의 맞춤 모드·여백·회전 여부와 2D canvas의 표시 영역(뷰포트 CSS px)을 반환한다.
+     * @returns {{fitMode:0|1, margin:{top:number,right:number,bottom:number,left:number}, rotated:boolean, viewport:{width:number,height:number}, canvasRect:{left:number,top:number,width:number,height:number}|null}}
+     */
+    function getScreenLayout() {
+        const bounds = canvas?.getBoundingClientRect();
+        return {
+            fitMode: canvasFitMode,
+            margin: { ...canvasFitMargin },
+            rotated: shouldRotateCanvasForViewport(),
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+            canvasRect: bounds ? { left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height } : null
+        };
+    }
+
+    /** 뷰포트 방향에 맞춰 게임 화면 회전 클래스와 맞춤 배치를 갱신한다. @returns {void} */
     function updateCanvasOrientation() {
         document.body?.classList.toggle('puyow-portrait', shouldRotateCanvasForViewport());
+        applyCanvasFitLayout();
         if(threeEffectManager != null) threeEffectManager.onWindowResize();
     }
 
@@ -17179,7 +17295,7 @@
                     'Choosing Together mode in the main menu first opens a selection of Offline Play, Online Play, and Cancel (together_mode_select). Offline Play opens the offline together guide (together_guide), where the rule and color count are chosen. Online Play opens login and signup, then the lobby and room screens; it is hidden when the configured server does not provide online play.',
                     'Offline together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',
                     'Replays of recorded matches can be played back from the main menu; during playback no input is accepted except Escape, which skips to the result screen. Online matches cannot be paused or recorded. The tutorial, simulator, gallery, and settings are separate menu screens. Confirmation and text input dialogs capture all input until they are answered.',
-                    'Tools: now_screen returns the exact screen, the match mode and rule, and whether a replay, ONNX model loading, confirmation dialog, or text input dialog is in progress. now_game_status works only while a match is playing or paused, in every mode including online, watch, together, and replay playback, and includes online connection state when applicable. Its warningPuyos are the warnings shown on the current field; normalDamage reports DAMAGE reserved for the normal field during FEVER. point_recommend works only while now_screen reports playerCanControl, and marks one cell on the left field until the active pair locks. show_message displays already-localized text at the top of the current screen.'
+                    'Tools: now_screen returns the exact screen, the match mode and rule, and whether a replay, ONNX model loading, confirmation dialog, or text input dialog is in progress. now_game_status works only while a match is playing or paused, in every mode including online, watch, together, and replay playback, and includes online connection state when applicable. Its warningPuyos are the warnings shown on the current field; normalDamage reports DAMAGE reserved for the normal field during FEVER. point_recommend works only while now_screen reports playerCanControl, and marks one cell on the left field until the active pair locks. show_message displays already-localized text at the top of the current screen. screen_layout reports the canvas fit mode, margins, 90-degree portrait rotation, and the on-screen canvas box, which are needed to convert page clicks into logical 1280x720 game coordinates.'
                 ].join('\n\n')
             },
             {
@@ -17189,6 +17305,33 @@
                 outputSchema: screenSchema,
                 annotations: { readOnlyHint: true },
                 execute: getWebMcpScreen
+            },
+            {
+                name: 'screen_layout',
+                description: 'Get how the game canvas is laid out on the web page. fitMode 0 means page HTML/CSS sizes the game and it never rotates; fitMode 1 means the script fits the 16:9 game inside the viewport minus margin (px), touching the shorter side and centering it, and rotates it 90 degrees clockwise on a portrait viewport unless landscape lock is enabled. canvasRect is the on-screen box of the 2D canvas in CSS pixels. When rotated is true, logical game x (0-1280) runs from canvasRect.top downward and logical game y (0-720) runs from the right edge of canvasRect leftward.',
+                inputSchema: emptyInput,
+                outputSchema: {
+                    type: 'object',
+                    properties: {
+                        fitMode: { type: 'integer', enum: [0, 1], description: '0 = sized by page HTML/CSS without rotation, 1 = fitted to the viewport by the script.' },
+                        margin: {
+                            type: 'object',
+                            properties: { top: { type: 'number' }, right: { type: 'number' }, bottom: { type: 'number' }, left: { type: 'number' } },
+                            required: ['top', 'right', 'bottom', 'left'],
+                            description: 'Space in CSS pixels kept empty between the viewport edges and the game area in fitMode 1.'
+                        },
+                        rotated: { type: 'boolean', description: 'True while the canvas is rotated 90 degrees clockwise for a portrait viewport.' },
+                        viewport: { type: 'object', properties: { width: { type: 'number' }, height: { type: 'number' } }, required: ['width', 'height'] },
+                        canvasRect: {
+                            type: ['object', 'null'],
+                            properties: { left: { type: 'number' }, top: { type: 'number' }, width: { type: 'number' }, height: { type: 'number' } },
+                            description: 'On-screen bounding box of the 2D canvas in CSS pixels, after rotation.'
+                        }
+                    },
+                    required: ['fitMode', 'margin', 'rotated', 'viewport', 'canvasRect']
+                },
+                annotations: { readOnlyHint: true },
+                execute: getScreenLayout
             },
             {
                 name: 'now_game_status',
@@ -17296,6 +17439,8 @@
         }
         document.querySelectorAll('.div_puyow_root').forEach((element) => element.classList.remove('div_puyow_root'));
         if (createdRuntimeLayoutStyle) runtimeLayoutStyle?.remove();
+        // 외부에서 받은 div는 남으므로 맞춤 모드 1에서 넣은 인라인 크기·여백도 되돌린다.
+        clearCanvasFitLayout();
         document.body?.classList.remove('puyow-portrait');
         puyowRoot = null;
         canvas = null;
@@ -17384,21 +17529,26 @@
         runtimeLayoutStyle = document.createElement('style');
         runtimeLayoutStyle.className = 'puyow_runtime_layout';
         runtimeLayoutStyle.textContent = `
-            .div_puyow_root {
+            /*
+                최상위 div 크기의 기본값이다. 명시도 0인 :where()를 써서 페이지 CSS가 언제든 덮어쓸 수 있게 한다.
+                맞춤 모드 0에서는 이 값 또는 페이지 CSS가 크기를 정하고, 맞춤 모드 1에서는 스크립트가 인라인 스타일로 다시 맞춘다.
+            */
+            :where(.div_puyow_root) {
                 align-self: flex-start;
+                aspect-ratio: 16 / 9;
                 flex: 0 0 auto;
-                height: 56.25vw;
                 margin: 0;
                 position: relative;
-                width: 100vw;
+                width: 100%;
             }
 
             .div_puyow_root > canvas[data-puyow-canvas] {
                 display: block;
                 height: 100%;
                 image-rendering: auto;
-                inset: 0;
+                left: 0;
                 position: absolute;
+                top: 0;
                 touch-action: none;
                 width: 100%;
             }
@@ -17408,17 +17558,6 @@
                 background: transparent;
                 pointer-events: none;
                 z-index: 1;
-            }
-
-            body.puyow-portrait .div_puyow_root {
-                height: 100vw;
-                width: 177.7777777778vw;
-            }
-
-            body.puyow-portrait .div_puyow_root > canvas[data-puyow-canvas] {
-                /* 회전 후 실제 표시 영역의 좌측 상단이 뷰포트 좌측 상단에 맞도록 보정한다. */
-                transform: translateX(100vw) rotate(90deg);
-                transform-origin: top left;
             }
         `;
         document.head.appendChild(runtimeLayoutStyle);
@@ -21654,6 +21793,10 @@
         estimateCombo,
         warningUnits,
         getCanvasOutputSize,
+        setCanvasFitMode,
+        setCanvasFitMargin,
+        getCanvasFit,
+        getScreenLayout,
         toCanvasCoordinates,
         toCanvasLength,
         applyCanvasCoordinateTransform,

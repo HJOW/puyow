@@ -1221,7 +1221,8 @@ test('세로 화면에서는 캔버스를 회전하고 클릭 좌표를 변환�
   expect(bounds.width).toBeCloseTo(375, 1);
   expect(bounds.height).toBeCloseTo(bounds.width * 16 / 9, 1);
   expect(bounds.left).toBeCloseTo(0, 1);
-  expect(bounds.top).toBeCloseTo(0, 1);
+  // 화면에 맞춘 뒤 남는 세로 공간은 위아래로 나뉜다.
+  expect(bounds.top).toBeCloseTo((667 - bounds.height) / 2, 1);
 
   await enterMainMenu(page);
   const logicalX = 640;
@@ -1268,7 +1269,8 @@ test('화면 가로방향 고정은 저장되며 세로 화면 입력도 회전�
   expect(bounds.width).toBeCloseTo(375, 1);
   expect(bounds.height).toBeCloseTo(375 * 9 / 16, 1);
   expect(bounds.left).toBeCloseTo(0, 1);
-  expect(bounds.top).toBeCloseTo(0, 1);
+  // 가로 폭에 100% 맞추고 남는 세로 공간은 위아래로 나뉜다.
+  expect(bounds.top).toBeCloseTo((667 - 375 * 9 / 16) / 2, 1);
 
   await page.mouse.click(bounds.left + bounds.width / 2, bounds.top + bounds.height * 580 / 720);
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');

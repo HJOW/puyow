@@ -1783,6 +1783,8 @@
         if (kind === 'fever') buildFeverSidebar();
         else buildPuzzleSidebar();
         if (!gameInitialized) {
+            // 도구 화면은 resizeCanvasRoot()가 직접 크기를 정하므로 게임의 화면 맞춤·회전을 끈다.
+            if (typeof getGameApi().setCanvasFitMode === 'function') getGameApi().setCanvasFitMode(0);
             getGameApi().initialize(elements.canvasRoot);
             gameInitialized = true;
             observeCanvasSize();

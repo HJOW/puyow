@@ -186,7 +186,7 @@
 
 ### 게임 페이지의 WebMCP
 
-- `initialize()`의 `registerWebMcpTools()`가 `document.modelContext`에 `manual`·`now_screen`·`now_game_status`·`point_recommend`·`show_message` 다섯 도구를 등록하고, `destroy()`가 `webMcpAbortController`로 해제한다. 도구 설명·스키마·`manual` 문구는 AI가 읽도록 영어로 쓴다. `manual`·`now_screen`·`now_game_status`에는 읽기 전용임을 나타내는 `annotations.readOnlyHint`를 두며, 온라인 상대 닉네임이 포함된 `now_game_status`에는 `untrustedContentHint`도 둔다.
+- `initialize()`의 `registerWebMcpTools()`가 `document.modelContext`에 `manual`·`now_screen`·`screen_layout`·`now_game_status`·`point_recommend`·`show_message` 여섯 도구를 등록하고(`screen_layout`은 BUILDNO 106부터), `destroy()`가 `webMcpAbortController`로 해제한다. 도구 설명·스키마·`manual` 문구는 AI가 읽도록 영어로 쓴다. `manual`·`now_screen`·`screen_layout`·`now_game_status`에는 읽기 전용임을 나타내는 `annotations.readOnlyHint`를 두며, 온라인 상대 닉네임이 포함된 `now_game_status`에는 `untrustedContentHint`도 둔다.
 - **게임 기능을 바꾸면 이 도구도 함께 고친다.** BUILDNO 63에서는 온라인 플레이와 텍스트 입력 대화상자를 반영했다. `getNowScreen()`에 화면 이름을 더하면 `screenNames`를, `getGameState()`·`getNowGameStatus()`에 필드를 더하면 `statusProperties`를, 조작 키·규칙·모드가 바뀌면 `manual` 문구를 함께 본다.
 - `now_screen`은 `getWebMcpScreen()`을 쓴다. 공개 `getScreenState()`의 `{screen, playerCanControl}`은 그대로 두고 `mode`·`rule`(대전 밖에서는 null, 계산은 `getGameState()`와 같은 `getGameModeInfo()`), `replayPlayback`, `modelLoading`(`game.onnxLoading`), `confirmDialogOpen`, `textDialogOpen`을 더한다. 온라인 로그인·가입·대기실·방 화면도 `screenNames`와 설명에 포함한다.
 - `now_game_status`는 `getNowGameStatus()`가 공개 `getGameState()` 결과에 `replayPlayback`·`together`(`{rule, wins}` 또는 null)·`online`(`{rule, youAreHost, opponentNickname}` 또는 null)을 더해 돌려준다. 같은 상태를 따로 조립하지 않아 두 API가 어긋나지 않는다. `statusSchema.required`는 `statusProperties`의 키 전체이며, 회귀 테스트가 연습 대전에서 실제 반환 키·`properties`·`required`가 정확히 같은지 확인한다.
@@ -457,7 +457,7 @@ aiProvider: settings.aiProvider === PROMPT_API_PROVIDER && !promptApiSupported
 ### 개발용 도구의 WebMCP
 
 - `PuyoWTools.initialize()`에서 `registerMcpTools()`가 `document.modelContext`에 도구를 등록한다. 미지원 브라우저에서는 아무 일도 하지 않으며, `destroy()`가 `AbortController`로 한 번에 해제한다.
-- 이름은 모두 `tools_` 접두어를 쓴다. 편집 화면에 들어가면 `puyow.js`도 같은 문서에 `manual`·`now_screen`·`now_game_status`·`point_recommend`·`show_message`를 등록하므로 이름이 겹치면 안 된다. 게임 도구는 `PuyoW.initialize()` 때 등록되므로 개발 대상을 고르기 전에는 도구 페이지 것 12개만 있다.
+- 이름은 모두 `tools_` 접두어를 쓴다. 편집 화면에 들어가면 `puyow.js`도 같은 문서에 `manual`·`now_screen`·`screen_layout`·`now_game_status`·`point_recommend`·`show_message`를 등록하므로 이름이 겹치면 안 된다. 게임 도구는 `PuyoW.initialize()` 때 등록되므로 개발 대상을 고르기 전에는 도구 페이지 것 12개만 있다.
 - 도구 목록은 `tools_manual`, `tools_status`, `tools_select_mode`, `tools_load_script`, `tools_set_options`, `tools_place_puyos`, `tools_set_next_puyos`, `tools_auto_generate`, `tools_stop_auto_generate`, `tools_run_test`, `tools_stop_test`, `tools_generate_script`다.
 - `tools_auto_generate`는 기본적으로 결과가 나올 때까지 기다린다. `finishAutoGenerate()`가 결과 문구를 화면에 적으면서 `autoGenerateWaiters`에 담긴 완료 함수를 모두 깨우는 구조다. 제한 시간이 없어졌으므로(2026-09-18) `{ wait: false }`를 주면 시작하자마자 돌아오고, `tools_status`의 `autoGenerating`으로 진행 여부를 본다. attack 안내·검증 실패처럼 곧바로 끝난 경우는 `wait: false`여도 결과 문구를 돌려준다.
 - `tools_stop_auto_generate`(2026-09-18)는 진행 중인 자동생성을 화면의 `중단`과 같은 `cancelAutoGenerate()`로 취소하고 `자동생성을 중단했습니다.`를 돌려준다. 기다리던 `tools_auto_generate` 호출도 같은 문구로 끝난다. 진행 중이 아니면 `Auto generation is not running.`이다.
@@ -1280,6 +1280,18 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 ### 적별 사운드 데이터 JSON 적용 (2026-09-22, BUILDNO 105)
 
 `applySoundDataJson()`은 `enemies` 객체를 적 클래스명(`getClassType()` 반환값)별로 읽는다. 각 적 항목의 `spellCombo1~7`과 `backgroundMusic` 중 값이 있는 것만 기존 `EnemySoundPool`에 덮어쓴 뒤 `setEnemySoundPool()`으로 등록한다. 따라서 JSON에 없는 속성은 기존 값을 유지하며, 현재 대전 중인 같은 적도 다음 연쇄부터 새 사운드풀을 사용한다. 등록되지 않은 적 이름이나 효과음 값이 없는 항목은 무시한다. 사용 방법은 `docs/Sound.md`와 `docs/Sound.en.md`의 `enemies` 예제로도 안내한다. `src/js/puyow.js`를 고쳤으므로 BUILDNO는 105, `package.json` 버전은 `0.1.105`다.
+
+### 캔버스 화면 맞춤 모드와 여백 (2026-09-23, BUILDNO 106)
+
+`src/js/puyow.js`의 `canvasFitMode`(0|1, 기본 1)와 `canvasFitMargin`(`{top,right,bottom,left}` px, 기본 모두 0)이 게임 화면을 웹 페이지에 맞추는 방식을 정한다. 두 값은 **initialize 전에만** 공개 `setCanvasFitMode(mode)`·`setCanvasFitMargin(margin)`으로 바꾼다(초기화 뒤에는 `setNoticeFile()`처럼 오류). `setCanvasFitMargin`은 숫자 하나(네 방향 동일) 또는 부분 객체(생략 방향 0)를 받고 음수·비유한수는 거절한다. 조회용 `getCanvasFit()`과 `getScreenLayout()`도 공개했다. 사용법 문서는 `docs/Graphics.md`·`docs/Graphics.en.md`의 「화면 맞춤 모드와 여백」 절이다.
+
+- **모드 0**: 스크립트가 크기를 건드리지 않는다. `shouldRotateCanvasForViewport()`가 항상 false라 세로 화면 회전·`puyow-portrait` 클래스가 없고 `화면 가로방향 고정` 설정도 효과가 없다. `prepareRuntimeLayoutStyle()`의 최상위 div 규칙은 명시도 0인 `:where(.div_puyow_root)`로 바꿔 기본값(`width: 100%; aspect-ratio: 16 / 9; position: relative` 등)만 주고 페이지 CSS가 덮어쓸 수 있게 했다. canvas 두 장은 div를 100% 채운다.
+- **모드 1**: `applyCanvasFitLayout()`이 `window.innerWidth/innerHeight`에서 여백을 뺀 영역을 최상위 div의 인라인 `width`·`height`로, 여백을 인라인 `margin`으로 준다. 16:9가 짧은 쪽에 100% 맞도록 배율을 구하고(회전 시 게임 가로 1280이 화면 세로에 대응) 남는 공간을 반씩 나눠 canvas 두 장의 인라인 `left`·`top`·`width`·`height`로 가운데 배치한다. 세로 화면이면 인라인 `transform: translateX(canvas높이px) rotate(90deg)`, `transform-origin: top left`로 시계 방향 회전한다. 예전의 `body.puyow-portrait` CSS 규칙(100vw 기준)은 지웠고, `puyow-portrait` 클래스 자체는 호환을 위해 모드 1에서 계속 붙인다. `updateCanvasOrientation()`(resize·orientationchange·설정 저장·초기화 때 호출)이 `applyCanvasFitLayout()`을 부른다.
+- **클릭 좌표**: `getCanvasEventCoordinates()`는 그대로다. `getBoundingClientRect()` 기준이라 여백·가운데 정렬에도 맞고, 회전 여부는 `shouldRotateCanvasForViewport()`를 따른다.
+- **destroy**: `clearCanvasFitLayout()`이 모드 1에서 넣은 인라인 속성(`CANVAS_FIT_ROOT_STYLE_PROPERTIES`·`CANVAS_FIT_CANVAS_STYLE_PROPERTIES`)만 지운다. 외부에서 받은 div의 다른 인라인 스타일은 건드리지 않는다.
+- **개발용 도구**: `puyow_tools.js`는 `resizeCanvasRoot()`로 캔버스 영역 크기를 직접 정하므로 게임 초기화 직전에 `setCanvasFitMode(0)`을 부른다(모드 1의 인라인 크기가 도구 레이아웃을 덮어쓰지 않게).
+- **WebMCP**: 읽기 전용 `screen_layout` 도구(`getScreenLayout()`: `fitMode`·`margin`·`rotated`·`viewport`·`canvasRect`)를 더했고, `manual` 마지막 문단에 설명을 붙였다. `now_screen`의 반환 형식은 바꾸지 않았다(기존 테스트가 정확히 비교한다).
+- **검증**: `tests/test01_core.spec.js`에 「캔버스 맞춤 모드 1은 여백을 뺀 화면의 짧은 쪽에 맞추고…」 테스트를 더했다(17:9·4:3·세로 화면 배치, 회전+여백에서의 클릭, 모드 0의 무회전, destroy 뒤 인라인 스타일 정리). 뷰포트를 바꾼 직후에는 resize가 늦게 처리될 수 있어 `innerWidth`를 기다린 뒤 resize 이벤트를 한 번 더 보낸다. WebMCP 도구 수 기대값은 6으로 올렸다. `test01_menu.spec.js`의 세로 화면·가로 고정 테스트는 가운데 정렬에 맞춰 `top` 기대값만 고쳤다. test01_core 전체(Chromium·Firefox·WebKit 120개)와 test02_tools(Chromium 46개)가 통과했다. **`test01_menu.spec.js`의 세로 화면 회전·가로방향 고정·가로방향 고정 문구 번역·설정 언어 테스트는 이 작업 전(HEAD)에도 실패한다**(설정 화면에 AI 제공자 행이 보여 키보드 포커스 순서가 테스트 가정과 다르다). 이 작업과 무관하다.
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.
