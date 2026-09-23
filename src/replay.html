@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <link rel="icon" type="image/png" sizes="45x45" href="./img/icon45.png"/>
+        <title>Puyo W</title>
+
+        <!--
+        뿌요 W 리플레이 재생 도구
+
+            Copyright 2026 HJOW
+
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+
+            http://www.apache.org/licenses/LICENSE-2.0
+
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+        -->
+
+        <!-- manifest (이 webmanifest 가 있어야 PWA 앱으로도 설치할 수 있음, 없어도 게임 자체는 동작함) -->
+        <link rel="manifest" href="manifest.webmanifest"/>
+
+        <!-- Game 관련 (선택) -->
+        <script defer src="./js/three.min.js"></script>
+        <script defer src="./js/json5.min.js"></script>
+        <script defer src="./js/ort.all.min.js"></script>
+        <!-- // Game 관련 (선택) -->
+
+        <!-- Game 관련 (필수) -->
+        <link rel="stylesheet" href="./css/puyow.css"/>
+        <script defer src="./js/puyow.js"></script>
+        <script defer src="./js/puyow_replay.js"></script>
+        <!-- // Game 관련 (필수) -->
+
+        <!--
+        화면 구성: 가운데 게임 캔버스, 하단 툴바(항상 표시), 우측 사이드바(리플레이 목록, 평소에는 숨김), JSON 입력 레이어 팝업.
+        하단 툴바 높이(--replay-toolbar-height)는 puyow_replay.js 가 게임 캔버스의 아래 여백으로도 쓴다.
+        -->
+        <style>
+            :root {
+                color-scheme: dark;
+                --replay-toolbar-height: 56px;
+                --replay-bg: #071621;
+                --replay-bar: #10222c;
+                --replay-panel: #132833;
+                --replay-panel-2: #183341;
+                --replay-border: #24455a;
+                --replay-text: #e4eef2;
+                --replay-text-weak: #8ea7b3;
+                --replay-accent: #4fc3e0;
+                --replay-accent-text: #06161d;
+                --replay-danger: #ef5350;
+                --replay-shadow: rgba(0, 0, 0, 0.5);
+            }
+
+            html, body { margin: 0; padding: 0; height: 100%; }
+            body.webpuyo_replay {
+                background-color: var(--replay-bg);
+                background-image: linear-gradient(135deg, #0b2430 0%, #071621 50%, #16233b 100%);
+                color: var(--replay-text);
+                font-family: "Pretendard", "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", "Hiragino Sans", "Microsoft YaHei", sans-serif;
+                font-size: 14px;
+                line-height: 1.5;
+                overflow: hidden;
+            }
+            button, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+            button { cursor: pointer; }
+            :focus-visible { outline: 2px solid var(--replay-accent); outline-offset: 2px; }
+
+            /* 공통 버튼 */
+            .replay-button {
+                flex: none;
+                min-width: 96px;
+                height: 38px;
+                padding: 0 16px;
+                border: 1px solid var(--replay-border);
+                border-radius: 8px;
+                background: var(--replay-panel-2);
+                white-space: nowrap;
+            }
+            .replay-button:hover:not(:disabled) { border-color: var(--replay-accent); }
+            .replay-button:disabled { cursor: default; opacity: 0.4; }
+            .replay-button.is-primary {
+                border-color: var(--replay-accent);
+                background: var(--replay-accent);
+                color: var(--replay-accent-text);
+                font-weight: 700;
+            }
+
+            /*
+                리플레이를 불러오기 전(body.replay-empty)에는 게임 캔버스를 숨기고 안내 문구만 보인다.
+                visibility 로 숨겨 캔버스 배치 크기는 그대로 두고, 숨긴 동안에는 클릭도 받지 않는다.
+            */
+            body.replay-empty #puyow_target { visibility: hidden; }
+            .replay-empty-guide {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: var(--replay-toolbar-height);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+                color: var(--replay-text-weak);
+                font-size: 16px;
+                text-align: center;
+            }
+            body.replay-empty .replay-empty-guide { display: flex; }
+
+            /* 하단 툴바: 좁은 화면에서도 높이가 늘지 않도록 줄바꿈 대신 가로로 넘긴다. */
+            .replay-toolbar {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 10;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                height: var(--replay-toolbar-height);
+                padding: 0 12px;
+                overflow-x: auto;
+                background: var(--replay-bar);
+                border-top: 1px solid var(--replay-border);
+            }
+            .replay-toolbar-separator { flex: none; width: 1px; height: 24px; background: var(--replay-border); }
+
+            /* 우측 사이드바(리플레이 목록) */
+            .replay-sidebar {
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: var(--replay-toolbar-height);
+                z-index: 20;
+                display: flex;
+                flex-direction: column;
+                width: min(360px, 100%);
+                background: var(--replay-bar);
+                border-left: 1px solid var(--replay-border);
+                box-shadow: -8px 0 24px var(--replay-shadow);
+            }
+            .replay-sidebar[hidden] { display: none; }
+            .replay-sidebar-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                padding: 14px 14px 12px 18px;
+                border-bottom: 1px solid var(--replay-border);
+            }
+            .replay-sidebar-title { margin: 0; font-size: 16px; font-weight: 700; }
+            .replay-sidebar-close {
+                width: 32px;
+                height: 32px;
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                font-size: 20px;
+                line-height: 1;
+            }
+            .replay-sidebar-close:hover { background: var(--replay-panel-2); }
+            .replay-sidebar-message { margin: 10px 12px 0 12px; }
+            .replay-sidebar-status { margin: 16px 18px; color: var(--replay-text-weak); }
+            .replay-list { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 10px 8px; list-style: none; }
+            .replay-list-item + .replay-list-item { margin-top: 6px; }
+            .replay-list-button {
+                display: flex;
+                gap: 10px;
+                width: 100%;
+                padding: 10px 12px;
+                border: 1px solid var(--replay-border);
+                border-radius: 8px;
+                background: var(--replay-panel);
+                text-align: left;
+            }
+            .replay-list-button:hover { border-color: var(--replay-accent); background: var(--replay-panel-2); }
+            .replay-list-number { flex: none; min-width: 1.6em; color: var(--replay-accent); font-weight: 700; }
+            .replay-list-body { min-width: 0; }
+            .replay-list-title { font-weight: 700; }
+            .replay-list-sub {
+                overflow: hidden;
+                color: var(--replay-text-weak);
+                font-size: 12px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            /* 오류 메시지 */
+            .replay-message {
+                padding: 8px 12px;
+                border: 1px solid var(--replay-danger);
+                border-radius: 8px;
+                background: rgba(239, 83, 80, 0.14);
+                color: #ffb4b2;
+            }
+            .replay-message[hidden] { display: none; }
+
+            /* JSON 입력 레이어 팝업 */
+            .replay-dialog-backdrop {
+                position: fixed;
+                inset: 0;
+                z-index: 30;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+                background: rgba(3, 11, 19, 0.72);
+            }
+            .replay-dialog-backdrop[hidden] { display: none; }
+            .replay-dialog {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                width: min(720px, 100%);
+                max-height: 100%;
+                padding: 18px;
+                border: 1px solid var(--replay-border);
+                border-radius: 12px;
+                background: var(--replay-bar);
+                box-shadow: 0 12px 32px var(--replay-shadow);
+            }
+            .replay-dialog-title { margin: 0; font-size: 17px; font-weight: 700; }
+            .replay-dialog-description { margin: 0; color: var(--replay-text-weak); }
+            .replay-dialog-input {
+                flex: 1;
+                width: 100%;
+                min-height: 160px;
+                height: 320px;
+                padding: 10px;
+                border: 1px solid var(--replay-border);
+                border-radius: 8px;
+                background: var(--replay-bg);
+                font-family: "D2Coding", Consolas, monospace;
+                font-size: 12px;
+                resize: vertical;
+            }
+            .replay-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+        </style>
+
+        <!-- 게임 로딩 스크립트 -->
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                window.PuyoWReplay.initialize(document.getElementById("puyow_target"));
+            });
+        </script>
+    </head>
+    <body class="webpuyo_replay replay-empty">
+        <!-- 게임 캔버스 (리플레이를 불러오기 전에는 숨긴다) -->
+        <div id="puyow_target" aria-label="Web Puyo replay"></div>
+        <p class="replay-empty-guide" data-replay-text="JSON 불러오기 또는 목록에서 불러오기로 리플레이를 불러와 주세요.">JSON 불러오기 또는 목록에서 불러오기로 리플레이를 불러와 주세요.</p>
+
+        <!-- 하단 툴바 -->
+        <div class="replay-toolbar" role="toolbar">
+            <button type="button" class="replay-button" data-replay-action="json" data-replay-text="JSON 불러오기">JSON 불러오기</button>
+            <button type="button" class="replay-button" data-replay-action="list" data-replay-text="목록에서 불러오기">목록에서 불러오기</button>
+            <span class="replay-toolbar-separator" aria-hidden="true"></span>
+            <button type="button" class="replay-button" data-replay-action="pause" data-replay-text="일시중지" disabled>일시중지</button>
+            <button type="button" class="replay-button" data-replay-action="restart" data-replay-text="처음부터" disabled>처음부터</button>
+        </div>
+
+        <!-- 우측 사이드바: 리플레이 목록 -->
+        <aside class="replay-sidebar" hidden aria-labelledby="replay_sidebar_title">
+            <div class="replay-sidebar-header">
+                <h2 class="replay-sidebar-title" id="replay_sidebar_title" data-replay-text="리플레이 목록">리플레이 목록</h2>
+                <button type="button" class="replay-sidebar-close" data-replay-action="close-list" data-replay-label="닫기" aria-label="닫기">×</button>
+            </div>
+            <div class="replay-message replay-sidebar-message" role="alert" hidden></div>
+            <p class="replay-sidebar-status" hidden></p>
+            <ol class="replay-list"></ol>
+        </aside>
+
+        <!-- JSON 입력 레이어 팝업 -->
+        <div class="replay-dialog-backdrop" hidden>
+            <div class="replay-dialog" role="dialog" aria-modal="true" aria-labelledby="replay_dialog_title">
+                <h2 class="replay-dialog-title" id="replay_dialog_title" data-replay-text="리플레이 JSON 불러오기">리플레이 JSON 불러오기</h2>
+                <p class="replay-dialog-description" data-replay-text="리플레이 JSON 코드를 붙여넣어 주세요.">리플레이 JSON 코드를 붙여넣어 주세요.</p>
+                <textarea class="replay-dialog-input" spellcheck="false" autocomplete="off" data-replay-label="리플레이 JSON 코드를 붙여넣어 주세요." aria-label="리플레이 JSON 코드를 붙여넣어 주세요."></textarea>
+                <div class="replay-message replay-dialog-message" role="alert" hidden></div>
+                <div class="replay-dialog-actions">
+                    <button type="button" class="replay-button is-primary" data-replay-action="dialog-confirm" data-replay-text="확인">확인</button>
+                    <button type="button" class="replay-button" data-replay-action="dialog-cancel" data-replay-text="취소">취소</button>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

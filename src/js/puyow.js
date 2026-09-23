@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 106;
+    const BUILDNO = 108;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -926,7 +926,9 @@
     let ruleSelectionFocus = 0;
     /** 일시정지 메뉴에서 포커스된 항목이다. @type {number} */
     let pauseMenuFocus = 0;
-    /** 결과 화면에서 포커스된 버튼 순번이다. 0번은 항상 종료 버튼이다. @type {number} */
+    /** 리플레이 재생 페이지(replay.html)에서 실행 중인지 여부다. 참이면 리플레이 재생의 일시정지·결과 화면에서 종료 버튼을 빼고, 리플레이를 불러오기 전에는 게임 입력을 막는다. @type {boolean} */
+    let replayPageMode = false;
+    /** 결과 화면에서 포커스된 버튼 순번이다. 0번은 대개 종료 버튼이다(너랑 나랑은 다시 플레이, 리플레이 재생 페이지는 다시보기). @type {number} */
     let resultScreenFocus = 0;
     /** 직전 애니메이션 프레임의 시각이다. @type {number} */
     let lastTime = 0;
@@ -11638,6 +11640,83 @@
     }
 
     /**
+     * 리플레이 재생 페이지가 넘긴 리플레이 데이터로 재생을 시작한다. 진행 중인 게임이 있으면 정리하고 바꾼다.
+     * @param {string|object} data 리플레이 JSON 문자열 또는 그 객체
+     * @returns {boolean} 재생을 시작했는지 여부. 데이터가 올바르지 않으면 false
+     */
+    function loadReplayPlaybackFromPage(data) {
+        if (!initialized) return false;
+        const replay = normalizeReplayData(typeof data === 'string' ? parseJSON(data) : data);
+        if (!replay) return false;
+        // 결과 화면의 리플레이 복사가 원본 그대로를 복사하도록, 객체로 받았으면 직렬화해 원본으로 보관한다.
+        let source = null;
+        try { source = typeof data === 'string' ? data.trim() : JSON.stringify(data); } catch { source = null; }
+        const previousGame = game;
+        if (previousGame) {
+            stopBackgroundMusic();
+            // 재생용 게임은 모델·탐색을 쓰지 않으므로 이전 게임의 비동기 자원 해제를 기다리지 않는다.
+            void Promise.resolve()
+                .then(() => releaseGameRuntimeResources(previousGame))
+                .catch((error) => { console.error('리플레이를 불러오기 전 게임 자원을 정리하지 못했습니다.', error); });
+            game = null;
+        }
+        startReplayPlayback(replay, source);
+        return true;
+    }
+
+    /** 리플레이 재생 페이지에서 리플레이를 재생하는 중(결과 화면 포함)인지 확인한다. 참이면 메뉴 화면으로 나가는 종료 선택지를 없앤다. @returns {boolean} 여부 */
+    function isReplayPagePlayback() {
+        return replayPageMode && Boolean(game?.replayPlayback);
+    }
+
+    /** 재생 중인 리플레이를 ESC와 같은 방식으로 일시정지한다. 카운트다운·종료 연출 중에는 하지 않는다. @returns {boolean} 일시정지했는지 여부 */
+    function pauseReplayPlaybackFromPage() {
+        if (!game?.replayPlayback || !game.running || game.paused || game.restartPending || game.ending || game.countdown > 0) return false;
+        resetVirtualControllerInput();
+        game.paused = true;
+        pauseMenuFocus = 0;
+        pauseBackgroundMusic();
+        return true;
+    }
+
+    /** 불러온 리플레이를 카운트다운부터 다시 재생한다. @returns {boolean} 다시 재생을 시작했는지 여부 */
+    function restartReplayPlaybackFromPage() {
+        if (!game?.replayPlayback || game.restartPending) return false;
+        restartReplayPlayback();
+        return true;
+    }
+
+    /** 리플레이 재생 페이지(replay.html)가 게임과 리플레이 데이터를 주고받는 API다. */
+    const replayApi = Object.freeze({
+        /**
+         * 리플레이 재생 페이지 여부를 정한다. 참이면 리플레이의 일시정지·결과 화면에 종료 버튼이 없고(결과 화면 ESC도 무시),
+         * 리플레이를 불러오기 전에는 키보드·게임패드 입력을 게임에 넘기지 않는다.
+         * @param {boolean} enabled 사용 여부
+         * @returns {void}
+         */
+        setPageMode: (enabled) => { replayPageMode = enabled === true; },
+        /** 리플레이 데이터가 이 게임에서 재생할 수 있는 형식인지 확인한다. @param {string|object} data 리플레이 JSON 문자열 또는 객체 @returns {boolean} 재생 가능 여부 */
+        isValid: (data) => Boolean(normalizeReplayData(typeof data === 'string' ? parseJSON(data) : data)),
+        load: loadReplayPlaybackFromPage,
+        pause: pauseReplayPlaybackFromPage,
+        restart: restartReplayPlaybackFromPage,
+        /** @returns {{loaded:boolean, running:boolean, paused:boolean, countdown:number, finished:boolean, restartPending:boolean}} 현재 리플레이 재생 상태 */
+        getState: () => {
+            const playing = Boolean(game?.replayPlayback);
+            return {
+                loaded: playing,
+                running: playing && game.running === true,
+                paused: playing && game.paused === true,
+                countdown: playing ? Math.max(0, Number(game.countdown) || 0) : 0,
+                finished: playing && !game.running,
+                restartPending: playing && game.restartPending === true
+            };
+        },
+        /** @returns {string} 게임 화면에 적용 중인 언어 코드 */
+        getLanguage: () => languageCode
+    });
+
+    /**
      * 델타 프레임의 전역 항목을 현재 게임 상태에 반영한다.
      * @param {object} playback 재생 상태
      * @param {Record<string,*>} fields 이번 프레임의 전역 항목
@@ -11876,7 +11955,8 @@
         if (!game || game.running) return [];
         const buttons = [];
         if (game.together && !game.replayPlayback) buttons.push({ key: 'playAgain', label: '다시 플레이', color: '#7e57c2' });
-        buttons.push({ key: 'exit', label: '종료', color: '#ef5350' });
+        // 리플레이 재생 페이지는 메뉴 화면으로 나가지 않으므로 종료 버튼을 두지 않는다.
+        if (!isReplayPagePlayback()) buttons.push({ key: 'exit', label: '종료', color: '#ef5350' });
         if (game.replayPlayback) buttons.push({ key: 'replayAgain', label: '다시보기', color: '#34556b' });
         if (hasCopyableReplay()) buttons.push({ key: 'copyReplay', label: '리플레이 복사', color: '#34556b' });
         return buttons.map((button, index) => ({ ...button, x: 515, y: 165 + index * (64 + RESULT_BUTTON_GAP), width: 250, height: 64 }));
@@ -14439,6 +14519,13 @@
 
     /** 일시정지 화면의 조작 버튼과 논리 캔버스 좌표를 반환한다. @returns {{key:'resume'|'restart'|'exit',label:string,color:string,x:number,y:number,width:number,height:number}[]} 버튼 목록 */
     function getPauseMenuButtons() {
+        // 리플레이 재생 페이지는 메뉴 화면으로 나가는 선택지를 보이지 않으므로 종료 버튼을 빼고 두 버튼을 가운데에 놓는다.
+        if (isReplayPagePlayback()) {
+            return [
+                { key: 'resume', label: '재개', color: '#4cc9b0', x: 470, y: 376, width: 150, height: 64 },
+                { key: 'restart', label: '다시하기', color: '#5c6bc0', x: 660, y: 376, width: 150, height: 64 }
+            ];
+        }
         return [
             { key: 'resume', label: '재개', color: '#4cc9b0', x: 375, y: 376, width: 150, height: 64 },
             { key: 'restart', label: '다시하기', color: '#5c6bc0', x: 565, y: 376, width: 150, height: 64 },
@@ -15303,6 +15390,8 @@
      * @returns {void}
      */
     function handleKeydown(event) {
+        // 리플레이 재생 페이지는 리플레이를 불러오기 전까지 게임 화면을 숨기므로, 보이지 않는 메뉴가 키·게임패드 입력으로 움직이지 않게 한다.
+        if (replayPageMode && !game?.replayPlayback) return;
         const focusBefore = getMenuFocusToken();
         const actionSoundCountBefore = menuActionSoundCount;
         handleKeydownCore(event);
@@ -15528,7 +15617,10 @@
         // 결과 화면에서는 ESC로 바로 나가고, 방향키로 버튼을 옮긴 뒤 Enter로 실행한다.
         // 기본 포커스는 종료 버튼이므로 Enter만 눌러도 기존처럼 이전 화면으로 돌아간다.
         if (game && !game.running) {
-            if (key === 'escape') closeResultScreen();
+            if (key === 'escape') {
+                // 리플레이 재생 페이지는 종료 버튼이 없으므로 ESC로도 메뉴 화면에 나가지 않는다.
+                if (!isReplayPagePlayback()) closeResultScreen();
+            }
             else if (['arrowup', 'arrowleft'].includes(key)) moveResultScreenFocus(-1);
             else if (['arrowdown', 'arrowright'].includes(key)) moveResultScreenFocus(1);
             else if (key === 'enter' || key === ' ') activateResultScreenButton(resultScreenFocus);
@@ -21757,6 +21849,7 @@
         getCommonFunctions: () => commonFunctions,
         tools: toolsApi,
         leaderboard: leaderboardApi,
+        replay: replayApi,
         randomFloat,
         randomColor,
         translate,

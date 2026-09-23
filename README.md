@@ -18,6 +18,9 @@
 퍼즐뿌요 개발 도구도 이용해 보세요.
 [https://hjow.github.io/puyow/src/tools.html](https://hjow.github.io/puyow/src/tools.html)
 
+리플레이 플레이어
+[https://hjow.github.io/puyow/src/replay.html](https://hjow.github.io/puyow/src/replay.html)
+
 ## 게임 시작
 
 메인 화면에서 `게임 시작`을 선택한 뒤 난이도와 상대를 고르고 `시작`을 누르면 3초 카운트다운 후 대전이 시작됩니다. 처음에는 안드로말리우스와만 대전할 수 있으며, 승리한 뒤 다음 상대가 순서대로 열립니다.

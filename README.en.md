@@ -15,6 +15,9 @@ Alternatively, you can also play at [https://puyow-8745b.web.app](https://puyow-
 Puzzle Stage Tool
 [https://hjow.github.io/puyow/src/tools.html](https://hjow.github.io/puyow/src/tools.html)
 
+Replay Player
+[https://hjow.github.io/puyow/src/replay.html](https://hjow.github.io/puyow/src/replay.html)
+
 ## Starting the Game
 
 Select `Start Game` on the main screen, choose a difficulty and opponent, and press `Start`. The match begins after a three-second countdown. At first, only Andromalius is available; after you win, the next opponents unlock in order.
