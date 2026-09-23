@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 108;
+    const BUILDNO = 109;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -11679,6 +11679,21 @@
         return true;
     }
 
+    /** 일시정지한 리플레이를 일시정지 화면의 재개 버튼과 같은 방식으로 재개한다. @returns {boolean} 재개했는지 여부 */
+    function resumeReplayPlaybackFromPage() {
+        if (!game?.replayPlayback || !game.running || !game.paused || game.restartPending) return false;
+        resumePausedGame();
+        return true;
+    }
+
+    /** 재생 중인 리플레이의 JSON 문자열을 결과 화면의 리플레이 복사와 같은 기준으로 돌려준다. @returns {string|null} 리플레이 JSON. 재생 중이 아니면 null */
+    function getReplayPlaybackSource() {
+        const playback = game?.replayPlayback;
+        if (!playback?.replay) return null;
+        if (typeof playback.source === 'string') return playback.source;
+        try { return JSON.stringify(playback.replay); } catch { return null; }
+    }
+
     /** 불러온 리플레이를 카운트다운부터 다시 재생한다. @returns {boolean} 다시 재생을 시작했는지 여부 */
     function restartReplayPlaybackFromPage() {
         if (!game?.replayPlayback || game.restartPending) return false;
@@ -11699,7 +11714,9 @@
         isValid: (data) => Boolean(normalizeReplayData(typeof data === 'string' ? parseJSON(data) : data)),
         load: loadReplayPlaybackFromPage,
         pause: pauseReplayPlaybackFromPage,
+        resume: resumeReplayPlaybackFromPage,
         restart: restartReplayPlaybackFromPage,
+        getSource: getReplayPlaybackSource,
         /** @returns {{loaded:boolean, running:boolean, paused:boolean, countdown:number, finished:boolean, restartPending:boolean}} 현재 리플레이 재생 상태 */
         getState: () => {
             const playing = Boolean(game?.replayPlayback);
@@ -15965,6 +15982,16 @@
         });
     }
 
+    /** 일시정지한 게임을 재개 카운트다운(3초)부터 다시 진행한다. 일시정지 화면의 재개 버튼 동작이다. @returns {void} */
+    function resumePausedGame() {
+        playMenuSelectSound();
+        resetVirtualControllerInput();
+        game.paused = false;
+        game.countdown = 3000;
+        game.countdownStartsGame = false;
+        resumeBackgroundMusic();
+    }
+
     /**
      * 일시정지 오버레이에서 포커스된 명령을 실행한다.
      * @returns {void}
@@ -15973,12 +16000,7 @@
         const action = getPauseMenuButtons()[pauseMenuFocus]?.key;
         if (!game || game.restartPending || !action) return;
         if (action === 'resume') {
-            playMenuSelectSound();
-            resetVirtualControllerInput();
-            game.paused = false;
-            game.countdown = 3000;
-            game.countdownStartsGame = false;
-            resumeBackgroundMusic();
+            resumePausedGame();
         } else if (action === 'restart') {
             restartPausedGame();
         } else {

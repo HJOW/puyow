@@ -218,10 +218,9 @@ test.describe('리플레이 재생 페이지', () => {
     const expectedCount = await page.evaluate(async () => (await (await fetch('./js/replays.json')).json()).length);
     await expect(items).toHaveCount(expectedCount);
     const first = await page.evaluate(async () => (await (await fetch('./js/replays.json')).json())[0].meta);
-    const ruleLabel = await page.evaluate((rule) => window.WebPuyo.translate({
-      standard: '기본 룰', fever: '피버 룰', feverStart: '피버 룰 (시작)', relaxedFever: '피버 (완화)'
-    }[rule]), first.rule);
-    const colorLabel = await page.evaluate((count) => window.WebPuyo.translate('%1색', count), first.colors.length);
+    // 테스트 기본 언어는 영어이므로 페이지 번역표의 영어 원문이 그대로 보인다.
+    const ruleLabel = { standard: 'Standard Rules', fever: 'FEVER Rules', feverStart: 'FEVER Rules (Start)', relaxedFever: 'FEVER (Relaxed)' }[first.rule];
+    const colorLabel = `${first.colors.length} Colors`;
     await expect(items.nth(0).locator('.replay-list-number')).toHaveText('1.');
     await expect(items.nth(0).locator('.replay-list-title')).toContainText(ruleLabel);
     await expect(items.nth(0).locator('.replay-list-title')).toContainText(colorLabel);
@@ -313,5 +312,182 @@ test.describe('게임 페이지의 리플레이 일시정지', () => {
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('game_over');
     await page.keyboard.press('Escape');
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  });
+});
+
+// 페이지 문구는 puyow_replay.js 의 자체 번역표(영어 원문 키)를 쓰고, 게임 화면 언어(설정값, 없으면 브라우저 언어)를 따른다.
+test.describe('리플레이 재생 페이지의 다국어', () => {
+  /** 로케일별로 확인할 문구다. 툴바 네 버튼·안내 문구·첫 목록 항목의 룰·색 수·구경 표시다. */
+  const EXPECTED = {
+    'ko-KR': { lang: 'ko', buttons: ['JSON 불러오기', '목록에서 불러오기', '일시중지', '처음부터'], guide: 'JSON 불러오기 또는 목록에서 불러오기로 리플레이를 불러와 주세요.', rule: '피버 (완화)', colors: '5색', watch: '구경' },
+    'ja-JP': { lang: 'ja', buttons: ['JSONを読み込む', 'リストから読み込む', '一時停止', '最初から'], guide: '「JSONを読み込む」または「リストから読み込む」でリプレイを読み込んでください。', rule: 'FEVER（緩和）', colors: '5色', watch: '観戦' },
+    'zh-CN': { lang: 'zh', buttons: ['加载JSON', '从列表加载', '暂停', '从头播放'], guide: '请通过“加载JSON”或“从列表加载”加载回放。', rule: 'FEVER（缓和）', colors: '5色', watch: '观战' },
+    'de-DE': { lang: 'de', buttons: ['JSON laden', 'Aus Liste laden', 'Pause', 'Von vorn'], guide: 'Lade eine Wiederholung über „JSON laden“ oder „Aus Liste laden“.', rule: 'FEVER (Entspannt)', colors: '5 Farben', watch: 'Zuschauen' },
+    'fr-FR': { lang: 'fr', buttons: ['Charger le JSON', 'Charger depuis la liste', 'Pause', 'Recommencer'], guide: 'Chargez une reprise avec « Charger le JSON » ou « Charger depuis la liste ».', rule: 'FEVER (adouci)', colors: '5 couleurs', watch: 'Regarder' },
+    // 지원하지 않는 언어는 기본 언어인 영어로 보인다.
+    'es-ES': { lang: 'en', buttons: ['Load JSON', 'Load from List', 'Pause', 'Restart'], guide: 'Load a replay with Load JSON or Load from List.', rule: 'FEVER (Relaxed)', colors: '5 Colors', watch: 'Watch' }
+  };
+
+  for (const [locale, expected] of Object.entries(EXPECTED)) {
+    test.describe(locale, () => {
+      test.use({ locale });
+
+      test(`${locale} 로케일에서 툴바·안내·목록·팝업 문구가 ${expected.lang} 로 보인다`, async ({ page }) => {
+        await prepareNetwork(page);
+        await openReplayPage(page);
+        expect(await page.evaluate(() => document.documentElement.lang)).toBe(expected.lang);
+        expect(await page.evaluate(() => window.PuyoWReplay.getLanguage())).toBe(expected.lang);
+        expect(await page.locator('.replay-toolbar .replay-button').allTextContents()).toEqual(expected.buttons);
+        await expect(page.locator('.replay-empty-guide')).toHaveText(expected.guide);
+
+        await toolbarButton(page, 'list').click();
+        const title = page.locator('.replay-list-button').first().locator('.replay-list-title');
+        await expect(title).toHaveText(`${expected.rule} · ${expected.colors} · ${expected.watch}`);
+        await page.locator('[data-replay-action="close-list"]').click();
+
+        await toolbarButton(page, 'json').click();
+        await page.locator('[data-replay-action="dialog-confirm"]').click();
+        await expect(page.locator('.replay-dialog-message')).toHaveText(await page.evaluate(() => window.PuyoWReplay.translate('Enter the JSON code.')));
+      });
+    });
+  }
+
+  test('저장된 게임 언어 설정이 있으면 브라우저 언어보다 그것을 따른다', async ({ page }) => {
+    await prepareNetwork(page);
+    await page.addInitScript(() => {
+      // 게임 저장값은 clearList 배열이 있어야 올바른 값으로 읽는다.
+      localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { language: 'de', playerName: 'PLAYER 1' } }));
+    });
+    await openReplayPage(page);
+    expect(await page.evaluate(() => window.PuyoWReplay.getLanguage())).toBe('de');
+    await expect(toolbarButton(page, 'json')).toHaveText('JSON laden');
+  });
+});
+
+test.describe('리플레이 재생 페이지의 WebMCP', () => {
+  test.beforeEach(async ({ page }) => {
+    await prepareNetwork(page);
+    await page.addInitScript(() => {
+      window.registeredWebMcpTools = [];
+      Object.defineProperty(document, 'modelContext', {
+        configurable: true,
+        writable: true,
+        value: { registerTool: (tool) => window.registeredWebMcpTools.push(tool) }
+      });
+    });
+    await openReplayPage(page);
+    await page.waitForFunction(() => window.registeredWebMcpTools.some((tool) => tool.name === 'replay_manual'));
+  });
+
+  /** 등록된 도구를 이름으로 불러 결과를 돌려준다. */
+  function callTool(page, name, input = {}) {
+    return page.evaluate(async ([toolName, toolInput]) => {
+      const tool = window.registeredWebMcpTools.find((entry) => entry.name === toolName);
+      return tool.execute(toolInput);
+    }, [name, input]);
+  }
+
+  async function status(page) {
+    return JSON.parse(await callTool(page, 'replay_status'));
+  }
+
+  test('replay_ 접두어 도구 열 개를 게임 도구와 함께 등록한다', async ({ page }) => {
+    const names = await page.evaluate(() => window.registeredWebMcpTools.map((tool) => tool.name));
+    expect(names.filter((name) => name.startsWith('replay_'))).toEqual([
+      'replay_manual', 'replay_status', 'replay_list', 'replay_load_from_list', 'replay_load_json',
+      'replay_pause', 'replay_resume', 'replay_restart', 'replay_get_json', 'replay_show_panel'
+    ]);
+    // 게임 캔버스의 도구도 같은 문서에 있으므로 이름이 겹치면 안 된다.
+    expect(names).toContain('manual');
+    expect(new Set(names).size).toBe(names.length);
+    const readOnly = await page.evaluate(() => window.registeredWebMcpTools
+      .filter((tool) => tool.name.startsWith('replay_') && tool.annotations?.readOnlyHint).map((tool) => tool.name));
+    expect(readOnly).toEqual(['replay_manual', 'replay_status', 'replay_list', 'replay_get_json']);
+    expect(await callTool(page, 'replay_manual')).toContain('replay_load_from_list');
+  });
+
+  test('목록 조회·목록 불러오기·일시정지·재개·처음부터·JSON 조회를 도구로 모두 할 수 있다', async ({ page }) => {
+    test.setTimeout(60000);
+    let current = await status(page);
+    expect(current.phase).toBe('empty');
+    expect(current.canvasVisible).toBe(false);
+    expect(current.toolbar).toEqual({ pauseEnabled: false, restartEnabled: false });
+    expect(await callTool(page, 'replay_pause')).toContain('No replay is loaded');
+
+    const list = JSON.parse(await callTool(page, 'replay_list'));
+    const bundled = await page.evaluate(async () => (await (await fetch('./js/replays.json')).json()));
+    expect(list.loadFailed).toBe(false);
+    expect(list.count).toBe(bundled.length);
+    expect(list.replays[0]).toMatchObject({ number: 1, playable: true, rule: bundled[0].meta.rule, colorCount: bundled[0].meta.colors.length, watch: bundled[0].meta.watch });
+
+    // 사이드바를 연 상태에서 목록으로 불러오면 사이드바가 닫힌다.
+    expect(await callTool(page, 'replay_show_panel', { panel: 'list' })).toContain('Opened the replay list');
+    expect((await status(page)).openPanel).toBe('list');
+    expect(await callTool(page, 'replay_load_from_list', { number: 2 })).toContain('Loaded replay 2');
+    await expect(page.locator('.replay-sidebar')).toBeHidden();
+    current = await status(page);
+    expect(current.phase).toBe('countdown');
+    expect(current.canvasVisible).toBe(true);
+    expect(current.openPanel).toBe('none');
+    expect(current.replay).toMatchObject({ rule: bundled[1].meta.rule, colorCount: bundled[1].meta.colors.length });
+    await expect(page.locator('#puyow_target')).toBeVisible();
+
+    // 카운트다운 중 일시정지는 거절한다.
+    expect(await callTool(page, 'replay_pause')).toContain('countdown');
+    await expect.poll(async () => (await status(page)).phase).toBe('playing');
+    expect(await callTool(page, 'replay_pause')).toBe('Paused the replay.');
+    current = await status(page);
+    expect(current.phase).toBe('paused');
+    expect(current.toolbar.pauseEnabled).toBe(false);
+    await expect(toolbarButton(page, 'pause')).toBeDisabled();
+    expect(await callTool(page, 'replay_pause')).toContain('already paused');
+
+    expect(await callTool(page, 'replay_resume')).toContain('Resumed');
+    expect((await status(page)).phase).toBe('countdown');
+    await expect(toolbarButton(page, 'pause')).toBeEnabled();
+    expect(await callTool(page, 'replay_resume')).toContain('not paused');
+
+    await expect.poll(async () => (await status(page)).phase).toBe('playing');
+    await page.waitForTimeout(500);
+    expect(await callTool(page, 'replay_restart')).toContain('Restarting');
+    await expect.poll(async () => (await status(page)).countdownMs).toBeGreaterThan(2000);
+
+    // 결과 화면의 리플레이 복사와 같은 JSON 을 돌려준다.
+    const json = JSON.parse(await callTool(page, 'replay_get_json'));
+    expect(json.meta).toEqual(bundled[1].meta);
+
+    await expect(callTool(page, 'replay_load_from_list', { number: bundled.length + 1 })).rejects.toThrow();
+  });
+
+  test('replay_load_json 과 replay_show_panel 은 팝업과 같은 방식으로 불러오고 패널을 열고 닫는다', async ({ page }) => {
+    expect(await callTool(page, 'replay_show_panel', { panel: 'json' })).toBe('Opened the Load JSON popup.');
+    await expect(page.locator('.replay-dialog-backdrop')).toBeVisible();
+    expect((await status(page)).openPanel).toBe('json');
+
+    expect(await callTool(page, 'replay_load_json', { json: '{"version": 3}' })).toContain('invalid');
+    await expect(page.locator('.replay-dialog-backdrop')).toBeVisible();
+    expect((await status(page)).loaded).toBe(false);
+
+    expect(await callTool(page, 'replay_load_json', { json: await readBundledReplay(page, 0) })).toContain('Loaded the replay');
+    await expect(page.locator('.replay-dialog-backdrop')).toBeHidden();
+    expect((await status(page)).phase).toBe('countdown');
+
+    await callTool(page, 'replay_show_panel', { panel: 'list' });
+    await expect(page.locator('.replay-sidebar')).toBeVisible();
+    expect(await callTool(page, 'replay_show_panel', { panel: 'none' })).toContain('Closed');
+    await expect(page.locator('.replay-sidebar')).toBeHidden();
+    expect((await status(page)).openPanel).toBe('none');
+  });
+
+  test('재생이 끝나면 replay_status 가 finished 를 알리고 replay_restart 로 다시 재생한다', async ({ page }) => {
+    test.setTimeout(60000);
+    await callTool(page, 'replay_load_json', { json: CORRUPTED_REPLAY });
+    await expect.poll(async () => (await status(page)).phase, { timeout: 20000 }).toBe('finished');
+    const current = await status(page);
+    expect(current.toolbar).toEqual({ pauseEnabled: false, restartEnabled: true });
+    expect(current.gameScreen).toBe('game_over');
+    expect(await callTool(page, 'replay_pause')).toContain('finished');
+    expect(await callTool(page, 'replay_restart')).toContain('Restarting');
+    await expect.poll(async () => (await status(page)).phase).toBe('countdown');
   });
 });

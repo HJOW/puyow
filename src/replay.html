@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
     <head>
         <meta charset="UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -255,22 +255,22 @@
     <body class="webpuyo_replay replay-empty">
         <!-- 게임 캔버스 (리플레이를 불러오기 전에는 숨긴다) -->
         <div id="puyow_target" aria-label="Web Puyo replay"></div>
-        <p class="replay-empty-guide" data-replay-text="JSON 불러오기 또는 목록에서 불러오기로 리플레이를 불러와 주세요.">JSON 불러오기 또는 목록에서 불러오기로 리플레이를 불러와 주세요.</p>
+        <p class="replay-empty-guide" data-replay-text="Load a replay with Load JSON or Load from List.">Load a replay with Load JSON or Load from List.</p>
 
         <!-- 하단 툴바 -->
         <div class="replay-toolbar" role="toolbar">
-            <button type="button" class="replay-button" data-replay-action="json" data-replay-text="JSON 불러오기">JSON 불러오기</button>
-            <button type="button" class="replay-button" data-replay-action="list" data-replay-text="목록에서 불러오기">목록에서 불러오기</button>
+            <button type="button" class="replay-button" data-replay-action="json" data-replay-text="Load JSON">Load JSON</button>
+            <button type="button" class="replay-button" data-replay-action="list" data-replay-text="Load from List">Load from List</button>
             <span class="replay-toolbar-separator" aria-hidden="true"></span>
-            <button type="button" class="replay-button" data-replay-action="pause" data-replay-text="일시중지" disabled>일시중지</button>
-            <button type="button" class="replay-button" data-replay-action="restart" data-replay-text="처음부터" disabled>처음부터</button>
+            <button type="button" class="replay-button" data-replay-action="pause" data-replay-text="Pause" disabled>Pause</button>
+            <button type="button" class="replay-button" data-replay-action="restart" data-replay-text="Restart" disabled>Restart</button>
         </div>
 
         <!-- 우측 사이드바: 리플레이 목록 -->
         <aside class="replay-sidebar" hidden aria-labelledby="replay_sidebar_title">
             <div class="replay-sidebar-header">
-                <h2 class="replay-sidebar-title" id="replay_sidebar_title" data-replay-text="리플레이 목록">리플레이 목록</h2>
-                <button type="button" class="replay-sidebar-close" data-replay-action="close-list" data-replay-label="닫기" aria-label="닫기">×</button>
+                <h2 class="replay-sidebar-title" id="replay_sidebar_title" data-replay-text="Replay List">Replay List</h2>
+                <button type="button" class="replay-sidebar-close" data-replay-action="close-list" data-replay-label="Close" aria-label="Close">×</button>
             </div>
             <div class="replay-message replay-sidebar-message" role="alert" hidden></div>
             <p class="replay-sidebar-status" hidden></p>
@@ -280,13 +280,13 @@
         <!-- JSON 입력 레이어 팝업 -->
         <div class="replay-dialog-backdrop" hidden>
             <div class="replay-dialog" role="dialog" aria-modal="true" aria-labelledby="replay_dialog_title">
-                <h2 class="replay-dialog-title" id="replay_dialog_title" data-replay-text="리플레이 JSON 불러오기">리플레이 JSON 불러오기</h2>
-                <p class="replay-dialog-description" data-replay-text="리플레이 JSON 코드를 붙여넣어 주세요.">리플레이 JSON 코드를 붙여넣어 주세요.</p>
-                <textarea class="replay-dialog-input" spellcheck="false" autocomplete="off" data-replay-label="리플레이 JSON 코드를 붙여넣어 주세요." aria-label="리플레이 JSON 코드를 붙여넣어 주세요."></textarea>
+                <h2 class="replay-dialog-title" id="replay_dialog_title" data-replay-text="Load Replay JSON">Load Replay JSON</h2>
+                <p class="replay-dialog-description" data-replay-text="Paste the replay JSON code.">Paste the replay JSON code.</p>
+                <textarea class="replay-dialog-input" spellcheck="false" autocomplete="off" data-replay-label="Paste the replay JSON code." aria-label="Paste the replay JSON code."></textarea>
                 <div class="replay-message replay-dialog-message" role="alert" hidden></div>
                 <div class="replay-dialog-actions">
-                    <button type="button" class="replay-button is-primary" data-replay-action="dialog-confirm" data-replay-text="확인">확인</button>
-                    <button type="button" class="replay-button" data-replay-action="dialog-cancel" data-replay-text="취소">취소</button>
+                    <button type="button" class="replay-button is-primary" data-replay-action="dialog-confirm" data-replay-text="OK">OK</button>
+                    <button type="button" class="replay-button" data-replay-action="dialog-cancel" data-replay-text="Cancel">Cancel</button>
                 </div>
             </div>
         </div>
