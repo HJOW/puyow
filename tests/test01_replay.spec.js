@@ -1,7 +1,7 @@
 // 리플레이 기록과 재생의 회귀 테스트다. 실제 대전을 끝까지 진행하므로 오래 걸리는 항목이 많다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu, translated, enableReplayFeature, clickReplayPlaybackButton, submitTextDialog, cancelTextDialog } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, translated, enableReplayFeature, clickReplayPlaybackButton, submitTextDialog, cancelTextDialog, allowReplayPage } from './common/gamepage.js';
 
 setupGamePage();
 
@@ -319,6 +319,35 @@ test('메인 메뉴 리플레이 재생 버튼은 GitHub 버튼 위에 있고 �
   await page.keyboard.press('Enter');
   await cancelTextDialog(page);
   expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});
+
+test('리플레이 재생 페이지(replay.html)가 없으면 메인 메뉴 리플레이 재생 버튼은 게임 안의 JSON 입력 대화상자를 연다', async ({ page }) => {
+  // 공통 준비 과정이 replay.html 을 404 로 돌려준다.
+  await enterMainMenu(page);
+  const promptTitle = await translated(page, '리플레이 JSON코드를 붙여넣어 주세요.');
+  await page.evaluate(() => { window.testCanvasTexts = []; });
+  await clickReplayPlaybackButton(page);
+  await expect.poll(() => page.evaluate((title) => window.testCanvasTexts.includes(title), promptTitle)).toBe(true);
+  await cancelTextDialog(page);
+  expect(page.url()).toMatch(/\/puyow\.html$/);
+  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+});
+
+test('리플레이 재생 페이지(replay.html)가 있으면 메인 메뉴 리플레이 재생 버튼은 마우스·키보드 모두 그 페이지로 이동한다', async ({ page }) => {
+  await allowReplayPage(page);
+  await enterMainMenu(page);
+  await clickReplayPlaybackButton(page);
+  await page.waitForURL(/\/replay\.html$/);
+  await expect(page.locator('.replay-toolbar')).toBeVisible();
+
+  // 툴바의 게임으로 돌아가기 링크로 돌아와 방향키로 골라도 같다. 목록 항목(잠긴 구경 제외) 다음이 리플레이 재생 버튼이다.
+  await page.locator('.replay-toolbar .replay-back-link').click();
+  await page.waitForURL(/\/puyow\.html$/);
+  await expect.poll(() => page.evaluate(() => window.WebPuyo?.getScreenState().screen)).toBe('initial_title');
+  await enterMainMenu(page);
+  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForURL(/\/replay\.html$/);
 });
 
 /** 테스트용 식별 URL을 공통 사운드 풀과 적 사운드 풀에 채운다. */

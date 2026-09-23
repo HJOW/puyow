@@ -250,7 +250,7 @@ const replay = PuyoW.getReplayData();
 if (replay) navigator.clipboard.writeText(JSON.stringify(replay));
 ```
 
-That string is exactly what the `Play Replay` button in the lower left of the main menu expects. Playback is refused when `version` does not match the replay format of the running game.
+That string is exactly what `Load JSON` on the replay page (`replay.html`) and the in-game replay input dialog expect. The `Play Replay` button in the lower left of the main menu moves to `replay.html` when that page sits next to the game page, and otherwise opens the JSON input dialog inside the game. Playback is refused when `version` does not match the replay format of the running game.
 
 ### Common functions
 

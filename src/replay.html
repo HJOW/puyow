@@ -132,6 +132,16 @@
                 border-top: 1px solid var(--replay-border);
             }
             .replay-toolbar-separator { flex: none; width: 1px; height: 24px; background: var(--replay-border); }
+            /* 게임으로 돌아가기 링크는 툴바 오른쪽 끝에 붙인다. */
+            .replay-back-link {
+                flex: none;
+                margin-left: auto;
+                padding: 0 4px;
+                color: var(--replay-accent);
+                white-space: nowrap;
+                text-decoration: none;
+            }
+            .replay-back-link:hover { text-decoration: underline; }
 
             /* 우측 사이드바(리플레이 목록) */
             .replay-sidebar {
@@ -264,6 +274,7 @@
             <span class="replay-toolbar-separator" aria-hidden="true"></span>
             <button type="button" class="replay-button" data-replay-action="pause" data-replay-text="Pause" disabled>Pause</button>
             <button type="button" class="replay-button" data-replay-action="restart" data-replay-text="Restart" disabled>Restart</button>
+            <a class="replay-back-link" href="./puyow.html" data-replay-text="Back to game">Back to game</a>
         </div>
 
         <!-- 우측 사이드바: 리플레이 목록 -->

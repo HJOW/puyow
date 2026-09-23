@@ -250,7 +250,7 @@ const replay = PuyoW.getReplayData();
 if (replay) navigator.clipboard.writeText(JSON.stringify(replay));
 ```
 
-이 문자열은 메인 메뉴 좌측 하단의 `리플레이 재생` 버튼이 요구하는 입력 형식과 같습니다. `version` 값이 현재 게임의 리플레이 형식과 다르면 재생을 거부합니다.
+이 문자열은 리플레이 재생 페이지(`replay.html`)의 `JSON 불러오기`와 게임 안 리플레이 입력 대화상자가 요구하는 입력 형식과 같습니다. 메인 메뉴 좌측 하단의 `리플레이 재생` 버튼은 게임 페이지와 같은 위치에 `replay.html`이 있으면 그 페이지로 이동하고, 없으면 게임 안에서 JSON 입력 대화상자를 엽니다. `version` 값이 현재 게임의 리플레이 형식과 다르면 재생을 거부합니다.
 
 ### 공통 함수
 

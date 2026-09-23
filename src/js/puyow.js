@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 110;
+    const BUILDNO = 111;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -873,6 +873,8 @@
     const TITLE_REPLAY_BUTTON = { x: 32, y: 603, width: 85, height: 23 };
     /** 메인 메뉴 좌측 하단 리더보드 버튼이 이동할 리더보드 화면 주소다. 게임 페이지 기준 상대 경로다. @type {string} */
     const LEADERBOARD_PAGE_URL = './leaderboard.html';
+    /** 메인 메뉴 리플레이 재생 버튼이 이동할 리플레이 재생 페이지 주소다. 게임 페이지 기준 상대 경로이며, 초기화 때 이 페이지가 있는지 확인한다. @type {string} */
+    const REPLAY_PAGE_URL = './replay.html';
     /** 메인 메뉴 방향키 포커스 이동 순서다. 목록 항목 뒤에 좌측 하단 버튼을 위에서 아래로(리플레이 재생, 리더보드, GitHub), 이어서 음소거 버튼이 온다. @type {number[]} */
     const TITLE_MENU_FOCUS_ORDER = [
         ...TITLE_MENU_OPTIONS.map((option, index) => index),
@@ -928,6 +930,8 @@
     let pauseMenuFocus = 0;
     /** 리플레이 재생 페이지(replay.html)에서 실행 중인지 여부다. 참이면 리플레이 재생의 일시정지·결과 화면에서 종료 버튼을 빼고, 리플레이를 불러오기 전에는 게임 입력을 막는다. @type {boolean} */
     let replayPageMode = false;
+    /** 리플레이 재생 페이지(replay.html)가 서버에 있는지 여부다. 참이면 메인 메뉴의 리플레이 재생 버튼이 JSON 입력 대화상자 대신 그 페이지로 이동한다. 초기화 때 refreshReplayPageAvailability()가 정한다. @type {boolean} */
+    let replayPageAvailable = false;
     /** 결과 화면에서 포커스된 버튼 순번이다. 0번은 대개 종료 버튼이다(너랑 나랑은 다시 플레이, 리플레이 재생 페이지는 다시보기). @type {number} */
     let resultScreenFocus = 0;
     /** 직전 애니메이션 프레임의 시각이다. @type {number} */
@@ -11523,6 +11527,35 @@
         return entry ? entry.createController() : new PracticeEnemy();
     }
 
+    /**
+     * 리플레이 재생 페이지(replay.html)가 있는지 fetch로 확인해 replayPageAvailable에 담는다.
+     * 페이지가 없거나(404 등) 확인할 수 없으면(file:// 실행, 네트워크 오류) 기존처럼 게임 안에서 JSON을 입력받는다.
+     * @returns {Promise<boolean>} 리플레이 재생 페이지 사용 가능 여부
+     */
+    async function refreshReplayPageAvailability() {
+        replayPageAvailable = false;
+        // 리플레이 재생 페이지 자신은 메인 메뉴를 쓰지 않으므로 확인하지 않는다.
+        if (replayPageMode || typeof fetch !== 'function') return false;
+        try {
+            const response = await fetch(convertURL(REPLAY_PAGE_URL), { cache: 'no-store' });
+            replayPageAvailable = response.ok;
+        } catch (error) {
+            console.info('Puyo W 리플레이 재생 페이지를 찾지 못해 게임 안에서 리플레이를 재생합니다.', error);
+            replayPageAvailable = false;
+        }
+        return replayPageAvailable;
+    }
+
+    /**
+     * 메인 메뉴의 리플레이 재생 버튼을 실행한다.
+     * 리플레이 재생 페이지가 있으면 현재 페이지를 그 페이지로 옮기고, 없으면 게임 안의 JSON 입력 대화상자를 연다.
+     * @returns {void}
+     */
+    function openReplayPlayback() {
+        if (replayPageAvailable) window.location.href = convertURL(REPLAY_PAGE_URL);
+        else openReplayPlaybackPrompt();
+    }
+
     /** 메인 메뉴에서 리플레이 JSON을 입력받아 재생을 시작한다. @returns {void} */
     function openReplayPlaybackPrompt() {
         askText(translate('리플레이 JSON코드를 붙여넣어 주세요.'), true, TEXT_DIALOG_IMPORT_MAX_LENGTH).then((serialized) => {
@@ -15858,7 +15891,7 @@
         else if (titleMenuFocus === TITLE_WATCH_MENU_INDEX) openWatchSelection();
         else if (titleMenuFocus === 5) openGallery();
         else if (titleMenuFocus === 6) openSettings();
-        else if (titleMenuFocus === TITLE_REPLAY_FOCUS_INDEX) openReplayPlaybackPrompt();
+        else if (titleMenuFocus === TITLE_REPLAY_FOCUS_INDEX) openReplayPlayback();
         else if (titleMenuFocus === TITLE_LEADERBOARD_FOCUS_INDEX) openLeaderboardPage();
         else if (titleMenuFocus === TITLE_GITHUB_FOCUS_INDEX) {
             const githubWindow = window.open(convertURL('https://github.com/HJOW/puyow'), '_blank');
@@ -17410,7 +17443,7 @@
                     'Leaderboard: the top 10 scores are kept only in this browser (localStorage key puyow_leaderboard) with the player name and the date and time when each score was recorded, and are viewed on the separate leaderboard.html page, which the Leaderboard button at the bottom left of the main menu opens in the same tab. Standard, FEVER, and FEVER (start) matches record the final score only when the human player wins, separately for each AI difficulty, color count, and opponent; matches against Solomon are never recorded. Practice and continuous fever record the final score separately for each color count only when the player loses (quitting from the pause menu is not recorded). Together (offline and online), watch mode, Puzzle Puyo, the tutorial, the simulator, and replay playback are never recorded.',
                     'Choosing Together mode in the main menu first opens a selection of Offline Play, Online Play, and Cancel (together_mode_select). Offline Play opens the offline together guide (together_guide), where the rule and color count are chosen. Online Play opens login and signup, then the lobby and room screens; it is hidden when the configured server does not provide online play.',
                     'Offline together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',
-                    'Replays of recorded matches can be played back from the main menu; during playback no input is accepted except Escape, which skips to the result screen. Online matches cannot be paused or recorded. The tutorial, simulator, gallery, and settings are separate menu screens. Confirmation and text input dialogs capture all input until they are answered.',
+                    'Replays of recorded matches can be played back with the Play Replay button at the bottom left of the main menu. When the separate replay.html page exists next to the game page, that button opens it in the same tab; otherwise it opens a text input dialog for replay JSON and plays the replay in the game. During playback no input is accepted except Escape, which opens the pause screen. Online matches cannot be paused or recorded. The tutorial, simulator, gallery, and settings are separate menu screens. Confirmation and text input dialogs capture all input until they are answered.',
                     'Tools: now_screen returns the exact screen, the match mode and rule, and whether a replay, ONNX model loading, confirmation dialog, or text input dialog is in progress. now_game_status works only while a match is playing or paused, in every mode including online, watch, together, and replay playback, and includes online connection state when applicable. Its warningPuyos are the warnings shown on the current field; normalDamage reports DAMAGE reserved for the normal field during FEVER. point_recommend works only while now_screen reports playerCanControl, and marks one cell on the left field until the active pair locks. show_message displays already-localized text at the top of the current screen. screen_layout reports the canvas fit mode, margins, 90-degree portrait rotation, and the on-screen canvas box, which are needed to convert page clicks into logical 1280x720 game coordinates.'
                 ].join('\n\n')
             },
@@ -17782,6 +17815,8 @@
         refreshLocalAiAvailability();
         refreshOnlinePlayAvailability();
         refreshLeaderboardServerAvailability();
+        // 리플레이 재생 페이지(replay.html)가 있으면 메인 메뉴의 리플레이 재생 버튼이 그 페이지로 이동한다.
+        refreshReplayPageAvailability();
         // 첫 화면은 제목과 시작 문구만 즉시 표시한 뒤 갤러리 미리보기를 비동기로 준비한다.
         render();
         scheduleFeverStageValidation();

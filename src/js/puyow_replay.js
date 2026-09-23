@@ -42,6 +42,7 @@
             'Load from List': '목록에서 불러오기',
             'Pause': '일시중지',
             'Restart': '처음부터',
+            'Back to game': '게임으로 돌아가기',
             'Replay List': '리플레이 목록',
             'Close': '닫기',
             'Load Replay JSON': '리플레이 JSON 불러오기',
@@ -67,6 +68,7 @@
             'Load from List': 'リストから読み込む',
             'Pause': '一時停止',
             'Restart': '最初から',
+            'Back to game': 'ゲームに戻る',
             'Replay List': 'リプレイ一覧',
             'Close': '閉じる',
             'Load Replay JSON': 'リプレイJSONを読み込む',
@@ -92,6 +94,7 @@
             'Load from List': '从列表加载',
             'Pause': '暂停',
             'Restart': '从头播放',
+            'Back to game': '返回游戏',
             'Replay List': '回放列表',
             'Close': '关闭',
             'Load Replay JSON': '加载回放JSON',
@@ -117,6 +120,7 @@
             'Load from List': 'Aus Liste laden',
             'Pause': 'Pause',
             'Restart': 'Von vorn',
+            'Back to game': 'Zurück zum Spiel',
             'Replay List': 'Wiederholungsliste',
             'Close': 'Schließen',
             'Load Replay JSON': 'Wiederholungs-JSON laden',
@@ -142,6 +146,7 @@
             'Load from List': 'Charger depuis la liste',
             'Pause': 'Pause',
             'Restart': 'Recommencer',
+            'Back to game': 'Retour au jeu',
             'Replay List': 'Liste des reprises',
             'Close': 'Fermer',
             'Load Replay JSON': 'Charger le JSON de la reprise',
@@ -699,7 +704,7 @@
     /** WebMCP 도구 설명서다. @returns {string} 영어 설명 */
     function buildMcpManual() {
         return [
-            'This is the Puyo W replay page. It plays back recorded Puyo W matches on the game canvas in the middle. A bottom toolbar has four buttons: Load JSON (opens a popup with a text area for replay JSON), Load from List (opens a right sidebar listing the bundled replays from replays.json), Pause, and Restart. Pause and Restart stay disabled until a replay is loaded.',
+            'This is the Puyo W replay page. It plays back recorded Puyo W matches on the game canvas in the middle. A bottom toolbar has four buttons: Load JSON (opens a popup with a text area for replay JSON), Load from List (opens a right sidebar listing the bundled replays from replays.json), Pause, and Restart. Pause and Restart stay disabled until a replay is loaded. At the right end of the toolbar, a Back to game link moves this tab to the game page (puyow.html).',
             'Before any replay is loaded the game canvas is hidden and a hint is shown instead; keyboard and gamepad input do not reach the game then. Loading a replay shows the canvas and starts playback with a 3-second countdown.',
             'Pause works like pressing Escape during a match, except during the countdown, when it does nothing. While paused, the canvas shows a pause screen with only Resume and Restart (no Exit), and the toolbar Pause button is disabled until playback resumes. Resuming also runs a 3-second countdown. Restart (toolbar or pause screen) stops playback and plays the same replay again from the start, countdown included.',
             'When playback ends, a result screen shows Replay (watch it again; the same as Restart) and Copy Replay (copies the replay JSON). There is no Exit button and Escape does nothing there, so the page never leaves the replay for the game menus. The toolbar Pause button is disabled on the result screen.',

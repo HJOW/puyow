@@ -78,6 +78,13 @@ async function disableLocalAiModel(page) {
   });
 }
 
+// 리플레이 재생 페이지(replay.html)가 있으면 메인 메뉴의 리플레이 재생 버튼이 그 페이지로 이동한다.
+// 게임 안의 리플레이 JSON 입력 대화상자를 다루는 기존 테스트를 위해 기본값은 페이지가 없는 것(404)으로 둔다.
+// 페이지 이동을 확인하는 테스트만 allowReplayPage()로 이 라우트를 걷고 다시 연다.
+async function hideReplayPage(page) {
+  await page.route('**/replay.html', (route) => route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not Found' }));
+}
+
 /**
  * 게임 페이지 테스트의 공통 준비 과정을 현재 spec 파일에 등록한다.
  * 각 spec 파일이 자기 최상위에서 한 번 부르면 그 파일의 test.beforeEach가 된다.
@@ -87,9 +94,22 @@ export function setupGamePage() {
     await installMockGamepad(page);
     await blockOnnxWasmCdn(page);
     await disableLocalAiModel(page);
+    await hideReplayPage(page);
     await page.goto(GAME_PAGE);
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   });
+}
+
+/**
+ * 공통 준비 과정이 숨긴 리플레이 재생 페이지(replay.html)를 다시 보이게 하고 게임 페이지를 다시 연다.
+ * 게임은 초기화 때 페이지 존재 여부를 확인하므로 라우트를 걷은 뒤 새로 읽어야 한다.
+ * @param {import('@playwright/test').Page} page 대상 페이지
+ * @returns {Promise<void>}
+ */
+export async function allowReplayPage(page) {
+  await page.unroute('**/replay.html');
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.WebPuyo?.getScreenState().screen)).toBe('initial_title');
 }
 
 export async function enterMainMenu(page) {

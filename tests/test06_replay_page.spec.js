@@ -74,6 +74,19 @@ test.describe('리플레이 재생 페이지', () => {
     expect(canvasBox.width).toBeGreaterThan(0);
   });
 
+  test('툴바 오른쪽 끝의 게임으로 돌아가기 링크를 누르면 게임 페이지로 이동한다', async ({ page }) => {
+    const link = page.locator('.replay-toolbar .replay-back-link');
+    await expect(link).toHaveText('Back to game');
+    await expect(link).toHaveAttribute('href', './puyow.html');
+    // 링크는 툴바의 마지막 요소이며 다른 버튼보다 오른쪽, 툴바 오른쪽 끝 가까이에 있다.
+    const [linkBox, restartBox, toolbarBox] = await Promise.all([link.boundingBox(), toolbarButton(page, 'restart').boundingBox(), page.locator('.replay-toolbar').boundingBox()]);
+    expect(linkBox.x).toBeGreaterThan(restartBox.x + restartBox.width);
+    expect(toolbarBox.x + toolbarBox.width - (linkBox.x + linkBox.width)).toBeLessThan(40);
+    await link.click();
+    await page.waitForURL(/\/puyow\.html$/);
+    await expect.poll(() => page.evaluate(() => window.WebPuyo?.getScreenState?.().screen)).toBe('initial_title');
+  });
+
   test('리플레이를 불러오기 전에는 게임 캔버스를 숨기고 게임 입력도 받지 않으며, 불러오면 캔버스를 보인다', async ({ page }) => {
     const target = page.locator('#puyow_target');
     const guide = page.locator('.replay-empty-guide');
@@ -317,15 +330,15 @@ test.describe('게임 페이지의 리플레이 일시정지', () => {
 
 // 페이지 문구는 puyow_replay.js 의 자체 번역표(영어 원문 키)를 쓰고, 게임 화면 언어(설정값, 없으면 브라우저 언어)를 따른다.
 test.describe('리플레이 재생 페이지의 다국어', () => {
-  /** 로케일별로 확인할 문구다. 툴바 네 버튼·안내 문구·첫 목록 항목의 룰·색 수·구경 표시다. */
+  /** 로케일별로 확인할 문구다. 툴바 네 버튼·게임으로 돌아가기 링크·안내 문구·첫 목록 항목의 룰·색 수·구경 표시다. */
   const EXPECTED = {
-    'ko-KR': { lang: 'ko', buttons: ['JSON 불러오기', '목록에서 불러오기', '일시중지', '처음부터'], guide: 'JSON 불러오기 또는 목록에서 불러오기로 리플레이를 불러와 주세요.', rule: '피버 (완화)', colors: '5색', watch: '구경' },
-    'ja-JP': { lang: 'ja', buttons: ['JSONを読み込む', 'リストから読み込む', '一時停止', '最初から'], guide: '「JSONを読み込む」または「リストから読み込む」でリプレイを読み込んでください。', rule: 'FEVER（緩和）', colors: '5色', watch: '観戦' },
-    'zh-CN': { lang: 'zh', buttons: ['加载JSON', '从列表加载', '暂停', '从头播放'], guide: '请通过“加载JSON”或“从列表加载”加载回放。', rule: 'FEVER（缓和）', colors: '5色', watch: '观战' },
-    'de-DE': { lang: 'de', buttons: ['JSON laden', 'Aus Liste laden', 'Pause', 'Von vorn'], guide: 'Lade eine Wiederholung über „JSON laden“ oder „Aus Liste laden“.', rule: 'FEVER (Entspannt)', colors: '5 Farben', watch: 'Zuschauen' },
-    'fr-FR': { lang: 'fr', buttons: ['Charger le JSON', 'Charger depuis la liste', 'Pause', 'Recommencer'], guide: 'Chargez une reprise avec « Charger le JSON » ou « Charger depuis la liste ».', rule: 'FEVER (adouci)', colors: '5 couleurs', watch: 'Regarder' },
+    'ko-KR': { lang: 'ko', buttons: ['JSON 불러오기', '목록에서 불러오기', '일시중지', '처음부터'], guide: 'JSON 불러오기 또는 목록에서 불러오기로 리플레이를 불러와 주세요.', rule: '피버 (완화)', colors: '5색', watch: '구경', back: '게임으로 돌아가기' },
+    'ja-JP': { lang: 'ja', buttons: ['JSONを読み込む', 'リストから読み込む', '一時停止', '最初から'], guide: '「JSONを読み込む」または「リストから読み込む」でリプレイを読み込んでください。', rule: 'FEVER（緩和）', colors: '5色', watch: '観戦', back: 'ゲームに戻る' },
+    'zh-CN': { lang: 'zh', buttons: ['加载JSON', '从列表加载', '暂停', '从头播放'], guide: '请通过“加载JSON”或“从列表加载”加载回放。', rule: 'FEVER（缓和）', colors: '5色', watch: '观战', back: '返回游戏' },
+    'de-DE': { lang: 'de', buttons: ['JSON laden', 'Aus Liste laden', 'Pause', 'Von vorn'], guide: 'Lade eine Wiederholung über „JSON laden“ oder „Aus Liste laden“.', rule: 'FEVER (Entspannt)', colors: '5 Farben', watch: 'Zuschauen', back: 'Zurück zum Spiel' },
+    'fr-FR': { lang: 'fr', buttons: ['Charger le JSON', 'Charger depuis la liste', 'Pause', 'Recommencer'], guide: 'Chargez une reprise avec « Charger le JSON » ou « Charger depuis la liste ».', rule: 'FEVER (adouci)', colors: '5 couleurs', watch: 'Regarder', back: 'Retour au jeu' },
     // 지원하지 않는 언어는 기본 언어인 영어로 보인다.
-    'es-ES': { lang: 'en', buttons: ['Load JSON', 'Load from List', 'Pause', 'Restart'], guide: 'Load a replay with Load JSON or Load from List.', rule: 'FEVER (Relaxed)', colors: '5 Colors', watch: 'Watch' }
+    'es-ES': { lang: 'en', buttons: ['Load JSON', 'Load from List', 'Pause', 'Restart'], guide: 'Load a replay with Load JSON or Load from List.', rule: 'FEVER (Relaxed)', colors: '5 Colors', watch: 'Watch', back: 'Back to game' }
   };
 
   for (const [locale, expected] of Object.entries(EXPECTED)) {
@@ -338,6 +351,7 @@ test.describe('리플레이 재생 페이지의 다국어', () => {
         expect(await page.evaluate(() => document.documentElement.lang)).toBe(expected.lang);
         expect(await page.evaluate(() => window.PuyoWReplay.getLanguage())).toBe(expected.lang);
         expect(await page.locator('.replay-toolbar .replay-button').allTextContents()).toEqual(expected.buttons);
+        await expect(page.locator('.replay-toolbar .replay-back-link')).toHaveText(expected.back);
         await expect(page.locator('.replay-empty-guide')).toHaveText(expected.guide);
 
         await toolbarButton(page, 'list').click();
