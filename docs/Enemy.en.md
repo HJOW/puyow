@@ -21,6 +21,22 @@ The built-in `PuyoW.Vapula` and `PuyoW.Oriax` are opponents ordered after Zagan.
 
 Vapula was released in BUILDNO 81: it can be selected after beating Zagan, is excluded from Watch mode candidates like other ONNX opponents, and is included in card acquisition. Oriax is still upcoming with `notAvail = true`, so it appears as a gray coming-soon card in opponent selection and is excluded from selection, Watch mode, and card acquisition. Pages without the ONNX runtime hide both from opponent selection, like other ONNX opponents, and both are registered in the gallery under its existing unlock rules.
 
+BUILDNO 112 adds `Amii`, `Ose`, `Gremory`, `Orobas`, `Murmur`, `Caim`, `Alokes`, `Balaam`, and `Purkas` after Oriax, in that order (`sortPriority` 15–23). All are public `PuyoW` classes extending `OnnxEnemy` directly. They share Oriax's upcoming status, temporary model path, and selection restrictions. They appear in the gallery under its existing unlock rules and are excluded from cards, Watch mode, leaderboard opponent lists, and Python training opponents. Update each constructor's `notAvail` and `modelPath` when releasing that opponent.
+
+Each has normal, crisis, and defeated portraits plus matching field, bezel, and center colors. Names and class identifiers follow the project's spellings. Symbols from the [reference descriptions](https://en.wikipedia.org/wiki/List_of_demons_in_the_Ars_Goetia) are reinterpreted as decorations in the existing single-headed human Canvas style.
+
+| Opponent | Portrait symbols | Theme |
+| --- | --- | --- |
+| Amii | Flame crest and cape, star book | Copper |
+| Ose | Leopard ears and tail, mask, crown | Olive |
+| Gremory | Long hair, waist crown, camel-patterned treasure chest | Rose |
+| Orobas | Horse ears and mane, horseshoe shield | Steel blue |
+| Murmur | Ducal crown, feather wings, trumpet, spirit flame | Sage |
+| Caim | Black bird feathers, sword, embers | Gray violet |
+| Alokes | Lion mane, star armor, cavalry lance | Brick |
+| Balaam | Bear ears, bull and ram crown, hawk crest, serpent tail | Ochre |
+| Purkas | White hair and beard, forked spear, philosophy book | Slate |
+
 ## Opponent-type identifier: `getClassType()`
 
 `getClassType()` returns the unique, stable string that identifies an opponent's sound settings. Every new `Enemy` subclass must override it. Return the class's code name; unlike `getName()`, it must not be translated or changed at runtime.

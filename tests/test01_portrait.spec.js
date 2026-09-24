@@ -14,6 +14,7 @@ test('모든 적의 세 표정은 카드·대전·갤러리 크기로 그려지�
     const expressions = ['normal', 'crisis', 'defeated'];
     const labels = ['일반', '위기', '패배'];
     const sheet = document.querySelector('#portraits').getContext('2d');
+    sheet.canvas.height = Math.ceil(window.portraitTestEnemies.length / 3) * 224;
     const results = [];
     window.portraitTestEnemies.forEach((enemy, index) => {
       const variants = [];
@@ -47,10 +48,10 @@ test('모든 적의 세 표정은 카드·대전·갤러리 크기로 그려지�
       expressions.forEach((expression, column) => {
         const x = (index % 3) * 540 + column * 180;
         const y = Math.floor(index / 3) * 224;
-        sheet.fillStyle = index % 2 ? '#e8eaf4' : '#f5e8e1';
+        sheet.fillStyle = enemy.getFieldThemeColors().field;
         sheet.fillRect(x + 3, y + 3, 174, 218);
         enemy.drawPortrait(sheet, x + 90, y + 119, 1.12, expression);
-        sheet.fillStyle = '#343047'; sheet.textAlign = 'center'; sheet.font = 'bold 14px sans-serif';
+        sheet.fillStyle = '#ffffff'; sheet.textAlign = 'center'; sheet.font = 'bold 14px sans-serif';
         sheet.fillText(enemy.getName(), x + 90, y + 22);
         sheet.font = '12px sans-serif'; sheet.fillText(labels[column], x + 90, y + 212);
       });
@@ -61,6 +62,7 @@ test('모든 적의 세 표정은 카드·대전·갤러리 크기로 그려지�
   expect(result.map(({ type }) => type).sort()).toEqual([
     'Solomon', 'Andromalius', 'Dantalion', 'Seere', 'Decarabia', 'Belial', 'Amdusias',
     'Kimaris', 'Andrealphus', 'Flauros', 'Andras', 'Valak', 'Zagan', 'Vapula', 'Oriax',
+    'Amii', 'Ose', 'Gremory', 'Orobas', 'Murmur', 'Caim', 'Alokes', 'Balaam', 'Purkas',
   ].sort());
   for (const enemy of result) {
     for (const variant of enemy.variants) {

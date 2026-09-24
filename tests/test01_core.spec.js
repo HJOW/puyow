@@ -867,10 +867,10 @@ test('헥사액트·펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 
   });
 });
 
-test('출시된 바퓰라와 출시 예정 오리아스는 자간과 같은 ONNX AI를 쓰고 모델 경로는 적마다 독립적이다', async ({ page }) => {
+test('출시된 바퓰라와 출시 예정 적들은 자간과 같은 ONNX AI를 쓰고 모델 경로는 적마다 독립적이다', async ({ page }) => {
   const result = await page.evaluate(() => {
     const zagan = new window.WebPuyo.Zagan();
-    return ['Vapula', 'Oriax'].map((type) => {
+    return ['Vapula', 'Oriax', 'Amii', 'Ose', 'Gremory', 'Orobas', 'Murmur', 'Caim', 'Alokes', 'Balaam', 'Purkas'].map((type) => {
       const enemy = new window.WebPuyo[type]();
       // 표시·출시·모델 경로를 제외한 초기 AI 상태와 실제 호출 메서드를 비교한다.
       const aiState = (controller) => Object.fromEntries(Object.entries(controller).filter(([key]) => !['sortPriority', 'notAvail', 'modelPath'].includes(key)));
@@ -890,6 +890,15 @@ test('출시된 바퓰라와 출시 예정 오리아스는 자간과 같은 ONNX
   expect(result).toEqual([
     { type: 'Vapula', name: '바퓰라', priority: 13, notAvail: false, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
     { type: 'Oriax', name: '오리아스', priority: 14, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Amii', name: '아미', priority: 15, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Ose', name: '오세', priority: 16, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Gremory', name: '그레모리', priority: 17, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Orobas', name: '오로바스', priority: 18, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Murmur', name: '무르무르', priority: 19, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Caim', name: '카임', priority: 20, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Alokes', name: '알로케스', priority: 21, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Balaam', name: '발람', priority: 22, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Purkas', name: '푸르카스', priority: 23, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
   ]);
 });
 

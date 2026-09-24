@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 111;
+    const BUILDNO = 112;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -402,6 +402,8 @@
             '게임 시작': 'Game Start', '구경': 'Watch', '모드': 'Mode', '규칙': 'Rules', '색상 수': 'Colors', '다음 대전까지 %1초': 'Next match in %1 sec', '기본 룰': 'Standard Rules', '피버 룰': 'FEVER Rules', '연속 피버': 'Continuous FEVER', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Puzzle Puyo Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Recommended turns: %1', '현재 턴 %1': 'Turn %1', '현재 턴 %1 / %2': 'Turn %1 / %2', '%1 연쇄 해봐': 'Make a %1-chain!', '싹쓸이 해봐': 'Get an all clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Pop %1 puyos at once!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Pop %1 colors at once!', '방해뿌요 %1개를 발생 시켜봐': 'Send %1 garbage puyos!', '스테이지 클리어': 'Stage Clear', '(출시 예정)': '(Coming soon)', '목표 연쇄': 'TARGET COMBO', '남은 시간': 'LEFT TIME', '연습': 'Practice', '선택': 'Select', '난이도': 'Difficulty', '적 선택': 'Opponent', 'ENTER 혹은 클릭하여 시작': 'Press ENTER or click to start',
             '3색': '3 Colors', '4색': '4 Colors', '5색': '5 Colors', '쉬움': 'Easy', '보통': 'Normal', '어려움': 'Hard', '안드로말리우스': 'Andromalius', '단탈리온': 'Dantalion', '세레': 'Seere', '데카라비아': 'Decarabia', '벨리알': 'Belial', '암두시아스': 'Amdusias', '키마리스': 'Kimaris', '안드레알푸스': 'Andrealphus', '플라우로스': 'Flauros', '안드라스': 'Andras', '발라크': 'Valak', '자간': 'Zagan', '시작': 'Start', '이전': 'Back',
             '바퓰라': 'Vapula', '오리아스': 'Oriax',
+            '아미': 'Amii', '오세': 'Ose', '그레모리': 'Gremory', '오로바스': 'Orobas', '무르무르': 'Murmur',
+            '카임': 'Caim', '알로케스': 'Alokes', '발람': 'Balaam', '푸르카스': 'Purkas',
             '극한': 'Extreme',
             '일시정지': 'Paused', '재개': 'Resume', '다시하기': 'Restart', '종료': 'Exit', 'GitHub': 'GitHub',
             '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
@@ -435,6 +437,8 @@
             '게임 시작': 'ゲーム開始', '구경': '観戦', '모드': 'モード', '규칙': 'ルール', '색상 수': '色数', '다음 대전까지 %1초': '次の対戦まで%1秒', '기본 룰': '基本ルール', '피버 룰': 'FEVERルール', '연속 피버': '連続FEVER', '퍼즐뿌요': 'パズルぷよ', '퍼즐뿌요 스테이지': 'パズルぷよステージ', '스테이지 %1': 'ステージ %1', '권장 턴 수 %1': '推奨ターン数: %1', '현재 턴 %1': 'ターン %1', '현재 턴 %1 / %2': 'ターン %1 / %2', '%1 연쇄 해봐': '%1連鎖してみよう！', '싹쓸이 해봐': '全消ししてみよう！', '한 번에 %1개 뿌요를 터뜨려봐': '一度に%1個のぷよを消そう！', '한 번에 %1가지 색 뿌요를 터뜨려봐': '一度に%1色のぷよを消そう！', '방해뿌요 %1개를 발생 시켜봐': 'おじゃまぷよを%1個送ろう！', '스테이지 클리어': 'ステージクリア', '(출시 예정)': '(近日公開)', '목표 연쇄': '目標連鎖', '남은 시간': '残り時間', '연습': '練習', '선택': '選択', '난이도': '難易度', '적 선택': '対戦相手', 'ENTER 혹은 클릭하여 시작': 'ENTERキーまたはクリックで開始',
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '簡単', '보통': '普通', '어려움': '難しい', '안드로말리우스': 'アンドロマリウス', '단탈리온': 'ダンタリオン', '세레': 'セーレ', '데카라비아': 'デカラビア', '벨리알': 'ベリアル', '암두시아스': 'アムドゥシアス', '키마리스': 'キマリス', '안드레알푸스': 'アンドレアルフス', '플라우로스': 'フラウロス', '안드라스': 'アンドラス', '발라크': 'ヴァラク', '자간': 'ザガン', '시작': '開始', '이전': '戻る',
             '바퓰라': 'ヴァプラ', '오리아스': 'オリアス',
+            '아미': 'アミー', '오세': 'オセ', '그레모리': 'グレモリー', '오로바스': 'オロバス', '무르무르': 'ムルムル',
+            '카임': 'カイム', '알로케스': 'アロケス', '발람': 'バラム', '푸르카스': 'フルカス',
             '극한': '極限',
             '일시정지': '一時停止', '재개': '再開', '다시하기': 'やり直す', '종료': '終了', 'GitHub': 'GitHub',
             '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
@@ -469,6 +473,8 @@
             '3색': '3色', '4색': '4色', '5색': '5色', '쉬움': '简单', '보통': '普通', '어려움': '困难', '안드로말리우스': '安德罗马利乌斯', '단탈리온': '丹塔利昂', '세레': '西瑞', '데카라비亚': '德卡拉比亚', '벨리알': '贝利亚尔', '시작': '开始', '이전': '返回',
             '암두시아스': '阿姆杜西亚斯', '키마리스': '基马里斯', '안드레알푸스': '安德雷阿尔弗斯', '플라우로스': '弗劳洛斯', '안드라스': '安德拉斯', '발라크': '瓦拉克', '자간': '扎甘',
             '바퓰라': '瓦布拉', '오리아스': '欧里亚斯',
+            '아미': '阿米', '오세': '欧塞', '그레모리': '格莫瑞', '오로바스': '欧洛巴士', '무르무르': '毛莫',
+            '카임': '凯姆', '알로케스': '阿洛凯斯', '발람': '巴兰', '푸르카스': '佛尔卡斯',
             '극한': '极限',
             '일시정지': '暂停', '재개': '继续', '다시하기': '重新开始', '종료': '退出', 'GitHub': 'GitHub',
             '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
@@ -19638,6 +19644,15 @@
         Zagan: { hair: '#bd8b58', light: '#eed0a0', coat: '#ad7f4d', accent: '#ffe6a4', skin: '#f3c5a3', motif: 'bull' },
         Vapula: { hair: '#cc955c', light: '#ffe0ac', coat: '#568f87', accent: '#f8d589', skin: '#ffddbf', motif: 'griffin' },
         Oriax: { hair: '#b594c7', light: '#ecd8f7', coat: '#64588f', accent: '#f5db96', skin: '#ffddcd', motif: 'astrologer' },
+        Amii: { hair: '#e76e4b', light: '#ffd88a', coat: '#ad5944', accent: '#ffe6a3', skin: '#ffdec5', motif: 'flameSage' },
+        Ose: { hair: '#a3ad69', light: '#e2e8ac', coat: '#657648', accent: '#f6d78f', skin: '#ffe0c4', motif: 'illusionist' },
+        Gremory: { hair: '#c66c85', light: '#f5c2c9', coat: '#a04d70', accent: '#f5d49a', skin: '#ffe2d1', motif: 'duchess' },
+        Orobas: { hair: '#597eaa', light: '#b7d3ec', coat: '#416e96', accent: '#dfd6a0', skin: '#f6d5ba', motif: 'horsePrince' },
+        Murmur: { hair: '#98b8ac', light: '#dce9cf', coat: '#52766d', accent: '#e6cd89', skin: '#f5dbca', motif: 'trumpeter' },
+        Caim: { hair: '#45485e', light: '#999ab8', coat: '#605775', accent: '#f2b87e', skin: '#ffdecd', motif: 'thrush' },
+        Alokes: { hair: '#ce775d', light: '#ffc496', coat: '#914c45', accent: '#f7da8c', skin: '#edb497', motif: 'lionKnight' },
+        Balaam: { hair: '#886a53', light: '#d9ba92', coat: '#77633f', accent: '#efd79e', skin: '#f2cbaa', motif: 'bearKing' },
+        Purkas: { hair: '#d6d8d9', light: '#ffffff', coat: '#6d7784', accent: '#d7c199', skin: '#e8c8ac', motif: 'elderKnight' },
         ChainBuildingEnemy: { hair: '#8389b8', light: '#c6ccee', coat: '#71679e', accent: '#e7ccfa', skin: '#ffe0cf', motif: 'oracle' }
     };
 
@@ -19694,6 +19709,20 @@
         context.rotate(defeated ? -0.07 : crisis ? 0.035 : 0);
 
         // 얼굴을 더 만들지 않고 날개·꼬리·망토에 원작의 실루엣을 담는다.
+        if (motif === 'flameSage') {
+            path('M-29 70 Q-68 60 -53 29 Q-49 47 -40 39 Q-64 3 -48 -17 Q-47 9 -27 10 L27 10 Q47 9 48 -17 Q64 3 40 39 Q49 47 53 29 Q68 60 29 70 Z', hair);
+            path('M-32 64 Q-48 57 -42 45 L-23 51 M32 64 Q48 57 42 45 L23 51', light, null);
+        }
+        if (motif === 'trumpeter' || motif === 'thrush') {
+            for (const direction of [-1, 1]) featherWing(direction, light, defeated ? 9 : 0);
+        }
+        if (motif === 'horsePrince' || motif === 'elderKnight') {
+            path('M26 66 Q68 82 62 35 Q77 63 63 77 Q47 91 27 77 Z', hair);
+        }
+        if (motif === 'bearKing') {
+            path('M28 70 C70 84 79 61 65 49 C52 40 49 59 66 60', null, ink, 10);
+            path('M28 70 C70 84 79 61 65 49 C52 40 49 59 66 60', null, '#95a67e', 5);
+        }
         if (motif === 'peacock') {
             for (const angle of [-0.9, -0.45, 0, 0.45, 0.9]) {
                 context.save(); context.translate(0, 51); context.rotate(angle);
@@ -19717,7 +19746,7 @@
             path('M26 69 C79 89 78 49 57 57 C42 65 76 69 72 42', null, ink, 11);
             path('M26 69 C79 89 78 49 57 57 C42 65 76 69 72 42', null, '#93b9aa', 6);
         }
-        if (motif === 'leopard') {
+        if (motif === 'leopard' || motif === 'illusionist') {
             path('M28 63 C79 83 83 35 61 43', null, ink, 15);
             path('M28 63 C79 83 83 35 61 43', null, hair, 9);
             path('M64 65 L70 68 M71 49 L78 49', null, '#79523d', 5);
@@ -19726,11 +19755,11 @@
             path('M29 69 Q66 85 66 50 L77 42 L73 62 Q61 94 29 80 Z', '#c77878');
             path('M60 75 L62 65 L70 69 M48 81 L51 73 L57 80', accent, ink, 2);
         }
-        if (['king', 'prince', 'knight', 'angel', 'oracle', 'astrologer'].includes(motif)) {
+        if (['king', 'prince', 'knight', 'angel', 'oracle', 'astrologer', 'duchess', 'horsePrince', 'trumpeter', 'lionKnight', 'bearKing', 'elderKnight'].includes(motif)) {
             path('M-24 22 Q-41 37 -49 75 Q-22 87 0 70 Q22 87 49 75 Q41 37 24 22 Z', coat);
             path('M-29 42 L-38 73 M29 42 L38 73', null, light, 2.4);
         }
-        if (['book', 'music', 'star'].includes(motif)) {
+        if (['book', 'music', 'star', 'duchess', 'elderKnight'].includes(motif)) {
             oval(-32, 1, 18, 42, hair); oval(32, 1, 18, 42, hair);
         }
 
@@ -19758,14 +19787,14 @@
         }
 
         // 큰 머리와 부드러운 앞머리 안에 사람 얼굴 하나만 배치한다.
-        if (motif === 'griffin' || motif === 'astrologer') {
-            // 두 사자 전승은 갈기 모양의 후드로 공유하고 색·소품으로 구별한다.
+        if (['griffin', 'astrologer', 'lionKnight'].includes(motif)) {
+            // 사자 전승은 갈기 모양의 후드를 공유하고 색·소품으로 구별한다.
             path('M-37 -57 L-50 -46 L-44 -30 L-51 -14 L-41 -1 L-44 16 L-26 22 L-18 31 L0 23 L18 31 L26 22 L44 16 L41 -1 L51 -14 L44 -30 L50 -46 L37 -57 Z', light);
         }
         oval(0, -29, 43, 43, hair);
         oval(-38, -17, 7, 10, skin); oval(38, -17, 7, 10, skin);
         path('M-36 -38 Q-38 -1 -24 13 Q0 30 24 13 Q38 -1 36 -38 Q0 -58 -36 -38 Z', skin);
-        if (['book', 'angel', 'music', 'peacock'].includes(motif)) {
+        if (['book', 'angel', 'music', 'peacock', 'duchess', 'elderKnight'].includes(motif)) {
             path('M-41 -20 Q-51 -66 -13 -72 Q22 -83 40 -48 L41 -15 Q25 -27 16 -50 Q-1 -23 -24 -27 L-14 -47 Q-27 -30 -41 -20 Z', hair);
             path('M-30 -47 Q-17 -64 6 -62 M23 -57 Q30 -48 33 -38', null, light, 4);
         } else {
@@ -19774,7 +19803,50 @@
         }
 
         // 적마다 다른 머리 장식이 작은 카드에서도 형태 차이를 만든다.
-        if (motif === 'king' || motif === 'prince') {
+        if (motif === 'flameSage') {
+            path('M-28 -64 Q-41 -83 -21 -94 Q-23 -79 -12 -81 Q-7 -91 0 -104 Q2 -86 17 -81 Q24 -87 22 -94 Q42 -77 28 -64 Z', hair);
+            path('M-12 -67 Q-20 -80 -7 -87 Q-9 -77 1 -79 L8 -89 Q20 -74 12 -67 Z', accent, null);
+        } else if (motif === 'illusionist') {
+            oval(-33, -64, 14, 14, hair); oval(33, -64, 14, 14, hair);
+            oval(-33, -64, 7, 7, light, null); oval(33, -64, 7, 7, light, null);
+            path('M-19 -64 L-23 -82 L-9 -75 L0 -89 L9 -75 L23 -82 L19 -64 Z', accent);
+            for (const [x, y] of [[-29, -48], [29, -45], [8, -57]]) oval(x, y, 4, 3, coat, null);
+        } else if (motif === 'duchess') {
+            path('M-37 -56 Q-54 -88 -26 -88 Q0 -102 26 -88 Q54 -88 37 -56 L28 -69 Q0 -82 -28 -69 Z', accent);
+            path('M-33 -70 Q0 -87 33 -70', null, coat, 4);
+            path('M-7 -78 L0 -87 L7 -78 L0 -69 Z', '#e9a8bf', ink, 2);
+            oval(-37, 5, 5, 8, accent, ink, 2); oval(37, 5, 5, 8, accent, ink, 2);
+        } else if (motif === 'horsePrince') {
+            path('M-31 -55 Q-51 -78 -35 -96 L-18 -67 M31 -55 Q51 -78 35 -96 L18 -67', hair);
+            path('M-34 -78 L-29 -66 M34 -78 L29 -66', null, light, 5);
+            path('M-26 -61 Q0 -76 26 -61', null, accent, 5);
+            path('M-6 -66 L0 -75 L6 -66 L0 -57 Z', accent, ink, 2);
+        } else if (motif === 'trumpeter') {
+            path('M-38 -49 Q-41 -81 0 -85 Q41 -81 38 -49 L27 -59 Q0 -68 -27 -59 Z', light);
+            path('M-23 -76 L-27 -93 L-10 -84 L0 -98 L10 -84 L27 -93 L23 -76 Z', accent);
+            path('M-37 -54 L-43 -30 L-34 -23 M37 -54 L43 -30 L34 -23', null, light, 7);
+        } else if (motif === 'thrush') {
+            path('M-39 -60 Q-24 -85 7 -76 L31 -63 Q1 -66 -39 -60 Z', coat);
+            path('M20 -69 Q50 -107 47 -77 L32 -63 Z', light);
+            path('M25 -67 L42 -86', null, hair, 2);
+            path('M-35 -60 Q0 -73 34 -59', null, accent, 3);
+        } else if (motif === 'lionKnight') {
+            oval(-33, -65, 12, 12, hair); oval(33, -65, 12, 12, hair);
+            path('M-29 -63 L-27 -83 L-10 -73 L0 -87 L10 -73 L27 -83 L29 -63 Z', coat);
+            path('M-26 -65 L26 -65', null, accent, 4); star(0, -73, 6);
+        } else if (motif === 'bearKing') {
+            oval(-34, -62, 15, 15, hair); oval(34, -62, 15, 15, hair);
+            oval(-34, -62, 8, 8, light, null); oval(34, -62, 8, 8, light, null);
+            // 소와 양의 머리는 왕관 양쪽의 서로 다른 뿔 문양으로 표현한다.
+            path('M-20 -65 Q-49 -71 -42 -90 Q-36 -78 -19 -79 Z', accent);
+            path('M20 -65 C52 -54 53 -91 30 -89 C15 -88 18 -74 30 -75 L32 -81', null, ink, 9);
+            path('M20 -65 C52 -54 53 -91 30 -89 C15 -88 18 -74 30 -75 L32 -81', null, accent, 5);
+            path('M-15 -65 L-18 -82 L-7 -76 L0 -93 L7 -76 L18 -82 L15 -65 Z', accent);
+        } else if (motif === 'elderKnight') {
+            path('M-38 -53 Q-40 -79 -13 -83 L-6 -75 Q13 -88 34 -73 L39 -52', null, light, 5);
+            path('M-30 -63 Q0 -76 30 -63', null, coat, 4);
+            oval(0, -68, 5, 5, accent, ink, 2);
+        } else if (motif === 'king' || motif === 'prince') {
             path('M-27 -64 L-31 -86 L-14 -76 L0 -96 L14 -76 L31 -86 L27 -64 Z', accent);
             path('M-23 -68 L23 -68', null, '#fff3c6', 3);
             oval(0, -77, 5, 7, coat, ink, 2);
@@ -19834,6 +19906,11 @@
         }
 
         // 표정을 덧칠하지 않고 눈·눈썹·입을 상태에 맞춰 한 번씩 그린다.
+        if (motif === 'elderKnight') {
+            // 턱 아래 수염을 먼저 그려 세 표정의 입과 눈물을 가리지 않는다.
+            path('M-29 6 Q-19 17 0 17 Q19 17 29 6 L24 30 L14 27 L0 45 L-14 27 L-24 30 Z', light);
+            path('M-12 25 L-5 34 M12 25 L5 34', null, hair, 2);
+        }
         for (const direction of [-1, 1]) {
             context.save(); context.scale(direction, 1);
             oval(25, 1, 8, 4, '#efa7aa', null);
@@ -19863,7 +19940,56 @@
 
         // 얼굴 아래의 상징 소품은 어느 표정에서도 눈과 입을 가리지 않는다.
         context.save(); context.translate(0, defeated ? 5 : crisis ? -2 : 0);
-        if (motif === 'book' || motif === 'oracle') {
+        if (motif === 'flameSage') {
+            path('M-25 44 L-4 40 L18 44 L18 66 L-4 62 L-25 66 Z', '#fff0cf');
+            path('M-4 40 L-4 62 M-20 51 L-9 48 M-20 57 L-9 54', null, coat, 2);
+            star(7, 52, 6);
+            path('M47 33 Q28 22 42 3 Q42 15 50 10 Q66 27 47 33 Z', hair);
+            path('M44 28 Q38 21 47 17 L51 28 Z', accent, null);
+        } else if (motif === 'illusionist') {
+            // 표범 무늬와 변신을 상징하는 가면을 얼굴 아래에 배치한다.
+            path('M-24 44 Q-10 33 0 43 Q10 33 24 44 L20 59 Q10 68 0 58 Q-10 68 -20 59 Z', light);
+            path('M-17 48 L-7 51 M7 51 L17 48 M-4 55 L0 59 L4 55', null, coat, 3);
+            path('M43 61 L49 25', null, accent, 4); star(49, 22, 9);
+        } else if (motif === 'duchess') {
+            // 허리의 관과 낙타 문양 보석함에 공작·보물 전승을 담는다.
+            path('M-23 40 L-25 28 L-12 34 L0 25 L12 34 L25 28 L23 40 Z', accent);
+            path('M-24 49 Q0 35 24 49 L22 68 L-22 68 Z', accent);
+            path('M-24 51 L24 51 M-13 61 L-13 57 Q-8 49 -3 57 Q3 50 7 57 L13 57 L13 49 L18 49 M-13 61 L-13 65 M9 59 L9 65', null, coat, 2);
+        } else if (motif === 'horsePrince') {
+            path('M-22 42 L0 35 L22 42 L17 62 L0 74 L-17 62 Z', light);
+            path('M-10 47 L-10 55 Q0 72 10 55 L10 47', null, coat, 6);
+            path('M-10 47 L-10 55 Q0 72 10 55 L10 47', null, accent, 2);
+            path('M41 59 L41 25 M34 29 L48 29', null, accent, 4);
+        } else if (motif === 'trumpeter') {
+            path('M-24 38 L0 45 L24 38 L19 60 L0 70 L-19 60 Z', light);
+            // 길게 뻗은 나팔과 떠오르는 혼불을 넣는다.
+            path('M-30 50 L24 50 L42 37 L42 67 L24 57 L-30 57 Z', accent);
+            path('M-14 50 L-14 44 M-4 50 L-4 44 M6 50 L6 44', null, ink, 3);
+            oval(43, 52, 5, 15, coat, ink, 2);
+            path('M55 22 Q40 13 54 -4 Q53 6 61 3 Q73 19 55 22 Z', '#caeee0', ink, 2);
+        } else if (motif === 'thrush') {
+            path('M41 59 L51 22 L57 15 L60 25 L47 61 Z', '#e1dfeb');
+            path('M37 54 L54 59 M42 61 L39 69', null, accent, 4);
+            path('M-22 45 Q-5 50 9 38 L4 50 L22 47 Q8 64 -8 59 Z', light);
+            path('M-27 79 L-18 70 L-8 80 M3 81 L13 69 L25 79', null, accent, 3);
+        } else if (motif === 'lionKnight') {
+            path('M-24 37 L0 46 L24 37 L20 61 L0 72 L-20 61 Z', light);
+            oval(0, 54, 13, 10, null, coat, 2, -0.5); star(0, 54, 7);
+            path('M48 70 L48 8 L41 20 L48 29 L55 20 L48 8 Z', accent);
+            path('M48 31 L67 34 L59 47 L48 44 Z', coat);
+        } else if (motif === 'bearKing') {
+            // 매는 별도 얼굴 대신 날개를 펼친 문장으로 표현한다.
+            path('M-26 43 L-8 49 L0 40 L8 49 L26 43 L18 58 L6 56 L0 68 L-6 56 L-18 58 Z', accent);
+            path('M-15 50 L-6 53 M15 50 L6 53', null, coat, 2);
+            oval(46, 35, 10, 10, '#a5c39a'); star(46, 35, 5);
+        } else if (motif === 'elderKnight') {
+            path('M43 70 L43 14 M31 4 L31 23 Q43 36 55 23 L55 4 M43 0 L43 27', null, ink, 7);
+            path('M43 70 L43 14 M31 4 L31 23 Q43 36 55 23 L55 4 M43 0 L43 27', null, accent, 3);
+            path('M-28 47 L-6 43 L16 47 L16 68 L-6 64 L-28 68 Z', '#fff0d3');
+            path('M-6 43 L-6 64 M-23 54 L-12 51 M-23 60 L-12 57', null, coat, 2);
+            star(5, 54, 6);
+        } else if (motif === 'book' || motif === 'oracle') {
             path('M0 45 Q-15 34 -29 39 L-28 61 Q-12 58 0 66 Q12 58 28 61 L29 39 Q15 34 0 45 Z', accent);
             path('M0 45 L0 66 M-22 45 L-7 49 M-22 51 L-8 54 M8 49 L21 45 M8 54 L21 51', null, coat, 2);
         } else if (motif === 'snake') {
@@ -21706,6 +21832,249 @@
         }
     }
 
+    /** 불꽃·별무늬 책을 든 학자. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    class Amii extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 15;
+            this.notAvail = true;
+            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Amii'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '아미'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 초상화 의상과 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#462a24', field: '#654235', center: '#21130f' };
+        }
+
+        /** 불꽃·별무늬 책을 든 학자의 일반·위기·패배 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Amii');
+        }
+    }
+
+    /** 표범 귀·가면을 가진 변신술사. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    class Ose extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 16;
+            this.notAvail = true;
+            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Ose'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '오세'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 초상화 의상과 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#303a25', field: '#4c5735', center: '#151b10' };
+        }
+
+        /** 표범 귀·가면을 가진 변신술사의 일반·위기·패배 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Ose');
+        }
+    }
+
+    /** 허리의 관·낙타 문양 보석함을 가진 공작. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    class Gremory extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 17;
+            this.notAvail = true;
+            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Gremory'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '그레모리'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 초상화 의상과 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#452337', field: '#64374c', center: '#210e19' };
+        }
+
+        /** 허리의 관·낙타 문양 보석함을 가진 공작의 일반·위기·패배 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Gremory');
+        }
+    }
+
+    /** 말 귀·말발굽 방패를 가진 왕자. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    class Orobas extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 18;
+            this.notAvail = true;
+            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Orobas'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '오로바스'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 초상화 의상과 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#223549', field: '#344f6b', center: '#0e1925' };
+        }
+
+        /** 말 귀·말발굽 방패를 가진 왕자의 일반·위기·패배 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Orobas');
+        }
+    }
+
+    /** 깃털 날개·공작의 관·나팔을 가진 기사. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    class Murmur extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 19;
+            this.notAvail = true;
+            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Murmur'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '무르무르'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 초상화 의상과 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#293d37', field: '#40594e', center: '#111e19' };
+        }
+
+        /** 깃털 날개·공작의 관·나팔을 가진 기사의 일반·위기·패배 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Murmur');
+        }
+    }
+
+    /** 검은 새 깃털·검·불씨를 가진 검사. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    class Caim extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 20;
+            this.notAvail = true;
+            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Caim'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '카임'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 초상화 의상과 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#302d40', field: '#49455d', center: '#15121e' };
+        }
+
+        /** 검은 새 깃털·검·불씨를 가진 검사의 일반·위기·패배 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Caim');
+        }
+    }
+
+    /** 사자 갈기·별 문장 갑옷·기병창을 가진 기사. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    class Alokes extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 21;
+            this.notAvail = true;
+            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Alokes'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '알로케스'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 초상화 의상과 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#442823', field: '#634039', center: '#200f0d' };
+        }
+
+        /** 사자 갈기·별 문장 갑옷·기병창을 가진 기사의 일반·위기·패배 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Alokes');
+        }
+    }
+
+    /** 곰 귀·소와 양의 뿔 왕관·매 문장을 가진 왕. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    class Balaam extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 22;
+            this.notAvail = true;
+            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Balaam'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '발람'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 초상화 의상과 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#3b3225', field: '#574b36', center: '#1b160e' };
+        }
+
+        /** 곰 귀·소와 양의 뿔 왕관·매 문장을 가진 왕의 일반·위기·패배 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Balaam');
+        }
+    }
+
+    /** 백발·수염·갈래창·철학서를 가진 노기사. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    class Purkas extends OnnxEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 23;
+            this.notAvail = true;
+            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
+            this.modelPath = 'onnx/model03.onnx';
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Purkas'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '푸르카스'; }
+
+        /** @returns {{bezel:string, field:string, center:string}} 초상화 의상과 어울리는 필드 테마 */
+        getFieldThemeColors() {
+            return { bezel: '#303740', field: '#48515d', center: '#15191f' };
+        }
+
+        /** 백발·수염·갈래창·철학서를 가진 노기사의 일반·위기·패배 표정을 그린다. */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Purkas');
+        }
+    }
+
     /**
      * 연습 모드에서 조작하거나 뿌요를 받지 않는 상대다.
      */
@@ -21747,7 +22116,16 @@
         createOpponentEntry(() => new Valak()),
         createOpponentEntry(() => new Zagan()),
         createOpponentEntry(() => new Vapula()),
-        createOpponentEntry(() => new Oriax())
+        createOpponentEntry(() => new Oriax()),
+        createOpponentEntry(() => new Amii()),
+        createOpponentEntry(() => new Ose()),
+        createOpponentEntry(() => new Gremory()),
+        createOpponentEntry(() => new Orobas()),
+        createOpponentEntry(() => new Murmur()),
+        createOpponentEntry(() => new Caim()),
+        createOpponentEntry(() => new Alokes()),
+        createOpponentEntry(() => new Balaam()),
+        createOpponentEntry(() => new Purkas())
     );
 
     /**
@@ -21866,6 +22244,15 @@
         Zagan,
         Vapula,
         Oriax,
+        Amii,
+        Ose,
+        Gremory,
+        Orobas,
+        Murmur,
+        Caim,
+        Alokes,
+        Balaam,
+        Purkas,
         PuyoWGraphic2DFilter,
         Puyo,
         RedPuyo,
