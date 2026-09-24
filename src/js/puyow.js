@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 117;
+    const BUILDNO = 118;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -550,11 +550,11 @@
     Object.assign(stringTable.fr, { '피버 룰 (시작)': 'Règles FEVER (Début)' });
 
     // 게임 시작 첫 단계 선택지를 지원 언어로 표시한다.
-    Object.assign(stringTable.en, { '도장깨기': 'Gauntlet', '스스로 연습': 'Solo Practice' });
-    Object.assign(stringTable.ja, { '도장깨기': '道場破り', '스스로 연습': 'ひとりで練習' });
-    Object.assign(stringTable.zh, { '도장깨기': '道馆挑战', '스스로 연습': '单人练习' });
-    Object.assign(stringTable.de, { '도장깨기': 'Dojo-Herausforderung', '스스로 연습': 'Allein üben' });
-    Object.assign(stringTable.fr, { '도장깨기': 'Défi du dojo', '스스로 연습': 'S’entraîner seul' });
+    Object.assign(stringTable.en, { '도장깨기': 'Gauntlet', '트레이닝': 'Training' });
+    Object.assign(stringTable.ja, { '도장깨기': '道場破り', '트레이닝': 'トレーニング' });
+    Object.assign(stringTable.zh, { '도장깨기': '道馆挑战', '트레이닝': '训练' });
+    Object.assign(stringTable.de, { '도장깨기': 'Dojo-Herausforderung', '트레이닝': 'Training' });
+    Object.assign(stringTable.fr, { '도장깨기': 'Défi du dojo', '트레이닝': 'Entraînement' });
 
     // 도장깨기와 구경에서 함께 쓰는 완화 피버 룰의 이름이다.
     Object.assign(stringTable.en, { '피버 룰 (완화)': 'FEVER Rules (Relaxed)' });
@@ -1154,7 +1154,7 @@
     /** 게임 시작 첫 단계의 선택지다. @type {{label:string,backgroundColor:string}[]} */
     const GAME_CATEGORY_OPTIONS = [
         { label: '도장깨기', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard },
-        { label: '스스로 연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice },
+        { label: '트레이닝', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice },
         { label: '퍼즐뿌요', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.puzzle }
     ];
     /**
@@ -14254,7 +14254,7 @@
         return { x: WIDTH / 2 - 100, y: 445, width: 200, height: 58 };
     }
 
-    /** 색상 수 선택을 취소하고 스스로 연습의 하위 선택지로 돌아간다. @returns {void} */
+    /** 색상 수 선택을 취소하고 트레이닝 하위 선택지로 돌아간다. @returns {void} */
     function returnToRuleSelection() {
         playMenuCancelSound();
         menuScreen = 'title';

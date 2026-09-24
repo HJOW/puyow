@@ -1105,7 +1105,7 @@ test('게임 시작 첫 단계와 하위 단계의 취소 버튼을 키보드·�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await expect.poll(() => page.evaluate(() => {
-    const labels = ['도장깨기', '스스로 연습', '퍼즐뿌요', '취소'];
+    const labels = ['도장깨기', '트레이닝', '퍼즐뿌요', '취소'];
     return labels.every((label) => window.testCanvasTexts.includes(window.WebPuyo.translate(label)));
   })).toBe(true);
 
