@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 118;
+    const BUILDNO = 119;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -12857,30 +12857,30 @@
     /** 명시된 가중치와 이후 추가 대상의 기본 가중치를 반영한 카드 유형 목록을 반환한다. @returns {{type:string,kind:'puyo'|'warning'|'enemy',value:string|number,weight:number}[]} */
     function getCardDefinitions() {
         const definitions = [
-            { type: 'puyo:red', kind: 'puyo', value: 'red', weight: 200 },
-            { type: 'puyo:blue', kind: 'puyo', value: 'blue', weight: 150 },
-            { type: 'puyo:green', kind: 'puyo', value: 'green', weight: 100 },
-            { type: 'puyo:yellow', kind: 'puyo', value: 'yellow', weight: 60 },
-            { type: 'puyo:purple', kind: 'puyo', value: 'purple', weight: 25 },
-            { type: 'puyo:garbage', kind: 'puyo', value: 'garbage', weight: 300 },
-            { type: 'puyo:hardGarbage', kind: 'puyo', value: HARD_GARBAGE, weight: 70 },
-            { type: 'puyo:iron', kind: 'puyo', value: IRON_PUYO, weight: 25 },
-            { type: 'warning:1', kind: 'warning', value: 1, weight: 300 },
-            { type: 'warning:6', kind: 'warning', value: 6, weight: 200 },
-            { type: 'warning:30', kind: 'warning', value: 30, weight: 50 },
-            { type: 'warning:210', kind: 'warning', value: 210, weight: 25 },
-            { type: 'warning:500', kind: 'warning', value: 500, weight: 15 },
-            { type: 'warning:2000', kind: 'warning', value: 2000, weight: 10 },
+            { type: 'puyo:red', kind: 'puyo', value: 'red', weight: 4000 },
+            { type: 'puyo:blue', kind: 'puyo', value: 'blue', weight: 3000 },
+            { type: 'puyo:green', kind: 'puyo', value: 'green', weight: 2000 },
+            { type: 'puyo:yellow', kind: 'puyo', value: 'yellow', weight: 1200 },
+            { type: 'puyo:purple', kind: 'puyo', value: 'purple', weight: 500 },
+            { type: 'puyo:garbage', kind: 'puyo', value: 'garbage', weight: 6000 },
+            { type: 'puyo:hardGarbage', kind: 'puyo', value: HARD_GARBAGE, weight: 1400 },
+            { type: 'puyo:iron', kind: 'puyo', value: IRON_PUYO, weight: 500 },
+            { type: 'warning:1', kind: 'warning', value: 1, weight: 6000 },
+            { type: 'warning:6', kind: 'warning', value: 6, weight: 4000 },
+            { type: 'warning:30', kind: 'warning', value: 30, weight: 1000 },
+            { type: 'warning:210', kind: 'warning', value: 210, weight: 500 },
+            { type: 'warning:500', kind: 'warning', value: 500, weight: 300 },
+            { type: 'warning:2000', kind: 'warning', value: 2000, weight: 200 },
             { type: 'warning:80000', kind: 'warning', value: 80000, weight: 5 },
             { type: 'warning:500000', kind: 'warning', value: 500000, weight: 1 },
-            { type: 'enemy:Andromalius', kind: 'enemy', value: 'Andromalius', weight: 200 },
-            { type: 'enemy:Dantalion', kind: 'enemy', value: 'Dantalion', weight: 150 },
-            { type: 'enemy:Seere', kind: 'enemy', value: 'Seere', weight: 130 },
-            { type: 'enemy:Decarabia', kind: 'enemy', value: 'Decarabia', weight: 125 },
-            { type: 'enemy:Belial', kind: 'enemy', value: 'Belial', weight: 100 },
-            { type: 'enemy:Amdusias', kind: 'enemy', value: 'Amdusias', weight: 50 },
-            { type: 'enemy:Kimaris', kind: 'enemy', value: 'Kimaris', weight: 25 },
-            { type: 'enemy:Andrealphus', kind: 'enemy', value: 'Andrealphus', weight: 10 },
+            { type: 'enemy:Andromalius', kind: 'enemy', value: 'Andromalius', weight: 4000 },
+            { type: 'enemy:Dantalion', kind: 'enemy', value: 'Dantalion', weight: 3000 },
+            { type: 'enemy:Seere', kind: 'enemy', value: 'Seere', weight: 2600 },
+            { type: 'enemy:Decarabia', kind: 'enemy', value: 'Decarabia', weight: 2500 },
+            { type: 'enemy:Belial', kind: 'enemy', value: 'Belial', weight: 2000 },
+            { type: 'enemy:Amdusias', kind: 'enemy', value: 'Amdusias', weight: 1000 },
+            { type: 'enemy:Kimaris', kind: 'enemy', value: 'Kimaris', weight: 500 },
+            { type: 'enemy:Andrealphus', kind: 'enemy', value: 'Andrealphus', weight: 200 },
             { type: 'enemy:Flauros', kind: 'enemy', value: 'Flauros', weight: 1 }
         ];
         // 빅뱅보다 큰 단위는 추가 등록만 해도 카드 풀에 가중치 1로 들어간다.
@@ -12919,11 +12919,12 @@
         return granted;
     }
 
-    /** 가중치에 따른 카드 등급과 배경색을 반환한다. @param {number} weight 가중치 @returns {{key:string,color:string}} 등급 */
+    /** 가중치에 따른 카드 등급과 배경색을 반환한다. 등급 문구는 화면에 표시하지 않는다. @param {number} weight 가중치 @returns {{key:string,color:string}} 등급 */
     function getCardRarity(weight) {
-        if (weight < 10) return { key: 'EPIC', color: '#e7be48' };
-        if (weight < 50) return { key: 'RARE', color: '#a9d9f5' };
-        if (weight < 140) return { key: 'UNCOMMON', color: '#b9e6b4' };
+        if (weight < 10) return { key: 'LEGENDARY', color: '#e7be48' };
+        if (weight < 100) return { key: 'EPIC', color: '#c9a4ef' };
+        if (weight < 1000) return { key: 'RARE', color: '#a9d9f5' };
+        if (weight < 2800) return { key: 'UNCOMMON', color: '#b9e6b4' };
         return { key: 'COMMON', color: '#d9dde1' };
     }
 
