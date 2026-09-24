@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 116;
+    const BUILDNO = 119;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -61,6 +61,12 @@
     const MAIN_MENU_GALLERY_FLOATER_MAX_ROTATION_SPEED = 0.00028;
     /** 메인 메뉴 부유 뿌요가 벽에 비스듬히 부딪힐 때 회전 속도에 더할 충돌 계수다. @type {number} */
     const MAIN_MENU_GALLERY_FLOATER_ROTATION_IMPULSE = 0.006;
+    /** 메인 메뉴 부유 뿌요를 클릭했을 때 더하는 이동 속도다(px/ms). @type {number} */
+    const MAIN_MENU_GALLERY_FLOATER_CLICK_IMPULSE = 0.24;
+    /** 연속 클릭으로 부유 뿌요가 지나치게 빨라지지 않도록 제한하는 속도다(px/ms). @type {number} */
+    const MAIN_MENU_GALLERY_FLOATER_CLICK_MAX_SPEED = 0.36;
+    /** 클릭으로 얻은 추가 속도가 평소 이동 속도로 줄어드는 시간 척도다(ms). @type {number} */
+    const MAIN_MENU_GALLERY_FLOATER_CLICK_DECAY_MS = 900;
     /** 필드 표시 영역의 위쪽 논리 좌표다. @type {number} */
     const FIELD_TOP = 102;
     /** 필드 표시 영역의 아래쪽 논리 좌표다. @type {number} */
@@ -544,11 +550,11 @@
     Object.assign(stringTable.fr, { '피버 룰 (시작)': 'Règles FEVER (Début)' });
 
     // 게임 시작 첫 단계 선택지를 지원 언어로 표시한다.
-    Object.assign(stringTable.en, { '도장깨기': 'Gauntlet', '스스로 연습': 'Solo Practice' });
-    Object.assign(stringTable.ja, { '도장깨기': '道場破り', '스스로 연습': 'ひとりで練習' });
-    Object.assign(stringTable.zh, { '도장깨기': '道馆挑战', '스스로 연습': '单人练习' });
-    Object.assign(stringTable.de, { '도장깨기': 'Dojo-Herausforderung', '스스로 연습': 'Allein üben' });
-    Object.assign(stringTable.fr, { '도장깨기': 'Défi du dojo', '스스로 연습': 'S’entraîner seul' });
+    Object.assign(stringTable.en, { '도장깨기': 'Gauntlet', '트레이닝': 'Training' });
+    Object.assign(stringTable.ja, { '도장깨기': '道場破り', '트레이닝': 'トレーニング' });
+    Object.assign(stringTable.zh, { '도장깨기': '道馆挑战', '트레이닝': '训练' });
+    Object.assign(stringTable.de, { '도장깨기': 'Dojo-Herausforderung', '트레이닝': 'Training' });
+    Object.assign(stringTable.fr, { '도장깨기': 'Défi du dojo', '트레이닝': 'Entraînement' });
 
     // 도장깨기와 구경에서 함께 쓰는 완화 피버 룰의 이름이다.
     Object.assign(stringTable.en, { '피버 룰 (완화)': 'FEVER Rules (Relaxed)' });
@@ -1148,7 +1154,7 @@
     /** 게임 시작 첫 단계의 선택지다. @type {{label:string,backgroundColor:string}[]} */
     const GAME_CATEGORY_OPTIONS = [
         { label: '도장깨기', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard },
-        { label: '스스로 연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice },
+        { label: '트레이닝', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice },
         { label: '퍼즐뿌요', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.puzzle }
     ];
     /**
@@ -3201,6 +3207,7 @@
                     y,
                     vx,
                     vy,
+                    cruiseSpeed: Math.hypot(vx, vy),
                     // 위치와 이동 방향에서 초기 자세를 정해 난수 소비량을 기존과 동일하게 유지한다.
                     rotation: ((x / WIDTH + y / HEIGHT) % 1) * Math.PI * 2,
                     rotationVelocity: (vx * vy >= 0 ? 1 : -1) * MAIN_MENU_GALLERY_FLOATER_MAX_ROTATION_SPEED * 0.25
@@ -3251,8 +3258,43 @@
                     Math.min(MAIN_MENU_GALLERY_FLOATER_MAX_ROTATION_SPEED, item.rotationVelocity)
                 );
             }
+            const speed = Math.hypot(item.vx, item.vy);
+            if (speed > item.cruiseSpeed) {
+                const nextSpeed = item.cruiseSpeed + (speed - item.cruiseSpeed) * Math.exp(-delta / MAIN_MENU_GALLERY_FLOATER_CLICK_DECAY_MS);
+                item.vx *= nextSpeed / speed;
+                item.vy *= nextSpeed / speed;
+            }
             item.rotation = (item.rotation + item.rotationVelocity * delta) % (Math.PI * 2);
         });
+    }
+
+    /** 클릭한 최상위 부유 뿌요를 클릭 지점에서 밀어낸다. @param {number} x 클릭한 논리 X 좌표 @param {number} y 클릭한 논리 Y 좌표 @returns {void} */
+    function bounceMainMenuGalleryFloater(x, y) {
+        for (let index = mainMenuGalleryFloaters.length - 1; index >= 0; index--) {
+            const item = mainMenuGalleryFloaters[index];
+            let dx = item.x - x;
+            let dy = item.y - y;
+            let distance = Math.hypot(dx, dy);
+            if (distance > item.radius) continue;
+            if (distance < 0.001) {
+                dx = item.vx;
+                dy = item.vy;
+                distance = Math.hypot(dx, dy);
+                if (distance < 0.001) {
+                    dx = 1;
+                    dy = 0;
+                    distance = 1;
+                }
+            }
+            item.vx += dx / distance * MAIN_MENU_GALLERY_FLOATER_CLICK_IMPULSE;
+            item.vy += dy / distance * MAIN_MENU_GALLERY_FLOATER_CLICK_IMPULSE;
+            const speed = Math.hypot(item.vx, item.vy);
+            if (speed > MAIN_MENU_GALLERY_FLOATER_CLICK_MAX_SPEED) {
+                item.vx *= MAIN_MENU_GALLERY_FLOATER_CLICK_MAX_SPEED / speed;
+                item.vy *= MAIN_MENU_GALLERY_FLOATER_CLICK_MAX_SPEED / speed;
+            }
+            return;
+        }
     }
 
     /** 메인 메뉴의 갤러리 항목을 배경에 그린다. @returns {void} */
@@ -12815,30 +12857,30 @@
     /** 명시된 가중치와 이후 추가 대상의 기본 가중치를 반영한 카드 유형 목록을 반환한다. @returns {{type:string,kind:'puyo'|'warning'|'enemy',value:string|number,weight:number}[]} */
     function getCardDefinitions() {
         const definitions = [
-            { type: 'puyo:red', kind: 'puyo', value: 'red', weight: 200 },
-            { type: 'puyo:blue', kind: 'puyo', value: 'blue', weight: 150 },
-            { type: 'puyo:green', kind: 'puyo', value: 'green', weight: 100 },
-            { type: 'puyo:yellow', kind: 'puyo', value: 'yellow', weight: 60 },
-            { type: 'puyo:purple', kind: 'puyo', value: 'purple', weight: 25 },
-            { type: 'puyo:garbage', kind: 'puyo', value: 'garbage', weight: 300 },
-            { type: 'puyo:hardGarbage', kind: 'puyo', value: HARD_GARBAGE, weight: 70 },
-            { type: 'puyo:iron', kind: 'puyo', value: IRON_PUYO, weight: 25 },
-            { type: 'warning:1', kind: 'warning', value: 1, weight: 300 },
-            { type: 'warning:6', kind: 'warning', value: 6, weight: 200 },
-            { type: 'warning:30', kind: 'warning', value: 30, weight: 50 },
-            { type: 'warning:210', kind: 'warning', value: 210, weight: 25 },
-            { type: 'warning:500', kind: 'warning', value: 500, weight: 15 },
-            { type: 'warning:2000', kind: 'warning', value: 2000, weight: 10 },
+            { type: 'puyo:red', kind: 'puyo', value: 'red', weight: 4000 },
+            { type: 'puyo:blue', kind: 'puyo', value: 'blue', weight: 3000 },
+            { type: 'puyo:green', kind: 'puyo', value: 'green', weight: 2000 },
+            { type: 'puyo:yellow', kind: 'puyo', value: 'yellow', weight: 1200 },
+            { type: 'puyo:purple', kind: 'puyo', value: 'purple', weight: 500 },
+            { type: 'puyo:garbage', kind: 'puyo', value: 'garbage', weight: 6000 },
+            { type: 'puyo:hardGarbage', kind: 'puyo', value: HARD_GARBAGE, weight: 1400 },
+            { type: 'puyo:iron', kind: 'puyo', value: IRON_PUYO, weight: 500 },
+            { type: 'warning:1', kind: 'warning', value: 1, weight: 6000 },
+            { type: 'warning:6', kind: 'warning', value: 6, weight: 4000 },
+            { type: 'warning:30', kind: 'warning', value: 30, weight: 1000 },
+            { type: 'warning:210', kind: 'warning', value: 210, weight: 500 },
+            { type: 'warning:500', kind: 'warning', value: 500, weight: 300 },
+            { type: 'warning:2000', kind: 'warning', value: 2000, weight: 200 },
             { type: 'warning:80000', kind: 'warning', value: 80000, weight: 5 },
             { type: 'warning:500000', kind: 'warning', value: 500000, weight: 1 },
-            { type: 'enemy:Andromalius', kind: 'enemy', value: 'Andromalius', weight: 200 },
-            { type: 'enemy:Dantalion', kind: 'enemy', value: 'Dantalion', weight: 150 },
-            { type: 'enemy:Seere', kind: 'enemy', value: 'Seere', weight: 130 },
-            { type: 'enemy:Decarabia', kind: 'enemy', value: 'Decarabia', weight: 125 },
-            { type: 'enemy:Belial', kind: 'enemy', value: 'Belial', weight: 100 },
-            { type: 'enemy:Amdusias', kind: 'enemy', value: 'Amdusias', weight: 50 },
-            { type: 'enemy:Kimaris', kind: 'enemy', value: 'Kimaris', weight: 25 },
-            { type: 'enemy:Andrealphus', kind: 'enemy', value: 'Andrealphus', weight: 10 },
+            { type: 'enemy:Andromalius', kind: 'enemy', value: 'Andromalius', weight: 4000 },
+            { type: 'enemy:Dantalion', kind: 'enemy', value: 'Dantalion', weight: 3000 },
+            { type: 'enemy:Seere', kind: 'enemy', value: 'Seere', weight: 2600 },
+            { type: 'enemy:Decarabia', kind: 'enemy', value: 'Decarabia', weight: 2500 },
+            { type: 'enemy:Belial', kind: 'enemy', value: 'Belial', weight: 2000 },
+            { type: 'enemy:Amdusias', kind: 'enemy', value: 'Amdusias', weight: 1000 },
+            { type: 'enemy:Kimaris', kind: 'enemy', value: 'Kimaris', weight: 500 },
+            { type: 'enemy:Andrealphus', kind: 'enemy', value: 'Andrealphus', weight: 200 },
             { type: 'enemy:Flauros', kind: 'enemy', value: 'Flauros', weight: 1 }
         ];
         // 빅뱅보다 큰 단위는 추가 등록만 해도 카드 풀에 가중치 1로 들어간다.
@@ -12877,11 +12919,12 @@
         return granted;
     }
 
-    /** 가중치에 따른 카드 등급과 배경색을 반환한다. @param {number} weight 가중치 @returns {{key:string,color:string}} 등급 */
+    /** 가중치에 따른 카드 등급과 배경색을 반환한다. 등급 문구는 화면에 표시하지 않는다. @param {number} weight 가중치 @returns {{key:string,color:string}} 등급 */
     function getCardRarity(weight) {
-        if (weight < 10) return { key: 'EPIC', color: '#e7be48' };
-        if (weight < 50) return { key: 'RARE', color: '#a9d9f5' };
-        if (weight < 140) return { key: 'UNCOMMON', color: '#b9e6b4' };
+        if (weight < 10) return { key: 'LEGENDARY', color: '#e7be48' };
+        if (weight < 100) return { key: 'EPIC', color: '#c9a4ef' };
+        if (weight < 1000) return { key: 'RARE', color: '#a9d9f5' };
+        if (weight < 2800) return { key: 'UNCOMMON', color: '#b9e6b4' };
         return { key: 'COMMON', color: '#d9dde1' };
     }
 
@@ -14212,7 +14255,7 @@
         return { x: WIDTH / 2 - 100, y: 445, width: 200, height: 58 };
     }
 
-    /** 색상 수 선택을 취소하고 스스로 연습의 하위 선택지로 돌아간다. @returns {void} */
+    /** 색상 수 선택을 취소하고 트레이닝 하위 선택지로 돌아간다. @returns {void} */
     function returnToRuleSelection() {
         playMenuCancelSound();
         menuScreen = 'title';
@@ -16554,6 +16597,8 @@
             } else if (x >= TITLE_REPLAY_BUTTON.x && x <= TITLE_REPLAY_BUTTON.x + TITLE_REPLAY_BUTTON.width && y >= TITLE_REPLAY_BUTTON.y && y <= TITLE_REPLAY_BUTTON.y + TITLE_REPLAY_BUTTON.height) {
                 titleMenuFocus = TITLE_REPLAY_FOCUS_INDEX;
                 activateTitleMenu();
+            } else {
+                bounceMainMenuGalleryFloater(x, y);
             }
         } else if (menuScreen === 'settings') {
             const layout = SETTINGS_UI_LAYOUT;

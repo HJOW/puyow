@@ -15,10 +15,10 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   await expect.poll(() => page.evaluate(() => {
     const texts = window.testCanvasTexts;
     const localizedOptions = [
-      ['도장깨기', '스스로 연습', '퍼즐뿌요'],
-      ['Gauntlet', 'Solo Practice', 'Puzzle Puyo'],
-      ['道場破り', 'ひとりで練習', 'パズルぷよ'],
-      ['道馆挑战', '单人练习', '益智魔法气泡'],
+      ['도장깨기', '트레이닝', '퍼즐뿌요'],
+      ['Gauntlet', 'Training', 'Puzzle Puyo'],
+      ['道場破り', 'トレーニング', 'パズルぷよ'],
+      ['道馆挑战', '训练', '益智魔法气泡'],
     ];
     return localizedOptions.some((options) => options.every((text) => texts.includes(text)));
   })).toBe(true);
