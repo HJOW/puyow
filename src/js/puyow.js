@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 115;
+    const BUILDNO = 116;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -160,6 +160,8 @@
     const FEVER_GAUGE_MAX = 7;
     /** 피버 룰의 게임 시작 및 피버 종료 직후 켜져 있는 전등 수다. @type {number} */
     const FEVER_LIGHT_STARTS = 0;
+    /** 피버 룰 (완화)의 시작 및 피버 종료 뒤 최소 전등 수다. @type {number} */
+    const RELAXED_FEVER_LIGHT_STARTS = Math.min(6, FEVER_LIGHT_STARTS + 3);
     /** 피버 룰의 시작 목표 연쇄 수다. @type {number} */
     const FEVER_INITIAL_TARGET_COMBO = 5;
     /** 피버 룰의 시작 다음 피버 시간(초)이다. @type {number} */
@@ -548,6 +550,13 @@
     Object.assign(stringTable.de, { '도장깨기': 'Dojo-Herausforderung', '스스로 연습': 'Allein üben' });
     Object.assign(stringTable.fr, { '도장깨기': 'Défi du dojo', '스스로 연습': 'S’entraîner seul' });
 
+    // 도장깨기와 구경에서 함께 쓰는 완화 피버 룰의 이름이다.
+    Object.assign(stringTable.en, { '피버 룰 (완화)': 'FEVER Rules (Relaxed)' });
+    Object.assign(stringTable.ja, { '피버 룰 (완화)': 'FEVER ルール（緩和）' });
+    Object.assign(stringTable.zh, { '피버 룰 (완화)': 'FEVER 规则（宽松）' });
+    Object.assign(stringTable.de, { '피버 룰 (완화)': 'FEVER-Regeln (Entspannt)' });
+    Object.assign(stringTable.fr, { '피버 룰 (완화)': 'Règles FEVER (assouplies)' });
+
     // 리플레이 기록·재생 관련 문구다. 독일어·프랑스어 표는 위에서 영어 표를 복사한 뒤이므로 언어별로 각각 추가한다.
     Object.assign(stringTable.en, {
         '리더보드': 'Leaderboard',
@@ -852,7 +861,7 @@
     let opponentMenuFocus = 0;
     /** 적 선택 메뉴 하단에서 포커스된 동작이다. @type {number} */
     let selectedOpponentAction = 0;
-    /** 적 선택 화면에서 시작할 대전 규칙이다. @type {'standard'|'fever'|'feverStart'} */
+    /** 적 선택 화면에서 시작할 대전 규칙이다. @type {'standard'|'fever'|'feverStart'|'relaxedFever'} */
     let opponentMenuRule = 'standard';
     /** @type{object|null} 3D 효과를 담당하는 매니저 객체 (puyow_3d.js 에서 정의) */
     let threeEffectManager = null;
@@ -1071,7 +1080,7 @@
     let languageCode = DEFAULT_LANGUAGE_CODE;
     /** [CTX] 예약어를 치환할 웹 애플리케이션의 URL 컨텍스트 경로다. @type {string} */
     let urlContextPath = '/';
-    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverStartClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} */
+    /** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverStartClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, relaxedFeverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} */
     let store = createInitialStore();
     /** storageManager의 puyow_cards에서 불러온 개별 카드 인스턴스다. @type {{id:string,type:string}[]} */
     let ownedCards = [];
@@ -1125,13 +1134,14 @@
     const WATCH_RULE_OPTIONS = [
         { key: 'standard', label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard },
         { key: 'fever', label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever },
-        { key: 'relaxedFever', label: '피버 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever }
+        { key: 'relaxedFever', label: '피버 룰 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever }
     ];
     /** 메인 메뉴의 대전·연습 하위 선택지다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,isDisabled?:()=>boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard, activate: () => openOpponentMenu('standard') },
         { label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, activate: () => openOpponentMenu('fever') },
         { label: '피버 룰 (시작)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.feverStart, isDisabled: () => !isFeverStartRuleUnlocked(), activate: () => openOpponentMenu('feverStart') },
+        { label: '피버 룰 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, isDisabled: () => !isFeverStartRuleUnlocked(), activate: () => openOpponentMenu('relaxedFever') },
         { label: '연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice, activate: () => openPracticeDifficulty() },
         { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() }
     ];
@@ -2692,7 +2702,7 @@
 
     /**
      * 저장 데이터의 기본 구조를 만든다.
-     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverStartClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} 초기 저장 데이터
+     * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverStartClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, relaxedFeverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} 초기 저장 데이터
      */
     function createInitialStore() {
         return {
@@ -2700,6 +2710,7 @@
             clearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             feverStartClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
+            relaxedFeverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
             puzzleClearStages: [],
             puzzleStarStages: [],
             puzzleGoldClearStages: [],
@@ -3314,6 +3325,15 @@
                     ? [...new Set(storedFeverStartClearListByDifficulty[key].filter((name) => typeof name === 'string'))]
                     : []
             ]));
+            const storedRelaxedFeverClearListByDifficulty = parsed.relaxedFeverClearListByDifficulty && typeof parsed.relaxedFeverClearListByDifficulty === 'object' && !Array.isArray(parsed.relaxedFeverClearListByDifficulty)
+                ? parsed.relaxedFeverClearListByDifficulty
+                : {};
+            const relaxedFeverClearListByDifficulty = Object.fromEntries(Object.keys(initial.relaxedFeverClearListByDifficulty).map((key) => [
+                key,
+                Array.isArray(storedRelaxedFeverClearListByDifficulty[key])
+                    ? [...new Set(storedRelaxedFeverClearListByDifficulty[key].filter((name) => typeof name === 'string'))]
+                    : []
+            ]));
             const settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
             playerNameSetupRequired = !validatePlayerName(settings.playerName).name;
             const puzzleClearStages = Array.isArray(parsed.puzzleClearStages)
@@ -3329,7 +3349,7 @@
             const puzzleGoldStarStages = Array.isArray(parsed.puzzleGoldStarStages)
                 ? [...new Set(parsed.puzzleGoldStarStages.filter((index) => Number.isInteger(index) && index >= 0))]
                 : [...puzzleStarStages];
-            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, feverStartClearListByDifficulty, puzzleClearStages, puzzleStarStages,
+            store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, feverStartClearListByDifficulty, relaxedFeverClearListByDifficulty, puzzleClearStages, puzzleStarStages,
                 puzzleGoldClearStages, puzzleGoldStarStages, gold: normalizeGold(parsed.gold), settings: {
                 playerName: normalizePlayerName(settings.playerName),
                 language: normalizeLanguageCode(settings.language, initial.settings.language),
@@ -4343,9 +4363,10 @@
         dispatchPuyoUnlocked('enemy:Solomon');
     }
 
-    /** 적 선택 규칙에 맞는 난이도별 적 진행도 저장소를 반환한다. @param {'standard'|'fever'|'feverStart'} [rule=opponentMenuRule] 대전 규칙 @returns {Record<'easy'|'normal'|'hard'|'extreme', string[]>} 진행도 저장소 */
+    /** 적 선택 규칙에 맞는 난이도별 적 진행도 저장소를 반환한다. @param {'standard'|'fever'|'feverStart'|'relaxedFever'} [rule=opponentMenuRule] 대전 규칙 @returns {Record<'easy'|'normal'|'hard'|'extreme', string[]>} 진행도 저장소 */
     function getOpponentProgressStore(rule = opponentMenuRule) {
         if (rule === 'feverStart') return store.feverStartClearListByDifficulty;
+        if (rule === 'relaxedFever') return store.relaxedFeverClearListByDifficulty;
         if (rule === 'fever') return store.feverClearListByDifficulty;
         return store.clearListByDifficulty;
     }
@@ -4358,7 +4379,7 @@
     /**
      * 이전 유효 적을 클리어해 현재 잠금이 해제된 적인지 판별한다.
      * @param {{className:string, hidden:boolean, notAvail:boolean}} opponent 판별할 적
-     * @param {'standard'|'fever'|'feverStart'} [rule=opponentMenuRule] 적용할 대전 규칙
+     * @param {'standard'|'fever'|'feverStart'|'relaxedFever'} [rule=opponentMenuRule] 적용할 대전 규칙
      * @returns {boolean} 선택 가능 여부
      */
     function isOpponentUnlocked(opponent, rule = opponentMenuRule) {
@@ -4396,7 +4417,7 @@
     /**
      * 선택 가능한 적 중 현재 적의 이전 또는 다음 적을 반환한다.
      * @param {number} direction 이전 -1 또는 다음 1
-     * @param {'standard'|'fever'|'feverStart'} [rule=opponentMenuRule] 적용할 대전 규칙
+     * @param {'standard'|'fever'|'feverStart'|'relaxedFever'} [rule=opponentMenuRule] 적용할 대전 규칙
      * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean}|null} 이동 대상 적
      */
     function getRelativeSelectableOpponent(direction, rule = opponentMenuRule) {
@@ -4538,9 +4559,10 @@
      * @param {boolean} continuousFever 연속 피버 모드 여부
      * @param {boolean} feverRule 피버 룰 대전 여부
      * @param {boolean} feverStart 피버 룰 (시작) 대전 여부
+     * @param {boolean} relaxedFever 피버 룰 (완화) 대전 여부
      * @returns {void}
      */
-    function startGame(practice = false, continuousFever = false, feverRule = false, feverStart = false) {
+    function startGame(practice = false, continuousFever = false, feverRule = false, feverStart = false, relaxedFever = false) {
         const soloMode = practice || continuousFever;
         const usesFeverRule = feverRule || feverStart;
         if (!soloMode && !ensureSelectedOpponent()) return;
@@ -4562,7 +4584,7 @@
         const practicePlayer = new PlayerState(controller.getName(), FIELD_RIGHT, controller, colors);
         const players = [new PlayerState(getPlayerName(), FIELD_LEFT, null, colors), practicePlayer];
         if (usesFeverRule) players.forEach((player) => {
-            player.fever = createFeverRuleState();
+            player.fever = createFeverRuleState(relaxedFever ? RELAXED_FEVER_LIGHT_STARTS : FEVER_LIGHT_STARTS);
             if (feverStart) player.fever.nextTime = FEVER_START_INITIAL_TIME / 1000;
         });
         // 연습과 연속 피버의 상대는 공격만 받아 방해뿌요 연출을 보여주고 일반 뿌요는 생성하지 않는다.
@@ -4588,6 +4610,7 @@
             continuousFever,
             feverRule: usesFeverRule,
             feverStart,
+            relaxedFever,
             fever: continuousFever ? {
                 targetCombo: CONTINUOUS_FEVER_INITIAL_TARGET_COMBO,
                 leftTime: CONTINUOUS_FEVER_INITIAL_TIME,
@@ -4933,7 +4956,7 @@
         const difficulty = watchDifficulty;
         const feverRule = watchRule !== 'standard';
         const relaxedFever = watchRule === 'relaxedFever';
-        const feverLightStart = relaxedFever ? Math.min(6, FEVER_LIGHT_STARTS + 3) : FEVER_LIGHT_STARTS;
+        const feverLightStart = relaxedFever ? RELAXED_FEVER_LIGHT_STARTS : FEVER_LIGHT_STARTS;
         const colors = DIFFICULTIES[difficulty].colors;
         const pairQueue = Array.from({ length: INITIAL_PAIR_QUEUE_LENGTH }, () => createRandomPair(colors));
         if (DEBUG_CLEAR_RULE_MODE) {
@@ -8531,6 +8554,7 @@
         Object.freeze({ key: 'standard', label: '기본 룰', battle: true }),
         Object.freeze({ key: 'fever', label: '피버 룰', battle: true }),
         Object.freeze({ key: 'fever_start', label: '피버 룰 (시작)', battle: true }),
+        Object.freeze({ key: 'relaxed_fever', label: '피버 룰 (완화)', battle: true }),
         Object.freeze({ key: 'practice', label: '연습', battle: false }),
         Object.freeze({ key: 'continuous_fever', label: '연속 피버', battle: false })
     ]);
@@ -8745,7 +8769,7 @@
         if (winner !== player) return false;
         const enemyType = game.players[1]?.controller?.getClassType?.();
         if (!enemyType || LEADERBOARD_EXCLUDED_ENEMY_TYPES.has(enemyType)) return false;
-        const ruleKey = game.feverStart ? 'fever_start' : game.feverRule ? 'fever' : 'standard';
+        const ruleKey = game.feverStart ? 'fever_start' : game.relaxedFever ? 'relaxed_fever' : game.feverRule ? 'fever' : 'standard';
         // 적이 있는 대전은 게임 시작 때 고른 AI 난이도마다 순위를 따로 둔다.
         const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key;
         if (!difficultyKey) return false;
@@ -8801,13 +8825,14 @@
         const enemyController = game.players[1].controller;
         const enemyClassName = enemyController.constructor.name;
         const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key || AI_DIFFICULTIES[1].key;
-        const rule = game.feverStart ? 'fever_start' : game.feverRule ? 'fever' : 'standard';
+        const rule = game.feverStart ? 'fever_start' : game.relaxedFever ? 'relaxed_fever' : game.feverRule ? 'fever' : 'standard';
         const feverStartWasUnlocked = isFeverStartRuleUnlocked();
         const watchModeWasUnlocked = isWatchModeUnlocked();
         unlockGalleryEnemy(enemyController.getClassType());
         const progressStore = game.feverStart
             ? store.feverStartClearListByDifficulty
-            : game.feverRule ? store.feverClearListByDifficulty : store.clearListByDifficulty;
+            : game.relaxedFever ? store.relaxedFeverClearListByDifficulty
+                : game.feverRule ? store.feverClearListByDifficulty : store.clearListByDifficulty;
         let changed = false;
         let progressionAdded = false;
         if (!progressStore[difficultyKey].includes(enemyClassName)) {
@@ -11185,7 +11210,7 @@
     /** 이번 게임의 규칙·적·플레이어 정보를 리플레이 머리말로 만든다. @returns {object} 리플레이 머리말 */
     function createReplayMeta() {
         return {
-            rule: game.watch ? (game.watch.rule || 'standard') : game.feverStart ? 'feverStart' : game.feverRule ? 'fever' : 'standard',
+            rule: game.watch ? (game.watch.rule || 'standard') : game.feverStart ? 'feverStart' : game.relaxedFever ? 'relaxedFever' : game.feverRule ? 'fever' : 'standard',
             watch: Boolean(game.watch),
             // "너랑 나랑"은 재생에서도 중앙에 초상화 대신 승패 현황을 보여야 하므로 기록 당시의 누적 승수까지 남긴다.
             together: Boolean(game.together),
@@ -11626,6 +11651,7 @@
             continuousFever: false,
             feverRule: meta.feverRule,
             feverStart: meta.feverStart,
+            relaxedFever: meta.rule === 'relaxedFever',
             fever: null,
             // 구경 리플레이만 watch 속성을 갖는다. 일반 대전 리플레이에서는 속성 자체를 만들지 않아야
             // getGameState()가 구경 모드로 잘못 보고하지 않는다.
@@ -13782,8 +13808,8 @@
 
     /** 현재 게임 시작 단계에서 표시할 선택지를 반환한다. @returns {object[]} 표시할 선택지 */
     function getRuleSelectionOptions() {
-        if (ruleSelectionStep === 'opponent') return GAME_RULE_OPTIONS.slice(0, 3);
-        if (ruleSelectionStep === 'practice') return GAME_RULE_OPTIONS.slice(3, 5);
+        if (ruleSelectionStep === 'opponent') return GAME_RULE_OPTIONS.slice(0, 4);
+        if (ruleSelectionStep === 'practice') return GAME_RULE_OPTIONS.slice(4, 6);
         return GAME_CATEGORY_OPTIONS;
     }
 
@@ -13799,6 +13825,10 @@
 
     /** 게임 시작 선택지 하나의 화면 영역을 반환한다. @param {number} index 선택지 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
     function getRuleSelectionButtonBounds(index) {
+        if (ruleSelectionStep === 'opponent') {
+            if (index === 0) return { x: WIDTH / 2 - 125, y: 200, width: 250, height: 78 };
+            return { x: WIDTH / 2 - 393 + (index - 1) * 268, y: 305, width: 250, height: 78 };
+        }
         const count = getRuleSelectionOptions().length;
         const width = 250;
         const height = 78;
@@ -13808,7 +13838,7 @@
 
     /** 게임 시작 오버레이 하단 취소 버튼의 화면 영역을 반환한다. @returns {{x:number,y:number,width:number,height:number}} 취소 버튼 영역 */
     function getRuleSelectionCancelButtonBounds() {
-        return { x: WIDTH / 2 - 125, y: 405, width: 250, height: 78 };
+        return { x: WIDTH / 2 - 125, y: ruleSelectionStep === 'opponent' ? 410 : 405, width: 250, height: 78 };
     }
 
     /** 메인 메뉴 위에 게임 시작 선택 오버레이를 연다. @param {'category'|'opponent'|'practice'} [step='category'] 표시할 단계 @returns {void} */
@@ -14264,6 +14294,31 @@
         if (key === 'enter' || key === ' ') { activateRuleSelection(); return; }
         if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
         const selectable = getSelectableRuleOptionIndices();
+        if (ruleSelectionStep === 'opponent') {
+            const middle = selectable.filter((index) => index > 0);
+            const middleFocus = middle.includes(2) ? 2 : middle[0];
+            const cancelIndex = getRuleSelectionOptions().length;
+            if (ruleSelectionFocus === 0) {
+                if (key === 'arrowdown') ruleSelectionFocus = middleFocus;
+                else if (key === 'arrowright') ruleSelectionFocus = middle[0];
+                return;
+            }
+            if (ruleSelectionFocus === cancelIndex) {
+                if (key === 'arrowup') ruleSelectionFocus = middle.includes(ruleSelectionPreviousFocus) ? ruleSelectionPreviousFocus : middleFocus;
+                return;
+            }
+            if (key === 'arrowup') ruleSelectionFocus = 0;
+            else if (key === 'arrowdown') {
+                ruleSelectionPreviousFocus = ruleSelectionFocus;
+                ruleSelectionFocus = cancelIndex;
+            } else {
+                const position = middle.indexOf(ruleSelectionFocus);
+                if (key === 'arrowleft' && position === 0) ruleSelectionFocus = 0;
+                else if (key === 'arrowleft' && position > 0) ruleSelectionFocus = middle[position - 1];
+                else if (key === 'arrowright' && position < middle.length - 1) ruleSelectionFocus = middle[position + 1];
+            }
+            return;
+        }
         if (ruleSelectionFocus === getRuleSelectionOptions().length) {
             if (key === 'arrowleft') ruleSelectionFocus = selectable[selectable.length - 1];
             else if (key === 'arrowright') ruleSelectionFocus = selectable[0];
@@ -15376,12 +15431,12 @@
         }
     }
 
-    /** 승리한 대전의 적 선택 상태를 복원하고, 새로 열렸으면 다음 적에 포커스를 둔다. @param {{difficulty:number,aiDifficulty:number,opponentIndex:number|null,feverRule:boolean,feverStart?:boolean,winner:PlayerState|null,players:PlayerState[]}} finishedGame 종료된 게임 상태 @returns {void} */
+    /** 승리한 대전의 적 선택 상태를 복원하고, 새로 열렸으면 다음 적에 포커스를 둔다. @param {{difficulty:number,aiDifficulty:number,opponentIndex:number|null,feverRule:boolean,feverStart?:boolean,relaxedFever?:boolean,winner:PlayerState|null,players:PlayerState[]}} finishedGame 종료된 게임 상태 @returns {void} */
     function restoreOpponentMenuAfterResult(finishedGame) {
         selectedDifficulty = finishedGame.difficulty;
         selectedAiDifficulty = finishedGame.aiDifficulty;
         if (Number.isInteger(finishedGame.opponentIndex) && OPPONENTS[finishedGame.opponentIndex]) selectedOpponent = finishedGame.opponentIndex;
-        opponentMenuRule = finishedGame.feverStart ? 'feverStart' : finishedGame.feverRule ? 'fever' : 'standard';
+        opponentMenuRule = finishedGame.feverStart ? 'feverStart' : finishedGame.relaxedFever ? 'relaxedFever' : finishedGame.feverRule ? 'fever' : 'standard';
         const playerWon = finishedGame.winner === finishedGame.players[0];
         if (playerWon) {
             const selectable = getSelectableOpponents();
@@ -16027,6 +16082,7 @@
             continuousFever: previousGame.continuousFever,
             feverRule: previousGame.feverRule,
             feverStart: previousGame.feverStart,
+            relaxedFever: previousGame.relaxedFever,
             difficulty: previousGame.difficulty,
             aiDifficulty: previousGame.aiDifficulty,
             opponentIndex: previousGame.opponentIndex
@@ -16065,8 +16121,8 @@
             selectedDifficulty = normalGame.difficulty;
             selectedAiDifficulty = normalGame.aiDifficulty;
             if (Number.isInteger(normalGame.opponentIndex)) selectedOpponent = normalGame.opponentIndex;
-            opponentMenuRule = normalGame.feverStart ? 'feverStart' : normalGame.feverRule ? 'fever' : 'standard';
-            startGame(normalGame.practice, normalGame.continuousFever, normalGame.feverRule, normalGame.feverStart);
+            opponentMenuRule = normalGame.feverStart ? 'feverStart' : normalGame.relaxedFever ? 'relaxedFever' : normalGame.feverRule ? 'fever' : 'standard';
+            startGame(normalGame.practice, normalGame.continuousFever, normalGame.feverRule, normalGame.feverStart, normalGame.relaxedFever);
         });
     }
 
@@ -16128,10 +16184,11 @@
     function startOpponentMenuGame() {
         const feverRule = opponentMenuRule !== 'standard';
         const feverStart = opponentMenuRule === 'feverStart';
+        const relaxedFever = opponentMenuRule === 'relaxedFever';
         if (!ensureSelectedOpponent()) return;
         const opponent = OPPONENTS[selectedOpponent];
         if (!opponent.requiresOnnx || store.onnxWarningAcknowledged) {
-            startGame(false, false, feverRule, feverStart);
+            startGame(false, false, feverRule, feverStart, relaxedFever);
             return;
         }
         playMenuSelectSound();
@@ -16141,7 +16198,7 @@
             saveStore();
             // 응답을 기다리는 동안 다른 화면으로 옮겨졌거나 선택 적이 바뀌었다면 기록만 남기고 시작하지 않는다.
             if (game || menuScreen !== 'opponent' || OPPONENTS[selectedOpponent] !== opponent) return;
-            startGame(false, false, feverRule, feverStart);
+            startGame(false, false, feverRule, feverStart, relaxedFever);
         });
     }
 
@@ -16713,7 +16770,7 @@
      * 새 콘텐츠 해금 정보를 외부 확장에 알린다.
      * rule과 difficulty는 적 진행도 해금이 아닐 때 null이며, 적 해금일 때는 어느 진행도 칸인지 함께 보낸다.
      * @param {string} content 새로 해금된 콘텐츠의 안정적인 식별 문자열
-     * @param {'standard'|'fever'|'fever_start'|null} [rule=null] 적 해금에 적용한 규칙
+     * @param {'standard'|'fever'|'fever_start'|'relaxed_fever'|null} [rule=null] 적 해금에 적용한 규칙
      * @param {'easy'|'normal'|'hard'|'extreme'|null} [difficulty=null] 적 해금에 적용한 AI 난이도
      * @returns {void}
      */
@@ -16746,7 +16803,7 @@
             || game.puzzle || game.together || game.online || game.replayPlayback) return;
         const difficulty = AI_DIFFICULTIES[game.aiDifficulty]?.key || 'normal';
         const colorCount = DIFFICULTIES[game.difficulty]?.colors.length || 0;
-        const rule = game.feverStart ? 'fever_start' : game.feverRule ? 'fever' : 'standard';
+        const rule = game.feverStart ? 'fever_start' : game.relaxedFever ? 'relaxed_fever' : game.feverRule ? 'fever' : 'standard';
         dispatchPuyoCustomEvent('puyow_win', {
             difficulty,
             colorCount,
@@ -16758,14 +16815,14 @@
 
     /**
      * 진행 중인 게임의 모드와 규칙 식별자를 반환한다. 튜토리얼이나 메뉴에서는 호출하지 않는다.
-     * @returns {{mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'continuous_fever'}}
+     * @returns {{mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'relaxed_fever'|'continuous_fever'}}
      */
     function getGameModeInfo() {
         const mode = game.watch !== undefined ? 'watch'
             : (game.together ? 'together'
                 : (game.continuousFever ? 'continuous_fever' : (game.puzzle ? 'puzzle' : (game.practice ? 'practice' : 'versus'))));
         const rule = game.continuousFever ? 'continuous_fever'
-            : (game.feverStart ? 'fever_start' : (game.feverRule ? 'fever' : 'standard'));
+            : (game.feverStart ? 'fever_start' : ((game.relaxedFever || game.watch?.rule === 'relaxedFever') ? 'relaxed_fever' : (game.feverRule ? 'fever' : 'standard')));
         return { mode, rule };
     }
 
@@ -17220,7 +17277,7 @@
      * 일반·피버 규칙과 학습·적 AI가 필요한 양측 일반/현재/피버 필드 및 앞 두 NEXT를 함께 제공한다.
      * 반환된 객체와 그 안의 배열을 변경해도 실제 게임 상태에는 영향을 주지 않는다.
      * 메뉴, 튜토리얼 또는 초기화 전 상태에서는 null을 반환한다.
-     * @returns {{screen:string, playerCanControl:boolean, mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'continuous_fever', running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, timeProgressMultiplier:number, practice:boolean, watch:boolean, continuousFever:boolean, feverRule:boolean, feverStart:boolean, allClearTicketEnabled:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
+     * @returns {{screen:string, playerCanControl:boolean, mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'relaxed_fever'|'continuous_fever', running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, timeProgressMultiplier:number, practice:boolean, watch:boolean, continuousFever:boolean, feverRule:boolean, feverStart:boolean, allClearTicketEnabled:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
      */
     function getGameState() {
         if (!game || game.tutorial) return null;
@@ -17335,7 +17392,7 @@
         // getNowScreen()이 돌려줄 수 있는 화면 이름을 모두 담는다. 화면을 더하면 이 목록도 함께 고친다.
         const screenNames = ['initial_title', 'main_menu', 'rule_select', 'watch_select', 'together_mode_select', 'together_guide', 'online_login', 'online_signup', 'online_lobby', 'online_room', 'practice_difficulty', 'puzzle_stage_select', 'opponent_select', 'fever_opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'settings_resetting', 'gallery', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'];
         const modeNames = ['versus', 'together', 'practice', 'watch', 'continuous_fever', 'puzzle'];
-        const ruleNames = ['standard', 'fever', 'fever_start', 'continuous_fever'];
+        const ruleNames = ['standard', 'fever', 'fever_start', 'relaxed_fever', 'continuous_fever'];
         const playerCanControlSchema = { type: 'boolean', description: 'True only while the left human player (1P) controls an active pair. Always false in watch mode and during replay playback. In together mode it describes 1P only.' };
         const replayPlaybackSchema = { type: 'boolean', description: 'True while a recorded replay is played back. Only Escape is accepted, and it skips to the result screen.' };
         const screenSchema = {

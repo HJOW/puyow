@@ -326,7 +326,7 @@ if (screen.playerCanControl) {
 }
 ```
 
-`getGameState()`의 최상위에는 `mode`, `rule`, `allClearTicketEnabled`, `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, `ending`이 있습니다. `mode`는 `versus`, `practice`, `watch`, `continuous_fever`, `puzzle` 중 하나이고, `rule`은 `standard`, `fever`, `fever_start`, `continuous_fever` 중 하나입니다. `player`와 `opponent`에는 다음 정보가 각각 들어 있습니다.
+`getGameState()`의 최상위에는 `mode`, `rule`, `allClearTicketEnabled`, `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, `ending`이 있습니다. `mode`는 `versus`, `practice`, `watch`, `continuous_fever`, `puzzle` 중 하나이고, `rule`은 `standard`, `fever`, `fever_start`, `relaxed_fever`, `continuous_fever` 중 하나입니다. `player`와 `opponent`에는 다음 정보가 각각 들어 있습니다.
 
 - `isCpu`, `phase`, `point`, `attack`, `damage`, `combo`, `placedPairCount`
 - `board.columns`, `board.rows`, `board.visibleRows`, `board.puyos` — 현재 조작 필드의 고정 뿌요를 `{ x, y, color }` 목록으로 반환합니다. 피버 중에는 피버 필드이며, 좌표의 원점은 왼쪽 아래입니다.

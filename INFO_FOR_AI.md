@@ -94,6 +94,7 @@
 | 기본 룰 | 사람 대 CPU의 일반 필드 대전. 승리는 난이도별 기본 룰 진행도에 저장된다. |
 | 피버 룰 | 각 플레이어가 일반 필드와 피버 필드를 가진다. 피버 게이지/시간/목표 연쇄는 플레이어별 상태다. 승리는 별도 피버 진행도에 저장된다. |
 | 피버 룰 (시작) | 기본은 잠금 상태이며, 어떤 난이도에서든 피버 룰로 키마리스를 이기면 해금된다. 해금 후 피버 룰과 같은 적 선택·필드 규칙을 사용하되 승리는 별도 피버 시작 진행도에 저장한다. 카운트다운 뒤 양쪽이 목표 5연쇄·60초의 피버 스테이지에서 즉시 시작한다. |
+| 피버 룰 (완화) | 피버 룰 (시작)과 동시에 해금된다. 피버 룰과 같은 진행이지만 양쪽의 최소 전등 수가 `min(6, FEVER_LIGHT_STARTS + 3)`이며 피버 종료 뒤에도 이 값으로 돌아간다. 적 진행도와 리더보드는 별도로 저장하고, 승리 시 적 갤러리는 해금한다. |
 | 연습 | 단독 플레이 배치. 오른쪽은 연습 상대이며 일반 뿌요를 받지 않는다. |
 | 연속 피버 | 단독 플레이 피버 스테이지. 목표 5연쇄·60초로 시작하며 두 패배 칸을 쓴다. |
 | 퍼즐뿌요 | 항상 5색, `PuzzlePuyoStage` 기반 단독 스테이지다. 오른쪽 영역은 적 필드가 아니라 목표/턴 상태 표시다. |
@@ -141,7 +142,7 @@
 ### GOLD와 카드
 
 - GOLD는 `puyow_store.gold`의 0 이상 정수이며 잘못된 값은 로드 시 0으로 보정한다. 메인 메뉴와 갤러리 좌측 상단에는 번역하지 않는 `GOLD` 단위와 천 단위 콤마로 표시한다.
-- 기본/피버/피버 룰 (시작) 대전 승리와 연습/연속 피버 정상 결과 진입 때 종료 점수를 바탕으로 GOLD를 한 번 지급한다. 점수 패널티는 기본 300, 피버 1,000, 피버 룰 (시작)·연습 10,000, 연속 피버 100,000이다. 난이도 배율은 쉬움 3, 보통 4, 어려움 5, 극한 7이고 단독 모드는 1이다. 기본 적 배율은 안드로말리우스부터 안드레알푸스까지 1~8, 솔로몬·외부 적·단독 모드는 1이다. 구경, 퍼즐의 일반 종료 계산, 일시정지 종료에는 지급하지 않는다.
+- 기본/피버/피버 룰 (시작)/피버 룰 (완화) 대전 승리와 연습/연속 피버 정상 결과 진입 때 종료 점수를 바탕으로 GOLD를 한 번 지급한다. 점수 패널티는 기본 300, 피버·피버 룰 (완화) 1,000, 피버 룰 (시작)·연습 10,000, 연속 피버 100,000이다. 난이도 배율은 쉬움 3, 보통 4, 어려움 5, 극한 7이고 단독 모드는 1이다. 기본 적 배율은 안드로말리우스부터 안드레알푸스까지 1~8, 솔로몬·외부 적·단독 모드는 1이다. 구경, 퍼즐의 일반 종료 계산, 일시정지 종료에는 지급하지 않는다.
 - 보유 카드는 `puyow_cards`의 개별 `{id,type}` 인스턴스 배열이다. 기본 카드 풀은 일반뿌요 5종, 방해뿌요 3종, 예고뿌요 11종(단위 1·6·30·210·500·2000·80000·500000·3000000·20000000·140000000), 출시 적 21종(안드로말리우스~알로케스)이며 `getCardDefinitions()`의 가중치를 쓴다. 안드라스·발라크·자간·바퓰라를 포함해 플라우로스 뒤에 추가된 출시 적은 자동으로 가중치 1 카드가 되며, 솔로몬과 `notAvail` 출시 예정 적 2종(발람·푸르카스)은 제외한다. 단위 500000보다 큰 예고뿌요도 자동으로 가중치 1 카드가 된다. 카드 배경색은 가중치 경계에 따른 EPIC/RARE/UNCOMMON/COMMON 색을 사용하며 등급 문구는 카드에 표시하지 않는다.
 - 갤러리의 카드 유형은 8열·약 4행 카드 목록, 세로 스크롤, 키보드·마우스 포커스/선택을 지원한다. 1장/10장 뽑기는 각각 1,000/9,000 GOLD, 합성은 카드 5장당 새 카드 1장을 지급한다. 자원이 충분하면 먼저 전체 화면 확인창을 열고 사용자가 확인했을 때만 GOLD 차감 또는 선택 카드 소비와 결과 지급을 수행한다.
 - 카드 뽑기·합성으로 지급한 카드는 저장을 끝낸 뒤 `revealGrantedCards()`를 통해 선택적 3D 등장 연출을 요청한다. `puyow_3d.js`의 `PuyoW3DEffectManager.playCardReveal()`이 기존 카드 그림 콜백을 텍스처로 만들고, 카드의 회전·광채·광륜·입자를 그린다. 카드별 COMMON → UNCOMMON → RARE → EPIC 순서로 광륜·입자 수와 회전량·광채를 강화하며 등급 문구는 표시하지 않는다. 여러 장도 한 번에 격자로 등장하므로 전체 시간은 가장 높은 등급에 따라 2,200/2,650/3,100/3,550ms다. `frame(time)`의 절대 시각과 종료 타이머를 함께 사용하므로 게임의 delta 상한 때문에 4초를 넘도록 늘어나지 않는다.
@@ -154,14 +155,14 @@
 - ONNX 추론으로 판단하는 적(`requiresOnnx`)은 구경 대전에 **아예 나오지 않는다**. `getWatchOpponentCandidates()`가 ONNX 런타임 사용 가능 여부와 무관하게 이들을 후보에서 모두 빼므로, `selectWatchOpponents()`는 종류가 다른 두 적만 고르면 된다. 적 선택 화면과 갤러리는 이 제한을 받지 않는다(그쪽 규칙은 「브라우저 ONNX 추론 적」 절을 따른다). 구경 대전에는 적 선택 화면이 없어 모델 로딩 실패를 안내할 곳이 마땅치 않다는 점도 이 규칙의 이유다.
 - `puyow_code`에 `observation`이 있으면 저장 진행도는 바꾸지 않고 적 선택 화면의 진행도 잠금만 해제한다. `hidden` 및 출시 예정(`notAvail`) 적은 기존처럼 잠긴 채로 유지한다. 같은 코드가 있으면 구경 메뉴도 즉시 열리며, 구경 후보는 숨김·출시 예정 적과 `requiresOnnx` 적, `Solomon`, `Andromalius`, `Dantalion`을 제외한 모든 출시 적이다.
 - 구경 대전은 적 잠금 해제와 갤러리 잠금 해제를 진행시키지 않는다.
-- 일반 대전 승리 기록은 `clearListByDifficulty`(기본), `feverClearListByDifficulty`(피버), `feverStartClearListByDifficulty`(피버 룰 (시작))에 난이도별로 저장된다. `clearList`는 이전 기본 룰 호환용 전체 목록이므로 신규 난이도 판단 근거로 사용하지 않는다.
+- 일반 대전 승리 기록은 `clearListByDifficulty`(기본), `feverClearListByDifficulty`(피버), `feverStartClearListByDifficulty`(피버 룰 (시작)), `relaxedFeverClearListByDifficulty`(피버 룰 (완화))에 난이도별로 저장된다. 각 룰의 적 잠금은 해당 저장소만 사용한다. `clearList`는 이전 기본 룰 호환용 전체 목록이므로 신규 난이도 판단 근거로 사용하지 않는다.
 
 ## UI·입력·결과 화면
 
 - 초기 화면은 `initial_title`이며 Enter, Gamepad A 또는 캔버스 클릭으로 메인 메뉴에 들어간다.
 - 메인 메뉴 좌측 공지사항은 논리 X=42, Y=230에서 시작하고 폭 350px로 줄바꿈해 표시하며, 아래쪽은 좌측 하단 버튼 묶음 위에서 잘린다. 공지사항은 `notice_[LANG].txt`에서 읽으며, 표시 영역을 변경할 때 줄바꿈 폭과 클리핑 폭을 함께 수정한다.
 - 플레이 중 회전 Z/X는 `event.key`뿐 아니라 물리 키 코드 `KeyZ`/`KeyX`도 받아 macOS 한글 입력기·다른 키보드 레이아웃에서 동작해야 한다. 텍스트 입력 중에는 물리 키 코드로 문자 입력을 바꾸지 않는다.
-- 메인 메뉴의 게임 시작은 `도장깨기`·`스스로 연습`·`퍼즐뿌요`·`취소`를 먼저 보여 준다. 도장깨기는 기본 룰·피버 룰·피버 룰 (시작), 스스로 연습은 연습·연속 피버를 보여 주며 두 하위 단계에도 취소가 있다. 퍼즐뿌요는 스테이지 선택으로 바로 이동한다. 두 단계 모두 선택지 바깥 클릭은 무시하고, ESC는 해당 단계의 취소와 같다. 첫 단계 취소는 메인 메뉴, 둘째 단계 취소는 첫 단계로 돌아간다. 잠긴 피버 룰 (시작)은 포커스·활성화 대상에서 제외한다.
+- 메인 메뉴의 게임 시작은 `도장깨기`·`스스로 연습`·`퍼즐뿌요`·`취소`를 먼저 보여 준다. 도장깨기 하위 단계는 기본 룰 한 줄, 피버 룰·피버 룰 (시작)·피버 룰 (완화) 한 줄, 취소 한 줄의 3줄 배치다. 스스로 연습은 연습·연속 피버·취소를 보여 준다. 퍼즐뿌요는 스테이지 선택으로 바로 이동한다. 선택지 바깥 클릭은 무시하고, ESC는 해당 단계의 취소와 같다. 첫 단계 취소는 메인 메뉴, 둘째 단계 취소는 첫 단계로 돌아간다. 피버 룰 (시작)과 피버 룰 (완화)은 같은 조건으로 잠기며 포커스·활성화에서 제외한다.
 - 연습·연속 피버의 색 수 화면에서 취소하면 스스로 연습의 하위 선택지로 돌아간다. 퍼즐 스테이지 선택에서 취소·ESC를 누르면 메인 메뉴로 돌아간다. 퍼즐 결과 화면에서 스테이지 선택으로 복귀한 뒤에도 같다.
 - 단독 모드 결과의 오른쪽 영역에는 일반 적 결과를 출력하지 않는다. 퍼즐은 전용 스테이지 상태를, 연습·연속 피버는 빈 적 영역을 사용한다.
 - 결과 화면 이후의 복귀 대상은 모드별로 다르다(단독 모드는 메인, 퍼즐은 스테이지 선택, 대전은 적 선택, 너랑 나랑과 리플레이 재생은 메인). 변경 시 `closeResultScreen()`과 관련 메뉴 포커스를 함께 확인한다.
@@ -209,7 +210,7 @@
 
 ### 리플레이
 
-- 설정의 `리플레이 사용`이 켜져 있을 때만 기록한다. 대상은 기본 룰·피버 룰·피버 룰 (시작) 대전과 구경 모드의 모든 규칙, 그리고 너랑 나랑 대전이며, 연습·연속 피버·퍼즐뿌요·플레이 방법·시뮬레이터는 기록하지 않는다. 기록기는 `game.replay`에 두므로 결과 화면까지 남고 `closeResultScreen()`에서 게임과 함께 사라진다.
+- 설정의 `리플레이 사용`이 켜져 있을 때만 기록한다. 대상은 기본 룰·피버 룰·피버 룰 (시작)·피버 룰 (완화) 대전과 구경 모드의 모든 규칙, 그리고 너랑 나랑 대전이며, 연습·연속 피버·퍼즐뿌요·플레이 방법·시뮬레이터는 기록하지 않는다. 기록기는 `game.replay`에 두므로 결과 화면까지 남고 `closeResultScreen()`에서 게임과 함께 사라진다.
 - 기록은 `beginReplayRecording()`으로 시작하고, `frame()`이 카운트다운이 끝난 실행 중·비일시정지 프레임에서만 `recordReplayFrame(delta)`를 호출한다. 승패가 확정되는 `updateDefeatSequence()`에서 `finishReplayRecording()`이 마지막 프레임·뿌요 지급 덱·승자를 담아 기록을 닫는다.
 - 프레임은 `REPLAY_SAMPLE_INTERVAL`(초당 30장) 간격의 표본이며, 직전 표본과 달라진 항목만 담는 델타 프레임이다. 보드와 뿌요 쌍은 칸·색마다 한 글자인 문자열로 접고, 폭발·중력·연쇄 표시·싹쓸이 효과·패배 연출은 매 프레임 변하는 경과 시간 대신 시작(또는 종료) 시각만 저장한다. 재생 쪽 `refreshReplayAnimationTimers()`가 현재 재생 시각으로 경과 시간을 다시 계산하므로 30fps 표본으로도 연출이 부드럽다. 실측 평균은 프레임당 약 40~80바이트다.
 - 데이터는 `{version, build, meta, deck, inputs, sounds, result, frames}` 구조다. `meta`는 규칙·구경 여부·색상 목록·양측 이름과 적 클래스 타입을, `deck`은 전체 뿌요 지급 덱과 양측 소비 위치를, `inputs`는 `[시각, 플레이어, 조작종류, 값]` 형태의 시간대별 컨트롤 조작을 담는다. 조작 종류는 `REPLAY_INPUT`(이동·회전·빠른 하강·고정)이다. `meta.together`가 참이면 양쪽 모두 사람이 조작한 너랑 나랑 대전이며, `meta.togetherWins`에 기록 시작 시점의 1P·2P 누적 승수를 담아 재생 중앙 패널에 그대로 보여 준다. `REPLAY_FORMAT_VERSION`이 다르면 재생을 거부하므로 구조를 바꿀 때 함께 올린다. 현재 버전은 3이며, 너랑 나랑 필드를 넣으면서 2에서 올렸다. 그래서 버전 2로 복사해 둔 예전 리플레이는 재생되지 않는다.
@@ -525,6 +526,7 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 | `test01_menu.spec.js` | 타이틀 메뉴·설정 화면·카드와 GOLD·가상 컨트롤러와 조이스틱·게임패드·화면 회전·플레이 방법 시연 |
 | `test01_enemy.spec.js` | 기본 제공 적 AI의 판단, 다수 탐색 Worker, 패배 위치 회피, 적 테마, 진행도 저장, 구경 모드 |
 | `test01_fever.spec.js` | 피버 룰·피버 룰 (시작)·연속 피버와 그에 딸린 공격·싹쓸이 정산 |
+| `test01_relaxed_fever.spec.js` | 피버 룰 (완화)의 잠금·키보드/마우스 선택·전등 수·독립 적 진행도·갤러리·리더보드·리플레이 |
 | `test01_fever_damage.spec.js` | 연쇄 시작 시 상대 피버 상태에 따른 피해 귀속·지연 에너지 정산·피버 종료 후 낙하 |
 | `test01_puzzle.spec.js` | 퍼즐뿌요 스테이지 선택·승리 조건·결과 화면 |
 | `test01_simulator.spec.js` | 시뮬레이터와 점수·연결 보너스 계산 |
@@ -827,13 +829,13 @@ GUI(`lngui.py`)는 `TRAINING_STRATEGIES` 등록표를 그대로 나열하므로 
 | --- | --- | --- |
 | `standard` | 기본 룰 | `fever_rule=False`. 피버 필드를 쓰지 않는다. |
 | `fever` | 피버 룰 | 전등 `FEVER_LIGHT_STARTS`(0)로 시작해 상쇄 7회에 피버가 발동한다. |
-| `relaxedFever` | 피버 (완화) | 전등 `RELAXED_FEVER_LIGHT_STARTS`(= `min(6, FEVER_LIGHT_STARTS + 3)` = 3)로 시작해 상쇄 4회에 발동한다. 원작에서는 구경 설정 전용 규칙이지만 학습 환경에서는 대전 규칙으로도 쓸 수 있다. |
+| `relaxedFever` | 피버 룰 (완화) | 전등 `RELAXED_FEVER_LIGHT_STARTS`(= `min(6, FEVER_LIGHT_STARTS + 3)` = 3)로 시작해 상쇄 4회에 발동한다. 게임에서는 구경과 도장깨기에서 선택할 수 있고, 학습 환경에서도 대전 규칙으로 쓸 수 있다. |
 | `feverStart` | 피버 룰 (시작) | `FeverState.next_time`을 `FEVER_START_INITIAL_TIME`(60초)로 두고 `reset()` 끝에서 양쪽 `_activate_fever()`를 부른다. `puyow.js`의 `beginGame()` feverStart 분기와 같아, 남은 시간 60초·다음 피버 시간 15초·목표 5연쇄의 피버 스테이지에서 즉시 시작한다. |
 
 구현상 주의할 점은 다음과 같다.
 
 - `PuyoDuelEnvironment.__init__`의 `rule` 인자는 문자열 하나이거나 후보 목록이며, 기존 `fever_rule` 불리언 인자보다 우선한다. 둘 다 생략한 기본 경로는 `random.random() < 0.5` 한 번만 소비해 예전 학습의 난수 흐름과 재현성이 그대로다. 후보가 하나뿐이면 난수를 아예 쓰지 않는다.
-- `FeverState.light_start`는 `puyow.js`의 `fever.lightStart`에 대응한다. `_activate_fever()`와 `_finish_fever()`가 전등을 0이 아니라 이 값으로 되돌리므로(원작 `activatePlayerFever`/`finishPlayerFever`와 동일), "피버 (완화)"는 피버가 끝난 뒤에도 전등 3개에서 다시 센다.
+- `FeverState.light_start`는 `puyow.js`의 `fever.lightStart`에 대응한다. `_activate_fever()`와 `_finish_fever()`가 전등을 0이 아니라 이 값으로 되돌리므로(원작 `activatePlayerFever`/`finishPlayerFever`와 동일), "피버 룰 (완화)"는 피버가 끝난 뒤에도 전등 3개에서 다시 센다.
 - 피버 룰 (시작)의 첫 제한 시간 60,000ms는 관측 스칼라 `fever_left_time`의 정규화 상한(`common.FEVER_LEFT_TIME_SCALE`)과 정확히 같아 값이 잘리지 않는다. `puyow.js`도 같은 상수(`FEVER_START_INITIAL_TIME`)로 정규화한다. 관측 벡터 길이·의미는 바뀌지 않았으므로 기존 체크포인트와 완전히 호환된다.
 - `_activate_fever()`는 `_prepare_fever_stage()`에서 현재 조작 쌍을 보고 스테이지를 고르므로, `reset()`에서는 반드시 양측 `agent_pair`/`enemy_pair`와 예고쌍을 모두 정한 뒤에 불러야 한다.
 - `step()`의 `info`에 `rule` 키가 추가되었다. 기존 `fever_rule` 키도 그대로 남아 있다.
@@ -921,8 +923,8 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 
 - `window`에 `CustomEvent` 여섯 종류를 발생시킨다(`puyow_prerender`·`puyow_render`는 아래 「렌더링 전·후 커스텀 이벤트」 절). 외부 코드는 반드시 `PuyoW.initialize()` 전에 `window.addEventListener()`로 리스너를 등록하고, 전달값은 모두 `event.detail`에서 읽는다. `puyow_init`은 성공한 초기화 끝에 한 번 발생하며 초기 화면은 `puyow_changescreen`으로 알리지 않는다. `destroy()` 뒤 재초기화하면 새 초기화 이벤트를 다시 한 번 발생시키며, 화면 비교 기준도 초기화한다.
 - `puyow_changescreen`은 렌더링 직후 `getNowScreen().screen`이 직전 값과 달라질 때 한 번 발생한다. `detail`은 `{ screen, previousScreen }`이고 두 값은 `getScreenState().screen`의 표준 화면 식별자를 쓴다. 메뉴의 직접 대입과 대전 상태 전환이 섞여 있으므로 개별 대입 지점에 이벤트를 넣지 말고 이 공통 감지 경로를 유지한다.
-- `puyow_unlocked`의 `detail`은 항상 `{ content, rule, difficulty }`다. 새 갤러리 예고·적, 새 퍼즐뿌요 스테이지, 일반 적 진행도, 피버 룰 (시작), 구경 모드, 세션 한정 솔로몬을 실제로 처음 열 때만 발생한다. `content`는 `gallery_warning:<type>`, `gallery_enemy:<classType>`, `puzzle_stage:<zero-based index>`, `enemy:<classType>`, `rule:fever_start`, `mode:watch` 중 하나다. 일반 적 진행도 `enemy:`만 해당 대전의 `rule`(`standard`·`fever`·`fever_start`)과 AI `difficulty`(`easy`·`normal`·`hard`·`extreme`)를 넣고, 나머지는 `null`이다. 저장값 로드와 테스트 코드 적용은 알리지 않는다.
-- `puyow_win`은 사람이 CPU 적을 이긴 뒤 모든 정산·종료 연출을 마치고 결과 상태가 된 시점에 한 번 발생한다. `detail`은 `{ difficulty, colorCount, rule, enemy, elapsedMs }`이고 난이도는 AI 난이도 key, 규칙은 `standard`·`fever`·`fever_start`, 시간은 `game.elapsed` 밀리초다. 구경, 연습·연속 피버·퍼즐뿌요·튜토리얼, 너랑 나랑, 온라인, 리플레이 재생은 제외한다.
+- `puyow_unlocked`의 `detail`은 항상 `{ content, rule, difficulty }`다. 새 갤러리 예고·적, 새 퍼즐뿌요 스테이지, 일반 적 진행도, 피버 룰 (시작), 구경 모드, 세션 한정 솔로몬을 실제로 처음 열 때만 발생한다. `content`는 `gallery_warning:<type>`, `gallery_enemy:<classType>`, `puzzle_stage:<zero-based index>`, `enemy:<classType>`, `rule:fever_start`, `mode:watch` 중 하나다. 일반 적 진행도 `enemy:`만 해당 대전의 `rule`(`standard`·`fever`·`fever_start`·`relaxed_fever`)과 AI `difficulty`(`easy`·`normal`·`hard`·`extreme`)를 넣고, 나머지는 `null`이다. 저장값 로드와 테스트 코드 적용은 알리지 않는다.
+- `puyow_win`은 사람이 CPU 적을 이긴 뒤 모든 정산·종료 연출을 마치고 결과 상태가 된 시점에 한 번 발생한다. `detail`은 `{ difficulty, colorCount, rule, enemy, elapsedMs }`이고 난이도는 AI 난이도 key, 규칙은 `standard`·`fever`·`fever_start`·`relaxed_fever`, 시간은 `game.elapsed` 밀리초다. 구경, 연습·연속 피버·퍼즐뿌요·튜토리얼, 너랑 나랑, 온라인, 리플레이 재생은 제외한다.
 - 개발자 사용법과 정확한 식별자·payload는 `HOWTO.md`와 `HOWTO.en.md`에 같은 의미로 기록했다. `tests/common/gamepage.js`는 스크립트 초기화 전에 이벤트를 기록하고, `tests/test01_core.spec.js`가 초기화 한 번·초기 화면 이벤트 부재·`initial_title`에서 `main_menu`로의 화면 이벤트 payload를 확인한다.
 
 ### 렌더링 전·후 커스텀 이벤트 `puyow_prerender`·`puyow_render` (2026-09-21, BUILDNO 104)
@@ -968,7 +970,7 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 
 ### 안드레알푸스 피버 룰 실시간 반응 (2026-09-17, BUILDNO 77)
 
-`TODO.md`의 사용자 결정대로, 기본 룰의 advanced 탐색·실시간 재판단을 피버 룰·피버 룰 (시작)·피버 (완화)로 넓혔다. 세 규칙은 모두 `game.feverRule`을 공유한다(완화는 구경 설정 전용, 시작은 양쪽이 피버로 시작하므로 적의 첫 피버가 끝난 뒤부터 동작). **적 자신이 피버 중이면 실시간 반응을 하지 않고** 기존 피버 공통 규칙(최대 연쇄 우선, `preparedPlacement`)을 쓴다. 다른 적과 기본 룰 동작은 바꾸지 않았다.
+`TODO.md`의 사용자 결정대로, 기본 룰의 advanced 탐색·실시간 재판단을 피버 룰·피버 룰 (시작)·피버 룰 (완화)로 넓혔다. 세 규칙은 모두 `game.feverRule`을 공유한다(완화는 도장깨기와 구경에서 선택할 수 있고, 시작은 양쪽이 피버로 시작하므로 적의 첫 피버가 끝난 뒤부터 동작). **적 자신이 피버 중이면 실시간 반응을 하지 않고** 기존 피버 공통 규칙(최대 연쇄 우선, `preparedPlacement`)을 쓴다. 다른 적과 기본 룰 동작은 바꾸지 않았다.
 
 **사용자 결정 사항(구현 기준)**
 - 피버 룰 일반 상태에서 상쇄로 전등을 켜는 행동에 가중치를 준다. 목적은 빠르게 피버에 들어가는 것이므로 **단계당 공격을 작게**(터지는 색 뿌요를 적게) 해서 받을 예고가 남아 있는 동안 더 많은 단계가 상쇄되게 한다. 연쇄 수가 많은 것은 괜찮다(단계마다 점등).
@@ -1032,7 +1034,7 @@ BUILDNO 113에서 대규모 이관을 수행했다. 다음 작업은 위 「현�
 
 - 피버가 활성화된 플레이어가 자기 연쇄로 `normalDamage`(피버 종료 뒤 일반 필드로 떨어질 유예 DAMAGE)를 상쇄할 때, 기존 `sendAttackEnergy()`는 수치와 전등 규칙만 처리하고 `queueEnergyTransfer()`의 상쇄 경로에는 그 값을 넘기지 않았다. 피버 DAMAGE와 상대 ATTACK이 모두 0이면 빈 경로가 되어 에너지 이동 효과가 아예 생기지 않았고, 다른 상쇄와 함께여도 유예분은 자기 필드 천장으로 가는 연출에서 빠졌다.
 - `queueEnergyTransfer()`의 선택적 `cancelledNormalDamage` 인자로 유예분을 상쇄 경로 생성 조건에 포함했다. 이 값은 이미 `normalDamage`에서 차감한 수치라 `warningReductionDelay`를 다시 줄이지 않는 `normalAmount` 메타데이터로만 보관한다. 따라서 상쇄·예고·DAMAGE 정산 순서는 그대로이며, 에너지 구체만 자기 필드 천장까지 이동한다. 남은 공격이 있으면 기존처럼 이어서 상대 천장으로 간다.
-- 이 경로는 `game.feverRule && player.fever.active`를 쓰므로 피버 룰·피버 룰 (시작)·구경의 피버 (완화)에 공통 적용된다. `tests/test01_fever_damage.spec.js`는 실제 피버 룰·피버 (완화) 구경 대전에서 유예 DAMAGE만 상쇄하고, 리플레이의 `et` 에너지 표본이 남는지 확인한다. 피버 룰 (시작)은 같은 상쇄 함수·피버 상태 분기를 공유한다.
+- 이 경로는 `game.feverRule && player.fever.active`를 쓰므로 피버 룰·피버 룰 (시작)·피버 룰 (완화)에 공통 적용된다. `tests/test01_fever_damage.spec.js`는 실제 피버 룰·완화 룰 구경 대전에서 유예 DAMAGE만 상쇄하고, 리플레이의 `et` 에너지 표본이 남는지 확인한다. 피버 룰 (시작)은 같은 상쇄 함수·피버 상태 분기를 공유한다.
 - 검증: 새 회귀 2개를 Chromium·Firefox·WebKit에서 모두 통과했고, `node --check src/js/puyow.js`와 `npm.cmd test`도 통과했다. BUILDNO는 83, `package.json`·`package-lock.json`의 패키지 버전은 `0.0.83`이며 버전값 자체는 테스트하지 않았다.
 
 ### 적 AI 한 칸씩 밀기 2차 (2026-09-17, BUILDNO 81)
@@ -1132,12 +1134,12 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 `TODO.md`의 리더보드 기록·조회 요구를 구현했다.
 
 **기록 규칙** — 결과가 확정되는 `updateDefeatSequence()`에서 `recordEnemyClear()`·`recordTogetherResult()` 다음에 `recordLeaderboardResult(winner, loser)`를 한 번 부른다(`game.leaderboardRecorded`로 중복 방지). 대상과 제외는 다음과 같다.
-- 기본 룰·피버 룰·피버 룰 (시작): 사람(1P, `controller === null`)이 **이겼을 때만** 최종 점수(`player.point`, 정수로 내림)를 기록한다. 순위는 룰 × AI 난이도(`AI_DIFFICULTIES[game.aiDifficulty].key`: easy·normal·hard·extreme) × 색 수 × 적 `getClassType()`마다 따로다. BUILDNO 91~93에는 AI 난이도로 나누지 않았고, BUILDNO 94에서 사용자 요청으로 나눴다.
+- 기본 룰·피버 룰·피버 룰 (시작)·피버 룰 (완화): 사람(1P, `controller === null`)이 **이겼을 때만** 최종 점수(`player.point`, 정수로 내림)를 기록한다. 순위는 룰 × AI 난이도(`AI_DIFFICULTIES[game.aiDifficulty].key`: easy·normal·hard·extreme) × 색 수 × 적 `getClassType()`마다 따로다. BUILDNO 91~93에는 AI 난이도로 나누지 않았고, BUILDNO 94에서 사용자 요청으로 나눴다.
 - 연습·연속 피버: 승리 조건이 없으므로 **사람이 패배했을 때**(`loser === players[0]`) 최종 점수를 룰 × 색 수마다 기록한다. 연속 피버의 시간 만료도 `startDefeatSequence(player, …)`를 거치는 패배라 기록된다. 일시정지 `종료`·`다시하기`, 결과 전 이탈은 이 경로를 지나지 않으므로 기록되지 않는다.
 - 제외: 너랑 나랑(`game.together`, 오프라인)·온라인(`game.online`)·구경·퍼즐뿌요·플레이 방법(`game.tutorial`)·리플레이 재생·개발용 도구 테스트(`game.toolsTest`), 그리고 **솔로몬**(`LEADERBOARD_EXCLUDED_ENEMY_TYPES`)은 모드와 무관하게 제외한다. ONNX 적은 기록 대상이다. 시뮬레이터는 결과 경로가 없어 기록되지 않는다.
 - 닉네임은 게임 시작 때 `PlayerState` 이름으로 들어간 `getPlayerName()` 값(기록 당시 이름)이다. 게임 진행 시간은 기록하지 않는다. BUILDNO 92부터 기록이 발생한 당시의 현재 시각을 `recordedAt`(`Date.now()`, 밀리초)으로 함께 남긴다. 동점은 따로 고려하지 않으며 먼저 들어간 기록 뒤에 놓인다.
 
-**저장 형식** — `localStorage`(`storageManager`)의 `puyow_leaderboard`에 `{version: 2, records, legacy?}` JSON을 둔다(`LEADERBOARD_FORMAT_VERSION`). 단독 룰(`practice`·`continuous_fever`)은 `records[룰키][색 수 문자열] = [{name, score, recordedAt}]`, 대전 룰(`standard`·`fever`·`fever_start`)은 `records[룰키][AI 난이도 키][색 수 문자열][적 classType] = [{name, score, recordedAt}]`다. 정리는 `normalizeLeaderboardSoloRecords()`·`normalizeLeaderboardBattleRecords()`가 나눠 맡고, 알 수 없는 난이도 키는 버린다. **형식 1(BUILDNO 91~93)의 대전 기록은 AI 난이도 정보가 없어 어느 난이도에도 넣지 않는다.** 임의 난이도로 옮기면 사실과 다른 기록이 되므로, 지워지지도 않게 `legacy.v1[룰키]`에 형식 1 구조 그대로 보존만 하고 화면·WebMCP에는 보이지 않는다(사용자에게 알렸다). 형식 1의 단독 룰 기록은 구조가 같아 그대로 옮긴다. `legacy`는 이후 저장에서도 그대로 유지된다. `recordedAt`이 없거나 잘못된 BUILDNO 91 기록은 `normalizeLeaderboardEntry()`가 `null`로 보정한다(형식 버전은 1 그대로). 룰 키와 표시 라벨·대전 여부는 `LEADERBOARD_RULES` 한 곳에 있다. `loadLeaderboard()`가 읽을 때마다 알 수 없는 룰·3~5 밖의 색 수·솔로몬·음수/숫자 아닌 점수를 버리고 점수 내림차순 10개(`LEADERBOARD_MAX_ENTRIES`)로 정리한다. 설정 화면의 `초기화`는 `storageManager.clear()`라 리더보드도 함께 지운다.
+**저장 형식** — `localStorage`(`storageManager`)의 `puyow_leaderboard`에 `{version: 2, records, legacy?}` JSON을 둔다(`LEADERBOARD_FORMAT_VERSION`). 단독 룰(`practice`·`continuous_fever`)은 `records[룰키][색 수 문자열] = [{name, score, recordedAt}]`, 대전 룰(`standard`·`fever`·`fever_start`·`relaxed_fever`)은 `records[룰키][AI 난이도 키][색 수 문자열][적 classType] = [{name, score, recordedAt}]`다. 정리는 `normalizeLeaderboardSoloRecords()`·`normalizeLeaderboardBattleRecords()`가 나눠 맡고, 알 수 없는 난이도 키는 버린다. **형식 1(BUILDNO 91~93)의 대전 기록은 AI 난이도 정보가 없어 어느 난이도에도 넣지 않는다.** 임의 난이도로 옮기면 사실과 다른 기록이 되므로, 지워지지도 않게 `legacy.v1[룰키]`에 형식 1 구조 그대로 보존만 하고 화면·WebMCP에는 보이지 않는다(사용자에게 알렸다). 형식 1의 단독 룰 기록은 구조가 같아 그대로 옮긴다. `legacy`는 이후 저장에서도 그대로 유지된다. `recordedAt`이 없거나 잘못된 BUILDNO 91 기록은 `normalizeLeaderboardEntry()`가 `null`로 보정한다(형식 버전은 1 그대로). 룰 키와 표시 라벨·대전 여부는 `LEADERBOARD_RULES` 한 곳에 있다. `loadLeaderboard()`가 읽을 때마다 알 수 없는 룰·3~5 밖의 색 수·솔로몬·음수/숫자 아닌 점수를 버리고 점수 내림차순 10개(`LEADERBOARD_MAX_ENTRIES`)로 정리한다. 설정 화면의 `초기화`는 `storageManager.clear()`라 리더보드도 함께 지운다.
 
 **공개 API** — `PuyoW.leaderboard`(`leaderboardApi`)는 `STORE_KEY`, `MAX_ENTRIES`, `getRules()`, `getColorCounts()`, `getDifficulties()`(`{key, label(한국어 키)}` 네 개), `getOpponents()`(숨김·출시 예정·솔로몬 제외, `{classType, name(한국어 키)}`), `getData()`, `translate(language, 한국어키)`를 준다. `translate`는 `initialize()` 없이도 게임 `stringTable`을 쓰며 그 언어에 번역이 없으면 영어, 그것도 없으면 원문이다(독일어·프랑스어 표에 적 이름이 없어 영어 이름이 나온다). 기록 함수 자체는 공개하지 않는다.
 
@@ -1346,6 +1348,13 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 
 - 첫 단계의 `적과 대전`을 `도장깨기`로 바꾸고 영어·일본어·중국어·독일어·프랑스어 번역 키도 새 문구에 맞춰 갱신했다. 선택 동작과 두 번째 단계의 룰 선택은 그대로다.
 - `src/js/puyow.js` BUILDNO와 `package.json`·`package-lock.json` 버전은 115 (`0.1.115`)다. 버전값 검사는 수행하지 않았다.
+
+### 도장깨기 완화 피버 룰 추가 (2026-09-24, BUILDNO 116)
+
+- 도장깨기 하위 메뉴를 기본 룰/피버 룰 3종/취소의 3줄로 배치했다. 가운데 줄은 좌우로 이동하고, 위아래로 기본 룰과 취소에 이동한다. 버튼 영역은 그리기와 클릭에서 같은 함수를 쓴다.
+- 피버 룰 (완화)은 피버 룰 (시작)과 동시에 열리고, 구경의 완화 피버처럼 양쪽 최소 전등 수가 3이다. 적 잠금과 승리 진행도는 `relaxedFeverClearListByDifficulty`에 따로 저장한다. 승리 시 적 갤러리는 해금하며, 기존 피버 룰과 같은 GOLD 계산을 쓴다.
+- 리더보드와 게임 상태·승리/해금 이벤트는 `relaxed_fever`, 리플레이 메타데이터와 메뉴 내부는 `relaxedFever`를 쓴다. Node/Python 서버도 별도 리더보드 룰을 받는다. 구경 메뉴와 리플레이 페이지의 표시는 `피버 룰 (완화)`로 통일했다.
+- BUILDNO와 패키지 버전은 116 (`0.1.116`)이다. JS 문법 검사·ESLint·webpack 빌드, 완화 룰 대전/기록 및 변경된 메뉴·리플레이 Chromium 검사, Python/Node 리더보드 규칙 검사를 수행했다. 버전값 자체는 테스트하지 않았다.
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.

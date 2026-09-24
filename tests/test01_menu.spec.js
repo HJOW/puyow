@@ -1095,7 +1095,7 @@ test('게임 시작의 두 선택지에서 바깥 클릭은 무시하고 ESC는 
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.evaluate(() => { window.testCanvasTexts = []; });
   await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('적과 대전')))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('도장깨기')))).toBe(true);
   await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
@@ -1105,7 +1105,7 @@ test('게임 시작 첫 단계와 하위 단계의 취소 버튼을 키보드·�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await expect.poll(() => page.evaluate(() => {
-    const labels = ['적과 대전', '스스로 연습', '퍼즐뿌요', '취소'];
+    const labels = ['도장깨기', '스스로 연습', '퍼즐뿌요', '취소'];
     return labels.every((label) => window.testCanvasTexts.includes(window.WebPuyo.translate(label)));
   })).toBe(true);
 

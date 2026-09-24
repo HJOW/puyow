@@ -232,7 +232,7 @@ test.describe('리플레이 재생 페이지', () => {
     await expect(items).toHaveCount(expectedCount);
     const first = await page.evaluate(async () => (await (await fetch('./js/replays.json')).json())[0].meta);
     // 테스트 기본 언어는 영어이므로 페이지 번역표의 영어 원문이 그대로 보인다.
-    const ruleLabel = { standard: 'Standard Rules', fever: 'FEVER Rules', feverStart: 'FEVER Rules (Start)', relaxedFever: 'FEVER (Relaxed)' }[first.rule];
+    const ruleLabel = { standard: 'Standard Rules', fever: 'FEVER Rules', feverStart: 'FEVER Rules (Start)', relaxedFever: 'FEVER Rules (Relaxed)' }[first.rule];
     const colorLabel = `${first.colors.length} Colors`;
     await expect(items.nth(0).locator('.replay-list-number')).toHaveText('1.');
     await expect(items.nth(0).locator('.replay-list-title')).toContainText(ruleLabel);
@@ -332,13 +332,13 @@ test.describe('게임 페이지의 리플레이 일시정지', () => {
 test.describe('리플레이 재생 페이지의 다국어', () => {
   /** 로케일별로 확인할 문구다. 툴바 네 버튼·게임으로 돌아가기 링크·안내 문구·첫 목록 항목의 룰·색 수·구경 표시다. */
   const EXPECTED = {
-    'ko-KR': { lang: 'ko', buttons: ['JSON 불러오기', '목록에서 불러오기', '일시중지', '처음부터'], guide: 'JSON 불러오기 또는 목록에서 불러오기로 리플레이를 불러와 주세요.', rule: '피버 (완화)', colors: '5색', watch: '구경', back: '게임으로 돌아가기' },
-    'ja-JP': { lang: 'ja', buttons: ['JSONを読み込む', 'リストから読み込む', '一時停止', '最初から'], guide: '「JSONを読み込む」または「リストから読み込む」でリプレイを読み込んでください。', rule: 'FEVER（緩和）', colors: '5色', watch: '観戦', back: 'ゲームに戻る' },
-    'zh-CN': { lang: 'zh', buttons: ['加载JSON', '从列表加载', '暂停', '从头播放'], guide: '请通过“加载JSON”或“从列表加载”加载回放。', rule: 'FEVER（缓和）', colors: '5色', watch: '观战', back: '返回游戏' },
-    'de-DE': { lang: 'de', buttons: ['JSON laden', 'Aus Liste laden', 'Pause', 'Von vorn'], guide: 'Lade eine Wiederholung über „JSON laden“ oder „Aus Liste laden“.', rule: 'FEVER (Entspannt)', colors: '5 Farben', watch: 'Zuschauen', back: 'Zurück zum Spiel' },
-    'fr-FR': { lang: 'fr', buttons: ['Charger le JSON', 'Charger depuis la liste', 'Pause', 'Recommencer'], guide: 'Chargez une reprise avec « Charger le JSON » ou « Charger depuis la liste ».', rule: 'FEVER (adouci)', colors: '5 couleurs', watch: 'Regarder', back: 'Retour au jeu' },
+    'ko-KR': { lang: 'ko', buttons: ['JSON 불러오기', '목록에서 불러오기', '일시중지', '처음부터'], guide: 'JSON 불러오기 또는 목록에서 불러오기로 리플레이를 불러와 주세요.', rule: '피버 룰 (완화)', colors: '5색', watch: '구경', back: '게임으로 돌아가기' },
+    'ja-JP': { lang: 'ja', buttons: ['JSONを読み込む', 'リストから読み込む', '一時停止', '最初から'], guide: '「JSONを読み込む」または「リストから読み込む」でリプレイを読み込んでください。', rule: 'FEVER ルール（緩和）', colors: '5色', watch: '観戦', back: 'ゲームに戻る' },
+    'zh-CN': { lang: 'zh', buttons: ['加载JSON', '从列表加载', '暂停', '从头播放'], guide: '请通过“加载JSON”或“从列表加载”加载回放。', rule: 'FEVER 规则（宽松）', colors: '5色', watch: '观战', back: '返回游戏' },
+    'de-DE': { lang: 'de', buttons: ['JSON laden', 'Aus Liste laden', 'Pause', 'Von vorn'], guide: 'Lade eine Wiederholung über „JSON laden“ oder „Aus Liste laden“.', rule: 'FEVER-Regeln (Entspannt)', colors: '5 Farben', watch: 'Zuschauen', back: 'Zurück zum Spiel' },
+    'fr-FR': { lang: 'fr', buttons: ['Charger le JSON', 'Charger depuis la liste', 'Pause', 'Recommencer'], guide: 'Chargez une reprise avec « Charger le JSON » ou « Charger depuis la liste ».', rule: 'Règles FEVER (assouplies)', colors: '5 couleurs', watch: 'Regarder', back: 'Retour au jeu' },
     // 지원하지 않는 언어는 기본 언어인 영어로 보인다.
-    'es-ES': { lang: 'en', buttons: ['Load JSON', 'Load from List', 'Pause', 'Restart'], guide: 'Load a replay with Load JSON or Load from List.', rule: 'FEVER (Relaxed)', colors: '5 Colors', watch: 'Watch', back: 'Back to game' }
+    'es-ES': { lang: 'en', buttons: ['Load JSON', 'Load from List', 'Pause', 'Restart'], guide: 'Load a replay with Load JSON or Load from List.', rule: 'FEVER Rules (Relaxed)', colors: '5 Colors', watch: 'Watch', back: 'Back to game' }
   };
 
   for (const [locale, expected] of Object.entries(EXPECTED)) {

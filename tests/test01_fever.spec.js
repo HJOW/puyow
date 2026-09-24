@@ -15,10 +15,10 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   await expect.poll(() => page.evaluate(() => {
     const texts = window.testCanvasTexts;
     const localizedOptions = [
-      ['적과 대전', '스스로 연습', '퍼즐뿌요'],
-      ['Battle Opponent', 'Solo Practice', 'Puzzle Puyo'],
-      ['敵と対戦', 'ひとりで練習', 'パズルぷよ'],
-      ['与对手对战', '单人练习', '益智魔法气泡'],
+      ['도장깨기', '스스로 연습', '퍼즐뿌요'],
+      ['Gauntlet', 'Solo Practice', 'Puzzle Puyo'],
+      ['道場破り', 'ひとりで練習', 'パズルぷよ'],
+      ['道馆挑战', '单人练习', '益智魔法气泡'],
     ];
     return localizedOptions.some((options) => options.every((text) => texts.includes(text)));
   })).toBe(true);
@@ -170,10 +170,10 @@ test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
     const labels = ['피버 룰 (시작)', 'FEVER Rules (Start)', 'FEVER ルール (開始)', 'FEVER 规则（开始）'];
-    const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(908, 312, 1, 1).data;
+    const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(640, 317, 1, 1).data;
     return labels.some((label) => window.testCanvasTexts.includes(label)) && Array.from(color).join(',') === '60,70,80,255';
   })).toBe(true);
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 908, y: 312 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 345 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.evaluate(() => {
     const saved = JSON.parse(localStorage.getItem('puyow_store') || '{"clearList":[]}');
@@ -185,7 +185,7 @@ test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
-    const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(908, 312, 1, 1).data;
+    const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(640, 317, 1, 1).data;
     return Array.from(color).join(',') === '75,31,111,255';
   })).toBe(true);
   await page.keyboard.press('ArrowRight');
@@ -205,7 +205,7 @@ test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 908, y: 312 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 345 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
 });
 

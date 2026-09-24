@@ -305,7 +305,7 @@ Instead of a separate learning-only API, `PuyoW.getGameState()` is used both to 
 const state = window.PuyoW.getGameState();
 ```
 
-The top-level `mode` is one of `versus`, `practice`, `watch`, `continuous_fever`, or `puzzle`, and `rule` is one of `standard`, `fever`, `fever_start`, or `continuous_fever`. `allClearTicketEnabled` indicates that the all-clear ticket is exclusive to standard rules.
+The top-level `mode` is one of `versus`, `practice`, `watch`, `continuous_fever`, or `puzzle`, and `rule` is one of `standard`, `fever`, `fever_start`, `relaxed_fever`, or `continuous_fever`. `allClearTicketEnabled` indicates that the all-clear ticket is exclusive to standard rules.
 
 `player` and `opponent` each contain the following state, in the same shape.
 

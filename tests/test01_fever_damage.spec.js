@@ -510,7 +510,7 @@ test('일반 필드행 미정산 예고가 전량 상쇄되면 뒤쪽에서도 �
 });
 
 for (const relaxed of [false, true]) {
-  test(`${relaxed ? '피버 (완화)' : '피버 룰'}에서 유예된 일반 DAMAGE만 상쇄해도 에너지 이동 연출을 남긴다`, async ({ page }) => {
+  test(`${relaxed ? '피버 룰 (완화)' : '피버 룰'}에서 유예된 일반 DAMAGE만 상쇄해도 에너지 이동 연출을 남긴다`, async ({ page }) => {
     await enableReplayFeature(page);
     await prepareDamageMatch(page, relaxed);
     await activateReceiver(page);

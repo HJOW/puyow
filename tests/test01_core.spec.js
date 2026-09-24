@@ -1124,8 +1124,8 @@ test('2D URL 예약어는 컨텍스트 경로와 지원 시스템 언어로 치�
 
 test('독일어와 프랑스어 stringTable은 FEVER 표기와 주요 화면 문구를 제공한다', async ({ page }) => {
   const expected = {
-    'de-DE': { fever: 'FEVER-Regeln', feverStart: 'FEVER-Regeln (Start)', relaxedFever: 'FEVER (Entspannt)', puzzle: 'Puzzle-Puyo', start: 'Spiel starten', watch: 'Zuschauen', language: 'de' },
-    'fr-FR': { fever: 'Règles FEVER', feverStart: 'Règles FEVER (Début)', relaxedFever: 'FEVER (adouci)', puzzle: 'Puzzle Puyo', start: 'Commencer', watch: 'Regarder', language: 'fr' }
+    'de-DE': { fever: 'FEVER-Regeln', feverStart: 'FEVER-Regeln (Start)', relaxedFever: 'FEVER-Regeln (Entspannt)', puzzle: 'Puzzle-Puyo', start: 'Spiel starten', watch: 'Zuschauen', language: 'de' },
+    'fr-FR': { fever: 'Règles FEVER', feverStart: 'Règles FEVER (Début)', relaxedFever: 'Règles FEVER (assouplies)', puzzle: 'Puzzle Puyo', start: 'Commencer', watch: 'Regarder', language: 'fr' }
   };
   for (const [locale, values] of Object.entries(expected)) {
     await page.addInitScript((language) => {
@@ -1137,7 +1137,7 @@ test('독일어와 프랑스어 stringTable은 FEVER 표기와 주요 화면 문
       return {
         fever: window.WebPuyo.translate('피버 룰'),
         feverStart: window.WebPuyo.translate('피버 룰 (시작)'),
-        relaxedFever: window.WebPuyo.translate('피버 (완화)'),
+        relaxedFever: window.WebPuyo.translate('피버 룰 (완화)'),
         puzzle: window.WebPuyo.translate('퍼즐뿌요'),
         start: window.WebPuyo.translate('게임 시작'),
         watch: window.WebPuyo.translate('구경'),

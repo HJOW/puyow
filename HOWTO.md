@@ -40,7 +40,7 @@ puyow.js 는 CDN으로도 사용할 수 있습니다.
 
 ## 라이브러리 개요
 
-`puyow.js`는 CommonJS와 브라우저 스크립트 방식 모두에서 사용할 수 있는 라이브러리입니다. `Enemy`는 CPU 조작 알고리즘과 게임 화면 테마를 넣기 위한 기본 클래스입니다. 메인 화면에서 게임 시작 → 적과 대전 → 규칙을 선택하면 적 선택 화면이 열리며, 외부 파일에서 등록한 상대를 선택해 대전합니다. `sortPriority` 멤버 변수의 기본값은 `1`이며, 작은 값의 적이 적 선택 화면에서 왼쪽에 표시됩니다.
+`puyow.js`는 CommonJS와 브라우저 스크립트 방식 모두에서 사용할 수 있는 라이브러리입니다. `Enemy`는 CPU 조작 알고리즘과 게임 화면 테마를 넣기 위한 기본 클래스입니다. 메인 화면에서 게임 시작 → 도장깨기 → 규칙을 선택하면 적 선택 화면이 열리며, 외부 파일에서 등록한 상대를 선택해 대전합니다. `sortPriority` 멤버 변수의 기본값은 `1`이며, 작은 값의 적이 적 선택 화면에서 왼쪽에 표시됩니다.
 
 `Enemy`에는 선택 화면 공개 상태를 위한 boolean 멤버 변수도 있습니다. 둘 다 기본값은 `false`입니다.
 
@@ -102,8 +102,8 @@ PuyoW.initialize('puyow_target');
 
 - `puyow_init`: 초기화가 성공한 직후 한 번 발생하며 `detail`은 빈 객체입니다.
 - `puyow_changescreen`: 실제 표시 화면이 바뀔 때 한 번 발생합니다. `detail.screen`은 목적지의 표준 화면 문자열이고, `detail.previousScreen`은 직전 화면 문자열입니다. 값은 `getScreenState().screen`과 같습니다.
-- `puyow_unlocked`: 아직 열리지 않았던 콘텐츠가 새로 열릴 때만 발생합니다. `detail.content`은 `gallery_warning:<종류>`, `gallery_enemy:<적종류>`, `puzzle_stage:<0부터 시작하는 순번>`, `enemy:<적종류>`, `rule:fever_start`, `mode:watch` 중 하나입니다. 일반 적 진행도 해금인 `enemy:<적종류>`만 `detail.rule`(`standard`·`fever`·`fever_start`)과 `detail.difficulty`(`easy`·`normal`·`hard`·`extreme`)가 문자열이며, 나머지는 둘 다 `null`입니다. 세션 한정 솔로몬 해금은 `enemy:Solomon`으로 알립니다.
-- `puyow_win`: 사람이 CPU 적을 이기고 모든 정산·종료 연출이 끝난 뒤 한 번 발생합니다. `detail`은 AI 난이도 `difficulty`, 색상 수 `colorCount`, 규칙 `rule`(`standard`·`fever`·`fever_start`), 적 종류 `enemy`, 게임 진행 시간(밀리초) `elapsedMs`를 가집니다. 구경, 연습·연속 피버·퍼즐뿌요·튜토리얼, 너랑 나랑, 온라인 대전, 리플레이 재생에는 발생하지 않습니다.
+- `puyow_unlocked`: 아직 열리지 않았던 콘텐츠가 새로 열릴 때만 발생합니다. `detail.content`은 `gallery_warning:<종류>`, `gallery_enemy:<적종류>`, `puzzle_stage:<0부터 시작하는 순번>`, `enemy:<적종류>`, `rule:fever_start`, `mode:watch` 중 하나입니다. 일반 적 진행도 해금인 `enemy:<적종류>`만 `detail.rule`(`standard`·`fever`·`fever_start`·`relaxed_fever`)과 `detail.difficulty`(`easy`·`normal`·`hard`·`extreme`)가 문자열이며, 나머지는 둘 다 `null`입니다. 세션 한정 솔로몬 해금은 `enemy:Solomon`으로 알립니다.
+- `puyow_win`: 사람이 CPU 적을 이기고 모든 정산·종료 연출이 끝난 뒤 한 번 발생합니다. `detail`은 AI 난이도 `difficulty`, 색상 수 `colorCount`, 규칙 `rule`(`standard`·`fever`·`fever_start`·`relaxed_fever`), 적 종류 `enemy`, 게임 진행 시간(밀리초) `elapsedMs`를 가집니다. 구경, 연습·연속 피버·퍼즐뿌요·튜토리얼, 너랑 나랑, 온라인 대전, 리플레이 재생에는 발생하지 않습니다.
 - `puyow_prerender`: `render()`가 이전 화면을 `clearRect()`로 지운 직후, 게임의 어떤 화면 요소도 그리기 전에 매번 발생합니다. `detail.canvas`·`detail.ctx`·`detail.frameCounts`의 뜻과 논리 좌표계, 실제 해상도, 프레임 수 규칙은 `puyow_render`와 같습니다. 리스너가 그린 내용은 게임 배경과 화면 요소보다 먼저 그려지며, 바꾼 `ctx` 그리기 상태는 이벤트가 끝나면 원래대로 되돌립니다. 매 프레임 호출되므로 리스너에서는 무거운 작업을 피하세요.
 - `puyow_render`: 게임이 한 화면을 모두 그린 직후 매번 발생합니다. `detail.canvas`는 게임의 2D 캔버스 요소, `detail.ctx`는 그 2D 컨텍스트, `detail.frameCounts`는 게임 초기화 이후 실행된 애니메이션 프레임(`requestAnimationFrame`) 누적 수입니다. `render` 호출 횟수가 아니며, 4294967295를 넘으면 0부터 다시 셉니다. `ctx`에는 게임과 같은 논리 좌표계(1280×720)가 적용되어 있고, `canvas.width`·`canvas.height`는 그래픽 설정에 따른 실제 렌더링 해상도입니다. 리스너가 바꾼 `ctx` 그리기 상태(변환·투명도·색 등)는 이벤트가 끝나면 원래대로 되돌립니다. 매 프레임 호출되므로 리스너에서는 무거운 작업을 피하세요.
 
@@ -241,7 +241,7 @@ await page.goto('/puyow.html');
 
 ### 리플레이 데이터 읽기
 
-`PuyoW.getReplayData()`는 현재 게임에서 기록 중이거나 기록을 마친 리플레이를 JSON으로 변환할 수 있는 객체로 반환합니다. 설정의 `리플레이 사용`이 꺼져 있거나, 기록 대상이 아닌 모드(연습·연속 피버·퍼즐뿌요·플레이 방법·시뮬레이터)이거나, 게임이 없으면 `null`을 반환합니다. 기록 대상은 기본 룰·피버 룰·피버 룰 (시작) 대전과 구경 모드의 모든 규칙, 그리고 `너랑 나랑` 대전입니다.
+`PuyoW.getReplayData()`는 현재 게임에서 기록 중이거나 기록을 마친 리플레이를 JSON으로 변환할 수 있는 객체로 반환합니다. 설정의 `리플레이 사용`이 꺼져 있거나, 기록 대상이 아닌 모드(연습·연속 피버·퍼즐뿌요·플레이 방법·시뮬레이터)이거나, 게임이 없으면 `null`을 반환합니다. 기록 대상은 기본 룰·피버 룰·피버 룰 (시작)·피버 룰 (완화) 대전과 구경 모드의 모든 규칙, 그리고 `너랑 나랑` 대전입니다.
 
 반환 객체는 `{ version, build, meta, deck, inputs, sounds, result, frames }` 구조입니다. `meta`에는 대전 규칙·색상 목록·양측 이름과 적 클래스 타입, `너랑 나랑` 여부와 그때의 누적 승수가, `deck`에는 뿌요 지급 덱 전체와 양측 소비 위치가, `inputs`에는 `[시각(ms), 플레이어 번호, 조작 종류, 값]` 형태의 조작 기록이 담깁니다. `sounds`에는 게임 중 재생된 효과음이 `[시각(ms), 출처, 사운드 풀 속성 이름]` 형태로 담기며, 재생할 때 같은 효과음을 같은 순서로 다시 냅니다. `frames`는 초당 30장으로 표본화한 화면 상태이며, 직전 표본과 달라진 항목만 담아 메모리 사용량을 줄입니다.
 

@@ -269,7 +269,7 @@ if (screen.playerCanControl) {
 }
 ```
 
-`getGameState()` has top-level `mode`, `rule`, `allClearTicketEnabled`, `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, and `ending`. `mode` is one of `versus`, `practice`, `watch`, `continuous_fever`, or `puzzle`; `rule` is one of `standard`, `fever`, `fever_start`, or `continuous_fever`. Both `player` and `opponent` contain:
+`getGameState()` has top-level `mode`, `rule`, `allClearTicketEnabled`, `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, and `ending`. `mode` is one of `versus`, `practice`, `watch`, `continuous_fever`, or `puzzle`; `rule` is one of `standard`, `fever`, `fever_start`, `relaxed_fever`, or `continuous_fever`. Both `player` and `opponent` contain:
 
 - `isCpu`, `phase`, `point`, `attack`, `damage`, `combo`, `placedPairCount`
 - `board.columns`, `board.rows`, `board.visibleRows`, `board.puyos`: fixed puyos in the current play field as `{ x, y, color }` entries. This is the Fever field while Fever is active; the origin is lower left.

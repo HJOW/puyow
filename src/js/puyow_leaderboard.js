@@ -212,6 +212,7 @@
         standard: '#43a047',
         fever: '#e0409f',
         fever_start: '#8e5ccf',
+        relaxed_fever: '#c64aab',
         practice: '#66bb6a',
         continuous_fever: '#e57bd0'
     };
@@ -962,9 +963,9 @@
         // 선택 경로는 앞 단계부터 채운다. 아무것도 주지 않으면 모든 룰(처음 화면의 전체 순위)을 뜻한다.
         const selectionProperties = {
             rule: { type: 'string', enum: ruleKeys, description: 'Rule key. Omit it to mean every rule (the overall ranking the page shows before anything is selected).' },
-            difficulty: { type: 'string', enum: state.difficulties.map((entry) => entry.key), description: 'AI difficulty key. Used only by battle rules (standard, fever, fever_start), and required there before colors.' },
+            difficulty: { type: 'string', enum: state.difficulties.map((entry) => entry.key), description: 'AI difficulty key. Used only by battle rules (standard, fever, fever_start, relaxed_fever), and required there before colors.' },
             colors: { type: 'integer', enum: state.colorCounts, description: 'Color count. Optional.' },
-            opponent: { type: 'string', description: 'Opponent class type (for example Andromalius). Used only by battle rules (standard, fever, fever_start).' }
+            opponent: { type: 'string', description: 'Opponent class type (for example Andromalius). Used only by battle rules (standard, fever, fever_start, relaxed_fever).' }
         };
         // 기록 출처다. local 은 이 브라우저에 저장된 기록, online 은 게임 서버에 모인 사람들의 기록이다.
         const sourceProperty = { type: 'string', enum: ['local', 'online'], description: "Which records to use: 'local' for this browser's own records, 'online' for the records this game server collected from everyone. Defaults to whichever the page is showing. 'online' fails when the server does not collect records." };
@@ -986,7 +987,7 @@
                 annotations: { readOnlyHint: true },
                 execute: () => [
                     `This page shows the top ${state.api.MAX_ENTRIES} Puyo W scores stored only in this browser (localStorage key ${state.api.STORE_KEY}), each with the player name used when the score was made and the date and time when it was recorded (the wall-clock time at the end of the game, not the match duration). Play time is not recorded.`,
-                    'Battle rules (standard, fever, fever_start) keep a separate ranking per AI difficulty, color count, and opponent, and record the final score only when the human player wins. The tree menu goes rule, AI difficulty, color count, then opponent. Matches against Solomon are never recorded.',
+                    'Battle rules (standard, fever, fever_start, relaxed_fever) keep a separate ranking per AI difficulty, color count, and opponent, and record the final score only when the human player wins. The tree menu goes rule, AI difficulty, color count, then opponent. Matches against Solomon are never recorded.',
                     'Solo rules (practice, continuous_fever) keep a separate ranking per color count and record the final score only when the player loses; quitting from the pause menu is not recorded.',
                     'Together (offline and online), watch mode, Puzzle Puyo, the tutorial, the simulator, and replay playback are never recorded.',
                     `AI difficulty keys: ${state.difficulties.map((entry) => entry.key).join(', ')}. Opponent class types: ${state.opponents.map((entry) => entry.classType).join(', ')}. Color counts: ${state.colorCounts.join(', ')}.`,

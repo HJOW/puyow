@@ -58,7 +58,7 @@
             'Standard Rules': '기본 룰',
             'FEVER Rules': '피버 룰',
             'FEVER Rules (Start)': '피버 룰 (시작)',
-            'FEVER (Relaxed)': '피버 (완화)',
+            'FEVER Rules (Relaxed)': '피버 룰 (완화)',
             '%1 Colors': '%1색',
             'Watch': '구경',
             'Play Together': '너랑 나랑'
@@ -84,7 +84,7 @@
             'Standard Rules': '基本ルール',
             'FEVER Rules': 'FEVERルール',
             'FEVER Rules (Start)': 'FEVER ルール (開始)',
-            'FEVER (Relaxed)': 'FEVER（緩和）',
+            'FEVER Rules (Relaxed)': 'FEVER ルール（緩和）',
             '%1 Colors': '%1色',
             'Watch': '観戦',
             'Play Together': '二人プレイ'
@@ -110,7 +110,7 @@
             'Standard Rules': '基本规则',
             'FEVER Rules': 'FEVER规则',
             'FEVER Rules (Start)': 'FEVER 规则（开始）',
-            'FEVER (Relaxed)': 'FEVER（缓和）',
+            'FEVER Rules (Relaxed)': 'FEVER 规则（宽松）',
             '%1 Colors': '%1色',
             'Watch': '观战',
             'Play Together': '双人对战'
@@ -136,7 +136,7 @@
             'Standard Rules': 'Standardregeln',
             'FEVER Rules': 'FEVER-Regeln',
             'FEVER Rules (Start)': 'FEVER-Regeln (Start)',
-            'FEVER (Relaxed)': 'FEVER (Entspannt)',
+            'FEVER Rules (Relaxed)': 'FEVER-Regeln (Entspannt)',
             '%1 Colors': '%1 Farben',
             'Watch': 'Zuschauen',
             'Play Together': 'Zusammen spielen'
@@ -162,7 +162,7 @@
             'Standard Rules': 'Règles standard',
             'FEVER Rules': 'Règles FEVER',
             'FEVER Rules (Start)': 'Règles FEVER (Début)',
-            'FEVER (Relaxed)': 'FEVER (adouci)',
+            'FEVER Rules (Relaxed)': 'Règles FEVER (assouplies)',
             '%1 Colors': '%1 couleurs',
             'Watch': 'Regarder',
             'Play Together': 'Jouer à deux'
@@ -174,7 +174,7 @@
         standard: 'Standard Rules',
         fever: 'FEVER Rules',
         feverStart: 'FEVER Rules (Start)',
-        relaxedFever: 'FEVER (Relaxed)'
+        relaxedFever: 'FEVER Rules (Relaxed)'
     };
 
     /** puyow_replay.js 가 읽힌 주소다. puyow.js 스크립트 태그를 찾지 못했을 때 목록 파일 경로의 기준으로 쓴다. @type {string} */

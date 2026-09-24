@@ -24,6 +24,7 @@ RULES: dict[str, bool] = {
 	"standard": True,
 	"fever": True,
 	"fever_start": True,
+	"relaxed_fever": True,
 	"practice": False,
 	"continuous_fever": False,
 }

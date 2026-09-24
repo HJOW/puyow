@@ -305,7 +305,7 @@ python python/learning.py --episodes 2000 --output python/puyow/default.pt --tra
 const state = window.PuyoW.getGameState();
 ```
 
-최상위 `mode`는 `versus`, `practice`, `watch`, `continuous_fever`, `puzzle` 중 하나이고, `rule`은 `standard`, `fever`, `fever_start`, `continuous_fever` 중 하나다. `allClearTicketEnabled`는 싹쓸이 티켓이 기본 룰 전용임을 나타낸다.
+최상위 `mode`는 `versus`, `practice`, `watch`, `continuous_fever`, `puzzle` 중 하나이고, `rule`은 `standard`, `fever`, `fever_start`, `relaxed_fever`, `continuous_fever` 중 하나다. `allClearTicketEnabled`는 싹쓸이 티켓이 기본 룰 전용임을 나타낸다.
 
 `player`와 `opponent`에는 같은 형식으로 다음 상태가 들어 있다.
 

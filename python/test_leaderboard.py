@@ -35,6 +35,10 @@ class LeaderboardRecordTest(unittest.TestCase):
             normalize_record({"rule": "standard", "difficulty": "normal", "colors": 4, "opponent": "Kimaris", "score": 10.9}),
             {"rule": "standard", "difficulty": "normal", "colors": 4, "opponent": "Kimaris", "score": 10},
         )
+        self.assertEqual(
+            normalize_record({"rule": "relaxed_fever", "difficulty": "normal", "colors": 4, "opponent": "Kimaris", "score": 10}),
+            {"rule": "relaxed_fever", "difficulty": "normal", "colors": 4, "opponent": "Kimaris", "score": 10},
+        )
 
     def test_solo_rules_drop_difficulty_and_opponent(self):
         self.assertEqual(
