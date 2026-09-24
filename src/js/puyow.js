@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 114;
+    const BUILDNO = 115;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -541,12 +541,12 @@
     Object.assign(stringTable.fr, { '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': 'Adversaire très difficile basé sur l’apprentissage profond. Le jeu peut être instable.', '계속': 'Continuer' });
     Object.assign(stringTable.fr, { '피버 룰 (시작)': 'Règles FEVER (Début)' });
 
-    // 게임 시작 첫 단계의 두 새 선택지를 지원 언어로 표시한다.
-    Object.assign(stringTable.en, { '적과 대전': 'Battle Opponent', '스스로 연습': 'Solo Practice' });
-    Object.assign(stringTable.ja, { '적과 대전': '敵と対戦', '스스로 연습': 'ひとりで練習' });
-    Object.assign(stringTable.zh, { '적과 대전': '与对手对战', '스스로 연습': '单人练习' });
-    Object.assign(stringTable.de, { '적과 대전': 'Gegen Gegner spielen', '스스로 연습': 'Allein üben' });
-    Object.assign(stringTable.fr, { '적과 대전': 'Affronter un adversaire', '스스로 연습': 'S’entraîner seul' });
+    // 게임 시작 첫 단계 선택지를 지원 언어로 표시한다.
+    Object.assign(stringTable.en, { '도장깨기': 'Gauntlet', '스스로 연습': 'Solo Practice' });
+    Object.assign(stringTable.ja, { '도장깨기': '道場破り', '스스로 연습': 'ひとりで練習' });
+    Object.assign(stringTable.zh, { '도장깨기': '道馆挑战', '스스로 연습': '单人练习' });
+    Object.assign(stringTable.de, { '도장깨기': 'Dojo-Herausforderung', '스스로 연습': 'Allein üben' });
+    Object.assign(stringTable.fr, { '도장깨기': 'Défi du dojo', '스스로 연습': 'S’entraîner seul' });
 
     // 리플레이 기록·재생 관련 문구다. 독일어·프랑스어 표는 위에서 영어 표를 복사한 뒤이므로 언어별로 각각 추가한다.
     Object.assign(stringTable.en, {
@@ -1137,7 +1137,7 @@
     ];
     /** 게임 시작 첫 단계의 선택지다. @type {{label:string,backgroundColor:string}[]} */
     const GAME_CATEGORY_OPTIONS = [
-        { label: '적과 대전', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard },
+        { label: '도장깨기', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard },
         { label: '스스로 연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice },
         { label: '퍼즐뿌요', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.puzzle }
     ];
