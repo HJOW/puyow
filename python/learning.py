@@ -1739,7 +1739,7 @@ CPU_LOG_INTERVAL = 500
 # 연쇄 유도 탐험에서 안내 역할을 맡는 적이다. 목표 연쇄를 두고 연쇄를 쌓는 적 중에서 턴을 넘나드는
 # 상태가 없는 적만 골랐다. 탐험하는 수에서만 띄엄띄엄 불리므로, 단탈리온처럼 단계를 기억하는 적은
 # 판단이 어긋난다.
-CHAIN_GUIDE_ENEMY_TYPES: Tuple[str, ...] = ("Amdusias", "Kimaris", "Andrealphus")
+CHAIN_GUIDE_ENEMY_TYPES: Tuple[str, ...] = ("Andrealphus", "Andras", "Zagan")
 
 
 @dataclass(frozen=True)
@@ -1786,8 +1786,8 @@ TRAINING_STRATEGIES: dict[str, TrainingStrategy] = {strategy.name: strategy for 
 	),
 	TrainingStrategy(
 		"chain-guided", "Chain-guided exploration",
-		"Half of the exploration moves follow a chain-building enemy AI (Amdusias, Kimaris or Andrealphus).",
-		"탐험하는 수의 절반을 연쇄를 쌓는 적 AI(암두시아스·키마리스·안드레알푸스)의 배치로 둔다.",
+		"Half of the exploration moves follow a chain-building enemy AI (Andrealphus, Andras or Zagan).",
+		"탐험하는 수의 절반을 연쇄를 쌓는 적 AI(안드레알푸스·안드라스·자간)의 배치로 둔다.",
 		label_ko="연쇄 유도 탐험", guided_exploration_ratio=0.5,
 	),
 	TrainingStrategy(

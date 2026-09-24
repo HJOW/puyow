@@ -142,14 +142,14 @@ python python/learning.py --help
 
 ## 6. Training details: training by dueling the enemy AIs
 
-`python/bundledenemy.py` is a module that ports the decision-making algorithms of the built-in enemies from `src/js/puyow.js` (Dantalion, Seere, Decarabia, Belial, Amdusias, Kimaris, Andrealphus, Flauros, and Andras) to Python. Solomon (which only works through an external AI API) and Andromalius were excluded from the port. Flauros and Andras use the same decision logic as Andrealphus in the original, so the ported module also inherits Andrealphus for them. Enemies that decide with an ONNX model in the browser, such as Valak, Zagan, Vapula, and Oriax, are not added to the opponent list. Use the `--opponent` option to choose who to duel during training.
+`python/bundledenemy.py` ports the 17 released non-model opponents from Dantalion through Orobas. All use the same AI assignments as the browser; the existing Python simplifications still apply. Zagan/Vapula target 5 chains, Oriax/Amii target 6, and Ose/Gremory/Orobas target 7 with `RealtimeLookaheadEnemy`. Solomon, Andromalius, ONNX opponents Murmur/Caim/Alokes, and upcoming Balaam/Purkas are excluded. Use `--opponent` to choose a training opponent.
 
 | Value | Behavior |
 | --- | --- |
 | `random` (default) | Each episode randomly chooses either self-play (against itself) or one of the ported enemies to duel. |
 | `self` | Always duels via self-play. Since the opposing side also picks actions using the policy being trained (applying the same epsilon-greedy exploration), the opponent winning is effectively the same policy losing to itself. |
 | `solo` | Uses the old mode (`PuyoEnvironment`), which trains only to survive without an opponent. |
-| `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus`, `Flauros`, `Andras` | Fixes the opponent to the specified enemy for the whole run. |
+| `Dantalion`, `Seere`, `Decarabia`, `Belial`, `Amdusias`, `Kimaris`, `Andrealphus`, `Flauros`, `Andras`, `Valak`, `Zagan`, `Vapula`, `Oriax`, `Amii`, `Ose`, `Gremory`, `Orobas` | Fixes the opponent to the specified enemy for the whole run. |
 | `QuietEdgeEnemy` | Duels a training-only sparring opponent that avoids popping puyos and fills the columns farthest from the centre (X=2,3) first. It does not exist in the game itself, so `random` never picks it. `--training-strategy solo-play` selects it automatically. |
 
 ```powershell
@@ -236,7 +236,7 @@ You can pick a training strategy with the `Training strategy` combo box in `lngu
 | Value | GUI label (English / Korean) | Behavior |
 | --- | --- | --- |
 | `standard` (default) | `Standard` / `기본` | The previous behavior: exploration picks a random placeable move, and the n-step return is 3. |
-| `chain-guided` | `Chain-guided exploration` / `연쇄 유도 탐험` | Half of the exploration moves follow the placement of a chain-building enemy AI. The guide is chosen per episode from Amdusias, Kimaris, and Andrealphus. Random exploration alone almost never produces chains of 5 or more, so the value network has a hard time learning what a board with a chain built up is worth. |
+| `chain-guided` | `Chain-guided exploration` / `연쇄 유도 탐험` | Half of the exploration moves follow the placement of a chain-building enemy AI. The guide is chosen per episode from Andrealphus, Andras, and Zagan. Random exploration alone almost never produces chains of 5 or more, so the value network has a hard time learning what a board with a chain built up is worth. |
 | `chain-curriculum` | `Chain curriculum` / `연쇄 커리큘럼` | 30% of episodes start from a field with a real fever pattern laid out as a chain seed, and 20% are played `solo`, with no garbage exchange. The seed's colors are shuffled at random, so it doesn't pop right away; the trigger colors have to be lined up over several moves. |
 | `long-nstep` | `Long n-step return` / `긴 n스텝 목표값` | Value targets chain together the actual rewards of up to 8 moves instead of 3, so chain rewards propagate back to earlier moves faster. |
 | `chain-all` | `All chain strategies` / `연쇄 방식 모두 사용` | Uses all three strategies above together. |
@@ -324,7 +324,7 @@ The current training environment implements: connected pops and chains of normal
 - Hard garbage puyos and iron puyos (simulator-only)
 - Continuous-fever-only mode (duel training targets standard rules and fever rules)
 - Collecting state from, and injecting actions into, the actual browser game loop
-- Andrealphus's asynchronous 3-move Worker search (currently replaced with a synchronous, time-limited search)
+- Zagan's asynchronous 3-move Worker search (currently replaced with a synchronous, time-limited search)
 - The travel animation of warning-energy transfers (attack is treated as settled DAMAGE the moment the chain ends)
 
 ### The realtime duel timeline (model version 4)

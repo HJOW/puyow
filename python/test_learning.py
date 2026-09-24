@@ -855,29 +855,33 @@ class RewardWeightTest(unittest.TestCase):
 class TrainableOpponentPoolTest(unittest.TestCase):
 	"""학습 대전 상대 목록에 모델 미사용 적만 들어가는지 확인한다."""
 
-	# 원작에서 모델을 쓰지 않고 안드레알푸스와 같은 판단을 쓰게 된 적이다(플라우로스 BUILDNO 79, 안드라스 BUILDNO 81).
-	NON_MODEL_REALTIME_ENEMIES = ("Flauros", "Andras")
-	# 원작에서 ONNX 모델로 판단하는 적이다. 적 AI를 한 칸씩 밀면 앞쪽 적이 위 목록으로 옮겨 간다.
-	ONNX_ENEMIES = ("Valak", "Zagan", "Vapula", "Oriax")
+	# 실시간 탐색 AI를 이어받은 출시 적이다.
+	NON_MODEL_REALTIME_ENEMIES = ("Zagan", "Vapula", "Oriax", "Amii", "Ose", "Gremory", "Orobas")
+	# 모델 사용 적과 AI 미구현 출시 예정 적은 모두 학습 상대에서 제외한다.
+	EXCLUDED_ENEMIES = ("Murmur", "Caim", "Alokes", "Balaam", "Purkas")
 
 	def test_non_model_enemies_join_the_pool_and_onnx_enemies_stay_out(self) -> None:
 		pool = training.bundledenemy.TRAINABLE_ENEMY_TYPES
+		self.assertEqual((
+			"Dantalion", "Seere", "Decarabia", "Belial", "Amdusias", "Kimaris", "Andrealphus",
+			"Flauros", "Andras", "Valak", "Zagan", "Vapula", "Oriax", "Amii", "Ose", "Gremory", "Orobas",
+		), pool)
 		for enemy_type in self.NON_MODEL_REALTIME_ENEMIES:
 			self.assertIn(enemy_type, pool)
 			enemy = training.bundledenemy.create_enemy(enemy_type, random.Random(1))
-			self.assertIsInstance(enemy, training.bundledenemy.Andrealphus)
+			self.assertIsInstance(enemy, training.bundledenemy.RealtimeLookaheadEnemy)
 			self.assertEqual(enemy_type, enemy.get_class_type())
-		for onnx_enemy in self.ONNX_ENEMIES:
+		for onnx_enemy in self.EXCLUDED_ENEMIES:
 			self.assertNotIn(onnx_enemy, pool)
 
 	def test_realtime_family_differs_only_by_target_combo(self) -> None:
-		# 원작 BUILDNO 82부터 같은 판단을 쓰는 세 적은 목표 연쇄 수로만 차별화한다.
-		expected = {"Andrealphus": 5, "Flauros": 6, "Andras": 7}
+		# 같은 실시간 탐색의 목표 연쇄 5·6·7이 모두 이관되었다.
+		expected = {"Zagan": 5, "Vapula": 5, "Oriax": 6, "Amii": 6, "Ose": 7, "Gremory": 7, "Orobas": 7}
 		for enemy_type, target_combo in expected.items():
 			self.assertEqual(target_combo, training.bundledenemy.create_enemy(enemy_type, random.Random(1)).target_combo, enemy_type)
 
 	def test_random_opponent_selection_can_pick_each_non_model_enemy_and_play_against_it(self) -> None:
-		for enemy_type in self.NON_MODEL_REALTIME_ENEMIES:
+		for enemy_type in training.bundledenemy.TRAINABLE_ENEMY_TYPES:
 			with self.subTest(enemy_type=enemy_type):
 				picked = None
 				for seed in range(300):

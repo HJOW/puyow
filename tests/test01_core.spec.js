@@ -823,9 +823,9 @@ test('헥사액트·펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 
     const tesseract = new window.WebPuyo.TesseractWarningPuyo();
     const penteract = new window.WebPuyo.PenteractWarningPuyo();
     const hexaact = new window.WebPuyo.HexaactWarningPuyo();
-    const valak = new window.WebPuyo.Valak();
-    const zagan = new window.WebPuyo.Zagan();
-    const vapula = new window.WebPuyo.Vapula();
+    const murmur = new window.WebPuyo.Murmur();
+    const caim = new window.WebPuyo.Caim();
+    const alokes = new window.WebPuyo.Alokes();
     const describeEnemy = (enemy) => ({
       classType: enemy.getClassType(), name: enemy.getName(), notAvail: enemy.notAvail,
       requiresOnnx: enemy.requiresOnnx, modelPath: enemy.modelPath, theme: enemy.getFieldThemeColors()
@@ -839,7 +839,7 @@ test('헥사액트·펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 
       tesseractWarningTypes: window.WebPuyo.common.warningUnits(3500000).map((unit) => unit.type),
       penteractWarningTypes: window.WebPuyo.common.warningUnits(23500000).map((unit) => unit.type),
       hexaactWarningTypes: window.WebPuyo.common.warningUnits(163500000).map((unit) => unit.type),
-      valak: describeEnemy(valak), zagan: describeEnemy(zagan), vapula: describeEnemy(vapula)
+      murmur: describeEnemy(murmur), caim: describeEnemy(caim), alokes: describeEnemy(alokes)
     };
   });
 
@@ -852,53 +852,44 @@ test('헥사액트·펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 
   expect(result.tesseractWarningTypes).toEqual(['tesseract', 'big-bang']);
   expect(result.penteractWarningTypes).toEqual(['penteract', 'tesseract', 'big-bang']);
   expect(result.hexaactWarningTypes).toEqual(['hexaact', 'penteract', 'tesseract', 'big-bang']);
-  // BUILDNO 81에 적 AI를 한 칸씩 밀어, 안드라스는 모델 미사용이 되고 발라크부터 모델을 쓴다.
-  expect(result.valak).toEqual({
-    classType: 'Valak', name: '발라크', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model01.onnx',
-    theme: { bezel: '#431c24', field: '#622936', center: '#210b12' }
+  // 무르무르·카임·알로케스가 기존 세 모델을 차례대로 이어받는다.
+  expect(result.murmur).toEqual({
+    classType: 'Murmur', name: '무르무르', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model01.onnx',
+    theme: { bezel: '#293d37', field: '#40594e', center: '#111e19' }
   });
-  expect(result.zagan).toEqual({
-    classType: 'Zagan', name: '자간', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model02.onnx',
-    theme: { bezel: '#3d3220', field: '#594a2d', center: '#1c160c' }
+  expect(result.caim).toEqual({
+    classType: 'Caim', name: '카임', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model02.onnx',
+    theme: { bezel: '#302d40', field: '#49455d', center: '#15121e' }
   });
-  expect(result.vapula).toEqual({
-    classType: 'Vapula', name: '바퓰라', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model03.onnx',
-    theme: { bezel: '#233e38', field: '#36594e', center: '#101e1a' }
+  expect(result.alokes).toEqual({
+    classType: 'Alokes', name: '알로케스', notAvail: false, requiresOnnx: true, modelPath: 'onnx/model03.onnx',
+    theme: { bezel: '#442823', field: '#634039', center: '#200f0d' }
   });
 });
 
-test('출시된 바퓰라와 출시 예정 적들은 자간과 같은 ONNX AI를 쓰고 모델 경로는 적마다 독립적이다', async ({ page }) => {
+test('출시된 ONNX 적 3종은 같은 추론 로직을 쓰고 모델 경로는 적마다 독립적이다', async ({ page }) => {
   const result = await page.evaluate(() => {
-    const zagan = new window.WebPuyo.Zagan();
-    return ['Vapula', 'Oriax', 'Amii', 'Ose', 'Gremory', 'Orobas', 'Murmur', 'Caim', 'Alokes', 'Balaam', 'Purkas'].map((type) => {
+    const caim = new window.WebPuyo.Caim();
+    return ['Murmur', 'Caim', 'Alokes'].map((type) => {
       const enemy = new window.WebPuyo[type]();
       // 표시·출시·모델 경로를 제외한 초기 AI 상태와 실제 호출 메서드를 비교한다.
       const aiState = (controller) => Object.fromEntries(Object.entries(controller).filter(([key]) => !['sortPriority', 'notAvail', 'modelPath'].includes(key)));
-      const sameMethods = ['prepareTurn', 'prepareModel', 'chooseTarget', 'chooseRotate', 'chooseFastDown'].every((method) => enemy[method] === zagan[method]);
+      const sameMethods = ['prepareTurn', 'prepareModel', 'chooseTarget', 'chooseRotate', 'chooseFastDown'].every((method) => enemy[method] === caim[method]);
       const modelPath = enemy.modelPath;
       enemy.modelPath = `onnx/${type}.onnx`;
       return {
         type: enemy.getClassType(), name: enemy.getName(), priority: enemy.sortPriority,
         notAvail: enemy.notAvail, requiresOnnx: enemy.requiresOnnx, modelPath, sameMethods,
-        sameState: JSON.stringify(aiState(enemy)) === JSON.stringify(aiState(zagan)),
+        sameState: JSON.stringify(aiState(enemy)) === JSON.stringify(aiState(caim)),
         // 한 인스턴스의 모델 경로를 바꿔도 새 인스턴스와 다른 적의 경로는 그대로다.
-        independentModel: new window.WebPuyo[type]().modelPath === modelPath && new window.WebPuyo.Zagan().modelPath === 'onnx/model02.onnx',
+        independentModel: new window.WebPuyo[type]().modelPath === modelPath && new window.WebPuyo.Caim().modelPath === 'onnx/model02.onnx',
       };
     });
   });
-  // BUILDNO 81에 바퓰라는 자간이 쓰던 model03을 이어받아 출시했고, 오리아스는 출시 예정으로 같은 model03을 임시로 쓴다.
   expect(result).toEqual([
-    { type: 'Vapula', name: '바퓰라', priority: 13, notAvail: false, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
-    { type: 'Oriax', name: '오리아스', priority: 14, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
-    { type: 'Amii', name: '아미', priority: 15, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
-    { type: 'Ose', name: '오세', priority: 16, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
-    { type: 'Gremory', name: '그레모리', priority: 17, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
-    { type: 'Orobas', name: '오로바스', priority: 18, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
-    { type: 'Murmur', name: '무르무르', priority: 19, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
-    { type: 'Caim', name: '카임', priority: 20, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
-    { type: 'Alokes', name: '알로케스', priority: 21, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
-    { type: 'Balaam', name: '발람', priority: 22, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
-    { type: 'Purkas', name: '푸르카스', priority: 23, notAvail: true, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Murmur', name: '무르무르', priority: 19, notAvail: false, requiresOnnx: true, modelPath: 'onnx/model01.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Caim', name: '카임', priority: 20, notAvail: false, requiresOnnx: true, modelPath: 'onnx/model02.onnx', sameMethods: true, sameState: true, independentModel: true },
+    { type: 'Alokes', name: '알로케스', priority: 21, notAvail: false, requiresOnnx: true, modelPath: 'onnx/model03.onnx', sameMethods: true, sameState: true, independentModel: true },
   ]);
 });
 
@@ -1298,4 +1289,17 @@ test('common sound pool plays menu and game-start sounds', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
     'sounds/test-puyo-rotate.ogg',
   ]));
+});
+
+
+test('발람과 푸르카스는 AI 미구현 출시 예정 적이며 ONNX 모델을 요구하지 않는다', async ({ page }) => {
+  const result = await page.evaluate(() => ['Balaam', 'Purkas'].map((type) => {
+    const enemy = new window.WebPuyo[type]();
+    return { type: enemy.getClassType(), notAvail: enemy.notAvail, requiresOnnx: enemy.requiresOnnx,
+      modelPath: enemy.modelPath ?? null, prepareModel: typeof enemy.prepareModel };
+  }));
+  expect(result).toEqual([
+    { type: 'Balaam', notAvail: true, requiresOnnx: false, modelPath: null, prepareModel: 'undefined' },
+    { type: 'Purkas', notAvail: true, requiresOnnx: false, modelPath: null, prepareModel: 'undefined' }
+  ]);
 });

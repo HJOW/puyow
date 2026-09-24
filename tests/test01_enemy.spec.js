@@ -450,12 +450,12 @@ test('외부 적은 피버 상태에서도 세 선택 메서드를 재정의해 
   }), { timeout: 15000 }).toEqual({ target: 5, rotation: 2, targetCalled: true, rotationCalled: true });
 });
 
-test('키마리스는 3개 방해뿌요를 긴급 상쇄 우선순위에서 제외한다', async ({ page }) => {
+test('안드라스는 3개 방해뿌요를 긴급 상쇄 우선순위에서 제외한다', async ({ page }) => {
   await page.evaluate(() => {
-    class KimarisLookaheadEnemy extends window.WebPuyo.Kimaris {
+    class AndrasLookaheadEnemy extends window.WebPuyo.Andras {
       constructor() { super(); this.sortPriority = -100; }
-      getClassType() { return 'KimarisLookaheadEnemy'; }
-      getName() { return '키마리스 3개 방해 테스트 적'; }
+      getClassType() { return 'AndrasLookaheadEnemy'; }
+      getName() { return '안드라스 3개 방해 테스트 적'; }
 
       prepareTurn(player) {
         player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
@@ -473,7 +473,7 @@ test('키마리스는 3개 방해뿌요를 긴급 상쇄 우선순위에서 제�
 
       useFastDown() { return false; }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new KimarisLookaheadEnemy() });
+    window.WebPuyo.registerOpponent({ createController: () => new AndrasLookaheadEnemy() });
   });
 
   await enterMainMenu(page);
@@ -504,7 +504,7 @@ test('키마리스는 3개 방해뿌요를 긴급 상쇄 우선순위에서 제�
   expect(result.remainingIncoming).toBeLessThan(4);
   expect(result.maxCombo).toBeGreaterThanOrEqual(0);
   const priority = await page.evaluate(() => {
-    const controller = new window.WebPuyo.Kimaris();
+    const controller = new window.WebPuyo.Andras();
     const preferredLongTerm = {
       unresolvedDanger: true, remainingIncoming: 4, score: 100,
       maxCombo: 1, simulation: { x: 0 }
@@ -521,12 +521,12 @@ test('키마리스는 3개 방해뿌요를 긴급 상쇄 우선순위에서 제�
   expect(priority).toEqual({ ignored: false, urgent: true });
 });
 
-test('키마리스는 4개 이상 방해뿌요가 남을 상황이면 즉시 상쇄를 우선한다', async ({ page }) => {
+test('안드라스는 4개 이상 방해뿌요가 남을 상황이면 즉시 상쇄를 우선한다', async ({ page }) => {
   await page.evaluate(() => {
-    class KimarisCounterEnemy extends window.WebPuyo.Kimaris {
+    class AndrasCounterEnemy extends window.WebPuyo.Andras {
       constructor() { super(); this.sortPriority = -100; }
-      getClassType() { return 'KimarisCounterEnemy'; }
-      getName() { return '키마리스 상쇄 테스트 적'; }
+      getClassType() { return 'AndrasCounterEnemy'; }
+      getName() { return '안드라스 상쇄 테스트 적'; }
 
       prepareTurn(player) {
         player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
@@ -544,7 +544,7 @@ test('키마리스는 4개 이상 방해뿌요가 남을 상황이면 즉시 상
 
       useFastDown() { return false; }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new KimarisCounterEnemy() });
+    window.WebPuyo.registerOpponent({ createController: () => new AndrasCounterEnemy() });
   });
 
   await enterMainMenu(page);
@@ -579,12 +579,12 @@ test('키마리스는 4개 이상 방해뿌요가 남을 상황이면 즉시 상
   expect(result.unresolvedDanger).toBe(false);
 });
 
-test('키마리스는 비피버 싹쓸이 경로를 6연쇄 기반보다 우선한다', async ({ page }) => {
+test('안드라스는 비피버 싹쓸이 경로를 6연쇄 기반보다 우선한다', async ({ page }) => {
   await page.evaluate(() => {
-    class KimarisAllClearEnemy extends window.WebPuyo.Kimaris {
+    class AndrasAllClearEnemy extends window.WebPuyo.Andras {
       constructor() { super(); this.sortPriority = -100; }
-      getClassType() { return 'KimarisAllClearEnemy'; }
-      getName() { return '키마리스 싹쓸이 테스트 적'; }
+      getClassType() { return 'AndrasAllClearEnemy'; }
+      getName() { return '안드라스 싹쓸이 테스트 적'; }
 
       prepareTurn(player) {
         player.board = Array.from({ length: 25 }, () => Array(6).fill(null));
@@ -600,7 +600,7 @@ test('키마리스는 비피버 싹쓸이 경로를 6연쇄 기반보다 우선�
 
       useFastDown() { return false; }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new KimarisAllClearEnemy() });
+    window.WebPuyo.registerOpponent({ createController: () => new AndrasAllClearEnemy() });
   });
 
   await enterMainMenu(page);
@@ -631,7 +631,7 @@ test('키마리스는 비피버 싹쓸이 경로를 6연쇄 기반보다 우선�
   expect(plan.allClear || plan.nextResult?.allClear).toBe(true);
 });
 
-test('안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 선택에 적용한다', async ({ page }) => {
+test('자간은 Worker 3수 싹쓸이 후보의 회전값을 실제 선택에 적용한다', async ({ page }) => {
   // Blob Worker를 직접 확인하는 테스트라서 기준선 라우트를 걷고 시작한다.
   await releaseNetworkInterception(page);
   const result = await page.evaluate(async (WORKER_SEARCH_TIME_LIMIT) => {
@@ -649,7 +649,7 @@ test('안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 
       estimateAttack(colors, positions) { return window.WebPuyo.estimateAttack(this.board, colors, positions); },
       estimateCombo(colors, positions) { return window.WebPuyo.estimateCombo(this.board, colors, positions); },
     };
-    const controller = new window.WebPuyo.Andrealphus();
+    const controller = new window.WebPuyo.Zagan();
     controller.lookaheadTimeLimitMs = WORKER_SEARCH_TIME_LIMIT;
     controller.prepareTurn(player);
     const search = controller.pendingWorkerSearch;
@@ -685,15 +685,15 @@ test('안드레알푸스는 Worker 3수 싹쓸이 후보의 회전값을 실제 
   });
 });
 
-test('실시간 N수 탐색 공통 클래스는 목표 연쇄와 작은 연쇄 점등 여부만 적마다 정하고 안드레알푸스가 이를 상속한다', async ({ page }) => {
+test('실시간 N수 탐색 공통 클래스는 목표 연쇄와 작은 연쇄 점등 여부만 적마다 정하고 자간이 이를 상속한다', async ({ page }) => {
   const result = await page.evaluate(() => {
-    const { RealtimeLookaheadEnemy, Andrealphus, Enemy } = window.WebPuyo;
+    const { RealtimeLookaheadEnemy, Zagan, Enemy } = window.WebPuyo;
     class CustomRealtimeEnemy extends RealtimeLookaheadEnemy {
       constructor() { super({ targetCombo: 5, lightFeverGaugeWithSmallChains: false }); }
       getClassType() { return 'CustomRealtimeEnemy'; }
     }
     const custom = new CustomRealtimeEnemy();
-    const andrealphus = new Andrealphus();
+    const zagan = new Zagan();
     const defaults = new RealtimeLookaheadEnemy();
     const shared = ['lookaheadTurnCount', 'lookaheadTimeLimitMs', 'lookaheadSearchMode', 'lookaheadBeamWidth', 'realtimeReaction', 'ignorableIncomingGarbage', 'normalFastDownDelayRate', 'dangerFastDownDelayRate'];
     const errors = [
@@ -702,21 +702,21 @@ test('실시간 N수 탐색 공통 클래스는 목표 연쇄와 작은 연쇄 �
       () => new RealtimeLookaheadEnemy({ lightFeverGaugeWithSmallChains: 'yes' }),
     ].map((create) => { try { create(); return null; } catch (error) { return error.constructor.name; } });
     return {
-      inherits: andrealphus instanceof RealtimeLookaheadEnemy && custom instanceof RealtimeLookaheadEnemy && custom instanceof Enemy,
-      // 판단 메서드는 모두 공통 클래스에 있고, 안드레알푸스는 이름·종류·테마·초상화만 재정의한다.
-      andrealphusOwnMethods: Object.getOwnPropertyNames(Andrealphus.prototype).sort(),
-      andrealphus: { targetCombo: andrealphus.targetCombo, light: andrealphus.lightFeverGaugeWithSmallChains, sortPriority: andrealphus.sortPriority, type: andrealphus.getClassType() },
+      inherits: zagan instanceof RealtimeLookaheadEnemy && custom instanceof RealtimeLookaheadEnemy && custom instanceof Enemy,
+      // 판단 메서드는 모두 공통 클래스에 있고, 자간은 이름·종류·테마·초상화만 재정의한다.
+      zaganOwnMethods: Object.getOwnPropertyNames(Zagan.prototype).sort(),
+      zagan: { targetCombo: zagan.targetCombo, light: zagan.lightFeverGaugeWithSmallChains, sortPriority: zagan.sortPriority, type: zagan.getClassType() },
       defaults: { targetCombo: defaults.targetCombo, light: defaults.lightFeverGaugeWithSmallChains, type: defaults.getClassType() },
       custom: { targetCombo: custom.targetCombo, light: custom.lightFeverGaugeWithSmallChains },
-      sharedSame: shared.every((key) => custom[key] === andrealphus[key]),
+      sharedSame: shared.every((key) => custom[key] === zagan[key]),
       errors,
     };
   });
 
   expect(result).toEqual({
     inherits: true,
-    andrealphusOwnMethods: ['constructor', 'drawPortrait', 'getClassType', 'getFieldThemeColors', 'getName'],
-    andrealphus: { targetCombo: 5, light: true, sortPriority: 8, type: 'Andrealphus' },
+    zaganOwnMethods: ['constructor', 'drawPortrait', 'getClassType', 'getFieldThemeColors', 'getName'],
+    zagan: { targetCombo: 5, light: true, sortPriority: 12, type: 'Zagan' },
     defaults: { targetCombo: 7, light: true, type: 'RealtimeLookaheadEnemy' },
     custom: { targetCombo: 5, light: false },
     sharedSame: true,
@@ -724,18 +724,22 @@ test('실시간 N수 탐색 공통 클래스는 목표 연쇄와 작은 연쇄 �
   });
 });
 
-// 적 AI를 한 칸씩 밀어 모델을 쓰지 않게 된 적이다(플라우로스 BUILDNO 79, 안드라스 BUILDNO 81). 다음에 밀면 여기에 추가한다.
-// BUILDNO 82부터 같은 판단을 쓰는 적끼리 목표 연쇄 수로 차별화한다(안드레알푸스 5·플라우로스 6·안드라스 7).
+// 같은 실시간 탐색을 쓰는 적들은 이관 전 목표 연쇄 5·6·7을 보존한다.
 for (const { type, name, sortPriority, targetCombo } of [
-  { type: 'Flauros', name: '플라우로스', sortPriority: 9, targetCombo: 6 },
-  { type: 'Andras', name: '안드라스', sortPriority: 10, targetCombo: 7 },
+  { type: 'Zagan', name: '자간', sortPriority: 12, targetCombo: 5 },
+  { type: 'Vapula', name: '바퓰라', sortPriority: 13, targetCombo: 5 },
+  { type: 'Oriax', name: '오리아스', sortPriority: 14, targetCombo: 6 },
+  { type: 'Amii', name: '아미', sortPriority: 15, targetCombo: 6 },
+  { type: 'Ose', name: '오세', sortPriority: 16, targetCombo: 7 },
+  { type: 'Gremory', name: '그레모리', sortPriority: 17, targetCombo: 7 },
+  { type: 'Orobas', name: '오로바스', sortPriority: 18, targetCombo: 7 },
 ]) {
-  test(`${name}는 모델 없이 안드레알푸스와 같은 실시간 N수 탐색 판단을 쓰고 ONNX 추론 적 표시에서 빠진다`, async ({ page }) => {
+  test(`실시간 N수 탐색과 모델 미사용 표시를 확인한다: ${name}`, async ({ page }) => {
     const result = await page.evaluate((enemyType) => {
-      const { RealtimeLookaheadEnemy, OnnxEnemy, Andrealphus } = window.WebPuyo;
+      const { RealtimeLookaheadEnemy, OnnxEnemy, Zagan } = window.WebPuyo;
       const EnemyType = window.WebPuyo[enemyType];
       const enemy = new EnemyType();
-      const andrealphus = new Andrealphus();
+      const zagan = new Zagan();
       // 목표 연쇄는 적마다 다르게 정하므로 비교에서 빼고 아래 identity에서 따로 확인한다.
       const settings = ['lightFeverGaugeWithSmallChains', 'lookaheadTurnCount', 'lookaheadTimeLimitMs', 'lookaheadSearchMode', 'lookaheadBeamWidth', 'realtimeReaction', 'ignorableIncomingGarbage', 'normalFastDownDelayRate', 'dangerFastDownDelayRate'];
       return {
@@ -743,7 +747,7 @@ for (const { type, name, sortPriority, targetCombo } of [
         onnx: enemy instanceof OnnxEnemy,
         requiresOnnx: enemy.requiresOnnx === true,
         modelPath: enemy.modelPath ?? null,
-        sameSettings: settings.every((key) => enemy[key] === andrealphus[key]),
+        sameSettings: settings.every((key) => enemy[key] === zagan[key]),
         // 판단 메서드는 모두 공통 클래스의 것이고, 이 적은 이름·종류·테마·초상화만 재정의한다.
         ownMethods: Object.getOwnPropertyNames(EnemyType.prototype).sort(),
         identity: { type: enemy.getClassType(), name: enemy.getName(), sortPriority: enemy.sortPriority, notAvail: enemy.notAvail, targetCombo: enemy.targetCombo },
@@ -1251,21 +1255,21 @@ test('상대 연쇄 예측은 남은 연쇄 수·최종 ATTACK·끝나는 시간
   expect(result.lockedWithoutChain).toBe(false);
 });
 
-test('안드레알푸스는 빠른 하강 전에 받을 방해뿌요가 바뀌면 재판단하고, 빠른 하강을 시작한 턴에는 재판단하지 않는다', async ({ page }) => {
+test('자간은 빠른 하강 전에 받을 방해뿌요가 바뀌면 재판단하고, 빠른 하강을 시작한 턴에는 재판단하지 않는다', async ({ page }) => {
   // 실제 대전에서 Blob Worker를 쓰므로 기준선 라우트를 걷고 시작한다.
   await releaseNetworkInterception(page);
   await page.evaluate(() => {
-    class RealtimeAndrealphus extends window.WebPuyo.Andrealphus {
+    class RealtimeZagan extends window.WebPuyo.Zagan {
       constructor() { super(); this.sortPriority = -100; }
-      getClassType() { return 'RealtimeAndrealphus'; }
-      getName() { return '실시간 재판단 테스트 안드레알푸스'; }
+      getClassType() { return 'RealtimeZagan'; }
+      getName() { return '실시간 재판단 테스트 자간'; }
       prepareTurn(player) {
         super.prepareTurn(player);
         this.player = player;
-        window.realtimeAndrealphus = this;
+        window.realtimeZagan = this;
       }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new RealtimeAndrealphus() });
+    window.WebPuyo.registerOpponent({ createController: () => new RealtimeZagan() });
   });
 
   await enterMainMenu(page);
@@ -1277,7 +1281,7 @@ test('안드레알푸스는 빠른 하강 전에 받을 방해뿌요가 바뀌�
 
   // Worker 탐색을 쓰는 턴(빈 필드 무작위 배치가 아닌 턴)의 결과가 준비되고, 아직 빠른 하강 전인 순간에 방해뿌요를 늘린다.
   await expect.poll(() => page.evaluate(() => {
-    const controller = window.realtimeAndrealphus;
+    const controller = window.realtimeZagan;
     const state = controller?.realtimeReactionState;
     if (!state || state.fastDownStarted || controller.workerSearchState !== 'ready' || !controller.player.active) return false;
     if (controller.player.placedPairCount !== state.turn) return false;
@@ -1295,7 +1299,7 @@ test('안드레알푸스는 빠른 하강 전에 받을 방해뿌요가 바뀌�
 
   // 보통 난이도는 목표 결정 뒤 빠른 하강을 시작한다. 그렇게 빠른 하강을 시작한 턴에서는 받을 양이 다시 바뀌어도 재판단하지 않는다.
   await expect.poll(() => page.evaluate(() => {
-    const controller = window.realtimeAndrealphus;
+    const controller = window.realtimeZagan;
     const state = controller?.realtimeReactionState;
     if (!state?.fastDownStarted || !controller.player.active || controller.player.placedPairCount !== state.turn) return false;
     const before = state.replanCount;
@@ -1306,12 +1310,12 @@ test('안드레알푸스는 빠른 하강 전에 받을 방해뿌요가 바뀌�
   expect(await page.evaluate(() => window.realtimeGateResult)).toEqual({ started: false, replanDelta: 0 });
 });
 
-test('키마리스 2턴 시뮬레이션 처리 시간을 측정한다', async ({ page }) => {
+test('안드라스 2턴 시뮬레이션 처리 시간을 측정한다', async ({ page }) => {
   await page.evaluate(() => {
-    class KimarisTimingEnemy extends window.WebPuyo.Kimaris {
+    class AndrasTimingEnemy extends window.WebPuyo.Andras {
       constructor() { super(); this.sortPriority = -100; }
-      getClassType() { return 'KimarisTimingEnemy'; }
-      getName() { return '키마리스 2턴 시뮬레이션 시간 측정 적'; }
+      getClassType() { return 'AndrasTimingEnemy'; }
+      getName() { return '안드라스 2턴 시뮬레이션 시간 측정 적'; }
 
       prepareTurn(player) {
         // 4색을 열마다 번갈아 배치해 필드에 12개를 고정한다.
@@ -1323,7 +1327,7 @@ test('키마리스 2턴 시뮬레이션 처리 시간을 측정한다', async ({
         player.active.colors = ['red', 'blue'];
         player.nextPairs = [['green', 'yellow'], ['blue', 'red']];
 
-        // 공통 준비 단계에서 현재 턴의 후보를 만들고, 키마리스의 2턴 읽기만 측정한다.
+        // 공통 준비 단계에서 현재 턴의 후보를 만들고, 안드라스의 2턴 읽기만 측정한다.
         window.WebPuyo.Enemy.prototype.prepareTurn.call(this, player);
         this.findBestLookaheadPlacement(player); // 워밍업(JIT) 호출
         const samples = [];
@@ -1353,7 +1357,7 @@ test('키마리스 2턴 시뮬레이션 처리 시간을 측정한다', async ({
 
       useFastDown() { return false; }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new KimarisTimingEnemy() });
+    window.WebPuyo.registerOpponent({ createController: () => new AndrasTimingEnemy() });
   });
 
   await enterMainMenu(page);
@@ -1365,7 +1369,7 @@ test('키마리스 2턴 시뮬레이션 처리 시간을 측정한다', async ({
 
   await expect.poll(() => page.evaluate(() => window.kimarisSimulationTiming || null), { timeout: 15000 }).not.toBeNull();
   const timing = await page.evaluate(() => window.kimarisSimulationTiming);
-  console.log(`키마리스 2턴 시뮬레이션: 첫 회 ${timing.firstMs.toFixed(3)}ms, 평균 ${timing.averageMs.toFixed(3)}ms (최소 ${timing.minMs.toFixed(3)}ms, 최대 ${timing.maxMs.toFixed(3)}ms; 필드 ${timing.boardPuyoCount}개, 후보 ${timing.simulationCount}개)`);
+  console.log(`안드라스 2턴 시뮬레이션: 첫 회 ${timing.firstMs.toFixed(3)}ms, 평균 ${timing.averageMs.toFixed(3)}ms (최소 ${timing.minMs.toFixed(3)}ms, 최대 ${timing.maxMs.toFixed(3)}ms; 필드 ${timing.boardPuyoCount}개, 후보 ${timing.simulationCount}개)`);
   expect(timing.boardPuyoCount).toBeGreaterThanOrEqual(10);
   expect(timing.lookaheadTurnCount).toBe(2);
   expect(timing.simulationCount).toBeGreaterThan(0);
@@ -1813,17 +1817,23 @@ test('구경 메뉴는 데카라비아를 보통 이상에서 이기기 전에�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
 });
 
-// 모델을 쓰지 않게 된 적은 구경 모드 무작위 선정 후보가 되고, ONNX 추론 적(현재 첫 ONNX 적은 발라크)은 빠진다.
+// 모델을 쓰지 않게 된 적은 구경 모드 무작위 선정 후보가 되고, ONNX 추론 적(현재 첫 ONNX 적은 무르무르)은 빠진다.
 for (const { type, name } of [
-  { type: 'Flauros', name: '플라우로스' },
-  { type: 'Andras', name: '안드라스' },
+  { type: 'Valak', name: '발라크' },
+  { type: 'Zagan', name: '자간' },
+  { type: 'Vapula', name: '바퓰라' },
+  { type: 'Oriax', name: '오리아스' },
+  { type: 'Amii', name: '아미' },
+  { type: 'Ose', name: '오세' },
+  { type: 'Gremory', name: '그레모리' },
+  { type: 'Orobas', name: '오로바스' },
 ]) {
-  test(`구경 모드 무작위 적 선정은 모델을 쓰지 않는 ${name}를 포함하고 ONNX 추론 적 발라크는 뺀다`, async ({ page }) => {
-    // 보통 이상에서 이긴 적만 후보가 되므로, 데카라비아(구경 해금)·이 적·발라크만 이긴 기록을 둔다.
+  test(`구경 모드는 ${name} 포함·ONNX 적 무르무르 제외 규칙을 따른다`, async ({ page }) => {
+    // 보통 이상에서 이긴 적만 후보가 되므로, 데카라비아(구경 해금)·이 적·무르무르만 이긴 기록을 둔다.
     await page.evaluate((enemyType) => {
       localStorage.setItem('puyow_store', JSON.stringify({
         clearList: ['Decarabia'],
-        clearListByDifficulty: { easy: [], normal: ['Decarabia', enemyType, 'Valak'], hard: [], extreme: [] },
+        clearListByDifficulty: { easy: [], normal: ['Decarabia', enemyType, 'Murmur'], hard: [], extreme: [] },
         feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
       }));
     }, type);
@@ -1838,7 +1848,7 @@ for (const { type, name } of [
     await page.keyboard.press('Enter');
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.watch), { timeout: 20000 }).toBe(true);
 
-    // 발라크는 이긴 기록이 있어도 빠지므로, 남은 후보 두 명(데카라비아·이 적)이 무작위와 관계없이 맞붙는다.
+    // 무르무르는 이긴 기록이 있어도 빠지므로, 남은 후보 두 명(데카라비아·이 적)이 무작위와 관계없이 맞붙는다.
     const names = await page.evaluate(() => {
       const state = window.WebPuyo.getGameState();
       return [state.player.name, state.opponent.name].sort();

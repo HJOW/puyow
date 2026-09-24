@@ -266,7 +266,9 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     const opponents = await page.evaluate(() => window.WebPuyo.leaderboard.getOpponents().map((entry) => entry.classType));
     expect(opponents).toContain('Andromalius');
     expect(opponents).not.toContain('Solomon');
-    expect(opponents).not.toContain('Oriax');
+    expect(opponents).toEqual(expect.arrayContaining(['Oriax', 'Amii', 'Ose', 'Gremory', 'Orobas', 'Murmur', 'Caim', 'Alokes']));
+    expect(opponents).not.toContain('Balaam');
+    expect(opponents).not.toContain('Purkas');
   });
 
   test('AI 난이도가 없던 형식 1의 대전 기록은 어느 난이도에도 넣지 않고 legacy에 보존한다', async ({ page }) => {

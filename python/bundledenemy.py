@@ -11,13 +11,13 @@
 learning.py의 self-play 학습에서 "빈 상대" 대신 실제 게임에 탑재된 적들과 대전하며
 학습할 수 있도록, 각 적의 판단 알고리즘(chooseTarget/chooseRotate/prepareTurn)을
 puyow.js와 최대한 같은 결과가 나오도록 옮겼다. 사용자 요청에 따라 솔로몬(외부 AI
-API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다. 발라크·자간·바퓰라·오리아스처럼
+API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다. 무르무르·카임·알로케스처럼
 브라우저에서 ONNX 가치망을 추론해 판단하는 적(puyow.js의 `OnnxEnemy` 계열)은, 그 판단을
 여기서 재현하려면 학습 중인 모델과는 다른 모델을 파이썬에서 또 돌려야 하므로 사용자 요청에
 따라 모두 학습 상대 역할에서 제외하고, 앞으로 추가되는 ONNX 적도 같은 이유로 넣지 않는다.
-플라우로스(Flauros, BUILDNO 79부터)와 안드라스(Andras, BUILDNO 81부터)는 원작에서 모델을 쓰지 않고
-안드레알푸스와 같은 판단(RealtimeLookaheadEnemy)을 쓰므로 이 모듈에서도 Andrealphus를 상속하며,
-다른 모델 미사용 적과 같이 학습 대전 상대(ENEMY_FACTORIES/TRAINABLE_ENEMY_TYPES)에 포함한다.
+모델 미사용 출시 적은 단탈리온부터 오로바스까지 17종이며 모두 학습 대전 상대에 포함한다.
+출시 예정인 발람·푸르카스는 AI가 미구현이므로 제외한다. 자간·바퓰라는 목표 5연쇄,
+오리아스·아미는 6연쇄, 오세·그레모리·오로바스는 7연쇄로 RealtimeLookaheadEnemy를 쓴다.
 
 ## 이식 범위와 단순화한 부분
 
@@ -38,10 +38,10 @@ API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다.
   판단 자체는 원작과 같게 두고 그 정보를 `decide()`의 `incoming_garbage` 인수로만 전달한다.
   학습 환경은 원작 `getLookaheadIncomingGarbage()`처럼 확정 DAMAGE에 상대가 지금 만들고 있는
   공격까지 더한 값을 넣는다.
-* 안드레알푸스의 3수 탐색은 원작에서 Blob Worker로 비동기 수행하지만, 이 모듈은
+* 자간·바퓰라부터 사용하는 3수 탐색은 원작에서 Blob Worker로 비동기 수행하지만, 이 모듈은
   오프라인 학습 스크립트에서 동기적으로 실행한다(find_best_n_move_placement 재사용).
-  시간 제한 대신 항상 완전 탐색을 수행하므로 원작보다 느릴 수 있다.
-  BUILDNO 76부터 원작 안드레알푸스는 Worker의 advanced 탐색(빔 탐색·발화점 평가·방해뿌요
+  동기 반복 심화의 시간 제한 안에서 탐색하므로 원작과 탐색 깊이가 다를 수 있다.
+  원작의 RealtimeLookaheadEnemy는 Worker의 advanced 탐색(빔 탐색·발화점 평가·방해뿌요
   도착 예측)과 조작 중 실시간 재판단을 쓰지만, 이 모듈은 기존 완전 탐색 판단을 유지한다.
   이 적은 학습 안내 적(CHAIN_GUIDE_ENEMY_TYPES)으로도 쓰이므로, 판단을 바꾸면 기존 학습
   결과와의 비교가 어긋나기 때문이다.
@@ -53,9 +53,9 @@ API 호출 전용)과 안드로말리우스는 이식 대상에서 제외했다.
 `measure_gravity_duration()`(`measureGravityOnBoard()` 이식), 연쇄 단계별 ATTACK과 시각을 함께 내는
 `resolve_placement_timeline()`(`predictPlayerChain()`과 같은 식)이 그 몫을 맡는다. 시간 상수
 (CHAIN_PHASE_WAIT_MS 등)는 puyow.js와 같은 값이어야 하므로 한쪽을 고치면 다른 쪽도 함께 맞춘다.
-* 키마리스는 원작에서 chooseRotate()를 재정의하지 않기 때문에, 2수 탐색이 옆으로
+* 안드라스·발라크는 원작에서 chooseRotate()를 재정의하지 않기 때문에, 2수 탐색이 옆으로
   눕는 배치를 골라도 실제로는 항상 세로(회전 0)로 놓는다. 이 별난 동작은 실제
-  puyow.js의 동작이므로 "버그 수정" 없이 그대로 재현했다(Kimaris._choose 참고).
+  puyow.js의 동작이므로 "버그 수정" 없이 그대로 재현했다(TwoMoveLookaheadEnemy._choose 참고).
 
 각 적은 `decide(board, colors, next_pairs, incoming_garbage)`를 호출하면 이번 수의
 열·회전·착지 좌표·예상 연쇄/ATTACK을 담은 Placement를 돌려준다. 여러 턴에 걸친 판단
@@ -801,7 +801,7 @@ class BaseEnemy:
         """이번 수의 배치를 결정한다. 착지 가능한 후보가 하나도 없으면 None(필드가 가득 참)을 반환한다.
 
         `incoming_garbage`는 puyow.js의 player.damage(자신의 미정산 피해)와 opponent.attack
-        (상대의 미도착 ATTACK)을 합친 하나의 값이다. 원작 일부 분기(예: Amdusias의 피버 전용
+        (상대의 미도착 ATTACK)을 합친 하나의 값이다. 원작 일부 분기(예: FiveChainEnemy의 피버 전용
         분기)는 이 둘을 따로 쓰지만, 이 포팅은 호출부 단순화를 위해 합계 하나만 받는다.
 
         `randomize_stage_opening`은 puyow.js의 fever.randomizeStageOpening이다. 호출부(학습 환경)가 실제
@@ -1043,14 +1043,10 @@ class Decarabia(ChainBuildingEnemy):
         return _choose_with_preview(self, board, colors, simulations, incoming_garbage)
 
 
-class Belial(ChainBuildingEnemy):
-    """벨리알은 데카라비아가 사용하던 예고쌍 평가 및 싹쓸이 우선 전략을 그대로 사용한다."""
+class PreviewChainEnemy(ChainBuildingEnemy):
+    """이관 전 벨리알의 예고쌍 평가 및 싹쓸이 우선 전략을 보존한다."""
 
     uses_random_empty_field = True
-
-    def get_class_type(self) -> str:
-        """진행 상황 저장에 쓰는 클래스 이름이다."""
-        return 'Belial'
 
     def select_build_simulation(self, board, colors, simulations):
         """예고쌍 전망을 더해 쌓기 후보를 고른다."""
@@ -1062,12 +1058,8 @@ class Belial(ChainBuildingEnemy):
         return _choose_with_preview(self, board, colors, simulations, incoming_garbage)
 
 
-class Amdusias(Belial):
-    """벨리알의 예고쌍·싹쓸이 평가를 이어받되, 평상시 목표를 5연쇄로 한 단계 높인다."""
-
-    def get_class_type(self) -> str:
-        """진행 상황 저장에 쓰는 클래스 이름이다."""
-        return 'Amdusias'
+class FiveChainEnemy(PreviewChainEnemy):
+    """이관 전 암두시아스의 5연쇄 목표와 피버 룰 예외 처리를 보존한다."""
 
     def _choose(self, board, colors, simulations, next_pairs, incoming_garbage):
         """예고쌍 전망을 계산한 뒤, 필드 점유율에 맞춰 5연쇄를 목표로 공격 또는 쌓기 배치를 고른다."""
@@ -1101,7 +1093,7 @@ class Amdusias(Belial):
         return selected or find_best_attack_placement(board, colors, simulations, fallback_x, None, True)
 
 
-class Kimaris(Amdusias):
+class TwoMoveLookaheadEnemy(FiveChainEnemy):
     """현재 뿌요와 다음 예고쌍을 함께 읽어(2수) 연쇄 기반·공격·생존을 비교한다."""
 
     def __init__(self, rng: Optional[random.Random] = None):
@@ -1110,10 +1102,6 @@ class Kimaris(Amdusias):
         self.ignorable_incoming_garbage = 4
         self.target_combo = 6
         self.lookahead_turn_count = 2
-
-    def get_class_type(self) -> str:
-        """진행 상황 저장에 쓰는 클래스 이름이다."""
-        return 'Kimaris'
 
     def _find_best_lookahead_placement(self, board, colors, next_pairs, incoming_garbage) -> Optional[Placement]:
         """2수 탐색 결과 중 생존(방해뿌요 상쇄)·점수·최대 연쇄 순으로 가장 좋은 이번 수 후보를 고른다."""
@@ -1154,14 +1142,14 @@ class Kimaris(Amdusias):
         if plan_sim is None:
             fallback_x = simulations[0].x if simulations else 2
             return find_best_attack_placement(board, colors, simulations, fallback_x, None, True)
-        # 원작 puyow.js의 Kimaris는 chooseRotate()를 재정의하지 않아 탐색이 고른 회전을 무시하고
+        # 원작 puyow.js의 TwoMoveLookaheadEnemy는 chooseRotate()를 재정의하지 않아 탐색이 고른 회전을 무시하고
         # 항상 세로(회전 0)로 놓는다. 모듈 docstring 참고. 이 포팅은 그 동작을 그대로 재현한다.
         vertical = next((s for s in simulations if s.x == plan_sim.x and s.rotation == ROTATION_UP), None)
         return vertical or plan_sim
 
 
-class Andrealphus(BundledEnemy):
-    """키마리스와 같은 생존·상쇄 평가를 쓰되, 평상시 최대 3수 앞까지 읽는다.
+class RealtimeLookaheadEnemy(BundledEnemy):
+    """이관 전 안드레알푸스의 생존·상쇄 평가와 최대 3수 탐색을 보존한다.
 
     원작은 Blob Worker에서 1수→2수→3수 순으로 반복 심화 탐색하며, 매 깊이가 끝날 때마다
     현재 1수의 선택을 갱신하고 `lookaheadTimeLimitMs`(기본 50ms)를 넘기면 그때까지 완료된
@@ -1174,8 +1162,8 @@ class Andrealphus(BundledEnemy):
     def __init__(self, rng: Optional[random.Random] = None):
         """긴급 상쇄 기준(4개 미만은 무시), 목표 연쇄(5), 최대 탐색 수(3수), 시간 제한(50ms)을 기본값으로 정한다.
 
-        원작 BUILDNO 82부터 안드레알푸스의 목표 연쇄는 5다(그 전에는 7). 같은 판단을 상속하는
-        플라우로스(6)·안드라스(7)는 각자 생성자에서 목표 연쇄만 바꾼다.
+        자간·바퓰라의 목표 연쇄는 5, 오리아스·아미는 6, 오세·그레모리·오로바스는 7이다.
+        각 적은 생성자에서 목표 연쇄만 바꾼다.
         """
         super().__init__(rng)
         self.ignorable_incoming_garbage = 4
@@ -1183,10 +1171,6 @@ class Andrealphus(BundledEnemy):
         self.lookahead_turn_count = 3
         # Worker 반복 심화 탐색의 최대 대기 시간(ms)이다. 호출자가 인스턴스별로 조정할 수 있다.
         self.lookahead_time_limit_ms = 50.0
-
-    def get_class_type(self) -> str:
-        """진행 상황 저장에 쓰는 클래스 이름이다."""
-        return 'Andrealphus'
 
     @staticmethod
     def _is_field_at_least_eighty_percent_filled(board) -> bool:
@@ -1382,38 +1366,164 @@ class Seere(BundledEnemy):
         return basic or simulations[0]
 
 
-class Flauros(Andrealphus):
-    """원작 BUILDNO 79부터 플라우로스는 안드레알푸스와 같은 판단을 쓰므로 그대로 상속하고, 목표 연쇄만 6으로 둔다(BUILDNO 82).
+class Belial(Decarabia):
+    """이관 전 데카라비아의 판단과 세부 설정을 사용하는 학습 상대다."""
 
-    이 모듈의 안드레알푸스와 마찬가지로 원작의 advanced 탐색·실시간 재판단은 옮기지 않았다.
-    모델을 쓰지 않는 적이므로 학습 대전 상대(TRAINABLE_ENEMY_TYPES)에 포함한다.
-    """
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Belial'
 
-    def __init__(self, rng: Optional[random.Random] = None):
-        """안드레알푸스의 기본값에서 목표 연쇄만 6으로 바꾼다."""
-        super().__init__(rng)
-        self.target_combo = 6
+
+
+class Amdusias(PreviewChainEnemy):
+    """이관 전 벨리알의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Amdusias'
+
+
+
+class Kimaris(PreviewChainEnemy):
+    """이관 전 벨리알의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Kimaris'
+
+
+
+class Andrealphus(FiveChainEnemy):
+    """이관 전 암두시아스의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Andrealphus'
+
+
+
+class Flauros(FiveChainEnemy):
+    """이관 전 암두시아스의 판단과 세부 설정을 사용하는 학습 상대다."""
 
     def get_class_type(self) -> str:
         """진행 상황 저장에 쓰는 클래스 이름이다."""
         return 'Flauros'
 
 
-class Andras(Andrealphus):
-    """원작 BUILDNO 81부터 안드라스는 플라우로스·안드레알푸스와 같은 판단을 쓰므로 그대로 상속하고, 목표 연쇄만 7로 둔다(BUILDNO 82).
 
-    이 모듈의 안드레알푸스와 마찬가지로 원작의 advanced 탐색·실시간 재판단은 옮기지 않았다.
-    모델을 쓰지 않는 적이므로 학습 대전 상대(TRAINABLE_ENEMY_TYPES)에 포함한다.
-    """
+class Andras(TwoMoveLookaheadEnemy):
+    """이관 전 키마리스의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Andras'
+
+
+
+class Valak(TwoMoveLookaheadEnemy):
+    """이관 전 키마리스의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Valak'
+
+
+
+class Zagan(RealtimeLookaheadEnemy):
+    """이관 전 안드레알푸스의 판단과 세부 설정을 사용하는 학습 상대다."""
 
     def __init__(self, rng: Optional[random.Random] = None):
-        """안드레알푸스의 기본값에서 목표 연쇄만 7로 바꾼다."""
+        """공통 탐색을 초기화하고 원본의 목표 연쇄를 적용한다."""
+        super().__init__(rng)
+        self.target_combo = 5
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Zagan'
+
+
+
+class Vapula(RealtimeLookaheadEnemy):
+    """이관 전 안드레알푸스의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def __init__(self, rng: Optional[random.Random] = None):
+        """공통 탐색을 초기화하고 원본의 목표 연쇄를 적용한다."""
+        super().__init__(rng)
+        self.target_combo = 5
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Vapula'
+
+
+
+class Oriax(RealtimeLookaheadEnemy):
+    """이관 전 플라우로스의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def __init__(self, rng: Optional[random.Random] = None):
+        """공통 탐색을 초기화하고 원본의 목표 연쇄를 적용한다."""
+        super().__init__(rng)
+        self.target_combo = 6
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Oriax'
+
+
+
+class Amii(RealtimeLookaheadEnemy):
+    """이관 전 플라우로스의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def __init__(self, rng: Optional[random.Random] = None):
+        """공통 탐색을 초기화하고 원본의 목표 연쇄를 적용한다."""
+        super().__init__(rng)
+        self.target_combo = 6
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Amii'
+
+
+
+class Ose(RealtimeLookaheadEnemy):
+    """이관 전 안드라스의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def __init__(self, rng: Optional[random.Random] = None):
+        """공통 탐색을 초기화하고 원본의 목표 연쇄를 적용한다."""
         super().__init__(rng)
         self.target_combo = 7
 
     def get_class_type(self) -> str:
         """진행 상황 저장에 쓰는 클래스 이름이다."""
-        return 'Andras'
+        return 'Ose'
+
+
+
+class Gremory(RealtimeLookaheadEnemy):
+    """이관 전 안드라스의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def __init__(self, rng: Optional[random.Random] = None):
+        """공통 탐색을 초기화하고 원본의 목표 연쇄를 적용한다."""
+        super().__init__(rng)
+        self.target_combo = 7
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Gremory'
+
+
+
+class Orobas(RealtimeLookaheadEnemy):
+    """이관 전 안드라스의 판단과 세부 설정을 사용하는 학습 상대다."""
+
+    def __init__(self, rng: Optional[random.Random] = None):
+        """공통 탐색을 초기화하고 원본의 목표 연쇄를 적용한다."""
+        super().__init__(rng)
+        self.target_combo = 7
+
+    def get_class_type(self) -> str:
+        """진행 상황 저장에 쓰는 클래스 이름이다."""
+        return 'Orobas'
 
 
 class PracticeEnemy(BundledEnemy):
@@ -1488,8 +1598,8 @@ class QuietEdgeEnemy(BundledEnemy):
 
 # 학습에서 대전 상대로 고를 수 있는 적 목록이다. puyow.js OPPONENTS 등록 순서에서
 # 솔로몬·안드로말리우스(사용자 요청으로 제외)와 연습 상대(PracticeEnemy, 비경쟁 상대)를 뺐다.
-# 발라크·자간·바퓰라·오리아스 등 ONNX 추론으로 판단하는 적은 사용자 요청에 따라 모두 학습 상대에서 뺐다.
-# 플라우로스(BUILDNO 79부터)와 안드라스(BUILDNO 81부터)는 모델을 쓰지 않으므로(판단은 안드레알푸스와 같다) 학습 상대에 포함한다.
+# 무르무르·카임·알로케스는 ONNX 적이고 발람·푸르카스는 AI 미구현이라 학습 상대에서 제외한다.
+# 단탈리온부터 오로바스까지 모델을 쓰지 않는 출시 적 17종을 학습 상대에 포함한다.
 # QuietEdgeEnemy는 원작에 없는 학습 전용 연습 상대라 만들 수는 있지만 무작위 선택에서는 뺀다.
 QUIET_EDGE_ENEMY_TYPE = 'QuietEdgeEnemy'
 
@@ -1503,6 +1613,14 @@ ENEMY_FACTORIES = {
     'Andrealphus': Andrealphus,
     'Flauros': Flauros,
     'Andras': Andras,
+    'Valak': Valak,
+    'Zagan': Zagan,
+    'Vapula': Vapula,
+    'Oriax': Oriax,
+    'Amii': Amii,
+    'Ose': Ose,
+    'Gremory': Gremory,
+    'Orobas': Orobas,
     QUIET_EDGE_ENEMY_TYPE: QuietEdgeEnemy,
 }
 

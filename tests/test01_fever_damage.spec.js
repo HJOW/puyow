@@ -382,11 +382,11 @@ test('피버 룰 실시간 예측은 상대 피버 패턴 연쇄를 예고 묶�
   expect(started).toEqual({ opponentChainActive: true, predicted: null, fromPattern: null });
 });
 
-test('안드레알푸스는 피버 룰 일반 상태에서 무시 기준 없이 방해뿌요 하나에도 재판단하고, 빠른 하강을 시작하면 재판단하지 않는다', async ({ page }) => {
+test('자간은 피버 룰 일반 상태에서 무시 기준 없이 방해뿌요 하나에도 재판단하고, 빠른 하강을 시작하면 재판단하지 않는다', async ({ page }) => {
   await prepareDamageMatch(page);
   const result = await page.evaluate(() => {
     const { a } = window.damagePlayers;
-    const controller = new window.WebPuyo.Andrealphus();
+    const controller = new window.WebPuyo.Zagan();
     // 빈 필드 무작위 배치·패배 위치 보호가 끼어들지 않는 낮은 필드에서 조작 턴을 시작한다.
     a.board = Array.from({ length: 25 }, () => Array(6).fill(null));
     a.board[0][0] = 'red';

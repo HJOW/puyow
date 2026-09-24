@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 112;
+    const BUILDNO = 113;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -1098,7 +1098,7 @@
     /** 구경 해금 및 대전 출전 승리를 확인할 난이도 키다. @type {('normal'|'hard'|'extreme')[]} */
     const WATCH_ELIGIBLE_DIFFICULTY_KEYS = ['normal', 'hard', 'extreme'];
     /** 빈 필드에서 첫 배치를 무작위로 정할 기본 제공 적 종류다. @type {Set<string>} */
-    const RANDOM_EMPTY_FIELD_ENEMY_TYPES = new Set(['Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus', 'Flauros', 'Andras']);
+    const RANDOM_EMPTY_FIELD_ENEMY_TYPES = new Set(['Decarabia', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus', 'Flauros', 'Andras', 'Valak', 'Zagan', 'Vapula', 'Oriax', 'Amii', 'Ose', 'Gremory', 'Orobas']);
     /** getClassType()별로 외부에서 지정한 적 사운드 풀이다. @type {Map<string, SoundPool>} */
     const enemySoundPools = new Map();
     /** 메인 메뉴 게임 규칙 선택지의 버튼 배경색이다. */
@@ -20552,26 +20552,12 @@
         }
     }
 
-    /**
-     * 벨리알은 데카라비아가 사용하던 예고쌍 평가 및 싹쓸이 우선 전략을 사용한다.
-     */
-    class Belial extends ChainBuildingEnemy {
+    /** 이관 전 벨리알의 예고쌍·싹쓸이 판단과 하강 속도를 보존하는 공통 AI다. */
+    class PreviewChainEnemy extends ChainBuildingEnemy {
         constructor() {
             super();
-            this.sortPriority = 5;
-            this.notAvail = false;
             this.normalFastDownDelayRate = 1.25;
             this.dangerFastDownDelayRate = 0.75;
-        }
-
-        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
-        getClassType() {
-            return 'Belial';
-        }
-
-        /** @returns {string} 적 이름 */
-        getName() {
-            return '벨리알';
         }
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {void} */
@@ -20622,49 +20608,14 @@
             return this.attackPlacement.x;
         }
 
-        /**
-         * 초상화 색과 어울리는 검붉은 자두빛 계열로 맞춘다.
-         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
-         */
-        getFieldThemeColors() {
-            return { bezel: '#1b1522', field: '#2a1f35', center: '#0d0912' };
-        }
-
-        /**
-         * 깨진 천사 후광과 망토를 두른 벨리알의 일반·위기·우는 표정을 그린다.
-         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
-         * @param {number} centerX 캐릭터 중심 X 좌표
-         * @param {number} centerY 캐릭터 중심 Y 좌표
-         * @param {number} scale 기본 크기 대비 배율
-         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
-         * @returns {void}
-         */
-        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Belial');
-        }
     }
 
-    /**
-     * 암두시아스는 유니콘 작곡가 콘셉트의 기본 제공 적이다. 벨리알의 예고쌍·싹쓸이 평가를
-     * 이어받되 일반 필드에서 한 단계 높은 5연쇄 목표를 사용한다. 피버 필드에서는 공통 연쇄 최적화 전략을 따른다.
-     */
-    class Amdusias extends Belial {
+    /** 이관 전 암두시아스의 5연쇄 목표와 피버 DAMAGE 예외 처리를 보존하는 공통 AI다. */
+    class FiveChainEnemy extends PreviewChainEnemy {
         constructor() {
             super();
-            this.sortPriority = 6;
-            this.notAvail = false;
             this.normalFastDownDelayRate = 1.0;
             this.dangerFastDownDelayRate = 0.5;
-        }
-
-        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
-        getClassType() {
-            return 'Amdusias';
-        }
-
-        /** @returns {string} 적 이름 */
-        getName() {
-            return '암두시아스';
         }
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 목표 X 좌표 */
@@ -20693,37 +20644,12 @@
             return this.attackPlacement.x;
         }
 
-        /**
-         * 초상화 색과 어울리는 유니콘 갈기의 짙은 남색 계열로 맞춘다.
-         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
-         */
-        getFieldThemeColors() {
-            return { bezel: '#1f2545', field: '#2e3762', center: '#0f1224' };
-        }
-
-        /**
-         * 암두시아스의 일반·위기·우는 표정을 그린다.
-         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
-         * @param {number} centerX 캐릭터 중심 X 좌표
-         * @param {number} centerY 캐릭터 중심 Y 좌표
-         * @param {number} scale 기본 크기 대비 배율
-         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
-         * @returns {void}
-         */
-        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
-            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Amdusias');
-        }
     }
 
-    /**
-     * 키마리스는 검은 말의 용감한 보물 탐험가를 귀엽게 각색한 기본 제공 적이다.
-     * 현재 뿌요와 다음 예고쌍을 함께 읽어 연쇄 기반·공격·생존을 비교한다.
-     */
-    class Kimaris extends Amdusias {
+    /** 이관 전 키마리스의 2수 탐색·상쇄 기준·회전 규칙을 보존하는 공통 AI다. */
+    class TwoMoveLookaheadEnemy extends FiveChainEnemy {
         constructor() {
             super();
-            this.sortPriority = 7;
-            this.notAvail = false;
             /** 이 수보다 적은 방해뿌요는 긴급 상쇄 대상으로 보지 않는다. @type {number} */
             this.ignorableIncomingGarbage = 4;
             /** 피버가 아닌 평상시 목표 연쇄 수. @type {number} */
@@ -20731,12 +20657,6 @@
             /** 현재 수를 포함해 읽을 예고쌍 수. @type {number} */
             this.lookaheadTurnCount = 2;
         }
-
-        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
-        getClassType() { return 'Kimaris'; }
-
-        /** @returns {string} 적 이름 */
-        getName() { return '키마리스'; }
 
         /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 화면 예고를 반영한 상쇄 대상 방해뿌요 수 */
         getIncomingGarbage(player) { return getLookaheadIncomingGarbage(player); }
@@ -20811,6 +20731,102 @@
             if (!this.attackPlacement) this.attackPlacement = this.findBestLookaheadPlacement(player);
             return this.attackPlacement?.x ?? (player.active ? player.active.x : 2);
         }
+
+    }
+
+    /** 이관 전 데카라비아의 판단과 세부 설정을 사용하는 적이다. */
+    class Belial extends Decarabia {
+        constructor() {
+            super();
+            this.sortPriority = 5;
+            this.notAvail = false;
+        }
+
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'Belial';
+        }
+
+        /** @returns {string} 적 이름 */
+        getName() {
+            return '벨리알';
+        }
+
+        /**
+         * 초상화 색과 어울리는 검붉은 자두빛 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#1b1522', field: '#2a1f35', center: '#0d0912' };
+        }
+
+        /**
+         * 깨진 천사 후광과 망토를 두른 벨리알의 일반·위기·우는 표정을 그린다.
+         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+         * @param {number} centerX 캐릭터 중심 X 좌표
+         * @param {number} centerY 캐릭터 중심 Y 좌표
+         * @param {number} scale 기본 크기 대비 배율
+         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+         * @returns {void}
+         */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Belial');
+        }
+    }
+
+    /** 이관 전 벨리알의 판단과 세부 설정을 사용하는 적이다. */
+    class Amdusias extends PreviewChainEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 6;
+            this.notAvail = false;
+        }
+
+        /** 이 클래스 이름 반환, 하위 클래스는 반드시 이 메소드를 오버라이드해야 함. @type {string}  */
+        getClassType() {
+            return 'Amdusias';
+        }
+
+        /** @returns {string} 적 이름 */
+        getName() {
+            return '암두시아스';
+        }
+
+        /**
+         * 초상화 색과 어울리는 유니콘 갈기의 짙은 남색 계열로 맞춘다.
+         * @returns {{bezel:string, field:string, center:string}} 베젤·플레이 영역·중앙 영역 배경색
+         */
+        getFieldThemeColors() {
+            return { bezel: '#1f2545', field: '#2e3762', center: '#0f1224' };
+        }
+
+        /**
+         * 암두시아스의 일반·위기·우는 표정을 그린다.
+         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+         * @param {number} centerX 캐릭터 중심 X 좌표
+         * @param {number} centerY 캐릭터 중심 Y 좌표
+         * @param {number} scale 기본 크기 대비 배율
+         * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+         * @returns {void}
+         */
+        drawPortrait(drawingContext, centerX, centerY, scale = 1, expression = 'normal') {
+            drawCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, 'Amdusias');
+        }
+    }
+
+    /** 이관 전 벨리알의 판단과 세부 설정을 사용하는 적이다. */
+    class Kimaris extends PreviewChainEnemy {
+        constructor() {
+            super();
+            this.sortPriority = 7;
+            this.notAvail = false;
+        }
+
+        /** @returns {string} 진행 상황에 저장할 클래스 이름 */
+        getClassType() { return 'Kimaris'; }
+
+        /** @returns {string} 적 이름 */
+        getName() { return '키마리스'; }
 
         /**
          * 초상화 색과 어울리는 검은 말과 갈색 가죽의 무채색 계열로 맞춘다.
@@ -21060,14 +21076,10 @@
         }
     }
 
-    /**
-     * 안드레알푸스는 수학·기하학·천문학에 능통한 미모후작을 공작 깃털을 두른 인간형 학자로 각색한 기본 제공 적이다.
-     * 판단은 공통 클래스 RealtimeLookaheadEnemy를 그대로 쓰며, 목표 5연쇄와 작은 연쇄 점등 켜짐을 사용한다.
-     * BUILDNO 82부터 같은 판단을 쓰는 플라우로스(6)·안드라스(7)와 목표 연쇄 수로 난이도를 나눈다(그 전에는 7).
-     */
-    class Andrealphus extends RealtimeLookaheadEnemy {
+    /** 이관 전 암두시아스의 판단과 세부 설정을 사용하는 적이다. */
+    class Andrealphus extends FiveChainEnemy {
         constructor() {
-            super({ targetCombo: 5, lightFeverGaugeWithSmallChains: true });
+            super();
             this.sortPriority = 8;
             this.notAvail = false;
         }
@@ -21624,16 +21636,10 @@
         }
     }
 
-    /**
-     * 플라우로스는 강하고 무서운 표범 모습으로 나타나며, 삼각형 밖에서는 거짓말로 소환자를 속인다는
-     * 전승을 귀엽지만 위엄 있는 모습으로 각색한 적이다.
-     * BUILDNO 79부터 판단은 안드레알푸스와 같은 공통 클래스 RealtimeLookaheadEnemy(작은 연쇄 점등 켜짐)를 쓰며,
-     * BUILDNO 82부터 목표 연쇄는 6이다(안드레알푸스 5·안드라스 7과 차별화, 그 전에는 7).
-     * 모델을 쓰지 않으므로 ONNX 경고 표시·첫 선택 경고 대상이 아니다. 이전에 쓰던 `model01.onnx` 가치망은 안드라스가 이어받았다.
-     */
-    class Flauros extends RealtimeLookaheadEnemy {
+    /** 이관 전 암두시아스의 판단과 세부 설정을 사용하는 적이다. */
+    class Flauros extends FiveChainEnemy {
         constructor() {
-            super({ targetCombo: 6, lightFeverGaugeWithSmallChains: true });
+            super();
             this.sortPriority = 9;
             this.notAvail = false;
         }
@@ -21666,15 +21672,10 @@
         }
     }
 
-    /**
-     * 안드라스는 날개 달린 천사 몸·새 머리·검은 늑대·불타는 검의 전승을 바탕으로 한 적이다.
-     * BUILDNO 81부터 판단은 플라우로스·안드레알푸스와 같은 공통 클래스 RealtimeLookaheadEnemy(목표 7연쇄·작은 연쇄 점등 켜짐)를 쓴다.
-     * BUILDNO 82부터 세 적은 목표 연쇄 수로 차별화한다(안드레알푸스 5·플라우로스 6·안드라스 7).
-     * 모델을 쓰지 않으므로 ONNX 경고 표시·첫 선택 경고 대상이 아니다. 이전에 쓰던 `model01.onnx` 가치망은 발라크가 이어받았다.
-     */
-    class Andras extends RealtimeLookaheadEnemy {
+    /** 이관 전 키마리스의 판단과 세부 설정을 사용하는 적이다. */
+    class Andras extends TwoMoveLookaheadEnemy {
         constructor() {
-            super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true });
+            super();
             this.sortPriority = 10;
             this.notAvail = false;
         }
@@ -21704,16 +21705,12 @@
         }
     }
 
-    /**
-     * 발라크는 두 개의 붉은 목을 가진 지옥의 드래곤 위에 탄 날개 달린 소년의 모습으로 나타나는 적이다.
-     * 판단은 ONNX 공통 로직(OnnxEnemy)으로 하며, BUILDNO 81부터 이전 안드라스의 `model01.onnx` 가치망을 사용한다.
-     * 모델을 쓰는 첫 적이므로 적 선택 화면의 경고 표시와 첫 선택 경고가 여기서부터 적용된다.
-     */
-    class Valak extends OnnxEnemy {
+    /** 이관 전 키마리스의 판단과 세부 설정을 사용하는 적이다. */
+    class Valak extends TwoMoveLookaheadEnemy {
         constructor() {
             super();
             this.sortPriority = 11;
-            this.modelPath = 'onnx/model01.onnx';
+            this.notAvail = false;
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -21741,16 +21738,12 @@
         }
     }
 
-    /**
-     * 자간은 그리폰의 날개를 가진 숫소의 모습으로 나타나는 적이다. BUILDNO 79에 출시했다.
-     * 판단은 ONNX 공통 로직(OnnxEnemy)으로 하며, BUILDNO 81부터 이전 발라크의 `model02.onnx` 가치망을 사용한다.
-     */
-    class Zagan extends OnnxEnemy {
+    /** 이관 전 안드레알푸스의 판단과 세부 설정을 사용하는 적이다. */
+    class Zagan extends RealtimeLookaheadEnemy {
         constructor() {
-            super();
+            super({ targetCombo: 5, lightFeverGaugeWithSmallChains: true });
             this.sortPriority = 12;
             this.notAvail = false;
-            this.modelPath = 'onnx/model02.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -21778,14 +21771,12 @@
         }
     }
 
-    /** 그리폰 날개를 가진 사자 전승의 바퓰라. BUILDNO 81에 출시했으며, ONNX 공통 로직으로 이전 자간의 `model03.onnx` 가치망을 사용한다. */
-    class Vapula extends OnnxEnemy {
+    /** 이관 전 안드레알푸스의 판단과 세부 설정을 사용하는 적이다. */
+    class Vapula extends RealtimeLookaheadEnemy {
         constructor() {
-            super();
+            super({ targetCombo: 5, lightFeverGaugeWithSmallChains: true });
             this.sortPriority = 13;
             this.notAvail = false;
-            // 추후 전용 모델을 배치하면 이 경로만 교체한다.
-            this.modelPath = 'onnx/model03.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -21805,14 +21796,12 @@
         }
     }
 
-    /** 사자·뱀·말과 별의 전승을 가진 오리아스. 출시 예정이며, 출시 전에는 바퓰라와 같은 ONNX 공통 로직·`model03.onnx`를 임시로 사용한다. */
-    class Oriax extends OnnxEnemy {
+    /** 이관 전 플라우로스의 판단과 세부 설정을 사용하는 적이다. */
+    class Oriax extends RealtimeLookaheadEnemy {
         constructor() {
-            super();
+            super({ targetCombo: 6, lightFeverGaugeWithSmallChains: true });
             this.sortPriority = 14;
-            this.notAvail = true;
-            // 바퓰라와 독립된 경로이므로 나중에 각 적의 모델만 교체할 수 있다.
-            this.modelPath = 'onnx/model03.onnx';
+            this.notAvail = false;
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -21832,14 +21821,12 @@
         }
     }
 
-    /** 불꽃·별무늬 책을 든 학자. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
-    class Amii extends OnnxEnemy {
+    /** 이관 전 플라우로스의 판단과 세부 설정을 사용하는 적이다. */
+    class Amii extends RealtimeLookaheadEnemy {
         constructor() {
-            super();
+            super({ targetCombo: 6, lightFeverGaugeWithSmallChains: true });
             this.sortPriority = 15;
-            this.notAvail = true;
-            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
-            this.modelPath = 'onnx/model03.onnx';
+            this.notAvail = false;
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -21859,14 +21846,12 @@
         }
     }
 
-    /** 표범 귀·가면을 가진 변신술사. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
-    class Ose extends OnnxEnemy {
+    /** 이관 전 안드라스의 판단과 세부 설정을 사용하는 적이다. */
+    class Ose extends RealtimeLookaheadEnemy {
         constructor() {
-            super();
+            super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true });
             this.sortPriority = 16;
-            this.notAvail = true;
-            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
-            this.modelPath = 'onnx/model03.onnx';
+            this.notAvail = false;
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -21886,14 +21871,12 @@
         }
     }
 
-    /** 허리의 관·낙타 문양 보석함을 가진 공작. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
-    class Gremory extends OnnxEnemy {
+    /** 이관 전 안드라스의 판단과 세부 설정을 사용하는 적이다. */
+    class Gremory extends RealtimeLookaheadEnemy {
         constructor() {
-            super();
+            super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true });
             this.sortPriority = 17;
-            this.notAvail = true;
-            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
-            this.modelPath = 'onnx/model03.onnx';
+            this.notAvail = false;
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -21913,14 +21896,12 @@
         }
     }
 
-    /** 말 귀·말발굽 방패를 가진 왕자. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
-    class Orobas extends OnnxEnemy {
+    /** 이관 전 안드라스의 판단과 세부 설정을 사용하는 적이다. */
+    class Orobas extends RealtimeLookaheadEnemy {
         constructor() {
-            super();
+            super({ targetCombo: 7, lightFeverGaugeWithSmallChains: true });
             this.sortPriority = 18;
-            this.notAvail = true;
-            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
-            this.modelPath = 'onnx/model03.onnx';
+            this.notAvail = false;
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -21940,14 +21921,13 @@
         }
     }
 
-    /** 깃털 날개·공작의 관·나팔을 가진 기사. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    /** 이관 전 발라크의 판단과 세부 설정을 사용하는 적이다. */
     class Murmur extends OnnxEnemy {
         constructor() {
             super();
             this.sortPriority = 19;
-            this.notAvail = true;
-            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
-            this.modelPath = 'onnx/model03.onnx';
+            this.notAvail = false;
+            this.modelPath = 'onnx/model01.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -21967,14 +21947,13 @@
         }
     }
 
-    /** 검은 새 깃털·검·불씨를 가진 검사. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    /** 이관 전 자간의 판단과 세부 설정을 사용하는 적이다. */
     class Caim extends OnnxEnemy {
         constructor() {
             super();
             this.sortPriority = 20;
-            this.notAvail = true;
-            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
-            this.modelPath = 'onnx/model03.onnx';
+            this.notAvail = false;
+            this.modelPath = 'onnx/model02.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -21994,13 +21973,12 @@
         }
     }
 
-    /** 사자 갈기·별 문장 갑옷·기병창을 가진 기사. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
+    /** 이관 전 바퓰라의 판단과 세부 설정을 사용하는 적이다. */
     class Alokes extends OnnxEnemy {
         constructor() {
             super();
             this.sortPriority = 21;
-            this.notAvail = true;
-            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
+            this.notAvail = false;
             this.modelPath = 'onnx/model03.onnx';
         }
 
@@ -22021,14 +21999,12 @@
         }
     }
 
-    /** 곰 귀·소와 양의 뿔 왕관·매 문장을 가진 왕. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
-    class Balaam extends OnnxEnemy {
+    /** AI 미구현인 출시 예정 적이다. 모델 경로나 ONNX 의존성을 갖지 않는다. */
+    class Balaam extends Enemy {
         constructor() {
             super();
             this.sortPriority = 22;
             this.notAvail = true;
-            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
-            this.modelPath = 'onnx/model03.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
@@ -22048,14 +22024,12 @@
         }
     }
 
-    /** 백발·수염·갈래창·철학서를 가진 노기사. 출시 전에는 오리아스와 같은 ONNX 공통 판단을 사용한다. */
-    class Purkas extends OnnxEnemy {
+    /** AI 미구현인 출시 예정 적이다. 모델 경로나 ONNX 의존성을 갖지 않는다. */
+    class Purkas extends Enemy {
         constructor() {
             super();
             this.sortPriority = 23;
             this.notAvail = true;
-            // 전용 모델이 준비되면 이 적의 경로만 독립적으로 교체한다.
-            this.modelPath = 'onnx/model03.onnx';
         }
 
         /** @returns {string} 진행 상황에 저장할 클래스 이름 */
