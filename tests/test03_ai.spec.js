@@ -438,6 +438,7 @@ test('Node 서버의 Local AI로 극한 난이도 솔로몬과 끝까지 대전�
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(true);
   await page.keyboard.press('ArrowDown');
@@ -585,6 +586,7 @@ test('솔로몬은 성공한 AI API 테스트 뒤 현재 접속에서만 안드�
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.waitForTimeout(100);
   expect(await page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(false);
@@ -668,6 +670,7 @@ test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 �
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
@@ -744,6 +747,7 @@ test('역으로 모델 학습이 꺼져 있으면 대전이 끝나도 솔로몬 
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
@@ -1000,6 +1004,7 @@ test('ONNX 런타임이 없으면 무르무르는 적 선택 화면에서 빠지
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -1089,6 +1094,7 @@ test('무르무르는 ONNX 모델을 불러온 뒤 대전하고, 모델을 못 �
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -1147,6 +1153,7 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   // 모델 미사용 적과 ONNX 적을 각각 선택해 실제로 보이는 이름 옆 마크를 확인한다.
   await page.keyboard.press('ArrowDown');
@@ -1197,6 +1204,7 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
@@ -1265,6 +1273,7 @@ test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -1332,6 +1341,7 @@ test('ONNX 추론 적은 빠른 하강 전에 받을 방해뿌요가 바뀌면 �
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -1393,6 +1403,7 @@ test('ONNX 프록시 워커를 만들지 못하면 메인 스레드 재시도 �
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -1438,6 +1449,7 @@ test('ONNX wasm 바이너리는 CDN을 먼저 시도한다', async ({ page }) =>
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -1473,6 +1485,7 @@ test('CDN에 닿지 않으면 로컬 wasm으로 무르무르 대전을 진행한
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -1498,6 +1511,7 @@ test('CDN과 로컬 모두 wasm을 못 받으면 적 선택 화면에서만 무�
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드로말리우스', 'Andromalius', 'アンドロマリウス', '安杜马利乌斯'].includes(text)))).toBe(true);

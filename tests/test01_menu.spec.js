@@ -94,6 +94,7 @@ test('출시 예정 적은 회색 카드로 표시되고 코드·키보드·마�
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -493,6 +494,7 @@ test('게임 화면의 CPU 적 이름은 현재 설정 언어로 표시한다', 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
@@ -577,6 +579,7 @@ test('observation 코드는 진행도를 바꾸지 않고 출시된 표시 적�
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['솔로몬', 'Solomon', 'ソロモン', '所罗门'].includes(text)))).toBe(false);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['추후 출시예정', 'Coming soon', '近日公開予定', '即将推出'].includes(text)))).toBe(true);
@@ -641,7 +644,8 @@ test('플레이어 이름은 설정에 저장되며 금지 문자를 거부하�
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.playerName)).toBe('ABCDEFGHIJ');
   for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowUp');
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
@@ -953,10 +957,11 @@ test('가상 조이스틱은 조작 버튼 위에서는 만들어지지 않고 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.paused)).toBe(true);
 });
 
-test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 취소하면 메인 메뉴로 돌아간다', async ({ page }) => {
+test('스스로 연습의 연습은 색상 수 선택으로 이어지고 ESC는 메인 메뉴로 돌아간다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
 
@@ -964,7 +969,7 @@ test('게임 규칙 선택지의 연습은 색상 수 선택으로 이어지고 
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
   await page.keyboard.press('Enter');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 20, y: 20 } });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
 });
 
 test('플레이 방법 시연은 에너지 이동 초기화 오류 없이 시작한다', async ({ page }) => {
@@ -1048,6 +1053,11 @@ test('게임패드 A와 X, Y 버튼은 메뉴 확인과 취소 입력으로 동�
   await page.evaluate(() => window.setTestGamepad([0, 0], [0]));
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
 
+  await page.evaluate(() => { window.setTestGamepad(); window.testCanvasTexts = []; });
+  await page.waitForTimeout(50);
+  await page.evaluate(() => window.setTestGamepad([0, 0], [0]));
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('기본 룰')))).toBe(true);
+
   await page.evaluate(() => window.setTestGamepad());
   await page.waitForTimeout(50);
   await page.evaluate(() => window.setTestGamepad([0, 0], [0]));
@@ -1063,53 +1073,60 @@ test('게임패드 A와 X, Y 버튼은 메뉴 확인과 취소 입력으로 동�
   await page.evaluate(() => window.setTestGamepad([0, 0], [2]));
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
 
+  await page.evaluate(() => { window.setTestGamepad(); window.testCanvasTexts = []; });
+  await page.waitForTimeout(50);
+  await page.evaluate(() => window.setTestGamepad([0, 0], [2]));
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('기본 룰')))).toBe(true);
+
   await page.evaluate(() => window.setTestGamepad());
   await page.waitForTimeout(50);
   await page.evaluate(() => window.setTestGamepad([0, 0], [2]));
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
 });
 
-test('게임 규칙 선택지 밖 클릭과 ESC는 메인 메뉴로 돌아간다', async ({ page }) => {
+test('게임 시작의 두 선택지에서 바깥 클릭은 무시하고 ESC는 한 단계씩 돌아간다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
-  await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
-
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 20, y: 20 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 20, y: 20 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.evaluate(() => { window.testCanvasTexts = []; });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('적과 대전')))).toBe(true);
+  await page.keyboard.press('Escape');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
-test('게임 규칙 선택지의 기본 룰·연습 색상과 연속 피버 아래 취소를 키보드·마우스로 조작한다', async ({ page }) => {
+test('게임 시작 첫 단계와 하위 단계의 취소 버튼을 키보드·마우스로 조작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await expect.poll(() => page.evaluate(() => {
-    const canvas = document.querySelector('[data-puyow-canvas="2d"]');
-    const context = canvas.getContext('2d');
-    const standard = context.getImageData(360, 285, 1, 1).data;
-    const practice = context.getImageData(360, 387, 1, 1).data;
-    return standard[1] < practice[1] && standard[0] < practice[0]
-      && window.testCanvasTexts.some((text) => ['취소', 'Cancel', 'キャンセル', '取消'].includes(text));
+    const labels = ['적과 대전', '스스로 연습', '퍼즐뿌요', '취소'];
+    return labels.every((label) => window.testCanvasTexts.includes(window.WebPuyo.translate(label)));
   })).toBe(true);
 
   await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 513 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 445 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 445 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
-test('연습·연속 피버 색상 선택 화면의 취소는 이전 규칙 선택 화면으로 돌아간다', async ({ page }) => {
+test('연습·연속 피버 색상 선택 화면의 취소는 스스로 연습 선택지로 돌아간다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
 
@@ -1117,7 +1134,6 @@ test('연습·연속 피버 색상 선택 화면의 취소는 이전 규칙 선�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
 
-  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
@@ -1125,23 +1141,37 @@ test('연습·연속 피버 색상 선택 화면의 취소는 이전 규칙 선�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
 });
 
-test('게임 규칙 선택지에서 취소에 포커스가 있을 때 왼쪽 방향키는 퍼즐뿌요로 이동한다', async ({ page }) => {
+test('첫 단계 취소에서 왼쪽 방향키를 누르면 퍼즐뿌요로 이동한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
 
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
 });
 
+test('게임 시작 첫 단계와 연습 하위 단계의 마우스 좌표로 모드를 선택한다', async ({ page }) => {
+  await enterMainMenu(page);
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
+  await page.keyboard.press('Enter');
+  await canvas.click({ position: { x: 640, y: 340 } });
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('연속 피버')))).toBe(true);
+  await canvas.click({ position: { x: 770, y: 340 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Enter');
+  await canvas.click({ position: { x: 900, y: 340 } });
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
+});
+
 test('게임 중 왼쪽 아래 스틱은 왼쪽 이동과 빠른 하강을 함께 처리한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
@@ -1155,7 +1185,8 @@ test('게임 중 왼쪽 아래 스틱은 왼쪽 이동과 빠른 하강을 함�
 test('컨트롤 전부터 누른 오른쪽 키를 뿌요 지급 직후 반영한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
@@ -1187,7 +1218,8 @@ test('게임 외와 연습 게임 배경음악은 하나만 재생되고 일시�
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual([`/tomcat-puyow/other_${languageCode}.mp3`]);
 
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual([`/tomcat-puyow/other_${languageCode}.mp3`, `/tomcat-puyow/game_${languageCode}.mp3`]);

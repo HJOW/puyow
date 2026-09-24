@@ -32,12 +32,14 @@ test('기본·피버 룰 적 선택에서 극한 AI 난이도를 선택해 게�
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await selectExtremeAndStart();
 
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -71,6 +73,7 @@ test('적의 빠른 하강 대기 시간은 일반·위기 상황별 비율을 �
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
@@ -134,6 +137,7 @@ test('세레의 일반 쌓기는 오른쪽 두 열, X=3 절반, 왼쪽부터 순
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -159,6 +163,7 @@ test('세레는 오른쪽 하단 세 칸이 비어 있어도 일반 착수 카�
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
@@ -223,6 +228,7 @@ test('안드레알푸스는 기본·피버 룰에 출시되고 플라우로스�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['암두시아스', 'Amdusias', 'アムドゥシアス', '阿姆杜西亚斯'].includes(text)))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['키마리스', 'Kimaris', 'キマリス', '基马里斯'].includes(text)))).toBe(true);
@@ -279,6 +285,7 @@ test('피버 룰에서 이긴 적은 갤러리에도 잠금 해제된다', async
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -315,6 +322,7 @@ test('피버 룰 (시작) 승리는 피버 룰과 분리된 진행도로 저장�
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -349,6 +357,7 @@ test('피버 룰 (시작)은 피버 룰의 여러 적 승리 기록이 있어도
   });
   await page.reload();
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
@@ -389,6 +398,7 @@ test('Enemy 기본 구현은 피버 상태에서 연쇄 최적 위치와 회전�
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -434,6 +444,7 @@ test('외부 적은 피버 상태에서도 세 선택 메서드를 재정의해 
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -477,6 +488,7 @@ test('안드라스는 3개 방해뿌요를 긴급 상쇄 우선순위에서 제�
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
@@ -550,6 +562,7 @@ test('안드라스는 4개 이상 방해뿌요가 남을 상황이면 즉시 상
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -604,6 +617,7 @@ test('안드라스는 비피버 싹쓸이 경로를 6연쇄 기반보다 우선�
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
@@ -1275,6 +1289,7 @@ test('자간은 빠른 하강 전에 받을 방해뿌요가 바뀌면 재판단�
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1363,6 +1378,7 @@ test('안드라스 2턴 시뮬레이션 처리 시간을 측정한다', async ({
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1402,6 +1418,7 @@ test('기본 룰 적은 패배 위치 경고에서 X=2의 비폭발 배치를 �
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1439,6 +1456,7 @@ test('피버 룰의 비피버 적은 한 패배 위치 경고에도 X=2와 X=3�
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -1485,6 +1503,7 @@ test('패배 위치 경고 중에도 X=2에 놓아 폭발하는 기본 룰 적 �
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1529,6 +1548,7 @@ test('피버 전용 필드는 적 테마보다 우선하고 일반 필드는 적
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -1584,6 +1604,7 @@ test('조작 중인 뿌요가 필드 위 경계에 걸쳐 있어도 상단 베�
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1608,6 +1629,7 @@ test('기본 제공 적은 각자의 게임 테마를 쓰고 단독 모드는 �
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -1621,7 +1643,8 @@ test('기본 제공 적은 각자의 게임 테마를 쓰고 단독 모드는 �
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');

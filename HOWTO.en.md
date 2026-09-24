@@ -40,7 +40,7 @@ You can also use `puyow.js` from a CDN.
 
 ## Library overview
 
-`puyow.js` is a library usable through both CommonJS and browser-script loading. `Enemy` is the base class for CPU-control algorithms and game-screen themes. Selecting Start Game on the main screen opens opponent selection, where a player can choose an opponent registered from an external file. The default `sortPriority` member value is `1`; lower-valued opponents appear further left on the opponent-selection screen.
+`puyow.js` is a library usable through both CommonJS and browser-script loading. `Enemy` is the base class for CPU-control algorithms and game-screen themes. Selecting Start Game, Battle Opponent, and a rule opens opponent selection, where a player can choose an opponent registered from an external file. The default `sortPriority` member value is `1`; lower-valued opponents appear further left on the opponent-selection screen.
 
 `Enemy` also has Boolean members controlling its visibility on the selection screen; both default to `false`.
 

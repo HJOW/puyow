@@ -386,6 +386,7 @@ test('리플레이는 게임 중 효과음을 기록하고 재생할 때 같은 
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
   // 게임 시작 효과음까지 포함하도록 카운트다운 시점부터 센다.

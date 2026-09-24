@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 113;
+    const BUILDNO = 114;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -541,6 +541,13 @@
     Object.assign(stringTable.fr, { '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': 'Adversaire très difficile basé sur l’apprentissage profond. Le jeu peut être instable.', '계속': 'Continuer' });
     Object.assign(stringTable.fr, { '피버 룰 (시작)': 'Règles FEVER (Début)' });
 
+    // 게임 시작 첫 단계의 두 새 선택지를 지원 언어로 표시한다.
+    Object.assign(stringTable.en, { '적과 대전': 'Battle Opponent', '스스로 연습': 'Solo Practice' });
+    Object.assign(stringTable.ja, { '적과 대전': '敵と対戦', '스스로 연습': 'ひとりで練習' });
+    Object.assign(stringTable.zh, { '적과 대전': '与对手对战', '스스로 연습': '单人练习' });
+    Object.assign(stringTable.de, { '적과 대전': 'Gegen Gegner spielen', '스스로 연습': 'Allein üben' });
+    Object.assign(stringTable.fr, { '적과 대전': 'Affronter un adversaire', '스스로 연습': 'S’entraîner seul' });
+
     // 리플레이 기록·재생 관련 문구다. 독일어·프랑스어 표는 위에서 영어 표를 복사한 뒤이므로 언어별로 각각 추가한다.
     Object.assign(stringTable.en, {
         '리더보드': 'Leaderboard',
@@ -930,8 +937,12 @@
     let mainMenuGalleryFloaters = [];
     /** 직전 렌더링 메뉴 화면이다. 메인 메뉴 재진입 시 떠다니는 항목을 다시 추첨하는 데 사용한다. @type {string} */
     let previousRenderedMenuScreen = 'initialTitle';
-    /** 게임 규칙 선택 오버레이에서 포커스된 항목이다. @type {number} */
+    /** 게임 시작 선택 오버레이의 현재 단계다. @type {'category'|'opponent'|'practice'} */
+    let ruleSelectionStep = 'category';
+    /** 게임 시작 선택 오버레이에서 포커스된 항목이다. @type {number} */
     let ruleSelectionFocus = 0;
+    /** 취소 버튼에서 위로 돌아갈 때 복원할 선택지다. @type {number} */
+    let ruleSelectionPreviousFocus = 0;
     /** 일시정지 메뉴에서 포커스된 항목이다. @type {number} */
     let pauseMenuFocus = 0;
     /** 리플레이 재생 페이지(replay.html)에서 실행 중인지 여부다. 참이면 리플레이 재생의 일시정지·결과 화면에서 종료 버튼을 빼고, 리플레이를 불러오기 전에는 게임 입력을 막는다. @type {boolean} */
@@ -1116,17 +1127,20 @@
         { key: 'fever', label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever },
         { key: 'relaxedFever', label: '피버 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever }
     ];
-    /** 메인 메뉴의 게임 규칙 선택지다. 새 규칙은 이 목록에 추가해 확장한다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,isDisabled?:()=>boolean,activate?:()=>void}[]} */
+    /** 메인 메뉴의 대전·연습 하위 선택지다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,isDisabled?:()=>boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard, activate: () => openOpponentMenu('standard') },
         { label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, activate: () => openOpponentMenu('fever') },
         { label: '피버 룰 (시작)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.feverStart, isDisabled: () => !isFeverStartRuleUnlocked(), activate: () => openOpponentMenu('feverStart') },
         { label: '연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice, activate: () => openPracticeDifficulty() },
-        { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() },
-        { label: '퍼즐뿌요', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.puzzle, activate: () => openPuzzleStageSelection() }
+        { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() }
     ];
-    /** 게임 규칙 선택 오버레이에서 취소 버튼에 사용할 가상 항목 인덱스다. */
-    const RULE_SELECTION_CANCEL_INDEX = GAME_RULE_OPTIONS.length;
+    /** 게임 시작 첫 단계의 선택지다. @type {{label:string,backgroundColor:string}[]} */
+    const GAME_CATEGORY_OPTIONS = [
+        { label: '적과 대전', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard },
+        { label: '스스로 연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice },
+        { label: '퍼즐뿌요', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.puzzle }
+    ];
     /**
      * "너랑 나랑" 안내 화면의 규칙 선택지다. 기존 대전 규칙과 같은 세 가지를 사용하며 잠금 조건도 같다.
      * @type {{key:'standard'|'fever'|'feverStart',label:string,backgroundColor:string,isDisabled?:()=>boolean}[]}
@@ -3881,7 +3895,7 @@
         if (game?.tutorial?.mode === 'complete') return `tutorial:${game.tutorial.finalFocus}`;
         if (game?.paused) return `pause:${pauseMenuFocus}`;
         if (game) return null;
-        if (menuScreen === 'title' && ruleSelectionOpen) return `rule:${ruleSelectionFocus}`;
+        if (menuScreen === 'title' && ruleSelectionOpen) return `rule:${ruleSelectionStep}:${ruleSelectionFocus}`;
         if (menuScreen === 'title' && watchSelectionOpen) return `watch:${watchSelectionFocus}:${watchDifficulty}:${watchRule}:${watchSelectedAction}`;
         if (menuScreen === 'title' && togetherModeSelectionOpen) return `togetherMode:${togetherModeSelectionFocus}`;
         if (menuScreen === 'togetherGuide') return `togetherGuide:${togetherGuideFocus}:${togetherRule}:${togetherDifficulty}:${togetherGuideAction}`;
@@ -13766,9 +13780,16 @@
         return { x: layout.x, y: layout.startY + index * (layout.height + layout.gap), width: layout.width, height: layout.height };
     }
 
-    /** 포커스 가능한 게임 규칙 선택지의 실제 배열 순번을 반환한다. @returns {number[]} 포커스 가능한 선택지 순번 */
+    /** 현재 게임 시작 단계에서 표시할 선택지를 반환한다. @returns {object[]} 표시할 선택지 */
+    function getRuleSelectionOptions() {
+        if (ruleSelectionStep === 'opponent') return GAME_RULE_OPTIONS.slice(0, 3);
+        if (ruleSelectionStep === 'practice') return GAME_RULE_OPTIONS.slice(3, 5);
+        return GAME_CATEGORY_OPTIONS;
+    }
+
+    /** 포커스 가능한 게임 시작 선택지의 실제 배열 순번을 반환한다. @returns {number[]} 포커스 가능한 선택지 순번 */
     function getSelectableRuleOptionIndices() {
-        return GAME_RULE_OPTIONS.map((option, index) => isGameRuleOptionDisabled(option) ? -1 : index).filter((index) => index >= 0);
+        return getRuleSelectionOptions().map((option, index) => isGameRuleOptionDisabled(option) ? -1 : index).filter((index) => index >= 0);
     }
 
     /** 게임 규칙 선택지가 현재 잠겼는지 판정한다. @param {object} option 게임 규칙 선택지 @returns {boolean} 잠금 여부 */
@@ -13776,44 +13797,36 @@
         return option.disabled === true || option.isDisabled?.() === true;
     }
 
-    /** 게임 규칙 선택지 하나의 화면 영역을 반환한다. @param {number} index 선택지 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
+    /** 게임 시작 선택지 하나의 화면 영역을 반환한다. @param {number} index 선택지 순번 @returns {{x:number,y:number,width:number,height:number}} 버튼 영역 */
     function getRuleSelectionButtonBounds(index) {
+        const count = getRuleSelectionOptions().length;
+        const width = 250;
         const height = 78;
-        if (index < 3) {
-            const width = 250;
-            const gap = 18;
-            const totalWidth = 3 * width + 2 * gap;
-            return { x: (WIDTH - totalWidth) / 2 + index * (width + gap), y: 273, width, height };
-        }
-        const width = 280;
-        const gap = 24;
-        if (index === GAME_RULE_OPTIONS.length - 1) return { x: WIDTH / 2 - width - gap / 2, y: 465, width, height };
-        return {
-            x: WIDTH / 2 - width - gap / 2 + (index - 3) * (width + gap),
-            y: 369,
-            width,
-            height
-        };
+        const gap = 18;
+        return { x: (WIDTH - count * width - (count - 1) * gap) / 2 + index * (width + gap), y: 300, width, height };
     }
 
-    /** 게임 규칙 선택 오버레이 하단 취소 버튼의 화면 영역을 반환한다. @returns {{x:number,y:number,width:number,height:number}} 취소 버튼 영역 */
+    /** 게임 시작 오버레이 하단 취소 버튼의 화면 영역을 반환한다. @returns {{x:number,y:number,width:number,height:number}} 취소 버튼 영역 */
     function getRuleSelectionCancelButtonBounds() {
-        const puzzleBounds = getRuleSelectionButtonBounds(GAME_RULE_OPTIONS.length - 1);
-        return { x: WIDTH / 2 + 12, y: puzzleBounds.y, width: puzzleBounds.width, height: puzzleBounds.height };
+        return { x: WIDTH / 2 - 125, y: 405, width: 250, height: 78 };
     }
 
-    /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 연다. @returns {void} */
-    function openRuleSelection() {
+    /** 메인 메뉴 위에 게임 시작 선택 오버레이를 연다. @param {'category'|'opponent'|'practice'} [step='category'] 표시할 단계 @returns {void} */
+    function openRuleSelection(step = 'category') {
         watchSelectionOpen = false;
         togetherModeSelectionOpen = false;
         ruleSelectionOpen = true;
+        ruleSelectionStep = step;
         ruleSelectionFocus = getSelectableRuleOptionIndices()[0] ?? 0;
+        ruleSelectionPreviousFocus = ruleSelectionFocus;
     }
 
-    /** 게임 규칙 선택 오버레이를 닫고 메인 메뉴로 돌아간다. @returns {void} */
+    /** 게임 시작 선택 오버레이를 닫고 메인 메뉴로 돌아간다. @returns {void} */
     function closeRuleSelection() {
         ruleSelectionOpen = false;
+        ruleSelectionStep = 'category';
         ruleSelectionFocus = 0;
+        ruleSelectionPreviousFocus = 0;
         opponentMenuRule = 'standard';
     }
 
@@ -14169,11 +14182,21 @@
         return { x: WIDTH / 2 - 100, y: 445, width: 200, height: 58 };
     }
 
-    /** 색상 수 선택을 취소하고 게임 규칙 선택 화면으로 돌아간다. @returns {void} */
+    /** 색상 수 선택을 취소하고 스스로 연습의 하위 선택지로 돌아간다. @returns {void} */
     function returnToRuleSelection() {
         playMenuCancelSound();
         menuScreen = 'title';
-        openRuleSelection();
+        openRuleSelection('practice');
+        ruleSelectionFocus = colorSelectionMode === 'continuousFever' ? 1 : 0;
+        ruleSelectionPreviousFocus = ruleSelectionFocus;
+    }
+
+    /** 퍼즐뿌요 스테이지 선택을 닫고 메인 메뉴로 돌아간다. @returns {void} */
+    function closePuzzleStageSelection() {
+        playMenuCancelSound();
+        puzzleStageLastClickedIndex = null;
+        menuScreen = 'title';
+        loadNotice();
     }
 
     /** AI 난이도 선택지를 개수와 관계없이 화면 중앙에 수평 정렬한다. @param {number} difficultyIndex AI_DIFFICULTIES 배열 인덱스 @returns {number} 버튼의 왼쪽 좌표 */
@@ -14200,44 +14223,68 @@
         menuScreen = 'practiceDifficulty';
     }
 
-    /** 포커스된 게임 규칙을 선택한다. @returns {void} */
-    function activateRuleSelection() {
-        if (ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX) {
-            playMenuCancelSound();
+    /** 현재 게임 시작 단계의 취소 동작을 수행한다. @returns {void} */
+    function cancelRuleSelection() {
+        playMenuCancelSound();
+        if (ruleSelectionStep === 'category') {
             closeRuleSelection();
             return;
         }
-        const option = GAME_RULE_OPTIONS[ruleSelectionFocus];
+        const categoryIndex = ruleSelectionStep === 'opponent' ? 0 : 1;
+        ruleSelectionStep = 'category';
+        ruleSelectionFocus = categoryIndex;
+        ruleSelectionPreviousFocus = categoryIndex;
+    }
+
+    /** 포커스된 게임 시작 선택지를 선택한다. @returns {void} */
+    function activateRuleSelection() {
+        const options = getRuleSelectionOptions();
+        if (ruleSelectionFocus === options.length) { cancelRuleSelection(); return; }
+        const option = options[ruleSelectionFocus];
         if (!option || isGameRuleOptionDisabled(option)) return;
         playMenuSelectSound();
+        if (ruleSelectionStep === 'category') {
+            if (ruleSelectionFocus === 2) {
+                closeRuleSelection();
+                openPuzzleStageSelection();
+            } else {
+                ruleSelectionStep = ruleSelectionFocus === 0 ? 'opponent' : 'practice';
+                ruleSelectionFocus = getSelectableRuleOptionIndices()[0] ?? 0;
+                ruleSelectionPreviousFocus = ruleSelectionFocus;
+            }
+            return;
+        }
         closeRuleSelection();
         option.activate();
     }
 
-    /** 게임 규칙 선택 오버레이의 키보드·게임패드 키 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
+    /** 게임 시작 오버레이의 키보드·게임패드 키 입력을 처리한다. @param {string} key 소문자 키 이름 @returns {void} */
     function handleRuleSelectionKey(key) {
-        if (key === 'escape') { playMenuCancelSound(); closeRuleSelection(); return; }
+        if (key === 'escape') { cancelRuleSelection(); return; }
         if (key === 'enter' || key === ' ') { activateRuleSelection(); return; }
         if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
-        if (ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX) {
-            if (key === 'arrowleft') ruleSelectionFocus = GAME_RULE_OPTIONS.length - 1;
-            else if (key === 'arrowup') ruleSelectionFocus = 4;
+        const selectable = getSelectableRuleOptionIndices();
+        if (ruleSelectionFocus === getRuleSelectionOptions().length) {
+            if (key === 'arrowleft') ruleSelectionFocus = selectable[selectable.length - 1];
+            else if (key === 'arrowright') ruleSelectionFocus = selectable[0];
+            else if (key === 'arrowup') ruleSelectionFocus = ruleSelectionPreviousFocus;
             return;
         }
-        const focusByDirection = {
-            arrowleft: [null, 0, 1, null, 3, null],
-            arrowright: [1, 2, null, 4, null, RULE_SELECTION_CANCEL_INDEX],
-            arrowup: [null, null, null, 0, 1, 3],
-            arrowdown: [3, 4, 4, 5, RULE_SELECTION_CANCEL_INDEX, null]
-        };
-        const nextIndex = focusByDirection[key]?.[ruleSelectionFocus];
-        if (Number.isInteger(nextIndex) && (nextIndex === RULE_SELECTION_CANCEL_INDEX || !isGameRuleOptionDisabled(GAME_RULE_OPTIONS[nextIndex]))) ruleSelectionFocus = nextIndex;
+        if (key === 'arrowdown') {
+            ruleSelectionPreviousFocus = ruleSelectionFocus;
+            ruleSelectionFocus = getRuleSelectionOptions().length;
+            return;
+        }
+        const position = selectable.indexOf(ruleSelectionFocus);
+        if (key === 'arrowleft' && position > 0) ruleSelectionFocus = selectable[position - 1];
+        else if (key === 'arrowright' && position >= 0 && position < selectable.length - 1) ruleSelectionFocus = selectable[position + 1];
     }
 
-    /** 메인 메뉴 위에 게임 규칙 선택 오버레이를 그린다. @returns {void} */
+    /** 메인 메뉴 위에 현재 게임 시작 선택 단계를 그린다. @returns {void} */
     function drawRuleSelectionOverlay() {
         context.fillStyle = 'rgba(3, 11, 19, 0.76)'; context.fillRect(0, 0, WIDTH, HEIGHT);
-        GAME_RULE_OPTIONS.forEach((option, index) => {
+        const options = getRuleSelectionOptions();
+        options.forEach((option, index) => {
             const bounds = getRuleSelectionButtonBounds(index);
             const disabled = isGameRuleOptionDisabled(option);
             const focused = !disabled && index === ruleSelectionFocus;
@@ -14245,14 +14292,14 @@
             context.strokeStyle = disabled ? '#7c8791' : focused ? '#f7c843' : '#4f7788'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
             context.textAlign = 'center'; context.fillStyle = disabled ? '#c4cbd0' : '#f5fbfc'; context.font = `22px ${BUTTON_FONT}`;
             const statusLabel = disabled ? '잠김' : option.statusLabel;
-            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (statusLabel ? 32 : 47));
+            context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (statusLabel ? 32 : 47), bounds.width - 16);
             if (statusLabel) {
                 context.fillStyle = disabled ? '#f0c674' : '#f5fbfc'; context.font = `15px ${BUTTON_FONT}`;
                 context.fillText(translate(statusLabel), bounds.x + bounds.width / 2, bounds.y + 59);
             }
         });
         const cancelBounds = getRuleSelectionCancelButtonBounds();
-        const cancelFocused = ruleSelectionFocus === RULE_SELECTION_CANCEL_INDEX;
+        const cancelFocused = ruleSelectionFocus === options.length;
         context.fillStyle = '#455a64'; context.fillRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
         context.strokeStyle = cancelFocused ? '#f7c843' : '#607d8b'; context.lineWidth = cancelFocused ? 4 : 2;
         context.strokeRect(cancelBounds.x, cancelBounds.y, cancelBounds.width, cancelBounds.height);
@@ -15725,7 +15772,7 @@
             if (menuScreen === 'puzzleStage') {
                 const openedCount = getOpenedPuzzleStageCount();
                 const focusChoices = [PUZZLE_STAGE_CANCEL_INDEX, ...Array.from({ length: openedCount }, (unused, index) => index)];
-                if (key === 'escape') returnToRuleSelection();
+                if (key === 'escape') closePuzzleStageSelection();
                 else if (key === 'arrowleft' || key === 'arrowright') {
                     const currentIndex = Math.max(0, focusChoices.indexOf(puzzleStageFocus));
                     const direction = key === 'arrowleft' ? -1 : 1;
@@ -15736,7 +15783,7 @@
                     } else scrollPuzzleStageSelection(direction);
                     puzzleStageLastClickedIndex = null;
                 } else if (key === 'enter' || key === ' ') {
-                    if (puzzleStageFocus === PUZZLE_STAGE_CANCEL_INDEX) returnToRuleSelection();
+                    if (puzzleStageFocus === PUZZLE_STAGE_CANCEL_INDEX) closePuzzleStageSelection();
                     else startSelectedPuzzleStage();
                 }
                 return;
@@ -16250,22 +16297,20 @@
         if (menuScreen === 'title' && ruleSelectionOpen) {
             const cancelBounds = getRuleSelectionCancelButtonBounds();
             if (x >= cancelBounds.x && x <= cancelBounds.x + cancelBounds.width && y >= cancelBounds.y && y <= cancelBounds.y + cancelBounds.height) {
-                ruleSelectionFocus = RULE_SELECTION_CANCEL_INDEX;
+                ruleSelectionFocus = getRuleSelectionOptions().length;
                 activateRuleSelection();
                 return;
             }
-            const selectedIndex = GAME_RULE_OPTIONS.findIndex((option, index) => {
+            const options = getRuleSelectionOptions();
+            const selectedIndex = options.findIndex((option, index) => {
                 const bounds = getRuleSelectionButtonBounds(index);
                 return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
             });
             if (selectedIndex >= 0) {
-                if (!isGameRuleOptionDisabled(GAME_RULE_OPTIONS[selectedIndex])) {
+                if (!isGameRuleOptionDisabled(options[selectedIndex])) {
                     ruleSelectionFocus = selectedIndex;
                     activateRuleSelection();
                 }
-            } else {
-                playMenuCancelSound();
-                closeRuleSelection();
             }
             return;
         }
@@ -16414,7 +16459,7 @@
             if (isPuzzleStageCardVisible(PUZZLE_STAGE_CANCEL_INDEX) && x >= cancelBounds.x && x <= cancelBounds.x + cancelBounds.width && y >= cancelBounds.y && y <= cancelBounds.y + cancelBounds.height) {
                 puzzleStageFocus = PUZZLE_STAGE_CANCEL_INDEX;
                 puzzleStageLastClickedIndex = null;
-                returnToRuleSelection();
+                closePuzzleStageSelection();
                 return;
             }
             const stageIndex = PUZZLE_STAGES.findIndex((stage, index) => {
@@ -17615,7 +17660,9 @@
         feverStageValidationComplete = false;
         pendingInitialTitleEntry = false;
         ruleSelectionOpen = false;
+        ruleSelectionStep = 'category';
         ruleSelectionFocus = 0;
+        ruleSelectionPreviousFocus = 0;
         watchSelectionOpen = false;
         watchSelectionFocus = 0;
         watchSelectedAction = 0;

@@ -15,15 +15,17 @@ test('연속 피버 선택지는 활성 상태이며 목표 5연쇄와 60초로 
   await expect.poll(() => page.evaluate(() => {
     const texts = window.testCanvasTexts;
     const localizedOptions = [
-      ['기본 룰', '피버 룰', '피버 룰 (시작)', '연습', '연속 피버'],
-      ['Standard Rules', 'FEVER Rules', 'FEVER Rules (Start)', 'Practice', 'Continuous FEVER'],
-      ['基本ルール', 'FEVERルール', 'FEVER ルール (開始)', '練習', '連続FEVER'],
-      ['基本规则', 'FEVER规则', 'FEVER 规则（开始）', '练习', '连续FEVER'],
+      ['적과 대전', '스스로 연습', '퍼즐뿌요'],
+      ['Battle Opponent', 'Solo Practice', 'Puzzle Puyo'],
+      ['敵と対戦', 'ひとりで練習', 'パズルぷよ'],
+      ['与对手对战', '单人练习', '益智魔法气泡'],
     ];
     return localizedOptions.some((options) => options.every((text) => texts.includes(text)));
   })).toBe(true);
 
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.WebPuyo.translate('연속 피버')))).toBe(true);
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
@@ -74,7 +76,8 @@ test('피버·연속 피버에서 새로 지급된 조작 뿌요의 자연 낙�
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
@@ -87,6 +90,7 @@ test('피버·연속 피버에서 새로 지급된 조작 뿌요의 자연 낙�
   });
   await page.reload();
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
@@ -114,7 +118,8 @@ test('연속 피버는 두 번째 패배 칸 (3, 11)도 패배로 판정하고 �
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
@@ -139,6 +144,7 @@ test('연속 피버는 두 번째 패배 칸 (3, 11)도 패배로 판정하고 �
 test('피버 룰은 전용 적 선택 화면에서 4색을 골라 보라색 없이 대전으로 시작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -161,6 +167,7 @@ test('피버 룰은 전용 적 선택 화면에서 4색을 골라 보라색 없�
 test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽이 즉시 5연쇄·60초 피버로 시작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
     const labels = ['피버 룰 (시작)', 'FEVER Rules (Start)', 'FEVER ルール (開始)', 'FEVER 规则（开始）'];
     const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(908, 312, 1, 1).data;
@@ -175,6 +182,7 @@ test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽
   });
   await page.reload();
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
     const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(908, 312, 1, 1).data;
@@ -196,12 +204,14 @@ test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽
   await page.reload();
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 908, y: 312 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
 });
 
 test('피버 룰은 키보드로 3색을 선택해 초록·노랑·파랑만 사용하는 대전을 시작한다', async ({ page }) => {
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -251,6 +261,7 @@ test('피버 상태의 싹쓸이는 목표 연쇄만 올리고 별도 ATTACK을 
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -349,6 +360,7 @@ test('연속 피버와 피버 상태는 낮은 연쇄 뒤 4연쇄 피버 패턴�
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -386,6 +398,7 @@ test('피버 룰의 빈 필드 싹쓸이 뒤 4연쇄 보상 패턴은 무작위 
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -422,6 +435,7 @@ test('피버 상태는 낮은 연쇄 싹쓸이 뒤 직전 목표보다 한 단�
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -453,6 +467,7 @@ test('3색 피버 룰의 일반 필드 싹쓸이는 4연쇄 패턴을 배치한�
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -496,6 +511,7 @@ test('마지막 전등이 켜지는 일반 필드 싹쓸이는 5연쇄 패턴 �
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -536,6 +552,7 @@ test('common sound pool plays the Fever gauge light sound after an offset', asyn
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -583,6 +600,7 @@ test('피버 중 공격은 피버와 일반 DAMAGE를 모두 상쇄한 뒤 남�
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -639,6 +657,7 @@ test('연쇄 도중 상쇄되어 최종 전달량이 0인 공격은 상대 예�
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -684,6 +703,7 @@ test('피버 룰의 시간 만료 연쇄는 상대 방해뿌요 낙하를 기다
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -727,6 +747,7 @@ test('피버 룰은 DAMAGE 전달 뒤 상대 방해뿌요 낙하를 기다리지
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -762,7 +783,8 @@ test('연속 피버는 다음 스테이지 배치 때 DAMAGE 예고를 없애고
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
@@ -792,7 +814,8 @@ test('연속 피버는 다음 스테이지 배치 때 DAMAGE 예고를 없애고
 test('연속 피버는 키보드로 3색을 선택하고 피버 패턴도 선택한 색만 사용한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
@@ -819,7 +842,8 @@ test('연속 피버는 키보드로 3색을 선택하고 피버 패턴도 선택
 test('연속 피버의 중앙 정렬된 3색 버튼은 마우스로 선택할 수 있다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');

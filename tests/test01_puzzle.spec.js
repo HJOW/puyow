@@ -8,8 +8,8 @@ setupGamePage();
 test('퍼즐뿌요는 스테이지 선택, 잠금 해제, 5색 지급과 두 번 클릭 선택을 지원한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
 
@@ -55,7 +55,8 @@ test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 �
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
@@ -65,7 +66,8 @@ test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 �
   await page.reload();
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
@@ -76,8 +78,8 @@ test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 �
   await page.reload();
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
@@ -89,11 +91,11 @@ test('연습·연속 피버·퍼즐뿌요는 단독 NEXT 영역에 네 쌍을 �
   })).toBe(false);
 });
 
-test('퍼즐뿌요 스테이지 선택의 취소는 키보드와 마우스로 규칙 선택 화면에 돌아간다', async ({ page }) => {
+test('퍼즐뿌요 스테이지 선택의 취소는 키보드와 마우스로 메인 메뉴에 돌아간다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
 
@@ -104,14 +106,15 @@ test('퍼즐뿌요 스테이지 선택의 취소는 키보드와 마우스로 �
     return false;
   })).toBe(false);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 130, y: 550 } });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 });
 
 test('퍼즐뿌요 스테이지 선택은 여섯 번째 스테이지에서 키보드와 화살표 클릭으로 수평 스크롤한다', async ({ page }) => {
@@ -123,8 +126,8 @@ test('퍼즐뿌요 스테이지 선택은 여섯 번째 스테이지에서 키�
   await page.reload();
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
 
@@ -135,8 +138,8 @@ test('퍼즐뿌요 스테이지 선택은 여섯 번째 스테이지에서 키�
   await page.reload();
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   const canvas = page.locator('[data-puyow-canvas="2d"]');
   await canvas.click({ position: { x: 1150, y: 640 } });
@@ -155,8 +158,8 @@ test('퍼즐뿌요 스테이지 클리어는 결과 화면 전환 전에 저장�
   });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 15000 }).toBe(true);
@@ -211,8 +214,8 @@ test('퍼즐뿌요 color 조건은 동시 폭발한 일반뿌요 색 수를 스�
   });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['한 번에 2가지 색 뿌요를 터뜨려봐', 'Pop 2 colors at once!', '一度に2色のぷよを消そう！', '一次消除 2 种颜色的魔法气泡！'].includes(text)))).toBe(true);
@@ -247,8 +250,8 @@ test('퍼즐뿌요 color 조건은 동시에 제거된 방해뿌요를 색 수�
   });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 15000 }).toBe(true);
@@ -271,8 +274,8 @@ test('퍼즐뿌요 스테이지 카드의 9글자 초과 클리어 조건은 말
   });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('puzzle_stage_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
@@ -291,8 +294,8 @@ test('퍼즐뿌요 스테이지 선택 카드는 저장된 클리어와 별 달�
   await page.reload();
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
     const context = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d');
@@ -317,8 +320,8 @@ test('퍼즐뿌요 패배 결과는 중앙에 다국어 붉은 패배 문구를 
   });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 15000 }).toBe(true);
@@ -351,8 +354,8 @@ test('퍼즐뿌요 싹쓸이 조건은 연출 뒤 승리 판정까지 유지한�
   });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');

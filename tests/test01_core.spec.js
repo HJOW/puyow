@@ -472,7 +472,8 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
   // 실제 반환값의 키가 스키마의 required와 정확히 같아야 게임 상태 필드 추가가 도구에서 빠지지 않는다.
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
@@ -525,7 +526,8 @@ test('기본 룰·연습·플레이 방법의 양쪽 필드는 기본 패배 칸
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
@@ -546,6 +548,7 @@ test('기본 룰·연습·플레이 방법의 양쪽 필드는 기본 패배 칸
 test('피버 룰과 연속 피버의 양쪽 필드는 두 패배 칸에 빨간 X를 표시한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -557,7 +560,8 @@ test('피버 룰과 연속 피버의 양쪽 필드는 두 패배 칸에 빨간 X
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
@@ -643,6 +647,7 @@ test('피버 룰도 AI용 다음 20쌍을 유지한다', async ({ page }) => {
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -677,6 +682,7 @@ test('게임 상태 조회는 양쪽 일반·피버 필드와 앞 두 NEXT를 �
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -750,6 +756,7 @@ test('DAMAGE 방해뿌요 30개는 현재 숨김 생성 범위의 다섯 줄(Y 1
   });
 
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
@@ -933,6 +940,7 @@ test('게임 중 askConfirm은 응답 전까지 게임을 일시정지하고 응
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -950,6 +958,7 @@ test('게임 중 askConfirm은 응답 전까지 게임을 일시정지하고 응
 
 test('게임 중 askText는 응답 전까지 게임을 일시정지하고 응답 후 재개한다', async ({ page }) => {
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
@@ -991,6 +1000,7 @@ test('메뉴에서 Z 키는 Enter 키처럼 동작한다', async ({ page }) => {
   await page.keyboard.press('z');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
 });
 
@@ -1001,6 +1011,7 @@ test('setEnemySoundPool은 getClassType에 해당하는 새 적의 사운드 풀
     window.WebPuyo.setEnemySoundPool('Andromalius', sounds);
   });
   await enterMainMenu(page);
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
@@ -1044,6 +1055,7 @@ test('빠른 하강 전 적 조작 뿌요의 자연 낙하는 난이도와 무�
     await enterMainMenu(page);
     await page.keyboard.press('Enter');
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+    await page.keyboard.press('Enter');
     await page.keyboard.press('Enter');
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
     await page.keyboard.press('ArrowDown');
@@ -1190,7 +1202,8 @@ test('플레이 방법 4단계의 싹쓸이 안내 문구는 모든 기본 언�
 test('새 게임의 마진 레이트는 70으로 시작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
@@ -1217,7 +1230,8 @@ test('폭발 점수 보너스는 최소 1이며 시간 진행 배율은 360초�
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
