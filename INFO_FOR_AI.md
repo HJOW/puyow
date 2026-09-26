@@ -143,9 +143,9 @@
 
 - GOLD는 `puyow_store.gold`의 0 이상 정수이며 잘못된 값은 로드 시 0으로 보정한다. 메인 메뉴와 갤러리 좌측 상단에는 번역하지 않는 `GOLD` 단위와 천 단위 콤마로 표시한다.
 - 기본/피버/피버 룰 (시작)/피버 룰 (완화) 대전 승리와 연습/연속 피버 정상 결과 진입 때 종료 점수를 바탕으로 GOLD를 한 번 지급한다. 점수 패널티는 기본 300, 피버·피버 룰 (완화) 1,000, 피버 룰 (시작)·연습 10,000, 연속 피버 100,000이다. 난이도 배율은 쉬움 3, 보통 4, 어려움 5, 극한 7이고 단독 모드는 1이다. 기본 적 배율은 안드로말리우스부터 안드레알푸스까지 1~8, 솔로몬·외부 적·단독 모드는 1이다. 구경, 퍼즐의 일반 종료 계산, 일시정지 종료에는 지급하지 않는다.
-- 보유 카드는 `puyow_cards`의 개별 `{id,type}` 인스턴스 배열이다. 기본 카드 풀은 일반뿌요 5종, 방해뿌요 3종, 예고뿌요 11종(단위 1·6·30·210·500·2000·80000·500000·3000000·20000000·140000000), 출시 적 21종(안드로말리우스~알로케스)이며 `getCardDefinitions()`의 가중치를 쓴다. 안드라스·발라크·자간·바퓰라를 포함해 플라우로스 뒤에 추가된 출시 적은 자동으로 가중치 1 카드가 되며, 솔로몬과 `notAvail` 출시 예정 적 2종(발람·푸르카스)은 제외한다. 단위 500000보다 큰 예고뿌요도 자동으로 가중치 1 카드가 된다. 카드 배경색은 가중치 경계에 따른 EPIC/RARE/UNCOMMON/COMMON 색을 사용하며 등급 문구는 카드에 표시하지 않는다.
+- 보유 카드는 `puyow_cards`의 개별 `{id,type}` 인스턴스 배열이다. 기본 카드 풀은 일반뿌요 5종, 방해뿌요 3종, 예고뿌요 11종(단위 1·6·30·210·500·2000·80000·500000·3000000·20000000·140000000), 출시 적 21종(안드로말리우스~알로케스)이며 `getCardDefinitions()`의 가중치를 쓴다. 안드라스·발라크·자간·바퓰라를 포함해 플라우로스 뒤에 추가된 출시 적은 자동으로 가중치 1 카드가 되며, 솔로몬과 `notAvail` 출시 예정 적 2종(발람·푸르카스)은 제외한다. 단위 500000보다 큰 예고뿌요도 자동으로 가중치 1 카드가 된다. BUILDNO 119에서 앞으로 추가될 희귀 카드를 고려해 가중치 10 이상인 명시 카드의 가중치를 모두 20배로 올렸고(예: 빨강 4000, 방해뿌요·예고 1은 6000, 안드레알푸스·예고 2000은 200), 10 미만(예고 80000의 5, 가중치 1 카드들)은 그대로 두었다. 등급은 `getCardRarity(weight)`가 가중치로 정한다. 10 미만 LEGENDARY(황금색 `#e7be48`), 10 이상 100 미만 EPIC(보라색 `#c9a4ef`), 100 이상 1000 미만 RARE(연한 파랑 `#a9d9f5`), 1000 이상 2800 미만 UNCOMMON(연한 초록 `#b9e6b4`), 그 외 COMMON(연한 회색 `#d9dde1`)이다. 20배 조정 후 10~99 구간의 카드가 없어 현재 EPIC 카드는 0종이며, 이는 요청대로 둔 것이다(이후 EPIC 가중치 카드를 추가하면 자동으로 보라색·에픽 연출이 적용된다). 등급 문구는 카드에 표시하지 않는다.
 - 갤러리의 카드 유형은 8열·약 4행 카드 목록, 세로 스크롤, 키보드·마우스 포커스/선택을 지원한다. 1장/10장 뽑기는 각각 1,000/9,000 GOLD, 합성은 카드 5장당 새 카드 1장을 지급한다. 자원이 충분하면 먼저 전체 화면 확인창을 열고 사용자가 확인했을 때만 GOLD 차감 또는 선택 카드 소비와 결과 지급을 수행한다.
-- 카드 뽑기·합성으로 지급한 카드는 저장을 끝낸 뒤 `revealGrantedCards()`를 통해 선택적 3D 등장 연출을 요청한다. `puyow_3d.js`의 `PuyoW3DEffectManager.playCardReveal()`이 기존 카드 그림 콜백을 텍스처로 만들고, 카드의 회전·광채·광륜·입자를 그린다. 카드별 COMMON → UNCOMMON → RARE → EPIC 순서로 광륜·입자 수와 회전량·광채를 강화하며 등급 문구는 표시하지 않는다. 여러 장도 한 번에 격자로 등장하므로 전체 시간은 가장 높은 등급에 따라 2,200/2,650/3,100/3,550ms다. `frame(time)`의 절대 시각과 종료 타이머를 함께 사용하므로 게임의 delta 상한 때문에 4초를 넘도록 늘어나지 않는다.
+- 카드 뽑기·합성으로 지급한 카드는 저장을 끝낸 뒤 `revealGrantedCards()`를 통해 선택적 3D 등장 연출을 요청한다. `puyow_3d.js`의 `PuyoW3DEffectManager.playCardReveal()`이 기존 카드 그림 콜백을 텍스처로 만들고, 카드의 회전·광채·광륜·입자를 그린다. 등급 레벨은 COMMON 0 → UNCOMMON 1 → RARE 2 → EPIC 3 → LEGENDARY 4이며, 레벨에 따라 광륜·입자 수와 회전량·광채를 강화하고 등급 문구는 표시하지 않는다. 주 색상은 흰빛·초록·파랑·보라(`0xb46bff`)·금(`0xffd45b`)이다. EPIC 이상은 보조 색(에픽 분홍 `0xff6ad5`, 전설 연금색) 입자가 반대 방향으로 맥동하며 소용돌이치고, 착지 무렵 `RingGeometry` 충격파가 퍼진다(에픽 1겹, 전설 2겹). LEGENDARY는 추가로 카드 뒤에서 회전·맥동하는 18갈래 햇살(`rayTexture`, 전설 카드끼리 공유), 카드 면을 1.3초마다 훑는 광택 띠(같은 캔버스를 쓰는 카드별 `CanvasTexture`의 `offset.x` 이동), 아래에서 떠오르는 금빛 반짝이 60개, 앞면의 금빛 이중 테두리, 600~1,100ms 사이의 화면 전체 금빛 섬광(`reveal.flash`, 전설 카드가 있을 때만 하나), 따뜻한 색의 배경 가림막을 쓴다. 섬광·충격파·반짝이처럼 스스로 밝기가 바뀌는 물체는 `object.userData.opacityScale`에 배율을 두고, 매 프레임 `baseOpacity * fade * opacityScale`로 합성한다. 새 텍스처는 `createPaintedTexture()` 또는 `own()`을 거쳐야 종료 때 해제된다. 여러 장도 한 번에 격자로 등장하므로 전체 시간은 가장 높은 등급에 따라 2,200/2,650/3,100/3,550/4,000ms다. `frame(time)`의 절대 시각과 종료 타이머를 함께 사용하므로 게임의 delta 상한 때문에 4초를 넘도록 늘어나지 않는다. `tests/test01_menu.spec.js`의 카드 3D 테스트는 10장 뽑기(`Math.random` 0.999999, 가중치 1 카드)가 전설 레벨 4로 나오는지와, 다섯 등급을 직접 넣었을 때 에픽·전설 전용 요소 구성 및 자원 해제를 확인한다.
 - 연출 중 Enter·Space·ESC·게임패드 확인/취소·캔버스 클릭은 연출만 끝내고 뒤쪽 카드 선택·추가 구매·갤러리 종료로 전달하지 않는다. 방향키와 휠은 연출 중 목록을 바꾸지 않는다. 종료 후 이미 지급된 새 카드에 포커스가 남는다. THREE·효과 모듈이 없거나 WebGL 생성·렌더링이 실패하면 기존 2D 카드 목록으로 바로 진행하며, 카드 재추첨·재지급·추가 차감은 하지 않는다.
 
 ### 구경 모드와 진행도
@@ -229,7 +229,7 @@
 
 - 진행도·설정·GOLD는 `localStorage`의 `puyow_store`, 카드 인스턴스 배열은 `puyow_cards`, 갤러리 잠금은 `puyow_gallery`, 리더보드 기록은 `puyow_leaderboard`(아래 「리더보드」 절), 테스트 기능 코드 배열은 `puyow_code`에 저장된다. 초기화 시 `puyow_code`를 JSON 배열로 복원하며, 파싱 실패는 오류를 기록한 뒤 빈 배열로 계속한다. 읽을 때 이전 형식을 보정하므로 새 필드는 기본값·마이그레이션을 함께 설계한다. 설정의 `useReplayFeature`는 리플레이 기능 사용 여부를, `reverseLearning`은 역방향 모델 학습 사용 여부를 저장하는 boolean이며, 기존 저장에 값이 없으면 둘 다 `false`로 보정한다. `puyow_store` 최상위의 `onnxWarningAcknowledged`는 ONNX 적 첫 대전 전 불안정 안내에서 `계속`을 고른 적이 있는지를 담는 boolean이며, 설정 화면에는 나오지 않고 값이 없거나 true가 아니면 `false`로 보정한다.
 - 설정 화면의 `화면 가로방향 고정`·`리플레이 사용`·`역으로 모델 학습` 체크박스는 마우스 클릭 또는 Enter·Space·Z(해당 게임패드 확인 입력 포함)로만 토글한다. 체크박스에 포커스가 있을 때 좌우 방향키는 세 체크박스 사이의 포커스 이동에 쓰며, 양 끝에서는 더 이동하지 않는다. 위치·포커스 순번·저장 키는 `getSettingsCheckboxes()` 한 곳에서 정의하고 그리기·키보드 토글·마우스 판정이 모두 이 목록을 사용하므로, 체크박스를 더할 때는 이 함수와 `SETTINGS_UI_LAYOUT`의 가로 좌표만 추가하면 된다.
-- 설정 화면 포커스 순번은 0~9 설정 행, 10 AI API 테스트, 11~13 체크박스, 14 저장, 15 취소, 16 초기화다. `getSelectableSettingsFocuses()`가 AI 입력 세 행 7·8·9를 LM Studio에서만 넣고 10도 API 테스트 실행 가능 여부에 따라 빼므로, 키보드 이동 횟수를 검증하는 테스트는 이 목록을 기준으로 계산한다.
+- 설정 화면 포커스 순번은 BUILDNO 95(언어 행 추가)부터 0 이름, 1 언어, 2~3 볼륨, 4 가상 컨트롤러, 5 그래픽, 6 사운드 데이터 URL, 7 AI 제공자, 8~10 AI URL·키·모델명, 11 AI API 테스트, 12~14 체크박스, 15 저장, 16 취소, 17 초기화다. `getSelectableSettingsFocuses()`가 AI 입력 세 행 8·9·10을 LM Studio에서만 넣고 11도 API 테스트 실행 가능 여부에 따라 빼므로, 키보드 이동 횟수를 검증하는 테스트는 이 목록을 기준으로 계산한다(예: 제공자 미선택이면 이름에서 8번 내려가 첫 체크박스, LM Studio면 11번 내려가 API 테스트). 마우스 좌표는 `SETTINGS_UI_LAYOUT`(행 Y `rowYs` 78부터 34 간격, 제공자 행 316·URL 350·키 384, API 테스트 448~476, 체크박스 518, 동작 버튼 640~674)을 따른다.
 - `registerLanguage()`, `registerOpponent()`, `registerWarningPuyo()`, `registerFeverStage()`, `registerPuzzleStage()`가 주요 확장 지점이다. 입력 검증과 중복 처리 방식은 기존 등록 함수에 맞춘다.
 - 적은 `Enemy` 또는 `BundledEnemy` 계열이다. `getClassType()`의 안정성은 저장 진행도·사운드 연결에 중요하므로 기존 클래스 타입을 바꾸지 않는다.
 - 적의 위치·회전 결정은 게임 루프 밖의 별도 보정 함수가 아니라 `prepareTurn()`, `chooseTarget()`, `chooseRotate()` 안에서 끝낸다. 기본 `Enemy.prepareTurn()`은 피버 연쇄 최적화와 패배 위치 회피 후보를 `preparedPlacement`로 준비하고, 기본 제공 적은 `BundledEnemy`에서 연쇄 대응·즉시 패배 보호를 추가한다. 외부 적이 이 공통 규칙을 유지하려면 세 메서드에서 `super` 구현을 호출하고, 완전히 독자적인 AI라면 세 메서드를 재정의하면 된다.
@@ -1154,7 +1154,7 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 ### 설정 언어 선택 (2026-09-19, BUILDNO 95)
 
 - 게임 설정에 `language`를 저장하며, 이름과 배경음악 볼륨 사이에서 영어·한국어·일본어·중국어·프랑스어·독일어를 고를 수 있다. 선택지는 언어를 바꾸기 전에도 구분할 수 있도록 `English`·`한국어`·`日本語`·`中文`·`Français`·`Deutsch` 자체 표기로 표시한다.
-- 새 저장 데이터와 언어 저장값이 없는 기존 데이터는 브라우저 시스템 언어의 앞 두 글자를 위 여섯 언어와 대조한다. 지원하지 않거나 판별할 수 없으면 영어를 저장한다. 잘못된 저장값도 같은 방식으로 보정한다.
+- 새 저장 데이터와 언어 저장값이 없는 기존 데이터는 브라우저 시스템 언어의 앞 두 글자를 위 여섯 언어와 대조한다. 지원하지 않거나 판별할 수 없으면 영어를 저장한다. **BUILDNO 123부터 저장값은 있지만 지원하지 않는 언어(예: `es-MX`)이면 시스템 언어와 무관하게 영어로 보정한다**(`normalizeStoredLanguageCode()`: `undefined`·`null`·빈 문자열만 저장값 없음으로 보고 시스템 언어를 따른다). 이전에는 이 경우에도 시스템 언어를 따랐다. 보정값은 저장소에 다시 쓰이므로 설정 화면에서도 영어가 선택된 상태로 보인다.
 - `translate()`와 URL의 `[LANG]` 치환은 시스템 언어가 아니라 저장된 `settings.language`를 사용한다. 설정 저장 직후부터 화면 문구와 공지 경로에 반영된다.
 - 언어 행을 추가하면서 설정 화면의 행 간격·입력/선택 컨트롤·버튼 글자 크기와 높이를 조금 줄였다. 언어 선택지는 여섯 개를 한 줄에 배치하며 개별 폭을 사용하므로 마우스 판정도 선택지 폭을 따른다.
 - BUILDNO 96부터 초기화에서 저장소를 읽은 직후와 설정 저장 직후에 `applyStoredLanguage()`를 호출한다. 이 함수가 저장된 `settings.language`를 `languageCode`에 적용하므로, 그 시점 이후 `translate()`와 `[LANG]`은 시스템 언어를 다시 읽지 않는다.
@@ -1283,7 +1283,7 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - **destroy**: `clearCanvasFitLayout()`이 모드 1에서 넣은 인라인 속성(`CANVAS_FIT_ROOT_STYLE_PROPERTIES`·`CANVAS_FIT_CANVAS_STYLE_PROPERTIES`)만 지운다. 외부에서 받은 div의 다른 인라인 스타일은 건드리지 않는다.
 - **개발용 도구**: `puyow_tools.js`는 `resizeCanvasRoot()`로 캔버스 영역 크기를 직접 정하므로 게임 초기화 직전에 `setCanvasFitMode(0)`을 부른다(모드 1의 인라인 크기가 도구 레이아웃을 덮어쓰지 않게).
 - **WebMCP**: 읽기 전용 `screen_layout` 도구(`getScreenLayout()`: `fitMode`·`margin`·`rotated`·`viewport`·`canvasRect`)를 더했고, `manual` 마지막 문단에 설명을 붙였다. `now_screen`의 반환 형식은 바꾸지 않았다(기존 테스트가 정확히 비교한다).
-- **검증**: `tests/test01_core.spec.js`에 「캔버스 맞춤 모드 1은 여백을 뺀 화면의 짧은 쪽에 맞추고…」 테스트를 더했다(17:9·4:3·세로 화면 배치, 회전+여백에서의 클릭, 모드 0의 무회전, destroy 뒤 인라인 스타일 정리). 뷰포트를 바꾼 직후에는 resize가 늦게 처리될 수 있어 `innerWidth`를 기다린 뒤 resize 이벤트를 한 번 더 보낸다. WebMCP 도구 수 기대값은 6으로 올렸다. `test01_menu.spec.js`의 세로 화면·가로 고정 테스트는 가운데 정렬에 맞춰 `top` 기대값만 고쳤다. test01_core 전체(Chromium·Firefox·WebKit 120개)와 test02_tools(Chromium 46개)가 통과했다. **`test01_menu.spec.js`의 세로 화면 회전·가로방향 고정·가로방향 고정 문구 번역·설정 언어 테스트는 이 작업 전(HEAD)에도 실패한다**(설정 화면에 AI 제공자 행이 보여 키보드 포커스 순서가 테스트 가정과 다르다). 이 작업과 무관하다.
+- **검증**: `tests/test01_core.spec.js`에 「캔버스 맞춤 모드 1은 여백을 뺀 화면의 짧은 쪽에 맞추고…」 테스트를 더했다(17:9·4:3·세로 화면 배치, 회전+여백에서의 클릭, 모드 0의 무회전, destroy 뒤 인라인 스타일 정리). 뷰포트를 바꾼 직후에는 resize가 늦게 처리될 수 있어 `innerWidth`를 기다린 뒤 resize 이벤트를 한 번 더 보낸다. WebMCP 도구 수 기대값은 6으로 올렸다. `test01_menu.spec.js`의 세로 화면·가로 고정 테스트는 가운데 정렬에 맞춰 `top` 기대값만 고쳤다. test01_core 전체(Chromium·Firefox·WebKit 120개)와 test02_tools(Chromium 46개)가 통과했다. **`test01_menu.spec.js`의 세로 화면 회전·가로방향 고정·가로방향 고정 문구 번역·설정 언어 테스트는 이 작업 전(HEAD)에도 실패했다**(설정 화면에 AI 제공자 행이 보여 키보드 포커스 순서가 테스트 가정과 다르다). 이 작업과 무관하며, BUILDNO 122 작업에서 테스트를 현재 설정 화면에 맞게 고쳤다.
 
 ### 리플레이 재생 페이지 (2026-09-23, BUILDNO 107~110)
 
@@ -1366,6 +1366,42 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 
 - 첫 단계 선택지 `스스로 연습`을 `트레이닝`으로 변경했다. 영어 표시는 `Training`이며 일본어·중국어·독일어·프랑스어 번역도 새 문구 키에 맞췄다. 하위 선택과 내부 연습 모드 식별자는 유지한다.
 - `src/js/puyow.js` BUILDNO와 `package.json`·`package-lock.json` 버전은 118 (`0.1.118`)이다. 버전값 자체는 테스트하지 않았다.
+
+### 도장깨기 피버 룰 선택지 순서 (2026-09-26, BUILDNO 120)
+
+- 도장깨기 규칙 선택 화면의 두 번째 행을 왼쪽부터 `피버 룰 (시작)`, `피버 룰`, `피버 룰 (완화)` 순으로 배치했다. 조건 없는 `피버 룰`이 가운데에 온다.
+- 버튼 그리기와 마우스 클릭 판정이 같은 인덱스 기반 영역 계산을 사용하므로 클릭 좌표도 새 순서에 맞춰진다. 방향키의 좌우 이동은 실제 배열 순서를 따르며, 아래쪽 행의 가운데는 인덱스 2이므로 중앙의 일반 피버 룰에 포커스된다. 룰별 잠금과 선택 동작은 유지한다.
+- `src/js/puyow.js` BUILDNO와 `package.json`·`package-lock.json` 버전은 120 (`0.2.120`)이다. 버전값 검사는 수행하지 않았다.
+
+### 뿌요 연결 모양과 폭발 연출 변경 (2026-09-26, BUILDNO 121)
+
+`TODO.md`의 "뿌요 폭발 시 그래픽 변경 및 뿌요가 붙어있을 때의 그래픽 변경"을 구현했다(참고: 뿌요뿌요 2·피버 화면). 게임 규칙·연출 시간·리플레이 형식은 바꾸지 않았다. **연결 목 모양은 BUILDNO 122에서 더 잘록하게 바꿨다(아래 절). 이 절의 각도·곡선 설명은 BUILDNO 121 당시 값이다.**
+
+- **연결 모양**: `Puyo`에 `isConnectable()`(기본 false)·`drawBody(ctx, x, y, cellSize, scale, flash)`(기본은 `draw()` 전체)·`drawDetails(ctx, x, y, cellSize, scale, squint)`(기본 없음)·`drawConnection(ctx, x, y, cellSize, 'right'|'up', flash)`(기본 없음)를 더했다. `SlimePuyo`는 생성자 다섯째 인자 `connectable`을 받으며 빨강~보라 다섯 종만 true다(방해·딱딱·철구·예고 잉크는 연결 안 함). `SlimePuyo.draw()`는 `drawBody()`+`drawDetails()`라 갤러리·NEXT·메뉴 부유 뿌요·조작 뿌요 모습은 그대로다.
+- `drawConnectedPuyoCells(originX, cells, {flash, squint})`가 모든 몸체 → 오른쪽·위쪽 같은 색 이웃의 목 → 반사광·눈 순서로 그린다. 목은 두 원의 테두리에서 중심선과 `SLIME_CONNECTION_ANGLE`(62도)인 점을 이차 곡선(제어점 거리 `SLIME_CONNECTION_WAIST` 0.3칸)으로 이은 모양이라, 목이 몸체 테두리를 덮어 한 덩어리로 보인다. 목을 너무 가늘게 하면(예: 50도·0.22) 아령처럼 보여 지금 값으로 넓혔다. 곡선이 원보다 바깥에 있어야 원 테두리 선이 목 밖으로 비치지 않으므로 값을 바꿀 때 이 조건을 확인한다.
+- `drawField()`의 고정 뿌요와 시뮬레이터의 고정 뿌요가 `collectBoardPuyoCells(board, rowCount, excluded)`로 칸을 모아 이 함수를 쓴다. 중력 낙하 중인 뿌요(`fallingTargets`)와 조작 뿌요 쌍은 연결하지 않는다.
+- **폭발 연출**: 예전 `drawExplosionEffect()`(광선 + 흰 원)를 없애고 `drawExplosionEffects(originX, cells, progress)`로 바꿨다. `effects.duration`(게임 430ms, 시뮬레이터 420ms)과 진행률은 그대로이며, 앞 `EXPLOSION_FLASH_RATIO`(0.5) 구간은 이미 보드에서 지운 폭발 칸을 이어진 모양 그대로 다시 그리며 흰 빛을 2.5번 깜빡이고(마지막이 가장 하얀 순간) 40% 이후 눈을 `> <`(`drawPuyoSquintEyes()`)로 감는다. 뒤 구간은 칸마다 `drawPuyoBurst()`가 충격파 고리, 포물선으로 떨어지는 같은 색 방울 `EXPLOSION_DROPLET_COUNT`(6)개(딱딱뿌요는 회전하는 얼음 조각), 일반 색 뿌요의 반짝이 별 2개, 그 위에 하얗게 부풀며 사라지는 몸체를 그린다. 보이는 필드 영역으로 클립한다.
+- 파편 방향·크기는 `getEffectNoise(x, y, index)`(sin 해시)로 정한다. 그리기에서 `randomFloat()`를 쓰면 게임 결정론이 깨지므로 쓰지 않는다.
+- 문서: `docs/Puyo.md`·`docs/Puyo.en.md`에 「붙어 있는 뿌요와 폭발 연출」 절을 더했다. WebMCP 도구는 규칙·상태가 바뀌지 않아 고치지 않았다.
+- **검증**: `node --check`, ESLint, webpack 빌드 통과. `tests/test01_simulator.spec.js`에 「붙어 있는 같은 색 일반 뿌요는 칸 사이가 이어져 그려지고 다른 색·방해뿌요는 떨어져 그려진다」(칸 경계 픽셀 비교)를 더해 Chromium·Firefox·WebKit에서 통과했다. 임시 캡처 테스트로 연결 모양과 폭발 프레임을 눈으로 확인한 뒤 삭제했다. Chromium의 `test01_simulator`·`test01_puzzle`·`test01_fever`·`test01_replay`·`test01_core`·`test01_relaxed_fever` 101건 중 90건 통과했고, 실패 11건(`rule_select`에서 적 선택으로 못 넘어가는 메뉴 진입 경로 등)은 HEAD 소스로 되돌려 실행해도 똑같이 실패하는 기존 문제였다(BUILDNO 122 작업에서 테스트를 고쳤다). `test01_enemy`의 상단 베젤·적 테마 픽셀 테스트 2건도 통과했다.
+- `src/js/puyow.js` BUILDNO와 `package.json`·`package-lock.json` 버전은 121 (`0.2.121`)이다. 버전값 검사는 수행하지 않았다.
+
+### 연결 목을 더 잘록하게, 최근 메뉴·설정 변경에 맞춘 테스트 정리 (2026-09-26, BUILDNO 122)
+
+- **연결 목 모양**: 사용자 요청("양측 뿌요 형태가 좀더 명확히 구분되도록")으로 `SlimePuyo.drawConnection()`의 양옆 곡선을 이차 곡선에서 **원의 접선 방향으로 출발하는 3차 곡선**으로 바꿨다. 시작점은 중심선과 `SLIME_CONNECTION_ANGLE`(55도)를 이루는 원 테두리이고, 손잡이 길이는 가장 잘록한 곳의 반폭이 `SLIME_CONNECTION_WAIST`(0.2칸, 몸체 반지름 0.42칸의 약 절반)가 되도록 `(startY - waist) / (0.75 × cos각)`으로 계산한다(3차 곡선 가운데 높이 = startY − 0.75 × 손잡이 × cos각). 접선으로 출발하므로 몸체 윤곽과 꺾임 없이 이어지면서 곡선이 원 바깥에 머물러 원 테두리 선이 목 밖으로 비치지 않는다. 이차 곡선으로 목을 좁히면 곡선이 원 안쪽으로 파고들어 이 조건이 깨진다. 목 가운데의 옅은 윤기 타원은 좁아진 목에서 두 몸체 구분을 흐리므로 없앴다. 2×2 덩어리는 가운데에 작은 빈틈이 생긴다(의도된 모양).
+- **테스트 공용 도우미**: `tests/common/gamepage.js`에 `openDojoOpponentSelect(page, rule)`(메인 메뉴 → 게임 시작 → 도장깨기 → `standard`·`fever`·`feverStart`·`relaxedFever` → 적 선택 화면 확인)와 `openPracticeDifficulty(page)`(게임 시작 → 트레이닝(오른쪽 방향키) → 연습 → 색 수 화면 확인)를 더했다. 룰별 방향키는 `DOJO_RULE_KEYS`에 있다(기본 룰에서 시작해 피버 룰 (시작)은 오른쪽, 피버 룰은 아래(가운데 인덱스 2), 완화는 아래 후 오른쪽). **메뉴 배치를 다시 바꾸면 이 두 함수만 고치면 된다.** 새 테스트도 게임 시작 메뉴를 직접 누르지 말고 이 도우미를 쓴다.
+- **고친 테스트(모두 기존 실패였다)**: BUILDNO 114~120의 2단계 게임 시작 메뉴·도장깨기 피버 행 순서 변경을 반영하지 못한 `test01_core`(빨간 X·다음 20쌍·게임 상태·공통 효과음)·`test01_enemy`(피버 룰 (시작) 진행도·잠금, 안드레알푸스 피버 룰, 승리 뒤 포커스, 초상화 화살표)·`test01_fever`(싹쓸이 티켓, 피버 룰 (시작) 선택 — 버튼 중심 X를 640에서 372로)·`test01_replay`(`playQuickMatch(page, rule)`로 인자를 룰 이름으로 변경)·`test05_leaderboard`(기본 룰 3건·연습 1건)·`test03_ai`(설정 뒤 메인 메뉴 `게임 시작` 클릭 다음 `Enter` 두 번)를 고쳤다. BUILDNO 95의 설정 화면 언어 행 추가·행 간격 축소를 반영하지 못한 `test03_ai` 설정 테스트와 `test01_menu`의 세로 화면 회전·가로방향 고정 테스트는 위 설정 화면 좌표·포커스 순번(이동 횟수 +1)으로 고쳤다.
+- **언어 관련 테스트**: 언어별 문구 번역 테스트(`test01_menu` 가로방향 고정 문구, `test03_ai` 역학습 문구)는 첫 반복에서 저장된 `settings.language`가 이후 반복의 브라우저 언어보다 우선해 실패했으므로 반복마다 `puyow_store`를 지운다. `test01_menu` 설정 언어 테스트는 지원하지 않는 저장값(`es-MX`)이 영어가 된다고 기대했지만, 코드와 이 문서의 BUILDNO 95 절은 "브라우저 언어로 보정"이므로(테스트의 브라우저 언어 ja-JP) 기대값을 `ja`·`設定`으로 고쳤다. 이후 사용자 요청으로 BUILDNO 123에서 동작을 영어 보정으로 바꾸고 테스트 기대값도 `en`·`Settings`로 되돌렸다(아래 절).
+- **Node 서버 테스트**: `test03_ai`의 "Node 서버는 Local AI 모델 파일이 없으면…"은 임시 폴더에 서버 파일을 복사해 띄우는데, BUILDNO 103에서 `server.js`가 읽기 시작한 `leaderboard.js`·`leaderboard_storage.js`를 복사하지 않아 서버가 뜨지 못했다. 복사 목록에 더했다. `server.js`에 새 모듈을 `require`하면 이 목록도 고친다.
+- **검증**: `node --check`, ESLint 통과. 연결 모양은 임시 캡처 테스트로 확대 확인 후 삭제했다. 수정 전 Chromium 전체 391건 중 39건 실패 → 수정 후 Chromium 전체 391건 모두 통과했다. Firefox·WebKit 전체는 이번에 실행하지 않았다. webpack 번들도 다시 빌드했다.
+- `src/js/puyow.js` BUILDNO와 `package.json`·`package-lock.json` 버전은 122 (`0.2.122`)이다. 버전값 검사는 수행하지 않았다.
+
+### 지원하지 않는 저장 언어의 영어 보정 (2026-09-26, BUILDNO 123)
+
+- 사용자 요청: 설정에 저장된 언어가 지원하지 않는 언어이면 영어로 동작하고, 설정 화면에서도 영어가 선택돼 있어야 한다. 저장값이 없을 때 시스템 언어를 따르는 동작(지원하지 않으면 영어)은 그대로다.
+- `normalizeStoredLanguageCode(value)`를 더해 저장소 정규화(`loadStore()`의 `settings.language`)와 `applyStoredLanguage()`가 함께 쓴다. 값이 없으면(`undefined`·`null`·공백 문자열) `detectSystemLanguageCode()`, 있으면 `normalizeLanguageCode(value)`(지원하지 않으면 `DEFAULT_LANGUAGE_CODE` 영어)다. 화면·URL `[LANG]`·리플레이 페이지 `getLanguage()`는 모두 `languageCode`를 읽으므로 이 두 곳만 고쳤다. 설정 화면 초안은 저장소 값을 복사하므로 영어 선택지가 선택 상태로 그려진다.
+- 테스트: `test01_menu`의 「설정 언어는 여섯 선택지를…」에서 브라우저 ja-JP·저장값 `es-MX`이면 `en`·`Settings`, 설정 화면 언어 행의 영어 선택지(X 608, Y 104) 픽셀이 선택 색 `#563068`이고 일본어 선택지는 아님, 저장값을 지우면 `ja`·`設定`을 확인한다. 언어 관련 테스트(`test01_menu`·`test03_ai`·`test06_replay_page`) 33건을 Chromium·Firefox·WebKit에서, `test01_core`·`test01_menu`·`test05_leaderboard` 122건을 Chromium에서 통과했다. ESLint·webpack 빌드 통과.
+- `src/js/puyow.js` BUILDNO와 `package.json`·`package-lock.json` 버전은 123 (`0.2.123`)이다. 버전값 검사는 수행하지 않았다.
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.

@@ -113,7 +113,7 @@ For every custom event, an error thrown by a listener does not stop the game; pl
 
 When deploying the game below a web-application path other than ROOT, call `PuyoW.setURLContextPath()` before initialization to set the URL context path. The default is `'/'`. The value directly replaces `[CTX]` in a URL, so include any required leading and trailing slashes.
 
-`convertURL(url)` replaces `[CTX]` with the context path and `[LANG]` with the first two characters of the system language in both relative paths and absolute URLs. Supported languages are Korean by default (`ko`) and registered translation-table languages `en`, `ja`, and `zh`; other languages are replaced with `en`.
+`convertURL(url)` replaces `[CTX]` with the context path and `[LANG]` with the two-letter code of the game language chosen on the settings screen, in both relative paths and absolute URLs. Supported languages are `en`, `ko`, `ja`, `zh`, `fr`, and `de`. If no language has been saved, the browser's system language is used; if the system language or the saved language is not supported, `en` is used.
 
 ```js
 PuyoW.setURLContextPath('/my-puyo-app/');
