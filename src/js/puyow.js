@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 122;
+    const BUILDNO = 123;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -2741,9 +2741,20 @@
         return normalizeLanguageCode(systemLanguage);
     }
 
+    /**
+     * 저장된 설정 언어를 지원 언어 코드로 보정한다.
+     * 저장값이 없으면(새 저장·언어 설정 이전의 저장) 브라우저 시스템 언어를 따르고,
+     * 값은 있지만 지원하지 않는 언어이면 시스템 언어와 무관하게 영어로 보정한다.
+     * @param {unknown} value 저장된 언어 값 @returns {string} 지원 언어 코드
+     */
+    function normalizeStoredLanguageCode(value) {
+        const missing = value === undefined || value === null || (typeof value === 'string' && !value.trim());
+        return missing ? detectSystemLanguageCode() : normalizeLanguageCode(value);
+    }
+
     /** 저장소를 읽은 뒤 설정 언어를 현재 화면 언어로 적용한다. 이후에는 시스템 언어가 아니라 이 값을 유일한 기준으로 쓴다. @returns {void} */
     function applyStoredLanguage() {
-        languageCode = normalizeLanguageCode(store?.settings?.language, detectSystemLanguageCode());
+        languageCode = normalizeStoredLanguageCode(store?.settings?.language);
         if (store?.settings) store.settings.language = languageCode;
     }
 
@@ -3394,7 +3405,7 @@
             store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, feverStartClearListByDifficulty, relaxedFeverClearListByDifficulty, puzzleClearStages, puzzleStarStages,
                 puzzleGoldClearStages, puzzleGoldStarStages, gold: normalizeGold(parsed.gold), settings: {
                 playerName: normalizePlayerName(settings.playerName),
-                language: normalizeLanguageCode(settings.language, initial.settings.language),
+                language: normalizeStoredLanguageCode(settings.language),
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
                 // 이전 켜기/끄기 불리언 저장값도 각각 보통/없음으로 유지한다.

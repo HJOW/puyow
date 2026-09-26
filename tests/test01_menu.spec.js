@@ -495,7 +495,24 @@ test('설정 언어는 여섯 선택지를 표시하고 저장한 언어로 게�
     localStorage.setItem('puyow_store', JSON.stringify(store));
   });
   await page.reload();
-  // 지원하지 않는 저장값은 새 저장과 같은 방식(브라우저 언어, 판별할 수 없으면 영어)으로 보정한다. 이 테스트의 브라우저 언어는 ja-JP다.
+  // 저장된 언어가 지원하지 않는 값이면 브라우저 언어(이 테스트는 ja-JP)와 무관하게 영어로 보정한다.
+  expect(await page.evaluate(() => ({
+    language: JSON.parse(localStorage.getItem('puyow_store')).settings.language,
+    settings: window.WebPuyo.translate('설정'),
+  }))).toEqual({ language: 'en', settings: 'Settings' });
+  // 설정 화면에서도 영어(첫 선택지, X 550~614) 선택지만 선택 색으로 칠해진다. 일본어는 셋째 선택지(X 684~748)다.
+  await openSettings(page);
+  const languageOptionFill = (x) => page.evaluate((pixelX) => Array.from(document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(pixelX, 104, 1, 1).data).slice(0, 3).join(','), x);
+  await expect.poll(() => languageOptionFill(608)).toBe('86,48,104');
+  expect(await languageOptionFill(742)).not.toBe('86,48,104');
+
+  // 언어 저장값이 없으면 지금처럼 브라우저 언어를 따른다.
+  await page.evaluate(() => {
+    const store = JSON.parse(localStorage.getItem('puyow_store'));
+    delete store.settings.language;
+    localStorage.setItem('puyow_store', JSON.stringify(store));
+  });
+  await page.reload();
   expect(await page.evaluate(() => ({
     language: JSON.parse(localStorage.getItem('puyow_store')).settings.language,
     settings: window.WebPuyo.translate('설정'),

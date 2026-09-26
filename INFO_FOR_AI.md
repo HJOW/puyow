@@ -1154,7 +1154,7 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 ### 설정 언어 선택 (2026-09-19, BUILDNO 95)
 
 - 게임 설정에 `language`를 저장하며, 이름과 배경음악 볼륨 사이에서 영어·한국어·일본어·중국어·프랑스어·독일어를 고를 수 있다. 선택지는 언어를 바꾸기 전에도 구분할 수 있도록 `English`·`한국어`·`日本語`·`中文`·`Français`·`Deutsch` 자체 표기로 표시한다.
-- 새 저장 데이터와 언어 저장값이 없는 기존 데이터는 브라우저 시스템 언어의 앞 두 글자를 위 여섯 언어와 대조한다. 지원하지 않거나 판별할 수 없으면 영어를 저장한다. 잘못된 저장값도 같은 방식으로 보정한다.
+- 새 저장 데이터와 언어 저장값이 없는 기존 데이터는 브라우저 시스템 언어의 앞 두 글자를 위 여섯 언어와 대조한다. 지원하지 않거나 판별할 수 없으면 영어를 저장한다. **BUILDNO 123부터 저장값은 있지만 지원하지 않는 언어(예: `es-MX`)이면 시스템 언어와 무관하게 영어로 보정한다**(`normalizeStoredLanguageCode()`: `undefined`·`null`·빈 문자열만 저장값 없음으로 보고 시스템 언어를 따른다). 이전에는 이 경우에도 시스템 언어를 따랐다. 보정값은 저장소에 다시 쓰이므로 설정 화면에서도 영어가 선택된 상태로 보인다.
 - `translate()`와 URL의 `[LANG]` 치환은 시스템 언어가 아니라 저장된 `settings.language`를 사용한다. 설정 저장 직후부터 화면 문구와 공지 경로에 반영된다.
 - 언어 행을 추가하면서 설정 화면의 행 간격·입력/선택 컨트롤·버튼 글자 크기와 높이를 조금 줄였다. 언어 선택지는 여섯 개를 한 줄에 배치하며 개별 폭을 사용하므로 마우스 판정도 선택지 폭을 따른다.
 - BUILDNO 96부터 초기화에서 저장소를 읽은 직후와 설정 저장 직후에 `applyStoredLanguage()`를 호출한다. 이 함수가 저장된 `settings.language`를 `languageCode`에 적용하므로, 그 시점 이후 `translate()`와 `[LANG]`은 시스템 언어를 다시 읽지 않는다.
@@ -1391,10 +1391,17 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - **연결 목 모양**: 사용자 요청("양측 뿌요 형태가 좀더 명확히 구분되도록")으로 `SlimePuyo.drawConnection()`의 양옆 곡선을 이차 곡선에서 **원의 접선 방향으로 출발하는 3차 곡선**으로 바꿨다. 시작점은 중심선과 `SLIME_CONNECTION_ANGLE`(55도)를 이루는 원 테두리이고, 손잡이 길이는 가장 잘록한 곳의 반폭이 `SLIME_CONNECTION_WAIST`(0.2칸, 몸체 반지름 0.42칸의 약 절반)가 되도록 `(startY - waist) / (0.75 × cos각)`으로 계산한다(3차 곡선 가운데 높이 = startY − 0.75 × 손잡이 × cos각). 접선으로 출발하므로 몸체 윤곽과 꺾임 없이 이어지면서 곡선이 원 바깥에 머물러 원 테두리 선이 목 밖으로 비치지 않는다. 이차 곡선으로 목을 좁히면 곡선이 원 안쪽으로 파고들어 이 조건이 깨진다. 목 가운데의 옅은 윤기 타원은 좁아진 목에서 두 몸체 구분을 흐리므로 없앴다. 2×2 덩어리는 가운데에 작은 빈틈이 생긴다(의도된 모양).
 - **테스트 공용 도우미**: `tests/common/gamepage.js`에 `openDojoOpponentSelect(page, rule)`(메인 메뉴 → 게임 시작 → 도장깨기 → `standard`·`fever`·`feverStart`·`relaxedFever` → 적 선택 화면 확인)와 `openPracticeDifficulty(page)`(게임 시작 → 트레이닝(오른쪽 방향키) → 연습 → 색 수 화면 확인)를 더했다. 룰별 방향키는 `DOJO_RULE_KEYS`에 있다(기본 룰에서 시작해 피버 룰 (시작)은 오른쪽, 피버 룰은 아래(가운데 인덱스 2), 완화는 아래 후 오른쪽). **메뉴 배치를 다시 바꾸면 이 두 함수만 고치면 된다.** 새 테스트도 게임 시작 메뉴를 직접 누르지 말고 이 도우미를 쓴다.
 - **고친 테스트(모두 기존 실패였다)**: BUILDNO 114~120의 2단계 게임 시작 메뉴·도장깨기 피버 행 순서 변경을 반영하지 못한 `test01_core`(빨간 X·다음 20쌍·게임 상태·공통 효과음)·`test01_enemy`(피버 룰 (시작) 진행도·잠금, 안드레알푸스 피버 룰, 승리 뒤 포커스, 초상화 화살표)·`test01_fever`(싹쓸이 티켓, 피버 룰 (시작) 선택 — 버튼 중심 X를 640에서 372로)·`test01_replay`(`playQuickMatch(page, rule)`로 인자를 룰 이름으로 변경)·`test05_leaderboard`(기본 룰 3건·연습 1건)·`test03_ai`(설정 뒤 메인 메뉴 `게임 시작` 클릭 다음 `Enter` 두 번)를 고쳤다. BUILDNO 95의 설정 화면 언어 행 추가·행 간격 축소를 반영하지 못한 `test03_ai` 설정 테스트와 `test01_menu`의 세로 화면 회전·가로방향 고정 테스트는 위 설정 화면 좌표·포커스 순번(이동 횟수 +1)으로 고쳤다.
-- **언어 관련 테스트**: 언어별 문구 번역 테스트(`test01_menu` 가로방향 고정 문구, `test03_ai` 역학습 문구)는 첫 반복에서 저장된 `settings.language`가 이후 반복의 브라우저 언어보다 우선해 실패했으므로 반복마다 `puyow_store`를 지운다. `test01_menu` 설정 언어 테스트는 지원하지 않는 저장값(`es-MX`)이 영어가 된다고 기대했지만, 코드와 이 문서의 BUILDNO 95 절은 "브라우저 언어로 보정"이므로(테스트의 브라우저 언어 ja-JP) 기대값을 `ja`·`設定`으로 고쳤다. 동작을 영어 고정으로 바꾸려면 소스와 이 문서를 함께 바꿔야 한다.
+- **언어 관련 테스트**: 언어별 문구 번역 테스트(`test01_menu` 가로방향 고정 문구, `test03_ai` 역학습 문구)는 첫 반복에서 저장된 `settings.language`가 이후 반복의 브라우저 언어보다 우선해 실패했으므로 반복마다 `puyow_store`를 지운다. `test01_menu` 설정 언어 테스트는 지원하지 않는 저장값(`es-MX`)이 영어가 된다고 기대했지만, 코드와 이 문서의 BUILDNO 95 절은 "브라우저 언어로 보정"이므로(테스트의 브라우저 언어 ja-JP) 기대값을 `ja`·`設定`으로 고쳤다. 이후 사용자 요청으로 BUILDNO 123에서 동작을 영어 보정으로 바꾸고 테스트 기대값도 `en`·`Settings`로 되돌렸다(아래 절).
 - **Node 서버 테스트**: `test03_ai`의 "Node 서버는 Local AI 모델 파일이 없으면…"은 임시 폴더에 서버 파일을 복사해 띄우는데, BUILDNO 103에서 `server.js`가 읽기 시작한 `leaderboard.js`·`leaderboard_storage.js`를 복사하지 않아 서버가 뜨지 못했다. 복사 목록에 더했다. `server.js`에 새 모듈을 `require`하면 이 목록도 고친다.
 - **검증**: `node --check`, ESLint 통과. 연결 모양은 임시 캡처 테스트로 확대 확인 후 삭제했다. 수정 전 Chromium 전체 391건 중 39건 실패 → 수정 후 Chromium 전체 391건 모두 통과했다. Firefox·WebKit 전체는 이번에 실행하지 않았다. webpack 번들도 다시 빌드했다.
 - `src/js/puyow.js` BUILDNO와 `package.json`·`package-lock.json` 버전은 122 (`0.2.122`)이다. 버전값 검사는 수행하지 않았다.
+
+### 지원하지 않는 저장 언어의 영어 보정 (2026-09-26, BUILDNO 123)
+
+- 사용자 요청: 설정에 저장된 언어가 지원하지 않는 언어이면 영어로 동작하고, 설정 화면에서도 영어가 선택돼 있어야 한다. 저장값이 없을 때 시스템 언어를 따르는 동작(지원하지 않으면 영어)은 그대로다.
+- `normalizeStoredLanguageCode(value)`를 더해 저장소 정규화(`loadStore()`의 `settings.language`)와 `applyStoredLanguage()`가 함께 쓴다. 값이 없으면(`undefined`·`null`·공백 문자열) `detectSystemLanguageCode()`, 있으면 `normalizeLanguageCode(value)`(지원하지 않으면 `DEFAULT_LANGUAGE_CODE` 영어)다. 화면·URL `[LANG]`·리플레이 페이지 `getLanguage()`는 모두 `languageCode`를 읽으므로 이 두 곳만 고쳤다. 설정 화면 초안은 저장소 값을 복사하므로 영어 선택지가 선택 상태로 그려진다.
+- 테스트: `test01_menu`의 「설정 언어는 여섯 선택지를…」에서 브라우저 ja-JP·저장값 `es-MX`이면 `en`·`Settings`, 설정 화면 언어 행의 영어 선택지(X 608, Y 104) 픽셀이 선택 색 `#563068`이고 일본어 선택지는 아님, 저장값을 지우면 `ja`·`設定`을 확인한다. 언어 관련 테스트(`test01_menu`·`test03_ai`·`test06_replay_page`) 33건을 Chromium·Firefox·WebKit에서, `test01_core`·`test01_menu`·`test05_leaderboard` 122건을 Chromium에서 통과했다. ESLint·webpack 빌드 통과.
+- `src/js/puyow.js` BUILDNO와 `package.json`·`package-lock.json` 버전은 123 (`0.2.123`)이다. 버전값 검사는 수행하지 않았다.
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.
