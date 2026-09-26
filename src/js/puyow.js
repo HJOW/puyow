@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 119;
+    const BUILDNO = 123;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -1145,8 +1145,8 @@
     /** 메인 메뉴의 대전·연습 하위 선택지다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,isDisabled?:()=>boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard, activate: () => openOpponentMenu('standard') },
-        { label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, activate: () => openOpponentMenu('fever') },
         { label: '피버 룰 (시작)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.feverStart, isDisabled: () => !isFeverStartRuleUnlocked(), activate: () => openOpponentMenu('feverStart') },
+        { label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, activate: () => openOpponentMenu('fever') },
         { label: '피버 룰 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, isDisabled: () => !isFeverStartRuleUnlocked(), activate: () => openOpponentMenu('relaxedFever') },
         { label: '연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice, activate: () => openPracticeDifficulty() },
         { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() }
@@ -2741,9 +2741,20 @@
         return normalizeLanguageCode(systemLanguage);
     }
 
+    /**
+     * 저장된 설정 언어를 지원 언어 코드로 보정한다.
+     * 저장값이 없으면(새 저장·언어 설정 이전의 저장) 브라우저 시스템 언어를 따르고,
+     * 값은 있지만 지원하지 않는 언어이면 시스템 언어와 무관하게 영어로 보정한다.
+     * @param {unknown} value 저장된 언어 값 @returns {string} 지원 언어 코드
+     */
+    function normalizeStoredLanguageCode(value) {
+        const missing = value === undefined || value === null || (typeof value === 'string' && !value.trim());
+        return missing ? detectSystemLanguageCode() : normalizeLanguageCode(value);
+    }
+
     /** 저장소를 읽은 뒤 설정 언어를 현재 화면 언어로 적용한다. 이후에는 시스템 언어가 아니라 이 값을 유일한 기준으로 쓴다. @returns {void} */
     function applyStoredLanguage() {
-        languageCode = normalizeLanguageCode(store?.settings?.language, detectSystemLanguageCode());
+        languageCode = normalizeStoredLanguageCode(store?.settings?.language);
         if (store?.settings) store.settings.language = languageCode;
     }
 
@@ -3394,7 +3405,7 @@
             store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, feverStartClearListByDifficulty, relaxedFeverClearListByDifficulty, puzzleClearStages, puzzleStarStages,
                 puzzleGoldClearStages, puzzleGoldStarStages, gold: normalizeGold(parsed.gold), settings: {
                 playerName: normalizePlayerName(settings.playerName),
-                language: normalizeLanguageCode(settings.language, initial.settings.language),
+                language: normalizeStoredLanguageCode(settings.language),
                 musicVolume: Number.isInteger(settings.musicVolume) ? Math.max(0, Math.min(100, settings.musicVolume)) : initial.settings.musicVolume,
                 effectsVolume: Number.isInteger(settings.effectsVolume) ? Math.max(0, Math.min(100, settings.effectsVolume)) : initial.settings.effectsVolume,
                 // 이전 켜기/끄기 불리언 저장값도 각각 보통/없음으로 유지한다.
@@ -9446,19 +9457,45 @@
 
         /** 뿌요 하나를 그린다. 하위 클래스에서 모양을 구현한다. @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {number} scale 셀 대비 크기 비율 @param {boolean} slimeDetails 반사광과 눈 위치를 기본 슬라임처럼 그릴지 여부 @returns {void} */
         draw(drawingContext, x, y, cellSize, scale = 1, slimeDetails = true) {}
+
+        /** 같은 종류의 이웃 뿌요와 몸이 이어져 보이는 뿌요인지 반환한다. 기본값은 이어지지 않는다. @returns {boolean} */
+        isConnectable() { return false; }
+
+        /**
+         * 필드에서 연결 목보다 먼저 그리는 몸체다. 기본 구현은 draw() 전체를 그리므로 연결을 쓰지 않는 확장 뿌요도 그대로 동작한다.
+         * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {number} [scale=1] 셀 대비 크기 비율 @param {number} [flash=0] 몸체 위에 덧칠할 흰 빛의 불투명도(0~1) @returns {void}
+         */
+        drawBody(drawingContext, x, y, cellSize, scale = 1, flash = 0) { this.draw(drawingContext, x, y, cellSize, scale); }
+
+        /** 연결 목 위에 그리는 반사광·눈이다. 기본 구현은 drawBody()가 이미 모두 그렸으므로 아무것도 하지 않는다. @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {number} [scale=1] 셀 대비 크기 비율 @param {boolean} [squint=false] 터지기 직전처럼 눈을 질끈 감은 얼굴로 그릴지 여부 @returns {void} */
+        drawDetails(drawingContext, x, y, cellSize, scale = 1, squint = false) {}
+
+        /** 오른쪽 또는 위쪽 이웃과 이어지는 몸의 목 부분을 그린다. 연결하지 않는 뿌요는 구현하지 않는다. @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {'right'|'up'} direction 이어질 이웃 방향 @param {number} [flash=0] 덧칠할 흰 빛의 불투명도 @returns {void} */
+        drawConnection(drawingContext, x, y, cellSize, direction, flash = 0) {}
     }
 
     /** 일반 색 뿌요와 둥근 방해뿌요가 공유하는 슬라임 렌더링 클래스다. */
     class SlimePuyo extends Puyo {
         /** @param {string} type 종류 식별자 @param {string} name 표시할 이름 @param {string} paletteKey PALETTE 색상 키 @param {boolean} garbageStyle 방해뿌요식 반투명 테두리를 쓸지 여부 */
-        constructor(type, name, paletteKey, garbageStyle = false) {
+        constructor(type, name, paletteKey, garbageStyle = false, connectable = false) {
             super(type, name);
             this.paletteKey = paletteKey;
             this.garbageStyle = garbageStyle;
+            /** 같은 색 이웃과 몸이 이어져 보이는지 여부다. 일반 색 뿌요만 참이다. @type {boolean} */
+            this.connectable = connectable;
         }
 
         /** 공통 슬라임 모양을 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {number} scale 셀 대비 크기 비율 @param {boolean} slimeDetails 반사광과 눈 위치를 기본 슬라임처럼 그릴지 여부 @returns {void} */
         draw(drawingContext, x, y, cellSize, scale = 1, slimeDetails = true) {
+            this.drawBody(drawingContext, x, y, cellSize, scale);
+            this.drawDetails(drawingContext, x, y, cellSize, scale, false, slimeDetails);
+        }
+
+        /** 같은 색 이웃과 이어지는 일반 색 뿌요인지 반환한다. @override @returns {boolean} */
+        isConnectable() { return this.connectable; }
+
+        /** 둥근 몸체와 테두리를 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {number} [scale=1] 셀 대비 크기 비율 @param {number} [flash=0] 덧칠할 흰 빛의 불투명도 @returns {void} */
+        drawBody(drawingContext, x, y, cellSize, scale = 1, flash = 0) {
             const radius = cellSize * 0.42 * scale;
             drawingContext.save();
             drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
@@ -9468,9 +9505,18 @@
             drawingContext.beginPath();
             drawingContext.arc(0, 0, radius, 0, Math.PI * 2);
             drawingContext.fill();
+            if (flash > 0) { drawingContext.fillStyle = `rgba(255, 255, 255, ${Math.min(1, flash)})`; drawingContext.fill(); }
             drawingContext.lineWidth = 2;
             drawingContext.strokeStyle = this.garbageStyle ? '#f4fbff' : 'rgba(255,255,255,0.45)';
             drawingContext.stroke();
+            drawingContext.restore();
+        }
+
+        /** 반사광과 눈을 그린다. @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {number} [scale=1] 셀 대비 크기 비율 @param {boolean} [squint=false] 눈을 질끈 감은 얼굴로 그릴지 여부 @param {boolean} [slimeDetails=true] 반사광과 눈 위치를 기본 슬라임처럼 그릴지 여부 @returns {void} */
+        drawDetails(drawingContext, x, y, cellSize, scale = 1, squint = false, slimeDetails = true) {
+            const radius = cellSize * 0.42 * scale;
+            drawingContext.save();
+            drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
             // 일반/방해뿌요는 물방울 같은 슬라임이라는 인상을 주는 작은 반사광을 넣는다.
             // 예고뿌요(태양, 별, 돌 등)는 각 WarningPuyo 하위 클래스에서 별도로 그린다.
             if (slimeDetails) {
@@ -9480,21 +9526,75 @@
                 drawingContext.ellipse(radius * 0.43, -radius * 0.43, radius * 0.13, radius * 0.22, 0.55 + Math.PI / 2, 0, Math.PI * 2);
                 drawingContext.fill();
             }
-            drawPuyoEyes(drawingContext, radius, slimeDetails ? radius * 0.08 : 0);
+            if (squint) drawPuyoSquintEyes(drawingContext, radius, radius * 0.08);
+            else drawPuyoEyes(drawingContext, radius, slimeDetails ? radius * 0.08 : 0);
+            drawingContext.restore();
+        }
+
+        /**
+         * 뿌요뿌요 시리즈처럼 붙어 있는 같은 색 뿌요 사이를 가운데가 잘록한 젤리 목으로 잇는다.
+         * 두 몸체를 그린 뒤, 반사광·눈을 그리기 전에 호출해야 몸체 테두리가 목 안쪽에서 가려진다.
+         * @override @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트 @param {number} x 셀의 왼쪽 X 좌표 @param {number} y 셀의 위쪽 Y 좌표 @param {number} cellSize 셀 크기 @param {'right'|'up'} direction 이어질 이웃 방향 @param {number} [flash=0] 덧칠할 흰 빛의 불투명도 @returns {void}
+         */
+        drawConnection(drawingContext, x, y, cellSize, direction, flash = 0) {
+            if (!this.connectable) return;
+            const radius = cellSize * 0.42;
+            // 목은 두 원의 테두리에서 중심선과 SLIME_CONNECTION_ANGLE을 이루는 점에서 원의 접선 방향으로 출발한다.
+            // 접선으로 출발해야 몸체 윤곽과 꺾임 없이 이어지면서도 가운데를 좁게 조일 수 있다.
+            const startX = radius * Math.cos(SLIME_CONNECTION_ANGLE);
+            const startY = radius * Math.sin(SLIME_CONNECTION_ANGLE);
+            const waist = cellSize * SLIME_CONNECTION_WAIST;
+            // 3차 곡선의 가운데 높이는 startY - 0.75 × handle × cos(각도)이므로, 가장 잘록한 반폭이 waist가 되도록 손잡이 길이를 정한다.
+            const handle = (startY - waist) / (0.75 * Math.cos(SLIME_CONNECTION_ANGLE));
+            const handleX = handle * Math.sin(SLIME_CONNECTION_ANGLE);
+            const handleY = startY - handle * Math.cos(SLIME_CONNECTION_ANGLE);
+            /** 위(-1) 또는 아래(1)쪽 잘록한 곡선을 현재 경로에 잇는다. @param {number} side 곡선 쪽 부호 @param {boolean} reverse 오른쪽에서 왼쪽으로 그릴지 여부 */
+            const traceSide = (side, reverse) => {
+                const points = [[startX, side * startY], [startX + handleX, side * handleY], [cellSize - startX - handleX, side * handleY], [cellSize - startX, side * startY]];
+                if (reverse) points.reverse();
+                drawingContext.bezierCurveTo(...points[1], ...points[2], ...points[3]);
+            };
+            drawingContext.save();
+            drawingContext.translate(x + cellSize / 2, y + cellSize / 2);
+            // 오른쪽 기준으로 만든 모양을 위쪽 이웃이면 반시계로 90도 돌려 쓴다.
+            if (direction === 'up') drawingContext.rotate(-Math.PI / 2);
+            drawingContext.beginPath();
+            drawingContext.moveTo(startX, -startY);
+            traceSide(-1, false);
+            drawingContext.lineTo(cellSize - startX, startY);
+            traceSide(1, true);
+            drawingContext.closePath();
+            drawingContext.fillStyle = PALETTE[this.paletteKey];
+            drawingContext.fill();
+            if (flash > 0) { drawingContext.fillStyle = `rgba(255, 255, 255, ${Math.min(1, flash)})`; drawingContext.fill(); }
+            // 테두리는 몸체와 같은 반투명 흰 선으로 잘록한 양옆 곡선에만 긋는다.
+            drawingContext.beginPath();
+            drawingContext.moveTo(startX, -startY);
+            traceSide(-1, false);
+            drawingContext.moveTo(startX, startY);
+            traceSide(1, false);
+            drawingContext.lineWidth = 2;
+            drawingContext.strokeStyle = 'rgba(255,255,255,0.45)';
+            drawingContext.stroke();
             drawingContext.restore();
         }
     }
 
+    /** 연결 목이 뿌요 테두리에서 시작하는 각도(중심선 기준, 라디안)다. 작을수록 몸체 윤곽이 더 많이 남아 두 뿌요가 또렷이 구분된다. */
+    const SLIME_CONNECTION_ANGLE = Math.PI * 55 / 180;
+    /** 연결 목의 가장 잘록한 곳의 반폭(셀 비율)이다. 몸체 반지름 0.42칸의 약 절반이다. */
+    const SLIME_CONNECTION_WAIST = 0.2;
+
     /** 빨강 일반뿌요다. */
-    class RedPuyo extends SlimePuyo { constructor() { super('red', '빨강뿌요', 'red'); } }
+    class RedPuyo extends SlimePuyo { constructor() { super('red', '빨강뿌요', 'red', false, true); } }
     /** 초록 일반뿌요다. */
-    class GreenPuyo extends SlimePuyo { constructor() { super('green', '초록뿌요', 'green'); } }
+    class GreenPuyo extends SlimePuyo { constructor() { super('green', '초록뿌요', 'green', false, true); } }
     /** 노랑 일반뿌요다. */
-    class YellowPuyo extends SlimePuyo { constructor() { super('yellow', '노랑뿌요', 'yellow'); } }
+    class YellowPuyo extends SlimePuyo { constructor() { super('yellow', '노랑뿌요', 'yellow', false, true); } }
     /** 파랑 일반뿌요다. */
-    class BluePuyo extends SlimePuyo { constructor() { super('blue', '파랑뿌요', 'blue'); } }
+    class BluePuyo extends SlimePuyo { constructor() { super('blue', '파랑뿌요', 'blue', false, true); } }
     /** 보라 일반뿌요다. */
-    class PurplePuyo extends SlimePuyo { constructor() { super('purple', '보라뿌요', 'purple'); } }
+    class PurplePuyo extends SlimePuyo { constructor() { super('purple', '보라뿌요', 'purple', false, true); } }
     /** 둥근 방해뿌요다. */
     class GarbagePuyo extends SlimePuyo { constructor() { super('garbage', '방해뿌요', 'garbage', true); } }
     /** 시뮬레이터에서만 사용할 수 있고 폭발하지 않는 철구뿌요다. */
@@ -10135,6 +10235,34 @@
     }
 
     /**
+     * 터지기 직전 뿌요가 눈을 질끈 감은 `> <` 얼굴을 그린다. 좌표계는 drawPuyoEyes()와 같다.
+     * @param {CanvasRenderingContext2D} drawingContext 캔버스 렌더링 컨텍스트
+     * @param {number} radius 뿌요 본체의 반지름
+     * @param {number} offsetY 눈의 세로 보정값
+     * @returns {void}
+     */
+    function drawPuyoSquintEyes(drawingContext, radius, offsetY = 0) {
+        const eyeY = -radius * 0.1 + offsetY;
+        const size = radius * 0.17;
+        drawingContext.lineCap = 'round';
+        drawingContext.lineJoin = 'round';
+        // 흰 바탕선 위에 어두운 선을 겹쳐 어느 색 뿌요 위에서도 표정이 읽히게 한다.
+        [['#fff', Math.max(2.4, radius * 0.2)], ['#172031', Math.max(1.4, radius * 0.1)]].forEach(([color, width]) => {
+            drawingContext.strokeStyle = color;
+            drawingContext.lineWidth = width;
+            drawingContext.beginPath();
+            [-1, 1].forEach((side) => {
+                const centerX = side * radius * 0.3;
+                // 꼭짓점이 얼굴 가운데를 향해 왼쪽 눈은 `>`, 오른쪽 눈은 `<` 모양이 된다.
+                drawingContext.moveTo(centerX + side * size, eyeY - size);
+                drawingContext.lineTo(centerX - side * size * 0.6, eyeY);
+                drawingContext.lineTo(centerX + side * size, eyeY + size);
+            });
+            drawingContext.stroke();
+        });
+    }
+
+    /**
      * 공격량을 단위별 예고뿌요 객체 목록으로 변환한다.
      * @param {number} amount 예고할 방해뿌요 수
      * @returns {WarningPuyo[]} 왼쪽부터 그릴 예고뿌요 객체
@@ -10166,33 +10294,150 @@
     }
 
     /**
-     * 폭발한 뿌요 위치에 확산 광선 효과를 그린다.
-     * @param {number} x 셀의 왼쪽 X 좌표
-     * @param {number} y 셀의 위쪽 Y 좌표
-     * @param {{color:string}} puyo 폭발한 뿌요 정보
-     * @param {number} progress 0부터 1까지의 애니메이션 진행률
+     * 필드 칸 좌표의 뿌요 목록을 그리면서, 상하좌우로 붙은 같은 색 일반 뿌요는 몸이 이어진 모양으로 그린다.
+     * 모든 몸체 → 연결 목 → 반사광·눈 순서로 나눠 그려야 목이 이웃 몸체의 테두리를 덮고 눈은 목 위에 남는다.
+     * @param {number} originX 필드 왼쪽 X 좌표
+     * @param {{x:number, y:number, color:string}[]} cells 그릴 칸(아래가 y=0인 보드 좌표)
+     * @param {{flash?:number, squint?:boolean}} [options] 몸체에 덧칠할 흰 빛 불투명도와 찡그린 눈 사용 여부
      * @returns {void}
      */
-    function drawExplosionEffect(x, y, puyo, progress) {
-        const centerX = x + CELL / 2;
-        const centerY = y + CELL / 2;
-        context.save();
-        context.globalAlpha = 1 - progress;
-        context.strokeStyle = puyo.color === 'garbage' ? '#e9fbff' : PALETTE[puyo.color];
-        context.lineWidth = 3;
-        for (let ray = 0; ray < 8; ray += 1) {
-            const angle = (Math.PI * 2 * ray) / 8;
-            const inner = CELL * 0.14 + progress * CELL * 0.12;
-            const outer = CELL * (0.28 + progress * 0.44);
-            context.beginPath();
-            context.moveTo(centerX + Math.cos(angle) * inner, centerY + Math.sin(angle) * inner);
-            context.lineTo(centerX + Math.cos(angle) * outer, centerY + Math.sin(angle) * outer);
-            context.stroke();
+    function drawConnectedPuyoCells(originX, cells, { flash = 0, squint = false } = {}) {
+        const colorByCell = new Map(cells.map((cell) => [`${cell.x},${cell.y}`, cell.color]));
+        const entries = cells.map((cell) => ({ cell, puyo: getPuyo(cell.color), x: originX + cell.x * CELL, y: FIELD_BOTTOM - (cell.y + 1) * CELL })).filter((entry) => entry.puyo);
+        entries.forEach(({ puyo, x, y }) => puyo.drawBody(context, x, y, CELL, 1, flash));
+        entries.forEach(({ cell, puyo, x, y }) => {
+            if (!puyo.isConnectable()) return;
+            // 한 쌍을 두 번 그리지 않도록 오른쪽·위쪽 이웃만 본다.
+            if (colorByCell.get(`${cell.x + 1},${cell.y}`) === cell.color) puyo.drawConnection(context, x, y, CELL, 'right', flash);
+            if (colorByCell.get(`${cell.x},${cell.y + 1}`) === cell.color) puyo.drawConnection(context, x, y, CELL, 'up', flash);
+        });
+        entries.forEach(({ puyo, x, y }) => puyo.drawDetails(context, x, y, CELL, 1, squint));
+    }
+
+    /**
+     * 보드에서 그릴 고정 뿌요 칸 목록을 만든다.
+     * @param {(string|null)[][]} board 보드
+     * @param {number} rowCount 아래에서부터 그릴 줄 수
+     * @param {Set<string>} [excluded] 낙하 연출 중이라 고정 위치에 그리지 않을 `x,y` 칸
+     * @returns {{x:number, y:number, color:string}[]} 칸 목록
+     */
+    function collectBoardPuyoCells(board, rowCount, excluded = new Set()) {
+        const cells = [];
+        for (let y = 0; y < rowCount; y += 1) for (let x = 0; x < COLUMNS; x += 1) {
+            const color = board[y]?.[x];
+            if (color && !excluded.has(`${x},${y}`)) cells.push({ x, y, color });
         }
-        context.fillStyle = '#fff';
+        return cells;
+    }
+
+    /** 폭발 연출 진행률 중 뿌요가 깜빡이는 앞 단계의 비율이다. 나머지는 터지며 파편이 튀는 단계다. */
+    const EXPLOSION_FLASH_RATIO = 0.5;
+    /** 폭발 한 칸이 흩뿌리는 방울 파편 수다. */
+    const EXPLOSION_DROPLET_COUNT = 6;
+
+    /** 칸 좌표와 순번으로 0 이상 1 미만의 고정 잡음값을 만든다. 그리기에서 randomFloat()를 소비하면 게임 결정론이 깨지므로 따로 쓴다. @param {number} x 칸 X @param {number} y 칸 Y @param {number} index 순번 @returns {number} 잡음값 */
+    function getEffectNoise(x, y, index) {
+        const value = Math.sin(x * 12.9898 + y * 78.233 + index * 37.719) * 43758.5453;
+        return value - Math.floor(value);
+    }
+
+    /**
+     * 뿌요뿌요 시리즈처럼 폭발한 뿌요를 먼저 하얗게 깜빡이게 한 뒤, 터지며 같은 색 방울이 튀어 떨어지게 그린다.
+     * 깜빡이는 동안은 이미 보드에서 지워진 폭발 뿌요를 제자리에 이어진 모양 그대로 다시 그린다.
+     * 연출 길이(`effects.duration`)는 바꾸지 않고 진행률만 나눠 쓰므로 연쇄 시간 예측·리플레이와 어긋나지 않는다.
+     * @param {number} originX 필드 왼쪽 X 좌표
+     * @param {{x:number, y:number, color:string}[]} cells 폭발한 칸 목록
+     * @param {number} progress 0부터 1까지의 연출 진행률
+     * @returns {void}
+     */
+    function drawExplosionEffects(originX, cells, progress) {
+        context.save();
+        // 튀는 파편이 베젤·중앙 정보 영역을 덮지 않도록 보이는 필드 안에서만 그린다.
         context.beginPath();
-        context.arc(centerX, centerY, CELL * (0.3 + progress * 0.2), 0, Math.PI * 2);
-        context.fill();
+        context.rect(originX, FIELD_TOP, CELL * COLUMNS, CELL * VISIBLE_ROWS);
+        context.clip();
+        if (progress < EXPLOSION_FLASH_RATIO) {
+            const flashProgress = progress / EXPLOSION_FLASH_RATIO;
+            // 2.5번 깜빡여 가장 하얀 순간에 터지고, 후반에는 눈을 질끈 감는다.
+            const flash = 0.72 * (0.5 - 0.5 * Math.cos(flashProgress * Math.PI * 5));
+            drawConnectedPuyoCells(originX, cells, { flash, squint: flashProgress >= 0.4 });
+        } else {
+            const burst = (progress - EXPLOSION_FLASH_RATIO) / (1 - EXPLOSION_FLASH_RATIO);
+            cells.forEach((cell) => drawPuyoBurst(originX + cell.x * CELL + CELL / 2, FIELD_BOTTOM - (cell.y + 0.5) * CELL, cell, burst));
+        }
+        context.restore();
+    }
+
+    /**
+     * 폭발 한 칸이 터지는 모습(하얗게 부푸는 몸체, 충격파 고리, 포물선으로 떨어지는 방울 파편, 반짝이)을 그린다.
+     * 딱딱뿌요는 방울 대신 얼음 조각이 튄다.
+     * @param {number} centerX 칸 중심 X 좌표
+     * @param {number} centerY 칸 중심 Y 좌표
+     * @param {{x:number, y:number, color:string}} cell 폭발한 칸
+     * @param {number} burst 터지는 단계의 진행률(0~1)
+     * @returns {void}
+     */
+    function drawPuyoBurst(centerX, centerY, cell, burst) {
+        const isHard = cell.color === HARD_GARBAGE;
+        const isGarbage = cell.color === 'garbage' || isHard;
+        const mainColor = PALETTE[cell.color] || '#e9fbff';
+        const spread = 1 - (1 - burst) * (1 - burst);
+        context.save();
+        // 충격파 고리는 부푼 몸체 바깥에서 퍼지며 옅어진다.
+        context.globalAlpha = 0.8 * (1 - burst);
+        context.strokeStyle = isGarbage ? '#f4fbff' : mainColor;
+        context.lineWidth = 0.6 + 2.4 * (1 - burst);
+        context.beginPath(); context.arc(centerX, centerY, CELL * (0.5 + 0.45 * spread), 0, Math.PI * 2); context.stroke();
+        // 같은 색 방울이 사방으로 튀었다가 중력을 받아 떨어진다.
+        context.globalAlpha = burst < 0.62 ? 1 : Math.max(0, 1 - (burst - 0.62) / 0.38);
+        for (let index = 0; index < EXPLOSION_DROPLET_COUNT; index += 1) {
+            const angle = -Math.PI / 2 + (index / EXPLOSION_DROPLET_COUNT) * Math.PI * 2 + (getEffectNoise(cell.x, cell.y, index) - 0.5) * 0.7;
+            const distance = CELL * (0.55 + getEffectNoise(cell.x, cell.y, index + 11) * 0.45) * spread;
+            const dropletX = centerX + Math.cos(angle) * distance;
+            const dropletY = centerY + Math.sin(angle) * distance + CELL * 0.85 * burst * burst;
+            const size = CELL * (0.1 + getEffectNoise(cell.x, cell.y, index + 23) * 0.05) * (1 - 0.5 * burst);
+            context.fillStyle = mainColor;
+            if (isHard) {
+                // 얼음 조각은 회전하며 떨어지는 삼각형이다.
+                context.save();
+                context.translate(dropletX, dropletY); context.rotate(angle + burst * 5);
+                context.beginPath(); context.moveTo(size * 1.3, 0); context.lineTo(-size * 0.8, -size * 0.9); context.lineTo(-size * 0.6, size * 0.9); context.closePath();
+                context.fill(); context.strokeStyle = '#e9fbff'; context.lineWidth = 1; context.stroke();
+                context.restore();
+                continue;
+            }
+            context.beginPath(); context.arc(dropletX, dropletY, size, 0, Math.PI * 2); context.fill();
+            context.fillStyle = 'rgba(255, 255, 255, 0.75)';
+            context.beginPath(); context.arc(dropletX - size * 0.32, dropletY - size * 0.32, size * 0.34, 0, Math.PI * 2); context.fill();
+        }
+        // 일반 색 뿌요는 반짝이는 별 두 개를 남긴다.
+        if (!isGarbage) {
+            context.globalAlpha = Math.sin(Math.PI * burst);
+            context.fillStyle = '#fffbe0';
+            for (let index = 0; index < 2; index += 1) {
+                const angle = (getEffectNoise(cell.x, cell.y, index + 37) + index * 0.5) * Math.PI * 2;
+                const distance = CELL * (0.18 + 0.32 * spread);
+                const starX = centerX + Math.cos(angle) * distance;
+                const starY = centerY + Math.sin(angle) * distance;
+                const outer = CELL * 0.14 * (1 - burst * 0.4);
+                const inner = outer * 0.3;
+                context.beginPath();
+                for (let point = 0; point < 8; point += 1) {
+                    const pointAngle = point * Math.PI / 4 + burst * 2;
+                    const pointRadius = point % 2 ? inner : outer;
+                    context[point ? 'lineTo' : 'moveTo'](starX + Math.cos(pointAngle) * pointRadius, starY + Math.sin(pointAngle) * pointRadius);
+                }
+                context.closePath(); context.fill();
+            }
+        }
+        // 터지는 순간 몸체가 하얗게 부풀었다가 사라진다. 파편보다 나중에 그려 처음에는 파편을 덮고 옅어지며 드러낸다.
+        if (burst < 0.3) {
+            const pop = burst / 0.3;
+            context.globalAlpha = 1 - pop;
+            context.beginPath(); context.arc(centerX, centerY, CELL * 0.42 * (1 + pop * 0.3), 0, Math.PI * 2);
+            context.fillStyle = mainColor; context.fill();
+            context.fillStyle = 'rgba(255, 255, 255, 0.7)'; context.fill();
+        }
         context.restore();
     }
 
@@ -10474,11 +10719,8 @@
             for (let index = 0; index <= VISIBLE_ROWS; index += 1) { context.beginPath(); context.moveTo(x, FIELD_TOP + index * CELL); context.lineTo(x + CELL * 6, FIELD_TOP + index * CELL); context.stroke(); }
             drawDefeatCellMarkers(x, usesSecondDefeatCell());
             const fallingTargets = new Set((player.gravityAnimation?.falling || []).map((puyo) => `${puyo.x},${puyo.toY}`));
-            // 패배 연출이 아닐 때 보이는 필드의 고정 뿌요를 한 칸씩 그린다.
-            for (let y = 0; !isDefeated && y < VISIBLE_ROWS; y += 1) for (let column = 0; column < COLUMNS; column += 1) {
-                const puyo = player.board[y][column];
-                if (puyo && !fallingTargets.has(`${column},${y}`)) drawPuyo(x + column * CELL, FIELD_BOTTOM - (y + 1) * CELL, puyo);
-            }
+            // 패배 연출이 아닐 때 보이는 필드의 고정 뿌요를 그린다. 붙어 있는 같은 색 뿌요는 몸이 이어진다.
+            if (!isDefeated) drawConnectedPuyoCells(x, collectBoardPuyoCells(player.board, VISIBLE_ROWS, fallingTargets));
             // 낙하 중인 뿌요와 조작 중인 뿌요는 숨김 줄에서 내려오며 필드 위 경계에 걸칠 수 있다.
             // 베젤보다 뒤에 있어야 하므로 필드 영역 밖으로 나간 부분은 그리지 않는다.
             context.save();
@@ -10529,10 +10771,7 @@
             context.textAlign = 'center';
             context.fillText(String(Math.ceil(player.fever.leftTime / 1000)), x + COLUMNS * CELL / 2, FIELD_TOP + 31);
         }
-        if (player.effects) {
-            const progress = Math.min(1, player.effects.elapsed / player.effects.duration);
-            player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress));
-        }
+        if (player.effects) drawExplosionEffects(x, player.effects.cells, Math.min(1, player.effects.elapsed / player.effects.duration));
         player.comboPopups.forEach((popup) => drawComboPopup(x, popup));
         if (!(usesSoloPlayLayout() && player === game.players[1])) {
             context.fillStyle = '#e7f8fa'; context.font = `18px ${MESSAGE_FONT}`; context.textAlign = 'left';
@@ -13489,9 +13728,9 @@
         const falling = new Set((player.gravityAnimation?.falling || []).map((puyo) => `${puyo.x},${puyo.toY}`));
         // 그리기 중에만 13번째 줄을 베젤 위에 표시한다. 시뮬레이션에서는 기존처럼 베젤 뒤에 숨긴다.
         const renderedRows = simulator.mode === 'draw' ? SIMULATOR_EDITABLE_ROWS : VISIBLE_ROWS;
-        for (let y = 0; y < renderedRows; y += 1) for (let column = 0; column < COLUMNS; column += 1) if (player.board[y][column] && !falling.has(`${column},${y}`)) drawPuyo(x + column * CELL, FIELD_BOTTOM - (y + 1) * CELL, player.board[y][column]);
+        drawConnectedPuyoCells(x, collectBoardPuyoCells(player.board, renderedRows, falling));
         if (player.gravityAnimation) { const progress = Math.min(1, player.gravityAnimation.elapsed / player.gravityAnimation.duration) ** 2; player.gravityAnimation.falling.forEach((puyo) => { const y = puyo.fromY + (puyo.toY - puyo.fromY) * progress; if (y < VISIBLE_ROWS) drawPuyo(x + puyo.x * CELL, FIELD_BOTTOM - (y + 1) * CELL, puyo.color); }); }
-        if (player.effects) { const progress = Math.min(1, player.effects.elapsed / player.effects.duration); player.effects.cells.forEach((puyo) => drawExplosionEffect(x + puyo.x * CELL, FIELD_BOTTOM - (puyo.y + 1) * CELL, puyo, progress)); }
+        if (player.effects) drawExplosionEffects(x, player.effects.cells, Math.min(1, player.effects.elapsed / player.effects.duration));
         player.comboPopups.forEach((popup) => drawComboPopup(x, popup));
         // 낙하 애니메이션도 베젤보다 먼저 그려지므로, 시뮬레이션에서는 베젤을 전경으로 복원한다.
         if (simulator.mode !== 'draw') drawSimulatorBezelForeground();
