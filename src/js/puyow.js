@@ -20,7 +20,7 @@
     'use strict';
 
     /** 빌드 번호 @type {number} */
-    const BUILDNO = 119;
+    const BUILDNO = 120;
     /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
     const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
     /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -1145,8 +1145,8 @@
     /** 메인 메뉴의 대전·연습 하위 선택지다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,isDisabled?:()=>boolean,activate?:()=>void}[]} */
     const GAME_RULE_OPTIONS = [
         { label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard, activate: () => openOpponentMenu('standard') },
-        { label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, activate: () => openOpponentMenu('fever') },
         { label: '피버 룰 (시작)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.feverStart, isDisabled: () => !isFeverStartRuleUnlocked(), activate: () => openOpponentMenu('feverStart') },
+        { label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, activate: () => openOpponentMenu('fever') },
         { label: '피버 룰 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, isDisabled: () => !isFeverStartRuleUnlocked(), activate: () => openOpponentMenu('relaxedFever') },
         { label: '연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice, activate: () => openPracticeDifficulty() },
         { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() }
