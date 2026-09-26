@@ -1,7 +1,7 @@
 // 피버 룰·피버 룰 (시작)·연속 피버와 그에 딸린 공격·싹쓸이 정산의 회귀 테스트다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, openDojoOpponentSelect } from './common/gamepage.js';
 
 setupGamePage();
 
@@ -165,15 +165,16 @@ test('피버 룰은 전용 적 선택 화면에서 4색을 골라 보라색 없�
 });
 
 test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽이 즉시 5연쇄·60초 피버로 시작한다', async ({ page }) => {
+  // 도장깨기 하위 단계의 가운데 줄은 왼쪽부터 피버 룰 (시작)·피버 룰·피버 룰 (완화)다(BUILDNO 120). 피버 룰 (시작) 버튼 중심 X는 372다.
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
     const labels = ['피버 룰 (시작)', 'FEVER Rules (Start)', 'FEVER ルール (開始)', 'FEVER 规则（开始）'];
-    const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(640, 317, 1, 1).data;
+    const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(372, 317, 1, 1).data;
     return labels.some((label) => window.testCanvasTexts.includes(label)) && Array.from(color).join(',') === '60,70,80,255';
   })).toBe(true);
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 345 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 372, y: 345 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
   await page.evaluate(() => {
     const saved = JSON.parse(localStorage.getItem('puyow_store') || '{"clearList":[]}');
@@ -185,10 +186,9 @@ test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => {
-    const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(640, 317, 1, 1).data;
+    const color = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(372, 317, 1, 1).data;
     return Array.from(color).join(',') === '75,31,111,255';
   })).toBe(true);
-  await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
@@ -205,7 +205,7 @@ test('피버 룰 (시작)은 키보드·마우스로 선택할 수 있고 양쪽
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 345 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 372, y: 345 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
 });
 
@@ -297,9 +297,7 @@ test('기본 룰의 싹쓸이 티켓은 다음 폭발에서 고정 점수·ATTAC
   });
 
   await enterMainMenu(page);
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await openDojoOpponentSelect(page);
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.allClearTicketEnemy?.player?.phase), { timeout: 15000 }).toBe('control');
 

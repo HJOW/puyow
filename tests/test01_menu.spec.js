@@ -495,10 +495,11 @@ test('설정 언어는 여섯 선택지를 표시하고 저장한 언어로 게�
     localStorage.setItem('puyow_store', JSON.stringify(store));
   });
   await page.reload();
+  // 지원하지 않는 저장값은 새 저장과 같은 방식(브라우저 언어, 판별할 수 없으면 영어)으로 보정한다. 이 테스트의 브라우저 언어는 ja-JP다.
   expect(await page.evaluate(() => ({
     language: JSON.parse(localStorage.getItem('puyow_store')).settings.language,
     settings: window.WebPuyo.translate('설정'),
-  }))).toEqual({ language: 'en', settings: 'Settings' });
+  }))).toEqual({ language: 'ja', settings: '設定' });
 });
 
 test('설정 하단 버튼의 마우스 클릭은 저장·취소·초기화를 각각 실행한다', async ({ page }) => {
@@ -1327,8 +1328,8 @@ test('세로 화면에서는 캔버스를 회전하고 클릭 좌표를 변환�
     bounds.left + bounds.width * (1 - y / 720),
     bounds.top + bounds.height * x / 1280
   );
-  await clickLogicalSettingsPoint(600, 346);
-  await clickLogicalSettingsPoint(700, 390);
+  await clickLogicalSettingsPoint(600, 316);
+  await clickLogicalSettingsPoint(700, 350);
   await page.keyboard.type('http://portrait-lm.local/');
   await page.keyboard.press('Enter');
   await clickLogicalSettingsPoint(480, 671);
@@ -1342,7 +1343,8 @@ test('화면 가로방향 고정은 저장되며 세로 화면 입력도 회전�
   await page.setViewportSize({ width: 375, height: 667 });
   await openSettings(page);
   // 제공자를 고르지 않은 기본 설정에서는 AI 입력 세 행과 API 테스트를 건너뛰어 첫 체크박스에 닿는다.
-  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  // 이름(0)·언어(1)·…·제공자(7) 다음이 첫 체크박스(12)이므로 8번 내려간다.
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   // 가로방향 고정 체크박스에서 리플레이·역학습 체크박스를 지나 저장 버튼까지 내려간다.
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
@@ -1393,6 +1395,8 @@ test('화면 가로방향 고정 문구는 지원 언어별로 번역된다', as
     await page.addInitScript((locale) => {
       Object.defineProperty(navigator, 'language', { configurable: true, value: locale });
     }, language);
+    // 저장된 settings.language가 브라우저 언어보다 우선하므로(BUILDNO 95) 반복마다 저장값을 지운다.
+    await page.evaluate(() => localStorage.removeItem('puyow_store'));
     await page.reload();
     await openSettings(page);
     await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), translation)).toBe(true);

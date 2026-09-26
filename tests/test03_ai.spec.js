@@ -180,7 +180,7 @@ test('설정의 AI 서비스 제공자는 LM Studio를 라디오로 표시하고
   expect(await page.evaluate(() => window.testCanvasTexts.includes('OpenAI'))).toBe(false);
   expect(await page.evaluate(() => window.testCanvasTexts.includes('Prompt API'))).toBe(false);
 
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 346 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 316 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('LM Studio');
@@ -198,11 +198,12 @@ test('제공자를 고르지 않으면 AI 입력란과 API 테스트를 건너�
   await openSettings(page);
 
   // 제공자를 고르지 않은 상태의 URL·키·모델명 입력란은 클릭과 키 입력을 받지 않는다.
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 700, y: 390 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 700, y: 350 } });
   await page.keyboard.type('blocked');
   // AI 입력 세 행과 API 테스트 버튼을 모두 건너뛰므로 제공자 행 다음 아래 이동은 첫 체크박스에 닿는다.
   // 체크박스 줄에서만 동작하는 좌우 이동으로 마지막 체크박스까지 옮겨 실제로 체크박스에 닿았음을 확인한다.
-  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  // 이름(0)·언어(1)·…·제공자(7) 다음이 첫 체크박스(12)이므로 8번 내려간다.
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 2; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
@@ -213,7 +214,7 @@ test('제공자를 고르지 않으면 AI 입력란과 API 테스트를 건너�
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
-  for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -245,15 +246,15 @@ test('Local AI를 사용할 수 있으면 기본값으로 선택되고 서버 �
 
   // 라디오 선택지 라벨은 선택지 상자 가운데에 그리므로 그려진 좌표에서 클릭 위치를 얻는다.
   const [lmStudioLabelX, localAiLabelX] = await page.evaluate(() => ['LM Studio', 'Local AI'].map((label) => {
-    const call = window.testCanvasTextCalls.find((entry) => entry.text === label && entry.y === 350);
+    const call = window.testCanvasTextCalls.find((entry) => entry.text === label && entry.y === 320);
     return call ? call.x : null;
   }));
   expect(lmStudioLabelX).not.toBeNull();
   expect(localAiLabelX).not.toBeNull();
 
   // 다른 제공자로 옮기면 입력값을 그대로 두고, Local AI로 되돌아오면 고정값을 다시 채운다.
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: lmStudioLabelX, y: 346 } });
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: localAiLabelX, y: 346 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: lmStudioLabelX, y: 316 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: localAiLabelX, y: 316 } });
 
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
@@ -263,6 +264,8 @@ test('Local AI를 사용할 수 있으면 기본값으로 선택되고 서버 �
 
   // Local AI 저장은 AI API 테스트를 마친 것으로 취급하므로 솔로몬이 곧바로 나타난다.
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
+  // 게임 시작 → 도장깨기 → 기본 룰 순서로 적 선택 화면에 들어간다(BUILDNO 114부터의 2단계 메뉴).
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(true);
@@ -291,7 +294,8 @@ test('Local AI는 현재 서버의 Chat Completions로 AI API 테스트를 보�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Local AI'))).toBe(true);
-  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  // Local AI는 입력 세 행을 건너뛰므로 제공자(7) 다음이 AI API 테스트(11)다.
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => request).not.toBeNull();
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('AI API test succeeded (JSON schema: passed).'))).toBe(true);
@@ -354,7 +358,7 @@ test('Node 서버는 Local AI 모델 파일이 없으면 사용 불가로 응답
   // 모델 없는 설치를 재현하되 서버가 불러오는 온라인·관리 모듈과 저장소도 함께 복사한다.
   const serverRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'puyow-nodeserver-'));
   fs.mkdirSync(path.join(serverRoot, 'node'));
-  for (const filename of ['server.js', 'onlineplay.js', 'onlineplay_storage.js', 'admin.js']) {
+  for (const filename of ['server.js', 'onlineplay.js', 'onlineplay_storage.js', 'admin.js', 'leaderboard.js', 'leaderboard_storage.js']) {
     fs.copyFileSync(path.join(process.cwd(), 'node', filename), path.join(serverRoot, 'node', filename));
   }
   fs.mkdirSync(path.join(serverRoot, 'src'));
@@ -475,17 +479,19 @@ test('로컬 모델을 사용할 수 없으면 Local AI 선택지를 숨기고 �
   await openSettings(page);
   // 사용할 수 없게 된 제공자는 다른 제공자로 옮기지 않고 미선택 상태로 되돌린다.
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('');
-  expect(await page.evaluate(() => window.testCanvasTextCalls.some((call) => call.text === 'Local AI' && call.y === 350))).toBe(false);
+  expect(await page.evaluate(() => window.testCanvasTextCalls.some((call) => call.text === 'Local AI' && call.y === 320))).toBe(false);
   // 제공자를 고르지 않았으므로 AI API 테스트 버튼도 비활성 색으로 그린다.
   await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.some((call) => {
     // Chromium은 16진수, WebKit은 rgb()/rgba() 문자열로 fillStyle을 돌려줄 수 있다.
     const color = String(call.fillStyle).replace(/\s/g, '').toLowerCase();
-    return call.y === 523 && ['#7f969e', 'rgb(127,150,158)', 'rgba(127,150,158,1)'].includes(color);
+    return call.y === 467 && ['#7f969e', 'rgb(127,150,158)', 'rgba(127,150,158,1)'].includes(color);
   }))).toBe(true);
 
   // 테스트를 통과할 방법이 없으므로 솔로몬도 적 선택 화면에 나타나지 않는다.
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
+  // 게임 시작 → 도장깨기 → 기본 룰 순서로 적 선택 화면에 들어간다(BUILDNO 114부터의 2단계 메뉴).
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await page.waitForTimeout(100);
@@ -512,7 +518,7 @@ test('빈 사용 모델명은 기본값으로 보정되고 API 테스트 버튼�
     requestCount += 1;
     await route.fulfill({ status: 500 });
   });
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 700, y: 518 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 700, y: 462 } });
   await page.waitForTimeout(100);
   expect(requestCount).toBe(0);
 });
@@ -537,7 +543,7 @@ test('AI API 테스트는 저장된 LM Studio URL과 토큰으로 Chat Completio
     });
   });
   await openSettings(page);
-  for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 11; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => request).not.toBeNull();
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('AI API test succeeded (JSON schema: passed).'))).toBe(true);
@@ -566,12 +572,14 @@ test('솔로몬은 성공한 AI API 테스트 뒤 현재 접속에서만 안드�
   });
 
   await openSettings(page);
-  for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 11; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(false);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('AI API test succeeded (JSON schema: passed).'))).toBe(true);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
+  // 게임 시작 → 도장깨기 → 기본 룰 순서로 적 선택 화면에 들어간다(BUILDNO 114부터의 2단계 메뉴).
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => {
@@ -609,11 +617,13 @@ test('솔로몬은 매 턴 저장된 서버와 토큰으로 구조화된 배치�
   });
 
   await openSettings(page);
-  for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 11; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => requests.length).toBe(1);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
+  // 게임 시작 → 도장깨기 → 기본 룰 순서로 적 선택 화면에 들어간다(BUILDNO 114부터의 2단계 메뉴).
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -789,11 +799,13 @@ test('LM Studio 제공자와 극한이 아닌 난이도의 솔로몬 프롬프�
   });
 
   await openSettings(page);
-  for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 11; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => prompts.length).toBe(1);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
+  // 게임 시작 → 도장깨기 → 기본 룰 순서로 적 선택 화면에 들어간다(BUILDNO 114부터의 2단계 메뉴).
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   // 극한 난이도로 시작하더라도 Local AI 제공자가 아니면 학습 세션을 만들지 않는다.
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
@@ -829,11 +841,13 @@ test('솔로몬의 잘못된 API 배치는 게임을 일시정지하고 현재 �
   });
 
   await openSettings(page);
-  for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 11; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => requestCount).toBe(1);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
+  // 게임 시작 → 도장깨기 → 기본 룰 순서로 적 선택 화면에 들어간다(BUILDNO 114부터의 2단계 메뉴).
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -859,7 +873,7 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content: '{"success":true}' } }] }) });
   });
   await openSettings(page);
-  for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 11; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('AI API test succeeded (JSON schema: passed).'))).toBe(true);
   await page.unroute('http://lmstudio.local/v1/chat/completions');
@@ -880,6 +894,8 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
   });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 671 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 270 } });
+  // 게임 시작 → 도장깨기 → 기본 룰 순서로 적 선택 화면에 들어간다(BUILDNO 114부터의 2단계 메뉴).
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -921,10 +937,10 @@ test('저장하지 않은 AI 설정은 API 테스트 요청 대신 저장 안내
     await route.fulfill({ status: 500 });
   });
   await openSettings(page);
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 434 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 384 } });
   await page.keyboard.press('x');
   await page.keyboard.press('Enter');
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 700, y: 518 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 700, y: 462 } });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
     '설정 저장 후 다시 시도해 주세요',
     'Save your settings and try again.',
@@ -940,7 +956,7 @@ test('역으로 모델 학습 체크박스는 키보드와 마우스로 토글�
   expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
 
   // 가로방향 고정까지 내려간 뒤 오른쪽 방향키로 리플레이 사용을 거쳐 역학습 체크박스에 닿는다.
-  for (let index = 0; index < 9; index += 1) await page.keyboard.press('ArrowDown');
+  for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
@@ -957,7 +973,7 @@ test('역으로 모델 학습 체크박스는 키보드와 마우스로 토글�
   // 마우스로 같은 체크박스를 눌러 끄고 저장하면 false로 되돌아간다.
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 789, y: 577 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 789, y: 526 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.reverseLearning)).toBe(false);
 });
@@ -973,6 +989,8 @@ test('역으로 모델 학습 문구는 지원 언어별로 번역된다', async
     await page.addInitScript((locale) => {
       Object.defineProperty(navigator, 'language', { configurable: true, value: locale });
     }, language);
+    // 저장된 settings.language가 브라우저 언어보다 우선하므로(BUILDNO 95) 반복마다 저장값을 지운다.
+    await page.evaluate(() => localStorage.removeItem('puyow_store'));
     await page.reload();
     await openSettings(page);
     await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), translation)).toBe(true);

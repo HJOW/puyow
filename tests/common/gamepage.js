@@ -126,6 +126,41 @@ export async function enterMainMenu(page) {
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
 }
 
+/** 도장깨기 하위 단계에서 각 룰로 포커스를 옮기는 방향키다. 기본 룰에서 시작하며, 아래 행은 피버 룰 (시작)·피버 룰·피버 룰 (완화) 순서다(BUILDNO 120). */
+const DOJO_RULE_KEYS = {
+  standard: [],
+  feverStart: ['ArrowRight'],
+  fever: ['ArrowDown'],
+  relaxedFever: ['ArrowDown', 'ArrowRight'],
+};
+
+/**
+ * 메인 메뉴의 게임 시작 → 도장깨기에서 룰을 골라 적 선택 화면을 연다(BUILDNO 114부터의 2단계 메뉴).
+ * 메인 메뉴 포커스가 게임 시작(기본값)이어야 한다. 피버 룰 (시작)·(완화)는 잠금이 풀린 저장값이 필요하다.
+ * @param {'standard'|'fever'|'feverStart'|'relaxedFever'} rule 고를 룰
+ */
+export async function openDojoOpponentSelect(page, rule = 'standard') {
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('Enter');
+  for (const key of DOJO_RULE_KEYS[rule]) await page.keyboard.press(key);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe(rule === 'standard' ? 'opponent_select' : 'fever_opponent_select');
+}
+
+/**
+ * 메인 메뉴의 게임 시작 → 트레이닝 → 연습으로 연습 색 수 선택 화면을 연다(BUILDNO 114부터의 2단계 메뉴).
+ * 첫 단계는 도장깨기·트레이닝·퍼즐뿌요가 가로로 놓이므로 트레이닝은 오른쪽 방향키로 고른다. 아래 방향키는 취소로 간다.
+ */
+export async function openPracticeDifficulty(page) {
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+}
+
 export async function openSettings(page) {
   await enterMainMenu(page);
   for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');

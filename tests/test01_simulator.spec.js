@@ -283,3 +283,34 @@ test('시뮬레이터 딱딱뿌요는 한 방향 폭발에 일반 방해뿌요�
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_complete');
   expect(await page.evaluate(() => window.WebPuyo.getSimulatorState().board.puyos)).toEqual([{ x: 4, y: 0, color: 'garbage' }]);
 });
+
+test('붙어 있는 같은 색 일반 뿌요는 칸 사이가 이어져 그려지고 다른 색·방해뿌요는 떨어져 그려진다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('simulator_draw');
+
+  // 맨 아래 줄: 빨강-빨강(가로 연결), 초록-파랑(다른 색), 방해-방해(연결하지 않음). 둘째 줄 0열 빨강은 세로 연결이다.
+  await pasteSimulatorJson(page, [
+    { x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }, { x: 0, y: 1, color: 'red' },
+    { x: 2, y: 0, color: 'green' }, { x: 3, y: 0, color: 'blue' },
+    { x: 4, y: 0, color: 'garbage' }, { x: 5, y: 0, color: 'garbage' },
+  ]);
+  const CELL = 38;
+  const FIELD_X = 188;
+  const FIELD_BOTTOM = 558;
+  await expect.poll(() => page.evaluate(({ CELL, FIELD_X, FIELD_BOTTOM }) => {
+    const drawingContext = document.querySelector('[data-puyow-canvas="2d"]').getContext('2d');
+    const at = (x, y) => Array.from(drawingContext.getImageData(x, y, 1, 1).data).slice(0, 3);
+    const isRed = ([red, green, blue]) => red > 200 && green < 120 && blue < 120;
+    const isDark = ([red, green, blue]) => red < 80 && green < 90 && blue < 110;
+    const rowCenterY = FIELD_BOTTOM - CELL / 2;
+    return {
+      horizontal: isRed(at(FIELD_X + CELL, rowCenterY)),
+      vertical: isRed(at(FIELD_X + CELL / 2, FIELD_BOTTOM - CELL)),
+      differentColor: isDark(at(FIELD_X + CELL * 3, rowCenterY)),
+      garbage: isDark(at(FIELD_X + CELL * 5, rowCenterY)),
+    };
+  }, { CELL, FIELD_X, FIELD_BOTTOM })).toEqual({ horizontal: true, vertical: true, differentColor: true, garbage: true });
+});
