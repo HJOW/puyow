@@ -1,5 +1,7 @@
 # Puyo W 적과 인공지능 개발
 
+ES Module에서는 `import PuyoW, { Enemy, Solomon, BundledEnemy } from './js/puyow.js'`처럼 모든 적 클래스를 직접 가져와 생성하거나 상속할 수 있습니다. 브라우저 전역과 CommonJS 번들에서는 `PuyoW.Enemy`·`PuyoW.Solomon` 등으로 같은 클래스를 사용합니다. 등록 함수는 `PuyoWManager` 인스턴스인 `PuyoW`의 메소드입니다. [공개 클래스와 매니저](../HOWTO.md#공개-클래스와-매니저)를 참고하세요.
+
 새 적은 `Enemy` 하위 클래스를 만들고, 식별자·이름·AI 동작을 구현한 다음 `registerOpponent()`로 등록합니다. 초상화와 게임 테마는 선택 사항이며, 상태 조회와 배치 시뮬레이션 API를 이용하면 더 정교한 AI를 만들 수 있습니다.
 
 권장 개발 순서는 다음과 같습니다.

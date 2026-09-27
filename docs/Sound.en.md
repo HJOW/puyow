@@ -1,5 +1,7 @@
 # Puyo W Sound Settings
 
+`SoundPool`, `CommonSoundPool`, and `EnemySoundPool` are named exports. With ES Modules, use `import PuyoW, { CommonSoundPool } from './js/puyow.js'` and pass `new CommonSoundPool()` to `PuyoW.setCommonSoundPool()`. The browser global and CommonJS bundle expose the same class as `PuyoW.CommonSoundPool`. Sound configuration functions are `PuyoWManager` methods; the `commonSoundPool` accessor returns the current shared pool.
+
 Set sound URLs on an opponent instance's dedicated pool or on the game-wide common pool. Set a URL to `null` to disable that sound.
 
 ## Applying sound through the Settings screen's “Sound data URL”

@@ -40,7 +40,7 @@ puyow.js 는 CDN으로도 사용할 수 있습니다.
 
 ## 라이브러리 개요
 
-`puyow.js`는 ES Module로 작성되어 있으며, 기본 내보내기(`export default`)와 이름 있는 내보내기(`PuyoW`)로 같은 API 객체를 공개하고 브라우저에서는 `window.PuyoW`에도 등록합니다. 예전 이름 `WebPuyo`(이름 있는 내보내기·`window.WebPuyo`)도 같은 객체를 가리키는 호환용 별칭으로 남아 있지만, 새 코드에서는 `PuyoW`를 사용하세요. 일반 `<script>`나 CommonJS(`require`)에서는 Webpack 번들 `src/bundle/puyow.bundle.js`를 사용합니다. `Enemy`는 CPU 조작 알고리즘과 게임 화면 테마를 넣기 위한 기본 클래스입니다. 메인 화면에서 게임 시작 → 도장깨기 → 규칙을 선택하면 적 선택 화면이 열리며, 외부 파일에서 등록한 상대를 선택해 대전합니다. `sortPriority` 멤버 변수의 기본값은 `1`이며, 작은 값의 적이 적 선택 화면에서 왼쪽에 표시됩니다.
+`puyow.js`는 ES Module로 작성되어 있으며, 기본 내보내기(`export default`)와 이름 있는 내보내기(`PuyoW`)로 같은 `PuyoWManager` 인스턴스를 공개하고 브라우저에서는 `window.PuyoW`에도 등록합니다. 예전 이름 `WebPuyo`(이름 있는 내보내기·`window.WebPuyo`)도 같은 인스턴스를 가리키는 호환용 별칭으로 남아 있지만, 새 코드에서는 `PuyoW`를 사용하세요. 일반 `<script>`나 CommonJS(`require`)에서는 Webpack 번들 `src/bundle/puyow.bundle.js`를 사용합니다. `Enemy`는 CPU 조작 알고리즘과 게임 화면 테마를 넣기 위한 기본 클래스입니다. 메인 화면에서 게임 시작 → 도장깨기 → 규칙을 선택하면 적 선택 화면이 열리며, 외부 파일에서 등록한 상대를 선택해 대전합니다. `sortPriority` 멤버 변수의 기본값은 `1`이며, 작은 값의 적이 적 선택 화면에서 왼쪽에 표시됩니다.
 
 `Enemy`에는 선택 화면 공개 상태를 위한 boolean 멤버 변수도 있습니다. 둘 다 기본값은 `false`입니다.
 
@@ -75,6 +75,24 @@ import PuyoW from './js/puyow.js';
 PuyoW.initialize('puyow_target');
 </script>
 ```
+
+### 공개 클래스와 매니저
+
+`PuyoW`는 `const PuyoW = new PuyoWManager()`로 생성한 기본 매니저 인스턴스입니다. 공개 함수는 `PuyoWManager`의 메소드이며 기존처럼 `PuyoW.initialize()`·`PuyoW.registerOpponent()` 등을 호출합니다. `common`·`tools`·`leaderboard`·`replay`는 기존 API 모음을 유지하고, `urlContextPath`·`commonSoundPool`은 현재 값을 반환하는 접근자입니다.
+
+`puyow.js`에 정의한 모든 클래스는 이름 있는 export로 공개합니다. 뿌요·예고뿌요·적·사운드 풀뿐 아니라 `PlayerState`·`SlimePuyo`·`BundledEnemy` 같은 내부 기반 클래스도 가져와 생성하거나 상속할 수 있습니다. 생성자 인자와 초기화 조건은 각 클래스의 계약을 따릅니다. 브라우저 전역과 CommonJS 번들에서는 같은 클래스를 `PuyoW.클래스명`으로 접근합니다.
+
+```js
+import PuyoW, { PuyoWManager, Enemy, RedPuyo, CommonSoundPool } from './js/puyow.js';
+
+const puyo = new RedPuyo();
+const sounds = new CommonSoundPool();
+class MyEnemy extends Enemy {}
+PuyoW.setCommonSoundPool(sounds);
+PuyoW.registerOpponent({ createController: () => new MyEnemy() });
+```
+
+`PuyoW instanceof PuyoWManager`는 참입니다. 추가로 `new PuyoWManager()`를 만들 수 있지만 게임 상태·등록 목록·설정·캔버스는 모듈에서 공유합니다. 추가 매니저는 같은 게임을 조작하며 독립된 게임을 생성하지 않습니다. 메소드는 프로토타입에 있으므로 `Object.keys(PuyoW)`에는 포함되지 않습니다. 예전 `WebPuyo` 별칭은 기본 인스턴스와 같습니다.
 
 ### 브라우저 커스텀 이벤트
 

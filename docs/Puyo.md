@@ -1,5 +1,7 @@
 # Puyo W 뿌요 API
 
+모든 뿌요 클래스와 예고뿌요 클래스는 이름 있는 export입니다. ES Module에서는 `import { RedPuyo, SlimePuyo, TinyWarningPuyo } from './js/puyow.js'` 후 직접 생성하거나 상속할 수 있습니다. 브라우저 전역과 CommonJS 번들에서는 `PuyoW.RedPuyo` 등의 클래스 속성으로 접근합니다. 클래스 참조는 같으며, 생성한 객체는 기존 `instanceof` 검사와 등록 API에 사용할 수 있습니다.
+
 일반·방해뿌요는 내장 클래스가 렌더링하고, 공격 예고줄은 `WarningPuyo` 하위 클래스로 확장할 수 있습니다. 일반 뿌요의 보드 표현은 문자열을 유지하므로 게임 상태와 저장 데이터의 호환성도 유지됩니다.
 
 ## 내장 일반·방해뿌요 클래스

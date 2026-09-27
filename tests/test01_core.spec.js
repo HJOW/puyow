@@ -6,6 +6,26 @@ import { setupGamePage, enterMainMenu, openDojoOpponentSelect, expectDefeatCellM
 
 setupGamePage();
 
+test('브라우저 전역 API는 매니저 인스턴스이며 공개 함수는 클래스 메소드다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const api = window.PuyoW;
+    const prototype = Object.getPrototypeOf(api);
+    return {
+      manager: api instanceof api.PuyoWManager,
+      alias: window.WebPuyo === api,
+      initializeMethod: Object.hasOwn(prototype, 'initialize') && !Object.hasOwn(api, 'initialize'),
+      queryMethod: Object.hasOwn(prototype, 'getGameState') && !Object.hasOwn(api, 'getGameState'),
+      puyo: new api.RedPuyo() instanceof api.Puyo,
+      enemy: new api.Solomon() instanceof api.Enemy,
+      screen: api.getScreenState().screen,
+    };
+  });
+  expect(result).toEqual({
+    manager: true, alias: true, initializeMethod: true, queryMethod: true,
+    puyo: true, enemy: true, screen: 'initial_title',
+  });
+});
+
 test('초기화와 화면 이동은 window 커스텀 이벤트로 알린다', async ({ page }) => {
   const initializedEvents = await page.evaluate(() => window.puyowCustomEvents.filter((event) => event.type === 'puyow_init'));
   expect(initializedEvents).toEqual([{ type: 'puyow_init', detail: {} }]);

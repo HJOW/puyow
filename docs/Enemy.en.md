@@ -1,5 +1,7 @@
 # Puyo W Opponent and AI Development
 
+All opponent classes are named ES Module exports, for example `import PuyoW, { Enemy, Solomon, BundledEnemy } from './js/puyow.js'`. You can construct or extend them directly. Browser globals and the CommonJS bundle expose the same classes through `PuyoW.Enemy`, `PuyoW.Solomon`, and other class properties. Registration functions are methods of the `PuyoWManager` instance `PuyoW`. See [Public classes and manager](../HOWTO.en.md#public-classes-and-manager).
+
 Create a subclass of `Enemy`, implement its identifier, name, and AI behavior, and register it with `registerOpponent()`. Portraits and game themes are optional. State-query and placement-simulation APIs can be used to build more sophisticated AI.
 
 Recommended order:

@@ -1,5 +1,7 @@
 # Puyo W Graphics Coordinate System
 
+`PuyoWGraphic2DFilter` is also a named export: use `import PuyoW, { PuyoWGraphic2DFilter } from './js/puyow.js'` to extend it in an ES Module. The browser global and CommonJS bundle expose the same class as `PuyoW.PuyoWGraphic2DFilter`. Register filters with the manager method `PuyoW.register2DFilter()`.
+
 The game screen and external renderers use the same logical coordinate system regardless of the actual output resolution. Use the rules below when drawing custom opponent portraits, themes, or puyos.
 
 ## Logical coordinates

@@ -22,7 +22,7 @@
 import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 127;
+const BUILDNO = 128;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -1170,8 +1170,7 @@ const TOGETHER_RULE_OPTIONS = [
 ];
 /** "너랑 나랑" 양쪽 플레이어의 표시 이름이다. 언어와 무관하게 같은 표기를 사용한다. @type {string[]} */
 const TOGETHER_PLAYER_NAMES = ['1P', '2P'];
-/** 브라우저 전역·ES Module·CommonJS 번들로 공개할 라이브러리 API다. @type {object|null} */
-let PuyoW = null;
+
 
 /**
  * 0 이상 1 미만의 난수를 반환한다.
@@ -22601,144 +22600,249 @@ const commonFunctions = Object.freeze({
     warningUnits
 });
 
-PuyoW = {
-    Enemy,
-    OnnxEnemy,
-    beginWorkerSearchTurn,
-    startWorkerLookaheadSearch,
-    cancelPendingWorkerSearch,
-    isWorkerSearchPending,
-    getWorkerSearchTarget,
-    getWorkerSearchRotation,
-    Kimaris,
-    RealtimeLookaheadEnemy,
-    Andrealphus,
-    Flauros,
-    Andras,
-    Valak,
-    Zagan,
-    Vapula,
-    Oriax,
-    Amii,
-    Ose,
-    Gremory,
-    Orobas,
-    Murmur,
-    Caim,
-    Alokes,
-    Balaam,
-    Purkas,
-    PuyoWGraphic2DFilter,
-    Puyo,
-    RedPuyo,
-    GreenPuyo,
-    YellowPuyo,
-    BluePuyo,
-    PurplePuyo,
-    GarbagePuyo,
-    HardGarbagePuyo,
-    IronPuyo,
-    WarningPuyo,
-    BigBangWarningPuyo,
-    TesseractWarningPuyo,
-    PenteractWarningPuyo,
-    HexaactWarningPuyo,
-    SoundPool,
-    CommonSoundPool,
-    EnemySoundPool,
-    StorageManager,
-    FeverStageState,
-    PuzzlePuyoStage,
-    PUZZLE_STAGES,
-    BUILDNO,
-    createSoundPool,
-    setEnemySoundPool,
-    setCommonSoundPool,
-    loadSoundDataURL,
-    applySoundDataJson,
-    setStorageManager,
-    registerFeverStage,
-    registerPuzzleStage,
-    registerOpponent,
-    registerWarningPuyo,
-    registerLanguage,
-    registerCodeArchive,
-    setNoticeFile,
-    setURLContextPath,
-    convertURL,
-    common: commonFunctions,
-    getCommonFunctions: () => commonFunctions,
-    tools: toolsApi,
-    leaderboard: leaderboardApi,
-    replay: replayApi,
-    randomFloat,
-    randomColor,
-    translate,
-    getPuyo,
-    activeCells,
-    activeRenderCells,
-    findLandingPlacement,
-    findBestPreviewResult,
-    simulateNMovePlacements,
-    findBestNMovePlacement,
-    simulateNMovePlacementsInWorker,
-    predictPlayerChain,
-    predictFeverStageChain,
-    getRealtimeGarbageForecast,
-    getModelIncomingState,
-    findExplosionsOnBoard,
-    findExplosionGroupsOnBoard,
-    getChainBonus,
-    getConnectionBonus,
-    getColorBonus,
-    calculateExplosionPoint,
-    getMarginRate,
-    getTimeProgressMultiplier,
-    getPlayerFallSpeedMultiplier,
-    calculateExplosionAttack,
-    formatIntegerPoint,
-    formatPoint,
-    collapseBoard,
-    simulatePlacementBoard,
-    simulatePlacementResult,
-    getFeverStageDefinitions,
-    isAllClearBoard,
-    estimateAttack,
-    estimateCombo,
-    warningUnits,
-    getCanvasOutputSize,
-    setCanvasFitMode,
-    setCanvasFitMargin,
-    getCanvasFit,
-    getScreenLayout,
-    toCanvasCoordinates,
-    toCanvasLength,
-    applyCanvasCoordinateTransform,
-    getSelectedDifficulty,
-    getSelectedColorCount,
-    getScreenState,
-    getSimulatorState,
-    getGameState,
-    setGameElapsed,
-    getReplayData,
-    getNextPairs,
-    configureLearningApi,
-    playSound,
-    register2DFilter,
-    showMessage,
-    askConfirm,
-    askText,
-    addCode,
-    initialize,
-    destroy,
-    get urlContextPath() { return urlContextPath; },
+/**
+ * 게임의 공개 API를 모으는 매니저다.
+ * 상태는 모듈에서 공유하므로 추가 인스턴스도 같은 게임을 조작한다.
+ */
+class PuyoWManager {
+    constructor() {
+        // 클래스는 이름 있는 export와 같은 참조를 유지하며 브라우저와 CommonJS에서도 생성할 수 있다.
+        Object.assign(this, {
+            StorageManager,
+            PlayerState,
+            Puyo,
+            SlimePuyo,
+            RedPuyo,
+            GreenPuyo,
+            YellowPuyo,
+            BluePuyo,
+            PurplePuyo,
+            GarbagePuyo,
+            IronPuyo,
+            HardGarbagePuyo,
+            WarningInkPuyo,
+            WarningPuyo,
+            TinyWarningPuyo,
+            DropWarningPuyo,
+            RockWarningPuyo,
+            StarWarningPuyo,
+            SunWarningPuyo,
+            NeutronStarWarningPuyo,
+            GalaxyWarningPuyo,
+            BigBangWarningPuyo,
+            TesseractWarningPuyo,
+            PenteractWarningPuyo,
+            HexaactWarningPuyo,
+            BlackHoleWarningPuyo,
+            PuyoWGraphic2DFilter,
+            SoundPool,
+            CommonSoundPool,
+            EnemySoundPool,
+            PuzzlePuyoStage,
+            FeverStageState,
+            Enemy,
+            BundledEnemy,
+            Solomon,
+            Andromalius,
+            Dantalion,
+            ChainBuildingEnemy,
+            Seere,
+            Decarabia,
+            PreviewChainEnemy,
+            FiveChainEnemy,
+            TwoMoveLookaheadEnemy,
+            Belial,
+            Amdusias,
+            Kimaris,
+            RealtimeLookaheadEnemy,
+            Andrealphus,
+            OnnxEnemy,
+            Flauros,
+            Andras,
+            Valak,
+            Zagan,
+            Vapula,
+            Oriax,
+            Amii,
+            Ose,
+            Gremory,
+            Orobas,
+            Murmur,
+            Caim,
+            Alokes,
+            Balaam,
+            Purkas,
+            PracticeEnemy,
+            PuyoWManager,
+            PUZZLE_STAGES,
+            BUILDNO,
+            common: commonFunctions,
+            tools: toolsApi,
+            leaderboard: leaderboardApi,
+            replay: replayApi
+        });
+    }
+
+    // 내부 공통 함수를 호출해 기존 인자·반환값·비동기 처리 계약을 유지한다.
+    beginWorkerSearchTurn(...args) { return beginWorkerSearchTurn(...args); }
+    startWorkerLookaheadSearch(...args) { return startWorkerLookaheadSearch(...args); }
+    cancelPendingWorkerSearch(...args) { return cancelPendingWorkerSearch(...args); }
+    isWorkerSearchPending(...args) { return isWorkerSearchPending(...args); }
+    getWorkerSearchTarget(...args) { return getWorkerSearchTarget(...args); }
+    getWorkerSearchRotation(...args) { return getWorkerSearchRotation(...args); }
+    createSoundPool(...args) { return createSoundPool(...args); }
+    setEnemySoundPool(...args) { return setEnemySoundPool(...args); }
+    setCommonSoundPool(...args) { return setCommonSoundPool(...args); }
+    loadSoundDataURL(...args) { return loadSoundDataURL(...args); }
+    applySoundDataJson(...args) { return applySoundDataJson(...args); }
+    setStorageManager(...args) { return setStorageManager(...args); }
+    registerFeverStage(...args) { return registerFeverStage(...args); }
+    registerPuzzleStage(...args) { return registerPuzzleStage(...args); }
+    registerOpponent(...args) { return registerOpponent(...args); }
+    registerWarningPuyo(...args) { return registerWarningPuyo(...args); }
+    registerLanguage(...args) { return registerLanguage(...args); }
+    registerCodeArchive(...args) { return registerCodeArchive(...args); }
+    setNoticeFile(...args) { return setNoticeFile(...args); }
+    setURLContextPath(...args) { return setURLContextPath(...args); }
+    convertURL(...args) { return convertURL(...args); }
+    randomFloat(...args) { return randomFloat(...args); }
+    randomColor(...args) { return randomColor(...args); }
+    translate(...args) { return translate(...args); }
+    getPuyo(...args) { return getPuyo(...args); }
+    activeCells(...args) { return activeCells(...args); }
+    activeRenderCells(...args) { return activeRenderCells(...args); }
+    findLandingPlacement(...args) { return findLandingPlacement(...args); }
+    findBestPreviewResult(...args) { return findBestPreviewResult(...args); }
+    simulateNMovePlacements(...args) { return simulateNMovePlacements(...args); }
+    findBestNMovePlacement(...args) { return findBestNMovePlacement(...args); }
+    simulateNMovePlacementsInWorker(...args) { return simulateNMovePlacementsInWorker(...args); }
+    predictPlayerChain(...args) { return predictPlayerChain(...args); }
+    predictFeverStageChain(...args) { return predictFeverStageChain(...args); }
+    getRealtimeGarbageForecast(...args) { return getRealtimeGarbageForecast(...args); }
+    getModelIncomingState(...args) { return getModelIncomingState(...args); }
+    findExplosionsOnBoard(...args) { return findExplosionsOnBoard(...args); }
+    findExplosionGroupsOnBoard(...args) { return findExplosionGroupsOnBoard(...args); }
+    getChainBonus(...args) { return getChainBonus(...args); }
+    getConnectionBonus(...args) { return getConnectionBonus(...args); }
+    getColorBonus(...args) { return getColorBonus(...args); }
+    calculateExplosionPoint(...args) { return calculateExplosionPoint(...args); }
+    getMarginRate(...args) { return getMarginRate(...args); }
+    getTimeProgressMultiplier(...args) { return getTimeProgressMultiplier(...args); }
+    getPlayerFallSpeedMultiplier(...args) { return getPlayerFallSpeedMultiplier(...args); }
+    calculateExplosionAttack(...args) { return calculateExplosionAttack(...args); }
+    formatIntegerPoint(...args) { return formatIntegerPoint(...args); }
+    formatPoint(...args) { return formatPoint(...args); }
+    collapseBoard(...args) { return collapseBoard(...args); }
+    simulatePlacementBoard(...args) { return simulatePlacementBoard(...args); }
+    simulatePlacementResult(...args) { return simulatePlacementResult(...args); }
+    getFeverStageDefinitions(...args) { return getFeverStageDefinitions(...args); }
+    isAllClearBoard(...args) { return isAllClearBoard(...args); }
+    estimateAttack(...args) { return estimateAttack(...args); }
+    estimateCombo(...args) { return estimateCombo(...args); }
+    warningUnits(...args) { return warningUnits(...args); }
+    getCanvasOutputSize(...args) { return getCanvasOutputSize(...args); }
+    setCanvasFitMode(...args) { return setCanvasFitMode(...args); }
+    setCanvasFitMargin(...args) { return setCanvasFitMargin(...args); }
+    getCanvasFit(...args) { return getCanvasFit(...args); }
+    getScreenLayout(...args) { return getScreenLayout(...args); }
+    toCanvasCoordinates(...args) { return toCanvasCoordinates(...args); }
+    toCanvasLength(...args) { return toCanvasLength(...args); }
+    applyCanvasCoordinateTransform(...args) { return applyCanvasCoordinateTransform(...args); }
+    getSelectedDifficulty(...args) { return getSelectedDifficulty(...args); }
+    getSelectedColorCount(...args) { return getSelectedColorCount(...args); }
+    getScreenState(...args) { return getScreenState(...args); }
+    getSimulatorState(...args) { return getSimulatorState(...args); }
+    getGameState(...args) { return getGameState(...args); }
+    setGameElapsed(...args) { return setGameElapsed(...args); }
+    getReplayData(...args) { return getReplayData(...args); }
+    getNextPairs(...args) { return getNextPairs(...args); }
+    configureLearningApi(...args) { return configureLearningApi(...args); }
+    playSound(...args) { return playSound(...args); }
+    register2DFilter(...args) { return register2DFilter(...args); }
+    showMessage(...args) { return showMessage(...args); }
+    askConfirm(...args) { return askConfirm(...args); }
+    askText(...args) { return askText(...args); }
+    addCode(...args) { return addCode(...args); }
+    initialize(...args) { return initialize(...args); }
+    destroy(...args) { return destroy(...args); }
+    getCommonFunctions() { return commonFunctions; }
+    get urlContextPath() { return urlContextPath; }
     get commonSoundPool() { return commonSoundPool; }
-};
+}
+
+/** 브라우저 전역·ES Module·CommonJS 번들로 공개하는 같은 매니저다. */
+const PuyoW = new PuyoWManager();
 if (typeof window !== 'undefined') {
     window.PuyoW   = PuyoW;
     window.WebPuyo = PuyoW; // 예전 이름(WebPuyo)을 쓰는 외부 코드와의 호환용 별칭
 }
 
 // CommonJS(module.exports) 공개는 Webpack 번들의 UMD 래퍼가 맡는다. WebPuyo는 호환용 별칭이다.
+export { StorageManager };
+export { PlayerState };
+export { Puyo };
+export { SlimePuyo };
+export { RedPuyo };
+export { GreenPuyo };
+export { YellowPuyo };
+export { BluePuyo };
+export { PurplePuyo };
+export { GarbagePuyo };
+export { IronPuyo };
+export { HardGarbagePuyo };
+export { WarningInkPuyo };
+export { WarningPuyo };
+export { TinyWarningPuyo };
+export { DropWarningPuyo };
+export { RockWarningPuyo };
+export { StarWarningPuyo };
+export { SunWarningPuyo };
+export { NeutronStarWarningPuyo };
+export { GalaxyWarningPuyo };
+export { BigBangWarningPuyo };
+export { TesseractWarningPuyo };
+export { PenteractWarningPuyo };
+export { HexaactWarningPuyo };
+export { BlackHoleWarningPuyo };
+export { PuyoWGraphic2DFilter };
+export { SoundPool };
+export { CommonSoundPool };
+export { EnemySoundPool };
+export { PuzzlePuyoStage };
+export { FeverStageState };
+export { Enemy };
+export { BundledEnemy };
+export { Solomon };
+export { Andromalius };
+export { Dantalion };
+export { ChainBuildingEnemy };
+export { Seere };
+export { Decarabia };
+export { PreviewChainEnemy };
+export { FiveChainEnemy };
+export { TwoMoveLookaheadEnemy };
+export { Belial };
+export { Amdusias };
+export { Kimaris };
+export { RealtimeLookaheadEnemy };
+export { Andrealphus };
+export { OnnxEnemy };
+export { Flauros };
+export { Andras };
+export { Valak };
+export { Zagan };
+export { Vapula };
+export { Oriax };
+export { Amii };
+export { Ose };
+export { Gremory };
+export { Orobas };
+export { Murmur };
+export { Caim };
+export { Alokes };
+export { Balaam };
+export { Purkas };
+export { PracticeEnemy };
+export { PuyoWManager };
 export { PuyoW, PuyoW as WebPuyo };
 export default PuyoW;

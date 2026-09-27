@@ -1,5 +1,7 @@
 # Puyo W 그래픽 좌표 체계
 
+`PuyoWGraphic2DFilter`도 이름 있는 export이므로 ES Module에서 `import PuyoW, { PuyoWGraphic2DFilter } from './js/puyow.js'`로 가져와 상속할 수 있습니다. 브라우저 전역과 CommonJS 번들의 `PuyoW.PuyoWGraphic2DFilter`는 같은 클래스이며, 필터 등록은 매니저 메소드 `PuyoW.register2DFilter()`로 수행합니다.
+
 게임 화면과 외부 렌더러는 실제 출력 해상도와 관계없이 같은 논리 좌표계를 사용합니다. 사용자 정의 적 초상화·테마·뿌요를 그릴 때도 아래 기준을 사용하면 됩니다.
 
 ## 논리 좌표계

@@ -40,7 +40,7 @@ You can also use `puyow.js` from a CDN.
 
 ## Library overview
 
-`puyow.js` is written as an ES Module. It exposes the same API object as its default export and as the named export `PuyoW`, and also registers it as `window.PuyoW` in browsers. The former name `WebPuyo` (named export and `window.WebPuyo`) remains as a compatibility alias for the same object, but new code should use `PuyoW`. For a classic `<script>` or CommonJS (`require`), use the Webpack bundle `src/bundle/puyow.bundle.js`. `Enemy` is the base class for CPU-control algorithms and game-screen themes. Selecting Start Game, Gauntlet, and a rule opens opponent selection, where a player can choose an opponent registered from an external file. The default `sortPriority` member value is `1`; lower-valued opponents appear further left on the opponent-selection screen.
+`puyow.js` is written as an ES Module. It exposes the same `PuyoWManager` instance as its default export and as the named export `PuyoW`, and also registers it as `window.PuyoW` in browsers. The former name `WebPuyo` (named export and `window.WebPuyo`) remains as a compatibility alias for the same instance, but new code should use `PuyoW`. For a classic `<script>` or CommonJS (`require`), use the Webpack bundle `src/bundle/puyow.bundle.js`. `Enemy` is the base class for CPU-control algorithms and game-screen themes. Selecting Start Game, Gauntlet, and a rule opens opponent selection, where a player can choose an opponent registered from an external file. The default `sortPriority` member value is `1`; lower-valued opponents appear further left on the opponent-selection screen.
 
 `Enemy` also has Boolean members controlling its visibility on the selection screen; both default to `false`.
 
@@ -75,6 +75,24 @@ import PuyoW from './js/puyow.js';
 PuyoW.initialize('puyow_target');
 </script>
 ```
+
+### Public classes and manager
+
+`PuyoW` is the default manager instance created with `const PuyoW = new PuyoWManager()`. Public functions are methods of `PuyoWManager`; calls such as `PuyoW.initialize()` and `PuyoW.registerOpponent()` keep their existing behavior. `common`, `tools`, `leaderboard`, and `replay` keep their existing API collections. The `urlContextPath` and `commonSoundPool` accessors return the current values.
+
+Every class defined in `puyow.js` is available as a named export, including base classes such as `PlayerState`, `SlimePuyo`, and `BundledEnemy`. You can import classes to construct or extend them, following each constructor's arguments and initialization requirements. Browser globals and the CommonJS bundle expose the same classes as `PuyoW.ClassName`.
+
+```js
+import PuyoW, { PuyoWManager, Enemy, RedPuyo, CommonSoundPool } from './js/puyow.js';
+
+const puyo = new RedPuyo();
+const sounds = new CommonSoundPool();
+class MyEnemy extends Enemy {}
+PuyoW.setCommonSoundPool(sounds);
+PuyoW.registerOpponent({ createController: () => new MyEnemy() });
+```
+
+`PuyoW instanceof PuyoWManager` is true. Additional `new PuyoWManager()` instances share the module's game state, registrations, settings, and canvas, so they control the same game. Methods live on the prototype and are absent from `Object.keys(PuyoW)`. The legacy `WebPuyo` alias refers to the default instance.
 
 ### Browser custom events
 

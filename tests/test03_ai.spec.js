@@ -14,15 +14,13 @@ import { readClassicScript } from './common/modulesource.js';
 setupGamePage();
 
 // 무한 반복이 되살아나도 브라우저나 테스트 프로세스가 멈추지 않도록 실제 게임 코드를
-// 실행 제한 시간이 있는 VM에서 검사한다. 공개 API를 늘리지 않고 테스트 안에서만 솔로몬을 노출한다.
+// 실행 제한 시간이 있는 VM에서 검사한다. 솔로몬도 공개 클래스를 통해 접근한다.
 // puyow.js는 ES Module이므로 export 문을 지운 일반 스크립트로 바꿔 실행한다.
 const source = readClassicScript('src/js/puyow.js');
-const exportAnchor = '\nPuyoW = {';
 
 function createContext(enemyName) {
-  expect(source.includes(exportAnchor)).toBe(true);
   const context = vm.createContext({ module: { exports: {} } });
-  vm.runInContext(source.replace(exportAnchor, `${exportAnchor} Solomon,`), context, { timeout: 5000 });
+  vm.runInContext(source, context, { timeout: 5000 });
   context.api = context.module.exports;
   context.controller = Object.create(context.api[enemyName].prototype);
   return context;

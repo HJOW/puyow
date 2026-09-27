@@ -1,5 +1,7 @@
 # Puyo W Puyo API
 
+Every puyo and warning-puyo class is a named export. With ES Modules, use `import { RedPuyo, SlimePuyo, TinyWarningPuyo } from './js/puyow.js'` to construct or extend them directly. Browser globals and the CommonJS bundle expose the same classes as `PuyoW.RedPuyo` and other class properties. The identical class references preserve existing `instanceof` checks and registration APIs.
+
 Built-in classes render normal and garbage puyos. Attack preview rows can be extended with subclasses of `WarningPuyo`. The board representation of normal puyos remains strings, preserving compatibility with game state and saved data.
 
 ## Built-in normal and garbage puyo classes
