@@ -40,7 +40,7 @@ You can also use `puyow.js` from a CDN.
 
 ## Library overview
 
-`puyow.js` is written as an ES Module. It exposes the same API object as its default export and as the named exports `PuyoW` and `WebPuyo`, and also registers it as `window.PuyoW` in browsers. For a classic `<script>` or CommonJS (`require`), use the Webpack bundle `src/bundle/puyow.bundle.js`. `Enemy` is the base class for CPU-control algorithms and game-screen themes. Selecting Start Game, Gauntlet, and a rule opens opponent selection, where a player can choose an opponent registered from an external file. The default `sortPriority` member value is `1`; lower-valued opponents appear further left on the opponent-selection screen.
+`puyow.js` is written as an ES Module. It exposes the same API object as its default export and as the named export `PuyoW`, and also registers it as `window.PuyoW` in browsers. The former name `WebPuyo` (named export and `window.WebPuyo`) remains as a compatibility alias for the same object, but new code should use `PuyoW`. For a classic `<script>` or CommonJS (`require`), use the Webpack bundle `src/bundle/puyow.bundle.js`. `Enemy` is the base class for CPU-control algorithms and game-screen themes. Selecting Start Game, Gauntlet, and a rule opens opponent selection, where a player can choose an opponent registered from an external file. The default `sortPriority` member value is `1`; lower-valued opponents appear further left on the opponent-selection screen.
 
 `Enemy` also has Boolean members controlling its visibility on the selection screen; both default to `false`.
 

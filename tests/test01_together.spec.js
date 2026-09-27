@@ -10,9 +10,9 @@ async function openTogetherGuide(page) {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_mode_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('together_mode_select');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('together_guide');
 }
 
 /** "너랑 나랑" 안내 화면에서 현재 고른 규칙·색상 수로 대전을 시작한다. 포커스는 규칙 행에서 시작한다. */
@@ -21,8 +21,8 @@ async function startTogetherGame(page, colorPresses = 0) {
   for (let index = 0; index < colorPresses; index += 1) await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('playing');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('playing');
 }
 
 test('너랑 나랑의 오프라인 플레이 안내 화면은 취소로 메인 메뉴에 돌아간다', async ({ page }) => {
@@ -33,19 +33,19 @@ test('너랑 나랑의 오프라인 플레이 안내 화면은 취소로 메인 
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
 
   // ESC로도 메인 메뉴로 돌아간다.
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_mode_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('together_mode_select');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('together_guide');
   await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
 });
 
 test('너랑 나랑 방식 선택은 온라인 플레이를 지원하지 않으면 해당 선택지를 숨긴다', async ({ page }) => {
-  const currentScreen = () => page.evaluate(() => window.WebPuyo.getScreenState().screen);
+  const currentScreen = () => page.evaluate(() => window.PuyoW.getScreenState().screen);
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
@@ -114,14 +114,14 @@ test('너랑 나랑 방식 선택은 온라인 플레이를 지원하면 표시�
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_mode_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('together_mode_select');
   const onlineLabel = await translated(page, '온라인 플레이');
   await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), onlineLabel)).toBe(true);
 
   // 온라인 플레이를 고르면 온라인 로그인 화면으로 넘어간다.
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('online_login');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('online_login');
   const loginLabels = await Promise.all([translated(page, '아이디'), translated(page, '비밀번호'), translated(page, '로그인'), translated(page, '가입')]);
   for (const label of loginLabels) {
     await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), label)).toBe(true);
@@ -129,7 +129,7 @@ test('너랑 나랑 방식 선택은 온라인 플레이를 지원하면 표시�
 
   // 로그인 화면에서 ESC는 온라인 플레이를 끝내고 메인 메뉴로 돌아간다.
   await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
 });
 
 test('너랑 나랑 안내 화면은 조작키 안내와 규칙·색상 수 선택을 보여 준다', async ({ page }) => {
@@ -153,16 +153,16 @@ test('너랑 나랑 안내 화면은 조작키 안내와 규칙·색상 수 선�
   await page.keyboard.press('ArrowLeft');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
-  expect(await page.evaluate(() => window.WebPuyo.getGameState().colorCount)).toBe(3);
-  expect(await page.evaluate(() => window.WebPuyo.getGameState().rule)).toBe('standard');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
+  expect(await page.evaluate(() => window.PuyoW.getGameState().colorCount)).toBe(3);
+  expect(await page.evaluate(() => window.PuyoW.getGameState().rule)).toBe('standard');
 });
 
 test('너랑 나랑 대전은 양쪽 모두 사람이 조작하고 1P·2P 키가 각자 자기 뿌요만 움직인다', async ({ page }) => {
   await openTogetherGuide(page);
   await startTogetherGame(page);
 
-  const state = await page.evaluate(() => window.WebPuyo.getGameState());
+  const state = await page.evaluate(() => window.PuyoW.getGameState());
   expect(state.mode).toBe('together');
   expect(state.player.isCpu).toBe(false);
   expect(state.opponent.isCpu).toBe(false);
@@ -170,8 +170,8 @@ test('너랑 나랑 대전은 양쪽 모두 사람이 조작하고 1P·2P 키가
   expect(state.opponent.name).toBe('2P');
 
   const actives = () => page.evaluate(() => ({
-    first: window.WebPuyo.getGameState().player.active?.x ?? null,
-    second: window.WebPuyo.getGameState().opponent.active?.x ?? null,
+    first: window.PuyoW.getGameState().player.active?.x ?? null,
+    second: window.PuyoW.getGameState().opponent.active?.x ?? null,
   }));
   const before = await actives();
 
@@ -186,8 +186,8 @@ test('너랑 나랑 대전은 양쪽 모두 사람이 조작하고 1P·2P 키가
 
   // 회전도 1P는 G, 2P는 대괄호 키로 각자 처리한다.
   const rotations = () => page.evaluate(() => ({
-    first: window.WebPuyo.getGameState().player.active?.rotation ?? null,
-    second: window.WebPuyo.getGameState().opponent.active?.rotation ?? null,
+    first: window.PuyoW.getGameState().player.active?.rotation ?? null,
+    second: window.PuyoW.getGameState().opponent.active?.rotation ?? null,
   }));
   const beforeRotation = await rotations();
   await page.keyboard.press('KeyG');
@@ -202,7 +202,7 @@ test('너랑 나랑은 가상 컨트롤러를 그리지 않는다', async ({ pag
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { virtualController: 'normal' } }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await openTogetherGuide(page);
   await startTogetherGame(page);
   await page.evaluate(() => { window.testCanvasTexts = []; });
@@ -221,8 +221,8 @@ test('너랑 나랑의 피버 룰 (시작)은 해금 전에는 잠기고 해금 
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
-  expect(await page.evaluate(() => window.WebPuyo.getGameState().rule)).toBe('fever');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
+  expect(await page.evaluate(() => window.PuyoW.getGameState().rule)).toBe('fever');
 
   // 피버 룰로 키마리스를 이긴 기록이 있으면 잠금이 풀린다.
   await page.evaluate(() => {
@@ -232,7 +232,7 @@ test('너랑 나랑의 피버 룰 (시작)은 해금 전에는 잠기고 해금 
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await openTogetherGuide(page);
   await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), feverStartLabel)).toBe(true);
   expect(await page.evaluate((text) => window.testCanvasTexts.includes(text), lockedLabel)).toBe(false);
@@ -241,8 +241,8 @@ test('너랑 나랑의 피버 룰 (시작)은 해금 전에는 잠기고 해금 
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
-  expect(await page.evaluate(() => window.WebPuyo.getGameState().rule)).toBe('fever_start');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('countdown');
+  expect(await page.evaluate(() => window.PuyoW.getGameState().rule)).toBe('fever_start');
 });
 
 test('너랑 나랑 게임 중앙에는 초상화 대신 1P·2P 승패 현황이 표시된다', async ({ page }) => {
@@ -257,8 +257,8 @@ test('너랑 나랑 게임 중앙에는 초상화 대신 1P·2P 승패 현황이
 
 test('너랑 나랑의 1P는 공통 주문 효과음을, 2P는 공통 적 주문 효과음을 낸다', async ({ page }) => {
   await page.evaluate(() => {
-    window.WebPuyo.commonSoundPool.spellCombo1 = 'sounds/together-1p-spell.ogg';
-    window.WebPuyo.commonSoundPool.commonEnemySpellCombo1 = 'sounds/together-2p-spell.ogg';
+    window.PuyoW.commonSoundPool.spellCombo1 = 'sounds/together-1p-spell.ogg';
+    window.PuyoW.commonSoundPool.commonEnemySpellCombo1 = 'sounds/together-2p-spell.ogg';
     // 한 가지 색만 나오게 해 양쪽 모두 빠른 하강만으로 곧바로 연쇄를 일으키게 한다.
     Math.random = () => 0;
   });
@@ -287,7 +287,7 @@ async function readTogetherResultButtonLabels(page) {
 /** 1P가 빠른 하강으로 스스로 쌓아 패배할 때까지 기다려 "너랑 나랑" 대전을 끝낸다. */
 async function finishTogetherGameByTopOut(page) {
   await page.keyboard.down('KeyB');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 180000 }).toBe('game_over');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 180000 }).toBe('game_over');
   await page.keyboard.up('KeyB');
 }
 
@@ -309,34 +309,34 @@ test('너랑 나랑 결과 화면은 다시 플레이로 승패 현황을 잇고
   // 다시 플레이는 진입 시부터 포커스되어 있어 Enter만으로 누적 승수를 유지한 채 같은 규칙으로 다시 시작한다.
   const winLabel = (await translated(page, '%1승')).replace('%1', '1');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('countdown');
-  expect(await page.evaluate(() => window.WebPuyo.getGameState().mode)).toBe('together');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 20000 }).toBe('countdown');
+  expect(await page.evaluate(() => window.PuyoW.getGameState().mode)).toBe('together');
   await page.evaluate(() => { window.testCanvasTexts = []; });
   await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), winLabel)).toBe(true);
 
   // 일시정지의 다시하기도 같은 대전 묶음의 승패 현황을 유지한다.
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 20000 }).toBe('playing');
   await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('paused');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
   await page.evaluate(() => { window.testCanvasTexts = []; });
   await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), winLabel)).toBe(true);
 
   // 종료는 세 번째 버튼이므로 두 번 이동한 뒤 메인 메뉴로 돌아간다.
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 20000 }).toBe('playing');
   await page.keyboard.press('Escape');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
 
   // 메인 메뉴 포커스는 "너랑 나랑"에 그대로 남아 있으므로 Enter로 방식 선택을 열고, 첫 포커스인 오프라인 플레이로 안내 화면을 다시 연다.
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_mode_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('together_mode_select');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('together_guide');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('together_guide');
   await startTogetherGame(page);
   const resetLabel = (await translated(page, '%1승')).replace('%1', '0');
   await page.evaluate(() => { window.testCanvasTexts = []; });
@@ -351,7 +351,7 @@ test('너랑 나랑 대전도 새 형식으로 기록하고 재생하면 승패 
   await startTogetherGame(page);
   await finishTogetherGameByTopOut(page);
 
-  const replay = await page.evaluate(() => window.WebPuyo.getReplayData());
+  const replay = await page.evaluate(() => window.PuyoW.getReplayData());
   expect(replay.version).toBe(3);
   expect(replay.meta.together).toBe(true);
   expect(replay.meta.togetherWins).toEqual([0, 0]);
@@ -361,19 +361,19 @@ test('너랑 나랑 대전도 새 형식으로 기록하고 재생하면 승패 
   // 너랑 나랑 결과 화면은 0번 다시 플레이에 포커스가 있으므로 아래 방향키로 종료를 골라 메인 메뉴로 나간다.
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
   await clickReplayPlaybackButton(page);
   await submitTextDialog(page, JSON.stringify(replay));
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 20000 }).toBe('playing');
   const recordLabel = await translated(page, '전적');
   await page.evaluate(() => { window.testCanvasTexts = []; });
   await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), recordLabel)).toBe(true);
 
   // 재생 중에도 일시정지 메뉴에서 종료하면 메인 메뉴로 돌아간다.
   await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('paused');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
 });

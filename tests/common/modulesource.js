@@ -6,10 +6,10 @@ import { readFileSync } from 'node:fs';
 /**
  * ES Module 소스를 일반 스크립트로 바꾼다. `module`이 있는 환경(Node vm)에서는 지정한 최상위 변수를 module.exports로 공개한다.
  * @param {string} source ES Module 소스
- * @param {string} [exportName='WebPuyo'] module.exports로 공개할 최상위 변수 이름
+ * @param {string} [exportName='PuyoW'] module.exports로 공개할 최상위 변수 이름
  * @returns {string} 일반 스크립트 소스
  */
-export function toClassicScript(source, exportName = 'WebPuyo') {
+export function toClassicScript(source, exportName = 'PuyoW') {
   const body = source.replace(/\r\n/g, '\n')
     // 기본 가져오기(`import X from '...';`)는 같은 이름의 전역 값으로 바꾼다. JSON5는 없으면 표준 JSON으로 대신한다.
     .replace(/^import\s+([A-Za-z_$][\w$]*)\s+from\s+['"][^'"]+['"];?\s*$/gm, (_, name) => (
@@ -22,9 +22,9 @@ export function toClassicScript(source, exportName = 'WebPuyo') {
 /**
  * 파일을 읽어 일반 스크립트로 바꾼다.
  * @param {string} filePath 저장소 루트 기준 파일 경로
- * @param {string} [exportName='WebPuyo'] module.exports로 공개할 최상위 변수 이름
+ * @param {string} [exportName='PuyoW'] module.exports로 공개할 최상위 변수 이름
  * @returns {string} 일반 스크립트 소스
  */
-export function readClassicScript(filePath, exportName = 'WebPuyo') {
+export function readClassicScript(filePath, exportName = 'PuyoW') {
   return toClassicScript(readFileSync(filePath, 'utf8'), exportName);
 }

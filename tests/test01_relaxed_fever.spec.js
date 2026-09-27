@@ -16,9 +16,9 @@ test('완화 룰 버튼을 클릭하면 해당 규칙의 적 대전이 열린다
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 900, y: 345 } });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('fever_opponent_select');
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.rule)).toBe('relaxed_fever');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.rule)).toBe('relaxed_fever');
 });
 
 test('완화 룰은 해금 전에는 선택할 수 없고 해금 뒤 전등 3개로 시작한다', async ({ page }) => {
@@ -31,7 +31,7 @@ test('완화 룰은 해금 전에는 선택할 수 없고 해금 뒤 전등 3개
     return Array.from(pixel).join(',');
   })).toBe('60,70,80,255');
   await canvas.click({ position: { x: 900, y: 345 } });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
 
   await page.evaluate(() => {
     const saved = JSON.parse(localStorage.getItem('puyow_store'));
@@ -41,7 +41,7 @@ test('완화 룰은 해금 전에는 선택할 수 없고 해금 뒤 전등 3개
   });
   await page.reload();
   await page.evaluate(() => {
-    class RelaxedFeverProgressEnemy extends window.WebPuyo.Enemy {
+    class RelaxedFeverProgressEnemy extends window.PuyoW.Enemy {
       constructor() { super(); this.sortPriority = -1; }
       getClassType() { return 'RelaxedFeverProgressEnemy'; }
       getName() { return '완화 피버 진행도 테스트 적'; }
@@ -53,7 +53,7 @@ test('완화 룰은 해금 전에는 선택할 수 없고 해금 뒤 전등 3개
         player.phaseTimer = 150;
       }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new RelaxedFeverProgressEnemy() });
+    window.PuyoW.registerOpponent({ createController: () => new RelaxedFeverProgressEnemy() });
   });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
@@ -65,18 +65,18 @@ test('완화 룰은 해금 전에는 선택할 수 없고 해금 뒤 전등 3개
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('fever_opponent_select');
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
-  const state = await page.evaluate(() => window.WebPuyo.getGameState());
+  const state = await page.evaluate(() => window.PuyoW.getGameState());
   expect(state.rule).toBe('relaxed_fever');
   expect(state.player.fever.gauge).toBe(3);
   expect(state.opponent.fever.gauge).toBe(3);
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.winner), { timeout: 15000 }).toBe('player');
   const records = await page.evaluate(() => ({
     store: JSON.parse(localStorage.getItem('puyow_store')),
     leaderboard: JSON.parse(localStorage.getItem('puyow_leaderboard')),
     gallery: JSON.parse(localStorage.getItem('puyow_gallery')),
-    replayRule: window.WebPuyo.getReplayData()?.meta?.rule,
+    replayRule: window.PuyoW.getReplayData()?.meta?.rule,
   }));
   expect(records.store.relaxedFeverClearListByDifficulty.normal).toContain('RelaxedFeverProgressEnemy');
   expect(records.store.feverClearListByDifficulty.normal).toEqual(['Kimaris']);

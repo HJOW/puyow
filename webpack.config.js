@@ -5,7 +5,7 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 /*
  * src/js/puyow*.js 는 ES Module 로 작성한다. 이 설정은 게임 페이지(puyow.html)가 일반 <script> 로 읽을 수 있고,
  * Node.js 에서 require() 로도 쓸 수 있는 CommonJS 호환(UMD) 번들 src/bundle/puyow.bundle.js 를 만든다.
- *     - 브라우저: window.PuyoW / window.WebPuyo (puyow.js 가 직접 등록) 와 window.PuyoW3DEffect·window.THREE (puyow_3d.js 가 등록)
+ *     - 브라우저: window.PuyoW (호환용 별칭 window.WebPuyo 포함, puyow.js 가 직접 등록) 와 window.PuyoW3DEffect·window.THREE (puyow_3d.js 가 등록)
  *     - Node.js : require('./src/bundle/puyow.bundle.js') 가 puyow.js 의 기본 내보내기(PuyoW)를 돌려준다.
  * ES Module 라이브러리도 import 를 따라 함께 묶는다.
  *     - json5.js                               : puyow.js 가 import

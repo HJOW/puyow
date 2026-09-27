@@ -41,7 +41,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
   /** 첫 조작에서 스스로 패배 칸을 막는 테스트용 적을 맨 앞에 등록한다. */
   async function registerSelfLosingEnemy(page, classType) {
     await page.evaluate((type) => {
-      class SelfLosingEnemy extends window.WebPuyo.Enemy {
+      class SelfLosingEnemy extends window.PuyoW.Enemy {
         constructor() { super(); this.sortPriority = -1; }
         getClassType() { return type; }
         getName() { return '리더보드 테스트 적'; }
@@ -53,7 +53,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
           player.phaseTimer = 150;
         }
       }
-      window.WebPuyo.registerOpponent({ createController: () => new SelfLosingEnemy() });
+      window.PuyoW.registerOpponent({ createController: () => new SelfLosingEnemy() });
     }, classType);
   }
 
@@ -66,10 +66,10 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     const startedAt = await page.evaluate(() => Date.now());
     await openDojoOpponentSelect(page);
     for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
-    const colorCount = await page.evaluate(() => window.WebPuyo.getGameState().colorCount);
-    const difficultyKey = await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty.key);
-    const playerName = await page.evaluate(() => window.WebPuyo.getGameState().player.name);
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.winner), { timeout: 15000 }).toBe('player');
+    const colorCount = await page.evaluate(() => window.PuyoW.getGameState().colorCount);
+    const difficultyKey = await page.evaluate(() => window.PuyoW.getGameState().aiDifficulty.key);
+    const playerName = await page.evaluate(() => window.PuyoW.getGameState().player.name);
     const saved = await readLeaderboard(page);
     expect(saved.version).toBe(2);
     const finishedAt = await page.evaluate(() => Date.now());
@@ -94,10 +94,10 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     await enterMainMenu(page);
     await openDojoOpponentSelect(page);
     for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
-    const colorCount = await page.evaluate(() => window.WebPuyo.getGameState().colorCount);
-    const difficultyKey = await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty.key);
-    const playerName = await page.evaluate(() => window.WebPuyo.getGameState().player.name);
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.winner), { timeout: 15000 }).toBe('player');
+    const colorCount = await page.evaluate(() => window.PuyoW.getGameState().colorCount);
+    const difficultyKey = await page.evaluate(() => window.PuyoW.getGameState().aiDifficulty.key);
+    const playerName = await page.evaluate(() => window.PuyoW.getGameState().player.name);
 
     // 로컬 저장은 그대로 진행된다.
     const saved = await readLeaderboard(page);
@@ -118,9 +118,9 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     await enterMainMenu(page);
     await openDojoOpponentSelect(page);
     for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
-    const difficultyKey = await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty.key);
-    const colorCount = await page.evaluate(() => window.WebPuyo.getGameState().colorCount);
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.winner), { timeout: 15000 }).toBe('player');
+    const difficultyKey = await page.evaluate(() => window.PuyoW.getGameState().aiDifficulty.key);
+    const colorCount = await page.evaluate(() => window.PuyoW.getGameState().colorCount);
     const saved = await readLeaderboard(page);
     expect(saved.records.standard[difficultyKey][String(colorCount)].LeaderboardOfflineEnemy).toHaveLength(1);
     expect(posted).toHaveLength(0);
@@ -131,7 +131,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     await page.evaluate(() => localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: '' } })));
     await page.reload();
     await page.keyboard.press('Enter');
-    const invalidMessage = await page.evaluate(() => window.WebPuyo.translate('이름에 사용할 수 없는 문자가 있습니다.'));
+    const invalidMessage = await page.evaluate(() => window.PuyoW.translate('이름에 사용할 수 없는 문자가 있습니다.'));
     await page.keyboard.type('BAD.NAME');
     await page.keyboard.press('Enter');
     await expect.poll(() => page.evaluate((message) => window.testCanvasTexts.includes(message), invalidMessage)).toBe(true);
@@ -149,22 +149,22 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     await enterMainMenu(page);
     await openPracticeDifficulty(page);
     await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().playerCanControl), { timeout: 15000 }).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().playerCanControl), { timeout: 15000 }).toBe(true);
 
     // 일시정지 → 종료(2번)는 패배가 아니므로 기록하지 않는다.
     await page.keyboard.press('Escape');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('paused');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
     expect(await readLeaderboard(page)).toBeNull();
 
     // 다시 연습을 시작해 패배 열(X=2)에 세로 쌍을 계속 떨어뜨려 진다.
     await openPracticeDifficulty(page);
     await page.keyboard.press('Enter');
     await expect.poll(async () => {
-      const state = await page.evaluate(() => window.WebPuyo.getScreenState());
+      const state = await page.evaluate(() => window.PuyoW.getScreenState());
       if (state.playerCanControl) {
         await page.keyboard.down('ArrowDown');
         await page.waitForTimeout(300);
@@ -172,7 +172,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
       }
       return state.screen;
     }, { timeout: 60000, intervals: [100] }).toBe('game_over');
-    const colorCount = await page.evaluate(() => window.WebPuyo.getSelectedColorCount());
+    const colorCount = await page.evaluate(() => window.PuyoW.getSelectedColorCount());
     const saved = await readLeaderboard(page);
     const list = saved.records.practice[String(colorCount)];
     expect(list).toHaveLength(1);
@@ -183,7 +183,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
 
   /** 메인 메뉴 좌측 하단 버튼의 문구 좌표를 모은다. */
   async function collectBottomLeftButtons(page) {
-    const labels = await page.evaluate(() => ({ replay: window.WebPuyo.translate('리플레이 재생'), leaderboard: window.WebPuyo.translate('리더보드') }));
+    const labels = await page.evaluate(() => ({ replay: window.PuyoW.translate('리플레이 재생'), leaderboard: window.PuyoW.translate('리더보드') }));
     await page.evaluate(() => { window.testCanvasTextCalls = []; });
     await expect.poll(() => page.evaluate(() => window.testCanvasTextCalls.length)).toBeGreaterThan(0);
     return page.evaluate((names) => {
@@ -237,7 +237,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
           puzzle: { 3: [{ name: 'Z', score: 1 }] }
         }
       }));
-      return window.WebPuyo.leaderboard.getData();
+      return window.PuyoW.leaderboard.getData();
     });
     expect(data.version).toBe(2);
     expect(Object.keys(data.records.standard)).toEqual(['hard']);
@@ -249,8 +249,8 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     expect(data.records.standard.hard['4'].Kimaris[0].recordedAt).toBeNull();
     expect(data.records.puzzle).toBeUndefined();
     expect(data.legacy).toBeUndefined();
-    expect(await page.evaluate(() => window.WebPuyo.leaderboard.getDifficulties().map((entry) => entry.key))).toEqual(['easy', 'normal', 'hard', 'extreme']);
-    const opponents = await page.evaluate(() => window.WebPuyo.leaderboard.getOpponents().map((entry) => entry.classType));
+    expect(await page.evaluate(() => window.PuyoW.leaderboard.getDifficulties().map((entry) => entry.key))).toEqual(['easy', 'normal', 'hard', 'extreme']);
+    const opponents = await page.evaluate(() => window.PuyoW.leaderboard.getOpponents().map((entry) => entry.classType));
     expect(opponents).toContain('Andromalius');
     expect(opponents).not.toContain('Solomon');
     expect(opponents).toEqual(expect.arrayContaining(['Oriax', 'Amii', 'Ose', 'Gremory', 'Orobas', 'Murmur', 'Caim', 'Alokes']));
@@ -267,7 +267,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
           practice: { 3: [{ name: 'Solo', score: 30 }] }
         }
       }));
-      return window.WebPuyo.leaderboard.getData();
+      return window.PuyoW.leaderboard.getData();
     });
     expect(data.version).toBe(2);
     expect(data.records.standard).toBeUndefined();

@@ -40,7 +40,7 @@ puyow.js 는 CDN으로도 사용할 수 있습니다.
 
 ## 라이브러리 개요
 
-`puyow.js`는 ES Module로 작성되어 있으며, 기본 내보내기(`export default`)와 이름 있는 내보내기(`PuyoW`, `WebPuyo`)로 같은 API 객체를 공개하고 브라우저에서는 `window.PuyoW`에도 등록합니다. 일반 `<script>`나 CommonJS(`require`)에서는 Webpack 번들 `src/bundle/puyow.bundle.js`를 사용합니다. `Enemy`는 CPU 조작 알고리즘과 게임 화면 테마를 넣기 위한 기본 클래스입니다. 메인 화면에서 게임 시작 → 도장깨기 → 규칙을 선택하면 적 선택 화면이 열리며, 외부 파일에서 등록한 상대를 선택해 대전합니다. `sortPriority` 멤버 변수의 기본값은 `1`이며, 작은 값의 적이 적 선택 화면에서 왼쪽에 표시됩니다.
+`puyow.js`는 ES Module로 작성되어 있으며, 기본 내보내기(`export default`)와 이름 있는 내보내기(`PuyoW`)로 같은 API 객체를 공개하고 브라우저에서는 `window.PuyoW`에도 등록합니다. 예전 이름 `WebPuyo`(이름 있는 내보내기·`window.WebPuyo`)도 같은 객체를 가리키는 호환용 별칭으로 남아 있지만, 새 코드에서는 `PuyoW`를 사용하세요. 일반 `<script>`나 CommonJS(`require`)에서는 Webpack 번들 `src/bundle/puyow.bundle.js`를 사용합니다. `Enemy`는 CPU 조작 알고리즘과 게임 화면 테마를 넣기 위한 기본 클래스입니다. 메인 화면에서 게임 시작 → 도장깨기 → 규칙을 선택하면 적 선택 화면이 열리며, 외부 파일에서 등록한 상대를 선택해 대전합니다. `sortPriority` 멤버 변수의 기본값은 `1`이며, 작은 값의 적이 적 선택 화면에서 왼쪽에 표시됩니다.
 
 `Enemy`에는 선택 화면 공개 상태를 위한 boolean 멤버 변수도 있습니다. 둘 다 기본값은 `false`입니다.
 

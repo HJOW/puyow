@@ -22,7 +22,7 @@
 import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 126;
+const BUILDNO = 127;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -1171,7 +1171,7 @@ const TOGETHER_RULE_OPTIONS = [
 /** "너랑 나랑" 양쪽 플레이어의 표시 이름이다. 언어와 무관하게 같은 표기를 사용한다. @type {string[]} */
 const TOGETHER_PLAYER_NAMES = ['1P', '2P'];
 /** 브라우저 전역·ES Module·CommonJS 번들로 공개할 라이브러리 API다. @type {object|null} */
-let WebPuyo = null;
+let PuyoW = null;
 
 /**
  * 0 이상 1 미만의 난수를 반환한다.
@@ -17243,7 +17243,7 @@ function getScreenState() {
  * @returns {void}
  */
 function showMessage(message, color = 'white', duration = 2000, backgroundColor = null) {
-    if (!initialized || !context) throw new Error('메시지를 표시하려면 먼저 WebPuyo.initialize()를 호출해야 합니다.');
+    if (!initialized || !context) throw new Error('메시지를 표시하려면 먼저 PuyoW.initialize()를 호출해야 합니다.');
     if (typeof message !== 'string') throw new TypeError('message는 문자열이어야 합니다.');
     if (typeof color !== 'string') throw new TypeError('color는 문자열이어야 합니다.');
     if (typeof duration !== 'number' || !Number.isFinite(duration) || duration < 0) throw new RangeError('duration은 0 이상의 유한한 숫자여야 합니다.');
@@ -17310,7 +17310,7 @@ function resolveTextDialog(value) {
  * @returns {Promise<boolean>} 확인은 true, 취소는 false
  */
 function askConfirm(message) {
-    if (!initialized || !context) throw new Error('확인 대화상자를 표시하려면 먼저 WebPuyo.initialize()를 호출해야 합니다.');
+    if (!initialized || !context) throw new Error('확인 대화상자를 표시하려면 먼저 PuyoW.initialize()를 호출해야 합니다.');
     if (typeof message !== 'string') throw new TypeError('message는 문자열이어야 합니다.');
     return requestConfirmDialog(message);
 }
@@ -17528,7 +17528,7 @@ function drawTextDialog() {
  * @returns {Promise<string|null>} 텍스트 입력 시 그 내용, 취소 시 null
  */
 function askText(message, multiline, maxLength = TEXT_DIALOG_DEFAULT_MAX_LENGTH) {
-    if (!initialized || !context) throw new Error('텍스트 입력 대화상자를 표시하려면 먼저 WebPuyo.initialize()를 호출해야 합니다.');
+    if (!initialized || !context) throw new Error('텍스트 입력 대화상자를 표시하려면 먼저 PuyoW.initialize()를 호출해야 합니다.');
     if (typeof message !== 'string') throw new TypeError('message는 문자열이어야 합니다.');
     if (multiline !== undefined && multiline !== null && typeof multiline !== 'boolean') throw new TypeError('multiline은 boolean 또는 null이어야 합니다.');
     if (!Number.isInteger(maxLength) || maxLength < 1 || maxLength > TEXT_DIALOG_IMPORT_MAX_LENGTH) throw new TypeError(`maxLength는 1~${TEXT_DIALOG_IMPORT_MAX_LENGTH} 사이의 정수여야 합니다.`);
@@ -22601,7 +22601,7 @@ const commonFunctions = Object.freeze({
     warningUnits
 });
 
-WebPuyo = {
+PuyoW = {
     Enemy,
     OnnxEnemy,
     beginWorkerSearchTurn,
@@ -22735,10 +22735,10 @@ WebPuyo = {
     get commonSoundPool() { return commonSoundPool; }
 };
 if (typeof window !== 'undefined') {
-    window.WebPuyo = WebPuyo;
-    window.PuyoW   = WebPuyo; // 추후 WebPuyo 대신 PuyoW 이름으로 변경 예정
+    window.PuyoW   = PuyoW;
+    window.WebPuyo = PuyoW; // 예전 이름(WebPuyo)을 쓰는 외부 코드와의 호환용 별칭
 }
 
-// CommonJS(module.exports) 공개는 Webpack 번들의 UMD 래퍼가 맡는다.
-export { WebPuyo, WebPuyo as PuyoW };
-export default WebPuyo;
+// CommonJS(module.exports) 공개는 Webpack 번들의 UMD 래퍼가 맡는다. WebPuyo는 호환용 별칭이다.
+export { PuyoW, PuyoW as WebPuyo };
+export default PuyoW;

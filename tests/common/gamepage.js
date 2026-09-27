@@ -96,7 +96,7 @@ export function setupGamePage() {
     await disableLocalAiModel(page);
     await hideReplayPage(page);
     await page.goto(GAME_PAGE);
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   });
 }
 
@@ -109,7 +109,7 @@ export function setupGamePage() {
 export async function allowReplayPage(page) {
   await page.unroute('**/replay.html');
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo?.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW?.getScreenState().screen)).toBe('initial_title');
 }
 
 /**
@@ -131,12 +131,12 @@ export async function enterMainMenu(page) {
   // 첫 실행 또는 오래된 저장값은 메인 메뉴 위에 필수 이름 입력 대화상자를 띄운다.
   // 기존 시나리오는 메뉴 동작 자체를 검증하므로 여기서 기본 테스트 이름을 한 번만 입력한다.
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
-  const promptTitle = await page.evaluate(() => window.WebPuyo.translate('이름 또는 닉네임을 입력하세요'));
+  const promptTitle = await page.evaluate(() => window.PuyoW.translate('이름 또는 닉네임을 입력하세요'));
   if (await page.evaluate(({ title, start }) => window.testCanvasTexts.slice(start).includes(title), { title: promptTitle, start: canvasTextCount })) {
     await page.keyboard.type('PLAYER 1');
     await page.keyboard.press('Enter');
   }
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
 }
 
 /** 도장깨기 하위 단계에서 각 룰로 포커스를 옮기는 방향키다. 기본 룰에서 시작하며, 아래 행은 피버 룰 (시작)·피버 룰·피버 룰 (완화) 순서다(BUILDNO 120). */
@@ -154,11 +154,11 @@ const DOJO_RULE_KEYS = {
  */
 export async function openDojoOpponentSelect(page, rule = 'standard') {
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   for (const key of DOJO_RULE_KEYS[rule]) await page.keyboard.press(key);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe(rule === 'standard' ? 'opponent_select' : 'fever_opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe(rule === 'standard' ? 'opponent_select' : 'fever_opponent_select');
 }
 
 /**
@@ -167,18 +167,18 @@ export async function openDojoOpponentSelect(page, rule = 'standard') {
  */
 export async function openPracticeDifficulty(page) {
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('practice_difficulty');
 }
 
 export async function openSettings(page) {
   await enterMainMenu(page);
   for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('settings');
 }
 
 export // 가상 조이스틱 테스트는 조작할 뿌요와 빈 화면이 모두 필요하므로 연습 모드를 쓴다.
@@ -187,20 +187,20 @@ async function startPracticeWithVirtualController(page, size = 'normal') {
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { virtualController } }));
   }, size);
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl), { timeout: 15000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.playerCanControl), { timeout: 15000 }).toBe(true);
   const box = await page.locator('[data-puyow-canvas="2d"]').boundingBox();
   return {
     point: (logicalX, logicalY) => ({ x: box.x + logicalX * box.width / 1280, y: box.y + logicalY * box.height / 720 }),
-    activeX: () => page.evaluate(() => window.WebPuyo.getGameState().player.active.x),
-    activeY: () => page.evaluate(() => window.WebPuyo.getGameState().player.active.y),
+    activeX: () => page.evaluate(() => window.PuyoW.getGameState().player.active.x),
+    activeY: () => page.evaluate(() => window.PuyoW.getGameState().player.active.y),
   };
 }
 
@@ -216,7 +216,7 @@ export async function expectDefeatCellMarkers(page, columns) {
 
 export /** 현재 브라우저 언어로 번역된 문구를 얻는다. 테스트 실행 언어가 달라도 같은 버튼을 찾을 수 있다. */
 function translated(page, korean) {
-  return page.evaluate((text) => window.WebPuyo.translate(text), korean);
+  return page.evaluate((text) => window.PuyoW.translate(text), korean);
 }
 
 export /** 리플레이 설정을 켠 상태로 저장 데이터를 다시 읽는다. */
@@ -225,7 +225,7 @@ async function enableReplayFeature(page) {
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { useReplayFeature: true } }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 }
 
 export /** 메인 메뉴 좌측 하단의 리플레이 재생 버튼을 마우스로 누른다. */
@@ -277,5 +277,5 @@ export async function cancelTextDialog(page) {
 export async function releaseNetworkInterception(page) {
   await page.unrouteAll();
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo?.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW?.getScreenState().screen)).toBe('initial_title');
 }

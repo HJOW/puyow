@@ -17,7 +17,7 @@ setupGamePage();
 // 실행 제한 시간이 있는 VM에서 검사한다. 공개 API를 늘리지 않고 테스트 안에서만 솔로몬을 노출한다.
 // puyow.js는 ES Module이므로 export 문을 지운 일반 스크립트로 바꿔 실행한다.
 const source = readClassicScript('src/js/puyow.js');
-const exportAnchor = 'WebPuyo = {';
+const exportAnchor = '\nPuyoW = {';
 
 function createContext(enemyName) {
   expect(source.includes(exportAnchor)).toBe(true);
@@ -156,7 +156,7 @@ for (const runtime of ['원본', '번들']) {
         });
       });
       await page.reload();
-      await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+      await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
       // 원본 모듈 그래프에서도 json5.js·three.module.min.js를 import해 JSON5 파싱과 전역 THREE가 동작한다.
       expect(await page.evaluate(() => window.THREE?.REVISION)).toBe('186');
       expect(await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname)))
@@ -173,14 +173,14 @@ for (const runtime of ['원본', '번들']) {
       for (let y = 0; y <= 10; y += 1) player.board[y][1] = 'red';
       for (let y = 0; y <= 11; y += 1) player.board[y][3] = 'blue';
       // puyow.html이 실제로 읽은 코드와 ONNX 추론 적(무르무르)의 상속 경로를 검사한다.
-      const controller = Object.create(window.WebPuyo.Murmur.prototype);
+      const controller = Object.create(window.PuyoW.Murmur.prototype);
       const result = controller.getUsablePlacements(player);
       await new Promise((resolve) => requestAnimationFrame(resolve));
       return result;
     });
     expect(candidates).toEqual([{ x: 2, rotation: 0 }]);
     await page.reload();
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   });
 }
 
@@ -190,7 +190,7 @@ test('설정의 AI 서비스 제공자는 LM Studio를 라디오로 표시하고
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: 'PLAYER 1', aiProvider: 'OpenAI' } }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   // 지원을 제거한 OpenAI·Prompt API와 알 수 없는 값은 모두 아무것도 선택하지 않은 상태가 된다.
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('');
   await openSettings(page);
@@ -200,7 +200,7 @@ test('설정의 AI 서비스 제공자는 LM Studio를 라디오로 표시하고
 
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 600, y: 316 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('LM Studio');
 });
 
@@ -212,7 +212,7 @@ test('제공자를 고르지 않으면 AI 입력란과 API 테스트를 건너�
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
 
   // 제공자를 고르지 않은 상태의 URL·키·모델명 입력란은 클릭과 키 입력을 받지 않는다.
@@ -230,7 +230,7 @@ test('제공자를 고르지 않으면 AI 입력란과 API 테스트를 건너�
   });
 
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
@@ -254,7 +254,7 @@ test('Local AI를 사용할 수 있으면 기본값으로 선택되고 서버 �
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: 'PLAYER 1', aiProvider: 'OpenAI', aiApiKey: 'openai-key', aiModel: 'gpt-5.6-luna' } }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   // 지원을 제거한 제공자는 미선택 상태가 되고, Local AI를 쓸 수 있으므로 그 기본값이 대신 채워진다.
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings)).toMatchObject({
     aiProvider: 'Local AI', aiApiURL: 'http://localhost:9891', aiApiKey: 'localhost', aiModel: 'puyow',
@@ -275,7 +275,7 @@ test('Local AI를 사용할 수 있으면 기본값으로 선택되고 서버 �
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: localAiLabelX, y: 316 } });
 
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings)).toMatchObject({
     aiProvider: 'Local AI', aiApiURL: 'http://localhost:9891', aiApiKey: 'localhost', aiModel: 'puyow',
   });
@@ -285,7 +285,7 @@ test('Local AI를 사용할 수 있으면 기본값으로 선택되고 서버 �
   // 게임 시작 → 도장깨기 → 기본 룰 순서로 적 선택 화면에 들어간다(BUILDNO 114부터의 2단계 메뉴).
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(true);
 });
 
@@ -309,7 +309,7 @@ test('Local AI는 현재 서버의 Chat Completions로 AI API 테스트를 보�
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Local AI'))).toBe(true);
   // Local AI는 입력 세 행을 건너뛰므로 제공자(7) 다음이 AI API 테스트(11)다.
@@ -454,28 +454,28 @@ test('Node 서버의 Local AI로 극한 난이도 솔로몬과 끝까지 대전�
   const localModelInfo = page.waitForResponse((response) => new URL(response.url()).pathname === '/apis/localmodelinfo');
   await page.reload();
   expect(await (await localModelInfo).json()).toEqual({ available: true });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('Local AI');
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(true);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty().key)).toBe('extreme');
+  expect(await page.evaluate(() => window.PuyoW.getSelectedDifficulty().key)).toBe('extreme');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
   await expect.poll(() => chatResponses.length, { timeout: 20000 }).toBeGreaterThanOrEqual(2);
 
   // 조작 없이 계속 내리면 사용자가 먼저 패배해 결과 화면과 역학습 finish 요청까지 진행된다.
   await page.keyboard.down('ArrowDown');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 60000 }).toBe('game_over');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 60000 }).toBe('game_over');
   await page.keyboard.up('ArrowDown');
 
   await expect.poll(async () => (await Promise.all(learningResponses)).some(({ body }) => body.trained === false && body.reason)).toBe(true);
@@ -493,7 +493,7 @@ test('로컬 모델을 사용할 수 없으면 Local AI 선택지를 숨기고 �
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { aiProvider: 'Local AI' } }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   // 사용할 수 없게 된 제공자는 다른 제공자로 옮기지 않고 미선택 상태로 되돌린다.
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.aiProvider)).toBe('');
@@ -511,7 +511,7 @@ test('로컬 모델을 사용할 수 없으면 Local AI 선택지를 숨기고 �
   // 게임 시작 → 도장깨기 → 기본 룰 순서로 적 선택 화면에 들어간다(BUILDNO 114부터의 2단계 메뉴).
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.waitForTimeout(100);
   expect(await page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(false);
 });
@@ -524,7 +524,7 @@ test('빈 사용 모델명은 기본값으로 보정되고 API 테스트 버튼�
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('gpt-5.6-luna'))).toBe(true);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
@@ -549,7 +549,7 @@ test('AI API 테스트는 저장된 LM Studio URL과 토큰으로 Chat Completio
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   let request = null;
   await page.route('http://192.168.0.5/v1/chat/completions', async (route) => {
     request = { body: route.request().postDataJSON(), authorization: route.request().headers().authorization };
@@ -584,7 +584,7 @@ test('솔로몬은 성공한 AI API 테스트 뒤 현재 접속에서만 안드�
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await page.route('http://lmstudio.local/v1/chat/completions', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content: '{"success":true}' } }] }) });
   });
@@ -599,7 +599,7 @@ test('솔로몬은 성공한 AI API 테스트 뒤 현재 접속에서만 안드�
   // 게임 시작 → 도장깨기 → 기본 룰 순서로 적 선택 화면에 들어간다(BUILDNO 114부터의 2단계 메뉴).
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => {
     const names = window.testCanvasTextCalls.filter(({ text }) => text === 'Solomon' || text === 'Andromalius');
     const solomonX = Math.min(...names.filter(({ text }) => text === 'Solomon').map(({ x }) => x));
@@ -608,12 +608,12 @@ test('솔로몬은 성공한 AI API 테스트 뒤 현재 접속에서만 안드�
   })).toBe(true);
 
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.waitForTimeout(100);
   expect(await page.evaluate(() => window.testCanvasTexts.includes('Solomon'))).toBe(false);
 });
@@ -626,7 +626,7 @@ test('솔로몬은 매 턴 저장된 서버와 토큰으로 구조화된 배치�
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   const requests = [];
   await page.route('http://lmstudio.local/v1/chat/completions', async (route) => {
     requests.push({ body: route.request().postDataJSON(), authorization: route.request().headers().authorization });
@@ -647,7 +647,7 @@ test('솔로몬은 매 턴 저장된 서버와 토큰으로 구조화된 배치�
   await page.keyboard.press('Enter');
   await expect.poll(() => requests.length, { timeout: 15000 }).toBeGreaterThanOrEqual(2);
   await expect.poll(() => page.evaluate(() => {
-    const active = window.WebPuyo.getGameState()?.opponent.active;
+    const active = window.PuyoW.getGameState()?.opponent.active;
     return active ? { x: active.x, rotation: active.rotation } : null;
   }), { timeout: 15000 }).toEqual({ x: 4, rotation: 1 });
 
@@ -678,7 +678,7 @@ test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 �
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
   const prompts = [];
   await page.route('http://localhost:9891/v1/chat/completions', async (route) => {
@@ -699,15 +699,15 @@ test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 �
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty().key)).toBe('extreme');
+  expect(await page.evaluate(() => window.PuyoW.getSelectedDifficulty().key)).toBe('extreme');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
 
   await expect.poll(() => prompts.length, { timeout: 15000 }).toBeGreaterThanOrEqual(1);
   const sessionId = prompts[0].learningSessionId;
@@ -723,7 +723,7 @@ test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 �
 
   // 조작 없이 계속 내리면 스폰 열이 쌓여 사용자가 먼저 패배하고 결과 화면으로 넘어간다.
   await page.keyboard.down('ArrowDown');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 60000 }).toBe('game_over');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 60000 }).toBe('game_over');
   await page.keyboard.up('ArrowDown');
 
   await expect.poll(() => learningRequests.filter(({ body }) => body.event === 'finish').length, { timeout: 15000 }).toBe(1);
@@ -758,7 +758,7 @@ test('역으로 모델 학습이 꺼져 있으면 대전이 끝나도 솔로몬 
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
   const prompts = [];
   await page.route('http://localhost:9891/v1/chat/completions', async (route) => {
@@ -778,18 +778,18 @@ test('역으로 모델 학습이 꺼져 있으면 대전이 끝나도 솔로몬 
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
 
   // 조작 없이 계속 내리면 스폰 열이 쌓여 사용자가 먼저 패배하고 대전이 끝까지 진행된다.
   await page.keyboard.down('ArrowDown');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 60000 }).toBe('game_over');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 60000 }).toBe('game_over');
   await page.keyboard.up('ArrowDown');
 
   // `역으로 모델 학습`이 꺼져 있으면 솔로몬 자신의 수를 포함해 이 기능 전체가 대상에서 빠져야 하므로,
@@ -807,7 +807,7 @@ test('LM Studio 제공자와 극한이 아닌 난이도의 솔로몬 프롬프�
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   const prompts = [];
   await page.route('http://lmstudio.local/v1/chat/completions', async (route) => {
     const body = route.request().postDataJSON();
@@ -826,16 +826,16 @@ test('LM Studio 제공자와 극한이 아닌 난이도의 솔로몬 프롬프�
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   // 극한 난이도로 시작하더라도 Local AI 제공자가 아니면 학습 세션을 만들지 않는다.
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty().key)).toBe('extreme');
+  expect(await page.evaluate(() => window.PuyoW.getSelectedDifficulty().key)).toBe('extreme');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => prompts.length, { timeout: 15000 }).toBeGreaterThanOrEqual(2);
-  expect(await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty.key)).toBe('extreme');
+  expect(await page.evaluate(() => window.PuyoW.getGameState().aiDifficulty.key)).toBe('extreme');
 
   expect(JSON.parse(prompts[1]).learningSessionId).toBeUndefined();
   // 배치 후보 목록도 Local AI 서버 전용이므로 다른 제공자의 프롬프트에는 넣지 않는다.
@@ -850,7 +850,7 @@ test('솔로몬의 잘못된 API 배치는 게임을 일시정지하고 현재 �
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   let requestCount = 0;
   await page.route('http://lmstudio.local/v1/chat/completions', async (route) => {
     requestCount += 1;
@@ -869,7 +869,7 @@ test('솔로몬의 잘못된 API 배치는 게임을 일시정지하고 현재 �
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 15000 }).toBe('paused');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 15000 }).toBe('paused');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => [
     '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.',
     'Solomon AI response error: continuing with the fallback AI.',
@@ -886,7 +886,7 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await page.route('http://lmstudio.local/v1/chat/completions', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content: '{"success":true}' } }] }) });
   });
@@ -917,7 +917,7 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
   await page.keyboard.press('Enter');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
 
   // 기본 낙하 속도로는 뿌요가 바닥까지 24초쯤 걸려 6초짜리 API 타임아웃이 먼저 터진다. 경과 시간을
   // 15분으로 옮겨 낙하 속도를 16배로 올려야 응답 대기 중 착지가 실제로 일어난다. 배율은
@@ -927,16 +927,16 @@ test('솔로몬은 응답 대기 중 뿌요가 착지하면 해당 요청을 취
   // "6초 안에 착지할 만큼 빠른 속도"이기 때문이다. 더 올리면 요청을 보내기도 전에 착지해 의도한
   // 착지 취소 경로를 지나지 않을 수 있다.
   const fastFallSpeed = await page.evaluate(() => {
-    window.WebPuyo.setGameElapsed(15 * 60000);
-    return window.WebPuyo.common.getPlayerFallSpeedMultiplier(window.WebPuyo.getGameState().elapsed);
+    window.PuyoW.setGameElapsed(15 * 60000);
+    return window.PuyoW.common.getPlayerFallSpeedMultiplier(window.PuyoW.getGameState().elapsed);
   });
   expect(fastFallSpeed).toBe(16);
 
   await expect.poll(() => page.evaluate(() => window.testSolomonAbortCount), { timeout: 15000 }).toBeGreaterThanOrEqual(1);
   // 타임아웃이 아니라 뿌요 착지(contact)로 취소되어야 이 테스트가 의도한 경로를 지난 것이다.
   expect(await page.evaluate(() => window.testSolomonAbortReasons)).toContain('contact');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent.placedPairCount), { timeout: 15000 }).toBeGreaterThanOrEqual(1);
-  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).not.toBe('paused');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent.placedPairCount), { timeout: 15000 }).toBeGreaterThanOrEqual(1);
+  expect(await page.evaluate(() => window.PuyoW.getScreenState().screen)).not.toBe('paused');
   await expect.poll(() => page.evaluate(() => window.testSolomonRequestCount), { timeout: 15000 }).toBeGreaterThanOrEqual(2);
 });
 
@@ -948,7 +948,7 @@ test('저장하지 않은 AI 설정은 API 테스트 요청 대신 저장 안내
     }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   let requestCount = 0;
   await page.route('http://lmstudio.local/v1/chat/completions', async (route) => {
     requestCount += 1;
@@ -971,7 +971,7 @@ test('저장하지 않은 AI 설정은 API 테스트 요청 대신 저장 안내
 test('역으로 모델 학습 체크박스는 키보드와 마우스로 토글되며 settings.reverseLearning으로 저장된다', async ({ page }) => {
   await openSettings(page);
   // 저장값이 없으면 꺼진 상태로 시작한다.
-  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+  expect(await page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('settings');
 
   // 가로방향 고정까지 내려간 뒤 오른쪽 방향키로 리플레이 사용을 거쳐 역학습 체크박스에 닿는다.
   for (let index = 0; index < 10; index += 1) await page.keyboard.press('ArrowDown');
@@ -983,14 +983,14 @@ test('역으로 모델 학습 체크박스는 키보드와 마우스로 토글�
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
 
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings)).toMatchObject({
     reverseLearning: true, useReplayFeature: false, landscapeOrientationLocked: false,
   });
 
   // 마우스로 같은 체크박스를 눌러 끄고 저장하면 false로 되돌아간다.
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('settings');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 789, y: 526 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 480, y: 671 } });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.reverseLearning)).toBe(false);
@@ -1033,15 +1033,15 @@ test('ONNX 런타임이 없으면 무르무르는 적 선택 화면에서 빠지
   // ort.all.min.js를 빈 응답으로 바꿔 ONNX 런타임이 없는 페이지와 같은 상태를 만든다.
   await page.route('**/js/ort.all.min.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   expect(await page.evaluate(() => typeof window.ort)).toBe('undefined');
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 17; index += 1) await page.keyboard.press('ArrowRight');
@@ -1054,14 +1054,14 @@ test('ONNX 런타임이 없어도 이긴 전적이 있는 무르무르는 갤러
   await seedAllOpponentsCleared(page);
   await page.route('**/js/ort.all.min.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   expect(await page.evaluate(() => typeof window.ort)).toBe('undefined');
 
   await enterMainMenu(page);
   // 메인 메뉴 0: 게임 시작, 1: 너랑 나랑, 2: 시뮬레이터, 3: 플레이 방법, 4: 구경, 5: 갤러리
   for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('gallery');
   // 갤러리 유형 0: 일반뿌요, 1: 예고뿌요, 2: 적
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
@@ -1074,33 +1074,33 @@ test('ONNX 런타임이 없어도 이긴 전적이 있는 무르무르는 갤러
 test('구경 모드는 ONNX 추론 적을 선정 대상에서 아예 제외한다', async ({ page }) => {
   await page.evaluate(() => {
     // 두 ONNX 적을 목록 맨 앞에 두고 무작위를 고정하면, 제외하지 않을 때 반드시 뽑히는 자리에 놓인다.
-    class OnnxWatchEnemyA extends window.WebPuyo.OnnxEnemy {
+    class OnnxWatchEnemyA extends window.PuyoW.OnnxEnemy {
       constructor() { super(); this.sortPriority = -1002; }
       getClassType() { return 'OnnxWatchEnemyA'; }
       getName() { return 'ONNX 구경 적 A'; }
     }
-    class OnnxWatchEnemyB extends window.WebPuyo.OnnxEnemy {
+    class OnnxWatchEnemyB extends window.PuyoW.OnnxEnemy {
       constructor() { super(); this.sortPriority = -1001; }
       getClassType() { return 'OnnxWatchEnemyB'; }
       getName() { return 'ONNX 구경 적 B'; }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new OnnxWatchEnemyA() });
-    window.WebPuyo.registerOpponent({ createController: () => new OnnxWatchEnemyB() });
+    window.PuyoW.registerOpponent({ createController: () => new OnnxWatchEnemyA() });
+    window.PuyoW.registerOpponent({ createController: () => new OnnxWatchEnemyB() });
     // 진행도와 관계없이 구경 메뉴를 열고 모든 적을 후보로 삼도록 지금 세션에 바로 적용한다.
-    window.WebPuyo.addCode('observation');
+    window.PuyoW.addCode('observation');
     Math.random = () => 0;
   });
   await enterMainMenu(page);
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('watch_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.watch), { timeout: 20000 }).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.watch), { timeout: 20000 }).toBe(true);
 
   const names = await page.evaluate(() => {
-    const state = window.WebPuyo.getGameState();
+    const state = window.PuyoW.getGameState();
     return [state.player.name, state.opponent.name];
   });
   // 후보에서 아예 빠지므로 고정된 무작위값으로도 양쪽 모두 ONNX 적이 뽑히지 않는다.
@@ -1118,7 +1118,7 @@ test('무르무르는 ONNX 모델을 불러온 뒤 대전하고, 모델을 못 �
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], onnxWarningAcknowledged: true }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
   // 모델 요청을 실패시키면 대전을 시작하지 않고 적 선택 화면으로 돌아간다.
   // 로딩 중 상태를 관찰할 수 있도록 응답을 잠시 늦춘다.
@@ -1128,21 +1128,21 @@ test('무르무르는 ONNX 모델을 불러온 뒤 대전하고, 모델을 못 �
   });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 18; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('무르무르');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('무르무르');
   // 모델을 다 불러오기 전에는 카운트다운이 줄지 않고 로딩 안내만 보여 준다.
-  expect(await page.evaluate(() => window.WebPuyo.getGameState()?.countdown)).toBe(3000);
+  expect(await page.evaluate(() => window.PuyoW.getGameState()?.countdown)).toBe(3000);
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => text.includes('...') || text.includes('…')))).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('opponent_select');
-  expect(await page.evaluate(() => window.WebPuyo.getGameState())).toBe(null);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 20000 }).toBe('opponent_select');
+  expect(await page.evaluate(() => window.PuyoW.getGameState())).toBe(null);
 
   // 모델 요청을 되살리면 로딩이 끝난 뒤 카운트다운이 진행되고 무르무르가 실제로 뿌요를 놓는다.
   await page.unroute('**/onnx/model01.onnx');
@@ -1151,8 +1151,8 @@ test('무르무르는 ONNX 모델을 불러온 뒤 대전하고, 모델을 못 �
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('무르무르');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThan(2);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('무르무르');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThan(2);
 });
 
 test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때만 불안정 안내에서 계속을 골라야 대전한다', async ({ page }) => {
@@ -1166,10 +1166,10 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
     await route.fulfill({ status: 404, body: '' });
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
-  const warning = await page.evaluate(() => window.WebPuyo.translate('딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.'));
-  const continueLabel = await page.evaluate(() => window.WebPuyo.translate('계속'));
+  const warning = await page.evaluate(() => window.PuyoW.translate('딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.'));
+  const continueLabel = await page.evaluate(() => window.PuyoW.translate('계속'));
   // 안내 문구는 확인창 폭에 맞춰 여러 줄로 나눠 그리므로, 이어 그린 줄을 공백 없이 합쳐 비교한다.
   const clearCanvasTexts = () => page.evaluate(() => { window.testCanvasTexts.length = 0; window.testCanvasTextCalls.length = 0; });
   const isWarningDrawn = () => page.evaluate((message) => window.testCanvasTexts.join('').replace(/\s/g, '').includes(message.replace(/\s/g, '')), warning);
@@ -1179,7 +1179,7 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
     window.testCanvasTextCalls.length = 0;
     await new Promise((resolve) => { requestAnimationFrame(() => requestAnimationFrame(resolve)); });
     const calls = [...window.testCanvasTextCalls];
-    const nameCall = calls.find((call) => call.text === window.WebPuyo.translate(name) && call.y === y);
+    const nameCall = calls.find((call) => call.text === window.PuyoW.translate(name) && call.y === y);
     if (!nameCall) return null;
     // 이웃 카드는 180px 떨어져 있으므로 110px 안쪽의 마크만 이 이름의 것으로 본다.
     return calls.some((call) => call.text === '!' && Math.abs(call.y - nameCall.y) <= 15 && call.x > nameCall.x && call.x - nameCall.x < 110);
@@ -1187,10 +1187,10 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   // 모델 미사용 적과 ONNX 적을 각각 선택해 실제로 보이는 이름 옆 마크를 확인한다.
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -1214,7 +1214,7 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
   await page.keyboard.press('Enter');
   await expect.poll(isWarningDrawn).toBe(true);
   expect(await page.evaluate((label) => window.testCanvasTexts.includes(label), continueLabel)).toBe(true);
-  expect(await page.evaluate(() => window.WebPuyo.getGameState())).toBe(null);
+  expect(await page.evaluate(() => window.PuyoW.getGameState())).toBe(null);
 
   // 취소를 고르면 대전 없이 적 선택 화면에 머물고 확인 기록도 남기지 않는다.
   await page.keyboard.press('ArrowRight');
@@ -1222,8 +1222,8 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
   await clearCanvasTexts();
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.length)).toBeGreaterThan(0);
   expect(await isWarningDrawn()).toBe(false);
-  expect(await page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
-  expect(await page.evaluate(() => window.WebPuyo.getGameState())).toBe(null);
+  expect(await page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
+  expect(await page.evaluate(() => window.PuyoW.getGameState())).toBe(null);
   expect(await isWarningAcknowledged()).toBe(false);
 
   // 포커스는 그대로 시작 버튼이다. 다시 시작해 계속을 고르면 기록을 저장하고 대전이 시작된다.
@@ -1231,25 +1231,25 @@ test('ONNX 추론 적은 이름 옆에 느낌표를 달고, 처음 시작할 때
   await expect.poll(isWarningDrawn).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(isWarningAcknowledged).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('무르무르');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('무르무르');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 20000 }).toBe('opponent_select');
 
   // 새로 접속해도 기록이 남아 있어 안내 없이 곧바로 대전한다.
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 18; index += 1) await page.keyboard.press('ArrowRight');
   await clearCanvasTexts();
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('무르무르');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.name), { timeout: 15000 }).toBe('무르무르');
   expect(await isWarningDrawn()).toBe(false);
 });
 
@@ -1261,7 +1261,7 @@ test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1�
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], onnxWarningAcknowledged: true }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
   // 게임 초기화가 추론을 워커로 넘겨 두었는지 확인한다. 이 설정이 없으면 wasm 연산이 메인 스레드를 막는다.
   expect(await page.evaluate(() => window.ort.env.wasm.proxy)).toBe(true);
@@ -1307,21 +1307,21 @@ test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1�
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 18; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('무르무르');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('무르무르');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
 
   // 폴백이 없으면 회전·이동·빠른 하강 없이 자연 낙하만 하므로 한 수에 20초가 넘게 걸린다.
   const startedAt = Date.now();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThanOrEqual(3);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThanOrEqual(3);
   const averageTurnMs = (Date.now() - startedAt) / 3;
   expect(averageTurnMs).toBeLessThan(15000);
   // 마감 시한을 넘긴 이전 run()이 남아 있어도 새 추론을 쌓지 않아 동시에 실행되는 세션 호출은 하나다.
@@ -1329,7 +1329,7 @@ test('ONNX 추론은 워커에서 돌아가고 마감 시한을 넘기면 앞 1�
   await expect.poll(() => page.evaluate(() => window.onnxSessionStats.inputDisposals)).toBeGreaterThan(0);
   await expect.poll(() => page.evaluate(() => window.onnxSessionStats.outputDisposals)).toBeGreaterThan(0);
   // destroy()는 대전이 빌린 세션을 반납하고, 실행 중인 추론이 끝난 뒤 ONNX 리소스를 해제한다.
-  await page.evaluate(() => window.WebPuyo.destroy());
+  await page.evaluate(() => window.PuyoW.destroy());
   await expect.poll(() => page.evaluate(() => window.onnxSessionStats.releases)).toBeGreaterThan(0);
 });
 
@@ -1340,7 +1340,7 @@ test('ONNX 추론 적은 빠른 하강 전에 받을 방해뿌요가 바뀌면 �
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], onnxWarningAcknowledged: true }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
   await page.evaluate(() => {
     // 추론마다 후보들이 받은 "받을 피해량" 입력(1035개 관측값 중 1020번, 30으로 정규화)의 최댓값을 기록한다.
@@ -1360,7 +1360,7 @@ test('ONNX 추론 적은 빠른 하강 전에 받을 방해뿌요가 바뀌면 �
       };
       return session;
     };
-    class RealtimeMurmur extends window.WebPuyo.Murmur {
+    class RealtimeMurmur extends window.PuyoW.Murmur {
       constructor() { super(); this.sortPriority = -100; }
       getClassType() { return 'RealtimeMurmur'; }
       getName() { return '실시간 재추론 테스트 무르무르'; }
@@ -1370,21 +1370,21 @@ test('ONNX 추론 적은 빠른 하강 전에 받을 방해뿌요가 바뀌면 �
         window.realtimeOnnxEnemy = this;
       }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new RealtimeMurmur() });
+    window.PuyoW.registerOpponent({ createController: () => new RealtimeMurmur() });
   });
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('실시간 재추론 테스트 무르무르');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('실시간 재추론 테스트 무르무르');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
 
   // 추론 결과로 조작 중이고 아직 빠른 하강 전인 순간에 확정 DAMAGE를 늘린다.
   await expect.poll(() => page.evaluate(() => {
@@ -1427,7 +1427,7 @@ test('ONNX 프록시 워커를 만들지 못하면 메인 스레드 재시도 �
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], onnxWarningAcknowledged: true }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
   await page.evaluate(() => {
     window.ort.InferenceSession.create = async () => {
@@ -1437,18 +1437,18 @@ test('ONNX 프록시 워커를 만들지 못하면 메인 스레드 재시도 �
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 18; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('무르무르');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.name), { timeout: 60000 }).toBe('무르무르');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.countdown), { timeout: 60000 }).toBe(0);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.placedPairCount || 0), { timeout: 60000 }).toBeGreaterThanOrEqual(1);
   // proxy 플래그를 끄지 않았으므로 이후 대전도 메인 스레드 ONNX 실행으로 바뀌지 않는다.
   expect(await page.evaluate(() => window.ort.env.wasm.proxy)).toBe(true);
 });
@@ -1471,7 +1471,7 @@ test('ONNX wasm 바이너리는 CDN을 먼저 시도한다', async ({ page }) =>
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], onnxWarningAcknowledged: true }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
   // 글루 모듈은 로컬, 큰 바이너리는 CDN으로 나눈 객체 형식이어야 한다.
   await expect.poll(() => page.evaluate(() => {
@@ -1483,10 +1483,10 @@ test('ONNX wasm 바이너리는 CDN을 먼저 시도한다', async ({ page }) =>
   // 대전을 시작하면 런타임이 그 CDN 주소로 wasm을 요청한다.
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 18; index += 1) await page.keyboard.press('ArrowRight');
@@ -1496,7 +1496,7 @@ test('ONNX wasm 바이너리는 CDN을 먼저 시도한다', async ({ page }) =>
   expect(wasmRequests.every((url) => !url.startsWith('http://localhost'))).toBe(true);
 
   // 이 더미 wasm으로는 세션을 만들 수 없으므로 안내 후 적 선택 화면으로 돌아온다.
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 60000 }).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen), { timeout: 60000 }).toBe('opponent_select');
 });
 
 test('CDN에 닿지 않으면 로컬 wasm으로 무르무르 대전을 진행한다', async ({ page }) => {
@@ -1512,23 +1512,23 @@ test('CDN에 닿지 않으면 로컬 wasm으로 무르무르 대전을 진행한
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], onnxWarningAcknowledged: true }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
   // CDN이 막히면 로컬 디렉터리 접두 경로로 되돌아간다.
   await expect.poll(() => page.evaluate(() => window.ort.env.wasm.wasmPaths)).toContain('/js/');
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   for (let index = 0; index < 18; index += 1) await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.opponent?.placedPairCount || 0), { timeout: 120000 }).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.opponent?.placedPairCount || 0), { timeout: 120000 }).toBeGreaterThanOrEqual(2);
   expect(wasmRequests.every((url) => !url.startsWith('https://cdn.jsdelivr.net/'))).toBe(true);
 });
 
@@ -1540,26 +1540,26 @@ test('CDN과 로컬 모두 wasm을 못 받으면 적 선택 화면에서만 무�
     localStorage.setItem('puyow_gallery', JSON.stringify({ warning: [], enemies: ['Murmur'] }));
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
   // ort 자체는 있지만 wasm을 못 받으므로 추론을 쓸 수 없는 상태가 된다.
   expect(await page.evaluate(() => typeof window.ort)).toBe('object');
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['안드로말리우스', 'Andromalius', 'アンドロマリウス', '安杜马利乌斯'].includes(text)))).toBe(true);
   expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['무르무르', 'Murmur', 'ムルムル', '穆尔穆尔'].includes(text)))).toBe(false);
 
   // 갤러리는 이 제한과 무관하게 이긴 전적대로 잠금이 풀려 있어야 한다.
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('gallery');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('gallery');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowDown');

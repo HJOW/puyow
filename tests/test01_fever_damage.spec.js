@@ -9,7 +9,7 @@ async function prepareDamageMatch(page, relaxed = false) {
   await page.evaluate(() => {
     Math.random = () => 0;
     window.damagePlayers = {};
-    class DamageLeftEnemy extends window.WebPuyo.Enemy {
+    class DamageLeftEnemy extends window.PuyoW.Enemy {
       constructor() { super(); this.sortPriority = -200; }
       getClassType() { return 'DamageLeftEnemy'; }
       getName() { return '피해 귀속 왼쪽 테스트 적'; }
@@ -30,14 +30,14 @@ async function prepareDamageMatch(page, relaxed = false) {
         player.tutorialHold = true;
       }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new DamageLeftEnemy() });
-    window.WebPuyo.registerOpponent({ createController: () => new DamageRightEnemy() });
-    window.WebPuyo.addCode('observation');
+    window.PuyoW.registerOpponent({ createController: () => new DamageLeftEnemy() });
+    window.PuyoW.registerOpponent({ createController: () => new DamageRightEnemy() });
+    window.PuyoW.addCode('observation');
   });
   await enterMainMenu(page);
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('watch_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
   if (relaxed) await page.keyboard.press('ArrowRight');
@@ -72,7 +72,7 @@ async function installWarningProbe(page) {
   await page.evaluate(() => {
     window.warningDraws = [];
     for (const amount of [1, 6, 30, 180]) {
-      const unit = window.WebPuyo.common.warningUnits(amount)[0];
+      const unit = window.PuyoW.common.warningUnits(amount)[0];
       const prototype = Object.getPrototypeOf(unit);
       const original = prototype.draw;
       prototype.draw = function (context, x, y, size) {
@@ -235,7 +235,7 @@ for (const delayed of [false, true]) {
     const amount = delayed ? 4 : 5;
     await advanceUntil(page, () => window.damagePlayers.a.announcedAttack > 0);
     await expectWarningLayers(page, amount, 0);
-    expect(await page.evaluate(() => window.WebPuyo.getGameState().opponent.warningPuyos)).toEqual([]);
+    expect(await page.evaluate(() => window.PuyoW.getGameState().opponent.warningPuyos)).toEqual([]);
     await advanceUntil(page, () => window.damagePlayers.a.combo === 0);
     if (delayed) {
       expect(await page.evaluate(() => window.damagePlayers.b.normalDamage)).toBe(0);
@@ -349,7 +349,7 @@ test('피버 룰 실시간 예측은 상대 피버 패턴 연쇄를 예고 묶�
   await advanceUntil(page, () => window.damagePlayers.b.phase === 'control' && !!window.damagePlayers.b.active);
   const predicted = await page.evaluate(() => {
     const { a, b } = window.damagePlayers;
-    const common = window.WebPuyo.common;
+    const common = window.PuyoW.common;
     const prediction = common.predictFeverStageChain(b);
     // 같은 조작 턴 안에서는 배치 탐색 결과를 재사용하고, 시간만 현재 위치로 다시 계산한다.
     const again = common.predictFeverStageChain(b);
@@ -376,8 +376,8 @@ test('피버 룰 실시간 예측은 상대 피버 패턴 연쇄를 예고 묶�
     const { a, b } = window.damagePlayers;
     window.beginDamageChain(b, true);
     b.tutorialHold = true;
-    const forecast = window.WebPuyo.common.getRealtimeGarbageForecast(a, b);
-    return { opponentChainActive: forecast.opponentChainActive, predicted: forecast.fever.predictedOpponentFeverChain, fromPattern: window.WebPuyo.common.predictFeverStageChain(b) };
+    const forecast = window.PuyoW.common.getRealtimeGarbageForecast(a, b);
+    return { opponentChainActive: forecast.opponentChainActive, predicted: forecast.fever.predictedOpponentFeverChain, fromPattern: window.PuyoW.common.predictFeverStageChain(b) };
   });
   expect(started).toEqual({ opponentChainActive: true, predicted: null, fromPattern: null });
 });
@@ -386,7 +386,7 @@ test('자간은 피버 룰 일반 상태에서 무시 기준 없이 방해뿌요
   await prepareDamageMatch(page);
   const result = await page.evaluate(() => {
     const { a } = window.damagePlayers;
-    const controller = new window.WebPuyo.Zagan();
+    const controller = new window.PuyoW.Zagan();
     // 빈 필드 무작위 배치·패배 위치 보호가 끼어들지 않는 낮은 필드에서 조작 턴을 시작한다.
     a.board = Array.from({ length: 25 }, () => Array(6).fill(null));
     a.board[0][0] = 'red';
@@ -527,7 +527,7 @@ for (const relaxed of [false, true]) {
     await advanceUntil(page, () => window.damagePlayers.b.normalDamage === 0);
     await page.clock.runFor(100);
     const result = await page.evaluate(() => {
-      const replay = window.WebPuyo.getReplayData();
+      const replay = window.PuyoW.getReplayData();
       return {
         normalDamage: window.damagePlayers.b.normalDamage,
         opponentAttack: window.damagePlayers.a.attack,
@@ -556,7 +556,7 @@ test('새 리플레이는 일반·피버 예고의 앞뒤 구분을 보존하고
   await page.evaluate(() => { window.damagePlayers.a.tutorialHold = true; });
   await expectWarningLayers(page, 7, 3);
   const replay = await page.evaluate(() => {
-    const data = window.WebPuyo.getReplayData();
+    const data = window.PuyoW.getReplayData();
     const full = { t: 0, a: {}, b: {}, g: {} };
     // 실제 기록기의 델타를 합쳐 문제의 한 장면을 짧은 리플레이로 만든다.
     for (const frame of data.frames) {
@@ -573,7 +573,7 @@ test('새 리플레이는 일반·피버 예고의 앞뒤 구분을 보존하고
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
     const data = JSON.parse(JSON.stringify(replay));
     // nw가 없는 기존 형식은 목적지를 추측하지 않고 종전 표시를 유지한다.
     if (legacy) {
@@ -584,11 +584,11 @@ test('새 리플레이는 일반·피버 예고의 앞뒤 구분을 보존하고
     await page.clock.resume();
     await clickReplayPlaybackButton(page);
     await submitTextDialog(page, JSON.stringify(data));
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('playing');
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('playing');
     await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
     await expectWarningLayers(page, legacy ? 2 : 7, legacy ? 8 : 3);
     expect(await page.evaluate(() => {
-      const { opponent } = window.WebPuyo.getGameState();
+      const { opponent } = window.PuyoW.getGameState();
       return { normal: opponent.normalDamage, fever: opponent.fever.damage };
     })).toEqual({ normal: 2, fever: 3 });
   }

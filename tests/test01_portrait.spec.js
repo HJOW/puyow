@@ -6,8 +6,8 @@ test('모든 적의 세 표정은 카드·대전·갤러리 크기로 그려지�
   // 숨김 적과 출시 예정 적도 포함하되 게임 공개 API에는 테스트용 접근자를 추가하지 않는다.
   // puyow.js는 ES Module이므로 export 문을 지운 일반 스크립트로 바꿔 넣는다.
   const source = readClassicScript('src/js/puyow.js').replace(
-    '\nWebPuyo = {',
-    '\nwindow.portraitTestEnemies = OPPONENTS.map((entry) => entry.createController());\nWebPuyo = {'
+    '\nPuyoW = {',
+    '\nwindow.portraitTestEnemies = OPPONENTS.map((entry) => entry.createController());\nPuyoW = {'
   );
   expect(source).toContain('window.portraitTestEnemies');
   await page.setContent('<html lang="ko"><body style="margin:0;background:#f6f0eb"><canvas id="portraits" width="1620" height="1120"></canvas></body></html>');

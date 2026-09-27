@@ -63,7 +63,7 @@ test('puyow_render는 매 프레임 캔버스와 누적 프레임 수를 전달�
 
   // 리스너가 매 프레임 예외를 던져도 게임 루프와 입력 처리는 그대로 동작해야 한다.
   await enterMainMenu(page);
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
   const lastFrameCounts = await page.evaluate(() => window.puyowRenderEvents.at(-1).frameCounts);
   expect(lastFrameCounts).toBeGreaterThan(events.at(-1).frameCounts);
 });
@@ -118,7 +118,7 @@ test('puyow_prerender는 화면을 지운 직후 발생하고 리스너 상태�
   expect(pageErrors.some((message) => message.includes('puyow_prerender 리스너 테스트 오류'))).toBe(true);
 
   await enterMainMenu(page);
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
   const lastFrameCounts = await page.evaluate(() => window.puyowPrerenderEvents.at(-1).frameCounts);
   expect(lastFrameCounts).toBeGreaterThan(events.at(-1).frameCounts);
 });
@@ -127,19 +127,19 @@ test('초기 타이틀은 Enter 키와 클릭으로 메인 메뉴에 진입한�
   await enterMainMenu(page);
 
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 360 } });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('main_menu');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
 });
 
 test('askText는 한 줄·여러 줄 입력과 취소를 처리한다', async ({ page }) => {
-  const singleLine = page.evaluate(() => window.WebPuyo.askText('한 줄 입력', false));
+  const singleLine = page.evaluate(() => window.PuyoW.askText('한 줄 입력', false));
   await page.waitForTimeout(50);
   await page.keyboard.type('first line');
   await page.keyboard.press('Enter');
   await expect(singleLine).resolves.toBe('first line');
 
-  const multiline = page.evaluate(() => window.WebPuyo.askText('여러 줄 입력', true));
+  const multiline = page.evaluate(() => window.PuyoW.askText('여러 줄 입력', true));
   await page.waitForTimeout(50);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 350, y: 270 } });
   await page.waitForTimeout(50);
@@ -151,7 +151,7 @@ test('askText는 한 줄·여러 줄 입력과 취소를 처리한다', async ({
   await page.keyboard.press('Enter');
   await expect(multiline).resolves.toBe('first line\nsecond line');
 
-  const cancelled = page.evaluate(() => window.WebPuyo.askText('취소 확인', true));
+  const cancelled = page.evaluate(() => window.PuyoW.askText('취소 확인', true));
   await page.waitForTimeout(50);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -171,7 +171,7 @@ test('askText 입력 모드는 선택·클립보드·클릭 커서 이동을 처
     });
   });
 
-  const singleLine = page.evaluate(() => window.WebPuyo.askText('선택 입력', false));
+  const singleLine = page.evaluate(() => window.PuyoW.askText('선택 입력', false));
   await page.waitForTimeout(50);
   await page.keyboard.type('abc');
   await page.keyboard.press('Shift+ArrowLeft');
@@ -189,7 +189,7 @@ test('askText 입력 모드는 선택·클립보드·클릭 커서 이동을 처
   await page.keyboard.press('Enter');
   await expect(singleLine).resolves.toBe('XabZabZY');
 
-  const multiline = page.evaluate(() => window.WebPuyo.askText('여러 줄 선택 입력', true));
+  const multiline = page.evaluate(() => window.PuyoW.askText('여러 줄 선택 입력', true));
   await page.waitForTimeout(50);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 350, y: 270 } });
   await page.keyboard.type('ab');
@@ -224,6 +224,8 @@ test('새 src 하위 디렉토리의 게임 리소스를 로드한다', async ({
   }
   // 번들에 든 three(ES Module 판)가 전역 THREE로 등록된다.
   expect(await page.evaluate(() => window.THREE?.REVISION)).toBe('186');
+  // 게임 API는 window.PuyoW로 공개하고, 예전 이름 window.WebPuyo도 같은 객체를 가리키는 호환용 별칭으로 유지한다.
+  expect(await page.evaluate(() => typeof window.PuyoW?.initialize === 'function' && window.WebPuyo === window.PuyoW)).toBe(true);
 });
 
 test('초기화는 최상위 div 안에 같은 난수 접미사의 2D·3D canvas를 만들고 destroy가 생성 DOM을 정리한다', async ({ page }) => {
@@ -303,7 +305,7 @@ test('캔버스 맞춤 모드 1은 여백을 뺀 화면의 짧은 쪽에 맞추�
     });
   });
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
 
   // 초기화 뒤에는 맞춤 설정을 바꿀 수 없다.
   expect(await page.evaluate(() => {
@@ -358,7 +360,7 @@ test('캔버스 맞춤 모드 1은 여백을 뺀 화면의 짧은 쪽에 맞추�
   await enterMainMenu(page);
   const rect = layout.canvasRect;
   await page.mouse.click(rect.left + rect.width * (1 - 580 / 720), rect.top + rect.height * 640 / 1280);
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('settings');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('settings');
 
   // 모드 0은 세로 화면에서도 회전하지 않고 인라인 크기를 넣지 않는다.
   await reinitialize(0, 0);
@@ -461,7 +463,7 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
   expect(schema.messageAnnotations).toEqual({ readOnlyHint: false });
   expect(schema.titleScreen).toEqual({ screen: 'initial_title', playerCanControl: false, mode: null, rule: null, replayPlayback: false, modelLoading: false, confirmDialogOpen: false, textDialogOpen: false });
 
-  const textDialogPromise = page.evaluate(() => window.WebPuyo.askText('WebMCP text dialog'));
+  const textDialogPromise = page.evaluate(() => window.PuyoW.askText('WebMCP text dialog'));
   await expect.poll(() => page.evaluate(() => {
     const tool = window.registeredWebMcpTools.find((candidate) => candidate.name === 'now_screen');
     return tool.execute().textDialogOpen;
@@ -475,9 +477,9 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('playing');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('playing');
   await expect.poll(() => page.evaluate(() => {
     const tool = window.registeredWebMcpTools.find((candidate) => candidate.name === 'now_screen');
     return tool.execute().playerCanControl;
@@ -517,29 +519,29 @@ test('기본 룰·연습·플레이 방법의 양쪽 필드는 기본 패배 칸
   await openDojoOpponentSelect(page);
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
   await expectDefeatCellMarkers(page, [2]);
 
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
   await expectDefeatCellMarkers(page, [2]);
 
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('tutorial_intro');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('tutorial_intro');
   await expectDefeatCellMarkers(page, [2]);
 });
 
@@ -549,28 +551,28 @@ test('피버 룰과 연속 피버의 양쪽 필드는 두 패배 칸에 빨간 X
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('fever_opponent_select');
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
   await expectDefeatCellMarkers(page, [2, 3]);
 
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('practice_difficulty');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
   await expectDefeatCellMarkers(page, [2, 3]);
 });
 
 test('기본 룰은 AI에 다음 20쌍을 제공하고 공개 다음 뿌요는 두 쌍으로 유지한다', async ({ page }) => {
   await page.evaluate(() => {
-    class BasicNextPairQueueEnemy extends window.WebPuyo.Enemy {
+    class BasicNextPairQueueEnemy extends window.PuyoW.Enemy {
       constructor() { super(); this.sortPriority = -100; this.snapshot = null; }
       getClassType() { return 'BasicNextPairQueueEnemy'; }
       getName() { return '기본 다음 20쌍 테스트 적'; }
@@ -578,13 +580,13 @@ test('기본 룰은 AI에 다음 20쌍을 제공하고 공개 다음 뿌요는 �
       prepareTurn(player) {
         super.prepareTurn(player);
         if (!this.snapshot) {
-          const plans = window.WebPuyo.common.simulateNMovePlacements(player, 6, 3);
+          const plans = window.PuyoW.common.simulateNMovePlacements(player, 6, 3);
           this.snapshot = {
             queuedPairCount: player.nextPairs.length,
             hasThreeMovePath: plans.some((plan) => plan.nextResult?.nextResult),
             workerDepth: null,
           };
-          window.WebPuyo.common.simulateNMovePlacementsInWorker(player, 6, 3, 1000).promise
+          window.PuyoW.common.simulateNMovePlacementsInWorker(player, 6, 3, 1000).promise
             .then((result) => { this.snapshot.workerDepth = result.depth; });
         }
         this.player = player;
@@ -594,7 +596,7 @@ test('기본 룰은 AI에 다음 20쌍을 제공하고 공개 다음 뿌요는 �
 
       useFastDown() { return false; }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new BasicNextPairQueueEnemy() });
+    window.PuyoW.registerOpponent({ createController: () => new BasicNextPairQueueEnemy() });
   });
 
   await enterMainMenu(page);
@@ -605,8 +607,8 @@ test('기본 룰은 AI에 다음 20쌍을 제공하고 공개 다음 뿌요는 �
   await expect.poll(() => page.evaluate(() => {
     const controller = window.basicNextPairQueueEnemy;
     if (!controller?.snapshot || controller.snapshot.workerDepth === null) return null;
-    const state = window.WebPuyo.getGameState();
-    const next = window.WebPuyo.getNextPairs();
+    const state = window.PuyoW.getGameState();
+    const next = window.PuyoW.getNextPairs();
     return {
       queuedPairCount: controller.snapshot.queuedPairCount,
       hasThreeMovePath: controller.snapshot.hasThreeMovePath,
@@ -625,7 +627,7 @@ test('기본 룰은 AI에 다음 20쌍을 제공하고 공개 다음 뿌요는 �
 
 test('피버 룰도 AI용 다음 20쌍을 유지한다', async ({ page }) => {
   await page.evaluate(() => {
-    class FeverNextPairQueueEnemy extends window.WebPuyo.Enemy {
+    class FeverNextPairQueueEnemy extends window.PuyoW.Enemy {
       constructor() { super(); this.sortPriority = -100; }
       getClassType() { return 'FeverNextPairQueueEnemy'; }
       getName() { return '피버 다음 20쌍 테스트 적'; }
@@ -638,7 +640,7 @@ test('피버 룰도 AI용 다음 20쌍을 유지한다', async ({ page }) => {
 
       useFastDown() { return false; }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new FeverNextPairQueueEnemy() });
+    window.PuyoW.registerOpponent({ createController: () => new FeverNextPairQueueEnemy() });
   });
 
   await enterMainMenu(page);
@@ -646,56 +648,56 @@ test('피버 룰도 AI용 다음 20쌍을 유지한다', async ({ page }) => {
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('fever_opponent_select');
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
 
   await expect.poll(() => page.evaluate(() => ({
     queuedPairCount: window.feverNextPairQueueEnemy?.queuedPairCount,
-    statePairCount: window.WebPuyo.getGameState()?.opponent.nextPairs.length,
-    apiPairCount: window.WebPuyo.getNextPairs()?.opponent.nextPairs.length,
+    statePairCount: window.PuyoW.getGameState()?.opponent.nextPairs.length,
+    apiPairCount: window.PuyoW.getNextPairs()?.opponent.nextPairs.length,
   })), { timeout: 15000 }).toEqual({ queuedPairCount: 20, statePairCount: 2, apiPairCount: 2 });
 });
 
 test('게임 상태 조회는 양쪽 일반·피버 필드와 앞 두 NEXT를 분리해 반환한다', async ({ page }) => {
-  expect(await page.evaluate(() => window.WebPuyo.getGameState())).toBeNull();
+  expect(await page.evaluate(() => window.PuyoW.getGameState())).toBeNull();
 
   await enterMainMenu(page);
   await openDojoOpponentSelect(page);
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState())).toMatchObject({
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState())).toMatchObject({
     mode: 'versus', rule: 'standard', allClearTicketEnabled: true,
     player: { fever: null, board: { columns: 6, rows: 25, visibleRows: 12 }, normalBoard: { columns: 6, rows: 25, visibleRows: 12 } },
     opponent: { fever: null, board: { columns: 6, rows: 25, visibleRows: 12 }, normalBoard: { columns: 6, rows: 25, visibleRows: 12 } },
   });
   expect(await page.evaluate(() => {
-    const state = window.WebPuyo.getGameState();
+    const state = window.PuyoW.getGameState();
     return [state.player.nextPairs.length, state.opponent.nextPairs.length];
   })).toEqual([2, 2]);
 
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('fever_opponent_select');
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState())).toMatchObject({
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState())).toMatchObject({
     mode: 'versus', rule: 'fever', allClearTicketEnabled: false,
     player: { fever: { active: false, leftTime: 0, field: { columns: 6, rows: 25, visibleRows: 12, puyos: [] } } },
     opponent: { fever: { active: false, leftTime: 0, field: { columns: 6, rows: 25, visibleRows: 12, puyos: [] } } },
   });
   expect(await page.evaluate(() => {
-    const state = window.WebPuyo.getGameState();
+    const state = window.PuyoW.getGameState();
     return [state.player.nextPairs.length, state.opponent.nextPairs.length];
   })).toEqual([2, 2]);
 });
 
 test('구경 모드는 양쪽 AI에 다음 20쌍을 제공한다', async ({ page }) => {
   await page.evaluate(() => {
-    class WatchNextPairQueueEnemy extends window.WebPuyo.Enemy {
+    class WatchNextPairQueueEnemy extends window.PuyoW.Enemy {
       constructor() { super(); this.sortPriority = -100; }
       getClassType() { return 'WatchNextPairQueueEnemy'; }
       getName() { return '구경 다음 20쌍 테스트 적'; }
@@ -708,29 +710,29 @@ test('구경 모드는 양쪽 AI에 다음 20쌍을 제공한다', async ({ page
 
       useFastDown() { return false; }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new WatchNextPairQueueEnemy() });
-    window.WebPuyo.addCode('observation');
+    window.PuyoW.registerOpponent({ createController: () => new WatchNextPairQueueEnemy() });
+    window.PuyoW.addCode('observation');
     Math.random = () => 0;
   });
 
   await enterMainMenu(page);
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('watch_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('watch_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
 
   await expect.poll(() => page.evaluate(() => ({
     queuedPairCount: window.watchNextPairQueueEnemy?.queuedPairCount,
-    playerPairCount: window.WebPuyo.getGameState()?.player.nextPairs.length,
-    opponentPairCount: window.WebPuyo.getGameState()?.opponent.nextPairs.length,
+    playerPairCount: window.PuyoW.getGameState()?.player.nextPairs.length,
+    opponentPairCount: window.PuyoW.getGameState()?.opponent.nextPairs.length,
   })), { timeout: 15000 }).toEqual({ queuedPairCount: 20, playerPairCount: 2, opponentPairCount: 2 });
 });
 
 test('DAMAGE 방해뿌요 30개는 현재 숨김 생성 범위의 다섯 줄(Y 16~20)에서 생성된다', async ({ page }) => {
   await page.evaluate(() => {
-    class GarbageSpawnPositionEnemy extends window.WebPuyo.Enemy {
+    class GarbageSpawnPositionEnemy extends window.PuyoW.Enemy {
       constructor() { super(); this.sortPriority = -100; this.prepared = false; }
       getClassType() { return 'GarbageSpawnPositionEnemy'; }
       getName() { return '방해뿌요 생성 위치 테스트 적'; }
@@ -746,31 +748,31 @@ test('DAMAGE 방해뿌요 30개는 현재 숨김 생성 범위의 다섯 줄(Y 1
         player.phaseTimer = 0;
       }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new GarbageSpawnPositionEnemy() });
+    window.PuyoW.registerOpponent({ createController: () => new GarbageSpawnPositionEnemy() });
   });
 
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
 
   await expect.poll(() => page.evaluate(() => {
-    const puyos = window.WebPuyo.getGameState()?.opponent.board.puyos || [];
+    const puyos = window.PuyoW.getGameState()?.opponent.board.puyos || [];
     return [...new Set(puyos.filter((puyo) => puyo.color === 'garbage').map((puyo) => puyo.y))].sort((left, right) => left - right);
   }), { timeout: 15000 }).toEqual([16, 17, 18, 19, 20]);
 });
 
 test('registerPuzzleStage는 기존 PuzzlePuyoStage와 uid가 중복되면 등록하지 않는다', async ({ page }) => {
   const result = await page.evaluate(() => {
-    const stages = window.WebPuyo.PUZZLE_STAGES;
+    const stages = window.PuyoW.PUZZLE_STAGES;
     const initialLength = stages.length;
-    const duplicate = new window.WebPuyo.PuzzlePuyoStage({ uid: stages[0].uid });
+    const duplicate = new window.PuyoW.PuzzlePuyoStage({ uid: stages[0].uid });
     let error = null;
     try {
-      window.WebPuyo.registerPuzzleStage(duplicate);
+      window.PuyoW.registerPuzzleStage(duplicate);
     } catch (caught) {
       error = { name: caught.name, message: caught.message };
     }
@@ -795,14 +797,14 @@ test('일반·방해뿌요 클래스는 이름을 제공하고 캔버스에 직�
       ['IronPuyo', 'iron', '철구뿌요'],
     ];
     return types.map(([className, expectedType, expectedName]) => {
-      const puyo = new window.WebPuyo[className]();
+      const puyo = new window.PuyoW[className]();
       const canvas = document.createElement('canvas');
       canvas.width = 38;
       canvas.height = 38;
       const drawingContext = canvas.getContext('2d');
       puyo.draw(drawingContext, 0, 0, 38);
       const painted = drawingContext.getImageData(0, 0, 38, 38).data.some((value, index) => index % 4 === 3 && value > 0);
-      return { className, type: puyo.type, name: puyo.getName(), isPuyo: puyo instanceof window.WebPuyo.Puyo, painted, expectedType, expectedName };
+      return { className, type: puyo.type, name: puyo.getName(), isPuyo: puyo instanceof window.PuyoW.Puyo, painted, expectedType, expectedName };
     });
   });
 
@@ -820,13 +822,13 @@ test('일반·방해뿌요 클래스는 이름을 제공하고 캔버스에 직�
 
 test('헥사액트·펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 3종은 출시 상태·모델·테마 설정을 가진다', async ({ page }) => {
   const result = await page.evaluate(() => {
-    const bigBang = new window.WebPuyo.BigBangWarningPuyo();
-    const tesseract = new window.WebPuyo.TesseractWarningPuyo();
-    const penteract = new window.WebPuyo.PenteractWarningPuyo();
-    const hexaact = new window.WebPuyo.HexaactWarningPuyo();
-    const murmur = new window.WebPuyo.Murmur();
-    const caim = new window.WebPuyo.Caim();
-    const alokes = new window.WebPuyo.Alokes();
+    const bigBang = new window.PuyoW.BigBangWarningPuyo();
+    const tesseract = new window.PuyoW.TesseractWarningPuyo();
+    const penteract = new window.PuyoW.PenteractWarningPuyo();
+    const hexaact = new window.PuyoW.HexaactWarningPuyo();
+    const murmur = new window.PuyoW.Murmur();
+    const caim = new window.PuyoW.Caim();
+    const alokes = new window.PuyoW.Alokes();
     const describeEnemy = (enemy) => ({
       classType: enemy.getClassType(), name: enemy.getName(), notAvail: enemy.notAvail,
       requiresOnnx: enemy.requiresOnnx, modelPath: enemy.modelPath, theme: enemy.getFieldThemeColors()
@@ -836,10 +838,10 @@ test('헥사액트·펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 
       tesseract: { unitCount: tesseract.unitCount, type: tesseract.type, name: tesseract.getName() },
       penteract: { unitCount: penteract.unitCount, type: penteract.type, name: penteract.getName() },
       hexaact: { unitCount: hexaact.unitCount, type: hexaact.type, name: hexaact.getName() },
-      warningTypes: window.WebPuyo.common.warningUnits(500000).map((unit) => unit.type),
-      tesseractWarningTypes: window.WebPuyo.common.warningUnits(3500000).map((unit) => unit.type),
-      penteractWarningTypes: window.WebPuyo.common.warningUnits(23500000).map((unit) => unit.type),
-      hexaactWarningTypes: window.WebPuyo.common.warningUnits(163500000).map((unit) => unit.type),
+      warningTypes: window.PuyoW.common.warningUnits(500000).map((unit) => unit.type),
+      tesseractWarningTypes: window.PuyoW.common.warningUnits(3500000).map((unit) => unit.type),
+      penteractWarningTypes: window.PuyoW.common.warningUnits(23500000).map((unit) => unit.type),
+      hexaactWarningTypes: window.PuyoW.common.warningUnits(163500000).map((unit) => unit.type),
       murmur: describeEnemy(murmur), caim: describeEnemy(caim), alokes: describeEnemy(alokes)
     };
   });
@@ -870,9 +872,9 @@ test('헥사액트·펜터렉트·테서렉트·빅뱅 예고뿌요와 ONNX 적 
 
 test('출시된 ONNX 적 3종은 같은 추론 로직을 쓰고 모델 경로는 적마다 독립적이다', async ({ page }) => {
   const result = await page.evaluate(() => {
-    const caim = new window.WebPuyo.Caim();
+    const caim = new window.PuyoW.Caim();
     return ['Murmur', 'Caim', 'Alokes'].map((type) => {
-      const enemy = new window.WebPuyo[type]();
+      const enemy = new window.PuyoW[type]();
       // 표시·출시·모델 경로를 제외한 초기 AI 상태와 실제 호출 메서드를 비교한다.
       const aiState = (controller) => Object.fromEntries(Object.entries(controller).filter(([key]) => !['sortPriority', 'notAvail', 'modelPath'].includes(key)));
       const sameMethods = ['prepareTurn', 'prepareModel', 'chooseTarget', 'chooseRotate', 'chooseFastDown'].every((method) => enemy[method] === caim[method]);
@@ -883,7 +885,7 @@ test('출시된 ONNX 적 3종은 같은 추론 로직을 쓰고 모델 경로는
         notAvail: enemy.notAvail, requiresOnnx: enemy.requiresOnnx, modelPath, sameMethods,
         sameState: JSON.stringify(aiState(enemy)) === JSON.stringify(aiState(caim)),
         // 한 인스턴스의 모델 경로를 바꿔도 새 인스턴스와 다른 적의 경로는 그대로다.
-        independentModel: new window.WebPuyo[type]().modelPath === modelPath && new window.WebPuyo.Caim().modelPath === 'onnx/model02.onnx',
+        independentModel: new window.PuyoW[type]().modelPath === modelPath && new window.PuyoW.Caim().modelPath === 'onnx/model02.onnx',
       };
     });
   });
@@ -895,7 +897,7 @@ test('출시된 ONNX 적 3종은 같은 추론 로직을 쓰고 모델 경로는
 });
 
 test('발라크와 자간은 세 가지 표정의 초상화를 캔버스에 그린다', async ({ page }) => {
-  const painted = await page.evaluate(() => [window.WebPuyo.Valak, window.WebPuyo.Zagan].map((EnemyType) => {
+  const painted = await page.evaluate(() => [window.PuyoW.Valak, window.PuyoW.Zagan].map((EnemyType) => {
     const enemy = new EnemyType();
     return ['normal', 'crisis', 'defeated'].map((expression) => {
       const canvas = document.createElement('canvas'); canvas.width = 220; canvas.height = 220;
@@ -911,8 +913,8 @@ test('공개 askConfirm은 요청을 순서대로 표시하고 키보드와 마�
   await enterMainMenu(page);
   await page.evaluate(() => {
     window.askConfirmResults = [];
-    window.WebPuyo.askConfirm('First confirmation').then((value) => window.askConfirmResults.push(value));
-    window.WebPuyo.askConfirm('Second confirmation').then((value) => window.askConfirmResults.push(value));
+    window.PuyoW.askConfirm('First confirmation').then((value) => window.askConfirmResults.push(value));
+    window.PuyoW.askConfirm('Second confirmation').then((value) => window.askConfirmResults.push(value));
   });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('First confirmation'))).toBe(true);
   await page.keyboard.press('Enter');
@@ -923,7 +925,7 @@ test('공개 askConfirm은 요청을 순서대로 표시하고 키보드와 마�
 
   await page.evaluate(() => {
     window.mouseConfirmResult = null;
-    window.WebPuyo.askConfirm('Mouse confirmation').then((value) => { window.mouseConfirmResult = value; });
+    window.PuyoW.askConfirm('Mouse confirmation').then((value) => { window.mouseConfirmResult = value; });
   });
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Mouse confirmation'))).toBe(true);
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 550, y: 459 } });
@@ -935,19 +937,19 @@ test('게임 중 askConfirm은 응답 전까지 게임을 일시정지하고 응
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
   await page.evaluate(() => {
     window.gameConfirmResult = null;
-    window.WebPuyo.askConfirm('Pause the match').then((value) => { window.gameConfirmResult = value; });
+    window.PuyoW.askConfirm('Pause the match').then((value) => { window.gameConfirmResult = value; });
   });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('paused');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Pause the match'))).toBe(true);
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.gameConfirmResult)).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
 });
 
 test('게임 중 askText는 응답 전까지 게임을 일시정지하고 응답 후 재개한다', async ({ page }) => {
@@ -955,21 +957,21 @@ test('게임 중 askText는 응답 전까지 게임을 일시정지하고 응답
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
   await page.evaluate(() => {
     window.gameTextResult = null;
-    window.WebPuyo.askText('Pause the match', false).then((value) => { window.gameTextResult = value; });
+    window.PuyoW.askText('Pause the match', false).then((value) => { window.gameTextResult = value; });
   });
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('paused');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('paused');
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes('Pause the match'))).toBe(true);
   await page.waitForTimeout(50);
   await page.keyboard.type('typed text');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.gameTextResult)).toBe('typed text');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
 });
 
 test('기존 퍼즐 진행도는 GOLD 보상 완료로 이관하고 잘못된 GOLD는 0으로 보정한다', async ({ page }) => {
@@ -992,28 +994,28 @@ test('기존 퍼즐 진행도는 GOLD 보상 완료로 이관하고 잘못된 GO
 test('메뉴에서 Z 키는 Enter 키처럼 동작한다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('z');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
 });
 
 test('setEnemySoundPool은 getClassType에 해당하는 새 적의 사운드 풀을 교체한다', async ({ page }) => {
   await page.evaluate(() => {
-    const sounds = window.WebPuyo.createSoundPool(false);
+    const sounds = window.PuyoW.createSoundPool(false);
     sounds.backgroundMusic = 'sounds/test-andromalius-bgm.ogg';
-    window.WebPuyo.setEnemySoundPool('Andromalius', sounds);
+    window.PuyoW.setEnemySoundPool('Andromalius', sounds);
   });
   await enterMainMenu(page);
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('countdown');
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.some((audio) => (
     audio.src.endsWith('sounds/test-andromalius-bgm.ogg') && !audio.paused
   )))).toBe(true);
@@ -1026,8 +1028,8 @@ test('조작 뿌요 자연 낙하 속도는 최대 128배까지 증가한다', a
   const multipliers = await page.evaluate(() => {
     const elapsedTimes = [0, 59999, 60000, 4440000, 7560000, 7620000, 150000000];
     return {
-      direct: elapsedTimes.map((elapsed) => window.WebPuyo.getPlayerFallSpeedMultiplier(elapsed)),
-      common: elapsedTimes.map((elapsed) => window.WebPuyo.common.getPlayerFallSpeedMultiplier(elapsed)),
+      direct: elapsedTimes.map((elapsed) => window.PuyoW.getPlayerFallSpeedMultiplier(elapsed)),
+      common: elapsedTimes.map((elapsed) => window.PuyoW.common.getPlayerFallSpeedMultiplier(elapsed)),
     };
   });
   expect(multipliers.direct).toEqual([1, 1, 2, 75, 127, 128, 128]);
@@ -1036,37 +1038,37 @@ test('조작 뿌요 자연 낙하 속도는 최대 128배까지 증가한다', a
 
 test('빠른 하강 전 적 조작 뿌요의 자연 낙하는 난이도와 무관하게 플레이어와 같다', async ({ page }) => {
   await page.evaluate(() => {
-    class NaturalFallSpeedEnemy extends window.WebPuyo.Enemy {
+    class NaturalFallSpeedEnemy extends window.PuyoW.Enemy {
       constructor() { super(); this.sortPriority = -100; }
       getClassType() { return 'NaturalFallSpeedEnemy'; }
       getName() { return '자연 낙하 속도 테스트 적'; }
       useFastDown() { return false; }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new NaturalFallSpeedEnemy() });
+    window.PuyoW.registerOpponent({ createController: () => new NaturalFallSpeedEnemy() });
   });
 
   async function startAtDifficulty(key, moveCount, expectedKey) {
     await enterMainMenu(page);
     await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
     await page.keyboard.press('Enter');
     await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
     await page.keyboard.press('ArrowDown');
     for (let index = 0; index < moveCount; index += 1) await page.keyboard.press(key);
-    expect(await page.evaluate(() => window.WebPuyo.getSelectedDifficulty().key)).toBe(expectedKey);
+    expect(await page.evaluate(() => window.PuyoW.getSelectedDifficulty().key)).toBe(expectedKey);
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.playerCanControl)).toBe(true);
   }
 
   await startAtDifficulty('ArrowLeft', 1, 'easy');
   const easyDrop = await page.evaluate(async () => {
-    const before = window.WebPuyo.getGameState();
+    const before = window.PuyoW.getGameState();
     await new Promise((resolve) => setTimeout(resolve, 512));
-    const after = window.WebPuyo.getGameState();
+    const after = window.PuyoW.getGameState();
     return {
       player: before.player.active.y - after.player.active.y,
       opponent: before.opponent.active.y - after.opponent.active.y,
@@ -1075,21 +1077,21 @@ test('빠른 하강 전 적 조작 뿌요의 자연 낙하는 난이도와 무�
   expect(easyDrop.player).toBeCloseTo(easyDrop.opponent, 2);
 
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await page.evaluate(() => {
-    class NaturalFallSpeedEnemy extends window.WebPuyo.Enemy {
+    class NaturalFallSpeedEnemy extends window.PuyoW.Enemy {
       constructor() { super(); this.sortPriority = -100; }
       getClassType() { return 'NaturalFallSpeedEnemy'; }
       getName() { return '자연 낙하 속도 테스트 적'; }
       useFastDown() { return false; }
     }
-    window.WebPuyo.registerOpponent({ createController: () => new NaturalFallSpeedEnemy() });
+    window.PuyoW.registerOpponent({ createController: () => new NaturalFallSpeedEnemy() });
   });
   await startAtDifficulty('ArrowRight', 2, 'extreme');
   const extremeDrop = await page.evaluate(async () => {
-    const before = window.WebPuyo.getGameState();
+    const before = window.PuyoW.getGameState();
     await new Promise((resolve) => setTimeout(resolve, 512));
-    const after = window.WebPuyo.getGameState();
+    const after = window.PuyoW.getGameState();
     return {
       player: before.player.active.y - after.player.active.y,
       opponent: before.opponent.active.y - after.opponent.active.y,
@@ -1127,15 +1129,15 @@ test('독일어와 프랑스어 stringTable은 FEVER 표기와 주요 화면 문
     }, locale);
     await page.reload();
     const result = await page.evaluate(() => {
-      window.WebPuyo.setURLContextPath('/puyow/');
+      window.PuyoW.setURLContextPath('/puyow/');
       return {
-        fever: window.WebPuyo.translate('피버 룰'),
-        feverStart: window.WebPuyo.translate('피버 룰 (시작)'),
-        relaxedFever: window.WebPuyo.translate('피버 룰 (완화)'),
-        puzzle: window.WebPuyo.translate('퍼즐뿌요'),
-        start: window.WebPuyo.translate('게임 시작'),
-        watch: window.WebPuyo.translate('구경'),
-        language: window.WebPuyo.convertURL('[LANG]')
+        fever: window.PuyoW.translate('피버 룰'),
+        feverStart: window.PuyoW.translate('피버 룰 (시작)'),
+        relaxedFever: window.PuyoW.translate('피버 룰 (완화)'),
+        puzzle: window.PuyoW.translate('퍼즐뿌요'),
+        start: window.PuyoW.translate('게임 시작'),
+        watch: window.PuyoW.translate('구경'),
+        language: window.PuyoW.convertURL('[LANG]')
       };
     });
     expect(result).toEqual({ ...values, language: `${values.language}` });
@@ -1170,7 +1172,7 @@ test('준비된 퍼즐뿌요 스테이지의 모든 힌트는 지원 언어로 �
       Object.defineProperty(navigator, 'language', { configurable: true, value: locale });
     }, language);
     await page.reload();
-    expect(await page.evaluate(() => window.WebPuyo.PUZZLE_STAGES.map((stage) => window.WebPuyo.translate(stage.hint)))).toEqual(expected);
+    expect(await page.evaluate(() => window.PuyoW.PUZZLE_STAGES.map((stage) => window.PuyoW.translate(stage.hint)))).toEqual(expected);
   }
 });
 
@@ -1189,7 +1191,7 @@ test('플레이 방법 4단계의 싹쓸이 안내 문구는 모든 기본 언�
       Object.defineProperty(navigator, 'language', { configurable: true, value: language });
     }, locale);
     await page.reload();
-    expect(await page.evaluate((key) => window.WebPuyo.translate(key), message)).toBe(translation);
+    expect(await page.evaluate((key) => window.PuyoW.translate(key), message)).toBe(translation);
   }
 });
 
@@ -1200,8 +1202,8 @@ test('새 게임의 마진 레이트는 70으로 시작한다', async ({ page })
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
-  expect(await page.evaluate(() => window.WebPuyo.getGameState().marginRate)).toBe(70);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.playerCanControl)).toBe(true);
+  expect(await page.evaluate(() => window.PuyoW.getGameState().marginRate)).toBe(70);
 });
 
 test('폭발 점수 보너스는 최소 1이며 시간 진행 배율은 360초부터 60초마다 두 배가 된다', async ({ page }) => {
@@ -1209,11 +1211,11 @@ test('폭발 점수 보너스는 최소 1이며 시간 진행 배율은 360초�
     const groups = [{ color: 'red', cells: [[0, 0], [1, 0], [2, 0], [3, 0]] }];
     const elapsedTimes = [0, 359999, 360000, 420000, 960000, 1020000, 1800000];
     return {
-      point: window.WebPuyo.calculateExplosionPoint(groups, 1),
-      direct: elapsedTimes.map((elapsed) => window.WebPuyo.getTimeProgressMultiplier(elapsed)),
-      common: elapsedTimes.map((elapsed) => window.WebPuyo.common.getTimeProgressMultiplier(elapsed)),
-      attackAtStart: window.WebPuyo.calculateExplosionAttack(70, 70, 1),
-      attackAtMaximum: window.WebPuyo.calculateExplosionAttack(70, 70, 4096),
+      point: window.PuyoW.calculateExplosionPoint(groups, 1),
+      direct: elapsedTimes.map((elapsed) => window.PuyoW.getTimeProgressMultiplier(elapsed)),
+      common: elapsedTimes.map((elapsed) => window.PuyoW.common.getTimeProgressMultiplier(elapsed)),
+      attackAtStart: window.PuyoW.calculateExplosionAttack(70, 70, 1),
+      attackAtMaximum: window.PuyoW.calculateExplosionAttack(70, 70, 4096),
     };
   });
   expect(result.point).toBe(40);
@@ -1228,18 +1230,18 @@ test('폭발 점수 보너스는 최소 1이며 시간 진행 배율은 360초�
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
-  expect(await page.evaluate(() => window.WebPuyo.getGameState().timeProgressMultiplier)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.playerCanControl)).toBe(true);
+  expect(await page.evaluate(() => window.PuyoW.getGameState().timeProgressMultiplier)).toBe(1);
 });
 
 test('다색 동시 폭발 연결 보너스는 가장 많이 터진 한 색만 사용한다', async ({ page }) => {
   const points = await page.evaluate(() => {
     const cells = (count) => Array.from({ length: count }, (_, index) => [index, 0]);
     return {
-      singleColor: window.WebPuyo.calculateExplosionPoint([
+      singleColor: window.PuyoW.calculateExplosionPoint([
         { color: 'red', cells: cells(4) }, { color: 'red', cells: cells(5) },
       ], 1),
-      threeColors: window.WebPuyo.calculateExplosionPoint([
+      threeColors: window.PuyoW.calculateExplosionPoint([
         { color: 'red', cells: cells(4) }, { color: 'blue', cells: cells(5) }, { color: 'yellow', cells: cells(4) },
       ], 1),
     };
@@ -1253,13 +1255,13 @@ test('common sound pool plays menu and game-start sounds', async ({ page }) => {
   // 이름을 미리 저장해 이 테스트가 확인하려는 메뉴 조작 효과음 순서만 검사한다.
   await page.evaluate(() => localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { playerName: 'PLAYER 1' } })));
   await page.reload();
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await page.evaluate(() => {
-    window.WebPuyo.commonSoundPool.selects = 'sounds/test-menu-select.ogg';
-    window.WebPuyo.commonSoundPool.cancels = 'sounds/test-menu-cancel.ogg';
-    window.WebPuyo.commonSoundPool.focusMoves = 'sounds/test-menu-focus.ogg';
-    window.WebPuyo.commonSoundPool.gameStarts = 'sounds/test-game-start.ogg';
-    window.WebPuyo.commonSoundPool.puyoRotate = 'sounds/test-puyo-rotate.ogg';
+    window.PuyoW.commonSoundPool.selects = 'sounds/test-menu-select.ogg';
+    window.PuyoW.commonSoundPool.cancels = 'sounds/test-menu-cancel.ogg';
+    window.PuyoW.commonSoundPool.focusMoves = 'sounds/test-menu-focus.ogg';
+    window.PuyoW.commonSoundPool.gameStarts = 'sounds/test-game-start.ogg';
+    window.PuyoW.commonSoundPool.puyoRotate = 'sounds/test-puyo-rotate.ogg';
   });
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
@@ -1280,17 +1282,17 @@ test('common sound pool plays menu and game-start sounds', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
     'sounds/test-game-start.ogg',
   ]));
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.playerCanControl)).toBe(true);
-  const initialRotation = await page.evaluate(() => window.WebPuyo.getGameState().player.active.rotation);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.playerCanControl)).toBe(true);
+  const initialRotation = await page.evaluate(() => window.PuyoW.getGameState().player.active.rotation);
   // 한글 입력기처럼 event.key가 달라도 물리 KeyX/KeyZ는 회전해야 한다.
   await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', {
     key: 'ㅌ', code: 'KeyX', bubbles: true, cancelable: true,
   })));
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.player.active?.rotation)).toBe((initialRotation + 1) % 4);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.player.active?.rotation)).toBe((initialRotation + 1) % 4);
   await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', {
     key: 'ㅋ', code: 'KeyZ', bubbles: true, cancelable: true,
   })));
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.player.active?.rotation)).toBe(initialRotation);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.player.active?.rotation)).toBe(initialRotation);
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
     'sounds/test-puyo-rotate.ogg',
   ]));
@@ -1299,7 +1301,7 @@ test('common sound pool plays menu and game-start sounds', async ({ page }) => {
 
 test('발람과 푸르카스는 AI 미구현 출시 예정 적이며 ONNX 모델을 요구하지 않는다', async ({ page }) => {
   const result = await page.evaluate(() => ['Balaam', 'Purkas'].map((type) => {
-    const enemy = new window.WebPuyo[type]();
+    const enemy = new window.PuyoW[type]();
     return { type: enemy.getClassType(), notAvail: enemy.notAvail, requiresOnnx: enemy.requiresOnnx,
       modelPath: enemy.modelPath ?? null, prepareModel: typeof enemy.prepareModel };
   }));
