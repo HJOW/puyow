@@ -3,18 +3,27 @@
  * Copyright 2026 HJOW
  * Licensed under the Apache License, Version 2.0.
  * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * 뿌요 W 3D 이펙트 스크립트
  *     의존성
  *         puyow.js     (필수, 기본 게임 코드)
- *         three.min.js (필수, 3D 효과 메인 라이브러리)
- *         json5.min.js (선택사항, JSON5 형식 사용을 위함)
+ *         three.module.min.js, three.core.min.js (필수, 3D 효과 메인 라이브러리, ES Module 로 import 한다)
  *         ort.all.min.js, ort.webgl.min.js, ort.wasm.min.js (선택사항, ONNX Runtime 사용을 위함)
  *         puyow.css (선택사항, 캔버스 영역이 화면 100%를 차지하게 만들고, 기본 뒷배경 색 변경)
  *         notice_ko.txt, notice_en.txt (선택사항으로 공지사항 존재 시 이 곳에 기재)
  *     html 예제
  *         puyow.html
+ *     모듈 형식
+ *         ES Module 이다. puyow.html 은 Webpack 번들(src/bundle/puyow.bundle.js)에 포함된 이 모듈을 쓴다.
+ *         three.module.min.js 는 "./three.core.js" 를 import 하므로, 번들에서는 Webpack 이 three.core.min.js 로 바꾸고
+ *         번들 없이 직접 읽을 때는 페이지의 import map 으로 "./js/three.core.js" 를 "./js/three.core.min.js" 로 연결한다.
  */
+
+import * as THREE from './three.module.min.js';
+
+// 예전 three.min.js 처럼 전역 THREE 를 등록한다. puyow.js 는 이 전역으로 3D 레이어 사용 여부를 정하고,
+// 효과 매니저도 같은 전역을 읽어 두 판단이 어긋나지 않게 한다. (이미 다른 THREE 가 있으면 덮어쓰지 않는다.)
+if (typeof globalThis !== 'undefined' && !globalThis.THREE) globalThis.THREE = THREE;
 
 class PuyoW3DEffectManager {
     /** 캔버스 연결과 GPU 초기화를 분리하여 효과가 필요할 때만 WebGL을 만든다. */
@@ -39,7 +48,7 @@ class PuyoW3DEffectManager {
     initialize(canvas3d, options = {}) {
         this.dispose();
         this.canvas3d = canvas3d;
-        this.THREE = window.THREE || null;
+        this.THREE = globalThis.THREE || null;
         this.failed = false;
         this.onActiveChange = options.onActiveChange || (() => {});
         canvas3d.addEventListener('webglcontextlost', this.onContextLost);
@@ -376,10 +385,18 @@ class PuyoW3DEffectManager {
 
 const PUYOW_3D_INSTANCES = new PuyoW3DEffectManager();
 
-if (typeof window !== 'undefined') window.PuyoW3DEffect = {
+/** puyow.js 가 window.PuyoW3DEffect 로 찾는 3D 효과 API 다. */
+const PuyoW3DEffect = {
     initialize(canvas3d, options) {
         PUYOW_3D_INSTANCES.initialize(canvas3d, options);
         return PUYOW_3D_INSTANCES;
     },
-    dispose() { PUYOW_3D_INSTANCES.dispose(); }
+    dispose() { PUYOW_3D_INSTANCES.dispose(); },
+    /** @returns {PuyoW3DEffectManager} 초기화하지 않고 현재 효과 매니저를 읽는다(테스트·디버깅용). */
+    get manager() { return PUYOW_3D_INSTANCES; }
 };
+
+if (typeof window !== 'undefined') window.PuyoW3DEffect = PuyoW3DEffect;
+
+export { PuyoW3DEffectManager, PuyoW3DEffect };
+export default PuyoW3DEffect;

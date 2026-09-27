@@ -112,6 +112,19 @@ export async function allowReplayPage(page) {
   await expect.poll(() => page.evaluate(() => window.WebPuyo?.getScreenState().screen)).toBe('initial_title');
 }
 
+/**
+ * Three.js가 없는 환경을 흉내 낸다. three는 Webpack 번들 안에서 puyow_3d.js가 import해 전역 THREE로 등록하므로,
+ * 스크립트 응답을 막는 대신 페이지 스크립트보다 먼저 전역 THREE를 "항상 비어 있고 등록을 무시하는" 속성으로 고정한다.
+ * 다음에 페이지를 새로 읽을 때부터 적용된다.
+ * @param {import('@playwright/test').Page} page 대상 페이지
+ * @returns {Promise<void>}
+ */
+export async function blockThreeLibrary(page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(globalThis, 'THREE', { configurable: false, get: () => undefined, set: () => {} });
+  });
+}
+
 export async function enterMainMenu(page) {
   const canvasTextCount = await page.evaluate(() => window.testCanvasTexts.length);
   await page.keyboard.press('Enter');

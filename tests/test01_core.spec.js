@@ -2,11 +2,9 @@
 // 저장 데이터 보정, 확인창, 다국어와 URL 치환처럼 특정 모드에 매이지 않는 항목을 다룬다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu, openDojoOpponentSelect, expectDefeatCellMarkers } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, openDojoOpponentSelect, expectDefeatCellMarkers, blockThreeLibrary } from './common/gamepage.js';
 
 setupGamePage();
-
-const THREE_SCRIPT = '**/js/three.min.js';
 
 test('초기화와 화면 이동은 window 커스텀 이벤트로 알린다', async ({ page }) => {
   const initializedEvents = await page.evaluate(() => window.puyowCustomEvents.filter((event) => event.type === 'puyow_init'));
@@ -219,11 +217,13 @@ test('새 src 하위 디렉토리의 게임 리소스를 로드한다', async ({
   expect(resources.stylesheet).toBe('/css/puyow.css');
   expect(resources.icon).toBe('/img/icon45.png');
   expect(resources.manifest).toBe('/manifest.webmanifest');
-  expect(resources.scripts).toEqual(expect.arrayContaining([
-    '/js/three.min.js',
-    '/js/json5.min.js',
-    '/js/puyow.js',
-  ]));
+  expect(resources.scripts).toContain('/bundle/puyow.bundle.js');
+  // 게임 페이지는 ES Module 원본 대신 Webpack 번들 하나만 읽는다. three·json5도 번들에 들어 있어 따로 읽지 않는다.
+  for (const script of ['/js/puyow.js', '/js/puyow_3d.js', '/js/three.min.js', '/js/three.module.min.js', '/js/three.core.min.js', '/js/json5.min.js', '/js/json5.mjs']) {
+    expect(resources.scripts).not.toContain(script);
+  }
+  // 번들에 든 three(ES Module 판)가 전역 THREE로 등록된다.
+  expect(await page.evaluate(() => window.THREE?.REVISION)).toBe('186');
 });
 
 test('초기화는 최상위 div 안에 같은 난수 접미사의 2D·3D canvas를 만들고 destroy가 생성 DOM을 정리한다', async ({ page }) => {
@@ -388,7 +388,7 @@ test('Three.js가 없어도 3D canvas를 만들되 3D 컨텍스트 없이 2D 게
       return originalGetContext.call(this, type, ...args);
     };
   });
-  await page.route(THREE_SCRIPT, (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+  await blockThreeLibrary(page);
   await page.reload();
 
   const fallback = await page.evaluate(() => ({

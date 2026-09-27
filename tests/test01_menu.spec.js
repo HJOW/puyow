@@ -3,7 +3,7 @@
 // AI 제공자·학습 설정은 test03_ai.spec.js에 있다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu, openSettings, startPracticeWithVirtualController, submitTextDialog, cancelTextDialog } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, openSettings, startPracticeWithVirtualController, submitTextDialog, cancelTextDialog, blockThreeLibrary } from './common/gamepage.js';
 
 setupGamePage();
 
@@ -259,7 +259,7 @@ test.describe('카드 3D 등장 연출', () => {
   /** 테스트에서만 매니저를 읽고 실제 GPU 렌더링·해제 시점을 관찰한다. */
   async function observeEffect(page) {
     await page.evaluate(() => {
-      window.testCardEffect = PUYOW_3D_INSTANCES;
+      window.testCardEffect = window.PuyoW3DEffect.manager;
       const manager = window.testCardEffect;
       const cancel = manager.cancelReveal.bind(manager);
       manager.cancelReveal = () => {
@@ -412,8 +412,13 @@ test.describe('카드 3D 등장 연출', () => {
             return original.call(this, type, ...args);
           };
         });
+      } else if (missing === 'THREE') {
+        await blockThreeLibrary(page);
       } else {
-        await page.route(missing === 'THREE' ? '**/js/three.min.js' : '**/js/puyow_3d.js', (route) => route.fulfill({ contentType: 'application/javascript', body: '' }));
+        // puyow_3d.js는 Webpack 번들에 함께 들어 있으므로, 번들이 등록하는 window.PuyoW3DEffect를 무시하게 해 효과 모듈이 없는 상태를 만든다.
+        await page.addInitScript(() => {
+          Object.defineProperty(window, 'PuyoW3DEffect', { configurable: false, get: () => undefined, set: () => {} });
+        });
       }
       await openCards(page);
       await drawCards(page);

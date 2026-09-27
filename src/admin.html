@@ -357,7 +357,8 @@
 
         <!-- 비밀번호를 서버로 보내기 전에 sha256 으로 해시하는 데 쓴다. (평문 http 에서는 crypto.subtle 을 쓸 수 없다) -->
         <script defer src="./js/crypto-js.min.js"></script>
-        <script defer src="./js/puyow_admin.js"></script>
+        <!-- ES Module 이다. -->
+        <script type="module" src="./js/puyow_admin.js"></script>
 
         <!-- 관리 도구 로딩 스크립트 -->
         <script>

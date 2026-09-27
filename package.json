@@ -1,11 +1,12 @@
 {
   "name": "puyow",
-  "version": "0.3.123",
+  "version": "0.3.125",
   "description": "Puyo Pop game on web",
   "license": "Apache-2.0",
   "author": "HJOW",
   "type": "commonjs",
-  "main": "src/js/puyow.js",
+  "main": "src/bundle/puyow.bundle.js",
+  "module": "src/js/puyow.js",
   "scripts": {
     "start": "npm run test && npm run build && node node/server.js",
     "test": "eslint",

@@ -28,15 +28,17 @@
         <link rel="manifest" href="manifest.webmanifest"/>
 
         <!-- Game 관련 (선택) -->
-        <script defer src="./js/three.min.js"></script>
-        <script defer src="./js/json5.min.js"></script>
         <script defer src="./js/ort.all.min.js"></script>
         <!-- // Game 관련 (선택) -->
 
         <!-- Game 관련 (필수) -->
         <link rel="stylesheet" href="./css/puyow.css"/>
-        <script defer src="./js/puyow.js"></script>
-        <script defer src="./js/puyow_replay.js"></script>
+        <!-- three.module.min.js 가 import 하는 ./three.core.js 를 저장소의 three.core.min.js 로 연결한다. (모듈 스크립트보다 먼저 둔다) -->
+        <script type="importmap">{ "imports": { "./js/three.core.js": "./js/three.core.min.js" } }</script>
+        <!-- 3D 라이브러리 (선택). puyow_3d.js 가 three.module.min.js 를 import 하여 전역 THREE 를 등록한다. -->
+        <script type="module" src="./js/puyow_3d.js"></script>
+        <!-- ES Module 이다. puyow.js(와 json5.mjs)는 puyow_replay.js 가 import 한다. -->
+        <script type="module" src="./js/puyow_replay.js"></script>
         <!-- // Game 관련 (필수) -->
 
         <!--

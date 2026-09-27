@@ -9,12 +9,14 @@ import vm from 'node:vm';
 import os from 'node:os';
 import path from 'node:path';
 import { setupGamePage, enterMainMenu, openSettings } from './common/gamepage.js';
+import { readClassicScript } from './common/modulesource.js';
 
 setupGamePage();
 
 // 무한 반복이 되살아나도 브라우저나 테스트 프로세스가 멈추지 않도록 실제 게임 코드를
 // 실행 제한 시간이 있는 VM에서 검사한다. 공개 API를 늘리지 않고 테스트 안에서만 솔로몬을 노출한다.
-const source = fs.readFileSync('src/js/puyow.js', 'utf8');
+// puyow.js는 ES Module이므로 export 문을 지운 일반 스크립트로 바꿔 실행한다.
+const source = readClassicScript('src/js/puyow.js');
 const exportAnchor = 'WebPuyo = {';
 
 function createContext(enemyName) {
@@ -140,11 +142,27 @@ for (const enemyName of ['Solomon', 'OnnxEnemy']) {
 
 for (const runtime of ['원본', '번들']) {
   test(`순환 배치 필드를 검사한 뒤에도 ${runtime}의 화면 갱신과 새로고침이 동작한다`, async ({ page }) => {
-    if (runtime === '번들') {
-      // 기본 페이지는 원본 JS를 읽으므로 번들 검증 때만 해당 응답을 빌드 산출물로 교체한다.
-      await page.route('**/js/puyow.js', (route) => route.fulfill({ path: path.resolve('src/bundle/puyow.bundle.js'), contentType: 'application/javascript' }));
+    if (runtime === '원본') {
+      // 기본 페이지는 Webpack 번들을 읽으므로 원본 검증 때만 번들 대신 ES Module 원본을 읽도록 페이지를 바꾼다.
+      await page.route('**/puyow.html', async (route) => {
+        const response = await route.fetch();
+        const html = await response.text();
+        const bundleTag = '<script defer src="./bundle/puyow.bundle.js"></script>';
+        expect(html).toContain(bundleTag);
+        await route.fulfill({
+          response,
+          // import map은 three.module.min.js가 import하는 ./three.core.js를 저장소의 three.core.min.js로 연결한다(puyow.html의 주석 예시와 같다).
+          body: html.replace(bundleTag, '<script type="importmap">{ "imports": { "./js/three.core.js": "./js/three.core.min.js" } }</script><script type="module" src="./js/puyow_3d.js"></script><script type="module" src="./js/puyow.js"></script>'),
+        });
+      });
       await page.reload();
       await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
+      // 원본 모듈 그래프에서도 json5.mjs·three.module.min.js를 import해 JSON5 파싱과 전역 THREE가 동작한다.
+      expect(await page.evaluate(() => window.THREE?.REVISION)).toBe('186');
+      expect(await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname)))
+        .toEqual(expect.arrayContaining(['/js/json5.mjs', '/js/three.module.min.js', '/js/three.core.min.js']));
+      expect(await page.evaluate(() => [...document.scripts].map((script) => new URL(script.src || location.href).pathname))).toEqual(expect.arrayContaining(['/js/puyow.js', '/js/puyow_3d.js']));
+      expect(await page.evaluate(() => [...document.scripts].some((script) => script.src.includes('/bundle/')))).toBe(false);
     }
     const candidates = await page.evaluate(async () => {
       const player = {

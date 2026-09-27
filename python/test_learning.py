@@ -1426,7 +1426,7 @@ class JavascriptBoardRegressionTest(unittest.TestCase):
 			js_board = [[None if cell == -1 else "garbage" if cell == -2 else color_names[cell] for cell in row] for row in board]
 			js_board.extend([[None] * training.BOARD_WIDTH for _ in range(13)])
 			payload.append({"board": js_board, "colors": [color_names[color] for color in pair], "positions": [{"x": x, "y": y} for x, y in positions]})
-		script = "const fs=require('fs'),p=require('./src/js/puyow.js');const c=JSON.parse(fs.readFileSync(0,'utf8'));process.stdout.write(JSON.stringify(c.map(v=>p.common.simulatePlacementBoard(v.board,v.colors,v.positions))));"
+		script = "const fs=require('fs'),p=require('./src/bundle/puyow.bundle.js');const c=JSON.parse(fs.readFileSync(0,'utf8'));process.stdout.write(JSON.stringify(c.map(v=>p.common.simulatePlacementBoard(v.board,v.colors,v.positions))));"
 		completed = subprocess.run(
 			["node", "-e", script], input=json.dumps(payload), capture_output=True, text=True,
 			cwd=Path(__file__).resolve().parents[1], check=True,

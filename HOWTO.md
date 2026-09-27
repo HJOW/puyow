@@ -20,12 +20,12 @@
 - `index.html`: 저장소 루트에서 `src/index.html`로 이동시키는 진입점입니다.
 - `src/index.html`: 배포용 로딩 페이지이며 `src/puyow.html`로 이동합니다. 스타일은 `src/css/`에서 불러옵니다.
 - `src/puyow.html`: 게임 최상위 div와 초기화 호출을 정의하는 2D 플레이 페이지입니다.
-- `src/js/puyow.js`: 브라우저/CommonJS 라이브러리, 게임 규칙, 렌더링, 입력, CPU 조작을 구현합니다.
-- `src/js/three.min.js`, `src/js/json5.min.js`: 각각 3D 효과와 JSON5 처리를 위한 선택적 라이브러리입니다.
+- `src/js/puyow.js`: ES Module 형식의 게임 라이브러리로, 게임 규칙, 렌더링, 입력, CPU 조작을 구현합니다. `src/js/` 아래 `puyow`로 시작하는 파일은 모두 ES Module입니다.
+- `src/js/three.module.min.js`·`src/js/three.core.min.js`, `src/js/json5.mjs`: 각각 3D 효과와 JSON5 처리를 위한 ES Module 라이브러리입니다. `puyow_3d.js`가 three를, `puyow.js`가 json5를 import하며 Webpack 번들에 함께 들어갑니다.
 - `src/css/puyow.css`: 배경·색상 체계·세로 중앙 정렬과 글꼴 스타일을 정의합니다. 게임 canvas의 크기·배치·회전은 런타임에 `puyow.js`가 넣는 style 태그가 담당합니다.
 - `src/img/`: PWA와 페이지에서 사용하는 아이콘을 보관합니다.
 - `src/notice/`: 언어별 공지사항 파일을 보관합니다.
-- `src/bundle/puyow.bundle.js`: `webpack`으로 생성하는 배포용 번들입니다.
+- `src/bundle/puyow.bundle.js`: `npm run build`(`webpack`)로 `puyow.js`와 `puyow_3d.js`를 묶어 만드는 CommonJS 호환(UMD) 번들입니다. 게임 페이지(`src/puyow.html`)는 이 번들을 읽으므로, `puyow.js`를 고친 뒤에는 다시 빌드해야 게임 페이지에 반영됩니다.
 - `HOWTO.md`: 페이지 구성, 라이브러리 사용법, 번역 및 공통 개발 안내를 제공합니다.
 - `docs/`: 그래픽, 뿌요, 적·AI, 시뮬레이터·피버, 사운드별 개발자 문서를 제공합니다.
 
@@ -40,7 +40,7 @@ puyow.js 는 CDN으로도 사용할 수 있습니다.
 
 ## 라이브러리 개요
 
-`puyow.js`는 CommonJS와 브라우저 스크립트 방식 모두에서 사용할 수 있는 라이브러리입니다. `Enemy`는 CPU 조작 알고리즘과 게임 화면 테마를 넣기 위한 기본 클래스입니다. 메인 화면에서 게임 시작 → 도장깨기 → 규칙을 선택하면 적 선택 화면이 열리며, 외부 파일에서 등록한 상대를 선택해 대전합니다. `sortPriority` 멤버 변수의 기본값은 `1`이며, 작은 값의 적이 적 선택 화면에서 왼쪽에 표시됩니다.
+`puyow.js`는 ES Module로 작성되어 있으며, 기본 내보내기(`export default`)와 이름 있는 내보내기(`PuyoW`, `WebPuyo`)로 같은 API 객체를 공개하고 브라우저에서는 `window.PuyoW`에도 등록합니다. 일반 `<script>`나 CommonJS(`require`)에서는 Webpack 번들 `src/bundle/puyow.bundle.js`를 사용합니다. `Enemy`는 CPU 조작 알고리즘과 게임 화면 테마를 넣기 위한 기본 클래스입니다. 메인 화면에서 게임 시작 → 도장깨기 → 규칙을 선택하면 적 선택 화면이 열리며, 외부 파일에서 등록한 상대를 선택해 대전합니다. `sortPriority` 멤버 변수의 기본값은 `1`이며, 작은 값의 적이 적 선택 화면에서 왼쪽에 표시됩니다.
 
 `Enemy`에는 선택 화면 공개 상태를 위한 boolean 멤버 변수도 있습니다. 둘 다 기본값은 `false`입니다.
 
@@ -56,13 +56,23 @@ puyow.js 는 CDN으로도 사용할 수 있습니다.
 ```html
 <div id="puyow_target"></div>
 <!-- src/puyow.html 기준의 실제 경로 -->
-<script defer src="./js/three.min.js"></script>
-<script defer src="./js/json5.min.js"></script>
-<script defer src="./js/puyow.js"></script>
+<!-- three·json5 는 번들에 들어 있으므로 따로 읽지 않습니다. -->
+<script defer src="./bundle/puyow.bundle.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     window.PuyoW.initialize('puyow_target');
 });
+</script>
+```
+
+번들 대신 ES Module 원본을 직접 쓸 수도 있습니다. 이때 `puyow_3d.js`(선택)도 모듈로 읽습니다. `three.module.min.js`는 공식 배포본 그대로 `./three.core.js`를 import하므로, 모듈 스크립트보다 앞에 import map을 두어 저장소의 `three.core.min.js`로 연결합니다(Webpack 번들은 빌드 때 같은 연결을 합니다).
+
+```html
+<script type="importmap">{ "imports": { "./js/three.core.js": "./js/three.core.min.js" } }</script>
+<script type="module">
+import './js/puyow_3d.js'; // 선택 (3D 효과)
+import PuyoW from './js/puyow.js';
+PuyoW.initialize('puyow_target');
 </script>
 ```
 
@@ -123,13 +133,13 @@ const imageUrl = PuyoW.convertURL('[CTX]assets/logo_[LANG].png');
 PuyoW.initialize('puyow_target');
 ```
 
-Node.js CommonJS 환경에서는 아래처럼 라이브러리를 불러올 수 있습니다. DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
+Node.js CommonJS 환경에서는 아래처럼 Webpack 번들을 불러올 수 있습니다(`package.json`의 `main`도 이 번들입니다). DOM이 없는 Node.js에서는 `initialize()`를 호출할 수 없지만, 컨트롤러 클래스와 적 등록 API는 사용할 수 있습니다.
 
 ```js
-const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, getReplayData, showMessage, askConfirm, initialize } = require('./src/js/puyow.js');
+const { Enemy, Puyo, RedPuyo, GreenPuyo, YellowPuyo, BluePuyo, PurplePuyo, GarbagePuyo, HardGarbagePuyo, WarningPuyo, registerOpponent, registerWarningPuyo, randomFloat, getCanvasOutputSize, toCanvasCoordinates, toCanvasLength, applyCanvasCoordinateTransform, getSelectedDifficulty, getSelectedColorCount, getScreenState, getGameState, getReplayData, showMessage, askConfirm, initialize } = require('./src/bundle/puyow.bundle.js');
 ```
 
-`initialize(target)`의 `target`은 게임 최상위 `div` 요소 또는 그 `id` 문자열입니다. 라이브러리는 이 div에 `div_puyow_root` 클래스를 붙이고, 같은 8자리 난수 접미사를 가진 `div_puyow_2d_<번호>`·`div_puyow_3d_<번호>` canvas를 생성합니다. 2D canvas가 기본 입력·표시 레이어이며, 3D canvas는 투명한 선택적 Three.js 연출용 레이어입니다. `three.min.js`가 없으면 3D canvas는 그대로 만들되 renderer·레이어 전환을 하지 않고 2D 게임을 계속합니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달하면 `body` 바로 아래에 최상위 div를 만듭니다. canvas 요소나 canvas ID를 전달하는 이전 초기화 방식은 지원하지 않습니다.
+`initialize(target)`의 `target`은 게임 최상위 `div` 요소 또는 그 `id` 문자열입니다. 라이브러리는 이 div에 `div_puyow_root` 클래스를 붙이고, 같은 8자리 난수 접미사를 가진 `div_puyow_2d_<번호>`·`div_puyow_3d_<번호>` canvas를 생성합니다. 2D canvas가 기본 입력·표시 레이어이며, 3D canvas는 투명한 선택적 Three.js 연출용 레이어입니다. 전역 `THREE`가 없으면(`puyow_3d.js`를 읽지 않은 경우 등) 3D canvas는 그대로 만들되 renderer·레이어 전환을 하지 않고 2D 게임을 계속합니다. 인수를 생략하거나 `null`, `undefined`, 빈 문자열을 전달하면 `body` 바로 아래에 최상위 div를 만듭니다. canvas 요소나 canvas ID를 전달하는 이전 초기화 방식은 지원하지 않습니다.
 
 ## 실행 중 표시와 설정
 

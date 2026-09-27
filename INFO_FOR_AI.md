@@ -27,19 +27,32 @@
 - 서버 모니터링·관리 페이지: `src/admin.html`, `src/js/puyow_admin.js` (서버 백엔드는 `node/admin.js`·`python/admin.py`, 게임 페이지는 이 스크립트를 읽지 않는다)
 - 리플레이 재생 페이지: `src/replay.html`(스타일 포함), `src/js/puyow_replay.js`, 추천 리플레이 목록 `src/js/replays.json` (재생은 `puyow.js`의 `PuyoW.replay` API를 쓴다. 게임 페이지는 이 스크립트를 읽지 않는다. 아래 「리플레이 재생 페이지」 절)
 - 스타일: `src/css/puyow.css`
-- 선택적 라이브러리: `src/js/three.min.js`, `src/js/json5.min.js`
+- ES Module 라이브러리(번들에 포함): `src/js/three.module.min.js`·`src/js/three.core.min.js`(three r186, `puyow_3d.js`가 import), `src/js/json5.mjs`(`puyow.js`가 import). 예전 `three.min.js`·`json5.min.js`는 더 이상 어디서도 읽지 않는다. `three.webgpu.min.js`도 쓰지 않는다.
+- 전역 선택 라이브러리(페이지에서 따로 읽음): `src/js/crypto-js.min.js`, `src/js/ort.all.min.js`
 - 이미지: `src/img/`
 - 언어별 공지사항: `src/notice/`
-- Webpack 번들 출력: `src/bundle/puyow.bundle.js`
+- Webpack 번들 출력: `src/bundle/puyow.bundle.js` (`puyow_3d.js` + `puyow.js`, CommonJS 호환 UMD. **게임 페이지 `src/puyow.html`과 `src/learning.html`은 이 번들을 읽으므로 `puyow.js`·`puyow_3d.js`를 고치면 `npm run build`로 다시 만든다.** 아래 「ES Module과 Webpack 번들」 절)
 - E2E 회귀 테스트: `tests/test01_*.spec.js` (게임 페이지), `tests/test02_tools.spec.js` (개발용 도구 페이지), `tests/test03_ai.spec.js` (AI 모델 사용·학습), `tests/test04_admin.spec.js` (서버 모니터링·관리 페이지), `tests/test05_leaderboard.spec.js` (리더보드 기록 규칙과 조회 페이지), `tests/test06_replay_page.spec.js` (리플레이 재생 페이지)
 - 개발자 문서: `HOWTO.md`, `docs/`
 - 공개 안내 문서: `README.md`, `README.en.md` (`README.en.md`는 `README.md`의 영어 번역본이므로 플레이 주소·실행 방법 같은 원문 갱신을 함께 반영한다.)
 - 모든 텍스트 파일은 UTF-8, 기본 UI 언어는 한국어다.
 - Windows PowerShell에서는 `npm.cmd test`와 `npx.cmd playwright ...`를 사용한다.
-- 기본 정적 검증: `node --check src/js/puyow.js`, `npm.cmd test`, `git diff --check`.
+- 기본 정적 검증: `node --check src/js/puyow.js`(`src/js/package.json`의 `"type": "module"` 덕분에 ES Module로 검사된다), `npm.cmd test`, `npm.cmd run build`, `git diff --check`.
 - 게임 동작·캔버스 변경은 해당 Playwright 테스트도 실행한다. 정적 검사만으로 게임 동작을 검증했다고 판단하지 않는다.
 
-`puyow.js`는 IIFE 내부에서 게임 상태를 관리한다. CommonJS `module.exports`와 브라우저 `window.WebPuyo`로 내보내며, `window.PuyoW`는 같은 객체의 별칭이다. 외부 확장 등록은 일반적으로 `initialize()` 이전에 한다.
+`puyow.js`는 ES Module이며 게임 상태는 모듈 최상위 스코프(비공개)에 있다. 같은 API 객체를 `export default`·`export { WebPuyo, PuyoW }`와 브라우저 `window.WebPuyo`로 내보내며, `window.PuyoW`는 같은 객체의 별칭이다. CommonJS `module.exports`는 소스가 아니라 Webpack 번들의 UMD 래퍼가 맡는다. 외부 확장 등록은 일반적으로 `initialize()` 이전에 한다.
+
+### ES Module과 Webpack 번들 (2026-09-27, BUILDNO 124)
+
+- `src/js/` 아래 `puyow`로 시작하는 파일(`puyow.js`, `puyow_3d.js`, `puyow_admin.js`, `puyow_leaderboard.js`, `puyow_replay.js`, `puyow_tools.js`)은 모두 ES Module이다. 예전 IIFE 래퍼와 `'use strict'`를 걷어내고 내부를 한 단계 내어쓰기했다(여러 줄 템플릿 문자열 내부는 그대로 두었고, 변환 전후 토큰열이 같음을 확인했다). 각 파일은 기존 전역(`window.PuyoW`/`WebPuyo`, `PuyoW3DEffect`, `PuyoWAdmin`, `PuyoWLeaderboard`, `PuyoWReplay`, `PuyoWTools`)을 그대로 등록하고, 같은 객체를 기본·이름 있는 내보내기로도 공개한다.
+- `src/js/package.json`(`{"type": "module"}`)이 이 디렉터리의 `.js`를 ES Module로 선언한다. 루트 `package.json`의 `"type"`은 `node/`·설정 파일 때문에 계속 `commonjs`다. 이 파일 덕분에 `node --check src/js/puyow.js`와 Node `import('./src/js/puyow.js')`가 동작한다. 같은 디렉터리의 `crypto-js.min.js`·`ort.all.min.js`는 브라우저가 일반 `<script>`로만 읽으므로 영향이 없고, `three.*.min.js`·`json5.mjs`는 원래 ES Module이다.
+- **Webpack(`webpack.config.js`)**: 진입점은 `["./src/js/puyow_3d.js", "./src/js/puyow.js"]`, 출력은 `output.library { name: 'PuyoW', type: 'umd', export: 'default' }`, `globalObject`는 `self`/`this` 겸용이다. 배열 마지막 모듈(`puyow.js`)의 기본 내보내기가 번들의 내보내기이므로 Node에서 `require('./src/bundle/puyow.bundle.js')`가 곧 `PuyoW` 객체다. 루트 `type`이 `commonjs`라 `src/js/puyow*.js`·`three.(core|module).min.js`에 `type: 'javascript/esm'` 규칙을 명시했다.
+- **three·json5 (BUILDNO 125)**: UMD `three.min.js`(r160)·`json5.min.js` 대신 ES Module판을 import해 번들에 함께 묶는다. `puyow.js`는 `import JSON5 from './json5.mjs'`로 `parseJSON()`에서 항상 JSON5를 쓴다(예전 `window.JSON5` 확인과 `JSON.parse` 대체는 없앴고 전역 `JSON5`도 등록하지 않는다). `puyow_3d.js`는 `import * as THREE from './three.module.min.js'` 후 **전역 `THREE`가 비어 있을 때만 `globalThis.THREE`로 등록**한다. `puyow.js`의 `getThreeLibrary()`(3D 레이어 사용 여부)와 효과 매니저의 `initialize()`가 모두 이 전역을 읽으므로 "THREE 없음" 판단이 한 곳으로 모인다. puyow.js 자체는 three를 import하지 않아 리더보드처럼 3D가 필요 없는 페이지는 three를 받지 않는다.
+- **`./three.core.js` 연결**: 공식 `three.module.min.js`(jsDelivr `three@0.186.0`과 같은 내용)는 `"./three.core.js"`를 import한다. 파일은 고치지 않고, 번들은 `webpack.NormalModuleReplacementPlugin(/^\.\/three\.core\.js$/, './three.core.min.js')`로, 번들 없이 모듈로 읽는 페이지(`tools.html`·`replay.html`, `puyow.html`·`learning.html`의 주석 예시, `test03_ai` 원본 비교)는 `<script type="importmap">{ "imports": { "./js/three.core.js": "./js/three.core.min.js" } }</script>`로 연결한다. import map은 모듈 스크립트보다 앞에 둔다. three를 새 버전으로 바꿀 때 파일 이름이 달라지면 이 두 곳을 함께 고친다.
+- **페이지별 로딩**: `puyow.html`·`learning.html`은 전역 선택 라이브러리(crypto-js·ort) 뒤에 `<script defer src="./bundle/puyow.bundle.js">` 하나만 읽는다(원본 모듈을 쓰는 주석 예시를 남겨 두었다). `tools.html`·`replay.html`은 예전에 `three.min.js`로 전역 THREE를 제공했으므로 그 자리에 import map과 `<script type="module" src="./js/puyow_3d.js">`를 둔다(효과 매니저도 함께 등록되지만 두 페이지에는 카드 연출이 없다). `tools.html`·`replay.html`·`leaderboard.html`·`admin.html`은 번들 없이 `<script type="module" src="./js/puyow_<페이지>.js">`를 읽고, 도구·리플레이·리더보드 스크립트가 `import PuyoW from './puyow.js'`로 게임을 가져온다(예전 `window.PuyoW` 조회는 import 값으로 바꿨다). 모듈 스크립트는 `DOMContentLoaded` 전에 실행되므로 페이지의 인라인 초기화 코드는 그대로다.
+- **스크립트 경로 기준**: `findGameScriptSource()`가 `puyow(.min|.bundle).js` script 요소를 먼저 찾고, 없으면(페이지 스크립트가 import한 경우) 같은 `src/js/`의 `puyow_*.js` script 요소를 쓴다. `loadNotice()`(공지 `../notice/…`)와 `getGameResourceBaseURL()`(`src/` 기준)이 함께 쓴다. `puyow_replay.js`의 목록 파일 기준 주소는 `document.currentScript` 대신 `import.meta.url`이다. **번들에 들어가는 `puyow.js`·`puyow_3d.js`에서는 `import.meta`를 쓰지 않는다**(Webpack이 빌드 PC의 파일 경로로 바꾸거나 일반 스크립트에서 문법 오류가 난다).
+- **Node 소비자**: `node/server.js`의 `PUYOW_CORE_PATH`, `python/learning.py`의 `load_fever_stage_definitions()`, `python/test_learning.py`의 JS 회귀 비교는 모두 `src/bundle/puyow.bundle.js`를 `require`한다. `package.json`의 `main`은 번들, `module`은 `src/js/puyow.js`다. `puyow.js`를 고치고 번들을 다시 만들지 않으면 이 경로들은 이전 코드를 쓴다(`npm start`는 빌드 후 서버를 띄운다).
+- **테스트**: 소스를 일반 스크립트로 실행하던 테스트(`test01_portrait`의 `addScriptTag`, `test03_ai`의 Node `vm`)는 `tests/common/modulesource.js`의 `readClassicScript()`로 한 줄짜리 `import`/`export` 문을 지우고 IIFE로 감싼 소스를 쓴다(`module`이 있으면 `module.exports = WebPuyo`). 테스트가 소스에서 찾는 기준 문자열은 들여쓰기가 없는 형태다(`'\nWebPuyo = {'`, `'function autoGenerateWorkerBootstrap(constants) {'`). `test03_ai`의 「원본/번들」 비교는 기본 페이지가 번들이므로 원본 쪽에서 `puyow.html` 응답의 번들 태그를 모듈 태그로 바꾼다. `test01_menu`의 3D 효과 매니저 관찰은 전역 `PUYOW_3D_INSTANCES` 대신 `window.PuyoW3DEffect.manager`(읽기 전용 접근자)를 쓰고, "효과 모듈 없음"은 번들이 등록하는 `window.PuyoW3DEffect`를 `addInitScript`의 무시 setter로 막아 재현한다. `test01_core`는 게임 페이지가 `/bundle/puyow.bundle.js`를 읽고 `/js/puyow.js`·three·json5 파일을 따로 읽지 않으며 `window.THREE.REVISION`이 `186`인지 확인한다. "THREE 없음"(`test01_core`의 3D 컨텍스트 미생성, `test01_menu`의 카드 구매)은 스크립트 응답을 막는 대신 `tests/common/gamepage.js`의 `blockThreeLibrary(page)`가 `addInitScript`로 전역 `THREE`를 "항상 undefined·대입 무시" 속성으로 고정해 재현한다. `readClassicScript()`는 기본 가져오기를 같은 이름의 전역으로 바꾸며 `JSON5`는 없으면 `JSON`으로 대신한다.
 
 ## 공통 작업 원칙
 
@@ -502,7 +515,7 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 
 공통 계산을 수정하면 2D 게임, CPU 미리보기, 시뮬레이터, 피버 패턴 검증에 미치는 영향을 확인한다. 독립 3D 게임 버전은 개발 대상에서 철회했다. 선택적 3D 효과는 독립 게임이 아니라 기존 2D 게임 위에 얹는 연출이며, **새 3D 효과와 THREE 객체를 다루는 구현은 `src/js/puyow_3d.js`에 둔다.** `src/js/puyow.js`에는 2D 게임 동작이 유지되는 데 필요한 캔버스 준비, 선택적 효과 모듈 연결, 크기 변경·정리 같은 최소한의 접점만 둔다. 2D 게임 핵심 코드에 THREE를 직접 의존시키거나 THREE가 있다고 가정하는 코드를 추가하지 않는다.
 
-`puyow.js`는 같은 8자리 접미사의 2D·투명 3D canvas를 최상위 `div_puyow_root` 아래에 만들지만, `three.min.js`와 `puyow_3d.js`는 모두 선택 사항이다. THREE가 없거나 3D 효과 모듈이 빠져 있어도 2D 캔버스 초기화·입력·게임 진행은 정상 동작해야 한다. 효과 모듈이 로드된 경우 `window.PuyoW3DEffect.initialize(threeCanvas)`로 초기화하고, 반환된 매니저의 `onWindowResize()`와 `dispose()`를 수명주기 접점으로 사용한다. `puyow_3d.js`도 THREE가 없으면 효과 초기화를 건너뛰어야 하며, 2D 게임 동작을 막아서는 안 된다. 효과 구현 시 이 선택 의존성 계약과 2D 우선 입력·레이어 동작을 보존한다.
+`puyow.js`는 같은 8자리 접미사의 2D·투명 3D canvas를 최상위 `div_puyow_root` 아래에 만들지만, three와 `puyow_3d.js`는 모두 선택 사항이다(번들에는 둘 다 들어 있고, 판단 기준은 `puyow_3d.js`가 등록하는 전역 `THREE`다). THREE가 없거나 3D 효과 모듈이 빠져 있어도 2D 캔버스 초기화·입력·게임 진행은 정상 동작해야 한다. 효과 모듈이 로드된 경우 `window.PuyoW3DEffect.initialize(threeCanvas)`로 초기화하고, 반환된 매니저의 `onWindowResize()`와 `dispose()`를 수명주기 접점으로 사용한다. `puyow_3d.js`도 THREE가 없으면 효과 초기화를 건너뛰어야 하며, 2D 게임 동작을 막아서는 안 된다. 효과 구현 시 이 선택 의존성 계약과 2D 우선 입력·레이어 동작을 보존한다.
 
 현재 초기화에는 두 번째 인자로 `{ onActiveChange: setThreeCanvasLayerActive }`를 전달한다. `initialize()`는 캔버스·콜백만 연결하고 WebGL 렌더러는 첫 카드 연출에서 지연 생성한다. THREE가 있어도 WebGL이 실패할 수 있으므로 매니저 내부에서 오류를 처리한다. `active`일 때만 기존 `frame(time)`이 `update(time)`을 호출하며 별도의 RAF 루프를 만들지 않는다. 앞에 놓인 3D canvas도 `pointer-events: none`을 유지하여 입력은 항상 2D 캔버스의 기존 좌표 변환을 거친다. 렌더러의 `setSize(width, height, false)`에는 CSS 회전 후 크기가 아니라 2D와 같은 실제 출력 해상도를 전달한다. 완료·건너뛰기·갤러리 종료·GPU 컨텍스트 손실은 `cancelReveal()`에서 타이머·효과 geometry/material/texture를 해제하고 레이어를 복원한다. `dispose()`는 렌더러와 이벤트도 정리하여 게임을 재초기화할 수 있게 한다. Webpack 번들에도 효과 모듈을 포함한다.
 
@@ -523,6 +536,7 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 | 파일 | 다루는 범위 |
 | --- | --- |
 | `tests/common/gamepage.js` | 여러 파일이 함께 쓰는 준비 코드와 도우미. `setupGamePage()`가 공통 `test.beforeEach`를 지금 spec 파일에 등록한다. 파일 이름이 `*.spec.js`가 아니라서 Playwright가 테스트로 수집하지 않는다. |
+| `tests/common/modulesource.js` | ES Module 소스(`src/js/puyow*.js`)를 Node `vm`·`page.addScriptTag()`에서 실행할 일반 스크립트로 바꾸는 `readClassicScript()`·`toClassicScript()` |
 | `test01_core.spec.js` | 초기화·리소스 로드·공개 API·보드/NEXT/DAMAGE 규칙·저장 데이터 보정·확인창·다국어와 URL 치환 |
 | `test01_menu.spec.js` | 타이틀 메뉴·설정 화면·카드와 GOLD·가상 컨트롤러와 조이스틱·게임패드·화면 회전·플레이 방법 시연 |
 | `test01_enemy.spec.js` | 기본 제공 적 AI의 판단, 다수 탐색 Worker, 패배 위치 회피, 적 테마, 진행도 저장, 구경 모드 |
@@ -705,7 +719,7 @@ Playwright의 `webServer`는 `reuseExistingServer`라서 9891 포트에 이미 �
 - **모델 서비스가 없어도 서버는 그대로 돈다**: `onnxruntime-node`와 `puyow.js`는 모듈 최상단이 아니라 `getLocalAiSession()` 안에서 처음 필요할 때 `require()`한다. `/apis/localmodelinfo`와 `/v1/chat/completions`는 요청마다 먼저 `isLocalAiModelConfigured()`로 `LOCAL_AI_MODEL_PATH`가 실제 파일인지 보고, 없으면 세션을 만들지 않고 각각 `{available:false}`·404를 돌려준다(한 번 만든 세션이 있어도 파일이 사라지면 같다). 파일은 있는데 런타임 로드·세션 생성이 실패하면 `localmodelinfo`는 false, 모델 요청은 503이고, 실패한 약속은 비워 다음 요청에서 다시 시도한다. 정적 파일·`/apis/learning`·`/apis/solomonlearning`은 모델 상태와 무관하다.
 - **선택 규칙은 파이썬 서버와 같다**: 프롬프트 → `common.py`와 같은 1035개 관측 벡터(자기 필드 + `opponentField`) → 다시 보드·쌍·스칼라로 디코딩(정규화 상한에서 잘린 값까지 파이썬과 같게 하려고 일부러 되돌린다) → 후보 행동마다 `learning.py _build_afterstate()`와 같은 순서로 ATTACK·싹쓸이 티켓·피버 보정을 적용한 애프터스테이트 → 한 번의 배치 추론으로 `보상 + 0.70 × 가치`가 가장 큰 행동. `usablePlacements`가 오면 그 후보만, 없으면 관측값 열 높이로 거른 24개 행동을 본다. 착지 좌표는 `bundledenemy.py find_landing_placement()`처럼 각 칸을 자기 열 높이 위에 둔다. 보상은 파이썬처럼 보정 뒤 ATTACK으로 계산한다(브라우저 `OnnxEnemy`는 보정 전 ATTACK을 쓴다).
 - **관측 인코딩은 서버에 옮겨 적었다**: `puyow.js`의 `buildObservationValues()`는 공개 API가 아니라 `require()`로 가져올 수 없어서 `encodeObservationValues()`·`decode*()`를 `common.py`에서 그대로 옮겼다. `common.py`의 스케일 상수나 채널 순서를 바꾸면 `nodeserver.js`의 `OBSERVATION_SCALES` 등도 함께 고친다. 두 구현이 어긋나기 쉬워, `test_learning.py`의 `NodeServerObservationParityTest`가 같은 상태를 두 구현으로 인코딩해 값 하나까지 비교한다(Node.js가 없으면 건너뛴다).
-- **착지 뒤 연쇄 계산은 게임 코어를 재사용한다**: `require('src/js/puyow.js').common`의 `simulatePlacementResult()`·`isAllClearBoard()`를 쓴다(Node에서도 DOM 없이 불러와진다). 이 함수의 ATTACK은 진행 중인 게임이 없으면 마진 레이트 70·시간 배율 1로 계산되므로, 서버가 `× 70 / 관측 마진 레이트 × 관측 시간 배율`로 환산한다(ATTACK은 이 두 값에 선형이다). 넘기는 보드는 `GAME_BOARD_ROWS`(25) 행이며 숨김 행은 비운다.
+- **착지 뒤 연쇄 계산은 게임 코어를 재사용한다**: `require('src/bundle/puyow.bundle.js').common`의 `simulatePlacementResult()`·`isAllClearBoard()`를 쓴다(Node에서도 DOM 없이 불러와진다. BUILDNO 124부터 `puyow.js`가 ES Module이라 CommonJS 번들을 읽는다). 이 함수의 ATTACK은 진행 중인 게임이 없으면 마진 레이트 70·시간 배율 1로 계산되므로, 서버가 `× 70 / 관측 마진 레이트 × 관측 시간 배율`로 환산한다(ATTACK은 이 두 값에 선형이다). 넘기는 보드는 `GAME_BOARD_ROWS`(25) 행이며 숨김 행은 비운다.
 - **인증**: 파이썬 `is_learning_authorized()`와 같이 루프백 소켓 주소에서 보낸 `Bearer localhost`는 허용하고, 그 밖에는 기존 `PUYOW_AI_TOKEN`과 비교한다. 이 규칙은 `/v1/chat/completions`에만 쓰며 기존 `/apis/learning` 인증은 바꾸지 않았다. `X-Forwarded-For`는 위조할 수 있으므로 보지 않는다.
 - **역학습은 구현하지 않는다**: `/apis/solomonlearning`은 본문을 처리하지 않고 `{ok:true, trained:false, transitions:0, reason}`만 돌려준다. 게임은 `ok`가 true가 아니면 콘솔 오류를 남기므로 `ok`는 true여야 한다. 프롬프트의 `learningSessionId`도 무시한다.
 - **오류 응답**: 모델 파일이 없으면 `/v1/chat/completions`만 404, 인증 실패 401, POST 외 405, 형식 오류 400, 모델 로드·추론 실패 503, 둘 곳이 없으면 422이며 본문은 `{error:{message,type}}`다.
@@ -1402,6 +1416,20 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - `normalizeStoredLanguageCode(value)`를 더해 저장소 정규화(`loadStore()`의 `settings.language`)와 `applyStoredLanguage()`가 함께 쓴다. 값이 없으면(`undefined`·`null`·공백 문자열) `detectSystemLanguageCode()`, 있으면 `normalizeLanguageCode(value)`(지원하지 않으면 `DEFAULT_LANGUAGE_CODE` 영어)다. 화면·URL `[LANG]`·리플레이 페이지 `getLanguage()`는 모두 `languageCode`를 읽으므로 이 두 곳만 고쳤다. 설정 화면 초안은 저장소 값을 복사하므로 영어 선택지가 선택 상태로 그려진다.
 - 테스트: `test01_menu`의 「설정 언어는 여섯 선택지를…」에서 브라우저 ja-JP·저장값 `es-MX`이면 `en`·`Settings`, 설정 화면 언어 행의 영어 선택지(X 608, Y 104) 픽셀이 선택 색 `#563068`이고 일본어 선택지는 아님, 저장값을 지우면 `ja`·`設定`을 확인한다. 언어 관련 테스트(`test01_menu`·`test03_ai`·`test06_replay_page`) 33건을 Chromium·Firefox·WebKit에서, `test01_core`·`test01_menu`·`test05_leaderboard` 122건을 Chromium에서 통과했다. ESLint·webpack 빌드 통과.
 - `src/js/puyow.js` BUILDNO와 `package.json`·`package-lock.json` 버전은 123 (`0.2.123`)이다. 버전값 검사는 수행하지 않았다.
+
+### ES Module 전면 도입 (2026-09-27, BUILDNO 124)
+
+- `TODO.md` 요청: `src/js/puyow*.js`를 모두 ES Module로 바꾸고, Webpack으로 CommonJS 번들을 만들며, `puyow.html`은 번들을 쓰게 한다. 구조와 규칙은 위쪽 「ES Module과 Webpack 번들」 절에 정리했다. 게임 기능·화면·WebMCP 도구는 바뀌지 않았다.
+- 곁들여 고친 것: 번들 배너 제목이 다른 프로젝트 이름(`Shutting Stars`)으로 되어 있어 `Puyo W`로 바꿨다. 들여쓰기가 바뀐 줄의 기존 줄끝 공백(문자열·템플릿 밖)을 지웠다. `HOWTO.md`·`HOWTO.en.md`의 로딩 예시와 Node `require` 경로를 번들 기준으로 고쳤다.
+- **검증**: `node --check src/js/puyow.js`·`src/js/puyow_*.js`, ESLint, webpack 빌드, `git diff --check` 통과. Node에서 번들 `require`와 원본 `import()` 모두 `BUILDNO 124`·피버 스테이지 56개를 읽었다. Chromium 전체 391건(191 + 200) 통과, `python/test_learning.py`의 `JavascriptBoardRegressionTest` 통과. Firefox·WebKit은 이번에 실행하지 않았다.
+- `src/js/puyow.js` BUILDNO는 124, `package.json`·`package-lock.json` 버전은 `0.3.124`다. 버전값 검사는 수행하지 않았다.
+
+### three·json5 ES Module판 도입 (2026-09-27, BUILDNO 125)
+
+- 사용자 요청: `three.min.js`를 쓰는 곳을 ES Module판 `three.core.min.js`·`three.module.min.js`로, `json5.min.js`를 `json5.mjs`로 바꾸고 모두 Webpack 번들에 넣는다. 구조는 위쪽 「ES Module과 Webpack 번들」 절의 「three·json5」「`./three.core.js` 연결」 항목에 정리했다.
+- three r160 → r186이 되었다. `puyow_3d.js`가 쓰는 API(`WebGLRenderer`·`SRGBColorSpace`·`CanvasTexture`·각종 Geometry/Material·`renderLists`)는 r186에도 그대로 있다. 번들 크기는 약 525KB → 1.27MB(성능 경고 기준 2MB 이하). Node에서 번들을 `require`하면 전역 `THREE`도 등록된다.
+- 사용자가 함께 넣어 둔 `three.webgpu.min.js`와 이제 쓰지 않는 `three.min.js`·`json5.min.js`는 지우지 않고 남겨 두었다(ESLint·ESLintPlugin 제외 목록에만 있다).
+- `src/js/puyow.js` BUILDNO는 125, `package.json`·`package-lock.json` 버전은 `0.3.125`다. 버전값 검사는 수행하지 않았다.
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.

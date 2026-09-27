@@ -772,8 +772,8 @@ test('퍼즐뿌요 자동생성은 동그란 진행 표시를 띄우고, 중단�
 // 자동생성 Worker 본체를 Node에서 그대로 실행한다. 퍼즐 경로의 정확 판정을 게임 코드와 비교하는 데 쓴다.
 function createNodeAutoGenerateWorker() {
   const source = fs.readFileSync('src/js/puyow_tools.js', 'utf8').replace(/\r\n/g, '\n');
-  const start = source.indexOf('    function autoGenerateWorkerBootstrap(constants) {');
-  const end = source.indexOf('\n    /**\n     * 자동생성 Worker를 만든다.');
+  const start = source.indexOf('function autoGenerateWorkerBootstrap(constants) {');
+  const end = source.indexOf('\n/**\n * 자동생성 Worker를 만든다.');
   expect(start).toBeGreaterThan(0);
   expect(end).toBeGreaterThan(start);
   // puyow_tools.js의 createAutoGenerateWorker()가 넘기는 값과 같다(GAME_RULES·COLORS·AUTO_GENERATE_BOARD).

@@ -348,9 +348,8 @@
             }
         </style>
 
-        <script defer src="./js/json5.min.js"></script>
-        <script defer src="./js/puyow.js"></script>
-        <script defer src="./js/puyow_leaderboard.js"></script>
+        <!-- ES Module 이다. puyow.js(와 json5.mjs)는 puyow_leaderboard.js 가 import 한다. -->
+        <script type="module" src="./js/puyow_leaderboard.js"></script>
 
         <script>
             // 첫 그림이 번쩍이지 않도록 스크립트를 읽기 전에 시스템 화면 모드를 먼저 적용한다.

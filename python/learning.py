@@ -227,11 +227,15 @@ def calculate_fever_target(combo: int, all_clear: bool, previous_target: int) ->
 
 
 def load_fever_stage_definitions() -> list[dict[str, Any]]:
-	"""puyow.js가 공개하는 실제 FEVER_STAGES 데이터를 Node로 한 번만 읽는다."""
+	"""puyow.js가 공개하는 실제 FEVER_STAGES 데이터를 Node로 한 번만 읽는다.
+
+	puyow.js는 ES Module이라 require할 수 없으므로 Webpack으로 만든 CommonJS 번들(src/bundle/puyow.bundle.js)을 읽는다.
+	puyow.js를 고친 뒤에는 `npm run build`로 번들을 다시 만들어야 이 값에 반영된다.
+	"""
 	global _FEVER_STAGES
 	if _FEVER_STAGES is not None:
 		return _FEVER_STAGES
-	game_source = Path(__file__).resolve().parents[1] / "src" / "js" / "puyow.js"
+	game_source = Path(__file__).resolve().parents[1] / "src" / "bundle" / "puyow.bundle.js"
 	script = "const p=require(process.argv[1]);process.stdout.write(JSON.stringify(p.common.getFeverStageDefinitions()));"
 	try:
 		completed = subprocess.run(
@@ -239,9 +243,9 @@ def load_fever_stage_definitions() -> list[dict[str, Any]]:
 		)
 		stages = json.loads(completed.stdout)
 	except (OSError, subprocess.CalledProcessError, json.JSONDecodeError) as error:
-		raise RuntimeError("실제 피버 스테이지를 src/js/puyow.js에서 읽지 못했습니다. Node.js와 게임 소스를 확인하세요.") from error
+		raise RuntimeError("실제 피버 스테이지를 src/bundle/puyow.bundle.js에서 읽지 못했습니다. Node.js와 게임 번들(npm run build)을 확인하세요.") from error
 	if not isinstance(stages, list) or not stages:
-		raise RuntimeError("src/js/puyow.js에 사용할 수 있는 피버 스테이지가 없습니다.")
+		raise RuntimeError("src/bundle/puyow.bundle.js에 사용할 수 있는 피버 스테이지가 없습니다.")
 	_FEVER_STAGES = stages
 	return _FEVER_STAGES
 

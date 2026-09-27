@@ -324,8 +324,11 @@ function learningApi(req, res) {
 const LOCAL_AI_MODEL_PATH = path.join(WEB_ROOT, 'onnx', 'default.onnx');
 /** Local AI 추론에 쓰는 npm 패키지 이름. 모델 서비스를 쓸 때만 불러오므로 설치되지 않아도 나머지 API는 동작한다. */
 const ONNX_RUNTIME_PACKAGE = 'onnxruntime-node';
-/** 착지 뒤 연쇄·ATTACK 계산을 게임과 똑같이 하려고 불러오는 게임 코어 스크립트 경로. */
-const PUYOW_CORE_PATH = path.join(WEB_ROOT, 'js', 'puyow.js');
+/**
+ * 착지 뒤 연쇄·ATTACK 계산을 게임과 똑같이 하려고 불러오는 게임 코어 스크립트 경로.
+ * src/js/puyow.js 는 ES Module 이라 require 할 수 없으므로, Webpack 으로 만든 CommonJS 호환 번들을 읽는다.
+ */
+const PUYOW_CORE_PATH = path.join(WEB_ROOT, 'bundle', 'puyow.bundle.js');
 /** ONNX 모델 입력 텐서 이름. puyow.js의 OnnxEnemy가 쓰는 이름과 같다. */
 const ONNX_INPUT_NAME = 'observation';
 /** ONNX 모델 출력 텐서 이름. puyow.js의 OnnxEnemy가 쓰는 이름과 같다. */

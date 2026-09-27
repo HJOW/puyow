@@ -1,13 +1,15 @@
 // 기본 제공 적 전체의 캔버스 초상화를 실제 브라우저에서 확인한다.
 import { test, expect } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { readClassicScript } from './common/modulesource.js';
 
 test('모든 적의 세 표정은 카드·대전·갤러리 크기로 그려지고 캔버스 상태를 보존한다', async ({ page }, testInfo) => {
   // 숨김 적과 출시 예정 적도 포함하되 게임 공개 API에는 테스트용 접근자를 추가하지 않는다.
-  const source = readFileSync('src/js/puyow.js', 'utf8').replace(
-    '    WebPuyo = {',
-    '    window.portraitTestEnemies = OPPONENTS.map((entry) => entry.createController());\n    WebPuyo = {'
+  // puyow.js는 ES Module이므로 export 문을 지운 일반 스크립트로 바꿔 넣는다.
+  const source = readClassicScript('src/js/puyow.js').replace(
+    '\nWebPuyo = {',
+    '\nwindow.portraitTestEnemies = OPPONENTS.map((entry) => entry.createController());\nWebPuyo = {'
   );
+  expect(source).toContain('window.portraitTestEnemies');
   await page.setContent('<html lang="ko"><body style="margin:0;background:#f6f0eb"><canvas id="portraits" width="1620" height="1120"></canvas></body></html>');
   await page.addScriptTag({ content: source });
   const result = await page.evaluate(() => {
