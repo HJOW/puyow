@@ -115,6 +115,21 @@ test('개발 대상을 고르면 툴바는 그대로 두고 사이드바·캔버
   await expect(page.getByRole('button', { name: '스크립트 생성' })).toBeVisible();
 });
 
+test('도구 편집 모드는 폭발 갯수 컨트롤을 표시하지 않고 네 개 기준을 유지한다', async ({ page }) => {
+  await selectMode(page, '피버 패턴 개발');
+  const toClient = await createCoordinateMapper(page);
+  const increase = toClient(728, 318);
+  await page.mouse.click(increase.x, increase.y);
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().explosionCount)).toBe(4);
+  expect(await page.evaluate(() => window.testCanvasTexts.includes(window.PuyoW.translate('폭발 갯수')))).toBe(false);
+  const puyos = [{ x: 0, y: 0, color: 'red' }, { x: 1, y: 0, color: 'red' }];
+  await page.evaluate((puyos) => window.PuyoW.tools.setEditorData({ stageData: { puyos } }), puyos);
+  const play = toClient(960, 350);
+  await page.mouse.click(play.x, play.y);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().board.puyos)).toEqual(puyos);
+});
+
 test('편집 화면은 클릭·드래그로 플레이 영역과 다음 뿌요 칸에 뿌요를 배치한다', async ({ page }) => {
   await selectMode(page, '피버 패턴 개발');
   const toClient = await createCoordinateMapper(page);

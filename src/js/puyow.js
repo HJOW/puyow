@@ -22,7 +22,7 @@
 import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 128;
+const BUILDNO = 129;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -45,6 +45,8 @@ const GARBAGE_SPAWN_MAX_ROW = ROWS - 5;
 const GARBAGE_SPAWN_MIN_ROW = GARBAGE_SPAWN_MAX_ROW - 5;
 /** 시뮬레이터 그리기 모드에서 편집할 수 있는 줄 수다. 13번째 줄은 실행 중 베젤 뒤에 숨겨진다. @type {number} */
 const SIMULATOR_EDITABLE_ROWS = VISIBLE_ROWS + 1;
+/** 시뮬레이터 폭발 갯수의 최댓값이다. 숨김 행은 폭발 판정에 참여하지 않는다. @type {number} */
+const SIMULATOR_MAX_EXPLOSION_COUNT = COLUMNS * VISIBLE_ROWS;
 /** 개발용 도구(tools.html)의 "다음에 나올 뿌요" 편집에서 받을 수 있는 최대 턴 수다. @type {number} */
 const TOOLS_MAX_NEXT_TURNS = 6;
 /** 개발용 도구 테스트가 끝난 뒤 편집 모드로 돌아가기 전에 결과를 보여 줄 시간(ms)이다. @type {number} */
@@ -419,6 +421,7 @@ const stringTable = {
         '승리': 'Victory', '패배': 'Defeat', '최종 점수 %1': 'Final score %1', '게임 시간 %1초': 'Game time: %1 sec', '%1연쇄': '%1 Chain',
         '연습 상대': 'Practice Opponent', '추후 출시예정': 'Coming soon', '잠김': 'Locked', '두 번째에 터뜨려': 'Pop on the second turn.', '한 번만 회전해': 'Rotate only once.', '마지막 폭발은 초록색으로': 'Make the last pop green.', '마지막 파란색 폭발 후를 생각해': 'Think about what comes after the final blue pop.', '3, 4연쇄째에 보충이 필요해': 'You need a refill on the 3rd or 4th chain.', '방해뿌요는 터뜨려야 제맛': 'Pop the garbage puyos too.', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'Where should you pop first? The right side?', '저 위의 빨간 색은 왜 있을까?': 'Why is there red up there?', '최초 폭발은 빨간색': 'Make the first pop red.', '최초 폭발은 초록색': 'Make the first pop green.', '최초 폭발은 노란색': 'Make the first pop yellow.', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': 'Place four green puyos somewhere in the right three columns.', '그냥 내려 봐': 'Just drop it.',
         '시뮬레이터': 'Simulator', '팔레트': 'Palette', '재생': 'Play', '그리기': 'Draw', '시뮬레이션': 'Simulation', '지우개': 'Eraser',
+        '폭발 갯수': 'Pop count',
         'JSON복사': 'Copy JSON', 'JSON넣기': 'Paste JSON', '배치가 클립보드에 복사됨': 'Layout copied to clipboard',
         '클립보드 복사 실패': 'Clipboard copy failed', 'JSON 파싱 실패': 'JSON parsing failed', '배치 JSON을 입력하세요.': 'Enter layout JSON.',
         '설정': 'Settings', '이름': 'Name', '이름 또는 닉네임을 입력하세요': 'Enter your name or nickname', '이름은 게임에서 표시됩니다.': 'Your name is shown in the game.', '이름 또는 닉네임을 입력해 주세요.': 'Enter a name or nickname.', '이름에 사용할 수 없는 문자가 있습니다.': 'The name contains characters that cannot be used.', '코드': 'Code', '배경음악 볼륨': 'Music volume', '효과음 볼륨': 'Effects volume', '가상 컨트롤러 사용': 'Use virtual controller', '없음': 'None', '크게': 'Large', '그래픽 설정': 'Graphics quality', '사운드 데이터 URL': 'Sound data URL', '낮음': 'Low', '중간': 'Medium', '높음': 'High', 'AI 서비스 제공자': 'AI provider', 'AI API 키': 'AI API key', '사용 모델명': 'Model name', 'AI API 테스트': 'Test AI API', '저장': 'Save', '취소': 'Cancel', '이 API키는 브라우저에만 저장됩니다.': 'This API key is stored only in this browser.', '사운드 관련 기능은 추후 제공 예정': 'Sound features will be available in a future update.', '설정 저장 후 다시 시도해 주세요': 'Save your settings and try again.', 'AI API 테스트 요청 중...': 'Testing AI API...', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API test succeeded (JSON schema: passed).', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API test failed (JSON schema: failed).', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API test failed (JSON schema: not run).',
@@ -454,6 +457,7 @@ const stringTable = {
         '승리': '勝利', '패배': '敗北', '최종 점수 %1': '最終スコア %1', '게임 시간 %1초': 'ゲーム時間: %1秒', '%1연쇄': '%1連鎖',
         '연습 상대': '練習相手', '추후 출시예정': '近日公開予定', '잠김': 'ロック中', '두 번째에 터뜨려': '2回目で消そう。', '한 번만 회전해': '一度だけ回転しよう。', '마지막 폭발은 초록색으로': '最後は緑で消そう。', '마지막 파란색 폭발 후를 생각해': '最後の青ぷよ消去の後を考えよう。', '3, 4연쇄째에 보충이 필요해': '3・4連鎖目に補充が必要です。', '방해뿌요는 터뜨려야 제맛': 'おじゃまぷよも消そう。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': 'どこから消そう？右側かな？', '저 위의 빨간 색은 왜 있을까?': '上の赤いぷよはなぜあるのかな？', '최초 폭발은 빨간색': '最初は赤で消そう。', '최초 폭발은 초록색': '最初は緑で消そう。', '최초 폭발은 노란색': '最初は黄で消そう。', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': '右3列のどこかに緑ぷよ4個を置こう。', '그냥 내려 봐': 'そのまま落としてみよう。',
         '시뮬레이터': 'シミュレーター', '팔레트': 'パレット', '재생': '再生', '그리기': '描画', '시뮬레이션': 'シミュレーション', '지우개': '消しゴム',
+        '폭발 갯수': '消去数',
         'JSON복사': 'JSONをコピー', 'JSON넣기': 'JSONを貼り付け', '배치가 클립보드에 복사됨': '配置をクリップボードにコピーしました',
         '클립보드 복사 실패': 'クリップボードへのコピーに失敗しました', 'JSON 파싱 실패': 'JSONの解析に失敗しました', '배치 JSON을 입력하세요.': '配置JSONを入力してください。',
         '설정': '設定', '코드': 'コード', '배경음악 볼륨': 'BGM音量', '효과음 볼륨': '効果音量', '가상 컨트롤러 사용': '仮想コントローラーを使用', '없음': 'なし', '크게': '大きく', '그래픽 설정': 'グラフィック設定', '사운드 데이터 URL': 'サウンドデータURL', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AIプロバイダー', 'AI API 키': 'AI APIキー', '사용 모델명': 'モデル名', 'AI API 테스트': 'AI APIテスト', '저장': '保存', '취소': 'キャンセル', '이 API키는 브라우저에만 저장됩니다.': 'このAPIキーはこのブラウザにのみ保存されます。', '사운드 관련 기능은 추후 제공 예정': 'サウンド機能は今後のアップデートで提供予定です。', '설정 저장 후 다시 시도해 주세요': '設定を保存してから、もう一度お試しください。', 'AI API 테스트 요청 중...': 'AI APIをテスト中…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI APIテスト成功（JSONスキーマ検証: 合格）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI APIテスト失敗（JSONスキーマ検証: 失敗）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI APIテスト失敗（JSONスキーマ検証: 未実施）',
@@ -490,6 +494,7 @@ const stringTable = {
         '승리': '胜利', '패배': '失败', '최종 점수 %1': '最终得分 %1', '게임 시간 %1초': '游戏时间：%1秒', '%1연쇄': '%1连锁',
         '연습 상대': '练习对手', '추후 출시예정': '即将推出', '잠김': '已锁定', '두 번째에 터뜨려': '在第二次消除。', '한 번만 회전해': '只旋转一次。', '마지막 폭발은 초록색으로': '最后用绿色消除。', '마지막 파란색 폭발 후를 생각해': '想想最后一次蓝色魔法气泡消除之后。', '3, 4연쇄째에 보충이 필요해': '第3或第4连锁需要补充。', '방해뿌요는 터뜨려야 제맛': '也消除垃圾噗哟吧。', '어디부터 터뜨려야 잘 터뜨렸다고 소문이 날까? 오른쪽?': '从哪里开始消除？右边？', '저 위의 빨간 색은 왜 있을까?': '上面的红噗哟为什么会在那里？', '초록 색 4개를 오른쪽 3줄 어딘가에 두어야 해': '需要把4个绿色魔法气泡放在右侧三列的某处。', '그냥 내려 봐': '直接落下试试。',
         '시뮬레이터': '模拟器', '팔레트': '调色板', '재생': '播放', '그리기': '绘制', '시뮬레이션': '模拟', '지우개': '橡皮擦',
+        '폭발 갯수': '消除数量',
         'JSON복사': '复制 JSON', 'JSON넣기': '粘贴 JSON', '배치가 클립보드에 복사됨': '布局已复制到剪贴板',
         '클립보드 복사 실패': '复制到剪贴板失败', 'JSON 파싱 실패': 'JSON 解析失败', '배치 JSON을 입력하세요.': '请输入布局 JSON。',
         '설정': '设置', '코드': '代码', '배경음악 볼륨': '背景音乐音量', '효과음 볼륨': '音效音量', '가상 컨트롤러 사용': '使用虚拟控制器', '없음': '无', '크게': '大', '그래픽 설정': '图形设置', '사운드 데이터 URL': '声音数据 URL', '낮음': '低', '중간': '中', '높음': '高', 'AI 서비스 제공자': 'AI 服务提供商', 'AI API 키': 'AI API 密钥', '사용 모델명': '模型名称', 'AI API 테스트': 'AI API 测试', '저장': '保存', '취소': '取消', '이 API키는 브라우저에만 저장됩니다.': '此 API 密钥仅存储在此浏览器中。', '사운드 관련 기능은 추후 제공 예정': '声音功能将在未来更新中提供。', '설정 저장 후 다시 시도해 주세요': '请先保存设置后再试。', 'AI API 테스트 요청 중...': '正在测试 AI API…', 'AI API 테스트 성공 (JSON 스키마 검사: 통과)': 'AI API 测试成功（JSON 架构检查：通过）', 'AI API 테스트 실패 (JSON 스키마 검사: 실패)': 'AI API 测试失败（JSON 架构检查：失败）', 'AI API 테스트 실패 (JSON 스키마 검사: 미실시)': 'AI API 测试失败（JSON 架构检查：未执行）',
@@ -510,6 +515,7 @@ const stringTable = {
 Object.assign(stringTable.de, stringTable.en, {
     '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'Solomon-Antwortfehler: Mit der Ersatz-KI wird fortgefahren.',
     '초기화': 'Zurücksetzen', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Alle Spieleinstellungen zurücksetzen?', '초기화 중...': 'Wird zurückgesetzt…',
+    '폭발 갯수': 'Puyos zum Platzen',
     '게임 시작': 'Spiel starten', '구경': 'Zuschauen', '모드': 'Modus', '규칙': 'Regeln', '색상 수': 'Farben', '다음 대전까지 %1초': 'Nächstes Duell in %1 Sek.', '기본 룰': 'Standardregeln', '피버 룰': 'FEVER-Regeln', '연속 피버': 'Dauer-FEVER', '퍼즐뿌요': 'Puzzle-Puyo', '퍼즐뿌요 스테이지': 'Puzzle-Puyo-Stage', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Empfohlene Züge: %1', '현재 턴 %1': 'Zug %1', '현재 턴 %1 / %2': 'Zug %1 / %2', '%1 연쇄 해봐': 'Mache eine %1er-Kette!', '싹쓸이 해봐': 'Schaffe einen All Clear!', '한 번에 %1개 뿌요를 터뜨려봐': 'Lass %1 Puyos auf einmal platzen!', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Lass %1 Farben auf einmal platzen!', '방해뿌요 %1개를 발생 시켜봐': 'Sende %1 Müll-Puyos!', '스테이지 클리어': 'Stage geschafft', '(출시 예정)': '(Bald verfügbar)', '목표 연쇄': 'ZIELKETTE', '남은 시간': 'RESTZEIT', '연습': 'Übung', '선택': 'Auswählen', '난이도': 'Schwierigkeit', '적 선택': 'Gegner', 'ENTER 혹은 클릭하여 시작': 'Zum Start ENTER drücken oder klicken',
     '3색': '3 Farben', '4색': '4 Farben', '5색': '5 Farben', '쉬움': 'Leicht', '보통': 'Normal', '어려움': 'Schwer', '시작': 'Start', '이전': 'Zurück', '극한': 'Extrem',
     '일시정지': 'Pausiert', '재개': 'Fortsetzen', '다시하기': 'Neu starten', '종료': 'Beenden', '승리': 'Sieg', '패배': 'Niederlage', '최종 점수 %1': 'Endpunktzahl: %1', '게임 시간 %1초': 'Spielzeit: %1 Sek.', '%1연쇄': '%1-Kette',
@@ -524,6 +530,7 @@ Object.assign(stringTable.de, stringTable.en, {
 Object.assign(stringTable.fr, stringTable.en, {
     '솔로몬 AI 응답 오류: 대체 인공지능으로 진행합니다.': 'Erreur de réponse de Solomon : continuation avec l’IA de secours.',
     '초기화': 'Réinitialiser', '이 게임의 모든 설정을 초기화하시겠습니까?': 'Réinitialiser tous les réglages du jeu ?', '초기화 중...': 'Réinitialisation…',
+    '폭발 갯수': 'Seuil d’éclatement',
     '게임 시작': 'Commencer', '구경': 'Regarder', '모드': 'Mode', '규칙': 'Règles', '색상 수': 'Couleurs', '다음 대전까지 %1초': 'Prochain duel dans %1 s', '기본 룰': 'Règles standard', '피버 룰': 'Règles FEVER', '연속 피버': 'FEVER continu', '퍼즐뿌요': 'Puzzle Puyo', '퍼즐뿌요 스테이지': 'Stage Puzzle Puyo', '스테이지 %1': 'Stage %1', '권장 턴 수 %1': 'Tours recommandés : %1', '현재 턴 %1': 'Tour %1', '현재 턴 %1 / %2': 'Tour %1 / %2', '%1 연쇄 해봐': 'Fais une chaîne de %1 !', '싹쓸이 해봐': 'Fais un Tout Effacé !', '한 번에 %1개 뿌요를 터뜨려봐': 'Fais éclater %1 Puyos à la fois !', '한 번에 %1가지 색 뿌요를 터뜨려봐': 'Fais éclater %1 couleurs à la fois !', '방해뿌요 %1개를 발생 시켜봐': 'Envoie %1 Puyos-ordures !', '스테이지 클리어': 'Stage réussi', '(출시 예정)': '(Bientôt disponible)', '목표 연쇄': 'CHAÎNE CIBLE', '남은 시간': 'TEMPS RESTANT', '연습': 'Entraînement', '선택': 'Sélectionner', '난이도': 'Difficulté', '적 선택': 'Adversaire', 'ENTER 혹은 클릭하여 시작': 'Appuie sur ENTRÉE ou clique pour commencer',
     '3색': '3 couleurs', '4색': '4 couleurs', '5색': '5 couleurs', '쉬움': 'Facile', '보통': 'Normal', '어려움': 'Difficile', '시작': 'Commencer', '이전': 'Retour', '극한': 'Extrême',
     '일시정지': 'En pause', '재개': 'Reprendre', '다시하기': 'Recommencer', '종료': 'Quitter', '승리': 'Victoire', '패배': 'Défaite', '최종 점수 %1': 'Score final : %1', '게임 시간 %1초': 'Durée : %1 s', '%1연쇄': 'Chaîne de %1',
@@ -6063,9 +6070,10 @@ function findExplosionsOnBoard(board) {
 /**
  * 보드 복사본에서 폭발하는 같은 색 뿌요 연결 그룹을 찾는다. 숨김 행은 중력 완료 전까지 인접 판정에서 제외한다.
  * @param {(string|null)[][]} board 탐색할 보드
+ * @param {number} [explosionCount=4] 폭발에 필요한 최소 연결 수. 시뮬레이터 재생에서만 다른 값을 전달한다.
  * @returns {{color:string, cells:number[][]}[]} 폭발할 색상과 [x, y] 좌표 그룹 목록
  */
-function findExplosionGroupsOnBoard(board) {
+function findExplosionGroupsOnBoard(board, explosionCount = 4) {
     const visited = new Set();
     const explosionGroups = [];
     // 화면에 보이는 셀만 시작점으로 삼는다. 숨김 행은 중력으로 내려온 다음 폭발 단계부터 참여한다.
@@ -6091,8 +6099,8 @@ function findExplosionGroupsOnBoard(board) {
                 }
             });
         }
-        // 네 개 이상 연결된 그룹만 폭발 목록에 추가한다.
-        if (group.length >= 4) explosionGroups.push({ color, cells: group });
+        // 지정한 수 이상 연결된 그룹만 폭발 목록에 추가한다. 일반 게임의 기본값은 네 개다.
+        if (group.length >= explosionCount) explosionGroups.push({ color, cells: group });
     }
     return explosionGroups;
 }
@@ -12372,7 +12380,7 @@ function moveResultScreenFocus(direction) {
 
 /** 시뮬레이터를 빈 그리기 보드와 첫 팔레트 포커스로 연다. @returns {void} */
 function openSimulator() {
-    simulator = { mode: 'draw', player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), target: new PlayerState('', FIELD_RIGHT, null, COLORS), energyTransfers: [], selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0 };
+    simulator = { mode: 'draw', explosionCount: 4, player: new PlayerState('SIMULATOR', FIELD_LEFT, null, COLORS), target: new PlayerState('', FIELD_RIGHT, null, COLORS), energyTransfers: [], selected: 'red', paletteFocus: 0, focusArea: 'palette', boardFocus: { x: 0, y: 0 }, backup: null, waitTimer: 0 };
     menuScreen = 'simulator';
     syncBackgroundMusic();
 }
@@ -13520,7 +13528,7 @@ function drawGallery() {
     context.textBaseline = 'alphabetic';
 }
 
-/** 시뮬레이터 팔레트와 버튼 영역을 반환한다. @returns {{kind:string,value:string|null,x:number,y:number,width:number,height:number}[]} */
+/** 시뮬레이터 팔레트와 버튼 영역을 반환한다. @returns {{kind:string,value:string|null,x:number,y:number,width:number,height:number,disabled?:boolean}[]} */
 function getSimulatorPaletteItems() {
     // 개발용 도구의 편집 모드는 FeverStageState·PuzzlePuyoStage가 다룰 수 있는 색만 배치할 수 있어야 하므로
     // 시뮬레이터 전용인 딱딱뿌요·철구뿌요를 팔레트에서 제외하고, 화면을 벗어날 "종료" 버튼도 두지 않는다.
@@ -13535,6 +13543,11 @@ function getSimulatorPaletteItems() {
         { kind: 'reset', value: null, x: 906, y: 470, width: CELL * 3, height: CELL }
     );
     if (!toolsMode) items.push({ kind: 'exit', value: null, x: 906, y: 516, width: CELL * 3, height: CELL });
+    // 기존 팔레트 인덱스는 유지하고 중앙의 폭발 갯수 버튼도 같은 입력 경로로 처리한다.
+    if (!toolsMode) items.push(
+        { kind: 'explosionDecrease', value: null, x: 600, y: 296, width: 44, height: 44, disabled: simulator?.mode !== 'draw' || simulator.explosionCount <= 1 },
+        { kind: 'explosionIncrease', value: null, x: 706, y: 296, width: 44, height: 44, disabled: simulator?.mode !== 'draw' || simulator.explosionCount >= SIMULATOR_MAX_EXPLOSION_COUNT }
+    );
     return items;
 }
 
@@ -13607,7 +13620,7 @@ function placeSimulatorPuyo(x, y) {
 /** 팔레트 항목 선택 또는 버튼 동작을 실행한다. @param {number} index 항목 인덱스 @returns {void} */
 function activateSimulatorPaletteItem(index) {
     const item = getSimulatorPaletteItems()[index];
-    if (!simulator || !item) return;
+    if (!simulator || !item || item.disabled) return;
     if (item.kind === 'exit') playMenuCancelSound();
     else playMenuSelectSound();
     simulator.paletteFocus = index;
@@ -13616,6 +13629,10 @@ function activateSimulatorPaletteItem(index) {
     else if (item.kind === 'copyJson') copySimulatorJson();
     else if (item.kind === 'pasteJson') pasteSimulatorJson();
     else if (item.kind === 'reset') resetSimulatorBoard();
+    else if (item.kind === 'explosionDecrease' || item.kind === 'explosionIncrease') {
+        simulator.focusArea = 'palette';
+        simulator.explosionCount = Math.max(1, Math.min(SIMULATOR_MAX_EXPLOSION_COUNT, simulator.explosionCount + (item.kind === 'explosionIncrease' ? 1 : -1)));
+    }
     else { simulator = null; menuScreen = 'title'; loadNotice(); }
 }
 
@@ -13646,7 +13663,7 @@ function restoreSimulatorDrawing() {
 /** 시뮬레이터 보드의 폭발 및 인접 방해뿌요 제거를 처리한다. @returns {boolean} 폭발 여부 */
 function explodeSimulatorPuyos() {
     const player = simulator.player;
-    const explosionGroups = findExplosionGroupsOnBoard(player.board);
+    const explosionGroups = findExplosionGroupsOnBoard(player.board, simulator.tools ? 4 : simulator.explosionCount);
     const exploding = explosionGroups.flatMap((group) => group.cells);
     if (!exploding.length) return false;
     const resolution = getExplosionResolution(player.board, exploding);
@@ -13754,7 +13771,15 @@ function drawSimulator() {
     drawWarningUnits(FIELD_RIGHT, FIELD_TOP - CELL, warningUnits(warningAmount(simulator.target, player)));
     drawEnergyTransfers();
     context.textAlign = 'center';
+    if (!simulator.tools) {
+        context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
+        context.fillText(translate('폭발 갯수'), 675, 278);
+        context.fillStyle = '#f7c843'; context.font = `28px ${NUMBER_FONT}`;
+        context.fillText(String(simulator.explosionCount), 675, 326);
+    }
     getSimulatorPaletteItems().forEach((item, index) => {
+        context.save();
+        if (item.disabled) context.globalAlpha = 0.4;
         const focused = simulator.focusArea === 'palette' && simulator.paletteFocus === index;
         const selected = (item.kind === 'puyo' || item.kind === 'eraser') && simulator.selected === item.value;
         context.fillStyle = item.kind === 'play' ? '#4cc9b0' : item.kind === 'exit' ? '#ef5350' : '#173747'; context.fillRect(item.x, item.y, item.width, item.height);
@@ -13763,10 +13788,11 @@ function drawSimulator() {
         if (item.kind === 'puyo') drawPuyo(item.x, item.y, item.value);
         else if (item.kind === 'eraser') { context.strokeStyle = '#f4f7f8'; context.lineWidth = 7; context.beginPath(); context.moveTo(item.x + 8, item.y + CELL - 8); context.lineTo(item.x + CELL - 8, item.y + 8); context.stroke(); }
         else {
-            const labels = { play: '▶', exit: translate('종료'), copyJson: translate('JSON복사'), pasteJson: translate('JSON넣기'), reset: translate('초기화') };
+            const labels = { play: '▶', exit: translate('종료'), copyJson: translate('JSON복사'), pasteJson: translate('JSON넣기'), reset: translate('초기화'), explosionDecrease: '−', explosionIncrease: '+' };
             context.fillStyle = '#fff'; context.font = item.kind === 'play' ? '24px sans-serif' : `15px ${BUTTON_FONT}`;
             context.fillText(labels[item.kind], item.x + item.width / 2, item.y + 26);
         }
+        context.restore();
     });
     if (simulator.mode !== 'draw') {
         context.fillStyle = 'rgba(3, 11, 19, 0.62)';
@@ -17550,7 +17576,7 @@ function askText(message, multiline, maxLength = TEXT_DIALOG_DEFAULT_MAX_LENGTH)
 
 /**
  * 현재 시뮬레이터 편집 상태의 읽기 전용 스냅샷을 반환한다.
- * @returns {{mode:'draw'|'simulation'|'settling'|'complete', selected:string, focusArea:'palette'|'board'|'complete', allClearTicket:boolean, boardFocus:{x:number,y:number}, board:{columns:number,rows:number,visibleRows:number,editableRows:number,puyos:{x:number,y:number,color:string}[]}}|null}
+ * @returns {{mode:'draw'|'simulation'|'settling'|'complete', explosionCount:number, selected:string, focusArea:'palette'|'board'|'complete', allClearTicket:boolean, boardFocus:{x:number,y:number}, board:{columns:number,rows:number,visibleRows:number,editableRows:number,puyos:{x:number,y:number,color:string}[]}}|null}
  */
 function getSimulatorState() {
     if (!simulator) return null;
@@ -17560,6 +17586,7 @@ function getSimulatorState() {
     }));
     return {
         mode: simulator.mode,
+        explosionCount: simulator.explosionCount,
         selected: simulator.selected,
         focusArea: simulator.focusArea,
         allClearTicket: simulator.player.allClearTicket,

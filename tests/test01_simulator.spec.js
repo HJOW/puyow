@@ -12,6 +12,95 @@ async function pasteSimulatorJson(page, puyos) {
   await submitTextDialog(page, JSON.stringify({ puyos }));
 }
 
+test('폭발 갯수 2는 상하좌우 연결로 연쇄하고 대각선·일반 판정에는 영향을 주지 않는다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().explosionCount)).toBe(4);
+
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
+  await canvas.click({ position: { x: 622, y: 318 } });
+  await canvas.click({ position: { x: 622, y: 318 } });
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().explosionCount)).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.testCanvasTexts.includes(window.PuyoW.translate('폭발 갯수')))).toBe(true);
+  await pasteSimulatorJson(page, [
+    { x: 0, y: 0, color: 'red' }, { x: 0, y: 1, color: 'red' },
+    { x: 1, y: 0, color: 'green' }, { x: 0, y: 2, color: 'green' },
+    { x: 1, y: 1, color: 'garbage' },
+    { x: 3, y: 0, color: 'blue' }, { x: 4, y: 1, color: 'blue' }, { x: 4, y: 0, color: 'iron' },
+  ]);
+  // 시뮬레이터가 2로 설정된 동안에도 일반 게임의 공통 판정은 네 개가 필요하다.
+  expect(await page.evaluate(() => {
+    const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+    board[0][0] = board[0][1] = 'red';
+    return window.PuyoW.findExplosionGroupsOnBoard(board);
+  })).toEqual([]);
+
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await canvas.click({ position: { x: 728, y: 318 } });
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().explosionCount)).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().board.puyos)).toEqual([
+    { x: 3, y: 0, color: 'blue' }, { x: 4, y: 0, color: 'iron' }, { x: 4, y: 1, color: 'blue' },
+  ]);
+  expect(await page.evaluate(() => window.testCanvasTexts.includes(window.PuyoW.translate('%1연쇄', 2)))).toBe(true);
+
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().explosionCount)).toBe(2);
+  await canvas.click({ position: { x: 960, y: 535 } });
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().explosionCount)).toBe(4);
+});
+
+test('키보드로 폭발 갯수를 5로 바꾸면 네 개는 남고 다섯 개부터 폭발한다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  // 오른쪽 팔레트에서 왼쪽 방향으로 중앙의 증가 버튼에 접근한다.
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().explosionCount)).toBe(5);
+  await pasteSimulatorJson(page, [
+    ...Array.from({ length: 4 }, (_, x) => ({ x, y: 0, color: 'red' })),
+    { x: 5, y: 0, color: 'green' },
+  ]);
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().board.puyos.length)).toBe(5);
+  await page.keyboard.press('Enter');
+  await canvas.click({ position: { x: 359, y: 539 } });
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().board.puyos)).toEqual([{ x: 5, y: 0, color: 'green' }]);
+});
+
+test('폭발 갯수는 1~72 범위로 제한되며 초기화 후에도 유지된다', async ({ page }) => {
+  await enterMainMenu(page);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().explosionCount)).toBe(1);
+
+  const canvas = page.locator('[data-puyow-canvas="2d"]');
+  await canvas.click({ position: { x: 207, y: 539 } });
+  await canvas.click({ position: { x: 960, y: 350 } });
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('simulator_complete');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().board.puyos)).toEqual([]);
+  await page.keyboard.press('Enter');
+  await canvas.click({ position: { x: 960, y: 489 } });
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().explosionCount)).toBe(1);
+  await canvas.click({ position: { x: 728, y: 318 } });
+  for (let index = 0; index < 72; index += 1) await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.PuyoW.getSimulatorState().explosionCount)).toBe(72);
+});
+
 test('시뮬레이터는 양쪽 기본 패배 칸을 표시하고 해당 칸의 뿌요를 앞에 그린다', async ({ page }) => {
   await enterMainMenu(page);
   await page.keyboard.press('ArrowDown');
