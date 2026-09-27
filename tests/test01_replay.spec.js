@@ -1,18 +1,14 @@
 // 리플레이 기록과 재생의 회귀 테스트다. 실제 대전을 끝까지 진행하므로 오래 걸리는 항목이 많다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu, translated, enableReplayFeature, clickReplayPlaybackButton, submitTextDialog, cancelTextDialog, allowReplayPage } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, openDojoOpponentSelect, translated, enableReplayFeature, clickReplayPlaybackButton, submitTextDialog, cancelTextDialog, allowReplayPage } from './common/gamepage.js';
 
 setupGamePage();
 
 /** 첫 적과의 대전을 시작하고 가운데 열을 채워 빠르게 결과 화면까지 진행한다. */
-async function playQuickMatch(page, ruleKeys = []) {
+async function playQuickMatch(page, rule = 'standard') {
   await enterMainMenu(page);
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
-  for (const key of ruleKeys) await page.keyboard.press(key);
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toMatch(/^(fever_)?opponent_select$/);
+  await openDojoOpponentSelect(page, rule);
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen), { timeout: 20000 }).toBe('playing');
   await page.keyboard.down('ArrowDown');
@@ -194,7 +190,7 @@ test('리플레이 재생 결과 화면은 다시보기 아래 리플레이 복�
 test('기록한 피버 룰 리플레이도 피버 필드와 게이지까지 같은 상태로 재현한다', async ({ page }) => {
   test.setTimeout(420000);
   await enableReplayFeature(page);
-  await playQuickMatch(page, ['ArrowRight']);
+  await playQuickMatch(page, 'fever');
   const recorded = await readMatchSummary(page);
   expect(recorded.rule).toBe('fever');
   expect(recorded.player.fever).not.toBeNull();

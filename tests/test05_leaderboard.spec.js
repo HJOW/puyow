@@ -1,7 +1,7 @@
 // 리더보드 회귀 테스트다. 게임 페이지(puyow.html)의 기록 규칙과 조회 화면(leaderboard.html)을 다룬다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, openDojoOpponentSelect, openPracticeDifficulty } from './common/gamepage.js';
 
 const LEADERBOARD_PAGE = '/leaderboard.html';
 
@@ -64,9 +64,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     await registerSelfLosingEnemy(page, 'LeaderboardWinEnemy');
     await enterMainMenu(page);
     const startedAt = await page.evaluate(() => Date.now());
-    await page.keyboard.press('Enter');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+    await openDojoOpponentSelect(page);
     for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
     const colorCount = await page.evaluate(() => window.WebPuyo.getGameState().colorCount);
@@ -94,9 +92,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     await page.reload();
     await registerSelfLosingEnemy(page, 'LeaderboardSendEnemy');
     await enterMainMenu(page);
-    await page.keyboard.press('Enter');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+    await openDojoOpponentSelect(page);
     for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
     const colorCount = await page.evaluate(() => window.WebPuyo.getGameState().colorCount);
@@ -120,9 +116,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     await page.reload();
     await registerSelfLosingEnemy(page, 'LeaderboardOfflineEnemy');
     await enterMainMenu(page);
-    await page.keyboard.press('Enter');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+    await openDojoOpponentSelect(page);
     for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
     const difficultyKey = await page.evaluate(() => window.WebPuyo.getGameState().aiDifficulty.key);
@@ -153,10 +147,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     await stubLeaderboardServer(page, { available: false });
     await page.reload();
     await enterMainMenu(page);
-    await page.keyboard.press('Enter');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+    await openPracticeDifficulty(page);
     await page.keyboard.press('Enter');
     await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().playerCanControl), { timeout: 15000 }).toBe(true);
 
@@ -170,11 +161,7 @@ test.describe('게임 페이지의 리더보드 기록', () => {
     expect(await readLeaderboard(page)).toBeNull();
 
     // 다시 연습을 시작해 패배 열(X=2)에 세로 쌍을 계속 떨어뜨려 진다.
-    await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('practice_difficulty');
+    await openPracticeDifficulty(page);
     await page.keyboard.press('Enter');
     await expect.poll(async () => {
       const state = await page.evaluate(() => window.WebPuyo.getScreenState());

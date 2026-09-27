@@ -2,7 +2,7 @@
 // 저장 데이터 보정, 확인창, 다국어와 URL 치환처럼 특정 모드에 매이지 않는 항목을 다룬다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu, expectDefeatCellMarkers } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, openDojoOpponentSelect, expectDefeatCellMarkers } from './common/gamepage.js';
 
 setupGamePage();
 
@@ -514,9 +514,7 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
 
 test('기본 룰·연습·플레이 방법의 양쪽 필드는 기본 패배 칸에 빨간 X를 표시한다', async ({ page }) => {
   await enterMainMenu(page);
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await openDojoOpponentSelect(page);
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('countdown');
@@ -600,9 +598,7 @@ test('기본 룰은 AI에 다음 20쌍을 제공하고 공개 다음 뿌요는 �
   });
 
   await enterMainMenu(page);
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await openDojoOpponentSelect(page);
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
 
@@ -664,9 +660,7 @@ test('게임 상태 조회는 양쪽 일반·피버 필드와 앞 두 NEXT를 �
   expect(await page.evaluate(() => window.WebPuyo.getGameState())).toBeNull();
 
   await enterMainMenu(page);
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('opponent_select');
+  await openDojoOpponentSelect(page);
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState())).toMatchObject({
@@ -1280,12 +1274,9 @@ test('common sound pool plays menu and game-start sounds', async ({ page }) => {
     'sounds/test-menu-cancel.ogg',
   ]);
 
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
+  // 게임 시작 → 도장깨기 → 기본 룰로 적 선택 화면을 연 뒤 적·색 수·난이도를 차례로 확정한다.
+  await openDojoOpponentSelect(page);
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.testAudioInstances.map((audio) => audio.src))).toEqual(expect.arrayContaining([
     'sounds/test-game-start.ogg',
   ]));

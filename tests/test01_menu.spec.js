@@ -198,7 +198,7 @@ test('카드 뽑기는 확인 전에는 자원을 쓰지 않고 취소하거나 
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards'))?.length)).toBe(1);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).gold)).toBe(9000);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards'))[0].type)).toBe('puyo:red');
-  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['COMMON', 'UNCOMMON', 'RARE', 'EPIC'].includes(text)))).toBe(false);
+  expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'].includes(text)))).toBe(false);
 });
 
 test('카드 5장을 선택해 합성하면 원본을 제거하고 새 카드 1장을 저장한다', async ({ page }) => {
@@ -296,7 +296,7 @@ test.describe('카드 3D 등장 연출', () => {
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_cards')).length)).toBe(1);
   });
 
-  test('EPIC 10장은 강화된 효과로 함께 등장하고 세로 회전 후 클릭을 건너뛰기로만 처리한다', async ({ page }, testInfo) => {
+  test('전설 10장은 강화된 효과로 함께 등장하고 세로 회전 후 클릭을 건너뛰기로만 처리한다', async ({ page }, testInfo) => {
     await openCards(page);
     await observeEffect(page);
     await drawCards(page, 10, 0.999999);
@@ -308,11 +308,11 @@ test.describe('카드 3D 등장 연출', () => {
       count: JSON.parse(localStorage.getItem('puyow_cards')).length,
       particles: window.testCardEffect.reveal.cards[0].points.geometry.attributes.position.count,
     }));
-    expect(batch).toMatchObject({ levels: Array(10).fill(3), gold: 1000, count: 10 });
+    expect(batch).toMatchObject({ levels: Array(10).fill(4), gold: 1000, count: 10 });
     expect(batch.duration).toBeLessThanOrEqual(4000);
     expect(batch.particles).toBeGreaterThan(24);
     await page.waitForTimeout(750);
-    await page.screenshot({ path: testInfo.outputPath('epic-ten-cards.png') });
+    await page.screenshot({ path: testInfo.outputPath('legendary-ten-cards.png') });
     await page.setViewportSize({ width: 720, height: 1280 });
     const two = page.locator('[data-puyow-canvas="2d"]');
     const three = page.locator('[data-puyow-canvas="3d"]');
@@ -321,7 +321,7 @@ test.describe('카드 3D 등장 연출', () => {
       const canvas = document.querySelector('[data-puyow-canvas="3d"]');
       return { width: canvas.width, height: canvas.height, aspect: window.testCardEffect.camera.aspect };
     })).toEqual({ width: 1280, height: 720, aspect: 1280 / 720 });
-    await page.screenshot({ path: testInfo.outputPath('epic-portrait.png') });
+    await page.screenshot({ path: testInfo.outputPath('legendary-portrait.png') });
     await two.click({ position: { x: 360, y: 640 } });
     expect(await page.evaluate(() => window.testCardEffect.active)).toBe(false);
     expect(await page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('gallery');
@@ -329,6 +329,51 @@ test.describe('카드 3D 등장 연출', () => {
     const bounds = await two.boundingBox();
     await page.mouse.click(bounds.x + bounds.width * (1 - 28 / 720), bounds.y + bounds.height * (1235 / 1280));
     await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
+  });
+
+  test('에픽과 전설은 서로 다른 전용 효과를 쓰고 끝나면 자원을 모두 해제한다', async ({ page }, testInfo) => {
+    await openCards(page);
+    await observeEffect(page);
+    const rarities = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY'];
+    const result = await page.evaluate((keys) => {
+      const manager = window.testCardEffect;
+      const draw = () => {};
+      manager.playCardReveal(keys.map((rarity) => ({ rarity, color: '#ffffff', draw })));
+      const items = manager.reveal.cards;
+      return {
+        duration: manager.reveal.duration,
+        flash: manager.reveal.flash !== null,
+        levels: items.map((item) => item.level),
+        accents: items.map((item) => item.accent !== null),
+        shocks: items.map((item) => item.shocks.length),
+        legendaryOnly: items.map((item) => item.rays !== null && item.sheen !== null && item.sparkles !== null),
+      };
+    }, rarities);
+    expect(result).toEqual({
+      duration: 4000,
+      flash: true,
+      levels: [0, 1, 2, 3, 4],
+      accents: [false, false, false, true, true],
+      shocks: [0, 0, 0, 1, 2],
+      legendaryOnly: [false, false, false, false, true],
+    });
+    // 에픽만 있는 연출에는 전설 전용 섬광이 없어야 한다.
+    const epic = await page.evaluate(() => {
+      const manager = window.testCardEffect;
+      manager.playCardReveal([{ rarity: 'EPIC', color: '#c9a4ef', draw: () => {} }]);
+      return { duration: manager.reveal.duration, flash: manager.reveal.flash !== null };
+    });
+    expect(epic).toEqual({ duration: 3550, flash: false });
+    await page.waitForTimeout(900);
+    await page.screenshot({ path: testInfo.outputPath('epic-card.png') });
+    const cleaned = await page.evaluate(() => {
+      const manager = window.testCardEffect;
+      manager.playCardReveal([{ rarity: 'LEGENDARY', color: '#e7be48', draw: () => {} }]);
+      manager.update(manager.reveal.started + 900);
+      manager.cancelReveal();
+      return manager.renderer.info.memory;
+    });
+    expect(cleaned).toMatchObject({ geometries: 0, textures: 0 });
   });
 
   test('합성 결과만 연출하며 게임패드로 건너뛰어도 지급을 반복하지 않는다', async ({ page }) => {
@@ -450,10 +495,28 @@ test('설정 언어는 여섯 선택지를 표시하고 저장한 언어로 게�
     localStorage.setItem('puyow_store', JSON.stringify(store));
   });
   await page.reload();
+  // 저장된 언어가 지원하지 않는 값이면 브라우저 언어(이 테스트는 ja-JP)와 무관하게 영어로 보정한다.
   expect(await page.evaluate(() => ({
     language: JSON.parse(localStorage.getItem('puyow_store')).settings.language,
     settings: window.WebPuyo.translate('설정'),
   }))).toEqual({ language: 'en', settings: 'Settings' });
+  // 설정 화면에서도 영어(첫 선택지, X 550~614) 선택지만 선택 색으로 칠해진다. 일본어는 셋째 선택지(X 684~748)다.
+  await openSettings(page);
+  const languageOptionFill = (x) => page.evaluate((pixelX) => Array.from(document.querySelector('[data-puyow-canvas="2d"]').getContext('2d').getImageData(pixelX, 104, 1, 1).data).slice(0, 3).join(','), x);
+  await expect.poll(() => languageOptionFill(608)).toBe('86,48,104');
+  expect(await languageOptionFill(742)).not.toBe('86,48,104');
+
+  // 언어 저장값이 없으면 지금처럼 브라우저 언어를 따른다.
+  await page.evaluate(() => {
+    const store = JSON.parse(localStorage.getItem('puyow_store'));
+    delete store.settings.language;
+    localStorage.setItem('puyow_store', JSON.stringify(store));
+  });
+  await page.reload();
+  expect(await page.evaluate(() => ({
+    language: JSON.parse(localStorage.getItem('puyow_store')).settings.language,
+    settings: window.WebPuyo.translate('설정'),
+  }))).toEqual({ language: 'ja', settings: '設定' });
 });
 
 test('설정 하단 버튼의 마우스 클릭은 저장·취소·초기화를 각각 실행한다', async ({ page }) => {
@@ -1282,8 +1345,8 @@ test('세로 화면에서는 캔버스를 회전하고 클릭 좌표를 변환�
     bounds.left + bounds.width * (1 - y / 720),
     bounds.top + bounds.height * x / 1280
   );
-  await clickLogicalSettingsPoint(600, 346);
-  await clickLogicalSettingsPoint(700, 390);
+  await clickLogicalSettingsPoint(600, 316);
+  await clickLogicalSettingsPoint(700, 350);
   await page.keyboard.type('http://portrait-lm.local/');
   await page.keyboard.press('Enter');
   await clickLogicalSettingsPoint(480, 671);
@@ -1297,7 +1360,8 @@ test('화면 가로방향 고정은 저장되며 세로 화면 입력도 회전�
   await page.setViewportSize({ width: 375, height: 667 });
   await openSettings(page);
   // 제공자를 고르지 않은 기본 설정에서는 AI 입력 세 행과 API 테스트를 건너뛰어 첫 체크박스에 닿는다.
-  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  // 이름(0)·언어(1)·…·제공자(7) 다음이 첫 체크박스(12)이므로 8번 내려간다.
+  for (let index = 0; index < 8; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   // 가로방향 고정 체크박스에서 리플레이·역학습 체크박스를 지나 저장 버튼까지 내려간다.
   for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
@@ -1348,6 +1412,8 @@ test('화면 가로방향 고정 문구는 지원 언어별로 번역된다', as
     await page.addInitScript((locale) => {
       Object.defineProperty(navigator, 'language', { configurable: true, value: locale });
     }, language);
+    // 저장된 settings.language가 브라우저 언어보다 우선하므로(BUILDNO 95) 반복마다 저장값을 지운다.
+    await page.evaluate(() => localStorage.removeItem('puyow_store'));
     await page.reload();
     await openSettings(page);
     await expect.poll(() => page.evaluate((text) => window.testCanvasTexts.includes(text), translation)).toBe(true);

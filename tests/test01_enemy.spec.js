@@ -3,7 +3,7 @@
 // ONNX 추론으로 판단하는 적은 test03_ai.spec.js에 있다.
 
 import { test, expect } from '@playwright/test';
-import { setupGamePage, enterMainMenu, releaseNetworkInterception } from './common/gamepage.js';
+import { setupGamePage, enterMainMenu, openDojoOpponentSelect, releaseNetworkInterception } from './common/gamepage.js';
 
 setupGamePage();
 
@@ -246,11 +246,7 @@ test('안드레알푸스는 기본·피버 룰에 출시되고 플라우로스�
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
   await enterMainMenu(page);
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('rule_select');
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await openDojoOpponentSelect(page, 'fever');
   // 잠긴 적은 카드에 이름 대신 '잠김'만 표시한다. 플라우로스는 안드레알푸스를 이기기 전까지 이 상태다.
   await expect.poll(() => page.evaluate(() => window.testCanvasTexts.some((text) => ['잠김', 'Locked', 'ロック中', '已锁定'].includes(text)))).toBe(true);
   expect(await page.evaluate(() => window.testCanvasTexts.some((text) => ['플라우로스', 'Flauros', 'フラウロス', '弗劳洛斯'].includes(text)))).toBe(false);
@@ -321,12 +317,7 @@ test('피버 룰 (시작) 승리는 피버 룰과 분리된 진행도로 저장�
   });
 
   await enterMainMenu(page);
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await openDojoOpponentSelect(page, 'feverStart');
   for (let index = 0; index < 4; index += 1) await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.WebPuyo.getGameState()?.winner), { timeout: 15000 }).toBe('player');
   const progress = await page.evaluate(() => {
@@ -357,12 +348,7 @@ test('피버 룰 (시작)은 피버 룰의 여러 적 승리 기록이 있어도
   });
   await page.reload();
   await enterMainMenu(page);
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('fever_opponent_select');
+  await openDojoOpponentSelect(page, 'feverStart');
   await expect.poll(() => page.evaluate(() => {
     const texts = window.testCanvasTexts;
     const firstOpponent = ['안드로말리우스', 'Andromalius', 'アンドロマリウス', '安德罗马利乌斯'];
@@ -1725,10 +1711,7 @@ test('기본·피버 룰 승리 뒤에는 같은 색 수·난이도로 다음 �
     }, { currentName: `${prefix} 현재 적`, successorName: nextName, classPrefix: prefix.replaceAll(' ', '') });
 
     await enterMainMenu(page);
-    await page.keyboard.press('Enter');
-    if (feverRule) await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe(feverRule ? 'fever_opponent_select' : 'opponent_select');
+    await openDojoOpponentSelect(page, feverRule ? 'fever' : 'standard');
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowRight');
@@ -1768,10 +1751,7 @@ test('기본 룰과 피버 룰의 적 초상화 화살표는 선택 가능한 �
   }, { x, y, expected: color });
   const openOpponentMenu = async (feverRule) => {
     if (await page.evaluate(() => window.WebPuyo.getScreenState().screen) !== 'main_menu') await enterMainMenu(page);
-    await page.keyboard.press('Enter');
-    if (feverRule) await page.keyboard.press('ArrowRight');
-    await page.keyboard.press('Enter');
-    await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe(feverRule ? 'fever_opponent_select' : 'opponent_select');
+    await openDojoOpponentSelect(page, feverRule ? 'fever' : 'standard');
   };
 
   for (const feverRule of [false, true]) {
