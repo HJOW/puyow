@@ -22,7 +22,7 @@
 import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 129;
+const BUILDNO = 130;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -10517,6 +10517,7 @@ function drawComboPopup(fieldX, popup) {
     context.save();
     context.globalAlpha = opacity;
     context.textAlign = 'center';
+    context.textBaseline = 'alphabetic';
     context.font = `24px ${MESSAGE_FONT}`;
     context.lineWidth = 5;
     context.strokeStyle = '#172031';
@@ -10524,6 +10525,11 @@ function drawComboPopup(fieldX, popup) {
     context.fillStyle = '#fff3a6';
     context.fillText(translate('%1연쇄', popup.combo), x, y);
     context.restore();
+}
+
+/** 필드·베젤·에너지 효과를 모두 그린 뒤 연쇄 문구를 전경에 표시한다. @param {PlayerState} player 대상 플레이어 @returns {void} */
+function drawPlayerComboPopups(player) {
+    player.comboPopups.forEach((popup) => drawComboPopup(player.fieldX, popup));
 }
 
 /**
@@ -10792,7 +10798,6 @@ function drawField(player, opponent) {
         context.fillText(String(Math.ceil(player.fever.leftTime / 1000)), x + COLUMNS * CELL / 2, FIELD_TOP + 31);
     }
     if (player.effects) drawExplosionEffects(x, player.effects.cells, Math.min(1, player.effects.elapsed / player.effects.duration));
-    player.comboPopups.forEach((popup) => drawComboPopup(x, popup));
     if (!(usesSoloPlayLayout() && player === game.players[1])) {
         context.fillStyle = '#e7f8fa'; context.font = `18px ${MESSAGE_FONT}`; context.textAlign = 'left';
         context.fillText(getDisplayedPlayerName(player), x, 54);
@@ -12610,6 +12615,7 @@ function drawTutorial() {
     }
     context.textAlign = 'center'; context.fillStyle = '#d8f2f5'; context.font = `20px ${TITLE_FONT}`;
     context.fillText(`${translate('플레이 방법')} ${tutorial.stage} / 5`, WIDTH / 2, 32);
+    game.players.forEach(drawPlayerComboPopups);
 }
 
 /** 게임 종료 화면을 유지한 채 안내 완료 선택지를 겹쳐 그린다. @param {object} tutorial 안내 상태 @returns {void} */
@@ -13760,7 +13766,6 @@ function drawSimulator() {
     drawConnectedPuyoCells(x, collectBoardPuyoCells(player.board, renderedRows, falling));
     if (player.gravityAnimation) { const progress = Math.min(1, player.gravityAnimation.elapsed / player.gravityAnimation.duration) ** 2; player.gravityAnimation.falling.forEach((puyo) => { const y = puyo.fromY + (puyo.toY - puyo.fromY) * progress; if (y < VISIBLE_ROWS) drawPuyo(x + puyo.x * CELL, FIELD_BOTTOM - (y + 1) * CELL, puyo.color); }); }
     if (player.effects) drawExplosionEffects(x, player.effects.cells, Math.min(1, player.effects.elapsed / player.effects.duration));
-    player.comboPopups.forEach((popup) => drawComboPopup(x, popup));
     // 낙하 애니메이션도 베젤보다 먼저 그려지므로, 시뮬레이션에서는 베젤을 전경으로 복원한다.
     if (simulator.mode !== 'draw') drawSimulatorBezelForeground();
     if (simulator.mode === 'draw' && simulator.focusArea === 'board') { const focus = simulator.boardFocus; context.strokeStyle = '#ffd54f'; context.lineWidth = 4; context.strokeRect(x + focus.x * CELL + 2, FIELD_BOTTOM - (focus.y + 1) * CELL + 2, CELL - 4, CELL - 4); }
@@ -13804,6 +13809,7 @@ function drawSimulator() {
         context.fillStyle = '#fff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('그리기'), 675, 183);
     }
     context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`; context.fillText(simulator.mode === 'draw' ? translate('그리기') : translate('시뮬레이션'), 675, 486); context.font = `30px ${NUMBER_FONT}`; context.fillStyle = '#f7c843'; context.fillText(formatPoint(player.point), 675, 536); context.font = `17px ${MESSAGE_FONT}`; context.fillStyle = '#a9d9e5'; context.fillText('POINT', 675, 566);
+    drawPlayerComboPopups(player);
 }
 
 // ------------------------------------------------------------------
@@ -15210,6 +15216,7 @@ function render() {
     } else {
         context.fillStyle = getGameScreenBackgroundColor(); context.fillRect(0, 0, WIDTH, HEIGHT);
         drawField(game.players[0], game.players[1]); drawField(game.players[1], game.players[0]); drawCenter(); drawEnergyTransfers();
+        game.players.forEach(drawPlayerComboPopups);
         if (shouldShowVirtualController()) drawVirtualController();
         // ONNX 모델 로딩 중에는 카운트다운 대신 로딩 안내를 최상단에 표시한다.
         if (game.onnxLoading) {
