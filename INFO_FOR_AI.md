@@ -27,7 +27,7 @@
 - 서버 모니터링·관리 페이지: `src/admin.html`, `src/js/puyow_admin.js` (서버 백엔드는 `node/admin.js`·`python/admin.py`, 게임 페이지는 이 스크립트를 읽지 않는다)
 - 리플레이 재생 페이지: `src/replay.html`(스타일 포함), `src/js/puyow_replay.js`, 추천 리플레이 목록 `src/js/replays.json` (재생은 `puyow.js`의 `PuyoW.replay` API를 쓴다. 게임 페이지는 이 스크립트를 읽지 않는다. 아래 「리플레이 재생 페이지」 절)
 - 스타일: `src/css/puyow.css`
-- ES Module 라이브러리(번들에 포함): `src/js/three.module.min.js`·`src/js/three.core.min.js`(three r186, `puyow_3d.js`가 import), `src/js/json5.mjs`(`puyow.js`가 import). 예전 `three.min.js`·`json5.min.js`는 더 이상 어디서도 읽지 않는다. `three.webgpu.min.js`도 쓰지 않는다.
+- ES Module 라이브러리(번들에 포함): `src/js/three.module.min.js`·`src/js/three.core.min.js`(three r186, `puyow_3d.js`가 import), `src/js/json5.js`(`puyow.js`가 import). 예전 `three.min.js`·`json5.min.js`는 더 이상 어디서도 읽지 않는다. `three.webgpu.min.js`도 쓰지 않는다.
 - 전역 선택 라이브러리(페이지에서 따로 읽음): `src/js/crypto-js.min.js`, `src/js/ort.all.min.js`
 - 이미지: `src/img/`
 - 언어별 공지사항: `src/notice/`
@@ -45,9 +45,9 @@
 ### ES Module과 Webpack 번들 (2026-09-27, BUILDNO 124)
 
 - `src/js/` 아래 `puyow`로 시작하는 파일(`puyow.js`, `puyow_3d.js`, `puyow_admin.js`, `puyow_leaderboard.js`, `puyow_replay.js`, `puyow_tools.js`)은 모두 ES Module이다. 예전 IIFE 래퍼와 `'use strict'`를 걷어내고 내부를 한 단계 내어쓰기했다(여러 줄 템플릿 문자열 내부는 그대로 두었고, 변환 전후 토큰열이 같음을 확인했다). 각 파일은 기존 전역(`window.PuyoW`/`WebPuyo`, `PuyoW3DEffect`, `PuyoWAdmin`, `PuyoWLeaderboard`, `PuyoWReplay`, `PuyoWTools`)을 그대로 등록하고, 같은 객체를 기본·이름 있는 내보내기로도 공개한다.
-- `src/js/package.json`(`{"type": "module"}`)이 이 디렉터리의 `.js`를 ES Module로 선언한다. 루트 `package.json`의 `"type"`은 `node/`·설정 파일 때문에 계속 `commonjs`다. 이 파일 덕분에 `node --check src/js/puyow.js`와 Node `import('./src/js/puyow.js')`가 동작한다. 같은 디렉터리의 `crypto-js.min.js`·`ort.all.min.js`는 브라우저가 일반 `<script>`로만 읽으므로 영향이 없고, `three.*.min.js`·`json5.mjs`는 원래 ES Module이다.
+- `src/js/package.json`(`{"type": "module"}`)이 이 디렉터리의 `.js`를 ES Module로 선언한다. 루트 `package.json`의 `"type"`은 `node/`·설정 파일 때문에 계속 `commonjs`다. 이 파일 덕분에 `node --check src/js/puyow.js`와 Node `import('./src/js/puyow.js')`가 동작한다. 같은 디렉터리의 `crypto-js.min.js`·`ort.all.min.js`는 브라우저가 일반 `<script>`로만 읽으므로 영향이 없고, `three.*.min.js`·`json5.js`는 원래 ES Module이다.
 - **Webpack(`webpack.config.js`)**: 진입점은 `["./src/js/puyow_3d.js", "./src/js/puyow.js"]`, 출력은 `output.library { name: 'PuyoW', type: 'umd', export: 'default' }`, `globalObject`는 `self`/`this` 겸용이다. 배열 마지막 모듈(`puyow.js`)의 기본 내보내기가 번들의 내보내기이므로 Node에서 `require('./src/bundle/puyow.bundle.js')`가 곧 `PuyoW` 객체다. 루트 `type`이 `commonjs`라 `src/js/puyow*.js`·`three.(core|module).min.js`에 `type: 'javascript/esm'` 규칙을 명시했다.
-- **three·json5 (BUILDNO 125)**: UMD `three.min.js`(r160)·`json5.min.js` 대신 ES Module판을 import해 번들에 함께 묶는다. `puyow.js`는 `import JSON5 from './json5.mjs'`로 `parseJSON()`에서 항상 JSON5를 쓴다(예전 `window.JSON5` 확인과 `JSON.parse` 대체는 없앴고 전역 `JSON5`도 등록하지 않는다). `puyow_3d.js`는 `import * as THREE from './three.module.min.js'` 후 **전역 `THREE`가 비어 있을 때만 `globalThis.THREE`로 등록**한다. `puyow.js`의 `getThreeLibrary()`(3D 레이어 사용 여부)와 효과 매니저의 `initialize()`가 모두 이 전역을 읽으므로 "THREE 없음" 판단이 한 곳으로 모인다. puyow.js 자체는 three를 import하지 않아 리더보드처럼 3D가 필요 없는 페이지는 three를 받지 않는다.
+- **three·json5 (BUILDNO 125)**: UMD `three.min.js`(r160)·`json5.min.js` 대신 ES Module판을 import해 번들에 함께 묶는다. `puyow.js`는 `import JSON5 from './json5.js'`로 `parseJSON()`에서 항상 JSON5를 쓴다(예전 `window.JSON5` 확인과 `JSON.parse` 대체는 없앴고 전역 `JSON5`도 등록하지 않는다). `puyow_3d.js`는 `import * as THREE from './three.module.min.js'` 후 **전역 `THREE`가 비어 있을 때만 `globalThis.THREE`로 등록**한다. `puyow.js`의 `getThreeLibrary()`(3D 레이어 사용 여부)와 효과 매니저의 `initialize()`가 모두 이 전역을 읽으므로 "THREE 없음" 판단이 한 곳으로 모인다. puyow.js 자체는 three를 import하지 않아 리더보드처럼 3D가 필요 없는 페이지는 three를 받지 않는다.
 - **`./three.core.js` 연결**: 공식 `three.module.min.js`(jsDelivr `three@0.186.0`과 같은 내용)는 `"./three.core.js"`를 import한다. 파일은 고치지 않고, 번들은 `webpack.NormalModuleReplacementPlugin(/^\.\/three\.core\.js$/, './three.core.min.js')`로, 번들 없이 모듈로 읽는 페이지(`tools.html`·`replay.html`, `puyow.html`·`learning.html`의 주석 예시, `test03_ai` 원본 비교)는 `<script type="importmap">{ "imports": { "./js/three.core.js": "./js/three.core.min.js" } }</script>`로 연결한다. import map은 모듈 스크립트보다 앞에 둔다. three를 새 버전으로 바꿀 때 파일 이름이 달라지면 이 두 곳을 함께 고친다.
 - **페이지별 로딩**: `puyow.html`·`learning.html`은 전역 선택 라이브러리(crypto-js·ort) 뒤에 `<script defer src="./bundle/puyow.bundle.js">` 하나만 읽는다(원본 모듈을 쓰는 주석 예시를 남겨 두었다). `tools.html`·`replay.html`은 예전에 `three.min.js`로 전역 THREE를 제공했으므로 그 자리에 import map과 `<script type="module" src="./js/puyow_3d.js">`를 둔다(효과 매니저도 함께 등록되지만 두 페이지에는 카드 연출이 없다). `tools.html`·`replay.html`·`leaderboard.html`·`admin.html`은 번들 없이 `<script type="module" src="./js/puyow_<페이지>.js">`를 읽고, 도구·리플레이·리더보드 스크립트가 `import PuyoW from './puyow.js'`로 게임을 가져온다(예전 `window.PuyoW` 조회는 import 값으로 바꿨다). 모듈 스크립트는 `DOMContentLoaded` 전에 실행되므로 페이지의 인라인 초기화 코드는 그대로다.
 - **스크립트 경로 기준**: `findGameScriptSource()`가 `puyow(.min|.bundle).js` script 요소를 먼저 찾고, 없으면(페이지 스크립트가 import한 경우) 같은 `src/js/`의 `puyow_*.js` script 요소를 쓴다. `loadNotice()`(공지 `../notice/…`)와 `getGameResourceBaseURL()`(`src/` 기준)이 함께 쓴다. `puyow_replay.js`의 목록 파일 기준 주소는 `document.currentScript` 대신 `import.meta.url`이다. **번들에 들어가는 `puyow.js`·`puyow_3d.js`에서는 `import.meta`를 쓰지 않는다**(Webpack이 빌드 PC의 파일 경로로 바꾸거나 일반 스크립트에서 문법 오류가 난다).
@@ -1430,6 +1430,12 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - three r160 → r186이 되었다. `puyow_3d.js`가 쓰는 API(`WebGLRenderer`·`SRGBColorSpace`·`CanvasTexture`·각종 Geometry/Material·`renderLists`)는 r186에도 그대로 있다. 번들 크기는 약 525KB → 1.27MB(성능 경고 기준 2MB 이하). Node에서 번들을 `require`하면 전역 `THREE`도 등록된다.
 - 사용자가 함께 넣어 둔 `three.webgpu.min.js`와 이제 쓰지 않는 `three.min.js`·`json5.min.js`는 지우지 않고 남겨 두었다(ESLint·ESLintPlugin 제외 목록에만 있다).
 - `src/js/puyow.js` BUILDNO는 125, `package.json`·`package-lock.json` 버전은 `0.3.125`다. 버전값 검사는 수행하지 않았다.
+
+### `json5.mjs` → `json5.js` 확장자 변경 (2026-09-27, BUILDNO 126)
+
+- 사용자 요청으로 `src/js/json5.mjs`를 `src/js/json5.js`로 바꿨다(내용은 그대로). `src/js/package.json`의 `"type": "module"` 덕분에 `.js`여도 Node·Webpack·브라우저 모두 ES Module로 다룬다. Webpack의 ES Module 지정 규칙에도 `json5.js`를 넣었고, babel 변환 제외·ESLint(설정 ignores와 ESLintPlugin 제외) 목록도 새 이름으로 고쳤다. 빠뜨리면 외부 라이브러리가 `src/**/*.js` 린트 규칙에 걸린다.
+- 확인만 한 나머지 `.mjs`: `playwright.config.mjs`는 `.js`로 바꿔도 Playwright가 읽는다(목록 1173건 확인). `src/js/ort-wasm-simd-threaded.jsep.mjs`는 **바꾸면 안 된다**. `ort.all.min.js`가 이 이름을 코드에 고정해 두었고, CDN에 닿지 않을 때 `resolveOnnxWasmPaths()`가 `wasmPaths`에 디렉터리 접두어만 넘기므로 이름을 바꾸면 오프라인 ONNX 추론이 깨진다.
+- `src/js/puyow.js` BUILDNO는 126, `package.json`·`package-lock.json` 버전은 `0.3.126`이다. 버전값 검사는 수행하지 않았다.
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.

@@ -21,7 +21,7 @@ See [README.md](README.md) for the game introduction, controls, and match rules.
 - `src/index.html`: Published loading page that redirects to `src/puyow.html`; it loads its stylesheet from `src/css/`.
 - `src/puyow.html`: Defines the game root div and its initialization call for the 2D play page.
 - `src/js/puyow.js`: The game library written as an ES Module; implements game rules, rendering, input, and CPU control. Every file under `src/js/` whose name starts with `puyow` is an ES Module.
-- `src/js/three.module.min.js`·`src/js/three.core.min.js`, `src/js/json5.mjs`: ES Module libraries for 3D effects and JSON5 parsing. `puyow_3d.js` imports three and `puyow.js` imports json5, and both are included in the Webpack bundle.
+- `src/js/three.module.min.js`·`src/js/three.core.min.js`, `src/js/json5.js`: ES Module libraries for 3D effects and JSON5 parsing. `puyow_3d.js` imports three and `puyow.js` imports json5, and both are included in the Webpack bundle.
 - `src/css/puyow.css`: Defines background, color scheme, vertical centering, and font styles. `puyow.js` inserts the runtime style for canvas sizing, placement, and rotation.
 - `src/img/`: Contains icons used by the PWA and page.
 - `src/notice/`: Contains localized notice files.

@@ -21,7 +21,7 @@
 - `src/index.html`: 배포용 로딩 페이지이며 `src/puyow.html`로 이동합니다. 스타일은 `src/css/`에서 불러옵니다.
 - `src/puyow.html`: 게임 최상위 div와 초기화 호출을 정의하는 2D 플레이 페이지입니다.
 - `src/js/puyow.js`: ES Module 형식의 게임 라이브러리로, 게임 규칙, 렌더링, 입력, CPU 조작을 구현합니다. `src/js/` 아래 `puyow`로 시작하는 파일은 모두 ES Module입니다.
-- `src/js/three.module.min.js`·`src/js/three.core.min.js`, `src/js/json5.mjs`: 각각 3D 효과와 JSON5 처리를 위한 ES Module 라이브러리입니다. `puyow_3d.js`가 three를, `puyow.js`가 json5를 import하며 Webpack 번들에 함께 들어갑니다.
+- `src/js/three.module.min.js`·`src/js/three.core.min.js`, `src/js/json5.js`: 각각 3D 효과와 JSON5 처리를 위한 ES Module 라이브러리입니다. `puyow_3d.js`가 three를, `puyow.js`가 json5를 import하며 Webpack 번들에 함께 들어갑니다.
 - `src/css/puyow.css`: 배경·색상 체계·세로 중앙 정렬과 글꼴 스타일을 정의합니다. 게임 canvas의 크기·배치·회전은 런타임에 `puyow.js`가 넣는 style 태그가 담당합니다.
 - `src/img/`: PWA와 페이지에서 사용하는 아이콘을 보관합니다.
 - `src/notice/`: 언어별 공지사항 파일을 보관합니다.

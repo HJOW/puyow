@@ -8,7 +8,7 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin');
  *     - 브라우저: window.PuyoW / window.WebPuyo (puyow.js 가 직접 등록) 와 window.PuyoW3DEffect·window.THREE (puyow_3d.js 가 등록)
  *     - Node.js : require('./src/bundle/puyow.bundle.js') 가 puyow.js 의 기본 내보내기(PuyoW)를 돌려준다.
  * ES Module 라이브러리도 import 를 따라 함께 묶는다.
- *     - json5.mjs                              : puyow.js 가 import
+ *     - json5.js                               : puyow.js 가 import
  *     - three.module.min.js, three.core.min.js : puyow_3d.js 가 import
  * crypto-js.min.js, ort.all.min.js 는 전역 변수를 만드는 선택 라이브러리라 번들에 넣지 않고 페이지에서 따로 읽는다.
  */
@@ -49,13 +49,13 @@ module.exports = {
             {
                 // 루트 package.json 의 "type" 은 "commonjs" 이므로, 게임 모듈은 ES Module 로 해석하도록 명시한다.
                 // (src/js/package.json 의 "type": "module" 과 같은 뜻이며, Node.js 의 node --check·import() 는 그 파일을 따른다.)
-                "test" : /[\\/]src[\\/]js[\\/](?:puyow[^\\/]*|three\.(?:core|module)\.min)\.js$/,
+                "test" : /[\\/]src[\\/]js[\\/](?:puyow[^\\/]*|three\.(?:core|module)\.min|json5)\.js$/,
                 "type" : "javascript/esm"
             },
             {
                 "test" : /\.(ts|js|mjs)$/,
-                // 이미 배포용으로 만들어진 외부 라이브러리(.min.js, json5.mjs)는 변환하지 않는다.
-                "exclude" : /node_modules|[\\/]src[\\/]bundle[\\/]|\.min\.js$|[\\/]json5\.mjs$/,
+                // 이미 배포용으로 만들어진 외부 라이브러리(.min.js, json5.js)는 변환하지 않는다.
+                "exclude" : /node_modules|[\\/]src[\\/]bundle[\\/]|\.min\.js$|[\\/]json5\.js$/,
                 "use" : {
                     "loader" : "babel-loader"
                 }
@@ -71,7 +71,7 @@ module.exports = {
         }),
         new ESLintPlugin({
             "extensions" : ["js", "mjs", "ts"],
-            "exclude" : ["node_modules", "three.min.js", "three.core.min.js", "three.module.min.js", "three.webgpu.min.js", "json5.min.js", "json5.mjs", "crypto-js.min.js", "ort.all.min.js"]
+            "exclude" : ["node_modules", "three.min.js", "three.core.min.js", "three.module.min.js", "three.webgpu.min.js", "json5.min.js", "json5.js", "crypto-js.min.js", "ort.all.min.js"]
         }),
         new webpack.BannerPlugin({
             "banner" : `/** Puyo W
@@ -84,7 +84,7 @@ module.exports = {
  *
  * Bundled dependencies
  *     three.module.min.js, three.core.min.js (https://threejs.org/        ) - MIT License
- *     json5.mjs                              (https://json5.org/          ) - MIT License
+ *     json5.js                               (https://json5.org/          ) - MIT License
  *
  */`,
             "footer" : false,

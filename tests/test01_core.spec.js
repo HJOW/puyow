@@ -219,7 +219,7 @@ test('새 src 하위 디렉토리의 게임 리소스를 로드한다', async ({
   expect(resources.manifest).toBe('/manifest.webmanifest');
   expect(resources.scripts).toContain('/bundle/puyow.bundle.js');
   // 게임 페이지는 ES Module 원본 대신 Webpack 번들 하나만 읽는다. three·json5도 번들에 들어 있어 따로 읽지 않는다.
-  for (const script of ['/js/puyow.js', '/js/puyow_3d.js', '/js/three.min.js', '/js/three.module.min.js', '/js/three.core.min.js', '/js/json5.min.js', '/js/json5.mjs']) {
+  for (const script of ['/js/puyow.js', '/js/puyow_3d.js', '/js/three.min.js', '/js/three.module.min.js', '/js/three.core.min.js', '/js/json5.min.js', '/js/json5.js']) {
     expect(resources.scripts).not.toContain(script);
   }
   // 번들에 든 three(ES Module 판)가 전역 THREE로 등록된다.

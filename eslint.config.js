@@ -10,7 +10,7 @@ module.exports = [
             'src/js/three.module.min.js',
             'src/js/three.webgpu.min.js',
             'src/js/json5.min.js',
-            'src/js/json5.mjs',
+            'src/js/json5.js',
             'src/js/ort.all.min.js',
             'src/js/crypto-js.min.js',
             'src/bundle/**'

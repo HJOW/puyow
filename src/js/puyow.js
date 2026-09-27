@@ -6,7 +6,7 @@
  *
  * 뿌요 W 2D 버전 스크립트
  *     의존성
- *         json5.mjs (필수, JSON5 형식 사용을 위함, ES Module 로 import 한다)
+ *         json5.js (필수, JSON5 형식 사용을 위함, ES Module 로 import 한다)
  *         ort.all.min.js, ort.webgl.min.js, ort.wasm.min.js (선택사항, ONNX Runtime 사용을 위함)
  *         puyow.css (선택사항, 캔버스 영역이 화면 100%를 차지하게 만들고, 기본 뒷배경 색 변경)
  *         notice_ko.txt, notice_en.txt (선택사항으로 공지사항 존재 시 이 곳에 기재)
@@ -19,10 +19,10 @@
  *         Node.js 에서 require() 로 쓸 때는 번들 파일을 읽는다.
  */
 
-import JSON5 from './json5.mjs';
+import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 125;
+const BUILDNO = 126;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */

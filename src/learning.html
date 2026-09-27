@@ -33,7 +33,7 @@
 
         <!-- Game 관련 (필수) -->
         <link rel="stylesheet" href="./css/puyow.css"/>
-        <!-- puyow.js, puyow_3d.js 와 이들이 import 하는 json5.mjs, three.module.min.js, three.core.min.js 를 Webpack 으로 묶은 번들 (npm run build 로 생성) -->
+        <!-- puyow.js, puyow_3d.js 와 이들이 import 하는 json5.js, three.module.min.js, three.core.min.js 를 Webpack 으로 묶은 번들 (npm run build 로 생성) -->
         <script defer src="./bundle/puyow.bundle.js"></script>
         <!-- 번들 대신 ES Module 원본을 직접 쓸 때는 위 줄 대신 아래 세 줄을 사용 (import map 은 three.module.min.js 가 import 하는 ./three.core.js 를 연결한다) -->
         <!--<script type="importmap">{ "imports": { "./js/three.core.js": "./js/three.core.min.js" } }</script>-->

@@ -157,10 +157,10 @@ for (const runtime of ['원본', '번들']) {
       });
       await page.reload();
       await expect.poll(() => page.evaluate(() => window.WebPuyo.getScreenState().screen)).toBe('initial_title');
-      // 원본 모듈 그래프에서도 json5.mjs·three.module.min.js를 import해 JSON5 파싱과 전역 THREE가 동작한다.
+      // 원본 모듈 그래프에서도 json5.js·three.module.min.js를 import해 JSON5 파싱과 전역 THREE가 동작한다.
       expect(await page.evaluate(() => window.THREE?.REVISION)).toBe('186');
       expect(await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname)))
-        .toEqual(expect.arrayContaining(['/js/json5.mjs', '/js/three.module.min.js', '/js/three.core.min.js']));
+        .toEqual(expect.arrayContaining(['/js/json5.js', '/js/three.module.min.js', '/js/three.core.min.js']));
       expect(await page.evaluate(() => [...document.scripts].map((script) => new URL(script.src || location.href).pathname))).toEqual(expect.arrayContaining(['/js/puyow.js', '/js/puyow_3d.js']));
       expect(await page.evaluate(() => [...document.scripts].some((script) => script.src.includes('/bundle/')))).toBe(false);
     }
