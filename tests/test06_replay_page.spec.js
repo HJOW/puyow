@@ -58,12 +58,15 @@ test.describe('리플레이 재생 페이지', () => {
     await openReplayPage(page);
   });
 
-  test('처음에는 툴바의 일시중지·처음부터가 꺼져 있고 사이드바와 팝업은 숨겨져 있으며, 캔버스는 툴바 위에 놓인다', async ({ page }) => {
+  test('처음에는 목록 사이드바가 열리고 툴바의 일시중지·처음부터와 팝업은 꺼져 있으며, 캔버스는 툴바 위에 놓인다', async ({ page }) => {
     await expect(toolbarButton(page, 'json')).toBeEnabled();
     await expect(toolbarButton(page, 'list')).toBeEnabled();
     await expect(toolbarButton(page, 'pause')).toBeDisabled();
     await expect(toolbarButton(page, 'restart')).toBeDisabled();
-    await expect(page.locator('.replay-sidebar')).toBeHidden();
+    const sidebar = page.locator('.replay-sidebar');
+    await expect(sidebar).toBeVisible();
+    const expectedCount = await page.evaluate(async () => (await (await fetch('./js/replays.json')).json()).length);
+    await expect(sidebar.locator('.replay-list-button')).toHaveCount(expectedCount);
     await expect(page.locator('.replay-dialog-backdrop')).toBeHidden();
     // 문구는 게임 화면과 같은 언어(테스트 기본 영어)를 따른다.
     await expect(toolbarButton(page, 'json')).toHaveText('Load JSON');
@@ -262,7 +265,7 @@ test.describe('리플레이 재생 페이지', () => {
     const errors = [];
     page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
     await page.route('**/js/replays.json', (route) => route.fulfill({ status: 404, body: 'not found' }));
-    await toolbarButton(page, 'list').click();
+    await page.reload();
     const sidebar = page.locator('.replay-sidebar');
     await expect(sidebar.locator('.replay-sidebar-status')).toBeVisible();
     await expect(sidebar.locator('.replay-list-button')).toHaveCount(0);
@@ -272,8 +275,7 @@ test.describe('리플레이 재생 페이지', () => {
     errors.length = 0;
     await page.unroute('**/js/replays.json');
     await page.route('**/js/replays.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{not json' }));
-    await sidebar.locator('[data-replay-action="close-list"]').click();
-    await toolbarButton(page, 'list').click();
+    await page.reload();
     await expect.poll(() => errors.some((text) => text.includes('리플레이 목록을 불러오지 못했습니다.'))).toBe(true);
     await expect(sidebar.locator('.replay-list-button')).toHaveCount(0);
   });
@@ -282,7 +284,7 @@ test.describe('리플레이 재생 페이지', () => {
     await page.route('**/js/replays.json', (route) => route.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify([{ version: 1, meta: { rule: 'standard', colors: ['red'] } }, 5])
     }));
-    await toolbarButton(page, 'list').click();
+    await page.reload();
     const sidebar = page.locator('.replay-sidebar');
     await expect(sidebar.locator('.replay-list-button')).toHaveCount(2);
     await sidebar.locator('.replay-list-button').nth(1).click();
@@ -330,7 +332,7 @@ test.describe('게임 페이지의 리플레이 일시정지', () => {
 
 // 페이지 문구는 puyow_replay.js 의 자체 번역표(영어 원문 키)를 쓰고, 게임 화면 언어(설정값, 없으면 브라우저 언어)를 따른다.
 test.describe('리플레이 재생 페이지의 다국어', () => {
-  /** 로케일별로 확인할 문구다. 툴바 네 버튼·게임으로 돌아가기 링크·안내 문구·첫 목록 항목의 룰·색 수·구경 표시다. */
+  /** 로케일별로 확인할 문구다. 툴바 네 버튼·게임으로 돌아가기 링크·안내 문구·완화 피버 구경 항목의 룰·색 수·구경 표시다. */
   const EXPECTED = {
     'ko-KR': { lang: 'ko', buttons: ['JSON 불러오기', '목록에서 불러오기', '일시중지', '처음부터'], guide: 'JSON 불러오기 또는 목록에서 불러오기로 리플레이를 불러와 주세요.', rule: '피버 룰 (완화)', colors: '5색', watch: '구경', back: '게임으로 돌아가기' },
     'ja-JP': { lang: 'ja', buttons: ['JSONを読み込む', 'リストから読み込む', '一時停止', '最初から'], guide: '「JSONを読み込む」または「リストから読み込む」でリプレイを読み込んでください。', rule: 'FEVER ルール（緩和）', colors: '5色', watch: '観戦', back: 'ゲームに戻る' },
@@ -355,7 +357,9 @@ test.describe('리플레이 재생 페이지의 다국어', () => {
         await expect(page.locator('.replay-empty-guide')).toHaveText(expected.guide);
 
         await toolbarButton(page, 'list').click();
-        const title = page.locator('.replay-list-button').first().locator('.replay-list-title');
+        const replayIndex = await page.evaluate(async () => (await (await fetch('./js/replays.json')).json())
+          .findIndex((replay) => replay.meta.rule === 'relaxedFever' && replay.meta.colors.length === 5 && replay.meta.watch));
+        const title = page.locator('.replay-list-button').nth(replayIndex).locator('.replay-list-title');
         await expect(title).toHaveText(`${expected.rule} · ${expected.colors} · ${expected.watch}`);
         await page.locator('[data-replay-action="close-list"]').click();
 

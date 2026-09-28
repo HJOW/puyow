@@ -707,6 +707,7 @@ function explainPauseRefusal() {
 function buildMcpManual() {
     return [
         'This is the Puyo W replay page. It plays back recorded Puyo W matches on the game canvas in the middle. A bottom toolbar has four buttons: Load JSON (opens a popup with a text area for replay JSON), Load from List (opens a right sidebar listing the bundled replays from replays.json), Pause, and Restart. Pause and Restart stay disabled until a replay is loaded. At the right end of the toolbar, a Back to game link moves this tab to the game page (puyow.html).',
+        'The replay list sidebar opens automatically when the page loads. It can be closed with its Close button or Escape and opened again with Load from List.',
         'Before any replay is loaded the game canvas is hidden and a hint is shown instead; keyboard and gamepad input do not reach the game then. Loading a replay shows the canvas and starts playback with a 3-second countdown.',
         'Pause works like pressing Escape during a match, except during the countdown, when it does nothing. While paused, the canvas shows a pause screen with only Resume and Restart (no Exit), and the toolbar Pause button is disabled until playback resumes. Resuming also runs a 3-second countdown. Restart (toolbar or pause screen) stops playback and plays the same replay again from the start, countdown included.',
         'When playback ends, a result screen shows Replay (watch it again; the same as Restart) and Copy Replay (copies the replay JSON). There is no Exit button and Escape does nothing there, so the page never leaves the replay for the game menus. The toolbar Pause button is disabled on the result screen.',
@@ -903,6 +904,7 @@ function initialize(target) {
     applyPageTexts();
     syncToolbarButtons();
     registerMcpTools();
+    openSidebar();
 }
 
 /** 리플레이 재생 페이지 공개 API 다. */
