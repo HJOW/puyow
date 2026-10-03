@@ -1184,7 +1184,7 @@ test('게임 시작 첫 단계와 하위 단계의 취소 버튼을 키보드·�
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
-  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 445 } });
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 550 } });
   await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('rule_select');
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 640, y: 445 } });
   await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');

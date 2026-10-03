@@ -40,6 +40,7 @@ const DEFAULT_LANGUAGE = 'en';
  */
 const REPLAY_STRINGS = {
     ko: {
+        '2-Explosion': '2-폭발',
         'Load JSON': 'JSON 불러오기',
         'Load from List': '목록에서 불러오기',
         'Pause': '일시중지',
@@ -66,6 +67,7 @@ const REPLAY_STRINGS = {
         'Play Together': '너랑 나랑'
     },
     ja: {
+        '2-Explosion': '2個消し',
         'Load JSON': 'JSONを読み込む',
         'Load from List': 'リストから読み込む',
         'Pause': '一時停止',
@@ -92,6 +94,7 @@ const REPLAY_STRINGS = {
         'Play Together': '二人プレイ'
     },
     zh: {
+        '2-Explosion': '2个消除',
         'Load JSON': '加载JSON',
         'Load from List': '从列表加载',
         'Pause': '暂停',
@@ -118,6 +121,7 @@ const REPLAY_STRINGS = {
         'Play Together': '双人对战'
     },
     de: {
+        '2-Explosion': '2-Explosion',
         'Load JSON': 'JSON laden',
         'Load from List': 'Aus Liste laden',
         'Pause': 'Pause',
@@ -144,6 +148,7 @@ const REPLAY_STRINGS = {
         'Play Together': 'Zusammen spielen'
     },
     fr: {
+        '2-Explosion': '2-Explosion',
         'Load JSON': 'Charger le JSON',
         'Load from List': 'Charger depuis la liste',
         'Pause': 'Pause',
@@ -176,7 +181,8 @@ const RULE_LABELS = {
     standard: 'Standard Rules',
     fever: 'FEVER Rules',
     feverStart: 'FEVER Rules (Start)',
-    relaxedFever: 'FEVER Rules (Relaxed)'
+    relaxedFever: 'FEVER Rules (Relaxed)',
+    twoExplosion: '2-Explosion'
 };
 
 /** puyow_replay.js 가 읽힌 주소다. puyow.js 스크립트 태그를 찾지 못했을 때 목록 파일 경로의 기준으로 쓴다. @type {string} */

@@ -294,6 +294,8 @@ const combo = common.estimateCombo(board, colors, positions);
 
 공통 함수에는 `randomFloat`, `randomColor`, `translate`, `getPuyo`, `activeCells`, `activeRenderCells`, `findLandingPlacement`, `findBestPreviewResult`, `simulateNMovePlacements`, `findBestNMovePlacement`, `simulateNMovePlacementsInWorker`, `findExplosionsOnBoard`, `findExplosionGroupsOnBoard`, `collapseBoard`, `simulatePlacementBoard`, `isAllClearBoard`, `estimateAttack`, `estimateCombo`, `getChainBonus`, `getConnectionBonus`, `getColorBonus`, `getMarginRate`, `getTimeProgressMultiplier`, `calculateExplosionPoint`, `calculateExplosionAttack`, `formatIntegerPoint`, `formatPoint`, `warningUnits`가 포함됩니다. `simulateNMovePlacements(player, targetCombo, turnCount)`는 목표 연쇄 수를 두 번째 인자로 받아 이번 수부터 N수까지의 후보를 평가하며, `findBestNMovePlacement()`는 그중 최선 결과를 반환합니다. `simulateNMovePlacementsInWorker(player, targetCombo, turnCount, timeLimitMs, options)`는 3수 이상 탐색을 Blob Worker에서 반복 심화로 처리하고, 각 완료 깊이의 현재 1수 배치를 `options.onProgress`로 전달합니다. `getTimeProgressMultiplier(elapsed)`는 300초까지 1, 이후 20초마다 두 배(최대 1024)를 반환합니다. 보드·배열을 받는 함수는 입력값을 직접 변경하지 않습니다.
 
+`simulatePlacementResult(board, colors, positions, explosionCount)`와 `simulatePlacementBoard()`·`estimateCombo()`·`estimateAttack()`은 네 번째 인자로 폭발 기준을 받을 수 있습니다. 동기 N수 함수의 네 번째 인자와 Worker의 `options.explosionCount`도 같은 역할입니다. 생략하면 현재 게임의 기준(2-폭발은 2, 그 외는 4)을 사용합니다. 순수 탐색 함수 `findExplosionsOnBoard(board, explosionCount = 4)`·`findExplosionGroupsOnBoard(board, explosionCount = 4)`는 게임과 관계없이 기본값 4를 유지합니다.
+
 일부 함수는 2D 게임의 보드 형식(열 6개, 행 17개)과 색상 문자열을 전제로 합니다. 독립된 3D 게임 버전은 제공하지 않으며, 2D 게임 위의 선택적 3D 연출은 필요할 때 이 계산 결과를 읽기 전용으로 활용할 수 있습니다.
 
 ---

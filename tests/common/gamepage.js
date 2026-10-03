@@ -139,18 +139,19 @@ export async function enterMainMenu(page) {
   await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('main_menu');
 }
 
-/** 도장깨기 하위 단계에서 각 룰로 포커스를 옮기는 방향키다. 기본 룰에서 시작하며, 아래 행은 피버 룰 (시작)·피버 룰·피버 룰 (완화) 순서다(BUILDNO 120). */
+/** 도장깨기는 기본 룰, 피버 룰 (시작)·피버 룰·피버 룰 (완화) 행, 2-폭발, 취소 순서다. 기본 룰에서 각 선택지로 이동한다. */
 const DOJO_RULE_KEYS = {
   standard: [],
   feverStart: ['ArrowRight'],
   fever: ['ArrowDown'],
   relaxedFever: ['ArrowDown', 'ArrowRight'],
+  twoExplosion: ['ArrowDown', 'ArrowDown'],
 };
 
 /**
  * 메인 메뉴의 게임 시작 → 도장깨기에서 룰을 골라 적 선택 화면을 연다(BUILDNO 114부터의 2단계 메뉴).
- * 메인 메뉴 포커스가 게임 시작(기본값)이어야 한다. 피버 룰 (시작)·(완화)는 잠금이 풀린 저장값이 필요하다.
- * @param {'standard'|'fever'|'feverStart'|'relaxedFever'} rule 고를 룰
+ * 메인 메뉴 포커스가 게임 시작(기본값)이어야 한다. 피버 룰 (시작)·(완화)와 2-폭발은 잠금이 풀린 저장값이 필요하다.
+ * @param {'standard'|'fever'|'feverStart'|'relaxedFever'|'twoExplosion'} rule 고를 룰
  */
 export async function openDojoOpponentSelect(page, rule = 'standard') {
   await page.keyboard.press('Enter');
@@ -158,7 +159,7 @@ export async function openDojoOpponentSelect(page, rule = 'standard') {
   await page.keyboard.press('Enter');
   for (const key of DOJO_RULE_KEYS[rule]) await page.keyboard.press(key);
   await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe(rule === 'standard' ? 'opponent_select' : 'fever_opponent_select');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe(['standard', 'twoExplosion'].includes(rule) ? 'opponent_select' : 'fever_opponent_select');
 }
 
 /**

@@ -22,7 +22,7 @@
 import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 130;
+const BUILDNO = 131;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -400,6 +400,7 @@ const ONNX_WASM_PROBE_TIMEOUT = 4000;
 /** 한국어 원문을 키로 하는 화면 문구 번역표다. (다국어 데이터) @type {Record<string, Record<string, string>>} */
 const stringTable = {
     en: {
+        '2-폭발': '2-Explosion',
         '회원가입': 'Sign Up', '아이디': 'ID', '비밀번호': 'Password', '닉네임': 'Nickname', '로그인': 'Log In', '가입': 'Sign Up', '나가기': 'Leave', '방 생성': 'Create Room', '생성': 'Create', '%1색': '%1 Colors', '나': 'You', '상대': 'Opponent', '무승부': 'Draw',
         '온라인 플레이 대기실': 'Online Lobby', '온라인 플레이 방': 'Online Room', '들어갈 수 있는 방이 없습니다.': 'There are no rooms to join.', '상대를 기다리는 중...': 'Waiting for an opponent...', '곧 게임이 시작됩니다.': 'The match is about to start.', '결과를 기다리는 중...': 'Waiting for the result...',
         '가입이 완료되었습니다.': 'Your account has been created.', '상대방과의 연결이 끊어졌습니다.': 'The connection to your opponent was lost.', '서버와의 연결이 끊어졌습니다.': 'The connection to the server was lost.', '다른 곳에서 같은 계정으로 로그인했습니다.': 'This account was logged in somewhere else.', '설정 화면의 이름은 온라인 플레이에서 사용하지 않습니다.': 'The name from the settings screen is not used in online play.',
@@ -435,6 +436,7 @@ const stringTable = {
         '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': 'This is a high-difficulty opponent powered by deep learning. Gameplay may be unstable.', '계속': 'Continue',
     },
     ja: {
+        '2-폭발': '2個消し',
         '회원가입': '新規登録', '아이디': 'ID', '비밀번호': 'パスワード', '닉네임': 'ニックネーム', '로그인': 'ログイン', '가입': '登録', '나가기': '退出', '방 생성': '部屋作成', '생성': '作成', '%1색': '%1色', '나': '自分', '상대': '相手', '무승부': '引き分け',
         '온라인 플레이 대기실': 'オンライン待合室', '온라인 플레이 방': 'オンライン部屋', '들어갈 수 있는 방이 없습니다.': '入れる部屋がありません。', '상대를 기다리는 중...': '相手を待っています…', '곧 게임이 시작됩니다.': 'まもなく対戦が始まります。', '결과를 기다리는 중...': '結果を待っています…',
         '가입이 완료되었습니다.': '登録が完了しました。', '상대방과의 연결이 끊어졌습니다.': '相手との接続が切れました。', '서버와의 연결이 끊어졌습니다.': 'サーバーとの接続が切れました。', '다른 곳에서 같은 계정으로 로그인했습니다.': '別の場所で同じアカウントにログインしました。', '설정 화면의 이름은 온라인 플레이에서 사용하지 않습니다.': '設定画面の名前はオンラインプレイでは使用しません。',
@@ -471,6 +473,7 @@ const stringTable = {
         '딥러닝 기반의 고난이도 적으로, 게임 플레이가 불안정할 수 있습니다.': 'ディープラーニングを用いた高難易度の敵のため、ゲームプレイが不安定になる場合があります。', '계속': '続ける',
     },
     zh: {
+        '2-폭발': '2个消除',
         '회원가입': '注册', '아이디': '账号', '비밀번호': '密码', '닉네임': '昵称', '로그인': '登录', '가입': '注册', '나가기': '退出', '방 생성': '创建房间', '생성': '创建', '%1색': '%1色', '나': '我', '상대': '对手', '무승부': '平局',
         '온라인 플레이 대기실': '在线大厅', '온라인 플레이 방': '在线房间', '들어갈 수 있는 방이 없습니다.': '没有可加入的房间。', '상대를 기다리는 중...': '正在等待对手…', '곧 게임이 시작됩니다.': '对战即将开始。', '결과를 기다리는 중...': '正在等待结果…',
         '가입이 완료되었습니다.': '注册完成。', '상대방과의 연결이 끊어졌습니다.': '与对手的连接已断开。', '서버와의 연결이 끊어졌습니다.': '与服务器的连接已断开。', '다른 곳에서 같은 계정으로 로그인했습니다.': '该账号已在别处登录。', '설정 화면의 이름은 온라인 플레이에서 사용하지 않습니다.': '设置界面的名称不会用于在线对战。',
@@ -876,7 +879,7 @@ let selectedAiDifficulty = 1;
 let opponentMenuFocus = 0;
 /** 적 선택 메뉴 하단에서 포커스된 동작이다. @type {number} */
 let selectedOpponentAction = 0;
-/** 적 선택 화면에서 시작할 대전 규칙이다. @type {'standard'|'fever'|'feverStart'|'relaxedFever'} */
+/** 적 선택 화면에서 시작할 대전 규칙이다. @type {'standard'|'fever'|'feverStart'|'relaxedFever'|'twoExplosion'} */
 let opponentMenuRule = 'standard';
 /** @type{object|null} 3D 효과를 담당하는 매니저 객체 (puyow_3d.js 에서 정의) */
 let threeEffectManager = null;
@@ -1095,7 +1098,7 @@ let gamepadActionInput = [
 let languageCode = DEFAULT_LANGUAGE_CODE;
 /** [CTX] 예약어를 치환할 웹 애플리케이션의 URL 컨텍스트 경로다. @type {string} */
 let urlContextPath = '/';
-/** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverStartClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, relaxedFeverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} */
+/** localStorage에서 불러온 진행도 데이터다. @type {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverStartClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, relaxedFeverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, twoExplosionClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} */
 let store = createInitialStore();
 /** storageManager의 puyow_cards에서 불러온 개별 카드 인스턴스다. @type {{id:string,type:string}[]} */
 let ownedCards = [];
@@ -1141,6 +1144,7 @@ const RULE_OPTION_BACKGROUND_COLORS = {
     standard: '#1b5e20',
     fever: '#b0007a',
     feverStart: '#4b1f6f',
+    twoExplosion: '#a34e16',
     practice: '#388e3c',
     continuousFever: '#cf4bb0',
     puzzle: '#236a8b'
@@ -1157,6 +1161,7 @@ const GAME_RULE_OPTIONS = [
     { label: '피버 룰 (시작)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.feverStart, isDisabled: () => !isFeverStartRuleUnlocked(), activate: () => openOpponentMenu('feverStart') },
     { label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, activate: () => openOpponentMenu('fever') },
     { label: '피버 룰 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever, isDisabled: () => !isFeverStartRuleUnlocked(), activate: () => openOpponentMenu('relaxedFever') },
+    { label: '2-폭발', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.twoExplosion, isDisabled: () => !isTwoExplosionRuleUnlocked(), activate: () => openOpponentMenu('twoExplosion') },
     { label: '연습', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.practice, activate: () => openPracticeDifficulty() },
     { label: '연속 피버', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.continuousFever, activate: () => openContinuousFeverDifficulty() }
 ];
@@ -2715,7 +2720,7 @@ function setSettingsDraftProvider(provider) {
 
 /**
  * 저장 데이터의 기본 구조를 만든다.
- * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverStartClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, relaxedFeverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} 초기 저장 데이터
+ * @returns {{clearList:string[], clearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, feverStartClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, relaxedFeverClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, twoExplosionClearListByDifficulty:Record<'easy'|'normal'|'hard'|'extreme', string[]>, puzzleClearStages:number[], puzzleStarStages:number[]}} 초기 저장 데이터
  */
 function createInitialStore() {
     return {
@@ -2724,6 +2729,7 @@ function createInitialStore() {
         feverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
         feverStartClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
         relaxedFeverClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
+        twoExplosionClearListByDifficulty: { easy: [], normal: [], hard: [], extreme: [] },
         puzzleClearStages: [],
         puzzleStarStages: [],
         puzzleGoldClearStages: [],
@@ -3394,6 +3400,13 @@ function loadStore() {
                 ? [...new Set(storedRelaxedFeverClearListByDifficulty[key].filter((name) => typeof name === 'string'))]
                 : []
         ]));
+        const storedTwoExplosionProgress = parsed.twoExplosionClearListByDifficulty;
+        const twoExplosionClearListByDifficulty = Object.fromEntries(Object.keys(initial.twoExplosionClearListByDifficulty).map((key) => [
+            key,
+            Array.isArray(storedTwoExplosionProgress?.[key])
+                ? [...new Set(storedTwoExplosionProgress[key].filter((name) => typeof name === 'string'))]
+                : []
+        ]));
         const settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
         playerNameSetupRequired = !validatePlayerName(settings.playerName).name;
         const puzzleClearStages = Array.isArray(parsed.puzzleClearStages)
@@ -3409,7 +3422,7 @@ function loadStore() {
         const puzzleGoldStarStages = Array.isArray(parsed.puzzleGoldStarStages)
             ? [...new Set(parsed.puzzleGoldStarStages.filter((index) => Number.isInteger(index) && index >= 0))]
             : [...puzzleStarStages];
-        store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, feverStartClearListByDifficulty, relaxedFeverClearListByDifficulty, puzzleClearStages, puzzleStarStages,
+        store = { clearList: [...new Set(parsed.clearList)], clearListByDifficulty, feverClearListByDifficulty, feverStartClearListByDifficulty, relaxedFeverClearListByDifficulty, twoExplosionClearListByDifficulty, puzzleClearStages, puzzleStarStages,
             puzzleGoldClearStages, puzzleGoldStarStages, gold: normalizeGold(parsed.gold), settings: {
             playerName: normalizePlayerName(settings.playerName),
             language: normalizeStoredLanguageCode(settings.language),
@@ -4372,7 +4385,7 @@ class PlayerState {
 /**
  * 적 인스턴스의 선택 화면 표시 설정을 등록 항목으로 만든다.
  * @param {()=>Enemy} createController 새 적 인스턴스 생성 함수
- * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean, requiresOnnx:boolean}} 적 등록 항목
+ * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean, requiresOnnx:boolean, requiresModel:boolean}} 적 등록 항목
  */
 function createOpponentEntry(createController) {
     const controller = createController();
@@ -4389,7 +4402,8 @@ function createOpponentEntry(createController) {
         sortPriority: controller.sortPriority,
         hidden: controller.hidden === true,
         notAvail: controller.notAvail === true,
-        requiresOnnx: controller.requiresOnnx === true
+        requiresOnnx: controller.requiresOnnx === true,
+        requiresModel: controller.requiresOnnx === true || controller instanceof Solomon || controller.requiresModel === true
     };
 }
 
@@ -4410,7 +4424,7 @@ function isObservationCodeApplied() {
  * 갤러리에 표시할 적 목록을 반환한다.
  * 갤러리 잠금 해제는 실제로 이긴 전적만을 근거로 하므로, ONNX 런타임이 없어 지금은 대전할 수 없는
  * 적이라도 목록에서 빼지 않는다. 적 선택 화면과 달리 `requiresOnnx`를 보지 않는 이유다.
- * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean, requiresOnnx:boolean}[]} 갤러리 표시 대상 적 목록
+ * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean, requiresOnnx:boolean, requiresModel:boolean}[]} 갤러리 표시 대상 적 목록
  */
 function getGalleryOpponents() {
     return OPPONENTS.filter((opponent) => !opponent.hidden);
@@ -4420,10 +4434,21 @@ function getGalleryOpponents() {
  * 숨김 처리되지 않아 적 선택 화면에 표시할 적 목록을 반환한다.
  * ONNX 런타임이 없는 페이지에서는 추론으로 판단하는 적을 이전 적 클리어 여부와 무관하게 감춘다.
  * 갤러리 목록은 이 제한을 받지 않으므로 `getGalleryOpponents()`를 따로 쓴다.
- * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean, requiresOnnx:boolean}[]} 표시할 적 목록
+ * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean, requiresOnnx:boolean, requiresModel:boolean}[]} 표시할 적 목록
  */
-function getVisibleOpponents() {
-    return getGalleryOpponents().filter((opponent) => !opponent.requiresOnnx || isOnnxRuntimeAvailable());
+function getVisibleOpponents(rule = opponentMenuRule) {
+    return getGalleryOpponents().filter((opponent) => isOpponentAllowedInRule(opponent, rule)
+        && (!opponent.requiresOnnx || isOnnxRuntimeAvailable()));
+}
+
+/** 2-폭발에서는 모델을 사용하는 적을 목록과 순차 해금에서 제외한다. @param {object} opponent 등록된 적 @param {string} rule 대전 규칙 @returns {boolean} 해당 룰에 출전 가능한지 여부 */
+function isOpponentAllowedInRule(opponent, rule) {
+    return rule !== 'twoExplosion' || (!opponent.requiresOnnx && !opponent.requiresModel);
+}
+
+/** 해당 룰에서 순서대로 해금할 출시 적 목록이다. @param {string} rule 대전 규칙 @returns {object[]} 순차 해금 대상 */
+function getProgressionOpponents(rule) {
+    return OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail && entry.classType !== 'Solomon' && isOpponentAllowedInRule(entry, rule));
 }
 
 /** 성공한 AI API 테스트 뒤 현재 접속에 한해 솔로몬을 적 목록에 표시한다. @returns {void} */
@@ -4435,8 +4460,9 @@ function unlockSolomonForSession() {
     dispatchPuyoUnlocked('enemy:Solomon');
 }
 
-/** 적 선택 규칙에 맞는 난이도별 적 진행도 저장소를 반환한다. @param {'standard'|'fever'|'feverStart'|'relaxedFever'} [rule=opponentMenuRule] 대전 규칙 @returns {Record<'easy'|'normal'|'hard'|'extreme', string[]>} 진행도 저장소 */
+/** 적 선택 규칙에 맞는 난이도별 적 진행도 저장소를 반환한다. @param {'standard'|'fever'|'feverStart'|'relaxedFever'|'twoExplosion'} [rule=opponentMenuRule] 대전 규칙 @returns {Record<'easy'|'normal'|'hard'|'extreme', string[]>} 진행도 저장소 */
 function getOpponentProgressStore(rule = opponentMenuRule) {
+    if (rule === 'twoExplosion') return store.twoExplosionClearListByDifficulty;
     if (rule === 'feverStart') return store.feverStartClearListByDifficulty;
     if (rule === 'relaxedFever') return store.relaxedFeverClearListByDifficulty;
     if (rule === 'fever') return store.feverClearListByDifficulty;
@@ -4448,17 +4474,24 @@ function isFeverStartRuleUnlocked() {
     return Object.values(store.feverClearListByDifficulty || {}).some((clearList) => Array.isArray(clearList) && clearList.includes('Kimaris'));
 }
 
+/** 기본 또는 피버 룰의 어려움·극한에서 그레모리를 이기면 2-폭발을 해금한다. @returns {boolean} 2-폭발 해금 여부 */
+function isTwoExplosionRuleUnlocked() {
+    return [store.clearListByDifficulty, store.feverClearListByDifficulty].some((progress) =>
+        ['hard', 'extreme'].some((key) => progress?.[key]?.includes('Gremory')));
+}
+
 /**
  * 이전 유효 적을 클리어해 현재 잠금이 해제된 적인지 판별한다.
  * @param {{className:string, hidden:boolean, notAvail:boolean}} opponent 판별할 적
- * @param {'standard'|'fever'|'feverStart'|'relaxedFever'} [rule=opponentMenuRule] 적용할 대전 규칙
+ * @param {'standard'|'fever'|'feverStart'|'relaxedFever'|'twoExplosion'} [rule=opponentMenuRule] 적용할 대전 규칙
  * @returns {boolean} 선택 가능 여부
  */
 function isOpponentUnlocked(opponent, rule = opponentMenuRule) {
+    if (!isOpponentAllowedInRule(opponent, rule)) return false;
     if (isObservationCodeApplied()) return true;
     // 솔로몬은 저장 진행도와 무관한 세션 전용 적이므로 기존 적의 순차 해금 조건에 끼워 넣지 않는다.
     if (opponent.classType === 'Solomon') return solomonSessionUnlocked;
-    const progressionOpponents = OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail && entry.classType !== 'Solomon');
+    const progressionOpponents = getProgressionOpponents(rule);
     const index = progressionOpponents.indexOf(opponent);
     if (index <= 0) return index === 0;
     const difficultyKey = getSelectedDifficulty().key;
@@ -4472,7 +4505,7 @@ function isOpponentUnlocked(opponent, rule = opponentMenuRule) {
  * @returns {{createController:()=>Enemy, className:string, sortPriority:number, hidden:boolean, notAvail:boolean}[]} 선택할 수 있는 적 목록
  */
 function getSelectableOpponents(rule = opponentMenuRule) {
-    return getVisibleOpponents().filter((opponent) => !opponent.notAvail && isOpponentUnlocked(opponent, rule));
+    return getVisibleOpponents(rule).filter((opponent) => !opponent.notAvail && isOpponentUnlocked(opponent, rule));
 }
 
 /**
@@ -4489,7 +4522,7 @@ function ensureSelectedOpponent(rule = opponentMenuRule) {
 /**
  * 선택 가능한 적 중 현재 적의 이전 또는 다음 적을 반환한다.
  * @param {number} direction 이전 -1 또는 다음 1
- * @param {'standard'|'fever'|'feverStart'|'relaxedFever'} [rule=opponentMenuRule] 적용할 대전 규칙
+ * @param {'standard'|'fever'|'feverStart'|'relaxedFever'|'twoExplosion'} [rule=opponentMenuRule] 적용할 대전 규칙
  * @returns {{createController:()=>Enemy, className:string, classType:string, sortPriority:number, hidden:boolean, notAvail:boolean}|null} 이동 대상 적
  */
 function getRelativeSelectableOpponent(direction, rule = opponentMenuRule) {
@@ -4632,9 +4665,10 @@ function prepareGameOnnxModels(controllers, returnToSelection) {
  * @param {boolean} feverRule 피버 룰 대전 여부
  * @param {boolean} feverStart 피버 룰 (시작) 대전 여부
  * @param {boolean} relaxedFever 피버 룰 (완화) 대전 여부
+ * @param {boolean} twoExplosion 2-폭발 대전 여부
  * @returns {void}
  */
-function startGame(practice = false, continuousFever = false, feverRule = false, feverStart = false, relaxedFever = false) {
+function startGame(practice = false, continuousFever = false, feverRule = false, feverStart = false, relaxedFever = false, twoExplosion = false) {
     const soloMode = practice || continuousFever;
     const usesFeverRule = feverRule || feverStart;
     if (!soloMode && !ensureSelectedOpponent()) return;
@@ -4683,6 +4717,7 @@ function startGame(practice = false, continuousFever = false, feverRule = false,
         feverRule: usesFeverRule,
         feverStart,
         relaxedFever,
+        twoExplosion,
         fever: continuousFever ? {
             targetCombo: CONTINUOUS_FEVER_INITIAL_TARGET_COMBO,
             leftTime: CONTINUOUS_FEVER_INITIAL_TIME,
@@ -4704,7 +4739,7 @@ function startGame(practice = false, continuousFever = false, feverRule = false,
         players
     };
     players.filter((player) => player.receivesPuyos).forEach(updateNextPairs);
-    // 리플레이는 기본 룰·피버 룰·피버 룰 (시작) 대전에서만 기록한다. 연습과 연속 피버는 대상이 아니다.
+    // 모든 도장깨기 룰의 대전을 기록한다. 연습과 연속 피버는 대상이 아니다.
     if (!soloMode) beginReplayRecording();
     syncBackgroundMusic();
     // ONNX 적을 골랐으면 모델을 다 불러온 뒤에 카운트다운이 시작된다.
@@ -4727,8 +4762,8 @@ function configureLearningApi(config) {
 
 /** 현재 사용자 게임이 API 학습 전송 대상인지 확인한다. @returns {boolean} 전송 대상이면 true */
 function shouldSendLearningEvent() {
-    // "너랑 나랑"과 온라인 플레이는 AI 모델 관련 기능을 쓰지 않으므로 역방향 학습 전송에서도 제외한다.
-    return Boolean(learningApiConfig && game && !game.tutorial && !game.watch && !game.together && !game.online && game.players?.[0]?.controller === null);
+    // 2-폭발·너랑 나랑·온라인 플레이는 모델 학습 전송에서 제외한다.
+    return Boolean(learningApiConfig && game && !game.twoExplosion && !game.tutorial && !game.watch && !game.together && !game.online && game.players?.[0]?.controller === null);
 }
 
 /**
@@ -4873,7 +4908,7 @@ function finishLearningEpisode(done = true) {
  * @returns {boolean} 학습 대상이면 true
  */
 function shouldTrainLocalAiWithSolomon() {
-    if (!game || game.replayPlayback || !isLocalAiProvider(store?.settings) || !isReverseLearningEnabled()) return false;
+    if (!game || game.twoExplosion || game.replayPlayback || !isLocalAiProvider(store?.settings) || !isReverseLearningEnabled()) return false;
     if (AI_DIFFICULTIES[game.aiDifficulty]?.key !== 'extreme') return false;
     return game.players?.[1]?.controller?.getClassType?.() === 'Solomon';
 }
@@ -4975,10 +5010,10 @@ function hasWatchEligibleClear(className) {
     ));
 }
 
-/** 구경 모드에 사용할 수 있는 적 목록을 반환한다. observation 코드 적용 중에는 표시되는 출시 적 중 솔로몬·안드로말리우스·단탈리온만 제외한다. ONNX 추론으로 판단하는 적은 런타임 유무와 무관하게 항상 빠진다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean,requiresOnnx:boolean}[]} 후보 적 목록 */
+/** 구경 모드에 사용할 수 있는 적 목록을 반환한다. observation 코드 적용 중에는 표시되는 출시 적 중 솔로몬·안드로말리우스·단탈리온만 제외한다. ONNX 추론으로 판단하는 적은 런타임 유무와 무관하게 항상 빠진다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean,requiresOnnx:boolean, requiresModel:boolean}[]} 후보 적 목록 */
 function getWatchOpponentCandidates() {
     // ONNX 추론으로 판단하는 적은 구경 대전의 선정 대상에서 아예 제외한다.
-    const usable = getVisibleOpponents().filter((entry) => !entry.notAvail && !entry.requiresOnnx
+    const usable = getVisibleOpponents('standard').filter((entry) => !entry.notAvail && !entry.requiresOnnx
         && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType));
     if (isObservationCodeApplied()) return usable;
     return usable.filter((entry) => hasWatchEligibleClear(entry.className));
@@ -6058,19 +6093,25 @@ function startGravity(player, nextPhase) {
     } : null;
 }
 
+/** 현재 게임에서 같은 색 뿌요가 폭발하는 최소 연결 수다. @returns {number} 2-폭발은 2, 그 외 게임은 4 */
+function getGameExplosionCount() {
+    return game?.twoExplosion ? 2 : 4;
+}
+
 /**
- * 보드 복사본에서 상하좌우로 4개 이상 연결된 색 뿌요를 모두 찾는다.
+ * 보드 복사본에서 지정한 수 이상 상하좌우로 연결된 색 뿌요를 모두 찾는다.
  * @param {(string|null)[][]} board 탐색할 보드
+ * @param {number} [explosionCount=4] 폭발에 필요한 최소 연결 수
  * @returns {number[][]} 폭발할 [x, y] 좌표 목록
  */
-function findExplosionsOnBoard(board) {
-    return findExplosionGroupsOnBoard(board).flatMap((group) => group.cells);
+function findExplosionsOnBoard(board, explosionCount = 4) {
+    return findExplosionGroupsOnBoard(board, explosionCount).flatMap((group) => group.cells);
 }
 
 /**
  * 보드 복사본에서 폭발하는 같은 색 뿌요 연결 그룹을 찾는다. 숨김 행은 중력 완료 전까지 인접 판정에서 제외한다.
  * @param {(string|null)[][]} board 탐색할 보드
- * @param {number} [explosionCount=4] 폭발에 필요한 최소 연결 수. 시뮬레이터 재생에서만 다른 값을 전달한다.
+ * @param {number} [explosionCount=4] 폭발에 필요한 최소 연결 수. 2-폭발과 시뮬레이터에서는 다른 값을 전달한다.
  * @returns {{color:string, cells:number[][]}[]} 폭발할 색상과 [x, y] 좌표 그룹 목록
  */
 function findExplosionGroupsOnBoard(board, explosionCount = 4) {
@@ -6275,9 +6316,10 @@ function collapseBoard(board) {
  * 가상 착지 뒤 폭발 탐지와 중력을 모두 처리한 최종 보드에서 패배 여부를 검사한다.
  * @param {PlayerState} player 자동 조작할 플레이어
  * @param {{positions:{x:number, y:number}[]}} simulation 가상 배치 후보
+ * @param {number} [explosionCount] 폭발 기준. 생략하면 현재 게임 규칙을 따른다.
  * @returns {boolean} 이 후보를 두면 즉시 패배하는지 여부
  */
-function causesImmediateDefeat(player, simulation) {
+function causesImmediateDefeat(player, simulation, explosionCount = getGameExplosionCount()) {
     let simulatedBoard = player.board.map((row) => [...row]);
     simulation.positions.forEach(({ x, y }, index) => {
         simulatedBoard[y][x] = player.active.colors[index];
@@ -6285,7 +6327,7 @@ function causesImmediateDefeat(player, simulation) {
     simulatedBoard = collapseBoard(simulatedBoard);
     // 실제 폭발 단계처럼 색 뿌요와 인접 방해뿌요를 제거하고 중력을 반복 적용한다.
     while (true) {
-        const exploding = findExplosionsOnBoard(simulatedBoard);
+        const exploding = findExplosionsOnBoard(simulatedBoard, explosionCount);
         if (!exploding.length) return isDefeatBoard(simulatedBoard);
         applyExplosionResolution(simulatedBoard, getExplosionResolution(simulatedBoard, exploding));
         simulatedBoard = collapseBoard(simulatedBoard);
@@ -6302,10 +6344,11 @@ function isDefeatBoard(board) {
  * @param {(string|null)[][]} sourceBoard 배치 전 보드
  * @param {string[]} colors 배치할 두 뿌요 색상
  * @param {{x:number,y:number}[]} positions 두 뿌요의 착지 좌표
+ * @param {number} [explosionCount] 폭발 기준. 생략하면 현재 게임 규칙을 따른다.
  * @returns {(string|null)[][]|null} 안정 상태 보드. 유효하지 않은 배치면 null
  */
-function simulatePlacementBoard(sourceBoard, colors, positions) {
-    return simulatePlacementResult(sourceBoard, colors, positions)?.board ?? null;
+function simulatePlacementBoard(sourceBoard, colors, positions, explosionCount = getGameExplosionCount()) {
+    return simulatePlacementResult(sourceBoard, colors, positions, explosionCount)?.board ?? null;
 }
 
 /**
@@ -6378,9 +6421,10 @@ function getNMovePlacementScore(combo, attack, allClear, targetCombo, board) {
  * @param {number} nextPairIndex 사용할 예고쌍 인덱스
  * @param {number} remainingTurns 이번 수를 포함해 남은 탐색 수
  * @param {number} targetCombo 목표 연쇄 수
+ * @param {number} explosionCount 폭발 기준
  * @returns {object|null} 이 보드에서의 최선 경로
  */
-function findBestNMoveBoardResult(board, colors, nextPairs, nextPairIndex, remainingTurns, targetCombo) {
+function findBestNMoveBoardResult(board, colors, nextPairs, nextPairIndex, remainingTurns, targetCombo, explosionCount) {
     if (!Array.isArray(colors) || colors.length !== 2) return null;
     const virtualPlayer = { board, active: { x: 2, y: ACTIVE_PUYO_SPAWN_Y, rotation: 0, colors } };
     let best = null;
@@ -6389,13 +6433,13 @@ function findBestNMoveBoardResult(board, colors, nextPairs, nextPairIndex, remai
             const placement = findLandingPlacement(virtualPlayer, x, rotation);
             if (!placement) continue;
             const positions = activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
-            const resultBoard = simulatePlacementBoard(board, colors, positions);
+            const resultBoard = simulatePlacementBoard(board, colors, positions, explosionCount);
             if (!resultBoard || isDefeatBoard(resultBoard)) continue;
-            const combo = estimateCombo(board, colors, positions);
-            const attack = estimateAttack(board, colors, positions);
+            const combo = estimateCombo(board, colors, positions, explosionCount);
+            const attack = estimateAttack(board, colors, positions, explosionCount);
             const allClear = isAllClearBoard(resultBoard);
             const future = remainingTurns > 1
-                ? findBestNMoveBoardResult(resultBoard, nextPairs[nextPairIndex], nextPairs, nextPairIndex + 1, remainingTurns - 1, targetCombo)
+                ? findBestNMoveBoardResult(resultBoard, nextPairs[nextPairIndex], nextPairs, nextPairIndex + 1, remainingTurns - 1, targetCombo, explosionCount)
                 : null;
             const score = getNMovePlacementScore(combo, attack, allClear, targetCombo, resultBoard)
                 + (future ? future.score * 0.92 : 0);
@@ -6420,27 +6464,29 @@ function findBestNMoveBoardResult(board, colors, nextPairs, nextPairIndex, remai
  * @param {PlayerState} player 현재 수를 판단할 CPU 플레이어
  * @param {number} targetCombo 목표 연쇄 수. 두 번째 매개변수로 받아 AI별 목표를 바꿀 수 있다.
  * @param {number} turnCount 현재 수를 포함한 탐색 수 N
+ * @param {number} [explosionCount] 폭발 기준. 생략하면 현재 게임 규칙을 따른다.
  * @returns {object[]} 이번 수 후보별 N수 평가 결과
  */
-function simulateNMovePlacements(player, targetCombo = 6, turnCount = 2) {
+function simulateNMovePlacements(player, targetCombo = 6, turnCount = 2, explosionCount = getGameExplosionCount()) {
     if (!player?.active || !Array.isArray(player.aiSimulations)) return [];
     const target = Math.max(1, Math.floor(Number(targetCombo) || 6));
     const nextPairs = Array.isArray(player.nextPairs) ? player.nextPairs : [];
     const turns = Math.max(1, Math.min(Math.floor(Number(turnCount) || 2), nextPairs.length + 1));
     return player.aiSimulations.reduce((results, simulation) => {
-        if (causesImmediateDefeat(player, simulation)) return results;
-        const board = simulatePlacementBoard(player.board, player.active.colors, simulation.positions);
+        if (causesImmediateDefeat(player, simulation, explosionCount)) return results;
+        const result = simulatePlacementResult(player.board, player.active.colors, simulation.positions, explosionCount);
+        const board = result?.board;
         if (!board || isDefeatBoard(board)) return results;
-        const combo = simulation.combo;
-        const attack = simulation.attack;
+        const combo = result.combo;
+        const attack = result.attack;
         const allClear = isAllClearBoard(board);
         const future = turns > 1
-            ? findBestNMoveBoardResult(board, nextPairs[0], nextPairs, 1, turns - 1, target)
+            ? findBestNMoveBoardResult(board, nextPairs[0], nextPairs, 1, turns - 1, target, explosionCount)
             : null;
         const score = getNMovePlacementScore(combo, attack, allClear, target, board)
             + (future ? future.score * 0.92 : 0);
         results.push({
-            simulation, board, combo, attack, allClear,
+            simulation: { ...simulation, board, combo, attack }, board, combo, attack, allClear,
             maxCombo: Math.max(combo, future?.maxCombo || 0),
             totalAttack: attack + (future?.totalAttack || 0),
             score,
@@ -6455,10 +6501,11 @@ function simulateNMovePlacements(player, targetCombo = 6, turnCount = 2) {
  * @param {PlayerState} player 현재 수를 판단할 CPU 플레이어
  * @param {number} targetCombo 목표 연쇄 수
  * @param {number} turnCount 현재 수를 포함한 탐색 수 N
+ * @param {number} [explosionCount] 폭발 기준. 생략하면 현재 게임 규칙을 따른다.
  * @returns {object|null} 최선 후보의 N수 평가 결과
  */
-function findBestNMovePlacement(player, targetCombo = 6, turnCount = 2) {
-    return simulateNMovePlacements(player, targetCombo, turnCount).reduce((best, candidate) => {
+function findBestNMovePlacement(player, targetCombo = 6, turnCount = 2, explosionCount = getGameExplosionCount()) {
+    return simulateNMovePlacements(player, targetCombo, turnCount, explosionCount).reduce((best, candidate) => {
         if (!best || candidate.score > best.score
             || (candidate.score === best.score && candidate.maxCombo > best.maxCombo)
             || (candidate.score === best.score && candidate.maxCombo === best.maxCombo && candidate.simulation.x > best.simulation.x)) return candidate;
@@ -6509,7 +6556,7 @@ function nMoveSimulationWorkerBootstrap(constants) {
         }
         return collapsed;
     };
-    const findExplosionGroups = (board) => {
+    const findExplosionGroups = (board, explosionCount) => {
         const visited = new Set();
         const groups = [];
         for (let y = 0; y < visibleRows; y += 1) for (let x = 0; x < columns; x += 1) {
@@ -6533,7 +6580,7 @@ function nMoveSimulationWorkerBootstrap(constants) {
                     }
                 });
             }
-            if (cells.length >= 4) groups.push({ color, cells });
+            if (cells.length >= explosionCount) groups.push({ color, cells });
         }
         return groups;
     };
@@ -6588,7 +6635,7 @@ function nMoveSimulationWorkerBootstrap(constants) {
         let combo = 0;
         let attack = 0;
         while (true) {
-            const groups = findExplosionGroups(board);
+            const groups = findExplosionGroups(board, rules.explosionCount ?? 4);
             if (!groups.length) return { board, combo, attack };
             combo += 1;
             const resolution = getExplosionResolution(board, groups);
@@ -6859,8 +6906,8 @@ function nMoveSimulationWorkerBootstrap(constants) {
                         if (currentY > 0 && floodStamp[current - columns] !== visit && cells[current - columns] === color) { floodStamp[current - columns] = visit; floodStack[stackSize] = current - columns; stackSize += 1; }
                         if (currentY < visibleRows - 1 && floodStamp[current + columns] !== visit && cells[current + columns] === color) { floodStamp[current + columns] = visit; floodStack[stackSize] = current + columns; stackSize += 1; }
                     }
-                    // 네 개 미만 그룹은 방문 표시만 남기고, 모은 칸은 다음 그룹이 덮어쓴다.
-                    if (size >= 4) {
+                    // 폭발 기준 미만 그룹은 방문 표시만 남기고, 모은 칸은 다음 그룹이 덮어쓴다.
+                    if (size >= (rules.explosionCount ?? 4)) {
                         explodingCount += size;
                         colorExplodeCounts[color] += size;
                     }
@@ -6933,8 +6980,8 @@ function nMoveSimulationWorkerBootstrap(constants) {
             }
         }
     };
-    /** 한 칸에서 시작한 같은 색 연결 수를 네 개까지만 센다. 발화점 후보를 빠르게 거르는 데 쓴다. */
-    const measureConnectedAtLeastFour = (cells, start, color) => {
+    /** 한 칸에서 시작한 같은 색 연결 수를 폭발 기준까지만 센다. 발화점 후보를 빠르게 거르는 데 쓴다. */
+    const measureConnectedForExplosion = (cells, start, color, rules) => {
         const visit = nextStamp();
         floodStamp[start] = visit;
         floodStack[0] = start;
@@ -6944,7 +6991,7 @@ function nMoveSimulationWorkerBootstrap(constants) {
             stackSize -= 1;
             const current = floodStack[stackSize];
             size += 1;
-            if (size >= 4) return true;
+            if (size >= (rules.explosionCount ?? 4)) return true;
             const currentX = current % columns;
             const currentY = (current - currentX) / columns;
             if (currentX > 0 && floodStamp[current - 1] !== visit && cells[current - 1] === color) { floodStamp[current - 1] = visit; floodStack[stackSize] = current - 1; stackSize += 1; }
@@ -6956,7 +7003,7 @@ function nMoveSimulationWorkerBootstrap(constants) {
     };
     /**
      * 발화점 탐색: 각 열 맨 위에 옆·아래와 같은 색 뿌요를 한 개(안 되면 두 개) 떨어뜨렸을 때 터지는 최대 연쇄를 구한다.
-     * 이웃에 같은 색이 없으면 새 그룹이 네 개가 될 수 없으므로 그 색은 시도하지 않는다.
+     * 이웃에 같은 색이 있는 후보부터 검사해 현재 폭발 기준을 만족하는 발화점을 찾는다.
      */
     const findChainPotential = (cells, heights, rules) => {
         let bestCombo = 0;
@@ -6977,7 +7024,7 @@ function nMoveSimulationWorkerBootstrap(constants) {
                     cells[index] = color;
                     if (needed === 2) cells[index + columns] = color;
                     let result = null;
-                    if (measureConnectedAtLeastFour(cells, index, color)) {
+                    if (measureConnectedForExplosion(cells, index, color, rules)) {
                         potentialCells.set(cells);
                         potentialHeights.set(heights);
                         potentialHeights[x] = y + needed;
@@ -7430,7 +7477,7 @@ function createNMoveWorkerPlayerSnapshot(player, opponent) {
  * @param {number} targetCombo 목표 연쇄
  * @param {number} turnCount 탐색 수
  * @param {number} urgentGarbageThreshold 긴급 상쇄 기준
- * @param {{searchMode?:'legacy'|'advanced',beamWidth?:number,allowedPlacements?:{x:number,rotation:number}[]|null,lightFeverGaugeWithSmallChains?:boolean}} [searchOptions={}] advanced 탐색 설정. 생략하면 기존 탐색 snapshot과 같다. lightFeverGaugeWithSmallChains는 피버 룰에서 다 상쇄할 수 없을 때 작은 연쇄로 점등할지 여부다(기본 true).
+ * @param {{explosionCount?:number,searchMode?:'legacy'|'advanced',beamWidth?:number,allowedPlacements?:{x:number,rotation:number}[]|null,lightFeverGaugeWithSmallChains?:boolean}} [searchOptions={}] advanced 탐색 설정. 생략하면 기존 탐색 snapshot과 같다. lightFeverGaugeWithSmallChains는 피버 룰에서 다 상쇄할 수 없을 때 작은 연쇄로 점등할지 여부다(기본 true).
  * @returns {object} Worker 탐색용 JSON snapshot
  */
 function createNMoveWorkerSnapshot(player, opponent, targetCombo, turnCount, urgentGarbageThreshold, searchOptions = {}) {
@@ -7457,6 +7504,7 @@ function createNMoveWorkerSnapshot(player, opponent, targetCombo, turnCount, urg
         targetCombo: Math.max(1, Math.floor(Number(targetCombo) || 6)),
         turnCount: Math.max(3, Math.floor(Number(turnCount) || 3)),
         rules: {
+            explosionCount: searchOptions.explosionCount ?? getGameExplosionCount(),
             standard: !game?.feverRule && !game?.continuousFever,
             feverRule: game?.feverRule === true,
             continuousFever: game?.continuousFever === true,
@@ -7510,7 +7558,7 @@ function releaseNMoveSimulationWorker(worker, discard = false) {
  * @param {number} [targetCombo=6] 목표 연쇄 수
  * @param {number} [turnCount=3] 현재 수를 포함한 탐색 수
  * @param {number} [timeLimitMs=50] 메인 스코프에서 측정할 최대 처리 시간(ms)
- * @param {{opponent?:PlayerState|object|null,urgentGarbageThreshold?:number,searchMode?:'legacy'|'advanced',beamWidth?:number,allowedPlacements?:{x:number,rotation:number}[]|null,lightFeverGaugeWithSmallChains?:boolean,onProgress?:(result:object)=>void,onComplete?:(result:object)=>void,onError?:(error:Error)=>void}} [options] Worker 결과 콜백과 탐색 설정. searchMode가 'advanced'이면 빠른 보드·빔 탐색·발화점 평가·방해뿌요 도착 예측을 쓰고, allowedPlacements가 있으면 현재 수를 그 위치·회전으로만 제한한다.
+ * @param {{opponent?:PlayerState|object|null,urgentGarbageThreshold?:number,explosionCount?:number,searchMode?:'legacy'|'advanced',beamWidth?:number,allowedPlacements?:{x:number,rotation:number}[]|null,lightFeverGaugeWithSmallChains?:boolean,onProgress?:(result:object)=>void,onComplete?:(result:object)=>void,onError?:(error:Error)=>void}} [options] Worker 결과 콜백과 탐색 설정. searchMode가 'advanced'이면 빠른 보드·빔 탐색·발화점 평가·방해뿌요 도착 예측을 쓰고, allowedPlacements가 있으면 현재 수를 그 위치·회전으로만 제한한다.
  * @returns {{cancel:(reason?:string)=>void,promise:Promise<object>}} 취소 가능한 비동기 탐색 작업
  */
 function simulateNMovePlacementsInWorker(player, targetCombo = 6, turnCount = 3, timeLimitMs = 50, options = {}) {
@@ -7557,10 +7605,10 @@ function simulateNMovePlacementsInWorker(player, targetCombo = 6, turnCount = 3,
             try { options.onError?.(error); } catch (callbackError) { console.error('N수 AI Worker 오류 콜백에 실패했습니다.', callbackError); }
         }
         const fallbackPlan = Array.isArray(options.allowedPlacements)
-            ? simulateNMovePlacements(player, targetCombo, 1)
+            ? simulateNMovePlacements(player, targetCombo, 1, options.explosionCount ?? getGameExplosionCount())
                 .filter((plan) => options.allowedPlacements.some((placement) => placement.x === plan.simulation.x && placement.rotation === plan.simulation.rotation))
                 .reduce((best, plan) => (!best || plan.score > best.score || (plan.score === best.score && plan.simulation.x > best.simulation.x) ? plan : best), null)
-            : findBestNMovePlacement(player, targetCombo, 1);
+            : findBestNMovePlacement(player, targetCombo, 1, options.explosionCount ?? getGameExplosionCount());
         notifyComplete({
             depth: 0,
             placement: fallbackPlan?.simulation || null,
@@ -7588,6 +7636,7 @@ function simulateNMovePlacementsInWorker(player, targetCombo = 6, turnCount = 3,
     try {
         worker = acquireNMoveSimulationWorker();
         const snapshot = createNMoveWorkerSnapshot(player, opponent, targetCombo, normalizedTurns, options.urgentGarbageThreshold ?? 1, {
+            explosionCount: options.explosionCount,
             searchMode: options.searchMode,
             beamWidth: options.beamWidth,
             allowedPlacements: options.allowedPlacements,
@@ -7824,7 +7873,7 @@ function predictPlayerChain(player) {
     let combo = currentCombo;
     let attack = currentAttack;
     while (true) {
-        const explosionGroups = findExplosionGroupsOnBoard(board);
+        const explosionGroups = findExplosionGroupsOnBoard(board, getGameExplosionCount());
         if (!explosionGroups.length) break;
         const resolution = getExplosionResolution(board, explosionGroups.flatMap((group) => group.cells));
         combo += 1;
@@ -8139,10 +8188,11 @@ function findBestAttackColumn(player, fallback, defeatCheckColumn = null) {
  * @param {(string|null)[][]} sourceBoard 배치 전 보드
  * @param {string[]} colors 배치할 두 뿌요 색상
  * @param {{x:number, y:number}[]} positions 배치할 두 뿌요 좌표
+ * @param {number} [explosionCount] 폭발 기준. 생략하면 현재 게임 규칙을 따른다.
  * @returns {number} 연쇄 전체의 예상 ATTACK 값
  */
-function estimateAttack(sourceBoard, colors, positions) {
-    return simulatePlacementResult(sourceBoard, colors, positions)?.attack ?? 0;
+function estimateAttack(sourceBoard, colors, positions, explosionCount = getGameExplosionCount()) {
+    return simulatePlacementResult(sourceBoard, colors, positions, explosionCount)?.attack ?? 0;
 }
 
 /**
@@ -8150,10 +8200,11 @@ function estimateAttack(sourceBoard, colors, positions) {
  * @param {(string|null)[][]} sourceBoard 배치 전 보드
  * @param {string[]} colors 배치할 두 뿌요 색상
  * @param {{x:number, y:number}[]} positions 배치할 두 뿌요 좌표
+ * @param {number} [explosionCount] 폭발 기준. 생략하면 현재 게임 규칙을 따른다.
  * @returns {number} 연쇄 전체의 예상 연쇄 수
  */
-function estimateCombo(sourceBoard, colors, positions) {
-    return simulatePlacementResult(sourceBoard, colors, positions)?.combo ?? 0;
+function estimateCombo(sourceBoard, colors, positions, explosionCount = getGameExplosionCount()) {
+    return simulatePlacementResult(sourceBoard, colors, positions, explosionCount)?.combo ?? 0;
 }
 
 /**
@@ -8164,9 +8215,10 @@ function estimateCombo(sourceBoard, colors, positions) {
  * @param {(string|null)[][]} sourceBoard 배치 전 보드
  * @param {string[]} colors 배치할 두 뿌요 색상
  * @param {{x:number, y:number}[]} positions 배치할 두 뿌요 좌표
+ * @param {number} [explosionCount] 폭발 기준. 생략하면 현재 게임 규칙을 따른다.
  * @returns {{board:(string|null)[][], combo:number, attack:number}|null} 연쇄 후 보드와 연쇄 수, ATTACK. 유효하지 않은 배치면 null이다.
  */
-function simulatePlacementResult(sourceBoard, colors, positions) {
+function simulatePlacementResult(sourceBoard, colors, positions, explosionCount = getGameExplosionCount()) {
     // 두 색상과 두 좌표가 모두 제공되지 않으면 유효한 가상 배치가 아니다.
     if (!Array.isArray(colors) || !Array.isArray(positions) || colors.length !== 2 || positions.length !== 2) return null;
     let board = sourceBoard.map((row) => [...row]);
@@ -8181,7 +8233,7 @@ function simulatePlacementResult(sourceBoard, colors, positions) {
     let attack = 0;
     // 폭발과 중력을 반복해 전체 연쇄의 공격력을 누적하고, 마지막 보드를 그대로 돌려준다.
     while (true) {
-        const explosionGroups = findExplosionGroupsOnBoard(board);
+        const explosionGroups = findExplosionGroupsOnBoard(board, explosionCount);
         if (!explosionGroups.length) return { board, combo, attack };
         const exploding = explosionGroups.flatMap((group) => group.cells);
         const resolution = getExplosionResolution(board, exploding);
@@ -8199,7 +8251,7 @@ function simulatePlacementResult(sourceBoard, colors, positions) {
  * @returns {void}
  */
 function resolveExplosions(player, opponent) {
-    const explosionGroups = findExplosionGroupsOnBoard(player.board);
+    const explosionGroups = findExplosionGroupsOnBoard(player.board, getGameExplosionCount());
     const exploding = explosionGroups.flatMap((group) => group.cells);
     // 이번 단계에 폭발할 색 뿌요가 있으면 점수와 공격을 처리한다.
     if (exploding.length) {
@@ -8628,6 +8680,7 @@ const LEADERBOARD_RULES = Object.freeze([
     Object.freeze({ key: 'fever', label: '피버 룰', battle: true }),
     Object.freeze({ key: 'fever_start', label: '피버 룰 (시작)', battle: true }),
     Object.freeze({ key: 'relaxed_fever', label: '피버 룰 (완화)', battle: true }),
+    Object.freeze({ key: 'two_explosion', label: '2-폭발', battle: true }),
     Object.freeze({ key: 'practice', label: '연습', battle: false }),
     Object.freeze({ key: 'continuous_fever', label: '연속 피버', battle: false })
 ]);
@@ -8842,7 +8895,7 @@ function recordLeaderboardResult(winner, loser) {
     if (winner !== player) return false;
     const enemyType = game.players[1]?.controller?.getClassType?.();
     if (!enemyType || LEADERBOARD_EXCLUDED_ENEMY_TYPES.has(enemyType)) return false;
-    const ruleKey = game.feverStart ? 'fever_start' : game.relaxedFever ? 'relaxed_fever' : game.feverRule ? 'fever' : 'standard';
+    const ruleKey = game.twoExplosion ? 'two_explosion' : game.feverStart ? 'fever_start' : game.relaxedFever ? 'relaxed_fever' : game.feverRule ? 'fever' : 'standard';
     // 적이 있는 대전은 게임 시작 때 고른 AI 난이도마다 순위를 따로 둔다.
     const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key;
     if (!difficultyKey) return false;
@@ -8898,11 +8951,12 @@ function recordEnemyClear(winner) {
     const enemyController = game.players[1].controller;
     const enemyClassName = enemyController.constructor.name;
     const difficultyKey = AI_DIFFICULTIES[game.aiDifficulty]?.key || AI_DIFFICULTIES[1].key;
-    const rule = game.feverStart ? 'fever_start' : game.relaxedFever ? 'relaxed_fever' : game.feverRule ? 'fever' : 'standard';
+    const rule = game.twoExplosion ? 'two_explosion' : game.feverStart ? 'fever_start' : game.relaxedFever ? 'relaxed_fever' : game.feverRule ? 'fever' : 'standard';
     const feverStartWasUnlocked = isFeverStartRuleUnlocked();
+    const twoExplosionWasUnlocked = isTwoExplosionRuleUnlocked();
     const watchModeWasUnlocked = isWatchModeUnlocked();
     unlockGalleryEnemy(enemyController.getClassType());
-    const progressStore = game.feverStart
+    const progressStore = game.twoExplosion ? store.twoExplosionClearListByDifficulty : game.feverStart
         ? store.feverStartClearListByDifficulty
         : game.relaxedFever ? store.relaxedFeverClearListByDifficulty
             : game.feverRule ? store.feverClearListByDifficulty : store.clearListByDifficulty;
@@ -8913,19 +8967,20 @@ function recordEnemyClear(winner) {
         changed = true;
         progressionAdded = true;
     }
-    if (!game.feverRule && !store.clearList.includes(enemyClassName)) {
+    if (!game.feverRule && !game.twoExplosion && !store.clearList.includes(enemyClassName)) {
         store.clearList.push(enemyClassName);
         changed = true;
     }
     if (changed) saveStore();
     if (progressionAdded) {
         // 선택 가능 적의 순서는 이긴 적 바로 다음 적을 새로 여는 진행도 계약과 같다.
-        const progressionOpponents = OPPONENTS.filter((entry) => !entry.hidden && !entry.notAvail && entry.classType !== 'Solomon');
+        const progressionOpponents = getProgressionOpponents(game.twoExplosion ? 'twoExplosion' : 'standard');
         const clearedIndex = progressionOpponents.findIndex((entry) => entry.className === enemyClassName);
         const unlockedOpponent = clearedIndex >= 0 ? progressionOpponents[clearedIndex + 1] : null;
         if (unlockedOpponent && !isObservationCodeApplied()) dispatchPuyoUnlocked(`enemy:${unlockedOpponent.classType}`, rule, difficultyKey);
     }
     if (!feverStartWasUnlocked && isFeverStartRuleUnlocked()) dispatchPuyoUnlocked('rule:fever_start');
+    if (!twoExplosionWasUnlocked && isTwoExplosionRuleUnlocked()) dispatchPuyoUnlocked('rule:two_explosion');
     if (!watchModeWasUnlocked && isWatchModeUnlocked()) dispatchPuyoUnlocked('mode:watch');
 }
 
@@ -9002,7 +9057,7 @@ function getGameGoldPenalty() {
     if (game.continuousFever) return CONTINUOUS_FEVER_GOLD_PENALTY;
     if (game.practice) return PRACTICE_GOLD_PENALTY;
     if (game.feverStart) return FEVER_START_RULE_GOLD_PENALTY;
-    return game.feverRule ? FEVER_RULE_GOLD_PENALTY : STANDARD_RULE_GOLD_PENALTY;
+    return game.feverRule || game.twoExplosion ? FEVER_RULE_GOLD_PENALTY : STANDARD_RULE_GOLD_PENALTY;
 }
 
 /** 종료된 현재 게임에서 지급할 GOLD를 계산한다. @returns {number} 지급 GOLD */
@@ -11516,7 +11571,7 @@ function isReverseLearningEnabled() {
 /** 이번 게임의 규칙·적·플레이어 정보를 리플레이 머리말로 만든다. @returns {object} 리플레이 머리말 */
 function createReplayMeta() {
     return {
-        rule: game.watch ? (game.watch.rule || 'standard') : game.feverStart ? 'feverStart' : game.relaxedFever ? 'relaxedFever' : game.feverRule ? 'fever' : 'standard',
+        rule: game.watch ? (game.watch.rule || 'standard') : game.twoExplosion ? 'twoExplosion' : game.feverStart ? 'feverStart' : game.relaxedFever ? 'relaxedFever' : game.feverRule ? 'fever' : 'standard',
         watch: Boolean(game.watch),
         // "너랑 나랑"은 재생에서도 중앙에 초상화 대신 승패 현황을 보여야 하므로 기록 당시의 누적 승수까지 남긴다.
         together: Boolean(game.together),
@@ -11958,6 +12013,7 @@ function startReplayPlayback(replay, source = null) {
         feverRule: meta.feverRule,
         feverStart: meta.feverStart,
         relaxedFever: meta.rule === 'relaxedFever',
+        twoExplosion: meta.rule === 'twoExplosion',
         fever: null,
         // 구경 리플레이만 watch 속성을 갖는다. 일반 대전 리플레이에서는 속성 자체를 만들지 않아야
         // getGameState()가 구경 모드로 잘못 보고하지 않는다.
@@ -14134,8 +14190,8 @@ function getTitleMenuItemBounds(index) {
 
 /** 현재 게임 시작 단계에서 표시할 선택지를 반환한다. @returns {object[]} 표시할 선택지 */
 function getRuleSelectionOptions() {
-    if (ruleSelectionStep === 'opponent') return GAME_RULE_OPTIONS.slice(0, 4);
-    if (ruleSelectionStep === 'practice') return GAME_RULE_OPTIONS.slice(4, 6);
+    if (ruleSelectionStep === 'opponent') return GAME_RULE_OPTIONS.slice(0, 5);
+    if (ruleSelectionStep === 'practice') return GAME_RULE_OPTIONS.slice(5, 7);
     return GAME_CATEGORY_OPTIONS;
 }
 
@@ -14153,6 +14209,7 @@ function isGameRuleOptionDisabled(option) {
 function getRuleSelectionButtonBounds(index) {
     if (ruleSelectionStep === 'opponent') {
         if (index === 0) return { x: WIDTH / 2 - 125, y: 200, width: 250, height: 78 };
+        if (index === 4) return { x: WIDTH / 2 - 125, y: 410, width: 250, height: 78 };
         return { x: WIDTH / 2 - 393 + (index - 1) * 268, y: 305, width: 250, height: 78 };
     }
     const count = getRuleSelectionOptions().length;
@@ -14164,7 +14221,7 @@ function getRuleSelectionButtonBounds(index) {
 
 /** 게임 시작 오버레이 하단 취소 버튼의 화면 영역을 반환한다. @returns {{x:number,y:number,width:number,height:number}} 취소 버튼 영역 */
 function getRuleSelectionCancelButtonBounds() {
-    return { x: WIDTH / 2 - 125, y: ruleSelectionStep === 'opponent' ? 410 : 405, width: 250, height: 78 };
+    return { x: WIDTH / 2 - 125, y: ruleSelectionStep === 'opponent' ? 515 : 405, width: 250, height: 78 };
 }
 
 /** 메인 메뉴 위에 게임 시작 선택 오버레이를 연다. @param {'category'|'opponent'|'practice'} [step='category'] 표시할 단계 @returns {void} */
@@ -14621,22 +14678,28 @@ function handleRuleSelectionKey(key) {
     if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) return;
     const selectable = getSelectableRuleOptionIndices();
     if (ruleSelectionStep === 'opponent') {
-        const middle = selectable.filter((index) => index > 0);
+        const middle = selectable.filter((index) => index > 0 && index < 4);
         const middleFocus = middle.includes(2) ? 2 : middle[0];
         const cancelIndex = getRuleSelectionOptions().length;
+        const twoExplosionSelectable = selectable.includes(4);
         if (ruleSelectionFocus === 0) {
             if (key === 'arrowdown') ruleSelectionFocus = middleFocus;
             else if (key === 'arrowright') ruleSelectionFocus = middle[0];
             return;
         }
         if (ruleSelectionFocus === cancelIndex) {
+            if (key === 'arrowup') ruleSelectionFocus = twoExplosionSelectable ? 4 : middle.includes(ruleSelectionPreviousFocus) ? ruleSelectionPreviousFocus : middleFocus;
+            return;
+        }
+        if (ruleSelectionFocus === 4) {
             if (key === 'arrowup') ruleSelectionFocus = middle.includes(ruleSelectionPreviousFocus) ? ruleSelectionPreviousFocus : middleFocus;
+            else if (key === 'arrowdown') ruleSelectionFocus = cancelIndex;
             return;
         }
         if (key === 'arrowup') ruleSelectionFocus = 0;
         else if (key === 'arrowdown') {
             ruleSelectionPreviousFocus = ruleSelectionFocus;
-            ruleSelectionFocus = cancelIndex;
+            ruleSelectionFocus = twoExplosionSelectable ? 4 : cancelIndex;
         } else {
             const position = middle.indexOf(ruleSelectionFocus);
             if (key === 'arrowleft' && position === 0) ruleSelectionFocus = 0;
@@ -15758,12 +15821,12 @@ function enterMainMenu() {
     }
 }
 
-/** 승리한 대전의 적 선택 상태를 복원하고, 새로 열렸으면 다음 적에 포커스를 둔다. @param {{difficulty:number,aiDifficulty:number,opponentIndex:number|null,feverRule:boolean,feverStart?:boolean,relaxedFever?:boolean,winner:PlayerState|null,players:PlayerState[]}} finishedGame 종료된 게임 상태 @returns {void} */
+/** 승리한 대전의 적 선택 상태를 복원하고, 새로 열렸으면 다음 적에 포커스를 둔다. @param {{difficulty:number,aiDifficulty:number,opponentIndex:number|null,feverRule:boolean,feverStart?:boolean,relaxedFever?:boolean,twoExplosion?:boolean,winner:PlayerState|null,players:PlayerState[]}} finishedGame 종료된 게임 상태 @returns {void} */
 function restoreOpponentMenuAfterResult(finishedGame) {
     selectedDifficulty = finishedGame.difficulty;
     selectedAiDifficulty = finishedGame.aiDifficulty;
     if (Number.isInteger(finishedGame.opponentIndex) && OPPONENTS[finishedGame.opponentIndex]) selectedOpponent = finishedGame.opponentIndex;
-    opponentMenuRule = finishedGame.feverStart ? 'feverStart' : finishedGame.relaxedFever ? 'relaxedFever' : finishedGame.feverRule ? 'fever' : 'standard';
+    opponentMenuRule = finishedGame.twoExplosion ? 'twoExplosion' : finishedGame.feverStart ? 'feverStart' : finishedGame.relaxedFever ? 'relaxedFever' : finishedGame.feverRule ? 'fever' : 'standard';
     const playerWon = finishedGame.winner === finishedGame.players[0];
     if (playerWon) {
         const selectable = getSelectableOpponents();
@@ -16410,6 +16473,7 @@ function restartPausedGame() {
         feverRule: previousGame.feverRule,
         feverStart: previousGame.feverStart,
         relaxedFever: previousGame.relaxedFever,
+        twoExplosion: previousGame.twoExplosion,
         difficulty: previousGame.difficulty,
         aiDifficulty: previousGame.aiDifficulty,
         opponentIndex: previousGame.opponentIndex
@@ -16448,8 +16512,8 @@ function restartPausedGame() {
         selectedDifficulty = normalGame.difficulty;
         selectedAiDifficulty = normalGame.aiDifficulty;
         if (Number.isInteger(normalGame.opponentIndex)) selectedOpponent = normalGame.opponentIndex;
-        opponentMenuRule = normalGame.feverStart ? 'feverStart' : normalGame.relaxedFever ? 'relaxedFever' : normalGame.feverRule ? 'fever' : 'standard';
-        startGame(normalGame.practice, normalGame.continuousFever, normalGame.feverRule, normalGame.feverStart, normalGame.relaxedFever);
+        opponentMenuRule = normalGame.twoExplosion ? 'twoExplosion' : normalGame.feverStart ? 'feverStart' : normalGame.relaxedFever ? 'relaxedFever' : normalGame.feverRule ? 'fever' : 'standard';
+        startGame(normalGame.practice, normalGame.continuousFever, normalGame.feverRule, normalGame.feverStart, normalGame.relaxedFever, normalGame.twoExplosion);
     });
 }
 
@@ -16509,13 +16573,14 @@ const ONNX_ENEMY_WARNING_MESSAGE = '딥러닝 기반의 고난이도 적으로, 
  * @returns {void}
  */
 function startOpponentMenuGame() {
-    const feverRule = opponentMenuRule !== 'standard';
+    const feverRule = ['fever', 'feverStart', 'relaxedFever'].includes(opponentMenuRule);
     const feverStart = opponentMenuRule === 'feverStart';
     const relaxedFever = opponentMenuRule === 'relaxedFever';
+    const twoExplosion = opponentMenuRule === 'twoExplosion';
     if (!ensureSelectedOpponent()) return;
     const opponent = OPPONENTS[selectedOpponent];
     if (!opponent.requiresOnnx || store.onnxWarningAcknowledged) {
-        startGame(false, false, feverRule, feverStart, relaxedFever);
+        startGame(false, false, feverRule, feverStart, relaxedFever, twoExplosion);
         return;
     }
     playMenuSelectSound();
@@ -16525,7 +16590,7 @@ function startOpponentMenuGame() {
         saveStore();
         // 응답을 기다리는 동안 다른 화면으로 옮겨졌거나 선택 적이 바뀌었다면 기록만 남기고 시작하지 않는다.
         if (game || menuScreen !== 'opponent' || OPPONENTS[selectedOpponent] !== opponent) return;
-        startGame(false, false, feverRule, feverStart, relaxedFever);
+        startGame(false, false, feverRule, feverStart, relaxedFever, twoExplosion);
     });
 }
 
@@ -17024,7 +17089,7 @@ function getNowScreen() {
         if (menuScreen === 'onlineSignup') return { screen: 'online_signup', playerCanControl: false };
         if (menuScreen === 'onlineLobby') return { screen: 'online_lobby', playerCanControl: false };
         if (menuScreen === 'onlineRoom') return { screen: 'online_room', playerCanControl: false };
-        if (menuScreen === 'opponent') return { screen: opponentMenuRule !== 'standard' ? 'fever_opponent_select' : 'opponent_select', playerCanControl: false };
+        if (menuScreen === 'opponent') return { screen: ['fever', 'feverStart', 'relaxedFever'].includes(opponentMenuRule) ? 'fever_opponent_select' : 'opponent_select', playerCanControl: false };
         if (menuScreen === 'practiceDifficulty') return { screen: 'practice_difficulty', playerCanControl: false };
         if (menuScreen === 'puzzleStage') return { screen: 'puzzle_stage_select', playerCanControl: false };
         if (menuScreen === 'simulator') {
@@ -17099,7 +17164,7 @@ function dispatchPuyoRender() {
  * 새 콘텐츠 해금 정보를 외부 확장에 알린다.
  * rule과 difficulty는 적 진행도 해금이 아닐 때 null이며, 적 해금일 때는 어느 진행도 칸인지 함께 보낸다.
  * @param {string} content 새로 해금된 콘텐츠의 안정적인 식별 문자열
- * @param {'standard'|'fever'|'fever_start'|'relaxed_fever'|null} [rule=null] 적 해금에 적용한 규칙
+ * @param {'standard'|'fever'|'fever_start'|'relaxed_fever'|'two_explosion'|null} [rule=null] 적 해금에 적용한 규칙
  * @param {'easy'|'normal'|'hard'|'extreme'|null} [difficulty=null] 적 해금에 적용한 AI 난이도
  * @returns {void}
  */
@@ -17132,7 +17197,7 @@ function dispatchPuyoWin(winner) {
         || game.puzzle || game.together || game.online || game.replayPlayback) return;
     const difficulty = AI_DIFFICULTIES[game.aiDifficulty]?.key || 'normal';
     const colorCount = DIFFICULTIES[game.difficulty]?.colors.length || 0;
-    const rule = game.feverStart ? 'fever_start' : game.relaxedFever ? 'relaxed_fever' : game.feverRule ? 'fever' : 'standard';
+    const rule = game.twoExplosion ? 'two_explosion' : game.feverStart ? 'fever_start' : game.relaxedFever ? 'relaxed_fever' : game.feverRule ? 'fever' : 'standard';
     dispatchPuyoCustomEvent('puyow_win', {
         difficulty,
         colorCount,
@@ -17144,14 +17209,14 @@ function dispatchPuyoWin(winner) {
 
 /**
  * 진행 중인 게임의 모드와 규칙 식별자를 반환한다. 튜토리얼이나 메뉴에서는 호출하지 않는다.
- * @returns {{mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'relaxed_fever'|'continuous_fever'}}
+ * @returns {{mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'relaxed_fever'|'two_explosion'|'continuous_fever'}}
  */
 function getGameModeInfo() {
     const mode = game.watch !== undefined ? 'watch'
         : (game.together ? 'together'
             : (game.continuousFever ? 'continuous_fever' : (game.puzzle ? 'puzzle' : (game.practice ? 'practice' : 'versus'))));
     const rule = game.continuousFever ? 'continuous_fever'
-        : (game.feverStart ? 'fever_start' : ((game.relaxedFever || game.watch?.rule === 'relaxedFever') ? 'relaxed_fever' : (game.feverRule ? 'fever' : 'standard')));
+        : (game.twoExplosion ? 'two_explosion' : game.feverStart ? 'fever_start' : ((game.relaxedFever || game.watch?.rule === 'relaxedFever') ? 'relaxed_fever' : (game.feverRule ? 'fever' : 'standard')));
     return { mode, rule };
 }
 
@@ -17607,7 +17672,7 @@ function getSimulatorState() {
  * 일반·피버 규칙과 학습·적 AI가 필요한 양측 일반/현재/피버 필드 및 앞 두 NEXT를 함께 제공한다.
  * 반환된 객체와 그 안의 배열을 변경해도 실제 게임 상태에는 영향을 주지 않는다.
  * 메뉴, 튜토리얼 또는 초기화 전 상태에서는 null을 반환한다.
- * @returns {{screen:string, playerCanControl:boolean, mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'relaxed_fever'|'continuous_fever', running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, timeProgressMultiplier:number, practice:boolean, watch:boolean, continuousFever:boolean, feverRule:boolean, feverStart:boolean, allClearTicketEnabled:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
+ * @returns {{screen:string, playerCanControl:boolean, mode:'versus'|'together'|'practice'|'watch'|'continuous_fever'|'puzzle', rule:'standard'|'fever'|'fever_start'|'relaxed_fever'|'two_explosion'|'continuous_fever', running:boolean, paused:boolean, countdown:number, elapsed:number, marginRate:number, timeProgressMultiplier:number, practice:boolean, watch:boolean, continuousFever:boolean, feverRule:boolean, feverStart:boolean, twoExplosion:boolean, explosionCount:number, allClearTicketEnabled:boolean, fever:object|null, colorCount:number, colors:string[], aiDifficulty:{key:string,name:string,fastDownDelay:number|null}, winner:'player'|'opponent'|null, ending:{loser:'player'|'opponent',winner:'player'|'opponent',elapsed:number,duration:number}|null, player:object, opponent:object, recommendedPoint:{x:number,y:number}|null}|null}
  */
 function getGameState() {
     if (!game || game.tutorial) return null;
@@ -17631,6 +17696,8 @@ function getGameState() {
         continuousFever: game.continuousFever === true,
         feverRule: game.feverRule === true,
         feverStart: game.feverStart === true,
+        twoExplosion: game.twoExplosion === true,
+        explosionCount: getGameExplosionCount(),
         // 싹쓸이 티켓은 기본·너랑 나랑·퍼즐뿌요처럼 usesAllClearTicket()이 적용되는
         // 모드에서만 다음 색 뿌요 폭발에 소비된다. 연습·피버 계열은 별도 보상 규칙을 쓴다.
         allClearTicketEnabled: usesAllClearTicket(),
@@ -17722,7 +17789,7 @@ function registerWebMcpTools() {
     // getNowScreen()이 돌려줄 수 있는 화면 이름을 모두 담는다. 화면을 더하면 이 목록도 함께 고친다.
     const screenNames = ['initial_title', 'main_menu', 'rule_select', 'watch_select', 'together_mode_select', 'together_guide', 'online_login', 'online_signup', 'online_lobby', 'online_room', 'practice_difficulty', 'puzzle_stage_select', 'opponent_select', 'fever_opponent_select', 'simulator_draw', 'simulator_simulation', 'simulator_complete', 'settings', 'settings_resetting', 'gallery', 'tutorial_intro', 'tutorial_demo', 'tutorial_result', 'tutorial_complete', 'countdown', 'playing', 'paused', 'ending', 'game_over'];
     const modeNames = ['versus', 'together', 'practice', 'watch', 'continuous_fever', 'puzzle'];
-    const ruleNames = ['standard', 'fever', 'fever_start', 'relaxed_fever', 'continuous_fever'];
+    const ruleNames = ['standard', 'fever', 'fever_start', 'relaxed_fever', 'two_explosion', 'continuous_fever'];
     const playerCanControlSchema = { type: 'boolean', description: 'True only while the left human player (1P) controls an active pair. Always false in watch mode and during replay playback. In together mode it describes 1P only.' };
     const replayPlaybackSchema = { type: 'boolean', description: 'True while a recorded replay is played back. Only Escape is accepted, and it skips to the result screen.' };
     const screenSchema = {
@@ -17830,7 +17897,9 @@ function registerWebMcpTools() {
         continuousFever: { type: 'boolean' },
         feverRule: { type: 'boolean' },
         feverStart: { type: 'boolean', description: 'True for FEVER rule (start), where both players begin inside FEVER.' },
-        allClearTicketEnabled: { type: 'boolean', description: 'True when this mode grants an all-clear ticket for the next colored-puyo explosion (standard, together, and Puzzle Puyo). Practice adds 2100 points immediately; FEVER modes use their chain/time reward instead.' },
+        twoExplosion: { type: 'boolean', description: '2-폭발 룰이면 true다.' },
+        explosionCount: { type: 'integer', description: '같은 색 뿌요가 상하좌우로 연결되어 폭발하는 최소 수다. 2-폭발은 2, 다른 게임은 4다.' },
+        allClearTicketEnabled: { type: 'boolean', description: '기본 룰·2-폭발·너랑 나랑·퍼즐뿌요는 싹쓸이 뒤 다음 색 뿌요 폭발에 쓰는 티켓을 지급한다. 연습은 즉시 2100점을 더하고 피버는 연쇄·시간 보상을 사용한다.' },
         colorCount: { type: 'integer', minimum: 3, maximum: COLORS.length },
         colors: { type: 'array', items: { type: 'string', enum: COLORS }, minItems: 3, maxItems: COLORS.length },
         aiDifficulty: { type: 'object', properties: {
@@ -17874,10 +17943,10 @@ function registerWebMcpTools() {
             annotations: { readOnlyHint: true },
             execute: () => [
                 `Puyo W is a falling-pair puzzle battle on a ${COLUMNS}-column field. x counts columns from the left (0-${COLUMNS - 1}) and y counts rows from the bottom; ${VISIBLE_ROWS} rows are visible and more hidden rows sit above them.`,
-                'Connect four or more same-color puyos vertically or horizontally to clear them. Garbage puyos next to a clear are removed too; a hard garbage puyo becomes normal garbage when hit once and breaks when hit twice in the same step. ATTACK is the score divided by the current margin rate, multiplied by the time-progress multiplier (1 until 360 seconds, then doubling every 60 seconds up to 4096). In FEVER, each explosion offsets FEVER DAMAGE first, then an opponent ATTACK aimed at the current FEVER round, then reserved normal DAMAGE, then other opponent ATTACK. Remaining ATTACK becomes opponent DAMAGE after the chain finishes.',
+                'Connect four or more same-color puyos vertically or horizontally to clear them; the 2-Explosion rule clears groups of two or more. Garbage puyos next to a clear are removed too; a hard garbage puyo becomes normal garbage when hit once and breaks when hit twice in the same step. ATTACK is the score divided by the current margin rate, multiplied by the time-progress multiplier (1 until 360 seconds, then doubling every 60 seconds up to 4096). In FEVER, each explosion offsets FEVER DAMAGE first, then an opponent ATTACK aimed at the current FEVER round, then reserved normal DAMAGE, then other opponent ATTACK. Remaining ATTACK becomes opponent DAMAGE after the chain finishes.',
                 'A player loses when cell (2, 11) is filled. FEVER rules and continuous fever also use cell (3, 11).',
                 'Keyboard: Left and Right move, Z rotates one way while X and Up rotate the other way, holding Down drops faster, and Escape pauses. Gamepads and an on-screen virtual joystick with Z, X, and ESC buttons also work.',
-                'Modes: the standard rule, FEVER rule, and FEVER rule (start) are matches against a CPU opponent. In standard, together, and Puzzle Puyo modes, an all-clear grants a ticket that adds 2100 points and 30 ATTACK to the next colored-puyo explosion; practice adds 2100 points immediately instead. FEVER rules do not create a ticket: an all-clear contributes to the FEVER target/time rules. Each FEVER player has a separate field and timer; FEVER rule (start) begins both players inside FEVER with 60 seconds. A FEVER placement whose timer has expired finishes FEVER before reserved normal DAMAGE is dropped. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result. Online play is a two-human match on separate computers through the configured game server; it is available only when that server reports online play enabled.',
+                'Modes: the standard rule, FEVER rule, FEVER rule (start), FEVER rule (relaxed), and 2-Explosion rule are matches against a CPU opponent. The 2-Explosion rule unlocks after beating Gremory on Hard or Extreme under the standard or FEVER rule, keeps separate opponent progress, and excludes model opponents (including Solomon) and model training. In standard, together, and Puzzle Puyo modes, an all-clear grants a ticket that adds 2100 points and 30 ATTACK to the next colored-puyo explosion; practice adds 2100 points immediately instead. FEVER rules do not create a ticket: an all-clear contributes to the FEVER target/time rules. Each FEVER player has a separate field and timer; FEVER rule (start) begins both players inside FEVER with 60 seconds. A FEVER placement whose timer has expired finishes FEVER before reserved normal DAMAGE is dropped. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result. Online play is a two-human match on separate computers through the configured game server; it is available only when that server reports online play enabled.',
                 'Leaderboard: the top 10 scores are kept only in this browser (localStorage key puyow_leaderboard) with the player name and the date and time when each score was recorded, and are viewed on the separate leaderboard.html page, which the Leaderboard button at the bottom left of the main menu opens in the same tab. Standard, FEVER, and FEVER (start) matches record the final score only when the human player wins, separately for each AI difficulty, color count, and opponent; matches against Solomon are never recorded. Practice and continuous fever record the final score separately for each color count only when the player loses (quitting from the pause menu is not recorded). Together (offline and online), watch mode, Puzzle Puyo, the tutorial, the simulator, and replay playback are never recorded.',
                 'Choosing Together mode in the main menu first opens a selection of Offline Play, Online Play, and Cancel (together_mode_select). Offline Play opens the offline together guide (together_guide), where the rule and color count are chosen. Online Play opens login and signup, then the lobby and room screens; it is hidden when the configured server does not provide online play.',
                 'Offline together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',
@@ -19363,6 +19432,8 @@ class Enemy {
          * @type {boolean}
          */
         this.requiresOnnx = false;
+        /** 모델을 사용하는 외부 적은 true로 지정해 2-폭발 출전을 제외한다. ONNX·솔로몬 계열은 자동 판별한다. @type {boolean} */
+        this.requiresModel = false;
         /** 이번 턴에 공통 규칙이 미리 선택한 착지 후보다. 적 구현은 chooseTarget/chooseRotate에서 이를 우선할 수 있다. @type {object|null} */
         this.preparedPlacement = null;
         /** Worker 탐색 또는 적별 공격 판단이 선택한 현재 턴 배치 후보다. @type {object|null} */

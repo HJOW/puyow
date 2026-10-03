@@ -21,7 +21,7 @@ ES Module에서는 `import PuyoW, { Enemy, Solomon, BundledEnemy } from './js/pu
 
 BUILDNO 113부터 알로케스까지 모두 출시 상태입니다. 발람·푸르카스만 AI 미구현 출시 예정(`notAvail = true`)이며 `Enemy`를 상속하는 자리표시자로 남습니다. 모델 경로·ONNX 의존성이 없어 런타임이 없는 페이지에서도 회색 출시 예정 카드로 보입니다. 선택·구경·카드 획득·리더보드·Python 학습 상대에서는 제외하고 갤러리 등록은 유지합니다.
 
-모델 사용 적은 무르무르·카임·알로케스입니다. `requiresOnnx`를 통해 느낌표·첫 대전 확인·모델 로딩이 적용되고, 런타임이 없으면 적 선택 목록에서 숨깁니다. 기존 확인 기록은 유지합니다. 구경과 Python 학습 상대에서는 항상 제외합니다.
+모델 사용 적은 무르무르·카임·알로케스입니다. `requiresOnnx`를 통해 느낌표·첫 대전 확인·모델 로딩이 적용되고, 런타임이 없으면 적 선택 목록에서 숨깁니다. 기존 확인 기록은 유지합니다. 구경과 Python 학습 상대에서는 항상 제외합니다. 2-폭발에서는 솔로몬과 함께 적 목록과 순차 해금에서 제외합니다. 모델을 사용하는 외부 적은 `requiresModel = true`를 지정하면 같은 제한을 적용받습니다.
 
 다음 표는 변경 전 AI를 기준으로 판단·목표 연쇄·예외 처리·하강 비율까지 이관한 결과입니다. 캐릭터 식별자·순서·이름·초상화·테마·기존 진행도·GOLD 배율은 유지합니다. 새 출시 적은 진행도·카드 풀·리더보드 목록에 들어가며, 모델 미사용 적은 기존 해금 조건에 따라 구경 후보가 됩니다.
 
@@ -328,7 +328,7 @@ if (screen.playerCanControl) {
 }
 ```
 
-`getGameState()`의 최상위에는 `mode`, `rule`, `allClearTicketEnabled`, `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, `ending`이 있습니다. `mode`는 `versus`, `practice`, `watch`, `continuous_fever`, `puzzle` 중 하나이고, `rule`은 `standard`, `fever`, `fever_start`, `relaxed_fever`, `continuous_fever` 중 하나입니다. `player`와 `opponent`에는 다음 정보가 각각 들어 있습니다.
+`getGameState()`의 최상위에는 `mode`, `rule`, `twoExplosion`, `explosionCount`, `allClearTicketEnabled`, `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, `ending`이 있습니다. `mode`는 `versus`, `practice`, `watch`, `continuous_fever`, `puzzle` 중 하나이고, `rule`은 `standard`, `fever`, `fever_start`, `relaxed_fever`, `two_explosion`, `continuous_fever` 중 하나입니다. `explosionCount`는 2-폭발에서 2, 다른 게임에서 4입니다. `player`와 `opponent`에는 다음 정보가 각각 들어 있습니다.
 
 - `isCpu`, `phase`, `point`, `attack`, `damage`, `combo`, `placedPairCount`
 - `board.columns`, `board.rows`, `board.visibleRows`, `board.puyos` — 현재 조작 필드의 고정 뿌요를 `{ x, y, color }` 목록으로 반환합니다. 피버 중에는 피버 필드이며, 좌표의 원점은 왼쪽 아래입니다.

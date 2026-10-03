@@ -19,6 +19,7 @@ const RULES = Object.freeze({
     fever: true,
     fever_start: true,
     relaxed_fever: true,
+    two_explosion: true,
     practice: false,
     continuous_fever: false
 });

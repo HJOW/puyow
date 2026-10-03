@@ -108,6 +108,25 @@ test.describe('리플레이 재생 페이지', () => {
     await expect(guide).toBeHidden();
   });
 
+  test('2-폭발 리플레이는 목록의 한국어·영어 룰 이름과 재생 상태에 반영된다', async ({ page }) => {
+    // 이 테스트는 목록 표시만 검증하므로 기존 형식 3 자료의 헤더를 새 룰로 바꾼다.
+    const replay = JSON.parse(await readBundledReplay(page));
+    replay.meta.rule = 'twoExplosion';
+    replay.meta.feverRule = false;
+    replay.meta.feverStart = false;
+    await page.route('**/js/replays.json', (route) => route.fulfill({ contentType: 'application/json', body: JSON.stringify([replay]) }));
+    for (const [language, label] of [['en', '2-Explosion'], ['ko', '2-폭발']]) {
+      await page.evaluate((language) => localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { language } })), language);
+      await page.reload();
+      const button = page.locator('.replay-list-button');
+      await expect(button).toHaveCount(1);
+      await expect(button).toContainText(label);
+      await button.click();
+      await expect.poll(() => page.evaluate(() => window.PuyoW.getGameState()?.rule)).toBe('two_explosion');
+      expect(await page.evaluate(() => window.PuyoW.getGameState().explosionCount)).toBe(2);
+    }
+  });
+
   test('JSON 불러오기 팝업은 textarea 입력을 게임에 넘기지 않고, 취소·실패·성공을 구분한다', async ({ page }) => {
     await toolbarButton(page, 'json').click();
     const dialog = page.locator('.replay-dialog-backdrop');

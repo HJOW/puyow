@@ -23,6 +23,8 @@ BUILDNO 113 releases every opponent through Alokes. Balaam and Purkas remain una
 
 Murmur, Caim, and Alokes are the three ONNX opponents. They inherit `OnnxEnemy` and use `onnx/model01.onnx`, `onnx/model02.onnx`, and `onnx/model03.onnx`, respectively. Their names carry the warning mark and the first ONNX match uses the existing confirmation. Existing confirmation acknowledgement is retained. Without the runtime, these three are hidden from opponent selection; they are always excluded from Watch mode and Python training opponents.
 
+The 2-Explosion rule also excludes these opponents and Solomon from selection and progression. Custom opponents that use a model should set `requiresModel = true` to receive the same restriction.
+
 The following assignments copy each source's complete AI and settings from before BUILDNO 113. Character identifiers, order, portraits, themes, progress records, and GOLD multipliers are retained. Released opponents enter progression, cards, and leaderboard lists; released non-model opponents become eligible for Watch mode under its existing rules.
 
 | Previous AI owner | Current owners |
@@ -271,7 +273,7 @@ if (screen.playerCanControl) {
 }
 ```
 
-`getGameState()` has top-level `mode`, `rule`, `allClearTicketEnabled`, `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, and `ending`. `mode` is one of `versus`, `practice`, `watch`, `continuous_fever`, or `puzzle`; `rule` is one of `standard`, `fever`, `fever_start`, `relaxed_fever`, or `continuous_fever`. Both `player` and `opponent` contain:
+`getGameState()` has top-level `mode`, `rule`, `twoExplosion`, `explosionCount`, `allClearTicketEnabled`, `running`, `paused`, `countdown`, `elapsed`, `practice`, `colorCount`, `colors`, `aiDifficulty`, `winner`, and `ending`. `mode` is one of `versus`, `practice`, `watch`, `continuous_fever`, or `puzzle`; `rule` is one of `standard`, `fever`, `fever_start`, `relaxed_fever`, `two_explosion`, or `continuous_fever`. `explosionCount` is 2 under 2-Explosion and 4 in other games. Both `player` and `opponent` contain:
 
 - `isCpu`, `phase`, `point`, `attack`, `damage`, `combo`, `placedPairCount`
 - `board.columns`, `board.rows`, `board.visibleRows`, `board.puyos`: fixed puyos in the current play field as `{ x, y, color }` entries. This is the Fever field while Fever is active; the origin is lower left.

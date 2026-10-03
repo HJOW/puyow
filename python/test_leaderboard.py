@@ -39,6 +39,11 @@ class LeaderboardRecordTest(unittest.TestCase):
             normalize_record({"rule": "relaxed_fever", "difficulty": "normal", "colors": 4, "opponent": "Kimaris", "score": 10}),
             {"rule": "relaxed_fever", "difficulty": "normal", "colors": 4, "opponent": "Kimaris", "score": 10},
         )
+        self.assertEqual(
+            normalize_record({"rule": "two_explosion", "difficulty": "hard", "colors": 5, "opponent": "Gremory", "score": 10}),
+            {"rule": "two_explosion", "difficulty": "hard", "colors": 5, "opponent": "Gremory", "score": 10},
+        )
+        self.assertIsNone(normalize_record({"rule": "two_explosion", "colors": 4, "score": 10}))
 
     def test_solo_rules_drop_difficulty_and_opponent(self):
         self.assertEqual(
