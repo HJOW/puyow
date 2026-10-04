@@ -27,6 +27,14 @@
         <!-- manifest (이 webmanifest 가 있어야 PWA 앱으로도 설치할 수 있음, 없어도 게임 자체는 동작함) -->
         <link rel="manifest" href="manifest.webmanifest"/>
 
+        <!-- FIREBASE (플레이에는 필요하지 않음, 선택사항) -->
+        <script type="text/javascript" src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+        <script type="text/javascript" src="https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics-compat.js"></script>
+        <script type="text/javascript" src="https://www.gstatic.com/firebasejs/12.19.0/firebase-performance-compat.js"></script>
+        <!--<script defer src="/__/firebase/init.js?useEmulator=true"></script>-->
+        <script defer src="./js/firebaseinit.js"></script>
+        <!-- // FIREBASE -->
+
         <!-- Game 관련 (선택) -->
         <script defer src="./js/crypto-js.min.js"></script>
         <script defer src="./js/ort.all.min.js"></script>
@@ -45,9 +53,18 @@
         <!-- 게임 로딩 스크립트 -->
         <script>
             document.addEventListener("DOMContentLoaded", function() {
+                // 게임 영역 준비
                 const divTarget = document.getElementById("puyow_target");
                 // window.PuyoW.setNoticeFile('https://hjow.github.io/puyow/src/notice/notice_[LANG].txt'); // 공지사항 URL을 변경
-                window.PuyoW.initialize(divTarget); // 게임 구동
+
+                // FIREBASE 초기화 (선택 사항)
+                let analytics   = null;
+                let performance = null;
+                try { analytics   = firebase.analytics();   } catch(e) {}
+                try { performance = firebase.performance(); } catch(e) {}
+
+                // 게임 구동
+                window.PuyoW.initialize(divTarget);
             });
         </script>
     </head>
