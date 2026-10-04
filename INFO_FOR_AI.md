@@ -40,7 +40,7 @@
 - 기본 정적 검증: `node --check src/js/puyow.js`(`src/js/package.json`의 `"type": "module"` 덕분에 ES Module로 검사된다), `npm.cmd test`, `npm.cmd run build`, `git diff --check`.
 - 게임 동작·캔버스 변경은 해당 Playwright 테스트도 실행한다. 정적 검사만으로 게임 동작을 검증했다고 판단하지 않는다.
 
-`puyow.js`는 ES Module이며 게임 상태는 모듈 최상위 스코프(비공개)에 있다. `const PuyoW = new PuyoWManager()`로 만든 기본 매니저 인스턴스를 `export default`·`export { PuyoW, WebPuyo }`와 브라우저 `window.PuyoW`로 내보낸다. `WebPuyo`(이름 있는 내보내기·`window.WebPuyo`)는 같은 인스턴스를 가리키는 호환용 별칭이다. 모든 클래스(기존 65개와 `PuyoWManager`)를 이름 있는 export와 `PuyoW.클래스명`으로 공개한다. 공개 함수 82개는 매니저의 프로토타입 메소드이며 기존 내부 함수를 호출한다. `common`·`tools`·`leaderboard`·`replay`는 기존 API 모음이고, `urlContextPath`·`commonSoundPool` 접근자는 현재 모듈 상태를 읽는다. 추가 매니저 인스턴스도 같은 게임 상태를 공유하며 독립 게임을 생성하지 않는다(BUILDNO 128). CommonJS `module.exports`는 소스가 아니라 Webpack 번들의 UMD 래퍼가 맡는다. 외부 확장 등록은 일반적으로 `initialize()` 이전에 한다.
+`puyow.js`는 ES Module이며 게임 상태는 모듈 최상위 스코프(비공개)에 있다. `const PuyoW = new PuyoWManager()`로 만든 기본 매니저 인스턴스를 `export default`·`export { PuyoW, WebPuyo }`와 브라우저 `window.PuyoW`로 내보낸다. `WebPuyo`(이름 있는 내보내기·`window.WebPuyo`)는 같은 인스턴스를 가리키는 호환용 별칭이다. 모든 클래스(기존 65개와 `PuyoWManager`)를 이름 있는 export와 `PuyoW.클래스명`으로 공개한다. 공개 함수 83개(BUILDNO 132에서 `setFirebaseServices` 추가)는 매니저의 프로토타입 메소드이며 기존 내부 함수를 호출한다. `common`·`tools`·`leaderboard`·`replay`는 기존 API 모음이고, `urlContextPath`·`commonSoundPool` 접근자는 현재 모듈 상태를 읽는다. 추가 매니저 인스턴스도 같은 게임 상태를 공유하며 독립 게임을 생성하지 않는다(BUILDNO 128). CommonJS `module.exports`는 소스가 아니라 Webpack 번들의 UMD 래퍼가 맡는다. 외부 확장 등록은 일반적으로 `initialize()` 이전에 한다.
 
 ### ES Module과 Webpack 번들 (2026-09-27, BUILDNO 124)
 
@@ -1476,6 +1476,16 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - `tests/test01_two_explosion.spec.js`에 메뉴 해금/입력, 색·난이도/다시하기, 모델 제외/해금 순서, 실제 그레모리 승리 이벤트, 2개 기준 실제 2연쇄와 독립 기록·GOLD·복사/재생, 패턴형 AI, 동기/두 Worker 탐색, 무작위 보드 200개와 발화점/대체 탐색 검증을 추가했다. 공용 메뉴 도우미와 취소 버튼 테스트도 새 배치에 맞췄다.
 - BUILDNO는 131, 패키지와 잠금 파일 버전은 `0.3.131`이다. 버전값 자체는 테스트하지 않았다. 번들도 다시 생성했다.
 - 검증: JS 문법 검사·ESLint·Webpack 빌드 통과. 새 룰 테스트 10건을 Chromium·Firefox·WebKit에서 실행해 총 30건 통과했고, 기존 핵심·메뉴·적 AI·시뮬레이터·피버/완화 피버·리플레이·도구·리더보드·리플레이 페이지 회귀 303건도 Chromium에서 통과했다. 별도 리플레이 페이지의 2-폭발 표시/불러오기와 Worker 대체 탐색은 세 브라우저에서 재확인했다. 메뉴 화면 캡처도 확인했다. Python 리더보드 9건·기존 4개 규칙의 JS/Python 보드 회귀 1건과 Node 리더보드의 새 룰 정규화·기록 저장/조회 검사도 통과했다. 작업한 파일의 `git diff --check`는 통과했으며, 사용자가 작성한 `TODO.md`의 기존 줄끝 공백은 그대로 두었다.
+
+### 선택적 Firebase Analytics·Performance 연동 (2026-10-04, BUILDNO 132)
+
+- `PuyoW.setFirebaseServices(analytics = null, performance = null)`를 `initialize()` 전에 호출한다. Firebase SDK를 핵심 모듈에서 import하지 않으며, 호환 SDK 객체는 호출하는 페이지에서 준비한다. Analytics는 `logEvent`·`setUserId` 메소드를 검사하고 Performance는 객체 여부만 검사한다. 생략·`null`은 해당 서비스를 사용하지 않는다는 뜻이다. 성공은 `true`, 초기화 이후 호출·잘못된 객체·접근자 예외는 `console.error`와 `false`이며 기존 연결을 보존한다. 상태는 다른 매니저와 공유하고 `destroy()` 뒤에도 유지하므로 다음 초기화 전에 교체하거나 해제할 수 있다.
+- 공통 `dispatchPuyoCustomEvent()`에서 `puyow_init`·`puyow_unlocked`·`puyow_win`만 Analytics로 보낸다. 이벤트 이름은 그대로 쓰고 상세 정보는 얕은 복사본으로 전달해 SDK가 값을 바꾸더라도 기존 DOM 이벤트를 보존한다. 화면 이동·매 프레임 렌더링 이벤트는 전송하지 않는다. Analytics와 DOM 이벤트의 예외 처리는 독립적이며 Analytics의 동기 예외·반환된 Promise의 거절은 기록만 한다.
+- 성공한 초기화 완료 직전에 저장된 이름을 `setUserId()`로 반영한 뒤 `puyow_init`을 전송한다. `saveSettings()`는 정규화한 이름이 실제로 바뀌어 저장된 경우에만 ID를 갱신한다. 최초 필수 이름 입력의 `submitPlayerNamePrompt()`도 저장 직후 ID를 갱신해 기본 이름에 머무르지 않게 한다. 취소·잘못된 이름·이름 변경 없는 저장은 ID를 바꾸지 않는다. 사용자 ID는 TODO 요구대로 설정의 이름 문자열 그대로다.
+- Performance는 전달받은 객체를 보관만 한다. 아직 게임의 측정 기준과 사용자 정의 추적을 추가하지 않았다. `src/puyow.html`은 기존 Firebase 객체 생성 뒤, 게임 초기화 전에 두 객체를 주입하며 객체 생성 실패도 `console.error`로 남기고 게임을 계속 초기화한다. 사용법은 `HOWTO.md`·`HOWTO.en.md`의 선택적 Firebase 연동 절에 기록했다.
+- `tests/test01_firebase.spec.js`는 실제 Firebase 통신을 모의 서비스로 대체해 사용자 ID/초기화 순서, 이름 저장·취소·검증·최초 입력, 초기화 후 연결 거절·잘못된 객체·접근자 예외, 재초기화·Performance 단독 연결, 실제 CPU 승리의 해금·승리 이벤트와 기록, 동기·비동기 오류 격리, 주입 생략·SDK 부재를 확인한다. 승리 정산 테스트에서만 게임 상태 접근자를 테스트 응답에 넣으며 제품에는 노출하지 않는다. 공용 `setupGamePage()`도 Firebase SDK·초기화 스크립트 응답을 비워 회귀 테스트가 실제 Firebase 프로젝트에 데이터를 보내지 않게 한다.
+- BUILDNO는 132, `package.json`·`package-lock.json` 버전은 `0.3.132`다. 버전값 자체는 테스트하지 않는다.
+- 검증: JS 문법 검사·ESLint·Webpack 빌드·작업 파일의 `git diff --check` 통과. 새 연동 테스트 9건을 Chromium·Firefox·WebKit에서 실행해 총 27건 통과했으며, 기존 핵심·원본/번들 공개 API 44건을 Chromium에서, 기존 이름 설정·최초 입력 2건을 세 브라우저에서 실행해 기존 회귀 50건도 통과했다. Firebase 호출은 모의 객체로 검증했으며 실제 Firebase 대시보드 수신은 확인하지 않았다. 번들을 다시 생성했고 기존 사용자의 TODO·ESLint·Webpack 설정 변경을 보존했다.
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.

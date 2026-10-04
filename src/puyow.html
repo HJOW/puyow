@@ -60,8 +60,9 @@
                 // FIREBASE 초기화 (선택 사항)
                 let analytics   = null;
                 let performance = null;
-                try { analytics   = firebase.analytics();   } catch(e) {}
-                try { performance = firebase.performance(); } catch(e) {}
+                try { analytics   = firebase.analytics();   } catch(e) { console.error('Firebase Analytics 초기화 중 오류가 발생했습니다.', e); }
+                try { performance = firebase.performance(); } catch(e) { console.error('Firebase Performance 초기화 중 오류가 발생했습니다.', e); }
+                window.PuyoW.setFirebaseServices(analytics, performance);
 
                 // 게임 구동
                 window.PuyoW.initialize(divTarget);

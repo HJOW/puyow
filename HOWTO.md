@@ -94,6 +94,19 @@ PuyoW.registerOpponent({ createController: () => new MyEnemy() });
 
 `PuyoW instanceof PuyoWManager`는 참입니다. 추가로 `new PuyoWManager()`를 만들 수 있지만 게임 상태·등록 목록·설정·캔버스는 모듈에서 공유합니다. 추가 매니저는 같은 게임을 조작하며 독립된 게임을 생성하지 않습니다. 메소드는 프로토타입에 있으므로 `Object.keys(PuyoW)`에는 포함되지 않습니다. 예전 `WebPuyo` 별칭은 기본 인스턴스와 같습니다.
 
+### 선택적 Firebase 연동
+
+Firebase 호환 SDK의 서비스 객체를 `PuyoW.setFirebaseServices(analytics, performance)`로 전달할 수 있습니다. 반드시 `PuyoW.initialize()` 전에 호출하며, 각 인자를 생략하거나 `null`로 전달하면 해당 서비스를 사용하지 않습니다. Firebase SDK를 게임 모듈에서 가져오지는 않으므로 사용하는 페이지에서 준비합니다.
+
+```js
+PuyoW.setFirebaseServices(firebase.analytics(), firebase.performance());
+PuyoW.initialize('puyow_target');
+```
+
+Analytics 객체에는 `logEvent()`와 `setUserId()` 메소드가 필요합니다. `puyow_init`·`puyow_unlocked`·`puyow_win` 이벤트가 발생하면 동일한 이름과 상세 정보를 `logEvent()`에 전달합니다. 초기화 완료 직전에 설정의 플레이어 이름을 `setUserId()`로 반영하며, 설정에서 이름 변경을 저장하거나 최초 이름 입력을 완료할 때도 갱신합니다. Performance 객체는 현재 보관만 하며 게임의 성능 추적을 추가하지 않습니다.
+
+연결 성공 시 `true`, 잘못된 객체 또는 초기화 이후 연결 시 `false`를 반환합니다. 연결 오류는 기존 객체를 유지하고 `console.error`로 기록합니다. Analytics 호출의 동기·비동기 오류도 기록만 하며 게임 진행과 외부 커스텀 이벤트는 계속 동작합니다. `destroy()` 뒤에도 연결한 서비스는 유지하며, 재초기화 전에 다른 객체나 `null`로 바꿀 수 있습니다.
+
 ### 브라우저 커스텀 이벤트
 
 브라우저 스크립트 방식에서는 `window.addEventListener()`로 게임의 초기화·화면 이동·새 콘텐츠 해금·CPU 대전 승리·화면 렌더링 전후를 구독할 수 있습니다. 리스너는 반드시 `PuyoW.initialize()` 전에 등록해야 하며(매 프레임 발생하는 `puyow_prerender`·`puyow_render`는 나중에 등록해도 다음 프레임부터 받습니다), 각 이벤트 정보는 `CustomEvent.detail`에 들어 있습니다. 초기 화면 표시는 화면 이동으로 취급하지 않으므로 `puyow_init`만 발생합니다.

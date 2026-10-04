@@ -94,6 +94,19 @@ PuyoW.registerOpponent({ createController: () => new MyEnemy() });
 
 `PuyoW instanceof PuyoWManager` is true. Additional `new PuyoWManager()` instances share the module's game state, registrations, settings, and canvas, so they control the same game. Methods live on the prototype and are absent from `Object.keys(PuyoW)`. The legacy `WebPuyo` alias refers to the default instance.
 
+### Optional Firebase integration
+
+Pass Firebase compat SDK service objects to `PuyoW.setFirebaseServices(analytics, performance)` before calling `PuyoW.initialize()`. Omit either argument or pass `null` to disable that service. The game module does not import the Firebase SDK; the page supplies the objects.
+
+```js
+PuyoW.setFirebaseServices(firebase.analytics(), firebase.performance());
+PuyoW.initialize('puyow_target');
+```
+
+The Analytics object must provide `logEvent()` and `setUserId()`. The game forwards `puyow_init`, `puyow_unlocked`, and `puyow_win` with their existing names and event details. Immediately before the initialization event, it sets the Analytics user ID to the player name from settings. Saving a changed name or completing the initial required name prompt updates the ID. The Performance object is retained for future use; the game does not add custom performance traces yet.
+
+The setter returns `true` on success or `false` for invalid objects or calls made after initialization. Connection errors preserve the previous services and are logged with `console.error`. Synchronous and asynchronous Analytics errors are also logged while gameplay and external custom events continue. Services remain connected after `destroy()`; replace them or pass `null` before reinitializing to change the connection.
+
 ### Browser custom events
 
 When using the browser-script build, subscribe to initialization, visible-screen changes, new content unlocks, CPU-match wins, and before/after screen rendering with `window.addEventListener()`. Register listeners before calling `PuyoW.initialize()` (`puyow_prerender` and `puyow_render` fire every frame, so a listener added later still receives them from the next frame). Event information is carried in `CustomEvent.detail`. Rendering the initial screen is not a screen transition, so it emits only `puyow_init`.

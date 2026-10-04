@@ -22,7 +22,7 @@
 import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 131;
+const BUILDNO = 132;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -693,6 +693,8 @@ let threeCanvas = null;
 let context = null;
 /** 라이브러리가 초기화되어 이벤트와 게임 루프가 연결됐는지 여부다. @type {boolean} */
 let initialized = false;
+/** 초기화 전에 외부에서 전달받은 선택적 Firebase 서비스다. Performance는 아직 측정 없이 보관만 한다. @type {{analytics:object|null,performance:object|null}} */
+let firebaseServices = { analytics: null, performance: null };
 /** 마지막으로 외부에 알린 표준 화면 식별자다. 초기화와 destroy 사이에서만 사용한다. */
 let lastDispatchedScreen = null;
 /**
@@ -1257,6 +1259,49 @@ let storageManager = new StorageManager();
 function setStorageManager(storageManagerObject) {
     if(! (storageManagerObject instanceof StorageManager)) throw new TypeError('storageManagerObject는 StorageManager 인스턴스여야 합니다.');
     storageManager = storageManagerObject;
+}
+
+/**
+ * 선택적 Firebase 호환 SDK 서비스 객체를 게임 초기화 전에 연결한다.
+ * 생략하거나 null을 전달한 서비스는 사용하지 않으며, 잘못된 입력은 기존 연결을 유지하고 오류만 기록한다.
+ * @param {object|null} [analytics=null] logEvent와 setUserId 메소드가 있는 Analytics 객체
+ * @param {object|null} [performance=null] 추후 성능 측정에 사용할 Performance 객체
+ * @returns {boolean} 연결 성공 여부
+ */
+function setFirebaseServices(analytics = null, performance = null) {
+    try {
+        if (initialized) throw new Error('Firebase 서비스는 PuyoW.initialize() 호출 전에 연결해야 합니다.');
+        if (analytics !== null && (typeof analytics !== 'object'
+            || typeof analytics.logEvent !== 'function' || typeof analytics.setUserId !== 'function')) {
+            throw new TypeError('Analytics 객체에는 logEvent와 setUserId 메소드가 필요합니다.');
+        }
+        if (performance !== null && typeof performance !== 'object') {
+            throw new TypeError('Performance는 객체 또는 null이어야 합니다.');
+        }
+        firebaseServices = { analytics, performance };
+        return true;
+    } catch (error) {
+        console.error('Firebase 서비스 연결 중 오류가 발생했습니다.', error);
+        return false;
+    }
+}
+
+/** Analytics 호출의 동기·비동기 오류가 게임 기능에 영향을 주지 않도록 기록만 한다. @param {'logEvent'|'setUserId'} method 호출할 메소드 @param {...unknown} args 전달할 인자 @returns {void} */
+function callFirebaseAnalytics(method, ...args) {
+    if (!firebaseServices.analytics) return;
+    try {
+        const result = firebaseServices.analytics[method](...args);
+        if (result && typeof result.then === 'function') {
+            Promise.resolve(result).catch((error) => console.error(`Firebase Analytics ${method} 호출 중 오류가 발생했습니다.`, error));
+        }
+    } catch (error) {
+        console.error(`Firebase Analytics ${method} 호출 중 오류가 발생했습니다.`, error);
+    }
+}
+
+/** 현재 저장된 플레이어 이름을 Analytics 사용자 ID로 반영한다. @returns {void} */
+function syncFirebaseAnalyticsUserId() {
+    callFirebaseAnalytics('setUserId', getPlayerName());
 }
 
 /**
@@ -12706,6 +12751,7 @@ function saveSettings() {
     playMenuSelectSound();
     clearSettingsApiTest();
     settingsDraft.playerName = playerNameResult.name;
+    const playerNameChanged = getPlayerName() !== settingsDraft.playerName;
     settingsDraft.language = normalizeLanguageCode(settingsDraft.language);
     settingsDraft.soundDataURL = normalizeSoundDataURL(settingsDraft.soundDataURL);
     settingsDraft.aiApiURL = normalizeAiApiURL(settingsDraft.aiApiURL);
@@ -12716,6 +12762,7 @@ function saveSettings() {
     store.settings = { ...settingsDraft };
     applyStoredLanguage();
     saveStore();
+    if (playerNameChanged) syncFirebaseAnalyticsUserId();
     applyCanvasOutputResolution();
     updateCanvasOrientation();
     updateBackgroundMusicVolume();
@@ -16097,6 +16144,7 @@ function submitPlayerNamePrompt() {
     playerNameSetupRequired = false;
     playerNamePrompt = null;
     saveStore();
+    syncFirebaseAnalyticsUserId();
     playMenuSelectSound();
     return true;
 }
@@ -17122,6 +17170,10 @@ function getNowScreen() {
  * @returns {void}
  */
 function dispatchPuyoCustomEvent(type, detail = {}) {
+    if (type === 'puyow_init' || type === 'puyow_unlocked' || type === 'puyow_win') {
+        // Analytics에 넘기는 정보는 복사하여 SDK가 수정해도 외부 이벤트 정보는 보존한다.
+        callFirebaseAnalytics('logEvent', type, { ...detail });
+    }
     if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function' || typeof window.CustomEvent !== 'function') return;
     try {
         window.dispatchEvent(new window.CustomEvent(type, { detail }));
@@ -18335,6 +18387,7 @@ function initialize(target = null) {
     initialized = true;
     // 초기 화면은 화면 이동으로 보지 않고, 초기화 완료만 한 번 알린다.
     lastDispatchedScreen = getNowScreen().screen;
+    syncFirebaseAnalyticsUserId();
     dispatchPuyoCustomEvent('puyow_init');
 }
 
@@ -22801,6 +22854,7 @@ class PuyoWManager {
     loadSoundDataURL(...args) { return loadSoundDataURL(...args); }
     applySoundDataJson(...args) { return applySoundDataJson(...args); }
     setStorageManager(...args) { return setStorageManager(...args); }
+    setFirebaseServices(...args) { return setFirebaseServices(...args); }
     registerFeverStage(...args) { return registerFeverStage(...args); }
     registerPuzzleStage(...args) { return registerPuzzleStage(...args); }
     registerOpponent(...args) { return registerOpponent(...args); }

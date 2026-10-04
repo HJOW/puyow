@@ -13,6 +13,7 @@ module.exports = [
             'src/js/json5.js',
             'src/js/ort.all.min.js',
             'src/js/crypto-js.min.js',
+            'src/js/firebaseinit.js',
             'src/bundle/**'
         ],
     },

@@ -69,6 +69,12 @@ async function blockOnnxWasmCdn(page) {
   await page.route('https://cdn.jsdelivr.net/**', (route) => route.abort('failed'));
 }
 
+/** 게임 회귀 테스트의 분석 데이터가 실제 Firebase 프로젝트로 전송되지 않도록 선택 SDK를 비운다. */
+async function disableFirebaseSdk(page) {
+  await page.route('https://www.gstatic.com/firebasejs/**', (route) => route.fulfill({ contentType: 'text/javascript', body: '' }));
+  await page.route('**/js/firebaseinit.js', (route) => route.fulfill({ contentType: 'text/javascript', body: '' }));
+}
+
 // 게임을 어떤 서버로 띄웠는지에 따라 Local AI 사용 가능 여부가 달라지고, 쓸 수 있으면 제공자 기본값이
 // Local AI가 되어 솔로몬 해금·설정 포커스 순번·적 목록까지 함께 바뀐다. 기본값을 일반 웹 서버와 같은
 // 사용 불가로 고정하고, Local AI가 필요한 테스트만 자기 라우트를 따로 걸어 이 기본값을 덮어쓴다.
@@ -93,6 +99,7 @@ export function setupGamePage() {
   test.beforeEach(async ({ page }) => {
     await installMockGamepad(page);
     await blockOnnxWasmCdn(page);
+    await disableFirebaseSdk(page);
     await disableLocalAiModel(page);
     await hideReplayPage(page);
     await page.goto(GAME_PAGE);

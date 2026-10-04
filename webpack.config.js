@@ -71,7 +71,7 @@ module.exports = {
         }),
         new ESLintPlugin({
             "extensions" : ["js", "mjs", "ts"],
-            "exclude" : ["node_modules", "three.min.js", "three.core.min.js", "three.module.min.js", "three.webgpu.min.js", "json5.min.js", "json5.js", "crypto-js.min.js", "ort.all.min.js"]
+            "exclude" : ["node_modules", "three.min.js", "three.core.min.js", "three.module.min.js", "three.webgpu.min.js", "json5.min.js", "json5.js", "crypto-js.min.js", "ort.all.min.js", "firebaseinit.js"]
         }),
         new webpack.BannerPlugin({
             "banner" : `/** Puyo W
