@@ -25,6 +25,8 @@ Like the Puyo Puyo series, the game field and the simulator draw same-color norm
 
 `draw()` of normal puyos still calls `drawBody()` and `drawDetails()` in sequence, so places that draw a single puyo, such as the gallery, NEXT, and the active pair, look unchanged. Falling puyos and the active pair are not connected.
 
+The match screen does not redraw the puyos fixed on the field every frame. Only when the visible board changes (a pair lands, puyos pop, gravity finishes, and so on) does it draw them once into an offscreen canvas with the three methods above, and the frames in between simply copy that picture. The `drawingContext` passed while drawing fixed puyos may therefore not be the game canvas, and the result must depend only on the arguments (a drawing that changes with time appears frozen until the board changes). Falling puyos, the active pair, NEXT, and the pop effect are still drawn every frame.
+
 The pop effect keeps the existing effect duration. In the first half, the popping puyos keep their connected shape, flash white 2.5 times, and close their eyes. In the second half, they swell white and burst, scattering same-color droplets (ice shards for hard garbage) that fall with gravity, along with a shock ring and sparkles. Fragments are drawn only inside the visible field.
 
 `IronPuyo` is a completely black metal-ball shape with a surface highlight and eyes. It can be created only in the simulator. It is not part of normal-color explosion groups and is not affected by other explosions. It therefore remains until the simulation ends and does not affect the score.

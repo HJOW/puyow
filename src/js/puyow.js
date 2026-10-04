@@ -22,7 +22,7 @@
 import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 132;
+const BUILDNO = 133;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -10419,19 +10419,131 @@ function drawWarningUnits(x, y, units) {
  * @param {number} originX 필드 왼쪽 X 좌표
  * @param {{x:number, y:number, color:string}[]} cells 그릴 칸(아래가 y=0인 보드 좌표)
  * @param {{flash?:number, squint?:boolean}} [options] 몸체에 덧칠할 흰 빛 불투명도와 찡그린 눈 사용 여부
+ * @param {CanvasRenderingContext2D} [drawingContext] 그릴 컨텍스트. 생략하면 게임 캔버스에 그린다.
  * @returns {void}
  */
-function drawConnectedPuyoCells(originX, cells, { flash = 0, squint = false } = {}) {
+function drawConnectedPuyoCells(originX, cells, { flash = 0, squint = false } = {}, drawingContext = context) {
     const colorByCell = new Map(cells.map((cell) => [`${cell.x},${cell.y}`, cell.color]));
     const entries = cells.map((cell) => ({ cell, puyo: getPuyo(cell.color), x: originX + cell.x * CELL, y: FIELD_BOTTOM - (cell.y + 1) * CELL })).filter((entry) => entry.puyo);
-    entries.forEach(({ puyo, x, y }) => puyo.drawBody(context, x, y, CELL, 1, flash));
+    entries.forEach(({ puyo, x, y }) => puyo.drawBody(drawingContext, x, y, CELL, 1, flash));
     entries.forEach(({ cell, puyo, x, y }) => {
         if (!puyo.isConnectable()) return;
         // 한 쌍을 두 번 그리지 않도록 오른쪽·위쪽 이웃만 본다.
-        if (colorByCell.get(`${cell.x + 1},${cell.y}`) === cell.color) puyo.drawConnection(context, x, y, CELL, 'right', flash);
-        if (colorByCell.get(`${cell.x},${cell.y + 1}`) === cell.color) puyo.drawConnection(context, x, y, CELL, 'up', flash);
+        if (colorByCell.get(`${cell.x + 1},${cell.y}`) === cell.color) puyo.drawConnection(drawingContext, x, y, CELL, 'right', flash);
+        if (colorByCell.get(`${cell.x},${cell.y + 1}`) === cell.color) puyo.drawConnection(drawingContext, x, y, CELL, 'up', flash);
     });
-    entries.forEach(({ puyo, x, y }) => puyo.drawDetails(context, x, y, CELL, 1, squint));
+    entries.forEach(({ puyo, x, y }) => puyo.drawDetails(drawingContext, x, y, CELL, 1, squint));
+}
+
+/**
+ * 변하지 않는 그림을 오프스크린 캔버스에 미리 그려 두는 렌더링 캐시의 사용 여부다.
+ * 캐시는 게임 동작과 화면 모양을 바꾸지 않는 성능 최적화이며(반투명 테두리 픽셀의 반올림만 조금 다를 수 있다),
+ * 끄면 매 프레임 직접 그리는 예전 경로만 쓴다.
+ * @type {boolean}
+ */
+let renderCacheEnabled = true;
+
+/**
+ * 렌더링 캐시용 오프스크린 캔버스를 만든다.
+ * @param {number} width 실제 픽셀 너비
+ * @param {number} height 실제 픽셀 높이
+ * @returns {{canvas:HTMLCanvasElement, context:CanvasRenderingContext2D, key:(string|null)}|null} 만들 수 없는 환경이면 null
+ */
+function createRenderCacheLayer(width, height) {
+    if (typeof document === 'undefined') return null;
+    const layerCanvas = document.createElement('canvas');
+    layerCanvas.width = width;
+    layerCanvas.height = height;
+    const layerContext = layerCanvas.getContext('2d');
+    return layerContext ? { canvas: layerCanvas, context: layerContext, key: null } : null;
+}
+
+/**
+ * 오프스크린에 미리 그린 그림을 옮겨 붙여도 직접 그린 결과와 같아지는 컨텍스트 상태일 때만 현재 변환을 반환한다.
+ * 반투명·합성 방식·필터·그림자는 도형마다 따로 적용되는 것과 그림 전체에 한 번 적용되는 것이 달라지고,
+ * 회전·기울임·반전은 픽셀 격자가 어긋나므로 이런 상태에서는 null을 돌려 직접 그리게 한다.
+ * @param {CanvasRenderingContext2D} drawingContext 그림을 옮겨 붙일 컨텍스트
+ * @returns {DOMMatrix|null} 확대와 평행 이동만 있는 현재 변환. 캐시를 쓸 수 없으면 null
+ */
+function getRenderCacheTransform(drawingContext) {
+    if (!renderCacheEnabled || typeof drawingContext.getTransform !== 'function') return null;
+    if (drawingContext.globalAlpha !== 1 || drawingContext.globalCompositeOperation !== 'source-over') return null;
+    if (drawingContext.filter !== undefined && drawingContext.filter !== 'none') return null;
+    if (drawingContext.shadowBlur !== 0 || drawingContext.shadowOffsetX !== 0 || drawingContext.shadowOffsetY !== 0) return null;
+    const transform = drawingContext.getTransform();
+    if (transform.b !== 0 || transform.c !== 0 || !(transform.a > 0) || !(transform.d > 0)) return null;
+    return transform;
+}
+
+/**
+ * 미리 그려 둔 오프스크린 그림을 실제 픽셀 좌표에 1:1로 옮겨 붙인다.
+ * @param {CanvasRenderingContext2D} drawingContext 대상 컨텍스트
+ * @param {HTMLCanvasElement} layerCanvas 미리 그린 오프스크린 캔버스
+ * @param {number} left 붙일 위치의 실제 픽셀 X 좌표(정수)
+ * @param {number} top 붙일 위치의 실제 픽셀 Y 좌표(정수)
+ * @returns {void}
+ */
+function drawRenderCacheLayer(drawingContext, layerCanvas, left, top) {
+    drawingContext.save();
+    drawingContext.setTransform(1, 0, 0, 1, 0, 0);
+    drawingContext.drawImage(layerCanvas, left, top);
+    drawingContext.restore();
+}
+
+/** 보드 소유자(플레이어 상태)별로 고정 뿌요를 미리 그려 둔 층이다. @type {WeakMap<object, {canvas:HTMLCanvasElement, context:CanvasRenderingContext2D, key:(string|null)}>} */
+let boardPuyoLayerCache = new WeakMap();
+
+/**
+ * 보이는 필드의 고정 뿌요를 그린다.
+ * 고정 뿌요는 착지·폭발·낙하가 끝날 때만 바뀌므로 오프스크린 캔버스에 한 번 그려 두고,
+ * 보드가 그대로인 프레임에서는 그 그림만 옮겨 붙인다. 그리는 내용과 순서는 drawConnectedPuyoCells()와 같다.
+ * @param {object} owner 캐시를 구분할 보드 소유자(플레이어 상태)
+ * @param {number} originX 필드 왼쪽 X 좌표
+ * @param {(string|null)[][]} board 보드
+ * @param {Set<string>} excluded 낙하 연출 중이라 고정 위치에 그리지 않을 `x,y` 칸
+ * @returns {void}
+ */
+function drawBoardPuyoLayer(owner, originX, board, excluded) {
+    const transform = getRenderCacheTransform(context);
+    if (!transform) {
+        drawConnectedPuyoCells(originX, collectBoardPuyoCells(board, VISIBLE_ROWS, excluded));
+        return;
+    }
+    // 보이는 칸의 내용을 한 문자열로 접어 지난번에 그려 둔 보드와 비교한다.
+    let signature = '';
+    let occupied = false;
+    for (let y = 0; y < VISIBLE_ROWS; y += 1) for (let x = 0; x < COLUMNS; x += 1) {
+        const color = board[y]?.[x];
+        if (color && !(excluded.size && excluded.has(`${x},${y}`))) { signature += color; occupied = true; }
+        signature += ',';
+    }
+    if (!occupied) return;
+    // 층은 실제 픽셀 격자에 맞춰 두어야 옮겨 붙일 때 다시 보간되지 않는다. 소수 위치는 층 안쪽 변환에 남긴다.
+    const deviceX = transform.a * originX + transform.e;
+    const deviceY = transform.d * FIELD_TOP + transform.f;
+    const left = Math.floor(deviceX) - 1;
+    const top = Math.floor(deviceY) - 1;
+    const width = Math.ceil(transform.a * CELL * COLUMNS) + 3;
+    const height = Math.ceil(transform.d * CELL * VISIBLE_ROWS) + 3;
+    let layer = boardPuyoLayerCache.get(owner);
+    if (!layer || layer.canvas.width !== width || layer.canvas.height !== height) {
+        layer = createRenderCacheLayer(width, height);
+        if (!layer) {
+            drawConnectedPuyoCells(originX, collectBoardPuyoCells(board, VISIBLE_ROWS, excluded));
+            return;
+        }
+        boardPuyoLayerCache.set(owner, layer);
+    }
+    const key = `${transform.a}|${transform.d}|${deviceX - left}|${deviceY - top}|${signature}`;
+    if (layer.key !== key) {
+        layer.key = null;
+        layer.context.setTransform(1, 0, 0, 1, 0, 0);
+        layer.context.clearRect(0, 0, width, height);
+        layer.context.setTransform(transform.a, 0, 0, transform.d, transform.e - left, transform.f - top);
+        drawConnectedPuyoCells(originX, collectBoardPuyoCells(board, VISIBLE_ROWS, excluded), {}, layer.context);
+        layer.key = key;
+    }
+    drawRenderCacheLayer(context, layer.canvas, left, top);
 }
 
 /**
@@ -10846,7 +10958,7 @@ function drawField(player, opponent) {
         drawDefeatCellMarkers(x, usesSecondDefeatCell());
         const fallingTargets = new Set((player.gravityAnimation?.falling || []).map((puyo) => `${puyo.x},${puyo.toY}`));
         // 패배 연출이 아닐 때 보이는 필드의 고정 뿌요를 그린다. 붙어 있는 같은 색 뿌요는 몸이 이어진다.
-        if (!isDefeated) drawConnectedPuyoCells(x, collectBoardPuyoCells(player.board, VISIBLE_ROWS, fallingTargets));
+        if (!isDefeated) drawBoardPuyoLayer(player, x, player.board, fallingTargets);
         // 낙하 중인 뿌요와 조작 중인 뿌요는 숨김 줄에서 내려오며 필드 위 경계에 걸칠 수 있다.
         // 베젤보다 뒤에 있어야 하므로 필드 영역 밖으로 나간 부분은 그리지 않는다.
         context.save();
@@ -11050,8 +11162,8 @@ function drawCenter() {
         context.fillText(String(Math.ceil(game.fever.leftTime / 1000)), WIDTH / 2, 396);
     } else if (game.watch) {
         // 구경은 두 CPU가 모두 적이므로, 중앙 좌우에 각자의 현재 표정을 함께 표시한다.
-        left.controller.drawPortrait(context, 545, 380, 0.72, getEnemyPortraitExpression(left, right));
-        right.controller.drawPortrait(context, 735, 380, 0.72, getEnemyPortraitExpression(right, left));
+        drawSteadyEnemyPortrait(left.controller, 545, 380, 0.72, getEnemyPortraitExpression(left, right));
+        drawSteadyEnemyPortrait(right.controller, 735, 380, 0.72, getEnemyPortraitExpression(right, left));
     } else if (game.together) {
         // "너랑 나랑"은 적이 없으므로 초상화 자리에 두 사람의 승패 현황을 표시한다.
         drawTogetherRecordPanel(305);
@@ -11059,7 +11171,7 @@ function drawCenter() {
         // 온라인 대전도 적 컨트롤러가 없으므로 초상화 자리에 양측 닉네임과 WIN POINT를 표시한다.
         drawOnlineMatchPanel(305);
     } else {
-        right.controller.drawPortrait(context, WIDTH / 2, 380, 0.86, getEnemyPortraitExpression(right, left));
+        drawSteadyEnemyPortrait(right.controller, WIDTH / 2, 380, 0.86, getEnemyPortraitExpression(right, left));
     }
     const scores = usesSoloScoreLayout()
         ? [{ player: left, x: 488, width: 304, color: '#ef8aa0' }]
@@ -11441,7 +11553,7 @@ function drawResultCenter(showExitButton = true) {
     if (game.together) drawTogetherRecordPanel(400);
     // 온라인 대전도 적 컨트롤러가 없으므로 초상화 대신 서버가 확정한 WIN POINT 변화를 보여 준다.
     else if (game.online) drawOnlineResultPanel(380);
-    else if (!game.puzzle && enemy !== game.winner) enemy.controller.drawPortrait(context, WIDTH / 2, portraitY, 0.86, 'defeated');
+    else if (!game.puzzle && enemy !== game.winner) drawSteadyEnemyPortrait(enemy.controller, WIDTH / 2, portraitY, 0.86, 'defeated');
     context.fillStyle = '#d8f2f5'; context.font = `18px ${MESSAGE_FONT}`;
     context.fillText(translate('게임 시간 %1초', Math.floor(game.elapsed / 1000)), WIDTH / 2, 145);
     // 구경 대전의 자동 재시작 안내는 버튼이 두 개일 때 두 번째 버튼과 겹치지 않도록 초상화 아래로 내린다.
@@ -18154,6 +18266,9 @@ function destroy() {
     canvas = null;
     threeCanvas = null;
     context = null;
+    // 미리 그려 둔 초상화·고정 뿌요 층은 다음 초기화에서 다시 만든다.
+    enemyPortraitCache.clear();
+    boardPuyoLayerCache = new WeakMap();
     game = null;
     simulator = null;
     gallery = null;
@@ -20230,6 +20345,91 @@ const enemyPortraitPaths = new Map();
  * @returns {void}
  */
 function drawCuteEnemyPortrait(context, centerX, centerY, scale, expression, type) {
+    if (enemyPortraitCacheRequests > 0 && drawCachedCuteEnemyPortrait(context, centerX, centerY, scale, expression, type)) return;
+    paintCuteEnemyPortrait(context, centerX, centerY, scale, expression, type);
+}
+
+/** 초상화 캐시가 보관하는 그림의 반경(초상화 내부 좌표)이다. 기본 제공 초상화는 모든 표정에서 중심으로부터 130 안쪽에 그려진다(test01_portrait의 가장자리 검사). */
+const ENEMY_PORTRAIT_CACHE_RADIUS = 140;
+/** 초상화 캐시가 보관할 그림 수의 상한이다. 넘으면 가장 오래 쓰지 않은 것부터 버린다. */
+const ENEMY_PORTRAIT_CACHE_LIMIT = 12;
+/** 초상화 캐시 한 장의 한 변 최대 실제 픽셀 수다. 이보다 큰 초상화는 직접 그린다. */
+const ENEMY_PORTRAIT_CACHE_MAX_SIZE = 1024;
+/** 미리 그려 둔 기본 제공 적 초상화다. 키는 적·표정·배율·소수 픽셀 위치다. @type {Map<string, {canvas:HTMLCanvasElement, context:CanvasRenderingContext2D, key:(string|null)}>} */
+const enemyPortraitCache = new Map();
+/** 0보다 크면 지금 그리는 초상화가 캐시를 써도 되는 호출이다. 대전·결과 화면처럼 같은 그림을 매 프레임 그리는 곳만 올린다. @type {number} */
+let enemyPortraitCacheRequests = 0;
+
+/**
+ * 같은 자리에 같은 표정으로 매 프레임 그리는 적 초상화를 게임 캔버스에 그린다.
+ * 기본 제공 적의 초상화는 미리 그려 둔 그림을 재사용하고, drawPortrait()를 직접 구현한 외부 적은 예전처럼 매번 그린다.
+ * @param {Enemy} controller 초상화를 그릴 적
+ * @param {number} centerX 초상화 중심 X 좌표
+ * @param {number} centerY 초상화 중심 Y 좌표
+ * @param {number} scale 기본 크기 대비 배율
+ * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+ * @returns {void}
+ */
+function drawSteadyEnemyPortrait(controller, centerX, centerY, scale, expression) {
+    enemyPortraitCacheRequests += 1;
+    try {
+        controller.drawPortrait(context, centerX, centerY, scale, expression);
+    } finally {
+        enemyPortraitCacheRequests -= 1;
+    }
+}
+
+/**
+ * 미리 그려 둔 기본 제공 적 초상화를 옮겨 붙인다. 처음 쓰는 조합이면 오프스크린 캔버스에 한 번 그려 보관한다.
+ * @param {CanvasRenderingContext2D} drawingContext 대상 컨텍스트
+ * @param {number} centerX 초상화 중심 X 좌표
+ * @param {number} centerY 초상화 중심 Y 좌표
+ * @param {number} scale 기본 크기 대비 배율
+ * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+ * @param {string} type 기본 제공 적 클래스 이름
+ * @returns {boolean} 캐시로 그렸으면 true. false면 호출한 쪽이 직접 그려야 한다.
+ */
+function drawCachedCuteEnemyPortrait(drawingContext, centerX, centerY, scale, expression, type) {
+    const transform = getRenderCacheTransform(drawingContext);
+    if (!transform || !(scale > 0)) return false;
+    const deviceX = transform.a * centerX + transform.e;
+    const deviceY = transform.d * centerY + transform.f;
+    // drawCuteEnemyPortrait는 내부 좌표를 scale * 0.8배로 그린다. 테두리 번짐을 위해 2픽셀 여유를 둔다.
+    const radiusX = Math.ceil(ENEMY_PORTRAIT_CACHE_RADIUS * 0.8 * scale * transform.a) + 2;
+    const radiusY = Math.ceil(ENEMY_PORTRAIT_CACHE_RADIUS * 0.8 * scale * transform.d) + 2;
+    if (radiusX * 2 > ENEMY_PORTRAIT_CACHE_MAX_SIZE || radiusY * 2 > ENEMY_PORTRAIT_CACHE_MAX_SIZE) return false;
+    // 그림은 실제 픽셀 격자에 맞춰 두고, 중심의 소수 위치는 그림 안쪽 변환에 남겨 직접 그릴 때와 같은 자리에 놓이게 한다.
+    const left = Math.floor(deviceX) - radiusX;
+    const top = Math.floor(deviceY) - radiusY;
+    const key = `${type}|${expression}|${scale}|${transform.a}|${transform.d}|${deviceX - Math.floor(deviceX)}|${deviceY - Math.floor(deviceY)}`;
+    let layer = enemyPortraitCache.get(key);
+    if (layer) {
+        // 방금 쓴 그림을 맨 뒤로 옮겨 가장 오래 쓰지 않은 그림이 맨 앞에 남게 한다.
+        enemyPortraitCache.delete(key);
+        enemyPortraitCache.set(key, layer);
+    } else {
+        layer = createRenderCacheLayer(radiusX * 2, radiusY * 2);
+        if (!layer) return false;
+        layer.context.setTransform(transform.a, 0, 0, transform.d, transform.e - left, transform.f - top);
+        paintCuteEnemyPortrait(layer.context, centerX, centerY, scale, expression, type);
+        enemyPortraitCache.set(key, layer);
+        if (enemyPortraitCache.size > ENEMY_PORTRAIT_CACHE_LIMIT) enemyPortraitCache.delete(enemyPortraitCache.keys().next().value);
+    }
+    drawRenderCacheLayer(drawingContext, layer.canvas, left, top);
+    return true;
+}
+
+/**
+ * drawCuteEnemyPortrait()의 실제 그리기다. 캐시 여부와 무관하게 초상화 한 장을 도형으로 그린다.
+ * @param {CanvasRenderingContext2D} context 캔버스 2D 컨텍스트
+ * @param {number} centerX 캐릭터 중심 X 좌표
+ * @param {number} centerY 캐릭터 중심 Y 좌표
+ * @param {number} scale 기본 크기 대비 배율
+ * @param {'normal'|'crisis'|'defeated'} expression 표시할 표정
+ * @param {string} type 기본 제공 적 클래스 이름
+ * @returns {void}
+ */
+function paintCuteEnemyPortrait(context, centerX, centerY, scale, expression, type) {
     const style = ENEMY_PORTRAIT_STYLES[type];
     const { hair, light, coat, accent, skin, motif } = style;
     const ink = '#343047';
