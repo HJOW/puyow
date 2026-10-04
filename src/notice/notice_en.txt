@@ -2,20 +2,3 @@ Sound playback is implemented, but the sound files
 cannot be provided directly due to copyright issues.
 Please refer to the following document.
 https://github.com/HJOW/puyow/blob/main/docs/Sound.md
-
-Once you have entered your AI service information on the
-settings screen and the connection test succeeds, you can
-choose "Solomon" as your opponent in battle modes such as
-"Basic Rule" and "Fever Rule" to play against the AI.
-
-However, a slow LLM server takes a long time to respond,
-so the game becomes practically unplayable. Please keep
-that in mind when choosing a server.
-
-If you download the project, run the local Python server,
-and connect to that local server to play the game,
-you can choose "Local AI" in the AI service provider field
-on the settings screen.
-
-This Local AI has almost no delay, so you can choose
-"Solomon" as your opponent and actually play the game.
