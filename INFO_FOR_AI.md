@@ -227,6 +227,13 @@
 - 필드 테마 컨트롤러는 `getFieldThemeController()`가 항상 `game.themeController` 하나만 돌려준다. 구경 대전의 `game.themeController`는 우측 CPU이므로 양쪽 필드가 모두 우측 적의 테마를 쓴다. 필드마다 각자 CPU의 테마를 쓰던 이전 동작으로 되돌리지 않는다.
 - 피버 전용 플레이 영역과 연속 피버는 여전히 적 테마보다 `FEVER_PLAYER_BACKGROUND_COLOR`·`FEVER_BEZEL_BACKGROUND_COLOR`가 우선한다(`usesFeverFieldTheme()`). 피버 배경색은 적과 무관하게 항상 같다.
 
+### 패배 연출의 낙하 깊이 (2026-10-07, BUILDNO 134)
+
+- `DEFEAT_EXTRA_FALL_ROWS`를 5에서 20으로 늘렸다. `drawDefeatAnimation()`은 하단 베젤과 모든 뿌요를 같은 거리로 떨어뜨리며, 최종 낙하 거리는 `HEIGHT - FIELD_TOP + CELL + CELL * DEFEAT_EXTRA_FALL_ROWS` = 1,416px이다. 연출 시간(1,050ms)과 제곱 가속 곡선은 유지한다.
+- 기존 거리(846px)는 숨김 영역 최상단(y=24)의 뿌요를 화면 Y=454에 남겼다. 수정 후 같은 뿌요의 최종 Y는 1,024이므로 25줄 전체가 방해뿌요로 차 있어도 화면 높이(720px)를 충분히 벗어난다. 추가 깊이를 10칸으로만 늘리면 최상단 뿌요가 Y=644에 남을 수 있으므로 20칸을 사용한다.
+- 임시 Playwright 검사로 양쪽 필드 각각 150개의 방해뿌요를 채워 기존 거리의 잔류를 재현하고, 수정된 거리에서는 연출 진행률 90%·100%·150% 모두 뿌요와 하단 베젤의 화면 픽셀이 남지 않음을 확인했다. Chromium·Firefox·WebKit에서 재현/수정 검사 6건과 기존 상단 베젤·연속 피버 패배 판정·렌더링 캐시 회귀 9건, 총 15건이 통과했다. 임시 검사 파일은 확인 후 삭제했다.
+- JS 문법 검사·ESLint·Webpack 빌드·작업 파일의 `git diff --check`를 통과했다. 번들을 다시 생성했으며 BUILDNO는 134, `package.json`·`package-lock.json`의 버전은 `0.3.134`다. 버전값 자체는 테스트하지 않는다.
+
 ### 리플레이
 
 - 설정의 `리플레이 사용`이 켜져 있을 때만 기록한다. 대상은 기본 룰·피버 룰·피버 룰 (시작)·피버 룰 (완화)·2-폭발 대전과 구경 모드의 모든 규칙, 그리고 너랑 나랑 대전이며, 연습·연속 피버·퍼즐뿌요·플레이 방법·시뮬레이터는 기록하지 않는다. 기록기는 `game.replay`에 두므로 결과 화면까지 남고 `closeResultScreen()`에서 게임과 함께 사라진다.
