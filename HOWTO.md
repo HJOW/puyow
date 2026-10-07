@@ -33,8 +33,8 @@
 
 puyow.js 는 CDN으로도 사용할 수 있습니다.
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/HJOW/puyow@0.2/src/css/puyow.css"/>
-<script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@0.2/src/bundle/puyow.bundle.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/HJOW/puyow@0.3/src/css/puyow.css"/>
+<script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@0.3/src/bundle/puyow.bundle.js"></script>
 ```
 
 
