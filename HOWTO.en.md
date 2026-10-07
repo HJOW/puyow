@@ -34,8 +34,8 @@ See [README.md](README.md) for the game introduction, controls, and match rules.
 You can also use `puyow.js` from a CDN.
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/HJOW/puyow@0.2/src/css/puyow.css"/>
-<script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@0.2/src/bundle/puyow.bundle.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/HJOW/puyow@0.3/src/css/puyow.css"/>
+<script src="https://cdn.jsdelivr.net/gh/HJOW/puyow@0.3/src/bundle/puyow.bundle.js"></script>
 ```
 
 ## Library overview
