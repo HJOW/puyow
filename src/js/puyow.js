@@ -22,7 +22,7 @@
 import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 135;
+const BUILDNO = 136;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -944,7 +944,7 @@ let ruleSelectionOpen = false;
 let watchSelectionOpen = false;
 /** 구경 설정에서 선택한 색상 수의 DIFFICULTIES 배열 인덱스다. @type {number} */
 let watchDifficulty = 1;
-/** 구경 설정에서 선택한 대전 규칙이다. @type {'standard'|'fever'|'relaxedFever'} */
+/** 구경 설정에서 선택한 대전 규칙이다. @type {'standard'|'fever'|'relaxedFever'|'twoExplosion'} */
 let watchRule = 'standard';
 /** 구경 설정에서 포커스된 행이다. 0: 색상 수, 1: 모드, 2: 동작. @type {number} */
 let watchSelectionFocus = 0;
@@ -1169,11 +1169,16 @@ const RULE_OPTION_BACKGROUND_COLORS = {
     continuousFever: '#cf4bb0',
     puzzle: '#236a8b'
 };
-/** 구경 설정에서 선택 가능한 규칙 목록이다. @type {{key:'standard'|'fever'|'relaxedFever',label:string,backgroundColor:string}[]} */
+/**
+ * 구경 설정에서 선택 가능한 규칙 목록이다. `isDisabled`가 참이면 잠긴 규칙으로 표시하며 포커스·선택에서 제외한다.
+ * 2-폭발은 본 게임(도장깨기)의 2-폭발과 같은 조건(`isTwoExplosionRuleUnlocked()`)으로 잠금 해제된다.
+ * @type {{key:'standard'|'fever'|'relaxedFever'|'twoExplosion',label:string,backgroundColor:string,isDisabled?:()=>boolean}[]}
+ */
 const WATCH_RULE_OPTIONS = [
     { key: 'standard', label: '기본 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.standard },
     { key: 'fever', label: '피버 룰', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever },
-    { key: 'relaxedFever', label: '피버 룰 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever }
+    { key: 'relaxedFever', label: '피버 룰 (완화)', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.fever },
+    { key: 'twoExplosion', label: '2-폭발', backgroundColor: RULE_OPTION_BACKGROUND_COLORS.twoExplosion, isDisabled: () => !isTwoExplosionRuleUnlocked() }
 ];
 /** 메인 메뉴의 대전·연습 하위 선택지다. @type {{label:string,statusLabel?:string,backgroundColor:string,disabled?:boolean,isDisabled?:()=>boolean,activate?:()=>void}[]} */
 const GAME_RULE_OPTIONS = [
@@ -5157,21 +5162,38 @@ function hasWatchEligibleClear(className) {
     ));
 }
 
-/** 구경 모드에 사용할 수 있는 적 목록을 반환한다. observation 코드 적용 중에는 표시되는 출시 적 중 솔로몬·안드로말리우스·단탈리온만 제외한다. ONNX 추론으로 판단하는 적은 런타임 유무와 무관하게 항상 빠진다. @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean,requiresOnnx:boolean, requiresModel:boolean}[]} 후보 적 목록 */
-function getWatchOpponentCandidates() {
+/** 구경 규칙 선택지가 현재 잠겼는지 판정한다. 2-폭발은 본 게임의 2-폭발 해금과 함께 열린다. @param {{isDisabled?:()=>boolean}} option 구경 규칙 선택지 @returns {boolean} 잠금 여부 */
+function isWatchRuleOptionDisabled(option) {
+    return option.isDisabled?.() === true;
+}
+
+/** 구경 규칙 키가 현재 잠겨 선택할 수 없는지 판정한다. @param {string} ruleKey 구경 규칙 키 @returns {boolean} 잠금 여부 */
+function isWatchRuleLocked(ruleKey) {
+    const option = WATCH_RULE_OPTIONS.find((candidate) => candidate.key === ruleKey);
+    return option ? isWatchRuleOptionDisabled(option) : false;
+}
+
+/**
+ * 구경 모드에 사용할 수 있는 적 목록을 반환한다. observation 코드 적용 중에는 표시되는 출시 적 중 솔로몬·안드로말리우스·단탈리온만 제외한다. ONNX 추론으로 판단하는 적은 런타임 유무와 무관하게 항상 빠진다.
+ * 2-폭발에서는 본 게임과 같이 모델을 쓰는 적(`requiresModel`)도 후보에서 뺀다.
+ * @param {'standard'|'fever'|'relaxedFever'|'twoExplosion'} [rule=watchRule] 구경 규칙
+ * @returns {{createController:()=>Enemy,className:string,classType:string,sortPriority:number,hidden:boolean,notAvail:boolean,requiresOnnx:boolean, requiresModel:boolean}[]} 후보 적 목록
+ */
+function getWatchOpponentCandidates(rule = watchRule) {
     // ONNX 추론으로 판단하는 적은 구경 대전의 선정 대상에서 아예 제외한다.
     const usable = getVisibleOpponents('standard').filter((entry) => !entry.notAvail && !entry.requiresOnnx
-        && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType));
+        && !WATCH_EXCLUDED_OPPONENT_TYPES.has(entry.classType) && isOpponentAllowedInRule(entry, rule));
     if (isObservationCodeApplied()) return usable;
     return usable.filter((entry) => hasWatchEligibleClear(entry.className));
 }
 
 /**
  * 구경 모드 후보 중 종류가 서로 다른 적 두 명을 무작위로 선정한다.
+ * @param {'standard'|'fever'|'relaxedFever'|'twoExplosion'} [rule=watchRule] 구경 규칙
  * @returns {object[]|null} 선정된 두 적 등록 항목
  */
-function selectWatchOpponents() {
-    const candidates = getWatchOpponentCandidates();
+function selectWatchOpponents(rule = watchRule) {
+    const candidates = getWatchOpponentCandidates(rule);
     if (candidates.length < 2) return null;
     const leftIndex = Math.floor(randomFloat() * candidates.length);
     const left = candidates[leftIndex];
@@ -5199,6 +5221,8 @@ function getWatchOpponentEntries(opponentTypes) {
  * @returns {boolean} 시작 성공 여부
  */
 function startWatchGame(playSelectionSound = true, fixedOpponentTypes = null) {
+    // 잠긴 규칙(본 게임에서 해금하기 전의 2-폭발)으로는 대전을 시작하지 않는다.
+    if (isWatchRuleLocked(watchRule)) return false;
     const selectedEntries = getWatchOpponentEntries(fixedOpponentTypes) || selectWatchOpponents();
     if (!selectedEntries) return false;
     if (playSelectionSound) playMenuSelectSound();
@@ -5208,7 +5232,9 @@ function startWatchGame(playSelectionSound = true, fixedOpponentTypes = null) {
     learningEpisodeStarted = false;
     learningPendingTransition = null;
     const difficulty = watchDifficulty;
-    const feverRule = watchRule !== 'standard';
+    // 2-폭발은 기본 룰과 같은 일반 필드 대전이며 폭발 기준만 2개로 달라진다(game.twoExplosion).
+    const twoExplosion = watchRule === 'twoExplosion';
+    const feverRule = watchRule === 'fever' || watchRule === 'relaxedFever';
     const relaxedFever = watchRule === 'relaxedFever';
     const feverLightStart = relaxedFever ? RELAXED_FEVER_LIGHT_STARTS : FEVER_LIGHT_STARTS;
     const colors = DIFFICULTIES[difficulty].colors;
@@ -5236,6 +5262,7 @@ function startWatchGame(playSelectionSound = true, fixedOpponentTypes = null) {
         practice: false,
         continuousFever: false,
         feverRule,
+        twoExplosion,
         fever: null,
         watch: {
             difficulty,
@@ -14575,8 +14602,14 @@ function handleWatchSelectionKey(key) {
         const direction = key === 'arrowleft' ? -1 : 1;
         if (watchSelectionFocus === 0) watchDifficulty = (watchDifficulty + direction + DIFFICULTIES.length) % DIFFICULTIES.length;
         else if (watchSelectionFocus === 1) {
+            // 잠긴 규칙은 건너뛰며 순환한다. 선택 가능한 규칙이 하나뿐이면 그대로 둔다.
             const currentIndex = Math.max(0, WATCH_RULE_OPTIONS.findIndex((option) => option.key === watchRule));
-            watchRule = WATCH_RULE_OPTIONS[(currentIndex + direction + WATCH_RULE_OPTIONS.length) % WATCH_RULE_OPTIONS.length].key;
+            for (let step = 1; step <= WATCH_RULE_OPTIONS.length; step += 1) {
+                const candidate = WATCH_RULE_OPTIONS[((currentIndex + direction * step) % WATCH_RULE_OPTIONS.length + WATCH_RULE_OPTIONS.length) % WATCH_RULE_OPTIONS.length];
+                if (isWatchRuleOptionDisabled(candidate)) continue;
+                watchRule = candidate.key;
+                break;
+            }
         }
         else watchSelectedAction = watchSelectedAction === 0 ? 1 : 0;
     } else if (key === 'enter' || key === ' ') activateWatchSelection();
@@ -14601,12 +14634,19 @@ function drawWatchSelectionOverlay() {
     context.fillText(translate('모드'), WIDTH / 2, 373);
     WATCH_RULE_OPTIONS.forEach((option, index) => {
         const bounds = getWatchRuleButtonBounds(index);
-        const selected = option.key === watchRule;
+        const locked = isWatchRuleOptionDisabled(option);
+        const selected = !locked && option.key === watchRule;
         const focused = watchSelectionFocus === 1 && selected;
-        context.fillStyle = selected ? option.backgroundColor : '#0b202c';
+        // 잠긴 규칙은 본 게임의 잠긴 규칙 버튼처럼 회색 배경과 `잠김` 문구로 표시한다.
+        context.fillStyle = locked ? '#3c4650' : selected ? option.backgroundColor : '#0b202c';
         context.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
-        context.strokeStyle = focused ? '#f7c843' : '#3b6070'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
-        context.fillStyle = '#f5fbfc'; context.font = `18px ${BUTTON_FONT}`; context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + 36);
+        context.strokeStyle = locked ? '#7c8791' : focused ? '#f7c843' : '#3b6070'; context.lineWidth = focused ? 4 : 2; context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        context.fillStyle = locked ? '#c4cbd0' : '#f5fbfc'; context.font = `18px ${BUTTON_FONT}`;
+        context.fillText(translate(option.label), bounds.x + bounds.width / 2, bounds.y + (locked ? 26 : 36), bounds.width - 16);
+        if (locked) {
+            context.fillStyle = '#f0c674'; context.font = `14px ${BUTTON_FONT}`;
+            context.fillText(translate('잠김'), bounds.x + bounds.width / 2, bounds.y + 47);
+        }
     });
     ['시작', '취소'].forEach((label, index) => {
         const bounds = getWatchActionButtonBounds(index);
@@ -17104,6 +17144,8 @@ function handleCanvasClickCore(event) {
             return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
         });
         if (ruleIndex >= 0) {
+            // 잠긴 규칙은 마우스로도 선택할 수 없다.
+            if (isWatchRuleOptionDisabled(WATCH_RULE_OPTIONS[ruleIndex])) return;
             playMenuSelectSound();
             watchRule = WATCH_RULE_OPTIONS[ruleIndex].key;
             watchSelectionFocus = 1;
@@ -18335,7 +18377,7 @@ function registerWebMcpTools() {
                 'Connect four or more same-color puyos vertically or horizontally to clear them; the 2-Explosion rule clears groups of two or more. Garbage puyos next to a clear are removed too; a hard garbage puyo becomes normal garbage when hit once and breaks when hit twice in the same step. ATTACK is the score divided by the current margin rate, multiplied by the time-progress multiplier (1 until 360 seconds, then doubling every 60 seconds up to 4096). In FEVER, each explosion offsets FEVER DAMAGE first, then an opponent ATTACK aimed at the current FEVER round, then reserved normal DAMAGE, then other opponent ATTACK. Remaining ATTACK becomes opponent DAMAGE after the chain finishes.',
                 'A player loses when cell (2, 11) is filled. FEVER rules and continuous fever also use cell (3, 11).',
                 'Keyboard: Left and Right move, Z rotates one way while X and Up rotate the other way, holding Down drops faster, and Escape pauses. Gamepads and an on-screen virtual joystick with Z, X, and ESC buttons also work. The "Use virtual controller" setting is Auto by default: Auto shows the virtual controller at normal size only on a touchscreen device with no gamepad connected, and hides it when there is no touchscreen or whenever a gamepad is connected. None, Normal, and Large force it off or on at that size.',
-                'Modes: the standard rule, FEVER rule, FEVER rule (start), FEVER rule (relaxed), and 2-Explosion rule are matches against a CPU opponent. The 2-Explosion rule unlocks after beating Gremory on Hard or Extreme under the standard or FEVER rule, keeps separate opponent progress, and excludes model opponents (including Solomon) and model training. In standard, together, and Puzzle Puyo modes, an all-clear grants a ticket that adds 2100 points and 30 ATTACK to the next colored-puyo explosion; practice adds 2100 points immediately instead. FEVER rules do not create a ticket: an all-clear contributes to the FEVER target/time rules. Each FEVER player has a separate field and timer; FEVER rule (start) begins both players inside FEVER with 60 seconds. A FEVER placement whose timer has expired finishes FEVER before reserved normal DAMAGE is dropped. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result. Online play is a two-human match on separate computers through the configured game server; it is available only when that server reports online play enabled.',
+                'Modes: the standard rule, FEVER rule, FEVER rule (start), FEVER rule (relaxed), and 2-Explosion rule are matches against a CPU opponent. The 2-Explosion rule unlocks after beating Gremory on Hard or Extreme under the standard or FEVER rule, keeps separate opponent progress, and excludes model opponents (including Solomon) and model training. In standard, together, and Puzzle Puyo modes, an all-clear grants a ticket that adds 2100 points and 30 ATTACK to the next colored-puyo explosion; practice adds 2100 points immediately instead. FEVER rules do not create a ticket: an all-clear contributes to the FEVER target/time rules. Each FEVER player has a separate field and timer; FEVER rule (start) begins both players inside FEVER with 60 seconds. A FEVER placement whose timer has expired finishes FEVER before reserved normal DAMAGE is dropped. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result; its rule choices are the standard, FEVER, FEVER (relaxed), and 2-Explosion rules, and the 2-Explosion watch rule stays locked until the 2-Explosion rule is unlocked in the main game (it never uses model opponents). Watch matches do not unlock opponents or gallery items. Online play is a two-human match on separate computers through the configured game server; it is available only when that server reports online play enabled.',
                 'Leaderboard: the top 10 scores are kept only in this browser (localStorage key puyow_leaderboard) with the player name and the date and time when each score was recorded, and are viewed on the separate leaderboard.html page, which the Leaderboard button at the bottom left of the main menu opens in the same tab. Standard, FEVER, and FEVER (start) matches record the final score only when the human player wins, separately for each AI difficulty, color count, and opponent; matches against Solomon are never recorded. Practice and continuous fever record the final score separately for each color count only when the player loses (quitting from the pause menu is not recorded). Together (offline and online), watch mode, Puzzle Puyo, the tutorial, the simulator, and replay playback are never recorded.',
                 'Choosing Together mode in the main menu first opens a selection of Offline Play, Online Play, and Cancel (together_mode_select). Offline Play opens the offline together guide (together_guide), where the rule and color count are chosen. Online Play opens login and signup, then the lobby and room screens; it is hidden when the configured server does not provide online play.',
                 'Offline together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',

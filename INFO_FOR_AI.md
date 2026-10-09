@@ -113,7 +113,7 @@
 | 연습 | 단독 플레이 배치. 오른쪽은 연습 상대이며 일반 뿌요를 받지 않는다. |
 | 연속 피버 | 단독 플레이 피버 스테이지. 목표 5연쇄·60초로 시작하며 두 패배 칸을 쓴다. |
 | 퍼즐뿌요 | 항상 5색, `PuzzlePuyoStage` 기반 단독 스테이지다. 오른쪽 영역은 적 필드가 아니라 목표/턴 상태 표시다. |
-| 구경 | 선택 가능한 두 CPU가 자동 대전한다. 플레이 조작은 막고 ESC 일시정지만 허용한다. 결과 뒤 5초면 다음 대전을 자동 시작한다. |
+| 구경 | 선택 가능한 두 CPU가 자동 대전한다. 플레이 조작은 막고 ESC 일시정지만 허용한다. 결과 뒤 5초면 다음 대전을 자동 시작한다. 규칙은 기본 룰·피버 룰·피버 룰 (완화)·2-폭발이며, 2-폭발은 본 게임의 2-폭발이 해금돼야 열린다(「구경 모드와 진행도」 참고). |
 | 너랑 나랑 | 메인 메뉴에서 오프라인 플레이·온라인 플레이를 고른다. 온라인 플레이는 설정된 게임 서버가 사용 가능하다고 응답할 때만 표시된다. 오프라인은 한 컴퓨터에서, 온라인은 서로 다른 컴퓨터에서 두 사람이 대전한다. 규칙은 기본 룰·피버 룰·피버 룰 (시작)과 같고 진행도·GOLD·AI 학습은 모두 대상이 아니다. |
 
 ### 너랑 나랑 (한 컴퓨터 2인 대전)
@@ -170,6 +170,9 @@
 - ONNX 추론으로 판단하는 적(`requiresOnnx`)은 구경 대전에 **아예 나오지 않는다**. `getWatchOpponentCandidates()`가 ONNX 런타임 사용 가능 여부와 무관하게 이들을 후보에서 모두 빼므로, `selectWatchOpponents()`는 종류가 다른 두 적만 고르면 된다. 적 선택 화면과 갤러리는 이 제한을 받지 않는다(그쪽 규칙은 「브라우저 ONNX 추론 적」 절을 따른다). 구경 대전에는 적 선택 화면이 없어 모델 로딩 실패를 안내할 곳이 마땅치 않다는 점도 이 규칙의 이유다.
 - `puyow_code`에 `observation`이 있으면 저장 진행도는 바꾸지 않고 적 선택 화면의 진행도 잠금만 해제한다. `hidden` 및 출시 예정(`notAvail`) 적은 기존처럼 잠긴 채로 유지한다. 같은 코드가 있으면 구경 메뉴도 즉시 열리며, 구경 후보는 숨김·출시 예정 적과 `requiresOnnx` 적, `Solomon`, `Andromalius`, `Dantalion`을 제외한 모든 출시 적이다.
 - 구경 대전은 적 잠금 해제와 갤러리 잠금 해제를 진행시키지 않는다.
+- 구경 규칙 선택지는 `WATCH_RULE_OPTIONS`(기본 룰·피버 룰·피버 룰 (완화)·2-폭발) 순서이며, 구경 설정 화면 「모드」 행에 한 줄로 놓인다. 피버 룰 (시작)은 구경에 없다. 선택지의 `isDisabled`가 참이면 잠긴 규칙이다. 구경 2-폭발의 잠금은 본 게임과 같은 `isTwoExplosionRuleUnlocked()`를 직접 호출하므로(기본·피버 룰의 어려움·극한에서 그레모리 승리), 본 게임에서 2-폭발이 열리는 순간 구경에서도 설정 화면을 다시 열 필요 없이 함께 열린다. observation 코드는 본 게임과 마찬가지로 이 잠금을 풀지 않는다. 잠긴 버튼은 회색 배경과 이름 아래 `잠김` 문구로 그리고, 좌우 방향키 순환·마우스 클릭에서 모두 제외한다. 잠금 판정은 `isWatchRuleOptionDisabled()`·`isWatchRuleLocked()`로 하며, `startWatchGame()`도 잠긴 규칙이면 시작하지 않는다.
+- 구경 2-폭발 대전은 `startWatchGame()`이 `game.twoExplosion = true`(`game.feverRule`는 false)와 `game.watch.rule = 'twoExplosion'`을 함께 둔다. 폭발 기준(`getGameExplosionCount()`)·AI의 폭발 기준·`getGameState()`의 `rule: 'two_explosion'`·`twoExplosion`·`explosionCount`는 본 게임의 2-폭발과 같은 경로이고 `mode`는 `watch`다. 구경이므로 진행도·GOLD·갤러리·리더보드·학습 전송은 기존 구경 규칙대로 모두 건드리지 않는다. 양쪽 CPU 선정·자동 다음 대전(5초)·배경음악(우측 CPU의 테마)·ESC 일시정지와 다시하기(좌·우 적 유지)도 다른 구경 규칙과 같다. 리플레이는 `meta.rule: 'twoExplosion'`·`meta.watch: true`로 기록하고 재생도 `game.twoExplosion`을 복원한다.
+- 구경 후보 선정은 `getWatchOpponentCandidates(rule = watchRule)`·`selectWatchOpponents(rule = watchRule)`가 규칙을 받는다. 2-폭발이면 본 게임과 같은 `isOpponentAllowedInRule()`로 모델을 쓰는 적(`requiresModel`, 즉 ONNX 적·솔로몬 하위 클래스·`requiresModel = true`인 외부 적)을 뺀다. 다른 규칙의 후보는 바뀌지 않는다. 후보가 되는 승리 기록 기준(`hasWatchEligibleClear()`: 기본·피버 룰 보통 이상)도 다른 구경 규칙과 같고 2-폭발 진행도(`twoExplosionClearListByDifficulty`)는 쓰지 않는다.
 - 일반 대전 승리 기록은 `clearListByDifficulty`(기본), `feverClearListByDifficulty`(피버), `feverStartClearListByDifficulty`(피버 룰 (시작)), `relaxedFeverClearListByDifficulty`(피버 룰 (완화)), `twoExplosionClearListByDifficulty`(2-폭발)에 난이도별로 저장된다. 각 룰의 적 잠금은 해당 저장소만 사용한다. `clearList`는 이전 기본 룰 호환용 전체 목록이므로 신규 난이도 판단 근거로 사용하지 않는다. 2-폭발 승리는 `clearList`에도 섞지 않는다.
 
 ## UI·입력·결과 화면
@@ -558,6 +561,8 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 | `test01_enemy.spec.js` | 기본 제공 적 AI의 판단, 다수 탐색 Worker, 패배 위치 회피, 적 테마, 진행도 저장, 구경 모드 |
 | `test01_fever.spec.js` | 피버 룰·피버 룰 (시작)·연속 피버와 그에 딸린 공격·싹쓸이 정산 |
 | `test01_relaxed_fever.spec.js` | 피버 룰 (완화)의 잠금·키보드/마우스 선택·전등 수·독립 적 진행도·갤러리·리더보드·리플레이 |
+| `test01_two_explosion.spec.js` | 도장깨기 2-폭발의 잠금·해금 입력, 독립 진행도·GOLD·리더보드·리플레이, 2개 기준 AI·Worker 탐색 |
+| `test01_two_explosion_watch.spec.js` | 구경 모드 2-폭발의 잠금 표시·키보드/마우스 제외, 본 게임 해금 조건과의 일치, 2개 폭발 기준 대전·모델 적 제외·진행도 불변·다시하기·자동 재시작·리플레이 복원 |
 | `test01_fever_damage.spec.js` | 연쇄 시작 시 상대 피버 상태에 따른 피해 귀속·지연 에너지 정산·피버 종료 후 낙하 |
 | `test01_puzzle.spec.js` | 퍼즐뿌요 스테이지 선택·승리 조건·결과 화면 |
 | `test01_simulator.spec.js` | 시뮬레이터와 점수·연결 보너스 계산 |
@@ -1565,6 +1570,18 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - 테스트: `tests/test01_touch_input.spec.js`(11건)가 위 표의 조합별 표시·입력 방식, 저장값 보정, 각 화면의 prompt 입력·공란 취소·최대 길이·미리 채움, 키보드·게임패드 조작, prompt 뒤 설정 화면의 방향키·Enter·마우스, 텍스트 항목 밖 클릭 시 입력 모드 종료를 확인한다. `test01_menu`의 가상 컨트롤러 선택 테스트는 네 선택지 좌표에 맞춰 고치고 자동 선택을 더했다. 공통 준비 코드가 터치스크린 없음을 기준선으로 고정하므로, 터치스크린 기기를 다루는 테스트는 `page.reload()` 뒤에 `window.setTestTouchPoints(1)`을 다시 불러야 한다(초기화 스크립트가 새로 고칠 때마다 0으로 되돌린다). 공용 `enterMainMenu()`는 이름 입력 대화상자에 글자를 직접 치므로 터치스크린을 켜기 전에 부르거나 이름을 미리 저장해 둔다.
 - `puyow.js` BUILDNO는 135, `package.json`·`package-lock.json` 버전은 `0.4.135`이며 번들을 다시 생성했다. 버전값 자체는 테스트하지 않는다.
 - 검증: JS 문법 검사·ESLint·Webpack 빌드·작업 파일의 `git diff --check` 통과. Chromium 전체 433건 통과. 새 테스트와 `test01_menu`·`test01_core`·`test01_together`는 Firefox·WebKit에서도 232건 모두 통과했다(그 밖의 파일은 Firefox·WebKit에서 돌리지 않았다). 텍스트 항목 밖 클릭 시 입력 모드를 끝내는 수정은 그 두 줄을 뺀 번들에서 해당 테스트가 실패하는 것을 확인했다. 설정 화면(한국어·영어·독일어)과 터치스크린 방식의 이름 입력·텍스트 대화상자는 화면 캡처로도 확인했다. **터치스크린과 prompt는 `navigator.maxTouchPoints`와 `window.prompt`를 바꿔 끼운 모의 환경으로만 검증했고, 실제 휴대폰·태블릿 브라우저에서는 확인하지 않았다.**
+
+### 구경 모드 2-폭발 룰 (2026-10-09, BUILDNO 136)
+
+- 사용자 요청(`TODO.md`): 구경 설정 화면의 「모드」에 `2-폭발`을 추가한다. 본 게임과 같은 룰이며, 잠긴 상태로 표시하다가 본 게임에서 2-폭발이 해금되면 함께 열린다. 양쪽 CPU 선정·배경음악·결과 5초 뒤 자동 다음 대전·구경의 적/갤러리 해금 불가는 다른 구경 룰과 같다.
+- 구현은 `WATCH_RULE_OPTIONS`에 `twoExplosion` 선택지(`isDisabled: () => !isTwoExplosionRuleUnlocked()`)를 더하고, 잠금 판정을 `isWatchRuleOptionDisabled()`·`isWatchRuleLocked()`로 묶었다. 상세 계약은 「구경 모드와 진행도」 절에 옮겼다. 요점은 아래와 같다.
+  - 좌우 방향키는 잠긴 규칙을 건너뛰어 순환한다. 마우스는 잠긴 버튼을 무시한다(포커스·소리·규칙 변경 없음). `startWatchGame()`도 잠긴 규칙이면 `false`를 돌려준다. 잠긴 버튼은 본 게임의 잠긴 버튼과 같은 색(`#3c4650` 배경, `#7c8791` 테두리)에 이름 아래 `잠김`을 `#f0c674`로 그린다. 버튼 네 개의 폭은 805px라 가로 1280px 안에서 기존 크기(190×58)를 유지한다.
+  - `startWatchGame()`이 `game.twoExplosion = true`·`game.feverRule = false`·`game.watch.rule = 'twoExplosion'`을 둔다. `feverRule`은 이전의 `watchRule !== 'standard'`에서 `fever`·`relaxedFever`만 참이 되도록 고쳤다(그렇지 않으면 2-폭발이 피버 룰로 진행된다). 그 밖의 2-폭발 처리(폭발 기준 2·AI 탐색·`getGameState()`·리플레이 복원·다시하기)는 본 게임에서 이미 `game.twoExplosion`을 따라가므로 추가 수정 없이 맞는다.
+  - 후보 적은 `getWatchOpponentCandidates(rule)`이 2-폭발에서 `isOpponentAllowedInRule()`로 `requiresModel` 적을 뺀다. WebMCP `manual`의 구경 설명에 규칙 선택지와 2-폭발 잠금·모델 적 제외를 적었고, `getGameState()`·화면 이름·스키마는 이미 `two_explosion`·`twoExplosion`·`explosionCount`·`watch_select`를 담고 있어 바꾸지 않았다.
+- 구경 규칙 선택지가 네 개가 되었으므로, 구경 설정에서 규칙 행의 오른쪽 방향키 횟수에 기대는 테스트는 `기본 → 피버 → 완화 → (잠긴 2-폭발 건너뜀) → 기본`, 해금 시에는 `… → 2-폭발 → 기본` 순환을 기준으로 한다. 기존 테스트는 오른쪽 한두 번(피버·완화)만 쓰므로 영향이 없었다.
+- 테스트: `tests/test01_two_explosion_watch.spec.js`(3건)가 잠금 표시(픽셀 색·`잠김` 문구)·방향키 순환 건너뜀·잠긴 버튼 마우스 무시, 본 게임 해금 조건 표 10가지와 구경 잠금의 일치·열려 있던 설정 화면의 즉시 해금·마우스 선택, 실제 구경 대전(`mode: watch`·`rule: two_explosion`·`explosionCount: 2`, 모델 적이 후보에서 빠지고 다른 구경 규칙의 후보에는 남음, 두 개씩 이어진 뿌요가 실제 2연쇄로 터짐, 일시정지 다시하기의 룰·적 유지, 결과 뒤 진행도·GOLD·갤러리 불변, 5초 뒤 같은 룰의 자동 재시작, 구경 리플레이 `meta.rule: 'twoExplosion'` 기록과 재생 복원)를 확인한다. 비공개 상태 접근자는 파일 안의 `installFixture()`가 번들 응답에만 삽입한다. `test01_core.spec.js`의 WebMCP 검사에 구경 2-폭발 안내 문구를 더했다. 구경 설정 화면(잠김·해금 두 상태)은 화면 캡처로 직접 확인했다.
+- `puyow.js` BUILDNO는 136, `package.json`·`package-lock.json` 버전은 `0.4.136`이며 번들을 다시 생성했다. 버전값 자체는 테스트하지 않는다.
+- 검증: JS 문법 검사·ESLint·Webpack 빌드·작업 파일의 `git diff --check` 통과. Chromium에서 `test01_enemy`·`test01_menu`·`test01_fever_damage`·`test01_relaxed_fever`·`test01_replay`·`test01_two_explosion`·`test01_core`·새 테스트 197건이 모두 통과했고(`test01_core`는 매뉴얼 검사를 더한 뒤 42건을 다시 확인), 새 테스트 3건은 Firefox·WebKit에서도 6건 통과했다. 그 밖의 파일과 Firefox·WebKit 전체 실행은 하지 않았다.
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.
