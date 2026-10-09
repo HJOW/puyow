@@ -24,6 +24,21 @@ async function installMockGamepad(page) {
         })),
       };
     };
+    // 게임패드를 뽑은 상태로 되돌린다.
+    window.clearTestGamepad = () => { gamepad = null; };
+    // 가상 컨트롤러 기본값 '자동'은 터치스크린 유무로 표시 여부와 텍스트 입력 방식(prompt)을 정한다.
+    // 테스트 PC에 터치스크린이 있어도 결과가 달라지지 않도록 기준선을 "터치스크린 없음"으로 고정하고,
+    // 터치스크린 기기를 확인하는 테스트만 setTestTouchPoints(1)로 바꾼다.
+    let touchPoints = 0;
+    Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, get: () => touchPoints });
+    window.setTestTouchPoints = (count) => { touchPoints = count; };
+    // 웹표준 prompt 호출을 기록하고 준비해 둔 응답을 차례로 돌려준다. 응답이 없으면 취소(null)다.
+    window.testPromptCalls = [];
+    window.testPromptResponses = [];
+    window.prompt = (message, defaultValue) => {
+      window.testPromptCalls.push({ message: String(message), defaultValue: defaultValue === undefined ? null : String(defaultValue) });
+      return window.testPromptResponses.length ? window.testPromptResponses.shift() : null;
+    };
     window.testAudioInstances = [];
     window.Audio = class TestAudio {
       constructor(src) {

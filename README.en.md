@@ -50,6 +50,18 @@ With two gamepads connected, the first one is 1P and the second is 2P. The virtu
 
 On the pause screen, use the arrow keys to choose `Resume`, `Restart`, or `Quit`, then press `Enter`. `Restart` creates a fresh game with the same mode and settings and begins with a three-second countdown. On the game-over screen, click the `Quit` button in the center, or press `Enter` or `ESC` to return to the opponent selection screen.
 
+### Touchscreens and the Virtual Controller
+
+`Use virtual controller` on the settings screen offers `Auto`, `None`, `Normal`, and `Large`; the default is `Auto`. `Auto` adapts to the device as follows.
+
+| Device | Virtual controller during a game | Text input |
+| --- | --- | --- |
+| No touchscreen and no gamepad (PC) | Hidden | Typed directly on the game screen with the keyboard |
+| A gamepad is connected | Hidden | The browser's input dialog if there is a touchscreen, otherwise typed directly with the keyboard |
+| A touchscreen without a gamepad (phone) | Shown at normal size | The browser's input dialog |
+
+On devices that use the browser's input dialog, tapping a text box such as the name, a settings field, or the code box (or pressing `Enter` while it is focused) opens the browser's own input dialog. When you finish, you return to the game screen with your text in that box; entering nothing counts as cancelling. Choose `Large` for a bigger virtual controller, or `None` to keep the previous behavior on a PC that has a touchscreen.
+
 ## Game Rules
 
 - Each player plays on a field that is 6 cells wide and 12 cells high.

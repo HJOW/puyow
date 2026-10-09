@@ -475,6 +475,9 @@ test('WebMCP 도구 스키마는 너랑 나랑·피버 룰 (시작)·리플레�
   expect(schema.manual).toContain('Online play');
   expect(schema.manual).toContain('reserved normal DAMAGE');
   expect(schema.manual).toContain('all-clear grants a ticket');
+  // 가상 컨트롤러 자동 선택과 터치스크린 기기의 prompt 텍스트 입력 안내(BUILDNO 135)다.
+  expect(schema.manual).toContain('Auto by default');
+  expect(schema.manual).toContain('native prompt()');
   expect(schema.manual).not.toContain('Online Play is not available yet');
   expect(schema.nowScreenDescription).toContain('online login');
   expect(schema.screenAnnotations).toEqual({ readOnlyHint: true });

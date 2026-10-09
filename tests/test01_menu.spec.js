@@ -867,7 +867,7 @@ test('그래픽 설정은 키보드와 마우스로 저장되며 캔버스 출�
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.graphicsQuality)).toBe('high');
 });
 
-test('가상 컨트롤러 크기는 이전 저장값을 호환하고 키보드와 마우스로 없음·보통·크게를 선택한다', async ({ page }) => {
+test('가상 컨트롤러 크기는 이전 저장값을 호환하고 키보드와 마우스로 자동·없음·보통·크게를 선택한다', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem('puyow_store', JSON.stringify({ clearList: [], settings: { virtualController: true } }));
   });
@@ -888,7 +888,29 @@ test('가상 컨트롤러 크기는 이전 저장값을 호환하고 키보드�
   await page.reload();
   await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
   await openSettings(page);
+  // 선택지는 자동(550~644)·없음(652~746)·보통(754~848)·크게(856~950) 순서로 한 줄에 놓인다.
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 700, y: 214 } });
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.virtualController)).toBe('none');
+
+  // 없음에서 왼쪽 방향키를 누르면 맨 앞의 자동이 선택된다.
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  for (let index = 0; index < 4; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowLeft');
+  for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.virtualController)).toBe('auto');
+
+  // 마우스로 보통을 골랐다가 자동을 다시 고를 수 있고, Enter는 다음 선택지(없음)로 넘긴다.
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
+  await openSettings(page);
+  await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 800, y: 214 } });
   await page.locator('[data-puyow-canvas="2d"]').click({ position: { x: 595, y: 214 } });
+  await page.keyboard.press('Enter');
   for (let index = 0; index < 7; index += 1) await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('puyow_store')).settings.virtualController)).toBe('none');

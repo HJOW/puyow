@@ -22,7 +22,7 @@
 import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 134;
+const BUILDNO = 135;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -297,12 +297,21 @@ const DEFAULT_PLAYER_NAME = 'PLAYER 1';
  */
 // eslint-disable-next-line no-control-regex -- 이름을 운영체제 파일명에도 안전하게 쓸 수 있도록 제어 문자를 함께 거부한다.
 const PLAYER_NAME_FORBIDDEN_PATTERN = /[\\/:*?"<>|'!.\u0000-\u001F\u007F]/u;
-/** 가상 컨트롤러 표시 크기 선택지다. 기존 true/false 저장값은 normal/none으로 이관한다. @type {{key:'none'|'normal'|'large', label:string}[]} */
+/**
+ * 가상 컨트롤러 선택지다. auto는 터치스크린·게임패드 유무를 보고 표시 여부를 정하고, 나머지는 표시 크기를 고정한다.
+ * 기존 true/false 저장값은 normal/none으로 이관한다.
+ * @type {{key:'auto'|'none'|'normal'|'large', label:string}[]}
+ */
 const VIRTUAL_CONTROLLER_OPTIONS = [
+    { key: 'auto', label: '자동' },
     { key: 'none', label: '없음' },
     { key: 'normal', label: '보통' },
     { key: 'large', label: '크게' }
 ];
+/** 저장값이 없는 새 설정에 쓰는 가상 컨트롤러 기본 선택지다. @type {'auto'} */
+const DEFAULT_VIRTUAL_CONTROLLER_OPTION = 'auto';
+/** 온라인 로그인·가입 입력칸에 넣을 수 있는 최대 글자 수다. 서버 규칙의 최대 길이와 같다. @type {number} */
+const ONLINE_FORM_FIELD_MAX_LENGTH = 30;
 /** AI API URL로 허용할 최대 글자 수다. */
 const AI_API_URL_MAX_LENGTH = 200;
 /** API 테스트 응답에 요구할 최소 JSON Schema다. @type {object} */
@@ -552,6 +561,13 @@ Object.assign(stringTable.zh, { '언어': '语言' });
 Object.assign(stringTable.de, { '언어': 'Sprache' });
 Object.assign(stringTable.fr, { '언어': 'Langue' });
 
+// 가상 컨트롤러 선택지 "자동"이다. 네 선택지가 한 줄에 들어가도록 좁은 버튼에 맞는 짧은 표기를 쓴다.
+Object.assign(stringTable.en, { '자동': 'Auto' });
+Object.assign(stringTable.ja, { '자동': '自動' });
+Object.assign(stringTable.zh, { '자동': '自动' });
+Object.assign(stringTable.de, { '자동': 'Auto' });
+Object.assign(stringTable.fr, { '자동': 'Auto' });
+
 Object.assign(stringTable.en, { '피버 룰 (시작)': 'FEVER Rules (Start)' });
 Object.assign(stringTable.ja, { '피버 룰 (시작)': 'FEVER ルール (開始)' });
 Object.assign(stringTable.zh, { '피버 룰 (시작)': 'FEVER 规则（开始）' });
@@ -769,7 +785,7 @@ let settingsEditing = false;
 let settingsCursor = 0;
 /** 설정 텍스트 입력의 선택 시작 위치다. 선택이 없으면 null이다. @type {number|null} */
 let settingsSelectionAnchor = null;
-/** 저장된 이름이 없거나 사용할 수 없는 경우 강제로 표시할 이름 입력 대화상자다. @type {{value:string,cursor:number,error:string|null}|null} */
+/** 저장된 이름이 없거나 사용할 수 없는 경우 강제로 표시할 이름 입력 대화상자다. focus는 prompt로 입력받는 터치스크린 기기에서만 쓰며 0=입력란, 1=확인이다. @type {{value:string,cursor:number,error:string|null,focus:number}|null} */
 let playerNamePrompt = null;
 /** 저장소의 이름이 필수 입력 조건을 충족하는지 여부다. @type {boolean} */
 let playerNameSetupRequired = false;
@@ -1089,6 +1105,8 @@ let virtualHorizontalHoldElapsed = 0;
 let virtualHorizontalRepeatElapsed = 0;
 /** Gamepad API의 스틱 입력을 방향 입력으로 판단하는 최소 절댓값이다. @type {number} */
 const GAMEPAD_STICK_DEAD_ZONE = 0.5;
+/** 가장 최근 게임패드 조회에서 연결된 게임패드가 하나라도 있었는지 여부다. 가상 컨트롤러 자동 표시 판단에 쓴다. @type {boolean} */
+let gamepadConnected = false;
 /** 게임패드에서 현재 누르고 있는 방향키다. 키보드 입력과 별도로 해제하기 위해 플레이어별로 보관한다. @type {Set<string>[]} */
 let gamepadDirectionKeys = [new Set(), new Set()];
 /** 게임패드의 한 번 누름 동작 버튼 상태다. "너랑 나랑"에서는 두 번째 게임패드가 1번 자리를 사용한다. @type {{z:boolean,x:boolean,enter:boolean,escape:boolean}[]} */
@@ -2347,6 +2365,29 @@ function drawOnlineResultPanel(centerY) {
  */
 
 /**
+ * 로그인·회원가입 화면의 입력칸 하나에 포커스를 두고 입력을 시작한다.
+ * 터치스크린 기기에서는 웹표준 prompt로 받아 입력칸에 넣고, 그 밖에는 캔버스 편집 상태로 들어간다.
+ * @param {number} fieldIndex 입력칸 순번
+ * @returns {void}
+ */
+function beginOnlineFormFieldInput(fieldIndex) {
+    const field = onlineForm.fields[fieldIndex];
+    onlineForm.focus = fieldIndex;
+    if (!shouldUseNativeTextPrompt()) {
+        onlineForm.editing = true;
+        onlineForm.cursor = Array.from(field.value).length;
+        return;
+    }
+    onlineForm.editing = false;
+    // 비밀번호는 화면에서도 가려 표시하므로 prompt에 기존 값을 미리 채우지 않는다.
+    const input = requestNativeTextPrompt(translate(field.label), field.masked ? '' : field.value);
+    if (input === null) return;
+    field.value = Array.from(input).slice(0, ONLINE_FORM_FIELD_MAX_LENGTH).join('');
+    onlineForm.cursor = Array.from(field.value).length;
+    onlineForm.error = null;
+}
+
+/**
  * 로그인·회원가입 화면에서 포커스된 항목을 실행한다.
  * @returns {void}
  */
@@ -2355,8 +2396,7 @@ function activateOnlineFormFocus() {
     const fieldCount = onlineForm.fields.length;
     if (onlineForm.focus < fieldCount) {
         // 입력칸에서 엔터를 누르면 편집을 시작한다.
-        onlineForm.editing = true;
-        onlineForm.cursor = Array.from(onlineForm.fields[onlineForm.focus].value).length;
+        beginOnlineFormFieldInput(onlineForm.focus);
         return;
     }
     const button = onlineForm.buttons[onlineForm.focus - fieldCount];
@@ -2412,7 +2452,7 @@ function handleOnlineFormKeydown(event, key) {
             return;
         }
         // 아이디·닉네임·비밀번호 모두 한 글자 키 입력만 받는다. 길이 상한은 규칙의 최대 길이와 같다.
-        if (!event.ctrlKey && !event.altKey && event.key.length === 1 && characters.length < 30) {
+        if (!event.ctrlKey && !event.altKey && event.key.length === 1 && characters.length < ONLINE_FORM_FIELD_MAX_LENGTH) {
             characters.splice(onlineForm.cursor, 0, event.key);
             field.value = characters.join('');
             onlineForm.cursor += 1;
@@ -2451,9 +2491,7 @@ function handleOnlineFormClick(x, y) {
         return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
     });
     if (fieldIndex >= 0) {
-        onlineForm.focus = fieldIndex;
-        onlineForm.editing = true;
-        onlineForm.cursor = Array.from(onlineForm.fields[fieldIndex].value).length;
+        beginOnlineFormFieldInput(fieldIndex);
         return;
     }
     const buttonIndex = onlineForm.buttons.findIndex((button, index) => {
@@ -2780,7 +2818,7 @@ function createInitialStore() {
         puzzleGoldClearStages: [],
         puzzleGoldStarStages: [],
         gold: 0,
-        settings: { playerName: DEFAULT_PLAYER_NAME, language: detectSystemLanguageCode(), musicVolume: 100, effectsVolume: 100, virtualController: 'none', graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, useReplayFeature: false, reverseLearning: false, soundDataURL: '', ...createDefaultAiSettings() },
+        settings: { playerName: DEFAULT_PLAYER_NAME, language: detectSystemLanguageCode(), musicVolume: 100, effectsVolume: 100, virtualController: DEFAULT_VIRTUAL_CONTROLLER_OPTION, graphicsQuality: DEFAULT_GRAPHICS_QUALITY, landscapeOrientationLocked: false, useReplayFeature: false, reverseLearning: false, soundDataURL: '', ...createDefaultAiSettings() },
         muted: false,
         /** ONNX 추론 적 대전 전 불안정 안내에서 한 번이라도 `계속`을 골랐는지 여부다. */
         onnxWarningAcknowledged: false
@@ -2896,11 +2934,73 @@ function getGraphicsQualityOption(quality) {
         || GRAPHICS_QUALITY_OPTIONS.find((option) => option.key === DEFAULT_GRAPHICS_QUALITY);
 }
 
-/** 저장된 가상 컨트롤러 크기값을 유효한 선택지로 정규화한다. @param {unknown} value 저장값 @returns {'none'|'normal'|'large'} */
+/**
+ * 저장된 가상 컨트롤러 선택값을 유효한 선택지로 정규화한다.
+ * 값이 없거나 알 수 없는 값이면 새 설정의 기본값인 자동으로 보정한다. 이미 저장된 없음·보통·크게는 그대로 둔다.
+ * @param {unknown} value 저장값 @returns {'auto'|'none'|'normal'|'large'}
+ */
 function getVirtualControllerOption(value) {
     if (value === true) return 'normal';
     if (value === false) return 'none';
-    return VIRTUAL_CONTROLLER_OPTIONS.some((option) => option.key === value) ? value : 'none';
+    return VIRTUAL_CONTROLLER_OPTIONS.some((option) => option.key === value) ? value : DEFAULT_VIRTUAL_CONTROLLER_OPTION;
+}
+
+/**
+ * 터치스크린이 있는 기기인지 확인한다. 가상 컨트롤러 자동 표시와 텍스트 입력 방식(prompt)을 정하는 기준이다.
+ * @returns {boolean} 터치스크린 존재 여부
+ */
+function hasTouchScreen() {
+    try {
+        if (typeof navigator === 'undefined') return false;
+        if (typeof navigator.maxTouchPoints === 'number') return navigator.maxTouchPoints > 0;
+        // maxTouchPoints가 없는 오래된 브라우저는 터치 이벤트 지원 여부로 대신 판단한다.
+        return typeof window !== 'undefined' && 'ontouchstart' in window;
+    } catch (error) {
+        console.error('터치스크린 지원 여부를 확인하지 못했습니다.', error);
+        return false;
+    }
+}
+
+/**
+ * 설정의 가상 컨트롤러 선택값을 지금 기기에서 실제로 쓸 표시 크기로 바꾼다.
+ * 자동이면 게임패드가 있을 때는 터치스크린 유무와 관계없이 숨기고, 게임패드 없이 터치스크린만 있으면
+ * 휴대폰으로 보아 보통 크기로 표시한다. 둘 다 없으면 PC로 보아 숨긴다.
+ * @returns {'none'|'normal'|'large'} 실제 표시 크기
+ */
+function getEffectiveVirtualControllerSize() {
+    const option = getVirtualControllerOption(store?.settings?.virtualController);
+    if (option !== 'auto') return option;
+    return !gamepadConnected && hasTouchScreen() ? 'normal' : 'none';
+}
+
+/**
+ * 캔버스의 문자 입력 모드 대신 웹표준 prompt로 텍스트를 입력받아야 하는지 확인한다.
+ * 화면 키보드를 띄울 수 없는 터치스크린 기기가 대상이며 게임패드 유무와는 관계없다.
+ * 가상 컨트롤러를 없음으로 고정한 경우는 PC로 쓰겠다는 뜻이므로 기존 캔버스 입력을 그대로 쓴다.
+ * @returns {boolean} prompt 사용 여부
+ */
+function shouldUseNativeTextPrompt() {
+    if (getVirtualControllerOption(store?.settings?.virtualController) === 'none') return false;
+    return hasTouchScreen() && typeof window !== 'undefined' && typeof window.prompt === 'function';
+}
+
+/**
+ * 웹표준 prompt로 텍스트를 입력받는다. 취소했거나 공란(공백만 입력한 경우 포함)이면 null을 반환한다.
+ * prompt가 떠 있는 동안에는 페이지가 멈춰 keyup·pointerup을 받지 못하므로, 닫힌 뒤 눌려 있던 방향 입력을 정리한다.
+ * @param {string} message prompt에 표시할 안내 문구
+ * @param {string} [defaultValue=''] 입력란에 미리 채울 값
+ * @returns {string|null} 입력한 문자열. 취소·공란이면 null
+ */
+function requestNativeTextPrompt(message, defaultValue = '') {
+    let input = null;
+    try {
+        input = window.prompt(message, defaultValue);
+    } catch (error) {
+        console.error('Puyo W 텍스트 입력 창을 표시하지 못했습니다.', error);
+    }
+    resetKeyboardDirectionInput();
+    resetVirtualControllerInput();
+    return typeof input === 'string' && input.trim() ? input : null;
 }
 
 /** 가로 방향 고정 저장값을 불리언으로 정규화한다. @param {unknown} value 저장값 @returns {boolean} 가로 방향 고정 여부 */
@@ -4042,6 +4142,8 @@ function playMenuFocusMoveSound() {
 function getMenuFocusToken() {
     if (confirmDialog) return `confirmation:${confirmDialog.choice}`;
     if (textDialog) return `text:${textDialog.focus}:${textDialog.editing}`;
+    // prompt로 입력받는 기기에서만 이름 입력 대화상자에 입력란·확인 버튼 포커스가 생긴다.
+    if (playerNamePrompt && !game && shouldUseNativeTextPrompt()) return `namePrompt:${playerNamePrompt.focus}`;
     if (game?.tutorial?.mode === 'complete') return `tutorial:${game.tutorial.finalFocus}`;
     if (game?.paused) return `pause:${pauseMenuFocus}`;
     if (game) return null;
@@ -11190,16 +11292,17 @@ function drawCenter() {
 /** 가상 컨트롤러를 표시할 수 있는 게임 진행 상태인지 확인한다. @returns {boolean} */
 function shouldShowVirtualController() {
     // "너랑 나랑"은 두 사람이 키보드·게임패드를 나눠 쓰므로 가상 컨트롤러를 지원하지 않는다. 온라인 플레이도 같게 제외한다.
-    return Boolean(game && !game.tutorial && !game.together && !game.online && !game.replayPlayback && game.running && !game.paused && !game.ending && game.countdown <= 0 && store.settings.virtualController !== 'none');
+    // 자동 선택은 기기에 따라 표시 여부가 달라지므로 저장값이 아니라 실제 표시 크기로 판단한다.
+    return Boolean(game && !game.tutorial && !game.together && !game.online && !game.replayPlayback && game.running && !game.paused && !game.ending && game.countdown <= 0 && getEffectiveVirtualControllerSize() !== 'none');
 }
 
 /** 선택된 가상 컨트롤러의 렌더링·입력 배율을 반환한다. @returns {number} */
-function getVirtualControllerScale() { return store.settings.virtualController === 'large' ? 1.5 : 1; }
+function getVirtualControllerScale() { return getEffectiveVirtualControllerSize() === 'large' ? 1.5 : 1; }
 
 /** 선택된 크기에 맞는 가상 컨트롤러의 공통 그리기·입력 배치를 반환한다. @returns {{actions:{z:{x:number,y:number},x:{x:number,y:number},escape:{x:number,y:number}},scale:number}} */
 function getVirtualControllerLayout() {
     return {
-        actions: store.settings.virtualController === 'large' ? VIRTUAL_LARGE_ACTION_BUTTONS : VIRTUAL_ACTION_BUTTONS,
+        actions: getEffectiveVirtualControllerSize() === 'large' ? VIRTUAL_LARGE_ACTION_BUTTONS : VIRTUAL_ACTION_BUTTONS,
         scale: getVirtualControllerScale()
     };
 }
@@ -11350,10 +11453,16 @@ function updateGamepadSlotInput(gamepad, playerIndex, suppressActions) {
 function updateGamepadInput(suppressActions = false) {
     try {
         if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') {
+            gamepadConnected = false;
             resetGamepadInput();
             return;
         }
         const gamepads = Array.from(navigator.getGamepads() || []);
+        const connected = gamepads.some((candidate) => candidate && candidate.connected !== false);
+        const newlyConnected = connected && !gamepadConnected;
+        gamepadConnected = connected;
+        // 자동 선택에서 게임패드가 새로 잡혀 가상 컨트롤러가 사라지면, 누르고 있던 가상 입력이 남지 않게 정리한다.
+        if (newlyConnected && getEffectiveVirtualControllerSize() === 'none') resetVirtualControllerInput();
         if (game?.together) {
             [0, 1].forEach((playerIndex) => {
                 const gamepad = gamepads[playerIndex];
@@ -13167,6 +13276,8 @@ const SETTINGS_UI_LAYOUT = {
     controlHeight: 24,
     optionWidth: 110,
     optionGap: 18,
+    // 선택지가 네 개인 가상 컨트롤러 행의 선택지 사이 간격이다. 폭은 controlWidth에 맞춰 계산한다.
+    virtualControllerGap: 8,
     sliderWidth: 330,
     testY: 448,
     testHeight: 28,
@@ -13188,12 +13299,15 @@ const SETTINGS_UI_LAYOUT = {
 function getSettingsRows() {
     const x = SETTINGS_UI_LAYOUT.controlX;
     const step = SETTINGS_UI_LAYOUT.optionWidth + SETTINGS_UI_LAYOUT.optionGap;
+    // 가상 컨트롤러는 선택지가 네 개라서 기본 폭으로는 입력란 영역(controlWidth)을 넘는다. 영역에 딱 맞게 폭을 줄인다.
+    const virtualControllerWidth = (SETTINGS_UI_LAYOUT.controlWidth - SETTINGS_UI_LAYOUT.virtualControllerGap * (VIRTUAL_CONTROLLER_OPTIONS.length - 1)) / VIRTUAL_CONTROLLER_OPTIONS.length;
+    const virtualControllerStep = virtualControllerWidth + SETTINGS_UI_LAYOUT.virtualControllerGap;
     return [
         { label: '이름', value: settingsDraft.playerName, kind: 'text' },
         { label: '언어', value: settingsDraft.language, kind: 'radio', options: LANGUAGE_OPTIONS.map((option, index) => ({ ...option, value: option.key, x: x + index * 67, width: 64, translateLabel: false })) },
         { label: '배경음악 볼륨', value: settingsDraft.musicVolume, kind: 'slider' },
         { label: '효과음 볼륨', value: settingsDraft.effectsVolume, kind: 'slider' },
-        { label: '가상 컨트롤러 사용', value: settingsDraft.virtualController, kind: 'radio', options: VIRTUAL_CONTROLLER_OPTIONS.map((option, index) => ({ label: option.label, value: option.key, x: x + index * step, translateLabel: true })) },
+        { label: '가상 컨트롤러 사용', value: settingsDraft.virtualController, kind: 'radio', options: VIRTUAL_CONTROLLER_OPTIONS.map((option, index) => ({ label: option.label, value: option.key, x: x + index * virtualControllerStep, width: virtualControllerWidth, translateLabel: true })) },
         { label: '그래픽 설정', value: settingsDraft.graphicsQuality, kind: 'radio', options: GRAPHICS_QUALITY_OPTIONS.map((option, index) => ({ label: option.label, value: option.key, x: x + index * step, translateLabel: true })) },
         { label: '사운드 데이터 URL', value: settingsDraft.soundDataURL, kind: 'text' },
         { label: 'AI 서비스 제공자', value: settingsDraft.aiProvider, kind: 'radio', options: getAiServiceProviders().map((provider, index) => ({ label: provider, value: provider, x: x + index * step, translateLabel: false })) },
@@ -15367,6 +15481,10 @@ function getPlayerNamePromptBounds() {
 function drawPlayerNamePrompt() {
     if (!playerNamePrompt) return;
     const bounds = getPlayerNamePromptBounds();
+    // 터치스크린 기기에서는 prompt로 입력받으므로 커서 대신 입력란·확인 버튼 중 포커스된 쪽을 노란 테두리로 표시한다.
+    const nativePrompt = shouldUseNativeTextPrompt();
+    const inputFocused = nativePrompt && playerNamePrompt.focus !== 1;
+    const confirmFocused = nativePrompt && playerNamePrompt.focus === 1;
     context.fillStyle = 'rgba(2, 8, 13, 0.82)'; context.fillRect(0, 0, WIDTH, HEIGHT);
     context.fillStyle = '#102c3b'; context.fillRect(340, 205, 600, 355);
     context.strokeStyle = '#6ea2b8'; context.lineWidth = 3; context.strokeRect(340, 205, 600, 355);
@@ -15375,21 +15493,23 @@ function drawPlayerNamePrompt() {
     context.fillStyle = '#c9e3ea'; context.font = `18px ${MESSAGE_FONT}`;
     context.fillText(translate('이름은 게임에서 표시됩니다.'), WIDTH / 2, 310);
     context.fillStyle = '#071621'; context.fillRect(bounds.input.x, bounds.input.y, bounds.input.width, bounds.input.height);
-    context.strokeStyle = playerNamePrompt.error ? '#ef5350' : '#6ea2b8'; context.lineWidth = playerNamePrompt.error ? 3 : 2;
+    context.strokeStyle = playerNamePrompt.error ? '#ef5350' : (inputFocused ? '#f7c843' : '#6ea2b8'); context.lineWidth = playerNamePrompt.error || inputFocused ? 3 : 2;
     context.strokeRect(bounds.input.x, bounds.input.y, bounds.input.width, bounds.input.height);
     context.save();
     context.beginPath(); context.rect(bounds.input.x + 10, bounds.input.y + 2, bounds.input.width - 20, bounds.input.height - 4); context.clip();
     context.textAlign = 'left'; context.textBaseline = 'middle'; context.fillStyle = '#f5fbfc'; context.font = `22px ${MESSAGE_FONT}`;
     context.fillText(playerNamePrompt.value, bounds.input.x + 12, bounds.input.y + bounds.input.height / 2);
-    const cursorX = bounds.input.x + 12 + context.measureText(Array.from(playerNamePrompt.value).slice(0, playerNamePrompt.cursor).join('')).width;
-    context.strokeStyle = '#f7c843'; context.lineWidth = 2; context.beginPath(); context.moveTo(cursorX, bounds.input.y + 11); context.lineTo(cursorX, bounds.input.y + bounds.input.height - 11); context.stroke();
+    if (!nativePrompt) {
+        const cursorX = bounds.input.x + 12 + context.measureText(Array.from(playerNamePrompt.value).slice(0, playerNamePrompt.cursor).join('')).width;
+        context.strokeStyle = '#f7c843'; context.lineWidth = 2; context.beginPath(); context.moveTo(cursorX, bounds.input.y + 11); context.lineTo(cursorX, bounds.input.y + bounds.input.height - 11); context.stroke();
+    }
     context.restore();
     if (playerNamePrompt.error) {
         context.fillStyle = '#ffb4b4'; context.font = `17px ${MESSAGE_FONT}`;
         context.fillText(translate(playerNamePrompt.error), WIDTH / 2, 425);
     }
     context.fillStyle = '#4cc9b0'; context.fillRect(bounds.confirm.x, bounds.confirm.y, bounds.confirm.width, bounds.confirm.height);
-    context.strokeStyle = '#7ae3cb'; context.lineWidth = 2; context.strokeRect(bounds.confirm.x, bounds.confirm.y, bounds.confirm.width, bounds.confirm.height);
+    context.strokeStyle = confirmFocused ? '#f7c843' : '#7ae3cb'; context.lineWidth = confirmFocused ? 4 : 2; context.strokeRect(bounds.confirm.x, bounds.confirm.y, bounds.confirm.width, bounds.confirm.height);
     context.fillStyle = '#fff'; context.font = `22px ${BUTTON_FONT}`; context.fillText(translate('확인'), bounds.confirm.x + bounds.confirm.width / 2, bounds.confirm.y + 37);
 }
 
@@ -15810,6 +15930,31 @@ function getSettingsTextField() {
     return null;
 }
 
+/**
+ * 설정 화면 텍스트 항목의 입력을 시작한다.
+ * 터치스크린 기기에서는 웹표준 prompt로 받아 임시 설정값에 넣고 문자 입력 모드에는 들어가지 않는다.
+ * 그래서 prompt가 닫힌 뒤에도 방향키 포커스 이동·Enter 선택·마우스 클릭이 평소처럼 동작한다.
+ * 취소했거나 공란이면 기존 값을 그대로 둔다. 그 밖의 기기에서는 캔버스 문자 입력 모드로 들어간다.
+ * @param {'playerName'|'soundDataURL'|'aiApiURL'|'aiApiKey'|'aiModel'} field 설정 입력 필드
+ * @returns {void}
+ */
+function beginSettingsTextInput(field) {
+    clearSettingsTextSelection();
+    if (!shouldUseNativeTextPrompt()) {
+        settingsEditing = true;
+        settingsCursor = Array.from(settingsDraft[field]).length;
+        return;
+    }
+    settingsEditing = false;
+    // API 키는 화면에서도 가려 표시하므로 prompt에 기존 값을 미리 채우지 않는다.
+    const input = requestNativeTextPrompt(translate(getSettingsRows()[settingsFocus].label), field === 'aiApiKey' ? '' : settingsDraft[field]);
+    if (input === null) return;
+    // 직접 입력할 때와 같은 최대 길이 규칙을 적용하기 위해 비운 뒤 삽입 함수로 넣는다.
+    settingsDraft[field] = '';
+    settingsCursor = 0;
+    insertSettingsText(field, input);
+}
+
 /** 설정 텍스트 입력의 선택 범위를 반환한다. @returns {[number,number]|null} 선택 시작·끝 위치 */
 function getSettingsTextSelectionRange() {
     if (settingsSelectionAnchor === null || settingsSelectionAnchor === settingsCursor) return null;
@@ -15916,7 +16061,7 @@ function handleSettingsKeydown(event, key) {
         return;
     }
     if (key === 'enter' || key === ' ') {
-        if (textField) { settingsEditing = true; settingsCursor = Array.from(settingsDraft[textField]).length; clearSettingsTextSelection(); }
+        if (textField) beginSettingsTextInput(textField);
         else activateSettingsFocus();
     } else if (key === 'escape') cancelSettings();
     else if (key === 'arrowup' || key === 'arrowdown') moveSettingsFocus(key === 'arrowup' ? -1 : 1);
@@ -15949,7 +16094,10 @@ function handleSettingsKeydown(event, key) {
 
 /** 실제 텍스트 입력 중에는 Z 키를 메뉴 확인 키로 바꾸지 않아야 하는지 확인한다. @param {KeyboardEvent|{target?:EventTarget|null}} event 입력 이벤트 @returns {boolean} */
 function isTextInputInProgress(event) {
-    if (settingsEditing || playerNamePrompt || textDialog) return true;
+    if (settingsEditing) return true;
+    // prompt로 입력받는 터치스크린 기기에서는 대화상자가 떠 있어도 캔버스에 직접 글자를 치지 않으므로,
+    // Z(게임패드 A 버튼)를 평소 메뉴처럼 확인 키로 쓸 수 있어야 한다.
+    if ((playerNamePrompt || textDialog) && !shouldUseNativeTextPrompt()) return true;
     const target = event.target;
     if (!target || typeof target !== 'object') return false;
     if (target.isContentEditable) return true;
@@ -15976,7 +16124,7 @@ function enterMainMenu() {
     loadNotice();
     syncBackgroundMusic();
     if (playerNameSetupRequired) {
-        playerNamePrompt = { value: '', cursor: 0, error: null };
+        playerNamePrompt = { value: '', cursor: 0, error: null, focus: 0 };
     }
 }
 
@@ -16123,9 +16271,42 @@ function handleConfirmDialogKeydown(key) {
     }
 }
 
-/** 여러 줄 텍스트 입력 대화상자의 입력창·버튼 포커스를 방향키로 옮긴다. @param {string} key 소문자 키 이름 @returns {void} */
+/**
+ * 텍스트 입력 대화상자의 입력 모드를 지금 기기의 입력 방식에 맞춘다.
+ * prompt로 입력받는 터치스크린 기기에서는 캔버스 문자 입력 모드를 쓰지 않고 입력창·확인·취소 포커스로만 조작한다.
+ * 그 밖의 기기에서 한 줄 입력은 항상 문자 입력 모드이고, 여러 줄 입력은 사용자가 고른 상태를 유지한다.
+ * @returns {boolean} prompt 사용 여부
+ */
+function syncTextDialogInputMode() {
+    if (!textDialog) return false;
+    const nativePrompt = shouldUseNativeTextPrompt();
+    if (nativePrompt) {
+        textDialog.editing = false;
+        textDialog.selectionAnchor = null;
+    } else if (!textDialog.multiline) textDialog.editing = true;
+    return nativePrompt;
+}
+
+/**
+ * 텍스트 입력 대화상자의 내용을 웹표준 prompt로 받아 입력창에 넣는다. 취소했거나 공란이면 기존 값을 그대로 둔다.
+ * 대화상자는 닫지 않으므로, 게임 화면으로 돌아온 뒤 확인 버튼으로 제출한다.
+ * @returns {void}
+ */
+function requestTextDialogNativePrompt() {
+    if (!textDialog) return;
+    textDialog.focus = 0;
+    const input = requestNativeTextPrompt(textDialog.message, textDialog.value);
+    if (input === null) return;
+    // 직접 입력할 때와 같은 최대 길이·줄바꿈 규칙을 적용하기 위해 비운 뒤 삽입 함수로 넣는다.
+    textDialog.value = '';
+    textDialog.cursor = 0;
+    textDialog.selectionAnchor = null;
+    insertTextDialogText(input);
+}
+
+/** 텍스트 입력 대화상자의 입력창·버튼 포커스를 방향키로 옮긴다. 문자 입력 모드에서는 옮기지 않는다. @param {string} key 소문자 키 이름 @returns {void} */
 function moveTextDialogFocus(key) {
-    if (!textDialog || !textDialog.multiline || textDialog.editing) return;
+    if (!textDialog || textDialog.editing) return;
     const direction = key === 'arrowleft' || key === 'arrowup' ? -1 : 1;
     textDialog.focus = (textDialog.focus + direction + 3) % 3;
 }
@@ -16134,6 +16315,7 @@ function moveTextDialogFocus(key) {
 function handleTextDialogKeydown(event, key) {
     if (!textDialog) return;
     event.preventDefault();
+    const nativePrompt = syncTextDialogInputMode();
     const characters = Array.from(textDialog.value);
     const selecting = event.shiftKey;
     const moveCursor = (nextCursor, collapseDirection = 0) => {
@@ -16148,14 +16330,17 @@ function handleTextDialogKeydown(event, key) {
     };
 
     // 여러 줄 입력은 먼저 포커스를 입력 모드로 바꿔야 Enter가 줄바꿈으로 동작한다.
-    if (textDialog.multiline && !textDialog.editing) {
+    // prompt로 입력받는 기기에서는 한 줄 입력도 같은 포커스 조작을 쓰고, 입력창에서 확인 키를 누르면 prompt를 연다.
+    if ((textDialog.multiline || nativePrompt) && !textDialog.editing) {
         if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) {
             moveTextDialogFocus(key);
             return;
         }
         if (key === 'enter' || key === ' ') {
-            if (textDialog.focus === 0) textDialog.editing = true;
-            else if (textDialog.focus === 1) {
+            if (textDialog.focus === 0) {
+                if (nativePrompt) requestTextDialogNativePrompt();
+                else textDialog.editing = true;
+            } else if (textDialog.focus === 1) {
                 playMenuSelectSound();
                 resolveTextDialog(textDialog.value);
             } else {
@@ -16261,10 +16446,37 @@ function submitPlayerNamePrompt() {
     return true;
 }
 
+/**
+ * 이름 입력 대화상자의 이름을 웹표준 prompt로 받아 입력란에 넣는다. 취소했거나 공란이면 기존 값을 그대로 둔다.
+ * 저장은 하지 않으므로, 게임 화면으로 돌아온 뒤 확인 버튼으로 제출한다.
+ * @returns {void}
+ */
+function requestPlayerNameNativePrompt() {
+    if (!playerNamePrompt) return;
+    playerNamePrompt.focus = 0;
+    const input = requestNativeTextPrompt(translate('이름 또는 닉네임을 입력하세요'), playerNamePrompt.value);
+    if (input === null) return;
+    // 직접 입력할 때와 같은 최대 길이 규칙을 적용하기 위해 비운 뒤 삽입 함수로 넣는다.
+    playerNamePrompt.value = '';
+    playerNamePrompt.cursor = 0;
+    insertPlayerNamePromptText(input);
+    playerNamePrompt.error = null;
+}
+
 /** 이름 입력 대화상자의 키보드 입력을 처리한다. @param {KeyboardEvent} event 키보드 이벤트 @param {string} key 소문자 키 이름 @returns {void} */
 function handlePlayerNamePromptKeydown(event, key) {
     if (!playerNamePrompt) return;
     event.preventDefault();
+    if (shouldUseNativeTextPrompt()) {
+        // 터치스크린 기기에서는 캔버스에 직접 글자를 치지 않는다. 입력란과 확인 버튼 사이를 방향키로 옮기고,
+        // 입력란에서 확인 키를 누르면 prompt를 열며 확인 버튼에서 누르면 제출한다.
+        if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(key)) playerNamePrompt.focus = playerNamePrompt.focus === 1 ? 0 : 1;
+        else if (key === 'enter' || key === ' ') {
+            if (playerNamePrompt.focus === 1) submitPlayerNamePrompt();
+            else requestPlayerNameNativePrompt();
+        }
+        return;
+    }
     if (event.ctrlKey && key === 'a') {
         playerNamePrompt.value = '';
         playerNamePrompt.cursor = 0;
@@ -16790,6 +17002,8 @@ function handleCanvasClickCore(event) {
         const { x, y } = getCanvasEventCoordinates(event);
         const bounds = getTextDialogBounds(textDialog.multiline);
         if (x >= bounds.input.x && x <= bounds.input.x + bounds.input.width && y >= bounds.input.y && y <= bounds.input.y + bounds.input.height) {
+            // 터치스크린 기기에서는 입력창을 누르면 문자 입력 모드 대신 prompt로 내용을 받는다.
+            if (syncTextDialogInputMode()) { requestTextDialogNativePrompt(); return; }
             textDialog.focus = 0;
             textDialog.cursor = getTextDialogCursorFromPoint(textDialog, bounds, x, y);
             // 클릭은 기존 선택을 해제하고 새 커서 위치에서 다음 입력을 시작한다.
@@ -16829,8 +17043,14 @@ function handleCanvasClickCore(event) {
     }
     if (playerNamePrompt) {
         const { x, y } = getCanvasEventCoordinates(event);
-        const bounds = getPlayerNamePromptBounds().confirm;
-        if (x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height) submitPlayerNamePrompt();
+        const { confirm: bounds, input } = getPlayerNamePromptBounds();
+        if (x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height) {
+            playerNamePrompt.focus = 1;
+            submitPlayerNamePrompt();
+        } else if (shouldUseNativeTextPrompt() && x >= input.x && x <= input.x + input.width && y >= input.y && y <= input.y + input.height) {
+            // 터치스크린 기기에서는 입력란을 누르면 prompt로 이름을 받는다.
+            requestPlayerNameNativePrompt();
+        }
         return;
     }
     if (game?.tutorial) {
@@ -17111,6 +17331,10 @@ function handleCanvasClickCore(event) {
         }
     } else if (menuScreen === 'settings') {
         const layout = SETTINGS_UI_LAYOUT;
+        // 일반 GUI처럼 텍스트 항목 밖을 누르면 문자 입력 모드를 끝낸다. 텍스트 항목을 누른 경우에는 아래에서 다시 시작한다.
+        // 입력 모드가 남은 채 포커스만 옮겨지면, 나중에 방향키로 텍스트 항목에 돌아왔을 때 포커스 이동이 막힌다.
+        settingsEditing = false;
+        clearSettingsTextSelection();
         if (x >= SETTINGS_CODE_BUTTON.x && x <= SETTINGS_CODE_BUTTON.x + SETTINGS_CODE_BUTTON.width && y >= SETTINGS_CODE_BUTTON.y && y <= SETTINGS_CODE_BUTTON.y + SETTINGS_CODE_BUTTON.height) enterSettingsCode();
         else if (y >= layout.testY && y <= layout.testY + layout.testHeight && x >= layout.controlX && x <= layout.controlX + layout.controlWidth && canRunAiApiTest()) { playMenuSelectSound(); settingsFocus = 11; runAiApiTest(); }
         else if (y >= layout.checkboxY && y <= layout.checkboxY + layout.checkboxSize && x >= layout.landscapeCheckboxX && x <= layout.reverseLearningCheckboxX + layout.checkboxHitWidth) {
@@ -17148,13 +17372,9 @@ function handleCanvasClickCore(event) {
                         else if (rowIndex === 5) settingsDraft.graphicsQuality = option.value;
                         else setSettingsDraftProvider(option.value);
                     }
-                    settingsEditing = false;
-                    clearSettingsTextSelection();
                 } else {
-                    settingsEditing = true;
                     const field = getSettingsTextField();
-                    settingsCursor = field ? Array.from(settingsDraft[field]).length : 0;
-                    clearSettingsTextSelection();
+                    if (field) beginSettingsTextInput(field);
                 }
             }
         }
@@ -17525,8 +17745,11 @@ function openNextDialog() {
         }
     }
     const request = dialogQueue.shift();
-    if (request.type === 'text') textDialog = request;
-    else confirmDialog = request;
+    if (request.type === 'text') {
+        textDialog = request;
+        // 요청 시점과 표시 시점의 입력 방식이 다를 수 있으므로 표시할 때 다시 맞춘다.
+        syncTextDialogInputMode();
+    } else confirmDialog = request;
 }
 
 /** 현재 대화상자를 완료하고 다음 요청 또는 자동 일시정지 상태를 정리한다. @param {boolean|string|null} value 선택 결과 @returns {void} */
@@ -17772,8 +17995,10 @@ function drawTextDialog() {
     }
     context.restore();
 
+    // 버튼 포커스는 입력창·확인·취소를 방향키로 옮기는 경우(여러 줄 입력, prompt로 입력받는 기기)에만 표시한다.
+    const focusNavigation = textDialog.multiline || shouldUseNativeTextPrompt();
     [['확인', bounds.confirm, '#4cc9b0'], ['취소', bounds.cancel, '#563068']].forEach(([label, button, color], index) => {
-        const focused = textDialog.multiline && textDialog.focus === index + 1;
+        const focused = focusNavigation && textDialog.focus === index + 1;
         context.fillStyle = focused ? (index === 0 ? '#397d70' : '#563068') : color; context.fillRect(button.x, button.y, button.width, button.height);
         context.strokeStyle = focused ? '#f7c843' : (index === 0 ? '#7ae3cb' : '#e5c7f5'); context.lineWidth = focused ? 4 : 2; context.strokeRect(button.x, button.y, button.width, button.height);
         context.fillStyle = '#fff'; context.font = `20px ${BUTTON_FONT}`; context.textAlign = 'center'; context.textBaseline = 'alphabetic';
@@ -18109,12 +18334,12 @@ function registerWebMcpTools() {
                 `Puyo W is a falling-pair puzzle battle on a ${COLUMNS}-column field. x counts columns from the left (0-${COLUMNS - 1}) and y counts rows from the bottom; ${VISIBLE_ROWS} rows are visible and more hidden rows sit above them.`,
                 'Connect four or more same-color puyos vertically or horizontally to clear them; the 2-Explosion rule clears groups of two or more. Garbage puyos next to a clear are removed too; a hard garbage puyo becomes normal garbage when hit once and breaks when hit twice in the same step. ATTACK is the score divided by the current margin rate, multiplied by the time-progress multiplier (1 until 360 seconds, then doubling every 60 seconds up to 4096). In FEVER, each explosion offsets FEVER DAMAGE first, then an opponent ATTACK aimed at the current FEVER round, then reserved normal DAMAGE, then other opponent ATTACK. Remaining ATTACK becomes opponent DAMAGE after the chain finishes.',
                 'A player loses when cell (2, 11) is filled. FEVER rules and continuous fever also use cell (3, 11).',
-                'Keyboard: Left and Right move, Z rotates one way while X and Up rotate the other way, holding Down drops faster, and Escape pauses. Gamepads and an on-screen virtual joystick with Z, X, and ESC buttons also work.',
+                'Keyboard: Left and Right move, Z rotates one way while X and Up rotate the other way, holding Down drops faster, and Escape pauses. Gamepads and an on-screen virtual joystick with Z, X, and ESC buttons also work. The "Use virtual controller" setting is Auto by default: Auto shows the virtual controller at normal size only on a touchscreen device with no gamepad connected, and hides it when there is no touchscreen or whenever a gamepad is connected. None, Normal, and Large force it off or on at that size.',
                 'Modes: the standard rule, FEVER rule, FEVER rule (start), FEVER rule (relaxed), and 2-Explosion rule are matches against a CPU opponent. The 2-Explosion rule unlocks after beating Gremory on Hard or Extreme under the standard or FEVER rule, keeps separate opponent progress, and excludes model opponents (including Solomon) and model training. In standard, together, and Puzzle Puyo modes, an all-clear grants a ticket that adds 2100 points and 30 ATTACK to the next colored-puyo explosion; practice adds 2100 points immediately instead. FEVER rules do not create a ticket: an all-clear contributes to the FEVER target/time rules. Each FEVER player has a separate field and timer; FEVER rule (start) begins both players inside FEVER with 60 seconds. A FEVER placement whose timer has expired finishes FEVER before reserved normal DAMAGE is dropped. Continuous fever is solo FEVER play starting with a 5-chain target and 60 seconds. Puzzle Puyo gives stage objectives (combo, clear, multiple, color, attack) and a recommended turn count. Watch mode shows two CPUs playing each other and restarts 5 seconds after each result. Online play is a two-human match on separate computers through the configured game server; it is available only when that server reports online play enabled.',
                 'Leaderboard: the top 10 scores are kept only in this browser (localStorage key puyow_leaderboard) with the player name and the date and time when each score was recorded, and are viewed on the separate leaderboard.html page, which the Leaderboard button at the bottom left of the main menu opens in the same tab. Standard, FEVER, and FEVER (start) matches record the final score only when the human player wins, separately for each AI difficulty, color count, and opponent; matches against Solomon are never recorded. Practice and continuous fever record the final score separately for each color count only when the player loses (quitting from the pause menu is not recorded). Together (offline and online), watch mode, Puzzle Puyo, the tutorial, the simulator, and replay playback are never recorded.',
                 'Choosing Together mode in the main menu first opens a selection of Offline Play, Online Play, and Cancel (together_mode_select). Offline Play opens the offline together guide (together_guide), where the rule and color count are chosen. Online Play opens login and signup, then the lobby and room screens; it is hidden when the configured server does not provide online play.',
                 'Offline together mode is a two-human match on one computer: 1P uses the arrow keys, Z, and X (or F, G, H, B), and 2P uses numpad 4, 6, 2, 5 and the [ and ] keys. Neither side is a CPU, and point_recommend only marks the 1P field.',
-                'Replays of recorded matches can be played back with the Play Replay button at the bottom left of the main menu. When the separate replay.html page exists next to the game page, that button opens it in the same tab; otherwise it opens a text input dialog for replay JSON and plays the replay in the game. During playback no input is accepted except Escape, which opens the pause screen. Online matches cannot be paused or recorded. The tutorial, simulator, gallery, and settings are separate menu screens. Confirmation and text input dialogs capture all input until they are answered.',
+                'Replays of recorded matches can be played back with the Play Replay button at the bottom left of the main menu. When the separate replay.html page exists next to the game page, that button opens it in the same tab; otherwise it opens a text input dialog for replay JSON and plays the replay in the game. During playback no input is accepted except Escape, which opens the pause screen. Online matches cannot be paused or recorded. The tutorial, simulator, gallery, and settings are separate menu screens. Confirmation and text input dialogs capture all input until they are answered. On a touchscreen device (unless the virtual controller setting is None), text is not typed on the canvas: selecting a text box (the first-run name prompt, a settings text field, an online login or signup field, or the box of a text input dialog) opens the browser\'s native prompt() instead. A cancelled or blank prompt leaves the box unchanged; otherwise the entered text is placed in the box, and the dialog or screen must still be confirmed with its own button. On such devices the name prompt and text input dialogs move focus between the box and their buttons with the arrow keys.',
                 'Tools: now_screen returns the exact screen, the match mode and rule, and whether a replay, ONNX model loading, confirmation dialog, or text input dialog is in progress. now_game_status works only while a match is playing or paused, in every mode including online, watch, together, and replay playback, and includes online connection state when applicable. Its warningPuyos are the warnings shown on the current field; normalDamage reports DAMAGE reserved for the normal field during FEVER. point_recommend works only while now_screen reports playerCanControl, and marks one cell on the left field until the active pair locks. show_message displays already-localized text at the top of the current screen. screen_layout reports the canvas fit mode, margins, 90-degree portrait rotation, and the on-screen canvas box, which are needed to convert page clicks into logical 1280x720 game coordinates.'
             ].join('\n\n')
         },

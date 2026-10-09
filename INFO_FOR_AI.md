@@ -190,6 +190,7 @@
 - 목록 밖 버튼의 포커스 순번은 `TITLE_GITHUB_FOCUS_INDEX`(7)·`TITLE_MUTE_FOCUS_INDEX`(8)·`TITLE_REPLAY_FOCUS_INDEX`(9)·`TITLE_LEADERBOARD_FOCUS_INDEX`(10)이며 이동 순서는 `TITLE_MENU_FOCUS_ORDER`가 정한다(목록 0~6 → 리플레이 → 리더보드 → GitHub → 음소거, 좌측 하단은 위에서 아래 순서). 목록이 늘어나면 이 네 상수도 목록 뒤로 밀어야 순번이 겹치지 않는다.
 - 메인 메뉴 공지사항의 클립 높이는 고정 390이 아니라 `TITLE_REPLAY_BUTTON.y - 8 - 230`(현재 365)이다. 좌측 하단 버튼 묶음 맨 위 버튼과 겹치지 않게 하려는 것이므로 버튼을 옮기면 공지 영역도 따라 줄거나 늘어난다.
 - 가상 컨트롤러의 Z·X·ESC 조작 버튼은 표시 레이아웃과 히트 테스트에 같은 `getVirtualControllerLayout()`을 사용해야 한다. 크기 옵션/대형 배치 변경은 둘을 함께 수정한다.
+- 가상 컨트롤러 설정값은 `auto`(기본)·`none`·`normal`·`large`다(BUILDNO 135). **표시 여부·크기는 저장값이 아니라 `getEffectiveVirtualControllerSize()`로 판단한다.** `auto`는 게임패드가 있으면 숨기고, 게임패드 없이 터치스크린만 있으면 `normal`, 둘 다 없으면 숨긴다. 텍스트 입력을 웹표준 prompt로 받을지는 `shouldUseNativeTextPrompt()`가 정한다. 자세한 계약은 아래 「가상 컨트롤러 자동 선택과 터치스크린 기기의 prompt 텍스트 입력」 절을 본다.
 - 방향 조작은 BUILDNO 30에서 고정 방향 패드를 없애고 [virtualjoystick.js](https://github.com/jeromeetienne/virtualjoystick.js) 방식을 벤치마킹한 가상 조이스틱으로 완전히 대체했다. 조작 버튼 밖을 누른 지점이 그 포인터의 기준점(`virtualJoystickPointers`)이 되고, 손가락을 떼면 기준점과 방향 입력이 함께 사라진다. 기준점은 드래그 중 따라오지 않는다.
 - 방향 판정은 `getVirtualJoystickDirections()` 한 곳에 모여 있다. 기준점에서 `VIRTUAL_JOYSTICK_MIN_DRAG`(10, 논리 픽셀) 미만이면 아무 방향도 아니며, 다른 축이 이 축의 `VIRTUAL_JOYSTICK_DIAGONAL_RATIO`(2)배 안쪽이면 두 축을 함께 눌러 대각선을 두 방향키 동시 입력으로 처리한다. 조이스틱이 만든 방향키도 기존 `virtualPointerButtons`에 담기므로, 좌우 홀드 반복과 빠른 하강 같은 후속 처리는 예전 경로를 그대로 탄다.
 - BUILDNO 31부터 조이스틱은 좌우 이동과 빠른 하강만 담당하고, 조작 뿌요 회전은 Z·X 가상 버튼 전용이다. 그래서 위로 끄는 동작에는 대응하는 방향키가 없고(`arrowup`을 만들지 않는다), `virtualDirectionInput`에도 `arrowup` 항목이 없다. 위쪽에 조작을 다시 붙일 때는 이 두 곳과 `triggerVirtualButton()`을 함께 고친다. 키보드 ArrowUp과 게임패드 스틱 위쪽의 회전은 이 변경과 무관하게 그대로다.
@@ -255,6 +256,8 @@
 - 진행도·설정·GOLD는 `localStorage`의 `puyow_store`, 카드 인스턴스 배열은 `puyow_cards`, 갤러리 잠금은 `puyow_gallery`, 리더보드 기록은 `puyow_leaderboard`(아래 「리더보드」 절), 테스트 기능 코드 배열은 `puyow_code`에 저장된다. 초기화 시 `puyow_code`를 JSON 배열로 복원하며, 파싱 실패는 오류를 기록한 뒤 빈 배열로 계속한다. 읽을 때 이전 형식을 보정하므로 새 필드는 기본값·마이그레이션을 함께 설계한다. 설정의 `useReplayFeature`는 리플레이 기능 사용 여부를, `reverseLearning`은 역방향 모델 학습 사용 여부를 저장하는 boolean이며, 기존 저장에 값이 없으면 둘 다 `false`로 보정한다. `puyow_store` 최상위의 `onnxWarningAcknowledged`는 ONNX 적 첫 대전 전 불안정 안내에서 `계속`을 고른 적이 있는지를 담는 boolean이며, 설정 화면에는 나오지 않고 값이 없거나 true가 아니면 `false`로 보정한다.
 - 설정 화면의 `화면 가로방향 고정`·`리플레이 사용`·`역으로 모델 학습` 체크박스는 마우스 클릭 또는 Enter·Space·Z(해당 게임패드 확인 입력 포함)로만 토글한다. 체크박스에 포커스가 있을 때 좌우 방향키는 세 체크박스 사이의 포커스 이동에 쓰며, 양 끝에서는 더 이동하지 않는다. 위치·포커스 순번·저장 키는 `getSettingsCheckboxes()` 한 곳에서 정의하고 그리기·키보드 토글·마우스 판정이 모두 이 목록을 사용하므로, 체크박스를 더할 때는 이 함수와 `SETTINGS_UI_LAYOUT`의 가로 좌표만 추가하면 된다.
 - 설정 화면 포커스 순번은 BUILDNO 95(언어 행 추가)부터 0 이름, 1 언어, 2~3 볼륨, 4 가상 컨트롤러, 5 그래픽, 6 사운드 데이터 URL, 7 AI 제공자, 8~10 AI URL·키·모델명, 11 AI API 테스트, 12~14 체크박스, 15 저장, 16 취소, 17 초기화다. `getSelectableSettingsFocuses()`가 AI 입력 세 행 8·9·10을 LM Studio에서만 넣고 11도 API 테스트 실행 가능 여부에 따라 빼므로, 키보드 이동 횟수를 검증하는 테스트는 이 목록을 기준으로 계산한다(예: 제공자 미선택이면 이름에서 8번 내려가 첫 체크박스, LM Studio면 11번 내려가 API 테스트). 마우스 좌표는 `SETTINGS_UI_LAYOUT`(행 Y `rowYs` 78부터 34 간격, 제공자 행 316·URL 350·키 384, API 테스트 448~476, 체크박스 518, 동작 버튼 640~674)을 따른다.
+- 설정 화면의 가상 컨트롤러 행(포커스 4, Y=214)은 BUILDNO 135부터 선택지가 `자동`·`없음`·`보통`·`크게` 네 개다. 기본 선택지 폭(110)으로는 입력란 영역을 넘으므로 `getSettingsRows()`가 `controlWidth`(400)와 `SETTINGS_UI_LAYOUT.virtualControllerGap`(8)으로 폭 94를 계산해 X 550~644·652~746·754~848·856~950에 놓는다. 그리기와 마우스 판정은 선택지의 `width`를 함께 읽으므로 선택지를 더하거나 빼면 `VIRTUAL_CONTROLLER_OPTIONS`만 고치면 된다. 좌우 방향키는 순환 이동, Enter는 다음 선택지다.
+- 설정 화면을 마우스로 누르면 먼저 문자 입력 모드(`settingsEditing`)를 끝내고, 텍스트 항목을 누른 경우에만 `beginSettingsTextInput()`으로 다시 시작한다(BUILDNO 135). 예전에는 텍스트 항목을 누른 뒤 슬라이더·체크박스를 누르면 입력 모드가 남아, 방향키로 텍스트 항목에 돌아왔을 때 포커스 이동이 막히고 글자가 바로 들어갔다. 텍스트 항목의 키보드 Enter·마우스 클릭은 모두 이 함수 하나를 거친다.
 - `registerLanguage()`, `registerOpponent()`, `registerWarningPuyo()`, `registerFeverStage()`, `registerPuzzleStage()`가 주요 확장 지점이다. 입력 검증과 중복 처리 방식은 기존 등록 함수에 맞춘다.
 - 적은 `Enemy` 또는 `BundledEnemy` 계열이다. `getClassType()`의 안정성은 저장 진행도·사운드 연결에 중요하므로 기존 클래스 타입을 바꾸지 않는다.
 - 적의 위치·회전 결정은 게임 루프 밖의 별도 보정 함수가 아니라 `prepareTurn()`, `chooseTarget()`, `chooseRotate()` 안에서 끝낸다. 기본 `Enemy.prepareTurn()`은 피버 연쇄 최적화와 패배 위치 회피 후보를 `preparedPlacement`로 준비하고, 기본 제공 적은 `BundledEnemy`에서 연쇄 대응·즉시 패배 보호를 추가한다. 외부 적이 이 공통 규칙을 유지하려면 세 메서드에서 `super` 구현을 호출하고, 완전히 독자적인 AI라면 세 메서드를 재정의하면 된다.
@@ -547,10 +550,11 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 
 | 파일 | 다루는 범위 |
 | --- | --- |
-| `tests/common/gamepage.js` | 여러 파일이 함께 쓰는 준비 코드와 도우미. `setupGamePage()`가 공통 `test.beforeEach`를 지금 spec 파일에 등록한다. 파일 이름이 `*.spec.js`가 아니라서 Playwright가 테스트로 수집하지 않는다. |
+| `tests/common/gamepage.js` | 여러 파일이 함께 쓰는 준비 코드와 도우미. `setupGamePage()`가 공통 `test.beforeEach`를 지금 spec 파일에 등록한다. 파일 이름이 `*.spec.js`가 아니라서 Playwright가 테스트로 수집하지 않는다. 초기화 스크립트가 `navigator.maxTouchPoints`를 0으로 고정하고(`window.setTestTouchPoints(n)`으로 변경) `window.prompt`를 호출 기록용 대체 함수(`window.testPromptCalls`·`window.testPromptResponses`)로 바꿔 둔다. 게임패드는 `window.setTestGamepad()`로 연결하고 `window.clearTestGamepad()`로 뽑는다. |
 | `tests/common/modulesource.js` | ES Module 소스(`src/js/puyow*.js`)를 Node `vm`·`page.addScriptTag()`에서 실행할 일반 스크립트로 바꾸는 `readClassicScript()`·`toClassicScript()` |
 | `test01_core.spec.js` | 초기화·리소스 로드·공개 API·보드/NEXT/DAMAGE 규칙·저장 데이터 보정·확인창·다국어와 URL 치환 |
 | `test01_menu.spec.js` | 타이틀 메뉴·설정 화면·카드와 GOLD·가상 컨트롤러와 조이스틱·게임패드·화면 회전·플레이 방법 시연 |
+| `test01_touch_input.spec.js` | 가상 컨트롤러 `자동` 선택(터치스크린·게임패드 유무별 표시, 저장값 보정)과 터치스크린 기기의 prompt 텍스트 입력(최초 이름 입력·설정 텍스트·코드 입력창·`askText`·온라인 로그인), prompt 뒤 설정 화면의 방향키·Enter·마우스 동작 |
 | `test01_enemy.spec.js` | 기본 제공 적 AI의 판단, 다수 탐색 Worker, 패배 위치 회피, 적 테마, 진행도 저장, 구경 모드 |
 | `test01_fever.spec.js` | 피버 룰·피버 룰 (시작)·연속 피버와 그에 딸린 공격·싹쓸이 정산 |
 | `test01_relaxed_fever.spec.js` | 피버 룰 (완화)의 잠금·키보드/마우스 선택·전등 수·독립 적 진행도·갤러리·리더보드·리플레이 |
@@ -946,6 +950,7 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 - 확인창과 텍스트 입력창은 `dialogQueue` 하나를 공유해 호출 순서를 유지한다. 대화상자가 진행 중인 게임에서 열리면 키보드 방향 입력과 가상 컨트롤러 상태를 초기화하고 게임·배경음악을 일시정지하며, 대화상자 대기열이 모두 끝난 뒤 원래 실행 중이었던 같은 게임만 다시 시작한다. `destroy()`는 현재·대기 중인 대화상자를 확인은 `false`, 텍스트 입력은 `null`로 완료한다.
 - 텍스트 입력은 커서 이동·Home/End·Backspace/Delete·Ctrl+A/C/V·Shift+방향키 선택·유니코드 문자 입력을 지원한다. Ctrl+C는 선택 문자열만 복사하며 Ctrl+V는 현재 선택 영역을 클립보드 문자열로 바꾼다. Shift 없이 누른 방향키와 입력창 클릭은 선택을 해제해 해당 방향 끝 또는 클릭한 문자 사이에 커서를 둔다. 선택 영역은 파란색 배경으로 표시되고, 새 문자를 입력하거나 붙여 넣으면 선택 문자열을 먼저 제거한다. 기본 입력값은 최대 2,000자이며, 리플레이·시뮬레이터 JSON 가져오기는 세 번째 인자로 최대 1,000,000자를 허용한다. 마우스로 입력창·확인·취소를 선택할 수 있고 게임패드 확인 입력은 키보드 Enter 경로를 사용한다. 여러 줄 값은 줄바꿈을 보존해 반환한다.
 - 리플레이 재생 JSON·설정의 테스트 코드·시뮬레이터 배치 JSON은 네이티브 `window.prompt` 대신 `askText()`를 사용한다. 앞뒤 처리는 Promise 완료 뒤 실행하며, 시뮬레이터 가져오기는 대기 중 해당 시뮬레이터가 닫히거나 재생으로 바뀌면 입력 결과를 버린다.
+- BUILDNO 135부터 터치스크린 기기에서는 대화상자는 그대로 캔버스에 띄우되 **입력창의 내용만** 웹표준 prompt로 받는다(`askText()`를 prompt로 바꾼 것이 아니다). 이때는 한 줄 입력도 여러 줄 입력처럼 입력창·확인·취소 포커스를 방향키로 옮긴다. 아래 「가상 컨트롤러 자동 선택과 터치스크린 기기의 prompt 텍스트 입력」 절을 본다.
 
 ### 브라우저 커스텀 이벤트 (2026-09-15, BUILDNO 64)
 
@@ -1516,6 +1521,50 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
   6. **Node·Python 서버의 압축과 캐시 검증**: `node/server.js`는 정적 파일을 압축 없이 보내고 `ETag`·`Last-Modified`도 없다. gzip만 해도 번들 1.34MB → 346KB, ort 824KB → 194KB다. 게임 기능에는 영향이 없지만 서버 코드 변경이라 이번에는 손대지 않았다. Firebase Hosting 배포는 이미 압축된다.
 - `puyow.js` BUILDNO는 133, `package.json`·`package-lock.json` 버전은 `0.3.133`이며 번들을 다시 생성했다. 버전값 자체는 테스트하지 않는다. 게임 규칙·상태·화면 이름이 바뀌지 않아 WebMCP 도구는 고치지 않았다. `docs/Puyo.md`·`docs/Puyo.en.md`에 고정 뿌요 층 안내를 더했다.
 - 검증: JS 문법 검사·ESLint·Webpack 빌드·`git diff --check` 통과. Chromium 전체 422건 중 421건 통과했다. 실패한 `test01_fever_damage`의 「연쇄 중 피버에 진입한 상대에게 에너지 완료 뒤 일반 DAMAGE를 전달한다」는 측정 스크립트를 함께 돌리던 중의 시간 경합(게임 로직 값 확인, 그리기와 무관)이었고 그 파일만 3회 반복(63건)하면 모두 통과했다. 새 캐시 테스트와 초상화·연쇄 문구 테스트 5종은 Chromium·Firefox·WebKit에서 15건 모두 통과했다. 캔버스 픽셀을 읽거나 화면을 캡처하는 게임 테스트 24개와 리플레이·너랑 나랑 파일은 Firefox·WebKit에서 98건 모두 통과했다. Firefox·WebKit 전체 실행은 하지 않았다. 캐시를 끈 화면과 켠 화면의 비교는 임시 스크립트로 실제 구경 대전을 진행시키며 품질 낮음·중간·높음, 세 브라우저에서 수십 프레임씩 확인했다.
+
+### 가상 컨트롤러 자동 선택과 터치스크린 기기의 prompt 텍스트 입력 (2026-10-09, BUILDNO 135)
+
+사용자 요청(`TODO.md`): 설정의 `가상 컨트롤러 사용`에 `자동`을 더해 기본값으로 삼고, 자동일 때 터치스크린·게임패드 유무로 가상 컨트롤러 표시와 텍스트 입력 방식을 정한다.
+
+**설정값과 저장** — `VIRTUAL_CONTROLLER_OPTIONS`는 `auto`·`none`·`normal`·`large` 순서이고 새 저장의 기본값은 `DEFAULT_VIRTUAL_CONTROLLER_OPTION`(`auto`)이다. `getVirtualControllerOption()`은 값이 없거나 알 수 없는 저장값을 `auto`로 보정한다(예전에는 `none`). 이전 불리언 `true`/`false`는 그대로 `normal`/`none`이다. **이미 저장된 `none`·`normal`·`large`는 바꾸지 않는다.** BUILDNO 134까지의 저장은 기본값이던 `none`이 명시적으로 기록돼 있어 사용자가 고른 `없음`과 구분할 수 없으므로 자동으로 이관하지 않았다. 기존 사용자는 설정에서 `자동`을 고르거나 초기화해야 자동이 된다.
+
+**기기 판정** — `hasTouchScreen()`은 `navigator.maxTouchPoints > 0`(이 값이 숫자가 아닌 옛 브라우저만 `'ontouchstart' in window`)이다. 게임패드는 매 프레임 `updateGamepadInput()`이 `navigator.getGamepads()`를 읽으면서 모듈 변수 `gamepadConnected`에 "연결된 게임패드가 하나라도 있는지"를 기록한다. 브라우저는 게임패드의 버튼을 한 번 눌러야 목록에 내놓으므로, 연결만 하고 아무것도 누르지 않은 게임패드는 없는 것으로 본다. 두 값 모두 매번 다시 읽으므로 게임 도중에 게임패드를 연결하거나 뽑으면 바로 반영된다.
+
+| 설정 | 터치스크린 | 게임패드 | 게임 중 가상 컨트롤러 | 텍스트 입력 |
+| --- | --- | --- | --- | --- |
+| 자동 | 없음 | 없음 | 숨김 | 캔버스 입력(기존) |
+| 자동 | 없음 | 있음 | 숨김 | 캔버스 입력(기존) |
+| 자동 | 있음 | 있음 | 숨김 | prompt |
+| 자동 | 있음 | 없음 | 보통 크기 | prompt |
+| 없음 | 무관 | 무관 | 숨김 | 캔버스 입력(기존) |
+| 보통·크게 | 없음 | 무관 | 그 크기로 표시 | 캔버스 입력(기존) |
+| 보통·크게 | 있음 | 무관 | 그 크기로 표시 | prompt |
+
+- 가상 컨트롤러: `getEffectiveVirtualControllerSize()`가 위 표의 표시 크기(`none`·`normal`·`large`)를 돌려주고 `shouldShowVirtualController()`·`getVirtualControllerScale()`·`getVirtualControllerLayout()`이 모두 이것을 쓴다. `store.settings.virtualController`를 직접 `'none'`·`'large'`와 비교하는 코드를 새로 쓰지 않는다. 자동에서 게임패드가 새로 잡혀 가상 컨트롤러가 사라지는 순간에는 `resetVirtualControllerInput()`으로 누르고 있던 가상 입력을 정리한다(가상 방향 입력은 표시 여부와 무관하게 게임에 반영되기 때문이다).
+- prompt 사용 여부: `shouldUseNativeTextPrompt()`는 "설정이 `none`이 아니고 터치스크린이 있으며 `window.prompt`가 있다"이다. 게임패드 유무는 보지 않는다. **TODO는 자동일 때만 규정했고, `보통`·`크게`에서도 터치스크린이 있으면 prompt를 쓰는 것은 구현 판단이다.** TODO가 휴대폰 사용자는 크기를 설정에서 바꾸라고 안내하는데, `크게`로 바꾼 순간 글자를 넣을 방법이 사라지면 안 되기 때문이다. `없음`은 터치스크린이 달린 PC에서 예전처럼 쓰려는 선택으로 보아 prompt를 쓰지 않는다. 자동일 때만으로 좁히려면 이 함수의 첫 조건을 `!== 'auto'`로 바꾸면 된다.
+- 공통 입력 함수: `requestNativeTextPrompt(message, defaultValue)`가 `window.prompt`를 부르고, 취소(`null`)·공란(공백만 입력 포함)이면 `null`을 돌려준다(TODO의 "공란 입력 시 취소로 처리"). prompt가 떠 있는 동안 페이지가 멈춰 keyup·pointerup을 받지 못하므로 닫힌 뒤 `resetKeyboardDirectionInput()`·`resetVirtualControllerInput()`을 부른다. 호출은 동기식이라 키·클릭·게임패드 처리 도중에 그대로 값을 받는다. **공란이 취소이므로 prompt로는 이미 들어 있는 값을 빈 값으로 지울 수 없다**(예: 사운드 데이터 URL 비우기). TODO 요구를 그대로 따른 결과다.
+- 어느 화면이든 prompt는 **그 칸의 내용만** 채우고 저장·제출은 하지 않는다. 사용자는 게임 화면으로 돌아와 값이 들어간 것을 보고 확인·저장 버튼을 누른다. 넣을 때는 직접 입력과 같은 삽입 함수를 거쳐 최대 길이 규칙이 그대로 적용된다. API 키와 온라인 비밀번호처럼 화면에서 가려 표시하는 값은 prompt에 기존 값을 미리 채우지 않는다. prompt 자체는 입력을 가리지 못하므로 **온라인 비밀번호를 치는 동안에는 글자가 그대로 보인다.**
+
+| 화면 | 진입 | 처리 함수 | prompt 안내 문구 |
+| --- | --- | --- | --- |
+| 최초 이름 입력(`playerNamePrompt`) | 입력란 클릭, 입력란 포커스에서 Enter·Space | `requestPlayerNameNativePrompt()` | `translate('이름 또는 닉네임을 입력하세요')` |
+| 설정 텍스트 항목 | 항목 클릭, 포커스에서 Enter·Space | `beginSettingsTextInput(field)` | 그 행의 번역된 라벨 |
+| `askText()` 대화상자(설정의 코드 버튼 포함) | 입력창 클릭, 입력창 포커스에서 Enter·Space | `requestTextDialogNativePrompt()` | 대화상자의 `message` 원문 |
+| 온라인 로그인·가입 | 입력칸 클릭, 포커스에서 Enter·Space | `beginOnlineFormFieldInput(index)` | 그 칸의 번역된 라벨 |
+
+- 최초 이름 입력: prompt 방식에서만 `playerNamePrompt.focus`(0 입력란, 1 확인)를 쓴다. 방향키가 둘 사이를 오가고, 입력란에서 Enter는 prompt, 확인에서 Enter는 제출이다. 포커스된 쪽을 노란 테두리로 그리고 커서는 그리지 않는다. 캔버스에 직접 친 글자는 받지 않는다. prompt 방식이 아니면 예전 그대로(바로 타이핑, Enter 제출, 포커스 개념 없음)다.
+- `askText()`: `syncTextDialogInputMode()`가 대화상자를 표시할 때와 키·클릭을 받을 때마다 입력 모드를 맞춘다. prompt 방식이면 `editing`을 항상 false로 두고, 아니면 한 줄 입력을 항상 true로 둔다. prompt 방식에서는 한 줄 입력도 입력창(0)·확인(1)·취소(2) 포커스를 방향키로 옮기며(`moveTextDialogFocus()`가 더 이상 여러 줄 전용이 아니다) ESC는 대화상자를 취소한다. 버튼 포커스 테두리는 `여러 줄 || prompt 방식`일 때 그린다. 반환값 계약(확인은 문자열, 취소는 `null`)은 그대로다.
+- 온라인 로그인·가입: 입력칸 최대 길이 30은 `ONLINE_FORM_FIELD_MAX_LENGTH` 상수로 뽑아 직접 입력과 prompt가 함께 쓴다. "입력칸에 포커스가 있을 때 글자를 누르면 바로 편집을 시작"하는 기존 경로는 건드리지 않았다. TODO의 목록에는 없지만 게임 페이지의 텍스트 입력 창이라 함께 적용했다.
+- 게임패드 A(Z): `isTextInputInProgress()`는 prompt 방식일 때 이름 입력·텍스트 대화상자를 "문자 입력 중"으로 보지 않는다. 그래서 터치스크린+게임패드 기기에서 A 버튼이 글자 `z`가 아니라 확인 키로 동작해 게임패드만으로 prompt를 열고 제출할 수 있다. prompt 방식이 아니면 예전 그대로다.
+- `getMenuFocusToken()`은 prompt 방식의 이름 입력 포커스(`namePrompt:n`)를 포함해 포커스 이동음을 낸다.
+- 다국어: `자동`을 en `Auto`·ja `自動`·zh `自动`·de `Auto`·fr `Auto`로 더했다(좁은 선택지에 맞춘 짧은 표기).
+- WebMCP: 화면 이름·상태 필드는 바뀌지 않아 스키마는 그대로이고, `manual`의 조작 문단에 자동 선택 규칙을, 대화상자 문단에 터치스크린 기기의 prompt 입력과 포커스 조작을 더했다. `test01_core`의 WebMCP 테스트가 두 문구(`Auto by default`, `native prompt()`)를 확인한다.
+- 별도 페이지(리플레이 재생 `replay.html`, 리더보드 `leaderboard.html`)의 입력은 대상이 아니다. 개발용 도구(`tools.html`)는 따로 고치지 않았지만 같은 `puyow_store` 설정과 게임 캔버스(시뮬레이터 편집 모드·테스트 플레이)를 쓰므로, 터치스크린 기기에서는 편집 모드의 `JSON넣기`(`askText()`)가 같은 prompt 방식이 되고 자동 선택에 따라 테스트 플레이에 가상 컨트롤러가 나온다.
+- 문서: `README.md`·`README.en.md`의 조작 방법 아래에 「터치스크린과 가상 컨트롤러」 절을 더했다.
+- **알아 둘 기존 동작(이번에 고치지 않음)**: 온라인 로그인·가입 입력칸의 편집 상태(`onlineForm.editing`)는 `isTextInputInProgress()`에 들어 있지 않아, 메뉴에서 Z를 확인 키로 바꾸는 규칙 때문에 캔버스 직접 입력으로는 글자 `z`를 넣을 수 없다(Z가 Enter로 바뀌어 편집이 끝난다. 아이디 칸에 `abzcz`를 치면 `abc`만 남는 것을 확인했다). `onlineForm?.editing`을 조건에 더하면 고쳐지지만, 그러면 편집 중 게임패드 A 버튼이 편집 종료가 아니라 글자 `z` 입력이 되므로 사용자 결정이 필요해 손대지 않았다.
+- 테스트: `tests/test01_touch_input.spec.js`(11건)가 위 표의 조합별 표시·입력 방식, 저장값 보정, 각 화면의 prompt 입력·공란 취소·최대 길이·미리 채움, 키보드·게임패드 조작, prompt 뒤 설정 화면의 방향키·Enter·마우스, 텍스트 항목 밖 클릭 시 입력 모드 종료를 확인한다. `test01_menu`의 가상 컨트롤러 선택 테스트는 네 선택지 좌표에 맞춰 고치고 자동 선택을 더했다. 공통 준비 코드가 터치스크린 없음을 기준선으로 고정하므로, 터치스크린 기기를 다루는 테스트는 `page.reload()` 뒤에 `window.setTestTouchPoints(1)`을 다시 불러야 한다(초기화 스크립트가 새로 고칠 때마다 0으로 되돌린다). 공용 `enterMainMenu()`는 이름 입력 대화상자에 글자를 직접 치므로 터치스크린을 켜기 전에 부르거나 이름을 미리 저장해 둔다.
+- `puyow.js` BUILDNO는 135, `package.json`·`package-lock.json` 버전은 `0.4.135`이며 번들을 다시 생성했다. 버전값 자체는 테스트하지 않는다.
+- 검증: JS 문법 검사·ESLint·Webpack 빌드·작업 파일의 `git diff --check` 통과. Chromium 전체 433건 통과. 새 테스트와 `test01_menu`·`test01_core`·`test01_together`는 Firefox·WebKit에서도 232건 모두 통과했다(그 밖의 파일은 Firefox·WebKit에서 돌리지 않았다). 텍스트 항목 밖 클릭 시 입력 모드를 끝내는 수정은 그 두 줄을 뺀 번들에서 해당 테스트가 실패하는 것을 확인했다. 설정 화면(한국어·영어·독일어)과 터치스크린 방식의 이름 입력·텍스트 대화상자는 화면 캡처로도 확인했다. **터치스크린과 prompt는 `navigator.maxTouchPoints`와 `window.prompt`를 바꿔 끼운 모의 환경으로만 검증했고, 실제 휴대폰·태블릿 브라우저에서는 확인하지 않았다.**
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.
