@@ -22,7 +22,7 @@
 import JSON5 from './json5.js';
 
 /** 빌드 번호 @type {number} */
-const BUILDNO = 136;
+const BUILDNO = 137;
 /** 일반 텍스트 입력 대화상자의 최대 문자 수다. */
 const TEXT_DIALOG_DEFAULT_MAX_LENGTH = 2000;
 /** 리플레이·시뮬레이터 JSON처럼 붙여 넣는 긴 텍스트의 최대 문자 수다. */
@@ -5858,10 +5858,27 @@ function prepareAiPlacementSimulations(player) {
     player.aiSimulations = simulations;
 }
 
-/** 솔로몬을 제외한 적이 피버 중이면 즉시 패배하지 않는 후보 가운데 예상 연쇄가 가장 큰 배치를 고른다. @param {PlayerState} player CPU 플레이어 @returns {object|null} 선택 후보 */
-function findBestFeverComboPlacement(player) {
+/**
+ * 적이 즉시 패배 후보를 거르고 위험 열(패배 위치)을 미리 피하는 공통 생존 규칙을 쓰는지 확인한다.
+ * `avoidsDefeat`가 명시적으로 false인 적(2수 이상 미래를 읽는 적과 모델 기반 적)만 규칙을 끄며,
+ * 값이 없는 외부 적이나 적이 아닌 대상은 기존처럼 규칙을 따른다.
+ * @param {Enemy|object|null|undefined} enemy 확인할 적
+ * @returns {boolean} 생존 규칙을 쓰면 true
+ */
+function usesDefeatAvoidance(enemy) {
+    return enemy?.avoidsDefeat !== false;
+}
+
+/**
+ * 솔로몬을 제외한 적이 피버 중이면 예상 연쇄가 가장 큰 배치를 고른다.
+ * 기본적으로 즉시 패배하는 후보는 제외하며, `avoidDefeat`가 false이면 그 필터 없이 모든 후보를 비교한다.
+ * @param {PlayerState} player CPU 플레이어
+ * @param {boolean} [avoidDefeat=true] 즉시 패배하는 후보를 제외할지 여부
+ * @returns {object|null} 선택 후보
+ */
+function findBestFeverComboPlacement(player, avoidDefeat = true) {
     return player.aiSimulations.reduce((best, simulation) => {
-        if (causesImmediateDefeat(player, simulation)) return best;
+        if (avoidDefeat && causesImmediateDefeat(player, simulation)) return best;
         if (!best || simulation.combo > best.combo || (simulation.combo === best.combo && simulation.attack > best.attack)) return simulation;
         return best;
     }, null);
@@ -5932,7 +5949,9 @@ function isEmptyPlayerField(player) {
 function selectRandomEmptyFieldPlacement(player, controller) {
     const randomizeStageOpening = game?.feverRule === true && player.fever?.randomizeStageOpening === true;
     if (!usesRandomEmptyFieldPlacement(controller) || (!isEmptyPlayerField(player) && !randomizeStageOpening)) return null;
-    const safeSimulations = player.aiSimulations.filter((simulation) => !causesImmediateDefeat(player, simulation));
+    const safeSimulations = usesDefeatAvoidance(controller)
+        ? player.aiSimulations.filter((simulation) => !causesImmediateDefeat(player, simulation))
+        : player.aiSimulations;
     let candidates = safeSimulations.length ? safeSimulations : player.aiSimulations;
     const openingColumns = game?.watch?.openingPlacementColumns;
     const isWatchOpening = Array.isArray(openingColumns) && game.players.every((candidate) => candidate.placedPairCount === 0);
@@ -6596,9 +6615,10 @@ function getNMovePlacementScore(combo, attack, allClear, targetCombo, board) {
  * @param {number} remainingTurns 이번 수를 포함해 남은 탐색 수
  * @param {number} targetCombo 목표 연쇄 수
  * @param {number} explosionCount 폭발 기준
+ * @param {boolean} [avoidDefeat=true] 패배 칸이 차는 경로를 후보에서 제외할지 여부
  * @returns {object|null} 이 보드에서의 최선 경로
  */
-function findBestNMoveBoardResult(board, colors, nextPairs, nextPairIndex, remainingTurns, targetCombo, explosionCount) {
+function findBestNMoveBoardResult(board, colors, nextPairs, nextPairIndex, remainingTurns, targetCombo, explosionCount, avoidDefeat = true) {
     if (!Array.isArray(colors) || colors.length !== 2) return null;
     const virtualPlayer = { board, active: { x: 2, y: ACTIVE_PUYO_SPAWN_Y, rotation: 0, colors } };
     let best = null;
@@ -6608,12 +6628,12 @@ function findBestNMoveBoardResult(board, colors, nextPairs, nextPairIndex, remai
             if (!placement) continue;
             const positions = activeCells(placement).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
             const resultBoard = simulatePlacementBoard(board, colors, positions, explosionCount);
-            if (!resultBoard || isDefeatBoard(resultBoard)) continue;
+            if (!resultBoard || (avoidDefeat && isDefeatBoard(resultBoard))) continue;
             const combo = estimateCombo(board, colors, positions, explosionCount);
             const attack = estimateAttack(board, colors, positions, explosionCount);
             const allClear = isAllClearBoard(resultBoard);
             const future = remainingTurns > 1
-                ? findBestNMoveBoardResult(resultBoard, nextPairs[nextPairIndex], nextPairs, nextPairIndex + 1, remainingTurns - 1, targetCombo, explosionCount)
+                ? findBestNMoveBoardResult(resultBoard, nextPairs[nextPairIndex], nextPairs, nextPairIndex + 1, remainingTurns - 1, targetCombo, explosionCount, avoidDefeat)
                 : null;
             const score = getNMovePlacementScore(combo, attack, allClear, targetCombo, resultBoard)
                 + (future ? future.score * 0.92 : 0);
@@ -6639,23 +6659,24 @@ function findBestNMoveBoardResult(board, colors, nextPairs, nextPairIndex, remai
  * @param {number} targetCombo 목표 연쇄 수. 두 번째 매개변수로 받아 AI별 목표를 바꿀 수 있다.
  * @param {number} turnCount 현재 수를 포함한 탐색 수 N
  * @param {number} [explosionCount] 폭발 기준. 생략하면 현재 게임 규칙을 따른다.
+ * @param {boolean} [avoidDefeat=true] 즉시 패배하는 후보와 패배 칸이 차는 경로를 제외할지 여부. false이면 그 필터 없이 모든 후보를 읽는다.
  * @returns {object[]} 이번 수 후보별 N수 평가 결과
  */
-function simulateNMovePlacements(player, targetCombo = 6, turnCount = 2, explosionCount = getGameExplosionCount()) {
+function simulateNMovePlacements(player, targetCombo = 6, turnCount = 2, explosionCount = getGameExplosionCount(), avoidDefeat = true) {
     if (!player?.active || !Array.isArray(player.aiSimulations)) return [];
     const target = Math.max(1, Math.floor(Number(targetCombo) || 6));
     const nextPairs = Array.isArray(player.nextPairs) ? player.nextPairs : [];
     const turns = Math.max(1, Math.min(Math.floor(Number(turnCount) || 2), nextPairs.length + 1));
     return player.aiSimulations.reduce((results, simulation) => {
-        if (causesImmediateDefeat(player, simulation, explosionCount)) return results;
+        if (avoidDefeat && causesImmediateDefeat(player, simulation, explosionCount)) return results;
         const result = simulatePlacementResult(player.board, player.active.colors, simulation.positions, explosionCount);
         const board = result?.board;
-        if (!board || isDefeatBoard(board)) return results;
+        if (!board || (avoidDefeat && isDefeatBoard(board))) return results;
         const combo = result.combo;
         const attack = result.attack;
         const allClear = isAllClearBoard(board);
         const future = turns > 1
-            ? findBestNMoveBoardResult(board, nextPairs[0], nextPairs, 1, turns - 1, target, explosionCount)
+            ? findBestNMoveBoardResult(board, nextPairs[0], nextPairs, 1, turns - 1, target, explosionCount, avoidDefeat)
             : null;
         const score = getNMovePlacementScore(combo, attack, allClear, target, board)
             + (future ? future.score * 0.92 : 0);
@@ -6676,10 +6697,11 @@ function simulateNMovePlacements(player, targetCombo = 6, turnCount = 2, explosi
  * @param {number} targetCombo 목표 연쇄 수
  * @param {number} turnCount 현재 수를 포함한 탐색 수 N
  * @param {number} [explosionCount] 폭발 기준. 생략하면 현재 게임 규칙을 따른다.
+ * @param {boolean} [avoidDefeat=true] 즉시 패배하는 후보와 패배 칸이 차는 경로를 제외할지 여부
  * @returns {object|null} 최선 후보의 N수 평가 결과
  */
-function findBestNMovePlacement(player, targetCombo = 6, turnCount = 2, explosionCount = getGameExplosionCount()) {
-    return simulateNMovePlacements(player, targetCombo, turnCount, explosionCount).reduce((best, candidate) => {
+function findBestNMovePlacement(player, targetCombo = 6, turnCount = 2, explosionCount = getGameExplosionCount(), avoidDefeat = true) {
+    return simulateNMovePlacements(player, targetCombo, turnCount, explosionCount, avoidDefeat).reduce((best, candidate) => {
         if (!best || candidate.score > best.score
             || (candidate.score === best.score && candidate.maxCombo > best.maxCombo)
             || (candidate.score === best.score && candidate.maxCombo === best.maxCombo && candidate.simulation.x > best.simulation.x)) return candidate;
@@ -6820,6 +6842,8 @@ function nMoveSimulationWorkerBootstrap(constants) {
         }
     };
     const isDefeatBoard = (board, rules) => board[11][2] !== null || (rules.usesSecondDefeatCell && board[11][3] !== null);
+    /** 이 탐색이 패배 경로(패배 칸이 차거나 도착할 방해뿌요로 위험 열이 넘치는 경로)를 후보에서 걸러 낼지 여부다. 적이 `avoidsDefeat`를 껐으면 그 경로도 평범한 후보로 읽는다. */
+    const avoidsDefeat = (rules) => rules.avoidsDefeat !== false;
     const isIncomingGarbageDefeat = (board, combo, snapshot) => {
         if (combo > 0 || snapshot.self.fever?.active) return false;
         const incoming = Math.min(30, Math.floor(Math.max(0, snapshot.incomingGarbage || 0)));
@@ -6864,7 +6888,7 @@ function nMoveSimulationWorkerBootstrap(constants) {
                 if (!landing) continue;
                 const positions = activeCells(landing).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
                 const resolved = resolvePlacement(board, colorsForPair, positions, snapshot.rules);
-                if (!resolved || isDefeatBoard(resolved.board, snapshot.rules) || isIncomingGarbageDefeat(resolved.board, resolved.combo, snapshot)) continue;
+                if (!resolved || (avoidsDefeat(snapshot.rules) && (isDefeatBoard(resolved.board, snapshot.rules) || isIncomingGarbageDefeat(resolved.board, resolved.combo, snapshot)))) continue;
                 const allClear = isAllClearBoard(resolved.board);
                 const future = remainingTurns > 1
                     ? findBestFuture(resolved.board, nextPairs[nextPairIndex], nextPairs, nextPairIndex + 1, remainingTurns - 1, snapshot, state)
@@ -6898,7 +6922,7 @@ function nMoveSimulationWorkerBootstrap(constants) {
                 if (!landing) continue;
                 const positions = activeCells(landing).map(({ x: cellX, y: cellY }) => ({ x: cellX, y: cellY }));
                 const resolved = resolvePlacement(board, active.colors, positions, snapshot.rules);
-                if (!resolved || isDefeatBoard(resolved.board, snapshot.rules) || isIncomingGarbageDefeat(resolved.board, resolved.combo, snapshot)) continue;
+                if (!resolved || (avoidsDefeat(snapshot.rules) && (isDefeatBoard(resolved.board, snapshot.rules) || isIncomingGarbageDefeat(resolved.board, resolved.combo, snapshot)))) continue;
                 const allClear = isAllClearBoard(resolved.board);
                 const future = depth > 1
                     ? findBestFuture(resolved.board, snapshot.self.nextPairs[0], snapshot.self.nextPairs, 1, depth - 1, snapshot, state)
@@ -7306,7 +7330,7 @@ function nMoveSimulationWorkerBootstrap(constants) {
                 placeFastPair(cells, heights, context.activeCodes[0], context.activeCodes[1], x, rotation);
                 const record = { links: [], popped: 0 };
                 const resolved = resolveFastChain(cells, heights, context.rules, record);
-                if (isFastDefeat(heights, context.rules)) continue;
+                if (context.avoidsDefeat && isFastDefeat(heights, context.rules)) continue;
                 const events = model.events.map((event) => ({ ...event }));
                 const offset = applyFeverOffsets(events, 0, record.links, context.selfAttack);
                 maxSent = Math.max(maxSent, offset.cancelled + offset.overflow);
@@ -7383,6 +7407,8 @@ function nMoveSimulationWorkerBootstrap(constants) {
             selfAttack: Math.max(0, Number(selfState.attack) || 0),
             // 실시간 예측이 없으면 기본 탐색처럼 이번 수 직후에 방해뿌요가 온다고 본다.
             garbageMoveIndex: incoming < 1 ? Infinity : (realtimeMoveIndex >= 0 ? realtimeMoveIndex : 0),
+            // 적이 avoidsDefeat를 껐다면 패배 칸이 차는 경로와 도착할 방해뿌요로 위험 열이 넘치는 경로도 후보로 읽는다.
+            avoidsDefeat: avoidsDefeat(snapshot.rules),
             dangerColumns: snapshot.rules.usesSecondDefeatCell ? [2, 3] : [2],
             allowedPlacements,
             feverModel
@@ -7417,7 +7443,7 @@ function nMoveSimulationWorkerBootstrap(constants) {
                 placeFastPair(childCells, childHeights, code0, code1, x, rotation);
                 const record = context.feverModel ? { links: [], popped: 0 } : null;
                 const resolved = resolveFastChain(childCells, childHeights, context.rules, record);
-                if (isFastDefeat(childHeights, context.rules)) continue;
+                if (context.avoidsDefeat && isFastDefeat(childHeights, context.rules)) continue;
                 let childFever = null;
                 if (context.feverModel) {
                     const model = context.feverModel;
@@ -7432,9 +7458,9 @@ function nMoveSimulationWorkerBootstrap(constants) {
                         const dropAmount = Math.min(30, landed);
                         if (dropAmount > 0) {
                             const extraPerColumn = Math.ceil(dropAmount / columns);
-                            if (context.dangerColumns.some((column) => childHeights[column] + extraPerColumn > 11)) continue;
+                            if (context.avoidsDefeat && context.dangerColumns.some((column) => childHeights[column] + extraPerColumn > 11)) continue;
                             addFastGarbageRows(childCells, childHeights, dropAmount);
-                            if (isFastDefeat(childHeights, context.rules)) continue;
+                            if (context.avoidsDefeat && isFastDefeat(childHeights, context.rules)) continue;
                             let drop = dropAmount;
                             for (let index = 0; index < events.length && drop > 0; index += 1) {
                                 if (events[index].landMove > moveIndex) continue;
@@ -7456,9 +7482,9 @@ function nMoveSimulationWorkerBootstrap(constants) {
                     childSettled = Math.max(0, context.incoming - Math.floor(context.selfAttack + childCumulative));
                     if (childSettled > 0) {
                         const extraPerColumn = Math.ceil(Math.min(30, childSettled) / columns);
-                        if (resolved.combo === 0 && context.dangerColumns.some((column) => childHeights[column] + extraPerColumn > 11)) continue;
+                        if (context.avoidsDefeat && resolved.combo === 0 && context.dangerColumns.some((column) => childHeights[column] + extraPerColumn > 11)) continue;
                         addFastGarbageRows(childCells, childHeights, childSettled);
-                        if (isFastDefeat(childHeights, context.rules)) continue;
+                        if (context.avoidsDefeat && isFastDefeat(childHeights, context.rules)) continue;
                     }
                 }
                 if (expired(state)) return null;
@@ -7651,7 +7677,7 @@ function createNMoveWorkerPlayerSnapshot(player, opponent) {
  * @param {number} targetCombo 목표 연쇄
  * @param {number} turnCount 탐색 수
  * @param {number} urgentGarbageThreshold 긴급 상쇄 기준
- * @param {{explosionCount?:number,searchMode?:'legacy'|'advanced',beamWidth?:number,allowedPlacements?:{x:number,rotation:number}[]|null,lightFeverGaugeWithSmallChains?:boolean}} [searchOptions={}] advanced 탐색 설정. 생략하면 기존 탐색 snapshot과 같다. lightFeverGaugeWithSmallChains는 피버 룰에서 다 상쇄할 수 없을 때 작은 연쇄로 점등할지 여부다(기본 true).
+ * @param {{explosionCount?:number,searchMode?:'legacy'|'advanced',beamWidth?:number,allowedPlacements?:{x:number,rotation:number}[]|null,lightFeverGaugeWithSmallChains?:boolean,avoidDefeat?:boolean}} [searchOptions={}] advanced 탐색 설정. 생략하면 기존 탐색 snapshot과 같다. lightFeverGaugeWithSmallChains는 피버 룰에서 다 상쇄할 수 없을 때 작은 연쇄로 점등할지 여부다(기본 true). avoidDefeat가 false이면 Worker가 패배 경로(패배 칸이 차는 경로·도착할 방해뿌요로 위험 열이 넘치는 경로)를 후보에서 거르지 않는다(기본 true).
  * @returns {object} Worker 탐색용 JSON snapshot
  */
 function createNMoveWorkerSnapshot(player, opponent, targetCombo, turnCount, urgentGarbageThreshold, searchOptions = {}) {
@@ -7683,6 +7709,7 @@ function createNMoveWorkerSnapshot(player, opponent, targetCombo, turnCount, urg
             feverRule: game?.feverRule === true,
             continuousFever: game?.continuousFever === true,
             usesSecondDefeatCell: usesSecondDefeatCell(),
+            avoidsDefeat: searchOptions.avoidDefeat !== false,
             marginRate: game?.marginRate ?? MARGIN_RATE_SCHEDULE[0].rate,
             timeProgressMultiplier: game?.timeProgressMultiplier ?? 1
         }
@@ -7732,7 +7759,7 @@ function releaseNMoveSimulationWorker(worker, discard = false) {
  * @param {number} [targetCombo=6] 목표 연쇄 수
  * @param {number} [turnCount=3] 현재 수를 포함한 탐색 수
  * @param {number} [timeLimitMs=50] 메인 스코프에서 측정할 최대 처리 시간(ms)
- * @param {{opponent?:PlayerState|object|null,urgentGarbageThreshold?:number,explosionCount?:number,searchMode?:'legacy'|'advanced',beamWidth?:number,allowedPlacements?:{x:number,rotation:number}[]|null,lightFeverGaugeWithSmallChains?:boolean,onProgress?:(result:object)=>void,onComplete?:(result:object)=>void,onError?:(error:Error)=>void}} [options] Worker 결과 콜백과 탐색 설정. searchMode가 'advanced'이면 빠른 보드·빔 탐색·발화점 평가·방해뿌요 도착 예측을 쓰고, allowedPlacements가 있으면 현재 수를 그 위치·회전으로만 제한한다.
+ * @param {{opponent?:PlayerState|object|null,urgentGarbageThreshold?:number,explosionCount?:number,searchMode?:'legacy'|'advanced',beamWidth?:number,allowedPlacements?:{x:number,rotation:number}[]|null,lightFeverGaugeWithSmallChains?:boolean,avoidDefeat?:boolean,onProgress?:(result:object)=>void,onComplete?:(result:object)=>void,onError?:(error:Error)=>void}} [options] Worker 결과 콜백과 탐색 설정. searchMode가 'advanced'이면 빠른 보드·빔 탐색·발화점 평가·방해뿌요 도착 예측을 쓰고, allowedPlacements가 있으면 현재 수를 그 위치·회전으로만 제한한다. avoidDefeat가 false이면 즉시 패배·위험 열 경로를 거르지 않고 읽는다(기본 true, 동기 대체 탐색에도 같이 적용).
  * @returns {{cancel:(reason?:string)=>void,promise:Promise<object>}} 취소 가능한 비동기 탐색 작업
  */
 function simulateNMovePlacementsInWorker(player, targetCombo = 6, turnCount = 3, timeLimitMs = 50, options = {}) {
@@ -7778,11 +7805,12 @@ function simulateNMovePlacementsInWorker(player, targetCombo = 6, turnCount = 3,
             console.error(`N수 AI Worker ${reason}: ${error.message}`, error);
             try { options.onError?.(error); } catch (callbackError) { console.error('N수 AI Worker 오류 콜백에 실패했습니다.', callbackError); }
         }
+        const avoidDefeat = options.avoidDefeat !== false;
         const fallbackPlan = Array.isArray(options.allowedPlacements)
-            ? simulateNMovePlacements(player, targetCombo, 1, options.explosionCount ?? getGameExplosionCount())
+            ? simulateNMovePlacements(player, targetCombo, 1, options.explosionCount ?? getGameExplosionCount(), avoidDefeat)
                 .filter((plan) => options.allowedPlacements.some((placement) => placement.x === plan.simulation.x && placement.rotation === plan.simulation.rotation))
                 .reduce((best, plan) => (!best || plan.score > best.score || (plan.score === best.score && plan.simulation.x > best.simulation.x) ? plan : best), null)
-            : findBestNMovePlacement(player, targetCombo, 1, options.explosionCount ?? getGameExplosionCount());
+            : findBestNMovePlacement(player, targetCombo, 1, options.explosionCount ?? getGameExplosionCount(), avoidDefeat);
         notifyComplete({
             depth: 0,
             placement: fallbackPlan?.simulation || null,
@@ -7814,7 +7842,8 @@ function simulateNMovePlacementsInWorker(player, targetCombo = 6, turnCount = 3,
             searchMode: options.searchMode,
             beamWidth: options.beamWidth,
             allowedPlacements: options.allowedPlacements,
-            lightFeverGaugeWithSmallChains: options.lightFeverGaugeWithSmallChains
+            lightFeverGaugeWithSmallChains: options.lightFeverGaugeWithSmallChains,
+            avoidDefeat: options.avoidDefeat
         });
         const requestId = `${Date.now()}-${Math.floor(randomFloat() * 1000000)}`;
         const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -7906,8 +7935,9 @@ function applyWorkerSearchResult(enemy, player, result) {
 
 /** @param {Enemy|object} enemy Worker가 1수 결과를 내지 못했을 때의 기존 동기 후보 @param {PlayerState|object} player CPU 플레이어 @returns {object|null} */
 function getWorkerSearchFallbackPlacement(enemy, player) {
-    return findBestNMovePlacement(player, enemy.targetCombo, 1)?.simulation
-        || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
+    const avoidDefeat = usesDefeatAvoidance(enemy);
+    return findBestNMovePlacement(player, enemy.targetCombo, 1, getGameExplosionCount(), avoidDefeat)?.simulation
+        || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true, avoidDefeat);
 }
 
 /**
@@ -7942,6 +7972,8 @@ function startWorkerLookaheadSearch(enemy, player, searchOptions = {}) {
             beamWidth: enemy.lookaheadBeamWidth,
             allowedPlacements,
             lightFeverGaugeWithSmallChains: enemy.lightFeverGaugeWithSmallChains,
+            // 적이 avoidsDefeat를 껐다면 Worker도 즉시 패배·위험 열 경로를 거르지 않는다.
+            avoidDefeat: usesDefeatAvoidance(enemy),
             onProgress: (result) => applyWorkerSearchResult(enemy, player, result),
             onComplete: (result) => {
                 if (!isCurrentWorkerSearch(enemy, player)) return;
@@ -8322,9 +8354,10 @@ function isAllClearBoard(board) {
  * @param {number} fallback 유효한 후보가 없을 때 사용할 열
  * @param {number|null} defeatCheckColumn 즉시 패배를 피할 X 좌표. null이면 검사하지 않는다.
  * @param {boolean} excludeAllImmediateDefeats 모든 즉시 패배 후보를 제외할지 여부
+ * @param {boolean} [avoidDefeat=true] false이면 앞의 두 인자와 무관하게 즉시 패배 검사를 전혀 하지 않고 공격력만 비교한다. avoidsDefeat를 끈 적이 넘긴다.
  * @returns {{x:number, rotation:number, positions:{x:number,y:number}[], attack:number, combo:number}} 목표 배치 후보
  */
-function findBestAttackPlacement(player, fallback, defeatCheckColumn = null, excludeAllImmediateDefeats = false) {
+function findBestAttackPlacement(player, fallback, defeatCheckColumn = null, excludeAllImmediateDefeats = false, avoidDefeat = true) {
     let bestPlacement = {
         x: fallback,
         rotation: 0,
@@ -8334,10 +8367,12 @@ function findBestAttackPlacement(player, fallback, defeatCheckColumn = null, exc
     };
     // 회전을 포함한 모든 실제 착지 후보를 비교한다. 공격력이 같으면 더 오른쪽 열을 선택한다.
     player.aiSimulations.forEach((simulation) => {
-        // Y=2에 닿는 후보는 다른 조건보다 먼저 즉시 패배 여부를 확인해 배제한다.
-        if (excludeAllImmediateDefeats && causesImmediateDefeat(player, simulation)) return;
-        if (simulation.positions.some((position) => position.y === 2) && causesImmediateDefeat(player, simulation)) return;
-        if (simulation.x === defeatCheckColumn && causesImmediateDefeat(player, simulation)) return;
+        if (avoidDefeat) {
+            // Y=2에 닿는 후보는 다른 조건보다 먼저 즉시 패배 여부를 확인해 배제한다.
+            if (excludeAllImmediateDefeats && causesImmediateDefeat(player, simulation)) return;
+            if (simulation.positions.some((position) => position.y === 2) && causesImmediateDefeat(player, simulation)) return;
+            if (simulation.x === defeatCheckColumn && causesImmediateDefeat(player, simulation)) return;
+        }
         if (simulation.attack > bestPlacement.attack || (simulation.attack === bestPlacement.attack && simulation.x >= bestPlacement.x)) {
             bestPlacement = simulation;
         }
@@ -19869,6 +19904,14 @@ class Enemy {
         this.requiresOnnx = false;
         /** 모델을 사용하는 외부 적은 true로 지정해 2-폭발 출전을 제외한다. ONNX·솔로몬 계열은 자동 판별한다. @type {boolean} */
         this.requiresModel = false;
+        /**
+         * 즉시 패배하는 후보를 거르고 위험 열(패배 위치)을 미리 피하는 공통 생존 규칙을 쓸지 여부다. 기본은 true다.
+         * 2수 이상 미래를 읽는 기본 제공 적(`TwoMoveLookaheadEnemy`·`RealtimeLookaheadEnemy`)과 모델 기반 적(`OnnxEnemy`·`Solomon`)은
+         * false로 두어, 패배하는 배치도 평범한 후보로 취급한다. false이면 `prepareTurn()`의 피버 최대 연쇄 후보·패배 위치 경고 후보,
+         * `selectSafeRotation()`, 빈 필드 첫 배치, Worker 탐색(`startWorkerLookaheadSearch()`)이 모두 패배 여부를 보지 않는다.
+         * @type {boolean}
+         */
+        this.avoidsDefeat = true;
         /** 이번 턴에 공통 규칙이 미리 선택한 착지 후보다. 적 구현은 chooseTarget/chooseRotate에서 이를 우선할 수 있다. @type {object|null} */
         this.preparedPlacement = null;
         /** Worker 탐색 또는 적별 공격 판단이 선택한 현재 턴 배치 후보다. @type {object|null} */
@@ -19916,14 +19959,15 @@ class Enemy {
             this.preparedPlacement = randomEmptyFieldPlacement;
             return;
         }
+        const avoidDefeat = usesDefeatAvoidance(this);
         if (game?.feverRule && player.fever?.active && !(this instanceof Solomon)) {
             // 피버 중에는 적별 chooseTarget/chooseRotate보다 연쇄 최적 시뮬레이션을 우선한다.
             prepareAiPlacementSimulations(player);
-            this.preparedPlacement = findBestFeverComboPlacement(player)
-                || findBestAttackPlacement(player, player.active.x, null, true);
+            this.preparedPlacement = findBestFeverComboPlacement(player, avoidDefeat)
+                || findBestAttackPlacement(player, player.active.x, null, true, avoidDefeat);
             return;
         }
-        if (getAiDefeatPositionAvoidanceColumns(player).length) {
+        if (avoidDefeat && getAiDefeatPositionAvoidanceColumns(player).length) {
             // 패배 위치 경고는 적별 쌓기 전략보다 앞서 안전한 후보를 미리 고른다.
             this.preparedPlacement = findAiDefeatPositionSafePlacement(player);
         }
@@ -20076,18 +20120,20 @@ class BundledEnemy extends Enemy {
     prepareTurn(player) {
         super.prepareTurn(player);
         if (this.getPreparedPlacement() || this instanceof Solomon || !shouldCounterPlayerChain(player)) return;
-        this.preparedPlacement = findBestAttackPlacement(player, player.active.x, null, true);
+        this.preparedPlacement = findBestAttackPlacement(player, player.active.x, null, true, usesDefeatAvoidance(this));
     }
 
     /**
      * 기본 제공 적의 선택이 즉시 패배하면 안전한 공격 후보로 바꾸고 회전값을 반환한다.
      * chooseRotate를 재정의하는 하위 클래스는 이 메서드를 호출해 같은 보호 규칙을 유지한다.
+     * `avoidsDefeat`를 끈 적은 즉시 패배 여부를 보지 않고 요청한 회전값을 그대로 쓴다.
      * @param {PlayerState} player 자동 조작할 플레이어
      * @param {number} rotation 요청한 회전값
      * @returns {number} 적용할 회전값
      */
     selectSafeRotation(player, rotation) {
         const normalizedRotation = ((rotation % 4) + 4) % 4;
+        if (!usesDefeatAvoidance(this)) return normalizedRotation;
         const selectedPlacement = player.aiSimulations.find((simulation) => simulation.x === player.aiTarget && simulation.rotation === normalizedRotation);
         if (!selectedPlacement || !causesImmediateDefeat(player, selectedPlacement)) return normalizedRotation;
         const safePlacement = findBestAttackPlacement(player, player.active.x, null, true);
@@ -20121,6 +20167,8 @@ class Solomon extends BundledEnemy {
         super();
         this.sortPriority = 0;
         this.hidden = true;
+        // 모델 기반 적은 즉시 패배 후보 필터와 위험 열 사전 회피를 쓰지 않는다. 대체 인공지능(벨리알)은 자기 규칙을 그대로 따른다.
+        this.avoidsDefeat = false;
         /** API가 늦거나 실패했을 때 사용할 교체 가능한 대체 인공지능이다. @type {Enemy} */
         this.fallbackEnemy = new Belial();
         /** @type {'idle'|'pending'|'ready'|'fallback'|'cancelled'} */
@@ -20141,13 +20189,7 @@ class Solomon extends BundledEnemy {
     getClassType() { return 'Solomon'; }
     getName() { return '솔로몬'; }
 
-    /** 위험 높이에서는 API를 기다리지 않고 대체 인공지능을 사용할지 판별한다. @param {PlayerState} player CPU 플레이어 @returns {boolean} */
-    shouldUseFallbackImmediately(player) {
-        if (game?.feverRule) return Boolean(player.board[5]?.[2] || player.board[5]?.[3]);
-        return Boolean(player.board[5]?.[2]);
-    }
-
-    /** 현재 턴을 벨리알과 같은 판단 결과로 전환한다. @param {PlayerState} player CPU 플레이어 @returns {void} */
+    /** API가 늦거나 실패했을 때만 현재 턴을 벨리알과 같은 판단 결과로 전환한다. @param {PlayerState} player CPU 플레이어 @returns {void} */
     applyFallback(player) {
         if (!player.active) return;
         this.fallbackEnemy.prepareTurn(player);
@@ -20172,7 +20214,6 @@ class Solomon extends BundledEnemy {
         // 모델 버전 4의 관측값은 상대 필드와 진행 중인 상대 연쇄까지 본다.
         const incoming = getModelIncomingState(player, opponent);
         const feverRule = game?.feverRule === true;
-        const dangerCells = feverRule ? [{ x: 2, y: 5 }, { x: 3, y: 5 }] : [{ x: 2, y: 5 }];
         // 로컬 AI 서버로 극한 난이도 대전을 할 때만 학습 세션 ID가 붙는다. 다른 제공자와 난이도의
         // 프롬프트는 이 항목 없이 기존과 완전히 같은 내용으로 유지된다.
         const learningSessionId = getSolomonLearningSessionId();
@@ -20211,10 +20252,6 @@ class Solomon extends BundledEnemy {
                 { order: 'current', colors: [...player.active.colors] },
                 ...player.nextPairs.slice(0, 2).map((colors, index) => ({ order: `next_${index + 1}`, colors: [...colors] }))
             ],
-            fallbackSafetyCondition: {
-                dangerousCells: dangerCells,
-                instruction: 'Avoid placements that occupy or further endanger these cells. If any dangerous cell is already occupied, the local fallback AI is used instead of this request.'
-            },
             responseSchema: SOLOMON_PLACEMENT_JSON_SCHEMA,
             ...(usablePlacements.length ? { usablePlacements } : {}),
             ...(learningSessionId ? { learningSessionId } : {})
@@ -20300,10 +20337,6 @@ class Solomon extends BundledEnemy {
         this.targetX = player.active?.x ?? 2;
         this.targetRotation = player.active?.rotation ?? 0;
         this.fastDownElapsed = 0;
-        if (this.shouldUseFallbackImmediately(player)) {
-            this.applyFallback(player);
-            return;
-        }
         this.decisionState = 'pending';
         void this.requestPlacement(player);
     }
@@ -21130,10 +21163,12 @@ class ChainBuildingEnemy extends BundledEnemy {
 
     /**
      * 즉시 패배하는 후보를 제외한다. 특히 착지 좌표에 Y=2가 포함될 때도 최종 폭발·중력 결과를 검사한다.
+     * `avoidsDefeat`를 끈 적은 거르지 않고 모든 후보를 돌려준다.
      * @param {PlayerState} player 자동 조작할 플레이어
      * @returns {object[]} 안전한 시뮬레이션 후보
      */
     getSafeSimulations(player) {
+        if (!usesDefeatAvoidance(this)) return player.aiSimulations;
         return player.aiSimulations.filter((simulation) => {
             const placedAtThirdRow = simulation.positions.some((position) => position.y === 2);
             const losesImmediately = causesImmediateDefeat(player, simulation);
@@ -21675,6 +21710,8 @@ class FiveChainEnemy extends PreviewChainEnemy {
 class TwoMoveLookaheadEnemy extends FiveChainEnemy {
     constructor() {
         super();
+        // 2수를 읽는 적은 즉시 패배 후보 필터와 위험 열 사전 회피를 쓰지 않는다.
+        this.avoidsDefeat = false;
         /** 이 수보다 적은 방해뿌요는 긴급 상쇄 대상으로 보지 않는다. @type {number} */
         this.ignorableIncomingGarbage = 4;
         /** 피버가 아닌 평상시 목표 연쇄 수. @type {number} */
@@ -21727,7 +21764,7 @@ class TwoMoveLookaheadEnemy extends FiveChainEnemy {
         const incomingGarbage = Math.max(0, Math.floor(this.getIncomingGarbage(player)));
         const incomingIsUrgent = incomingGarbage >= this.ignorableIncomingGarbage;
         let best = null;
-        simulateNMovePlacements(player, this.targetCombo, this.lookaheadTurnCount).forEach((plan) => {
+        simulateNMovePlacements(player, this.targetCombo, this.lookaheadTurnCount, getGameExplosionCount(), usesDefeatAvoidance(this)).forEach((plan) => {
             const candidate = this.evaluateLookaheadPlacement(player, plan, incomingGarbage);
             if (candidate && this.isBetterLookaheadPlacement(candidate, best, incomingIsUrgent)) best = candidate;
         });
@@ -21735,18 +21772,19 @@ class TwoMoveLookaheadEnemy extends FiveChainEnemy {
     }
 
     /**
-     * 기본 Enemy의 피버·초기 배치·패배 위치 공통 후보가 없을 때만 2수 읽기 후보를 준비한다.
+     * 기본 Enemy의 피버·초기 배치 공통 후보가 없을 때만 2수 읽기 후보를 준비한다.
+     * 이 적은 `avoidsDefeat`가 꺼져 있어 패배 위치 경고 후보와 즉시 패배 후보 필터를 쓰지 않는다.
      * @param {PlayerState} player 자동 조작할 플레이어
      * @returns {void}
      */
     prepareTurn(player) {
         // 암두시아스 계열의 기존 즉시 공격·쌓기 판단은 거치지 않는다.
-        // Enemy의 피버 연쇄 최적화와 공통 생존 규칙만 그대로 유지한다.
+        // Enemy의 피버 연쇄 최적화와 빈 필드 첫 배치만 그대로 유지한다.
         Enemy.prototype.prepareTurn.call(this, player);
         this.attackPlacement = null;
         if (this.getPreparedPlacement()) return;
         this.attackPlacement = this.findBestLookaheadPlacement(player)
-            || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true);
+            || findBestAttackPlacement(player, player.active ? player.active.x : 2, null, true, usesDefeatAvoidance(this));
     }
 
     /** @param {PlayerState} player 자동 조작할 플레이어 @returns {number} 2수 읽기로 선택한 목표 X 좌표 */
@@ -21882,7 +21920,8 @@ class Kimaris extends PreviewChainEnemy {
  * - 기본 룰과 피버 룰(시작·완화 포함)의 일반 상태에서, 조작 중 상대 연쇄·받을 방해뿌요·상대 피버 패턴 예측이 바뀌면
  *   빠른 하강을 시작하기 전까지만 도달 가능한 위치로 다시 탐색한다.
  * - 피버 룰 일반 상태에서는 목표 연쇄 → 역공 → 점등 우선순위를 따른다.
- * - 피버·패배 위치 보호·필드 80% 보호 후보가 있으면 Worker를 시작하지 않고 그 후보를 쓴다.
+ * - 피버 중 최대 연쇄·빈 필드 첫 배치 후보가 있으면 Worker를 시작하지 않고 그 후보를 쓴다.
+ * - `avoidsDefeat`가 꺼져 있어 즉시 패배 후보 필터·위험 열 사전 회피(패배 위치 경고, 필드 80% 보호, Worker의 패배 경로 제외)를 쓰지 않는다.
  *
  * 하위 클래스는 constructor에서 `super({ targetCombo, lightFeverGaugeWithSmallChains })`로 적마다 다른 값을 정하고,
  * `sortPriority`·`notAvail`과 `getClassType()`·`getName()`·`getFieldThemeColors()`·`drawPortrait()`를 재정의한다.
@@ -21897,6 +21936,8 @@ class RealtimeLookaheadEnemy extends BundledEnemy {
      */
     constructor(options = {}) {
         super();
+        // 3수를 읽는 적은 즉시 패배 후보 필터와 위험 열 사전 회피(Worker 탐색 포함)를 쓰지 않는다.
+        this.avoidsDefeat = false;
         const targetCombo = options.targetCombo ?? 7;
         if (!Number.isInteger(targetCombo) || targetCombo < 1) throw new RangeError('targetCombo는 1 이상의 정수여야 합니다.');
         const lightFeverGaugeWithSmallChains = options.lightFeverGaugeWithSmallChains ?? true;
@@ -21989,7 +22030,7 @@ class RealtimeLookaheadEnemy extends BundledEnemy {
         const incomingGarbage = Math.max(0, Math.floor(this.getIncomingGarbage(player)));
         const incomingIsUrgent = incomingGarbage >= this.ignorableIncomingGarbage;
         let best = null;
-        simulateNMovePlacements(player, this.targetCombo, Math.min(2, this.lookaheadTurnCount)).forEach((plan) => {
+        simulateNMovePlacements(player, this.targetCombo, Math.min(2, this.lookaheadTurnCount), getGameExplosionCount(), usesDefeatAvoidance(this)).forEach((plan) => {
             const candidate = this.evaluateLookaheadPlacement(player, plan, incomingGarbage);
             if (candidate && this.isBetterLookaheadPlacement(candidate, best, incomingIsUrgent)) best = candidate;
         });
@@ -21997,7 +22038,8 @@ class RealtimeLookaheadEnemy extends BundledEnemy {
     }
 
     /**
-     * 피버·패배 위치 보호는 기존 공통 후보를 그대로 사용하고, 그 밖의 평상시만 Worker 3수 탐색을 시작한다.
+     * 피버 중 최대 연쇄와 빈 필드 첫 배치는 기존 공통 후보를 그대로 사용하고, 그 밖의 평상시만 Worker 3수 탐색을 시작한다.
+     * 이 적은 `avoidsDefeat`가 꺼져 있어 패배 위치 경고·필드 80% 패배 위치 보호 후보를 만들지 않는다.
      * @param {PlayerState} player 자동 조작할 플레이어
      * @returns {void}
      */
@@ -22006,10 +22048,6 @@ class RealtimeLookaheadEnemy extends BundledEnemy {
         this.realtimeReactionState = null;
         Enemy.prototype.prepareTurn.call(this, player);
         if (this.getPreparedPlacement()) return;
-        if (!this.isInFever(player) && this.isFieldAtLeastEightyPercentFilled(player)) {
-            this.preparedPlacement = findAiDefeatPositionSafePlacement(player, true);
-            if (this.getPreparedPlacement()) return;
-        }
         startWorkerLookaheadSearch(this, player);
         const forecast = this.getRealtimeGarbageForecast(player);
         this.realtimeReactionState = {
@@ -22157,6 +22195,8 @@ class Andrealphus extends FiveChainEnemy {
 class OnnxEnemy extends BundledEnemy {
     constructor() {
         super();
+        // 모델 기반 적은 즉시 패배 후보 필터와 위험 열 사전 회피를 쓰지 않는다. 추론 실패 때의 대체 판단도 마찬가지다.
+        this.avoidsDefeat = false;
         // 이 적은 ONNX 런타임이 없는 페이지의 적 선택 화면과 구경 후보에서 숨긴다.
         this.requiresOnnx = true;
         /**
@@ -22443,7 +22483,7 @@ class OnnxEnemy extends BundledEnemy {
         if (!player.active) return;
         this.clearDecisionTimeout();
         prepareAiPlacementSimulations(player);
-        const placement = findBestAttackPlacement(player, player.active.x, null, true);
+        const placement = findBestAttackPlacement(player, player.active.x, null, true, usesDefeatAvoidance(this));
         this.targetX = placement.x;
         this.targetRotation = ((placement.rotation % 4) + 4) % 4;
         player.aiTarget = this.targetX;

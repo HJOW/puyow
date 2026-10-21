@@ -661,8 +661,59 @@ test('솔로몬은 매 턴 저장된 서버와 토큰으로 구조화된 배치�
   expect(prompt.rules.mode).toBe('standard rules');
   expect(prompt.currentField).toMatchObject({ columns: 6, visibleRows: 12 });
   expect(prompt.suppliedPuyos.length).toBe(3);
-  expect(prompt.fallbackSafetyCondition.dangerousCells).toEqual([{ x: 2, y: 5 }]);
+  // 모델 기반 적은 위험 칸을 피하라는 지시를 프롬프트에 싣지 않는다.
+  expect(prompt.fallbackSafetyCondition).toBeUndefined();
   expect(prompt.responseSchema.required).toEqual(['x', 'rotation']);
+});
+
+test('솔로몬은 필드가 위험 높이에 닿아도 대체 인공지능으로 건너뛰지 않고 모델에 배치를 요청한다', async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem('puyow_store', JSON.stringify({
+      clearList: [],
+      settings: { aiProvider: 'LM Studio', aiApiURL: 'http://lmstudio.local/', aiApiKey: 'lm-solomon-token', aiModel: 'local-puyo-model' },
+    }));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('initial_title');
+  await page.evaluate(() => {
+    class DangerCellSolomon extends window.PuyoW.Solomon {
+      constructor() {
+        super();
+        this.sortPriority = -100;
+        this.hidden = false;
+      }
+
+      getClassType() { return 'DangerCellSolomon'; }
+      getName() { return '위험 칸 솔로몬 테스트 적'; }
+
+      prepareTurn(player) {
+        // 예전에는 (2, 5)가 차면 API를 부르지 않고 벨리알로 바로 전환했다.
+        player.board[5][2] = 'garbage';
+        super.prepareTurn(player);
+        player.fallTimer = -100000;
+        window.dangerCellSolomon = { decisionState: this.decisionState, avoidsDefeat: this.avoidsDefeat };
+      }
+    }
+    window.PuyoW.registerOpponent({ createController: () => new DangerCellSolomon() });
+  });
+  const prompts = [];
+  await page.route('http://lmstudio.local/v1/chat/completions', async (route) => {
+    prompts.push(JSON.parse(route.request().postDataJSON().messages[0].content));
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ choices: [{ message: { content: '{"x":4,"rotation":1}' } }] }) });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => prompts.length, { timeout: 15000 }).toBeGreaterThanOrEqual(1);
+  expect(await page.evaluate(() => window.dangerCellSolomon)).toEqual({ decisionState: 'pending', avoidsDefeat: false });
+  expect(prompts[0].currentField.occupiedCells).toContainEqual({ x: 2, y: 5, color: 'garbage' });
+  expect(prompts[0].fallbackSafetyCondition).toBeUndefined();
 });
 
 test('Local AI 극한 난이도 솔로몬 대전은 학습 세션을 보내고 대전이 끝나면 학습 적용을 요청한다', async ({ page }) => {

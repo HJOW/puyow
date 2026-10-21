@@ -299,7 +299,7 @@ Fever-aware AI can read its Fever state with:
 - `getMyFeverFieldInfo(player)`: returns the Fever-only field as a `{ columns, rows, cells }` copy in Fever, or `null` otherwise.
 - `getMyFeverStatus(player)`: returns `{ active, gauge, nextTime, targetCombo, leftTime, damage, turn }`. `leftTime` is milliseconds; `damage` is Fever-only damage separate from normal damage; it returns `null` outside Fever rules.
 
-When operating the Fever field in Fever rules, all opponents except Solomon prioritize a shared chain-optimization strategy over individual strategies. Even if an external opponent does not call `super.prepareTurn(player)`, the engine re-simulates every landing position and rotation and selects the non-immediate-defeat candidate with the largest predicted chain count, breaking ties by larger predicted ATTACK. Normal fields and Continuous Fever keep each opponent's existing strategy.
+When operating the Fever field in Fever rules, all opponents except Solomon prioritize a shared chain-optimization strategy over individual strategies. Even if an external opponent does not call `super.prepareTurn(player)`, the engine re-simulates every landing position and rotation and selects the non-immediate-defeat candidate with the largest predicted chain count (an opponent with `avoidsDefeat` turned off ignores immediate defeat and chooses from every candidate), breaking ties by larger predicted ATTACK. Normal fields and Continuous Fever keep each opponent's existing strategy.
 
 Use these methods chiefly in `chooseTarget()` to assess field height, color connections, and garbage locations.
 
@@ -335,6 +335,27 @@ const combo = player.estimateCombo(
     [{ x: 2, y: 4 }, { x: 2, y: 5 }]
 );
 ```
+
+## Defeat-avoidance rules and `avoidsDefeat`
+
+The default `Enemy` implementation and `BundledEnemy` share these **defeat-avoidance rules**:
+
+- **Immediate-defeat candidate filter**: the Fever maximum-chain candidate, the first placement on an empty field, attack-candidate selection, and `selectSafeRotation()` exclude candidates whose final board, after all pops and gravity, occupies a defeat cell.
+- **Pre-emptive danger-column avoidance**: an opponent that is not in Fever picks, as `preparedPlacement` in advance, a placement that avoids non-popping placements in the defeat-cell column (X=2 in standard rules, X=2 and X=3 in Fever rules) once Y=8 of that column is occupied.
+- **Defeat-path exclusion in Worker search**: paths that fill a defeat cell, and paths where garbage about to arrive overflows a danger column, are removed from the candidates.
+
+Setting `avoidsDefeat` (default `true`) to `false` makes that opponent instance ignore all of these rules and read losing placements as ordinary candidates. Among the built-in opponents, the **opponents that look two or more moves ahead** (`TwoMoveLookaheadEnemy` and its subclasses Andras and Valak; `RealtimeLookaheadEnemy` and its subclasses Zagan through Orobas) and the **model-based opponents** (the `OnnxEnemy` family and Solomon) set it to `false` in their constructors. Solomon no longer skips the API request when its field gets tall, and its prompt no longer carries an instruction to avoid dangerous cells (`fallbackSafetyCondition`). The fallback AI used on API errors or timeouts (Belial) keeps its own rules with `avoidsDefeat` set to `true`. The board-evaluation penalty for stacking near the defeat cells (Y≥8) is a scoring weight rather than a rule, so it still applies.
+
+```js
+class RecklessEnemy extends PuyoW.Enemy {
+    constructor() {
+        super();
+        this.avoidsDefeat = false; // Skip the defeat-cell warning and the immediate-defeat candidate filter.
+    }
+}
+```
+
+The same rules can also be turned off with the last argument (`avoidDefeat`) of `PuyoW.common.simulateNMovePlacements()` and `findBestNMovePlacement()`, and with `options.avoidDefeat` of `PuyoW.common.simulateNMovePlacementsInWorker()`. All default to `true`, and `PuyoW.startWorkerLookaheadSearch()` passes the opponent's `avoidsDefeat` through unchanged.
 
 ## Worker-based N-move search opponents
 

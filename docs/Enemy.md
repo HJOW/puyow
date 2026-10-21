@@ -354,7 +354,7 @@ expect(state.player.board.columns).toBe(6);
 - `getMyFeverFieldInfo(player)`: 피버 중인 경우 피버 전용 필드를 `{ columns, rows, cells }` 복사본으로 반환하고, 피버 중이 아니면 `null`을 반환합니다.
 - `getMyFeverStatus(player)`: `{ active, gauge, nextTime, targetCombo, leftTime, damage, turn }`을 반환합니다. `leftTime`은 밀리초 단위이고 `damage`는 일반 피해와 분리된 피버 전용 피해이며, 피버 룰이 아닌 게임에서는 `null`입니다.
 
-피버 룰에서 피버 필드를 조작할 때는 솔로몬을 제외한 모든 적이 개별 전략보다 공통 연쇄 최적화 전략을 우선합니다. 엔진은 외부 적이 `super.prepareTurn(player)`를 호출하지 않았더라도 모든 착지 위치와 회전을 다시 시뮬레이션하고, 즉시 패배하지 않는 후보 중 예상 연쇄 수가 가장 큰 배치를 선택합니다. 예상 연쇄 수가 같으면 예상 ATTACK이 큰 후보를 선택합니다. 일반 필드와 연속 피버에서는 각 적의 기존 전략을 그대로 사용합니다.
+피버 룰에서 피버 필드를 조작할 때는 솔로몬을 제외한 모든 적이 개별 전략보다 공통 연쇄 최적화 전략을 우선합니다. 엔진은 외부 적이 `super.prepareTurn(player)`를 호출하지 않았더라도 모든 착지 위치와 회전을 다시 시뮬레이션하고, 즉시 패배하지 않는 후보 중 예상 연쇄 수가 가장 큰 배치를 선택합니다(`avoidsDefeat`를 끈 적은 즉시 패배 여부를 보지 않고 모든 후보에서 고릅니다). 예상 연쇄 수가 같으면 예상 ATTACK이 큰 후보를 선택합니다. 일반 필드와 연속 피버에서는 각 적의 기존 전략을 그대로 사용합니다.
 
 이 메서드는 주로 `chooseTarget()`에서 현재 필드 높이, 색상 연결, 방해뿌요 위치를 판단할 때 사용합니다.
 
@@ -390,6 +390,27 @@ const combo = player.estimateCombo(
     [{ x: 2, y: 4 }, { x: 2, y: 5 }]
 );
 ```
+
+## 패배 회피 규칙과 `avoidsDefeat`
+
+`Enemy` 기본 구현과 `BundledEnemy`는 다음 **패배 회피 규칙**을 공통으로 적용합니다.
+
+- **즉시 패배 후보 필터**: 피버 중 최대 연쇄 후보, 빈 필드 첫 배치, 공격 후보 선택, `selectSafeRotation()`에서 폭발·중력을 모두 끝낸 최종 보드의 패배 칸이 차는 후보를 제외합니다.
+- **위험 열 사전 회피**: 피버 중이 아닌 적은 패배 칸이 있는 열(기본 룰 X=2, 피버 룰 X=2·X=3)의 Y=8이 차면 그 열의 비폭발 배치를 피하는 후보를 `preparedPlacement`로 미리 고릅니다.
+- **Worker 탐색의 패배 경로 제외**: 패배 칸이 차는 경로와, 곧 도착할 방해뿌요로 위험 열이 넘치는 경로를 후보에서 뺍니다.
+
+`avoidsDefeat`(기본 `true`)를 `false`로 두면 그 적 인스턴스는 위 규칙을 모두 쓰지 않고, 지는 배치도 평범한 후보로 읽습니다. 기본 제공 적 중 **2수 이상 미래를 읽는 적**(`TwoMoveLookaheadEnemy`와 하위 안드라스·발라크, `RealtimeLookaheadEnemy`와 하위 자간~오로바스)과 **모델 기반 적**(`OnnxEnemy` 계열과 솔로몬)이 constructor에서 `false`로 둡니다. 솔로몬은 필드가 높아져도 API 요청을 건너뛰지 않고 프롬프트에도 위험 칸을 피하라는 지시(`fallbackSafetyCondition`)를 넣지 않습니다. API 오류·시간 초과 때 쓰는 대체 인공지능(벨리알)은 `avoidsDefeat`가 `true`인 자기 규칙을 그대로 씁니다. 보드 평가에 들어 있는 패배 칸 주변 적층 감점(Y≥8)은 규칙이 아니라 평가 가중치라 계속 적용됩니다.
+
+```js
+class RecklessEnemy extends PuyoW.Enemy {
+    constructor() {
+        super();
+        this.avoidsDefeat = false; // 패배 위치 경고와 즉시 패배 후보 필터를 쓰지 않는다.
+    }
+}
+```
+
+`PuyoW.common.simulateNMovePlacements()`·`findBestNMovePlacement()`의 마지막 인수(`avoidDefeat`)와 `PuyoW.common.simulateNMovePlacementsInWorker()`의 `options.avoidDefeat`로도 같은 규칙을 끌 수 있습니다. 기본은 모두 `true`이며, `PuyoW.startWorkerLookaheadSearch()`는 적의 `avoidsDefeat`를 그대로 넘깁니다.
 
 ## Worker 기반 N수 탐색 적
 

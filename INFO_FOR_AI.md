@@ -81,7 +81,7 @@
 - 같은 색의 상하좌우 연결은 일반 게임에서 4개 이상, 도장깨기의 `2-폭발`에서 2개 이상이면 한 폭발 그룹이다. 시뮬레이터 중앙의 `폭발 갯수`로는 필요한 연결 수를 1~72개 사이에서 바꿀 수 있다(기본 4). 폭발 뒤 인접한 일반 방해뿌요(`garbage`)도 제거되고, 중력 후 다시 폭발을 검사해 연쇄한다.
 - 딱딱뿌요(`hardGarbage`)는 폭발 인접 1회면 일반 방해뿌요가 되고, 같은 폭발 단계에서 2회 이상 맞으면 파괴된다. 철구뿌요(`iron`)는 시뮬레이터 전용이며 일반 폭발로 사라지지 않는다.
 - 패배 기본 칸은 `(2, 11)`이다. 피버 룰과 연속 피버는 `(2, 11)`, `(3, 11)` 둘 다 사용한다. 패배 판정·렌더링·AI 가상 배치 모두 같은 규칙을 유지해야 한다.
-- 적 AI는 피버 중이 아닐 때 패배 위치 경고를 최우선으로 처리한다. 기본 룰(구경 포함)은 `(2, 8)`이 차면 X=2의 **비폭발** 배치를 피한다. 피버 룰(구경·완화 피버 포함)은 `(2, 8)` 또는 `(3, 8)`이 차면 X=2·X=3의 비폭발 배치를 모두 피한다. 해당 열에 놓아 즉시 폭발할 수 있는 후보는 예외이며, 피버가 활성화된 적에게는 이 회피 규칙을 적용하지 않는다.
+- 적 AI는 피버 중이 아닐 때 패배 위치 경고를 최우선으로 처리한다. 기본 룰(구경 포함)은 `(2, 8)`이 차면 X=2의 **비폭발** 배치를 피한다. 피버 룰(구경·완화 피버 포함)은 `(2, 8)` 또는 `(3, 8)`이 차면 X=2·X=3의 비폭발 배치를 모두 피한다. 해당 열에 놓아 즉시 폭발할 수 있는 후보는 예외이며, 피버가 활성화된 적에게는 이 회피 규칙을 적용하지 않는다. 단 `avoidsDefeat`가 `false`인 적(2수 이상 미래를 읽는 안드라스·발라크와 자간~오로바스, 모델 기반인 무르무르·카임·알로케스·솔로몬)은 이 회피 규칙과 즉시 패배 후보 필터를 모두 쓰지 않는다(BUILDNO 137, 「2수·3수 탐색 적과 모델 기반 적의 패배 회피 제거」 절).
 
 ### 점수와 공격
 
@@ -263,7 +263,7 @@
 - 설정 화면을 마우스로 누르면 먼저 문자 입력 모드(`settingsEditing`)를 끝내고, 텍스트 항목을 누른 경우에만 `beginSettingsTextInput()`으로 다시 시작한다(BUILDNO 135). 예전에는 텍스트 항목을 누른 뒤 슬라이더·체크박스를 누르면 입력 모드가 남아, 방향키로 텍스트 항목에 돌아왔을 때 포커스 이동이 막히고 글자가 바로 들어갔다. 텍스트 항목의 키보드 Enter·마우스 클릭은 모두 이 함수 하나를 거친다.
 - `registerLanguage()`, `registerOpponent()`, `registerWarningPuyo()`, `registerFeverStage()`, `registerPuzzleStage()`가 주요 확장 지점이다. 입력 검증과 중복 처리 방식은 기존 등록 함수에 맞춘다.
 - 적은 `Enemy` 또는 `BundledEnemy` 계열이다. `getClassType()`의 안정성은 저장 진행도·사운드 연결에 중요하므로 기존 클래스 타입을 바꾸지 않는다.
-- 적의 위치·회전 결정은 게임 루프 밖의 별도 보정 함수가 아니라 `prepareTurn()`, `chooseTarget()`, `chooseRotate()` 안에서 끝낸다. 기본 `Enemy.prepareTurn()`은 피버 연쇄 최적화와 패배 위치 회피 후보를 `preparedPlacement`로 준비하고, 기본 제공 적은 `BundledEnemy`에서 연쇄 대응·즉시 패배 보호를 추가한다. 외부 적이 이 공통 규칙을 유지하려면 세 메서드에서 `super` 구현을 호출하고, 완전히 독자적인 AI라면 세 메서드를 재정의하면 된다.
+- 적의 위치·회전 결정은 게임 루프 밖의 별도 보정 함수가 아니라 `prepareTurn()`, `chooseTarget()`, `chooseRotate()` 안에서 끝낸다. 기본 `Enemy.prepareTurn()`은 피버 연쇄 최적화와 패배 위치 회피 후보를 `preparedPlacement`로 준비하고, 기본 제공 적은 `BundledEnemy`에서 연쇄 대응·즉시 패배 보호를 추가한다. 이 패배 회피 규칙은 `Enemy.avoidsDefeat`(기본 `true`)가 `false`인 적에게는 모두 꺼진다. 외부 적이 이 공통 규칙을 유지하려면 세 메서드에서 `super` 구현을 호출하고, 완전히 독자적인 AI라면 세 메서드를 재정의하면 된다.
 - `Andras`·`Valak`은 이관 전 키마리스의 `TwoMoveLookaheadEnemy`를 쓴다. 목표 6연쇄·2수 탐색, 긴급 상쇄 무시 기준 4와 기존 세로 회전 규칙을 보존한다.
 - Worker 탐색 상태(`attackPlacement`, `pendingWorkerSearch`, `workerSearchPlayer`, `workerSearchActive`, `workerSearchDepth`, `workerSearchState`)는 최상위 `Enemy`에 있다. 외부 적은 `BundledEnemy`가 아니라 `PuyoW.Enemy`를 상속하고, `PuyoW.beginWorkerSearchTurn(enemy)`, `startWorkerLookaheadSearch(enemy, player)`, `getWorkerSearchTarget(enemy, player)`, `getWorkerSearchRotation(enemy, player)`, `isWorkerSearchPending(enemy, player)` 공용 함수로 수명주기·선택·대기 처리를 연결한다. 착지 시 엔진은 `cancelPendingWorkerSearch(enemy, player, 'contact')`로 해당 요청만 취소한다. 완료된 탐색 Worker는 최대 2개까지 전역 풀에 보관해 다음 턴 또는 구경 모드의 다른 Worker 적이 재사용한다. 취소·오류·시간 초과 중인 Worker는 즉시 종료하고 풀에 넣지 않는다.
 - `Zagan`부터 `Orobas`까지는 `RealtimeLookaheadEnemy`를 쓴다. 목표 연쇄는 아래 현재 AI 배정표를 따른다. Worker advanced 3수 탐색(50ms)·실시간 반응·작은 연쇄 점등을 사용한다. `Andrealphus`·`Flauros`는 현재 이관 전 암두시아스의 5연쇄 판단을 사용한다.
@@ -558,7 +558,7 @@ N수 AI 탐색은 `PuyoW.common.simulateNMovePlacements(player, targetCombo, tur
 | `test01_core.spec.js` | 초기화·리소스 로드·공개 API·보드/NEXT/DAMAGE 규칙·저장 데이터 보정·확인창·다국어와 URL 치환 |
 | `test01_menu.spec.js` | 타이틀 메뉴·설정 화면·카드와 GOLD·가상 컨트롤러와 조이스틱·게임패드·화면 회전·플레이 방법 시연 |
 | `test01_touch_input.spec.js` | 가상 컨트롤러 `자동` 선택(터치스크린·게임패드 유무별 표시, 저장값 보정)과 터치스크린 기기의 prompt 텍스트 입력(최초 이름 입력·설정 텍스트·코드 입력창·`askText`·온라인 로그인), prompt 뒤 설정 화면의 방향키·Enter·마우스 동작 |
-| `test01_enemy.spec.js` | 기본 제공 적 AI의 판단, 다수 탐색 Worker, 패배 위치 회피, 적 테마, 진행도 저장, 구경 모드 |
+| `test01_enemy.spec.js` | 기본 제공 적 AI의 판단, 다수 탐색 Worker, 패배 위치 회피와 `avoidsDefeat`로 끄는 적, 적 테마, 진행도 저장, 구경 모드 |
 | `test01_fever.spec.js` | 피버 룰·피버 룰 (시작)·연속 피버와 그에 딸린 공격·싹쓸이 정산 |
 | `test01_relaxed_fever.spec.js` | 피버 룰 (완화)의 잠금·키보드/마우스 선택·전등 수·독립 적 진행도·갤러리·리더보드·리플레이 |
 | `test01_two_explosion.spec.js` | 도장깨기 2-폭발의 잠금·해금 입력, 독립 진행도·GOLD·리더보드·리플레이, 2개 기준 AI·Worker 탐색 |
@@ -755,7 +755,7 @@ AI 제공자가 `Local AI`이고, 극한 AI 난이도로 적 `솔로몬`과 대�
 
 - `getSolomonLearningSessionId()`가 대전마다 `solomon-<시각>-<난수>` 세션 ID를 만들어 `game.solomonLearningSessionId`에 보관하고, `Solomon.buildPlacementPrompt()`가 이 값을 프롬프트의 `learningSessionId` 항목으로 함께 보낸다. 학습 대상이 아니면 이 항목 자체를 넣지 않으므로 다른 제공자·난이도의 프롬프트는 기존과 완전히 같다.
 - 서버의 `chat_completions_api()`는 `learningSessionId`가 있는 배치 요청마다 `record_solomon_step()`으로 이번 수의 애프터스테이트와 즉시 보상을 세션에 순서대로 담아 둔다. 애프터스테이트는 학습기의 `build_afterstate()`를 그대로 호출해 만들므로 오프라인 학습과 형식·보상 계약이 같다.
-- 위험 높이·응답 오류로 솔로몬이 대체 AI를 쓴 턴은 요청이 오지 않는다. 관측값의 `placedPairCount`가 두 턴 이상 건너뛴 수는 `linked`가 false로 기록되고, 그 앞 수는 다음 상태를 알 수 없으므로 표본으로 만들지 않는다.
+- 응답 오류로 솔로몬이 대체 AI를 쓴 턴은 요청이 오지 않는다(BUILDNO 137부터 위험 높이만으로는 대체 AI로 넘기지 않으므로 높은 필드의 턴도 요청을 보낸다). 관측값의 `placedPairCount`가 두 턴 이상 건너뛴 수는 `linked`가 false로 기록되고, 그 앞 수는 다음 상태를 알 수 없으므로 표본으로 만들지 않는다.
 - 학습은 매 수마다 하지 않고, 승패가 확정되어 결과 화면으로 넘어가는 `updateDefeatSequence()` 시점에 `requestSolomonLearningFinish()`가 `POST /apis/solomonlearning`(`{event:'finish', sessionId, result}`)을 한 번 보낼 때 수행한다. `result`는 학습 대상인 **솔로몬 기준**의 `win`/`loss`/`draw`다. 이 요청이 실패해도 게임 진행에는 영향을 주지 않는다.
 - `finish_solomon_session()`은 `_close_solomon_side()`로 양쪽의 수를 학습 표본으로 바꾼 뒤 `train_solomon_samples()`를 호출한다. 한 수의 목표값은 `다음 수의 보상 + 감가된 다음 애프터스테이트의 가치`이고, 대전의 마지막 수는 더 진행할 상태가 없어 승패 보상(`WIN_REWARD`/`LOSS_REWARD`)만 목표가 된다. 목표값은 갱신 전 가중치로 한 번만 계산하고(별도 target 네트워크 대신), `learning.train()`과 같은 학습률 `1e-3`·감가율 `DISCOUNT_GAMMA`·smooth L1 손실·그래디언트 노름 1.0 클리핑을 사용한다.
 
@@ -993,7 +993,7 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 - 보드를 셀 코드 `Int8Array`(0 빈칸, 1~5 색, 6 방해, 7 딱딱, 8 알 수 없는 칸)와 열 높이로 바꾼다. 조작 단계 보드는 항상 중력이 끝난 상태라는 전제로, 착지는 `findFastLanding()`의 높이 비교로 구한다. 폭발 탐색은 스탬프 배열·정수 스택으로, 중력은 열 압축으로 처리한다. **연쇄 수·ATTACK·결과 보드는 기본 규칙과 완전히 같아야 한다.** 개발 중 Node에서 12만 건, 회귀 테스트에서 600건을 `simulatePlacementResult()`와 비교한다. 검증용 Worker 메시지 `resolvePlacements`가 이 비교에 쓰인다.
 - 탐색: 현재 수는 모든 후보(허용 목록이 있으면 그 안에서), 그 아래 수는 한 수 평가 상위 `beamWidth`(기본 `N_MOVE_ADVANCED_DEFAULT_BEAM_WIDTH` = 5)개만 재귀한다. 첫 수 아래에서는 같은 색 쌍의 회전 2·3을 건너뛴다. 다음 수를 어디에 두어도 패배하는 경로는 `DEAD_END_PENALTY`(50만)를 뺀다. 반복 심화·`progress`/`done` 메시지·결과 형식은 기존과 같다.
 - 평가: 기존 `getPlacementScore()`(싹쓸이 200만·목표 연쇄 100만·조기 연쇄 감점)를 그대로 쓰되, 보드 점수에 발화점 점수 `연쇄² × 400 − (필요 뿌요 수 − 1) × 300`(2연쇄 이상일 때)을 더한다. 발화점은 각 열 맨 위에 옆·아래와 같은 색을 한 개(안 되면 두 개) 떨어뜨렸을 때의 최대 연쇄다.
-- 방해뿌요: `snapshot.realtime = { incoming, garbageMoveIndex }`가 있으면 그 배치 순번까지 보낸 ATTACK만 상쇄로 보고, 그 배치 뒤 남은 양이 있으면 한 줄을 채우는 몫(`floor(남은 양/6)`줄)을 보드에 올려 이어 읽는다. 그 배치에서 연쇄가 없고 위험 열 높이 + `ceil(남은 양/6)`이 11을 넘으면 후보에서 뺀다. 경로가 도착 순번보다 짧으면 잎 보드의 발화점 ATTACK까지 상쇄 가능량으로 어림한다. 비교는 긴급(받을 양 ≥ 무시 기준)일 때 "위험 해소 여부 → 남은 양 → 점수 → 최대 연쇄 → 큰 X" 순이다.
+- 방해뿌요: `snapshot.realtime = { incoming, garbageMoveIndex }`가 있으면 그 배치 순번까지 보낸 ATTACK만 상쇄로 보고, 그 배치 뒤 남은 양이 있으면 한 줄을 채우는 몫(`floor(남은 양/6)`줄)을 보드에 올려 이어 읽는다. 그 배치에서 연쇄가 없고 위험 열 높이 + `ceil(남은 양/6)`이 11을 넘으면 후보에서 뺀다(적의 `avoidsDefeat`가 `false`면 이 제외와 패배 칸 경로 제외를 하지 않는다. BUILDNO 137). 경로가 도착 순번보다 짧으면 잎 보드의 발화점 ATTACK까지 상쇄 가능량으로 어림한다. 비교는 긴급(받을 양 ≥ 무시 기준)일 때 "위험 해소 여부 → 남은 양 → 점수 → 최대 연쇄 → 큰 X" 순이다.
 - 측정: advanced 3수(반복 심화 1~3수 합계) 평균 약 17ms, 기존 Worker 3수 약 156ms. 혼자 60수 두기 20판 비교에서 기존 방식(시간 제한 없이 3수)은 4패·2연쇄 이상 발사 48회, advanced는 0패·62회(7연쇄 이상 47회)였다.
 
 **메인 스코프**
@@ -1002,7 +1002,7 @@ Node.js 기반 백엔드 서버 소스는 저장소 루트의 `nodeserver.js`에
 - `getReachableAiPlacements(player)`: 지금 위치에서 "회전 후 이동"이나 기존 `canUseAiPlacement()`의 "이동 후 회전(킥 포함)"으로 갈 수 있는 `aiSimulations` 후보만 돌려준다.
 - `startWorkerLookaheadSearch(enemy, player, { allowedPlacements, keepDecisionElapsed })`: 적의 `lookaheadSearchMode`·`lookaheadBeamWidth`를 Worker 옵션으로 넘긴다. `keepDecisionElapsed`면 `applyWorkerSearchResult()`가 `aiDecisionElapsed`를 0으로 되돌리지 않는다(`enemy.workerSearchKeepsDecisionElapsed`, `beginWorkerSearchTurn()`에서 false로 초기화). 재탐색이 결과를 못 내면 직전 `attackPlacement`를 유지하고, `simulateNMovePlacementsInWorker()`의 동기 대체도 허용 목록 안에서만 고른다.
 
-**안드레알푸스** — `lookaheadSearchMode = 'advanced'`, `lookaheadBeamWidth = 5`, `realtimeReaction = true`이며 3수·50ms는 그대로다(목표 연쇄는 BUILDNO 76 당시 7, BUILDNO 82부터 5). `prepareTurn()`에서 Worker 탐색을 시작한 턴에만 `realtimeReactionState = { turn(placedPairCount), incoming, opponentChainActive, fastDownStarted, replanCount }`를 만든다. `updateControl()`이 매 프레임 `updateRealtimeReaction()`을 불러, 받을 양이나 상대 연쇄 진행 여부가 바뀌면 도달 가능 후보로 재탐색한다. **사용자 요구: 빠른 하강 대기 시간 안에서만 재판단하고, 이번 턴에 빠른 하강을 시작했으면 재판단하지 않는다.** `useFastDown()`이 처음 true를 돌려준 순간 `fastDownStarted`를 세운다. 쉬움 난이도는 빠른 하강이 없으므로 착지 전까지 재판단할 수 있다. 바뀌기 전후 받을 양이 모두 무시 기준(`getLookaheadIgnorableIncomingGarbage()`: 기본 룰 `ignorableIncomingGarbage`(4), 피버 룰 1) 미만이면 기준 상태만 갱신한다. 재판단 비교는 `getRealtimeReactionSignature()`(받을 양·상대 연쇄 진행·상대 피버 패턴 예측의 연쇄 수와 ATTACK)이며 시간에 따라 바뀌는 도착 순번은 넣지 않는다. 연속 피버·적 자신이 피버 중·공통 우선 후보(피버·패배 위치 보호·80% 보호) 턴에서는 재판단하지 않는다. 재탐색 중에는 기존처럼 이동을 멈추고 빠른 하강도 하지 않는다(Worker 결과는 `player.active` 객체가 같아야 적용되기 때문이다).
+**안드레알푸스** — `lookaheadSearchMode = 'advanced'`, `lookaheadBeamWidth = 5`, `realtimeReaction = true`이며 3수·50ms는 그대로다(목표 연쇄는 BUILDNO 76 당시 7, BUILDNO 82부터 5). `prepareTurn()`에서 Worker 탐색을 시작한 턴에만 `realtimeReactionState = { turn(placedPairCount), incoming, opponentChainActive, fastDownStarted, replanCount }`를 만든다. `updateControl()`이 매 프레임 `updateRealtimeReaction()`을 불러, 받을 양이나 상대 연쇄 진행 여부가 바뀌면 도달 가능 후보로 재탐색한다. **사용자 요구: 빠른 하강 대기 시간 안에서만 재판단하고, 이번 턴에 빠른 하강을 시작했으면 재판단하지 않는다.** `useFastDown()`이 처음 true를 돌려준 순간 `fastDownStarted`를 세운다. 쉬움 난이도는 빠른 하강이 없으므로 착지 전까지 재판단할 수 있다. 바뀌기 전후 받을 양이 모두 무시 기준(`getLookaheadIgnorableIncomingGarbage()`: 기본 룰 `ignorableIncomingGarbage`(4), 피버 룰 1) 미만이면 기준 상태만 갱신한다. 재판단 비교는 `getRealtimeReactionSignature()`(받을 양·상대 연쇄 진행·상대 피버 패턴 예측의 연쇄 수와 ATTACK)이며 시간에 따라 바뀌는 도착 순번은 넣지 않는다. 연속 피버·적 자신이 피버 중·공통 우선 후보(피버 중 최대 연쇄·빈 필드 첫 배치) 턴에서는 재판단하지 않는다. BUILDNO 137 전에는 패배 위치 보호·필드 80% 보호 후보도 여기에 있었으나, `avoidsDefeat`를 끈 뒤로 이 후보들은 만들어지지 않는다. 재탐색 중에는 기존처럼 이동을 멈추고 빠른 하강도 하지 않는다(Worker 결과는 `player.active` 객체가 같아야 적용되기 때문이다).
 - `python/bundledenemy.py`의 안드레알푸스는 기존 완전 탐색을 유지한다(모듈 docstring에 이유를 적었다).
 - 회귀 테스트(`tests/test01_enemy.spec.js`): 빠른 배치 계산과 기본 규칙 600건 비교(게임이 만든 Worker를 `window.Worker` 감싸기로 붙잡아 `resolvePlacements` 전송), advanced 깊이 1·2·3 전달과 허용 목록 제한, 곧 떨어질 방해뿌요 12개에 2연쇄로 상쇄(공격이 없으면 아껴 둠, 싹쓸이가 되지 않게 연쇄와 무관한 뿌요를 둠), 상대 연쇄 예측의 연쇄 수·ATTACK·시간·연쇄 번호 이어 세기, 실제 대전에서 빠른 하강 전 재판단 시작과 빠른 하강 시작 뒤 재판단 차단.
 
@@ -1582,6 +1582,29 @@ Node.js 서버 소스가 들어 있던 `nodeserver/` 디렉터리를 `node/`로 
 - 테스트: `tests/test01_two_explosion_watch.spec.js`(3건)가 잠금 표시(픽셀 색·`잠김` 문구)·방향키 순환 건너뜀·잠긴 버튼 마우스 무시, 본 게임 해금 조건 표 10가지와 구경 잠금의 일치·열려 있던 설정 화면의 즉시 해금·마우스 선택, 실제 구경 대전(`mode: watch`·`rule: two_explosion`·`explosionCount: 2`, 모델 적이 후보에서 빠지고 다른 구경 규칙의 후보에는 남음, 두 개씩 이어진 뿌요가 실제 2연쇄로 터짐, 일시정지 다시하기의 룰·적 유지, 결과 뒤 진행도·GOLD·갤러리 불변, 5초 뒤 같은 룰의 자동 재시작, 구경 리플레이 `meta.rule: 'twoExplosion'` 기록과 재생 복원)를 확인한다. 비공개 상태 접근자는 파일 안의 `installFixture()`가 번들 응답에만 삽입한다. `test01_core.spec.js`의 WebMCP 검사에 구경 2-폭발 안내 문구를 더했다. 구경 설정 화면(잠김·해금 두 상태)은 화면 캡처로 직접 확인했다.
 - `puyow.js` BUILDNO는 136, `package.json`·`package-lock.json` 버전은 `0.4.136`이며 번들을 다시 생성했다. 버전값 자체는 테스트하지 않는다.
 - 검증: JS 문법 검사·ESLint·Webpack 빌드·작업 파일의 `git diff --check` 통과. Chromium에서 `test01_enemy`·`test01_menu`·`test01_fever_damage`·`test01_relaxed_fever`·`test01_replay`·`test01_two_explosion`·`test01_core`·새 테스트 197건이 모두 통과했고(`test01_core`는 매뉴얼 검사를 더한 뒤 42건을 다시 확인), 새 테스트 3건은 Firefox·WebKit에서도 6건 통과했다. 그 밖의 파일과 Firefox·WebKit 전체 실행은 하지 않았다.
+
+### 2수·3수 탐색 적과 모델 기반 적의 패배 회피 제거 (2026-10-22, BUILDNO 137)
+
+- 사용자 요청(`TODO.md`): 2수 이상 미래를 읽는 적과 모델 기반 적(솔로몬·Local AI 포함)에서 패배 조건 행동(즉시 패배 후보 필터, 위험 열 사전 회피)을 모두 제거한다.
+- **스위치**: `Enemy.avoidsDefeat`(기본 `true`)와 도우미 `usesDefeatAvoidance(enemy)`(값이 명시적으로 `false`일 때만 끔, 값이 없는 외부 적은 기존 동작)다. `false`로 두는 적은 `TwoMoveLookaheadEnemy`(안드라스·발라크), `RealtimeLookaheadEnemy`(자간·바퓰라·오리아스·아미·오세·그레모리·오로바스), `OnnxEnemy`(무르무르·카임·알로케스), `Solomon`이다. 안드로말리우스·단탈리온·세레·데카라비아·벨리알·암두시아스·키마리스·안드레알푸스·플라우로스와 `Enemy`를 상속한 외부 적은 그대로 회피한다. 기본 `Enemy`의 기능을 지우지 않고 스위치로 끈 이유는 외부 적 호환과 `PuyoW.Enemy` 하위 클래스로 패배 위치 경고를 검사하는 기존 테스트 때문이다.
+- **꺼지는 동작(`avoidsDefeat === false`)**
+  - `Enemy.prepareTurn()`: 피버 중 최대 연쇄 후보의 즉시 패배 필터(`findBestFeverComboPlacement(player, avoidDefeat)`)와 그 대체 `findBestAttackPlacement()`, 패배 위치 경고 후보(`getAiDefeatPositionAvoidanceColumns()` 분기), 빈 필드 첫 배치(`selectRandomEmptyFieldPlacement()`)의 안전 후보 필터.
+  - `BundledEnemy.prepareTurn()`의 연쇄 대응 후보, `selectSafeRotation()`(요청한 회전을 그대로 돌려줌), `ChainBuildingEnemy.getSafeSimulations()`(모든 후보를 돌려줌).
+  - `findBestAttackPlacement()`의 다섯째 인자 `avoidDefeat`(false면 Y=2·지정 열·전체 즉시 패배 검사를 모두 건너뜀), `simulateNMovePlacements()`·`findBestNMovePlacement()`의 다섯째 인자와 `findBestNMoveBoardResult()`의 여덟째 인자(기본 true, `causesImmediateDefeat()`·`isDefeatBoard()` 제외를 끔).
+  - Worker: `createNMoveWorkerSnapshot()`이 `rules.avoidsDefeat`(옵션 `avoidDefeat`, 기본 true, `simulateNMovePlacementsInWorker()`의 `options.avoidDefeat`로도 전달)를 싣고, Worker가 기본 탐색의 `isDefeatBoard`·`isIncomingGarbageDefeat`와 advanced 탐색의 `isFastDefeat`·`dangerColumns` 제외를 건너뛴다. `startWorkerLookaheadSearch()`는 `usesDefeatAvoidance(enemy)`를 넘기며, 동기 대체 탐색(`getWorkerSearchFallbackPlacement()`)에도 적용한다. 스냅샷에 값이 없으면(외부 호출) 계속 회피한다.
+  - `RealtimeLookaheadEnemy.prepareTurn()`의 필드 80% 이상 패배 위치 보호 분기를 삭제했다. `isFieldAtLeastEightyPercentFilled()` 메서드는 공개 클래스 호환을 위해 남겼다.
+  - `OnnxEnemy.applyFallback()`(추론 실패·마감 시한 초과 때의 앞 1수 대체 판단)도 즉시 패배 필터를 쓰지 않는다. ONNX 정상 추론 경로에는 원래 패배 필터가 없었고, `prepareTurn()`이 준비한 공통 후보는 `chooseTarget()`이 읽지 않았다.
+  - `Solomon`: `shouldUseFallbackImmediately()`(위험 높이 `(2,5)`·피버 룰 `(3,5)`가 차면 API를 건너뛰고 벨리알로 전환)를 삭제했고, 프롬프트의 `fallbackSafetyCondition`(위험 칸을 피하라는 지시)을 뺐다. API 오류·시간 초과·잘못된 배치 응답 때의 벨리알 전환은 그대로이며 벨리알은 `avoidsDefeat`가 `true`라 자기 규칙을 쓴다. 프롬프트의 `rules.defeat`는 규칙 설명이라 유지했다. 서버(`node/server.js`·`python/pythonserver.py`)는 `fallbackSafetyCondition`을 읽지 않는다.
+- **그대로 둔 것(의도, 되돌릴 수 있게 기록)**
+  1. 보드 평가 가중치의 패배 칸 주변 적층 감점(Y≥8이면 -180: `getNMoveBoardScore()`, Worker `getBoardScore()`·`getFastBoardScore()`)은 동작 규칙이 아니라 점수라 남겼다. 이것까지 없애려면 세 곳의 `usesSecondDefeatCell` 감점 항을 `avoidsDefeat`로 가리면 된다(Worker는 `rules`/`context`에 이미 값이 있다).
+  2. `python/bundledenemy.py`(학습 대전 상대로 이식한 적 AI)는 바꾸지 않았다. 학습 상대와 게임 속 같은 이름의 적이 패배 회피에서 달라졌다. 맞추려면 `bundledenemy.py`의 `causes_immediate_defeat`·`get_ai_defeat_position_avoidance_columns`·`find_ai_defeat_position_safe_placement`와 `_finalize`(`selectSafeRotation`에 대응) 호출을 해당 적 클래스에서 끄면 된다.
+  3. Python 학습 환경과 Node/Python 서버의 모델 행동 선택에는 원래 패배 회피가 없었다(관측 벡터의 열 높이로 합법 행동만 가리는 `is_legal_observation_action`뿐). 그래서 서버 코드는 손대지 않았다.
+  4. Worker의 `DEAD_END_PENALTY`는 그대로다. 패배 경로를 거르지 않으면 "다음 수를 어디에 두어도 패배"인 경로가 생기지 않아, 놓을 자리가 아예 없는 경로(필드 가득)에만 적용된다.
+- 영향: 이 적들은 패배 칸을 채우는 배치도 평범한 후보로 고르므로 스스로 질 수 있다. `getGameState()`·화면 이름·스키마·모드·조작이 바뀌지 않았고 WebMCP 도구에 이 동작의 설명이 없어 WebMCP는 수정하지 않았다.
+- 테스트: `tests/test01_enemy.spec.js`에 5건을 더했다. `avoidsDefeat` 값 표(끄는 16개 클래스와 회피를 유지하는 16개 클래스·외부 `Enemy`), 안드라스가 `board[8][2]` 경고에서도 `preparedPlacement`를 만들지 않음(실제 대전), 자간이 80% 찬 필드에서 보호 후보 없이 Worker를 시작하고 요청 `rules.avoidsDefeat`가 `false`이며 외부 `Enemy`는 `true`임, Worker 직접 검사(위험 열 제외: advanced·legacy 모두 기본은 연쇄만 남고 끄면 연쇄 없음, 즉시 패배: `allowedPlacements`를 2열 세로로 한정하면 기본은 결과 없음·끄면 그 배치), 회전 선택(키마리스는 `(2,3)`→`(1,3)`으로 바꾸고 안드라스·자간·솔로몬·무르무르 대체 판단은 `(2,3)`을 유지)과 동기 N수 탐색 후보 목록. `tests/test03_ai.spec.js`는 `fallbackSafetyCondition` 단언을 `undefined` 확인으로 바꾸고, 솔로몬이 `(2,5)`가 찬 필드에서도 `pending` 상태로 API를 요청하는지 보는 테스트 1건을 더했다. `usesDefeatAvoidance()`를 항상 `true`로 바꿔 보면 새 테스트 중 적 인스턴스를 거치는 3건이 실패함을 확인했다(Worker 직접 검사는 스냅샷으로 직접 보내 영향 없음). 새 시나리오를 만들 때는 같은 색이 붙어 함께 터지면서 패배 칸이 비는지 주의한다(처음에는 2열의 빨강이 1열 빨강과 이어져 터져 패배 시나리오가 성립하지 않았다).
+- 문서: `docs/Enemy.md`·`docs/Enemy.en.md`에 「패배 회피 규칙과 `avoidsDefeat`」 절과 피버 공통 최적화 설명을, `docs/MachineLearning.md`·`.en.md` 솔로몬 온라인 학습 4번 항목을 고쳤다.
+- `puyow.js` BUILDNO는 137, `package.json`·`package-lock.json` 버전은 `0.4.137`이며 번들을 다시 생성했다. 버전값 자체는 테스트하지 않는다.
+- 검증: JS 문법 검사·ESLint·Webpack 빌드·`git diff --check` 통과, 번들에서 `Andras.avoidsDefeat === false`·`Kimaris.avoidsDefeat === true` 확인. Chromium에서 `test01_enemy`·`test03_ai`·`test00_exports`·`test01_core` 148건, `test01_fever_damage`·`test01_two_explosion`·`test01_two_explosion_watch`·`test01_relaxed_fever`·`test01_fever`·`test01_replay`·`test01_menu` 121건이 모두 통과했다. 새 테스트 6건은 Firefox·WebKit에서도 12건 통과했다. 그 밖의 파일과 Firefox·WebKit 전체 실행, 파이썬 테스트는 하지 않았다(파이썬은 바꾸지 않음). Playwright 설정의 `webServer`가 실행마다 `npm start`로 ESLint와 번들 빌드를 하므로, 소스를 임시로 바꿔 돌린 뒤에는 반드시 원복하고 `npm run build`를 다시 한다.
 
 작업 후 puyow.js 의 BUILDNO 를 1 증가시켜주고, package.json 의 version 의 패치 번호에 BUILDNO 값을 넣어줘.
 작업으로 인해 이 INFO_FOR_AI.md 내용 중 더 이상 맞지 않는 내용이 있다면 수정해 줘.

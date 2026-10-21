@@ -1504,6 +1504,264 @@ test('패배 위치 경고 중에도 X=2에 놓아 폭발하는 기본 룰 적 �
   }), { timeout: 15000 }).toEqual({ target: 2, rotation: 0, combo: 1 });
 });
 
+test('2수·3수 탐색 적과 모델 기반 적만 즉시 패배 후보 필터와 위험 열 사전 회피를 끈다', async ({ page }) => {
+  const flags = await page.evaluate(() => {
+    const names = [
+      'Enemy', 'BundledEnemy', 'Andromalius', 'Dantalion', 'Seere', 'ChainBuildingEnemy', 'Decarabia', 'PreviewChainEnemy',
+      'FiveChainEnemy', 'Belial', 'Amdusias', 'Kimaris', 'Andrealphus', 'Flauros', 'Balaam', 'Purkas',
+      'TwoMoveLookaheadEnemy', 'Andras', 'Valak',
+      'RealtimeLookaheadEnemy', 'Zagan', 'Vapula', 'Oriax', 'Amii', 'Ose', 'Gremory', 'Orobas',
+      'OnnxEnemy', 'Murmur', 'Caim', 'Alokes', 'Solomon',
+    ];
+    class ExternalEnemy extends window.PuyoW.Enemy {}
+    return {
+      ...Object.fromEntries(names.map((name) => [name, new window.PuyoW[name]().avoidsDefeat])),
+      ExternalEnemy: new ExternalEnemy().avoidsDefeat,
+    };
+  });
+
+  const disabled = ['TwoMoveLookaheadEnemy', 'Andras', 'Valak', 'RealtimeLookaheadEnemy', 'Zagan', 'Vapula', 'Oriax', 'Amii', 'Ose', 'Gremory', 'Orobas', 'OnnxEnemy', 'Murmur', 'Caim', 'Alokes', 'Solomon'];
+  for (const [name, value] of Object.entries(flags)) expect([name, value]).toEqual([name, !disabled.includes(name)]);
+});
+
+test('2수 탐색 적은 패배 위치 경고에서도 위험 열의 비폭발 배치를 미리 피하지 않는다', async ({ page }) => {
+  await page.evaluate(() => {
+    class DangerColumnAndras extends window.PuyoW.Andras {
+      constructor() { super(); this.sortPriority = -100; }
+      getClassType() { return 'DangerColumnAndras'; }
+      getName() { return '위험 열 2수 탐색 테스트 적'; }
+
+      prepareTurn(player) {
+        // 기본 Enemy는 이 상태에서 X=2의 비폭발 배치를 피하는 공통 후보를 미리 고른다.
+        player.board[8][2] = 'garbage';
+        super.prepareTurn(player);
+        player.fallTimer = -100000;
+        window.dangerColumnAndras = { prepared: this.getPreparedPlacement(), attackPlacement: this.attackPlacement };
+      }
+
+      useFastDown() { return false; }
+    }
+    window.PuyoW.registerOpponent({ createController: () => new DangerColumnAndras() });
+  });
+
+  await enterMainMenu(page);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => window.PuyoW.getScreenState().screen)).toBe('opponent_select');
+  for (let index = 0; index < 3; index += 1) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+
+  await expect.poll(() => page.evaluate(() => window.dangerColumnAndras || null), { timeout: 15000 }).not.toBeNull();
+  const result = await page.evaluate(() => ({ prepared: window.dangerColumnAndras.prepared, hasLookaheadPlacement: window.dangerColumnAndras.attackPlacement !== null }));
+  // 패배 위치 경고용 공통 후보를 만들지 않고 2수 읽기 결과로만 고른다.
+  expect(result).toEqual({ prepared: null, hasLookaheadPlacement: true });
+});
+
+test('3수 탐색 적은 필드가 80% 이상 차도 패배 위치 보호 후보를 만들지 않고 Worker 탐색에 패배 경로 제외를 끄도록 알린다', async ({ page }) => {
+  // Blob Worker를 직접 확인하는 테스트라서 기준선 라우트를 걷고 시작한다.
+  await releaseNetworkInterception(page);
+  const result = await page.evaluate(async (WORKER_SEARCH_TIME_LIMIT) => {
+    // 이웃한 칸의 색이 모두 달라 폭발이 없는, 아래 10줄(60칸)이 찬 필드다.
+    const createPlayer = () => {
+      const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+      const colors = ['red', 'green', 'blue'];
+      for (let y = 0; y < 10; y += 1) for (let x = 0; x < 6; x += 1) board[y][x] = colors[(x + y * 2) % 3];
+      return {
+        board,
+        active: { x: 2, y: 11.9, rotation: 0, colors: ['yellow', 'purple'] },
+        nextPairs: [['red', 'blue'], ['green', 'yellow']],
+        aiSimulations: [],
+        attack: 0,
+        damage: 0,
+        warningReductionDelay: 0,
+      };
+    };
+    // 게임이 만든 Worker로 보내는 탐색 요청을 가로채 기록한다.
+    const OriginalWorker = window.Worker;
+    const requests = [];
+    window.Worker = class extends OriginalWorker {
+      postMessage(message, ...rest) {
+        if (message?.type === 'simulate') requests.push({ enemy: window.currentWorkerEnemy, avoidsDefeat: message.snapshot?.rules?.avoidsDefeat });
+        return super.postMessage(message, ...rest);
+      }
+    };
+    class ExternalWorkerEnemy extends window.PuyoW.Enemy {
+      constructor() {
+        super();
+        this.targetCombo = 7;
+        this.lookaheadTurnCount = 3;
+        this.lookaheadTimeLimitMs = WORKER_SEARCH_TIME_LIMIT;
+        this.ignorableIncomingGarbage = 4;
+      }
+
+      prepareTurn(player) {
+        window.PuyoW.beginWorkerSearchTurn(this);
+        super.prepareTurn(player);
+        if (!this.getPreparedPlacement()) window.PuyoW.startWorkerLookaheadSearch(this, player);
+      }
+    }
+    try {
+      const outcome = {};
+      for (const [name, controller] of [['Zagan', new window.PuyoW.Zagan()], ['External', new ExternalWorkerEnemy()]]) {
+        window.currentWorkerEnemy = name;
+        controller.lookaheadTimeLimitMs = WORKER_SEARCH_TIME_LIMIT;
+        const player = createPlayer();
+        controller.prepareTurn(player);
+        outcome[name] = { prepared: controller.getPreparedPlacement() !== null, started: controller.pendingWorkerSearch !== null };
+        await controller.pendingWorkerSearch?.promise;
+      }
+      return { outcome, requests };
+    } finally {
+      window.Worker = OriginalWorker;
+    }
+  }, WORKER_SEARCH_TIME_LIMIT);
+
+  // 기본 Enemy 계열은 80% 이상 찬 필드에서 패배 위치 보호를 하지만, 자간은 바로 Worker 탐색을 시작하고 패배 경로 제외를 끈다.
+  expect(result.outcome.Zagan).toEqual({ prepared: false, started: true });
+  expect(result.requests.filter(({ enemy }) => enemy === 'Zagan')).not.toHaveLength(0);
+  expect(result.requests.filter(({ enemy }) => enemy === 'Zagan').every(({ avoidsDefeat }) => avoidsDefeat === false)).toBe(true);
+  // avoidsDefeat를 건드리지 않은 외부 적은 기존처럼 패배 경로를 제외하는 탐색을 요청한다.
+  expect(result.requests.filter(({ enemy }) => enemy === 'External').every(({ avoidsDefeat }) => avoidsDefeat === true)).toBe(true);
+});
+
+test('Worker 탐색은 avoidsDefeat가 꺼져 있으면 즉시 패배·위험 열 경로도 후보로 읽고 기본은 계속 피한다', async ({ page }) => {
+  // Blob Worker를 직접 확인하는 테스트라서 기준선 라우트를 걷고 시작한다.
+  await releaseNetworkInterception(page);
+  const results = await page.evaluate(async (WORKER_SEARCH_TIME_LIMIT) => {
+    // 게임이 만든 Worker를 붙잡아 snapshot을 직접 보낸다.
+    const OriginalWorker = window.Worker;
+    let capturedWorker = null;
+    window.Worker = class extends OriginalWorker {
+      constructor(...args) {
+        super(...args);
+        capturedWorker = this;
+      }
+    };
+    try {
+      const warmup = { board: Array.from({ length: 25 }, () => Array(6).fill(null)), active: { x: 2, y: 11.9, rotation: 0, colors: ['red', 'blue'] }, nextPairs: [['green', 'yellow'], ['blue', 'red']], aiSimulations: [], attack: 0, damage: 0, warningReductionDelay: 0 };
+      await window.PuyoW.common.simulateNMovePlacementsInWorker(warmup, 6, 3, WORKER_SEARCH_TIME_LIMIT, { searchMode: 'advanced' }).promise;
+    } finally {
+      window.Worker = OriginalWorker;
+    }
+    // 패배 열인 2열이 11칸(y=0..10) 차 있어, 2열에 놓으면 즉시 패배하고 다른 열에 연쇄 없이 놓아도
+    // 곧 도착할 방해뿌요 4개(한 줄 미만이라 올라오는 줄은 없지만 위험 열은 한 칸 더 오른다)로 지는 필드다.
+    // 4열 빨강 3개·5열 초록 3개 위에 [빨강, 초록]을 세우면 빨강이 터지고 떨어진 초록이 이어져 터지는 2연쇄만이 안전하다.
+    const createBoard = () => {
+      const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+      const colors = ['yellow', 'purple', 'blue'];
+      for (let y = 0; y < 11; y += 1) board[y][2] = colors[y % 3];
+      ['red', 'red', 'red'].forEach((color, y) => { board[y][4] = color; });
+      ['green', 'green', 'green'].forEach((color, y) => { board[y][5] = color; });
+      return board;
+    };
+    const search = (name, { searchMode, avoidsDefeat, allowedPlacements = null }) => new Promise((resolve) => {
+      const snapshot = {
+        self: { board: createBoard(), active: { x: 2, y: 11.9, rotation: 0, colors: ['red', 'green'] }, nextPairs: [['yellow', 'purple'], ['purple', 'yellow']], attack: 0, fever: { active: false } },
+        incomingGarbage: 4,
+        // 4개는 긴급 상쇄 대상이 아니라서, 위험 우선 비교가 아니라 패배 경로 제외 여부만 결과를 가른다.
+        urgentGarbageThreshold: 10,
+        targetCombo: 7,
+        turnCount: 3,
+        ...(searchMode === 'advanced' ? { searchMode: 'advanced', beamWidth: 5, allowedPlacements, realtime: { incoming: 4, garbageMoveIndex: 0 } } : {}),
+        rules: { standard: true, feverRule: false, continuousFever: false, usesSecondDefeatCell: false, marginRate: 70, timeProgressMultiplier: 1, ...(avoidsDefeat === undefined ? {} : { avoidsDefeat }) },
+      };
+      const onMessage = ({ data }) => {
+        if (data?.requestId !== name || data.type !== 'done') return;
+        capturedWorker.removeEventListener('message', onMessage);
+        const placement = data.result?.placement;
+        resolve([name, placement ? { x: placement.x, rotation: placement.rotation, combo: placement.combo } : null]);
+      };
+      capturedWorker.addEventListener('message', onMessage);
+      capturedWorker.postMessage({ type: 'simulate', requestId: name, snapshot, timeLimitMs: WORKER_SEARCH_TIME_LIMIT });
+    });
+    const cases = [
+      // 위험 열 사전 회피: 기본은 연쇄 말고는 모두 후보에서 빼고, 끄면 목표 연쇄에 못 미치는 2연쇄를 아껴 쌓는다.
+      ['advancedDangerDefault', { searchMode: 'advanced' }],
+      ['advancedDangerOff', { searchMode: 'advanced', avoidsDefeat: false }],
+      ['legacyDangerDefault', { searchMode: 'legacy' }],
+      ['legacyDangerOff', { searchMode: 'legacy', avoidsDefeat: false }],
+      // 즉시 패배 후보 필터: 첫 수를 2열 세로로 한정하면 기본은 후보가 없고, 끄면 그 배치를 그대로 쓴다.
+      ['advancedImmediateDefault', { searchMode: 'advanced', allowedPlacements: [{ x: 2, rotation: 0 }] }],
+      ['advancedImmediateOff', { searchMode: 'advanced', avoidsDefeat: false, allowedPlacements: [{ x: 2, rotation: 0 }] }],
+    ];
+    const entries = [];
+    for (const [name, options] of cases) entries.push(await search(name, options));
+    return Object.fromEntries(entries);
+  }, WORKER_SEARCH_TIME_LIMIT);
+
+  // 위험 열 사전 회피: 기본은 연쇄(2연쇄)만 살아남고, 끄면 목표 연쇄에 못 미치는 연쇄를 아껴 쌓는다(연쇄 없음).
+  expect(results.advancedDangerDefault?.combo).toBe(2);
+  expect(results.advancedDangerOff?.combo).toBe(0);
+  expect(results.legacyDangerDefault?.combo).toBeGreaterThan(0);
+  expect(results.legacyDangerOff?.combo).toBe(0);
+  // 즉시 패배 후보 필터: 첫 수를 즉시 패배하는 배치로 한정하면 기본은 후보가 없고, 끄면 그 배치를 그대로 돌려준다.
+  expect(results.advancedImmediateDefault).toBeNull();
+  expect(results.advancedImmediateOff).toMatchObject({ x: 2, rotation: 0 });
+});
+
+test('avoidsDefeat가 꺼진 적은 즉시 패배하는 배치도 그대로 쓰고 기본 제공 적은 안전한 회전으로 바꾼다', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    // 2열 색에는 빨강이 없어 1열 빨강이 터져도 2열은 그대로 남는다.
+    const colors = ['yellow', 'purple', 'blue'];
+    // 2열은 11칸(y=0..10)이 차 있어 가로 쌍의 축이 2열 위(y=11)에 놓이면 패배 칸이 찬다.
+    // 1열에 빨강 3개를 세워 두어, [파랑, 빨강]을 빨강이 1열에 닿게 놓으면 빨강 4개가 터진다.
+    // 2열에 축을 두고 빨강을 왼쪽에 두는 배치(2, 3)와 1열에 빨강을 아래로 세우는 배치(1, 2)는 ATTACK이 같지만 앞의 것만 즉시 패배한다.
+    const createPlayer = () => {
+      const board = Array.from({ length: 25 }, () => Array(6).fill(null));
+      for (let y = 0; y < 11; y += 1) board[y][2] = colors[y % 3];
+      ['red', 'red', 'red'].forEach((color, y) => { board[y][1] = color; });
+      const player = {
+        board,
+        active: { x: 2, y: 11.9, rotation: 0, colors: ['blue', 'red'] },
+        nextPairs: [['yellow', 'purple']],
+        aiSimulations: [],
+        attack: 0,
+        damage: 0,
+        warningReductionDelay: 0,
+      };
+      new window.PuyoW.Enemy().prepareTurn(player);
+      return player;
+    };
+    const selectRotation = (controller) => {
+      const player = createPlayer();
+      player.aiTarget = 2;
+      const rotation = controller.selectSafeRotation(player, 3);
+      return { rotation, target: player.aiTarget };
+    };
+    const onnxFallback = () => {
+      const player = createPlayer();
+      const murmur = new window.PuyoW.Murmur();
+      murmur.applyFallback(player);
+      return { target: murmur.targetX, rotation: murmur.targetRotation };
+    };
+    const syncCandidates = (avoidDefeat) => {
+      const player = createPlayer();
+      return window.PuyoW.common.simulateNMovePlacements(player, 6, 1, undefined, avoidDefeat)
+        .map(({ simulation }) => `${simulation.x}:${simulation.rotation}`)
+        .filter((key) => key === '2:3' || key === '1:3');
+    };
+    return {
+      // 즉시 패배하는 배치(2, 3)가 최고 ATTACK이어도 기본 제공 적은 같은 ATTACK의 안전한 배치(1, 2)로 바꾼다.
+      kimaris: selectRotation(new window.PuyoW.Kimaris()),
+      andras: selectRotation(new window.PuyoW.Andras()),
+      zagan: selectRotation(new window.PuyoW.Zagan()),
+      solomon: selectRotation(new window.PuyoW.Solomon()),
+      murmurFallback: onnxFallback(),
+      syncDefault: syncCandidates(undefined),
+      syncOff: syncCandidates(false),
+    };
+  });
+
+  // 같은 ATTACK의 후보 (1, 3)과 (2, 3) 가운데 즉시 패배하는 것은 (2, 3)이다. 같은 ATTACK이면 더 큰 X를 고르므로 필터가 없으면 (2, 3)이 뽑힌다.
+  expect(result.syncDefault).toEqual(['1:3']);
+  expect(result.syncOff).toEqual(['1:3', '2:3']);
+  // 기본 제공 적은 즉시 패배하는 선택을 안전한 (1, 3)으로 바꾼다.
+  expect(result.kimaris).toEqual({ rotation: 3, target: 1 });
+  // 2수·3수 탐색 적과 모델 기반 적은 요청한 배치를 그대로 쓴다.
+  for (const name of ['andras', 'zagan', 'solomon', 'murmurFallback']) expect([name, result[name]]).toEqual([name, { rotation: 3, target: 2 }]);
+});
+
 test('피버 전용 필드는 적 테마보다 우선하고 일반 필드는 적 테마를 유지한다', async ({ page }) => {
   await page.evaluate(() => {
     class FeverPriorityThemeEnemy extends window.PuyoW.Enemy {
